@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { type DictionaryEntry as DictionaryEntryType } from "@/data/dictionaryData";
+import { type DictionaryEntry as DictionaryEntryType } from "@/data/fullDictionaryData";
 
 interface DictionaryEntryProps {
   entry: DictionaryEntryType;
@@ -87,6 +87,37 @@ export const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Variants and Keywords */}
+        {(entry.variants.length > 0 || entry.french_keywords.length > 0) && (
+          <div className="space-y-2">
+            {entry.variants.length > 0 && (
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-1 font-sans">Variantes</h4>
+                <div className="flex flex-wrap gap-1">
+                  {entry.variants.slice(0, 3).map((variant, index) => (
+                    <Badge key={index} variant="outline" className="text-xs bariba-text">
+                      {variant}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {entry.french_keywords.length > 0 && (
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-1 font-sans">Mots-clés</h4>
+                <div className="flex flex-wrap gap-1">
+                  {entry.french_keywords.slice(0, 4).map((keyword, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {keyword}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

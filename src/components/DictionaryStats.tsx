@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { type DictionaryEntry } from "@/data/dictionaryData";
+import { type DictionaryEntry } from "@/data/fullDictionaryData";
 
 interface DictionaryStatsProps {
   entries: DictionaryEntry[];
