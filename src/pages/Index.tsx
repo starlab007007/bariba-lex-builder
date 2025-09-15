@@ -1,5 +1,6 @@
 import { SmartSearchBar } from "@/components/SmartSearchBar";
 import { DictionaryEntry } from "@/components/DictionaryEntry";
+import { DirectTranslation } from "@/components/DirectTranslation";
 import { DictionaryStats } from "@/components/DictionaryStats";
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
 import { Book, Languages, Globe, ArrowLeftRight } from "lucide-react";
@@ -237,6 +238,28 @@ const Index = () => {
               </div>
             ) : showFullResults ? (
               <div className="space-y-4 lg:space-y-6">
+                {/* Traduction directe en première position si applicable */}
+                {searchQuery && fullSearchResults.entries.length > 0 && (searchDirection !== "all") && (
+                  (() => {
+                    const directEntry = fullSearchResults.entries.find(entry => {
+                      if (searchDirection === "bariba-to-french") {
+                        return entry.word.toLowerCase() === searchQuery.toLowerCase();
+                      } else if (searchDirection === "french-to-bariba") {
+                        return entry.french_keywords?.some(k => k.toLowerCase() === searchQuery.toLowerCase());
+                      }
+                      return false;
+                    });
+                    
+                    return directEntry ? (
+                      <DirectTranslation 
+                        searchQuery={searchQuery}
+                        searchDirection={searchDirection}
+                        entry={directEntry}
+                      />
+                    ) : null;
+                  })()
+                )}
+                
                 {fullSearchResults.entries.map((entry, index) => (
                   <DictionaryEntry key={`${entry.word}-${index}`} entry={entry} />
                 ))}

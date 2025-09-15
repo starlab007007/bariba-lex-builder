@@ -180,11 +180,23 @@ export const useSmartDictionarySearch = () => {
       }
     });
 
-    // Trier par pertinence : mots exacts en premier, puis alphabétique
+    // Trier par pertinence : traductions exactes en premier, puis mots exacts, puis alphabétique
     return suggestions
       .sort((a, b) => {
+        // 1. Priorité absolue aux correspondances exactes de traduction directe
+        const aIsDirectTranslation = (searchDirection === "french-to-bariba" && a.type === "french" && a.isExact) ||
+                                    (searchDirection === "bariba-to-french" && a.type === "bariba" && a.isExact);
+        const bIsDirectTranslation = (searchDirection === "french-to-bariba" && b.type === "french" && b.isExact) ||
+                                    (searchDirection === "bariba-to-french" && b.type === "bariba" && b.isExact);
+        
+        if (aIsDirectTranslation && !bIsDirectTranslation) return -1;
+        if (!aIsDirectTranslation && bIsDirectTranslation) return 1;
+        
+        // 2. Puis les correspondances exactes générales
         if (a.isExact && !b.isExact) return -1;
         if (!a.isExact && b.isExact) return 1;
+        
+        // 3. Alphabétique en dernier recours
         return a.word.localeCompare(b.word);
       })
       .slice(0, 8); // Limiter à 8 suggestions
@@ -275,20 +287,32 @@ export const useSmartDictionarySearch = () => {
 
     const resultEntries = Array.from(resultSet);
     
-    // Tri par pertinence
+    // Tri par pertinence avec priorité à la traduction directe
     resultEntries.sort((a, b) => {
-      const aWordMatch = a.word.toLowerCase() === query;
-      const bWordMatch = b.word.toLowerCase() === query;
+      // 1. Priorité absolue: correspondance exacte du mot principal
+      const aExactMatch = a.word.toLowerCase() === query;
+      const bExactMatch = b.word.toLowerCase() === query;
       
-      if (aWordMatch && !bWordMatch) return -1;
-      if (!aWordMatch && bWordMatch) return 1;
+      if (aExactMatch && !bExactMatch) return -1;
+      if (!aExactMatch && bExactMatch) return 1;
       
+      // 2. Priorité aux mots qui commencent par la requête
       const aStartsWith = a.word.toLowerCase().startsWith(query);
       const bStartsWith = b.word.toLowerCase().startsWith(query);
       
       if (aStartsWith && !bStartsWith) return -1;
       if (!aStartsWith && bStartsWith) return 1;
       
+      // 3. Pour les recherches français->bariba, priorité aux entrées avec mot-clé exact
+      if (searchDirection === "french-to-bariba" || searchDirection === "all") {
+        const aHasExactKeyword = a.french_keywords?.some(k => k.toLowerCase() === query) || false;
+        const bHasExactKeyword = b.french_keywords?.some(k => k.toLowerCase() === query) || false;
+        
+        if (aHasExactKeyword && !bHasExactKeyword) return -1;
+        if (!aHasExactKeyword && bHasExactKeyword) return 1;
+      }
+      
+      // 4. Alphabétique en dernier recours
       return a.word.localeCompare(b.word);
     });
 
