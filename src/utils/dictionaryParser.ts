@@ -178,10 +178,33 @@ export function processDictionaryEntry(raw: RawDictionaryEntry): ProcessedDictio
 
 export async function loadAndProcessDictionary(): Promise<ProcessedDictionaryEntry[]> {
   try {
+    // First try to load from the advanced PDF parser
+    const { loadAdvancedDictionary } = await import('./advancedDictionaryParser');
+    const advancedEntries = await loadAdvancedDictionary();
+    
+    if (advancedEntries.length > 0) {
+      console.log(`Loaded ${advancedEntries.length} entries from advanced PDF parser`);
+      // Convert to our format
+      return advancedEntries.map(entry => ({
+        word: entry.word,
+        phonetic: entry.phonetic,
+        part_of_speech: entry.part_of_speech,
+        definition: entry.definition,
+        example_bariba: entry.example_bariba,
+        example_francais: entry.example_francais,
+        notes: entry.notes,
+        source_flags: entry.source_flags,
+        incertitude: entry.incertitude,
+        french_keywords: entry.french_keywords,
+        variants: entry.variants
+      }));
+    }
+    
+    // Fallback to JSON data
     const response = await fetch('/src/data/raw-dictionary.json');
     const rawData: RawDictionaryEntry[] = await response.json();
     
-    console.log(`Processing ${rawData.length} dictionary entries...`);
+    console.log(`Processing ${rawData.length} dictionary entries from JSON...`);
     
     const processed = rawData
       .filter(entry => entry && entry.word) // Remove invalid entries
