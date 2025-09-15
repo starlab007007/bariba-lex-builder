@@ -1,7 +1,6 @@
 import { BiDirectionalSearchBar } from "@/components/BiDirectionalSearchBar";
 import { DictionaryEntry } from "@/components/DictionaryEntry";
 import { DictionaryStats } from "@/components/DictionaryStats";
-import { DictionaryJSONGenerator } from "@/components/DictionaryJSONGenerator";
 import { useDictionarySearch } from "@/hooks/useDictionarySearch";
 import { Book, Languages, Globe, ArrowLeftRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -63,11 +62,6 @@ const Index = () => {
 
       {/* Stats and Results */}
       <main className="container mx-auto px-4 pb-12">
-        {/* JSON Generator Section */}
-        <div className="mb-8">
-          <DictionaryJSONGenerator />
-        </div>
-
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar with stats */}
           <aside className="lg:col-span-1">

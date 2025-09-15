@@ -178,63 +178,10 @@ export function processDictionaryEntry(raw: RawDictionaryEntry): ProcessedDictio
 
 export async function loadAndProcessDictionary(): Promise<ProcessedDictionaryEntry[]> {
   try {
-    // First try to load from the complete PDF parser (340 pages)
-    try {
-      const response = await fetch('/parsed-dictionary-content-new.txt');
-      if (response.ok) {
-        const content = await response.text();
-        const { parsePDFDictionaryContent } = await import('./pdfDictionaryExtractor');
-        const completeEntries = parsePDFDictionaryContent(content);
-        
-        if (completeEntries.length > 0) {
-          console.log(`Loaded ${completeEntries.length} entries from complete PDF parser (340 pages)`);
-          // Convert to our format
-          return completeEntries.map(entry => ({
-            word: entry.word,
-            phonetic: entry.phonetic,
-            part_of_speech: entry.part_of_speech,
-            definition: entry.definition,
-            example_bariba: entry.example_bariba,
-            example_francais: entry.example_francais,
-            notes: entry.notes,
-            source_flags: entry.source_flags,
-            incertitude: entry.incertitude,
-            french_keywords: entry.french_keywords,
-            variants: entry.variants
-          }));
-        }
-      }
-    } catch (error) {
-      console.warn('Complete PDF parser failed, trying advanced parser:', error);
-    }
-    
-    // Fallback to advanced PDF parser
-    const { loadAdvancedDictionary } = await import('./advancedDictionaryParser');
-    const advancedEntries = await loadAdvancedDictionary();
-    
-    if (advancedEntries.length > 0) {
-      console.log(`Loaded ${advancedEntries.length} entries from advanced PDF parser`);
-      // Convert to our format
-      return advancedEntries.map(entry => ({
-        word: entry.word,
-        phonetic: entry.phonetic,
-        part_of_speech: entry.part_of_speech,
-        definition: entry.definition,
-        example_bariba: entry.example_bariba,
-        example_francais: entry.example_francais,
-        notes: entry.notes,
-        source_flags: entry.source_flags,
-        incertitude: entry.incertitude,
-        french_keywords: entry.french_keywords,
-        variants: entry.variants
-      }));
-    }
-    
-    // Fallback to JSON data
     const response = await fetch('/src/data/raw-dictionary.json');
     const rawData: RawDictionaryEntry[] = await response.json();
     
-    console.log(`Processing ${rawData.length} dictionary entries from JSON...`);
+    console.log(`Processing ${rawData.length} dictionary entries...`);
     
     const processed = rawData
       .filter(entry => entry && entry.word) // Remove invalid entries
