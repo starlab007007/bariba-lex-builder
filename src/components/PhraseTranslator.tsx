@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslationAI } from "@/hooks/useTranslationAI";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
@@ -13,7 +14,19 @@ export const PhraseTranslator = () => {
   const [translatedText, setTranslatedText] = useState("");
   const [direction, setDirection] = useState<TranslationDirection>("french-to-bariba");
   const [isTranslating, setIsTranslating] = useState(false);
+  const [useAI, setUseAI] = useState(true);
   const { toast } = useToast();
+  
+  // Hook pour le modèle IA
+  const {
+    translateFrenchToBariba,
+    translateBaribaToFrench,
+    translateIntelligent,
+    isLoading: aiLoading,
+    isInitialized: aiReady,
+    error: aiError,
+    modelStats
+  } = useTranslationAI();
 
   const translatePhrase = async () => {
     if (!sourceText.trim()) {
@@ -25,50 +38,70 @@ export const PhraseTranslator = () => {
       return;
     }
 
+    if (useAI && !aiReady) {
+      toast({
+        title: "Modèle en cours d'initialisation",
+        description: "Veuillez patienter pendant l'initialisation du modèle IA...",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsTranslating(true);
     
     try {
-      // Simulation de traduction - À remplacer par une vraie API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      let translation = "";
       
-      // Traduction de démonstration basique
-      if (direction === "french-to-bariba") {
-        const demoTranslations: Record<string, string> = {
-          "bonjour": "aagu",
-          "comment allez-vous": "foo ka bani",
-          "merci": "gando",
-          "au revoir": "ka su gbenma",
-          "je vais bien": "n de bani gandi",
-          "comment vous appelez-vous": "sunbu ka be",
-          "je m'appelle": "n sunbu bee"
-        };
-        
-        const lowerText = sourceText.toLowerCase();
-        const translation = demoTranslations[lowerText] || 
-          `[Traduction en Bààtɔ̀nú pour: "${sourceText}"]`;
-        setTranslatedText(translation);
+      if (useAI && aiReady) {
+        // Utiliser le modèle IA entraîné sur le dictionnaire
+        if (direction === "french-to-bariba") {
+          translation = await translateFrenchToBariba(sourceText);
+        } else {
+          translation = await translateBaribaToFrench(sourceText);
+        }
       } else {
-        const demoTranslations: Record<string, string> = {
-          "aagu": "bonjour / salut",
-          "foo ka bani": "comment allez-vous",
-          "gando": "merci",
-          "ka su gbenma": "au revoir",
-          "n de bani gandi": "je vais bien",
-          "sunbu ka be": "comment vous appelez-vous",
-          "n sunbu bee": "je m'appelle"
-        };
+        // Fallback: traduction de démonstration
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const lowerText = sourceText.toLowerCase();
-        const translation = demoTranslations[lowerText] || 
-          `[Traduction en français pour: "${sourceText}"]`;
-        setTranslatedText(translation);
+        if (direction === "french-to-bariba") {
+          const demoTranslations: Record<string, string> = {
+            "bonjour": "aagu",
+            "comment allez-vous": "foo ka bani",
+            "merci": "gando",
+            "au revoir": "ka su gbenma",
+            "je vais bien": "n de bani gandi",
+            "comment vous appelez-vous": "sunbu ka be",
+            "je m'appelle": "n sunbu bee"
+          };
+          
+          const lowerText = sourceText.toLowerCase();
+          translation = demoTranslations[lowerText] || 
+            `[Traduction en Bààtɔ̀nú pour: "${sourceText}"]`;
+        } else {
+          const demoTranslations: Record<string, string> = {
+            "aagu": "bonjour / salut",
+            "foo ka bani": "comment allez-vous",
+            "gando": "merci",
+            "ka su gbenma": "au revoir",
+            "n de bani gandi": "je vais bien",
+            "sunbu ka be": "comment vous appelez-vous",
+            "n sunbu bee": "je m'appelle"
+          };
+          
+          const lowerText = sourceText.toLowerCase();
+          translation = demoTranslations[lowerText] || 
+            `[Traduction en français pour: "${sourceText}"]`;
+        }
       }
       
+      setTranslatedText(translation);
+      
       toast({
-        title: "Traduction terminée",
-        description: "Votre texte a été traduit avec succès."
+        title: useAI ? "Traduction IA terminée" : "Traduction terminée",
+        description: useAI ? "Votre texte a été traduit par l'IA entraînée sur le dictionnaire." : "Votre texte a été traduit avec succès."
       });
     } catch (error) {
+      console.error("Erreur de traduction:", error);
       toast({
         title: "Erreur de traduction",
         description: "Une erreur s'est produite lors de la traduction.",
@@ -113,15 +146,35 @@ export const PhraseTranslator = () => {
       {/* Header */}
       <div className="text-center space-y-4">
         <h2 className="text-2xl lg:text-3xl font-bold text-foreground font-sans">
-          Traducteur de phrases
+          Traducteur IA <span className="bariba-text">Bààtɔ̀nú</span>
         </h2>
         <p className="text-muted-foreground">
-          Traduisez des phrases complètes entre le français et le <span className="bariba-text">Bààtɔ̀nú</span>
+          Traduisez des phrases complètes avec l'IA entraînée sur le dictionnaire <span className="bariba-text">Bààtɔ̀nú</span>
         </p>
+        
+        {/* Statut IA */}
+        <div className="flex items-center justify-center gap-4">
+          <Badge variant={aiReady ? "default" : aiLoading ? "secondary" : "destructive"} className="text-sm">
+            <Brain className="h-3 w-3 mr-1" />
+            {aiLoading ? "Initialisation IA..." : aiReady ? "IA Prête" : "IA Indisponible"}
+          </Badge>
+          
+          {modelStats && (
+            <Badge variant="outline" className="text-xs">
+              Modèle entraîné sur dictionnaire complet
+            </Badge>
+          )}
+        </div>
+        
+        {aiError && (
+          <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+            {aiError}
+          </div>
+        )}
       </div>
 
       {/* Direction Controls */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-4 flex-wrap">
         <Badge variant={direction === "french-to-bariba" ? "default" : "outline"} className="text-sm">
           Français → <span className="bariba-text">Bààtɔ̀nú</span>
         </Badge>
@@ -139,6 +192,18 @@ export const PhraseTranslator = () => {
         <Badge variant={direction === "bariba-to-french" ? "default" : "outline"} className="text-sm">
           <span className="bariba-text">Bààtɔ̀nú</span> → Français
         </Badge>
+        
+        {/* Toggle IA */}
+        <Button
+          variant={useAI ? "default" : "outline"}
+          size="sm"
+          onClick={() => setUseAI(!useAI)}
+          disabled={isTranslating || aiLoading}
+          className="flex items-center gap-2"
+        >
+          {useAI ? <Zap className="h-3 w-3" /> : <Brain className="h-3 w-3" />}
+          {useAI ? "IA Activée" : "Mode Simple"}
+        </Button>
       </div>
 
       {/* Translation Interface */}
@@ -232,14 +297,18 @@ export const PhraseTranslator = () => {
       <div className="flex items-center justify-center gap-4">
         <Button
           onClick={translatePhrase}
-          disabled={!sourceText.trim() || isTranslating}
+          disabled={!sourceText.trim() || isTranslating || (useAI && !aiReady)}
           className="px-8"
         >
           {isTranslating ? (
-            "Traduction..."
+            <>
+              <Brain className="mr-2 h-4 w-4 animate-pulse" />
+              {useAI ? "Traduction IA..." : "Traduction..."}
+            </>
           ) : (
             <>
-              Traduire
+              {useAI ? <Zap className="mr-2 h-4 w-4" /> : <Brain className="mr-2 h-4 w-4" />}
+              Traduire {useAI ? "(IA)" : ""}
               {direction === "french-to-bariba" ? (
                 <ArrowRight className="ml-2 h-4 w-4" />
               ) : (
@@ -260,9 +329,17 @@ export const PhraseTranslator = () => {
 
       {/* Examples */}
       <Card className="p-4 bg-gradient-to-br from-accent/5 to-primary/5">
-        <h4 className="font-semibold text-foreground mb-3 font-sans">
-          Exemples de phrases
-        </h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="font-semibold text-foreground font-sans">
+            Exemples de phrases {useAI ? "(Testez l'IA)" : ""}
+          </h4>
+          {useAI && aiReady && (
+            <Badge variant="secondary" className="text-xs">
+              <Zap className="h-3 w-3 mr-1" />
+              IA Entraînée
+            </Badge>
+          )}
+        </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <h5 className="text-sm font-medium text-muted-foreground">Français → Bààtɔ̀nú</h5>
