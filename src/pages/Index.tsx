@@ -26,27 +26,27 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Hero Header */}
       <header className="bg-gradient-to-br from-primary/10 via-background to-accent/5 border-b border-border/50">
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center space-y-6">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Book className="h-8 w-8 text-primary" />
-              <ArrowLeftRight className="h-6 w-6 text-accent" />
-              <Languages className="h-8 w-8 text-primary" />
+        <div className="container mx-auto px-4 py-8 lg:py-12">
+          <div className="text-center space-y-4 lg:space-y-6">
+            <div className="flex items-center justify-center gap-2 lg:gap-3 mb-3 lg:mb-4">
+              <Book className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
+              <ArrowLeftRight className="h-5 w-5 lg:h-6 lg:w-6 text-accent" />
+              <Languages className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground font-sans tracking-tight">
-              Dictionnaire <span className="bariba-text">Bariba</span> - Français
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground font-sans tracking-tight">
+              Dictionnaire <span className="bariba-text">Bààtɔ̀nú</span> - Français
             </h1>
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Badge variant="secondary" className="font-sans">
-                <Globe className="h-4 w-4 mr-1" />
-                Bààtɔ̀nú ↔ Français
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-3 lg:mb-4">
+              <Badge variant="secondary" className="font-sans text-xs lg:text-sm">
+                <Globe className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
+                <span className="bariba-text">Bààtɔ̀nú</span> ↔ Français
               </Badge>
-              <Badge variant="outline" className="font-sans">
-                Recherche bidirectionnelle
+              <Badge variant="outline" className="font-sans text-xs lg:text-sm">
+                Recherche intelligente
               </Badge>
             </div>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Explorez la richesse de la langue bariba (Bààtɔ̀nú) avec ce dictionnaire interactif exhaustif.
+            <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-4">
+              Explorez la richesse de la langue bariba (<span className="bariba-text">Bààtɔ̀nú</span>) avec ce dictionnaire interactif exhaustif.
               Recherchez des mots en bariba ou en français, découvrez leurs significations et leurs prononciations.
             </p>
           </div>
@@ -69,25 +69,33 @@ const Index = () => {
       </section>
 
       {/* Stats and Results */}
-      <main className="container mx-auto px-4 pb-12">
-        <div className="grid lg:grid-cols-4 gap-8">
-          {/* Sidebar with stats */}
-          <aside className="lg:col-span-1">
-            <div className="sticky top-8 space-y-6">
+      <main className="container mx-auto px-4 pb-8 lg:pb-12">
+        <div className="grid lg:grid-cols-4 gap-6 lg:gap-8">
+          {/* Sidebar with stats - Hidden on mobile, collapsible on tablet */}
+          <aside className="hidden lg:block lg:col-span-1">
+            <div className="sticky top-8 space-y-4 lg:space-y-6">
               <DictionaryStats entries={showFullResults ? fullSearchResults.entries : []} />
               
               {/* Search Direction Info */}
               <div className="dictionary-card bg-gradient-to-br from-accent/5 to-primary/5">
                 <div className="space-y-3">
-                  <h3 className="font-bold text-lg text-foreground font-sans">
-                    Mode de recherche
+                  <h3 className="font-bold text-base lg:text-lg text-foreground font-sans">
+                    Direction de recherche
                   </h3>
                   <div className="flex items-center gap-2">
-                    <Badge variant="default" className="font-sans">
-                      {getSearchDirectionLabel()}
+                    <Badge variant="default" className="font-sans text-xs">
+                      {searchDirection === "bariba-to-french" && (
+                        <><span className="bariba-text">Bààtɔ̀nú</span> → Français</>
+                      )}
+                      {searchDirection === "french-to-bariba" && (
+                        <>Français → <span className="bariba-text">Bààtɔ̀nú</span></>
+                      )}
+                      {searchDirection === "all" && (
+                        <><span className="bariba-text">Bààtɔ̀nú</span> ↔ Français</>
+                      )}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-xs lg:text-sm text-muted-foreground leading-relaxed">
                     {searchDirection === "bariba-to-french" && "Recherche dans les mots bariba pour trouver leurs traductions françaises."}
                     {searchDirection === "french-to-bariba" && "Recherche dans les mots français pour trouver leurs équivalents bariba."}
                     {searchDirection === "all" && "Recherche bidirectionnelle dans toutes les langues simultanément."}
@@ -98,40 +106,62 @@ const Index = () => {
           </aside>
 
           {/* Dictionary entries */}
-          <section className="lg:col-span-3 space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground font-sans">
+          <section className="lg:col-span-3 space-y-4 lg:space-y-6">
+            {/* Mobile Direction Info */}
+            <div className="lg:hidden dictionary-card bg-gradient-to-br from-accent/5 to-primary/5">
+              <div className="space-y-2">
+                <h3 className="font-bold text-sm text-foreground font-sans">
+                  Direction actuelle
+                </h3>
+                <Badge variant="default" className="font-sans text-xs">
+                  {searchDirection === "bariba-to-french" && (
+                    <><span className="bariba-text">Bààtɔ̀nú</span> → Français</>
+                  )}
+                  {searchDirection === "french-to-bariba" && (
+                    <>Français → <span className="bariba-text">Bààtɔ̀nú</span></>
+                  )}
+                  {searchDirection === "all" && (
+                    <><span className="bariba-text">Bààtɔ̀nú</span> ↔ Français</>
+                  )}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl lg:text-2xl font-bold text-foreground font-sans break-words">
                   {searchQuery && showFullResults ? `Résultats pour "${searchQuery}"` : 
                    searchQuery && !showFullResults ? `Suggestions pour "${searchQuery}"` : 
                    "Dictionnaire complet"}
                 </h2>
                 {searchQuery && (
-                  <p className="text-sm text-muted-foreground mt-1 font-sans">
-                    Mode: {getSearchDirectionLabel()}
+                  <p className="text-xs lg:text-sm text-muted-foreground mt-1 font-sans">
+                    Direction: {searchDirection === "bariba-to-french" && "Bààtɔ̀nú → Français"}
+                    {searchDirection === "french-to-bariba" && "Français → Bààtɔ̀nú"}
+                    {searchDirection === "all" && "Bidirectionnelle"}
                     {!showFullResults && wordSuggestions.length > 0 && " • Recherche intelligente"}
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 {showFullResults ? (
                   <>
-                    <Badge variant="outline" className="font-sans">
+                    <Badge variant="outline" className="font-sans text-xs">
                       {fullSearchResults.totalResults} {fullSearchResults.totalResults > 1 ? "mots" : "mot"}
                     </Badge>
                     {searchQuery && fullSearchResults.totalResults > 0 && (
-                      <Badge variant="secondary" className="font-sans">
+                      <Badge variant="secondary" className="font-sans text-xs">
                         Recherche complète
                       </Badge>
                     )}
                   </>
                 ) : (
                   <>
-                    <Badge variant="outline" className="font-sans">
-                      {totalWords} mots disponibles
+                    <Badge variant="outline" className="font-sans text-xs lg:text-sm">
+                      {totalWords} mots
                     </Badge>
                     {wordSuggestions.length > 0 && (
-                      <Badge variant="secondary" className="font-sans">
+                      <Badge variant="secondary" className="font-sans text-xs lg:text-sm">
                         {wordSuggestions.length} suggestion{wordSuggestions.length > 1 ? "s" : ""}
                       </Badge>
                     )}
@@ -206,47 +236,47 @@ const Index = () => {
                 </div>
               </div>
             ) : showFullResults ? (
-              <div className="space-y-6">
+              <div className="space-y-4 lg:space-y-6">
                 {fullSearchResults.entries.map((entry, index) => (
                   <DictionaryEntry key={`${entry.word}-${index}`} entry={entry} />
                 ))}
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="text-center py-8">
-                  <h3 className="text-lg font-semibold text-foreground mb-2 font-sans">
+                <div className="text-center py-6 lg:py-8">
+                  <h3 className="text-base lg:text-lg font-semibold text-foreground mb-2 font-sans">
                     Suggestions intelligentes
                   </h3>
-                  <p className="text-muted-foreground mb-4">
+                  <p className="text-sm lg:text-base text-muted-foreground mb-4">
                     {wordSuggestions.length} suggestion{wordSuggestions.length > 1 ? "s" : ""} trouvée{wordSuggestions.length > 1 ? "s" : ""} pour "{searchQuery}"
                   </p>
-                  <Button onClick={performFullSearch} className="mb-4">
+                  <Button onClick={performFullSearch} size="sm" className="mb-4">
                     Voir tous les résultats
                   </Button>
                 </div>
                 
-                <div className="grid gap-4">
+                <div className="grid gap-3 lg:gap-4">
                   {wordSuggestions.map((suggestion, index) => (
                     <div key={`${suggestion.word}-${index}`} 
-                         className="p-4 border border-border/50 rounded-lg bg-card hover:bg-muted/30 transition-colors">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className={`text-lg font-semibold ${suggestion.type === 'bariba' ? 'bariba-text' : ''}`}>
+                         className="p-3 lg:p-4 border border-border/50 rounded-lg bg-card hover:bg-muted/30 transition-colors">
+                      <div className="flex items-start justify-between gap-3 lg:gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h4 className={`text-base lg:text-lg font-semibold truncate ${suggestion.type === 'bariba' ? 'bariba-text' : ''}`}>
                               {suggestion.word}
                             </h4>
-                            <Badge variant={suggestion.type === 'bariba' ? 'default' : 'secondary'} className="text-xs">
-                              {suggestion.type === 'bariba' ? 'Bariba' : 'Français'}
+                            <Badge variant={suggestion.type === 'bariba' ? 'default' : 'secondary'} className="text-xs shrink-0">
+                              {suggestion.type === 'bariba' ? 'Bààtɔ̀nú' : 'Français'}
                             </Badge>
                             {suggestion.isExact && (
-                              <Badge variant="outline" className="text-xs">Correspondance exacte</Badge>
+                              <Badge variant="outline" className="text-xs shrink-0">Exact</Badge>
                             )}
                           </div>
-                          <p className="text-muted-foreground text-sm mb-2">
+                          <p className="text-muted-foreground text-sm mb-2 line-clamp-2">
                             {suggestion.entry.definition}
                           </p>
                           {suggestion.entry.phonetic && (
-                            <p className="text-xs text-muted-foreground/70">
+                            <p className="text-xs text-muted-foreground/70 truncate">
                               Phonétique: {suggestion.entry.phonetic}
                             </p>
                           )}
@@ -254,12 +284,13 @@ const Index = () => {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="shrink-0 text-xs lg:text-sm"
                           onClick={() => {
                             setSearchQuery(suggestion.word);
                             performFullSearch();
                           }}
                         >
-                          Voir détails
+                          Détails
                         </Button>
                       </div>
                     </div>
@@ -273,16 +304,16 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="border-t border-border/50 bg-muted/30">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground font-sans">
-              <span>Dictionnaire Bariba-Français</span>
-              <span>•</span>
+        <div className="container mx-auto px-4 py-6 lg:py-8">
+          <div className="text-center space-y-3 lg:space-y-4">
+            <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4 text-xs lg:text-sm text-muted-foreground font-sans">
+              <span>Dictionnaire <span className="bariba-text">Bààtɔ̀nú</span>-Français</span>
+              <span className="hidden sm:inline">•</span>
               <span className="bariba-text">Bààtɔ̀nú ↔ Fãsi</span>
-              <span>•</span>
+              <span className="hidden sm:inline">•</span>
               <span>{totalWords} mots</span>
             </div>
-            <p className="text-xs text-muted-foreground/70 font-sans">
+            <p className="text-xs text-muted-foreground/70 font-sans px-4">
               Préservation et partage de la langue bariba • Recherche bidirectionnelle intelligente
             </p>
           </div>
