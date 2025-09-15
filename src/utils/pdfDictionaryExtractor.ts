@@ -33,7 +33,9 @@ export function extractWordFromLine(line: string): string | null {
   // Extract word from lines starting with #
   const match = line.match(/^#\s*([^[#]+?)(?:\s*\[|$)/);
   if (match) {
-    return cleanTextAdvanced(match[1]);
+    const word = cleanTextAdvanced(match[1]);
+    // Remove common prefixes and suffixes from extracted words
+    return word.replace(/^\s*(dictionnaire|bariba|français)\s*/i, '').trim();
   }
   return null;
 }
@@ -100,15 +102,13 @@ export function extractDefinitionAndExamples(text: string): {
   definition: string;
   examples: { bariba: string[]; francais: string[] };
 } {
-  // Remove phonetic, part of speech, and grammatical forms
+  // Remove phonetic, part of speech, and grammatical forms - improved pattern
   let cleanedText = text
     .replace(/\[[^\]]+\]/g, '') // Remove phonetic
-    .replace(/n:[ygtwnm]|interj\.?|pron\.?|adv\.?|conj\.?|prep\.?|det\.?|loc\.?|lv\.?/gi, '')
-    .replace(/foc\.:?[^.]*\.?/gi, '') // Remove foc forms
-    .replace(/pl\.:?[^.]*\.?/gi, '') // Remove pl forms
-    .replace(/plfoc\.:?[^.]*\.?/gi, '') // Remove plfoc forms
-    .replace(/synD:[^.]*\.?/gi, '') // Remove synD
-    .replace(/Id:[^.]*\.?/gi, '') // Remove Id
+    .replace(/\b(n:[ygtwnm]|interj\.?|pron\.?\s*suj\.?|adv\.?|conj\.?|prep\.?|det\.?|loc\.?|lv\.?)\b/gi, '')
+    .replace(/\b(foc\.:?[^.]*\.?|pl\.:?[^.]*\.?|plfoc\.:?[^.]*\.?)\b/gi, '') // Remove grammatical forms
+    .replace(/\b(synD:[^.]*\.?|Id:[^.]*\.?)\b/gi, '') // Remove references
+    .replace(/\d+\)\s*/g, '') // Remove numbered definitions like "1)", "2)"
     .trim();
   
   // Split into sentences
@@ -124,21 +124,27 @@ export function extractDefinitionAndExamples(text: string): {
   for (let i = 0; i < sentences.length; i++) {
     const sentence = sentences[i];
     
-    // Skip numbered definitions like "1)", "2)"
-    const cleanSentence = sentence.replace(/^\d+\)\s*/, '');
+    // Skip numbered definitions and clean sentence
+    const cleanSentence = sentence.replace(/^\d+\)\s*/, '').replace(/^\s*[.,:;]\s*/, '');
+    
+    // Skip very short sentences and grammatical markers
+    if (cleanSentence.length <= 3 || cleanSentence.match(/^(foc|pl|plfoc|synD|Id)\./)) {
+      continue;
+    }
     
     // First meaningful sentence is usually the definition
-    if (!definition && cleanSentence.length > 5) {
+    if (!definition && cleanSentence.length > 5 && !cleanSentence.match(/^\d/)) {
       definition = cleanSentence;
       continue;
     }
     
-    // Categorize examples
-    const isFrench = /\b(le|la|les|un|une|des|du|de|dans|avec|pour|par|sur|sous|est|sont|que|qui|où|quand|comment|pourquoi|je|tu|il|elle|nous|vous|ils|elles|ce|cette|ces|c'est|n'est|pas|très|bien|mais|ou|et|donc|car|si|quand|son|sa|ses|mon|ma|mes|ton|ta|tes|notre|nos|votre|vos|leur|leurs)\b/i.test(sentence);
+    // Improved language detection for French
+    const isFrench = /\b(le|la|les|un|une|des|du|de|dans|avec|pour|par|sur|sous|est|sont|que|qui|où|quand|comment|pourquoi|je|tu|il|elle|nous|vous|ils|elles|ce|cette|ces|c'est|n'est|pas|très|bien|mais|ou|et|donc|car|si|quand|son|sa|ses|mon|ma|mes|ton|ta|tes|notre|nos|votre|vos|leur|leurs|avant|après|pendant|vers|chez|sans|contre|entre|parmi|selon|sauf|malgré|grâce)\b/i.test(sentence) ||
+                    /[àâäéèêëïîôöùûüÿñç]/i.test(sentence);
     
-    if (isFrench && sentence.length > 5) {
+    if (isFrench && cleanSentence.length > 5) {
       francaisExamples.push(cleanSentence);
-    } else if (sentence.length > 5 && !sentence.match(/^(foc|pl|plfoc|synD|Id)\./)) {
+    } else if (cleanSentence.length > 5) {
       baribaExamples.push(cleanSentence);
     }
   }
@@ -221,20 +227,22 @@ export function parsePDFDictionaryContent(content: string): CompleteDictionaryEn
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
-    // Skip empty lines and metadata
+    // Skip empty lines, metadata, and navigation elements
     if (!line || line.startsWith('##') || line.startsWith('###') || 
         line.startsWith('Document parsed') || line.includes('Images from page') ||
-        line.includes('dictionnaire bariba') || line.includes('français')) {
+        line.includes('dictionnaire bariba') || line.includes('français') ||
+        line.includes('parsed-documents://') || line.includes('full page screenshot') ||
+        line.match(/^Page \d+/) || line.match(/^-\s*`.*`/)) {
       continue;
     }
     
     // Check if this is a new word entry (starts with #)
     const wordMatch = extractWordFromLine(line);
-    if (wordMatch && !line.includes('dictionnaire')) {
+    if (wordMatch && !line.includes('dictionnaire') && wordMatch.length > 0) {
       // Process previous entry if exists
       if (currentWord && currentText.trim()) {
         const entry = processEntryContent(currentWord, currentText);
-        if (entry.definition.trim() && entry.definition !== 'Définition à compléter') {
+        if (entry.definition.trim() && entry.definition !== 'Définition à compléter' && entry.word.length > 0) {
           entries.push(entry);
         }
       }
@@ -242,8 +250,8 @@ export function parsePDFDictionaryContent(content: string): CompleteDictionaryEn
       // Start new entry
       currentWord = wordMatch;
       currentText = line.replace(/^#\s*/, ''); // Remove the # marker
-    } else if (currentWord) {
-      // Continue accumulating text for current entry
+    } else if (currentWord && line.trim()) {
+      // Continue accumulating text for current entry (only if line is not empty)
       currentText += ' ' + line;
     }
   }
@@ -251,12 +259,13 @@ export function parsePDFDictionaryContent(content: string): CompleteDictionaryEn
   // Process the last entry
   if (currentWord && currentText.trim()) {
     const entry = processEntryContent(currentWord, currentText);
-    if (entry.definition.trim() && entry.definition !== 'Définition à compléter') {
+    if (entry.definition.trim() && entry.definition !== 'Définition à compléter' && entry.word.length > 0) {
       entries.push(entry);
     }
   }
   
-  return entries.filter(entry => entry.word && entry.definition);
+  console.log(`Processed ${entries.length} complete dictionary entries from PDF content`);
+  return entries.filter(entry => entry.word && entry.definition && entry.word.length > 0);
 }
 
 function processEntryContent(word: string, text: string): CompleteDictionaryEntry {

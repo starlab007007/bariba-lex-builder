@@ -13,6 +13,11 @@ export interface DictionaryEntry {
   // Nouveaux champs pour la recherche bidirectionnelle
   french_keywords: string[]; // mots-clés français extraits pour la recherche inverse
   variants: string[]; // variantes du mot bariba
+  grammatical_forms?: { // formes grammaticales (foc, pl, plfoc)
+    foc?: string;
+    pl?: string;
+    plfoc?: string;
+  };
 }
 
 export interface BiDirectionalIndex {
@@ -31,9 +36,61 @@ export async function loadComprehensiveDictionary(): Promise<DictionaryEntry[]> 
   }
 
   try {
+    // First try to load from the complete PDF parser (340 pages)
+    try {
+      const response = await fetch('/parsed-dictionary-content-new.txt');
+      if (response.ok) {
+        const content = await response.text();
+        const { parsePDFDictionaryContent } = await import('../utils/pdfDictionaryExtractor');
+        const completeEntries = parsePDFDictionaryContent(content);
+        
+        if (completeEntries.length > 0) {
+          console.log(`Loading ${completeEntries.length} entries from complete PDF parser (340 pages)`);
+          
+          // Convert to our interface format
+          comprehensiveDictionaryEntries = completeEntries.map(entry => ({
+            word: entry.word,
+            phonetic: entry.phonetic || '',
+            part_of_speech: entry.part_of_speech,
+            definition: entry.definition,
+            example_bariba: entry.example_bariba,
+            example_francais: entry.example_francais,
+            notes: entry.notes,
+            source_flags: entry.source_flags,
+            incertitude: entry.incertitude,
+            french_keywords: entry.french_keywords,
+            variants: entry.variants,
+            grammatical_forms: entry.grammatical_forms || {}
+          }));
+          
+          isLoaded = true;
+          console.log(`Comprehensive dictionary loaded with ${comprehensiveDictionaryEntries.length} entries from complete PDF (340 pages)`);
+          return comprehensiveDictionaryEntries;
+        }
+      }
+    } catch (error) {
+      console.warn('Complete PDF parser failed, trying fallback:', error);
+    }
+    
+    // Fallback to processed dictionary
     const processedEntries = await loadAndProcessDictionary();
-    comprehensiveDictionaryEntries = processedEntries as DictionaryEntry[];
+    comprehensiveDictionaryEntries = processedEntries.map(entry => ({
+      word: entry.word,
+      phonetic: entry.phonetic || '',
+      part_of_speech: entry.part_of_speech,
+      definition: entry.definition,
+      example_bariba: entry.example_bariba,
+      example_francais: entry.example_francais,
+      notes: entry.notes,
+      source_flags: entry.source_flags,
+      incertitude: entry.incertitude,
+      french_keywords: entry.french_keywords,
+      variants: entry.variants,
+      grammatical_forms: {}
+    })) as DictionaryEntry[];
+    
     isLoaded = true;
+    console.log(`Comprehensive dictionary loaded with ${comprehensiveDictionaryEntries.length} entries`);
     return comprehensiveDictionaryEntries;
   } catch (error) {
     console.error('Error loading comprehensive dictionary:', error);
