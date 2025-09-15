@@ -2,7 +2,6 @@ import { BiDirectionalSearchBar } from "@/components/BiDirectionalSearchBar";
 import { DictionaryEntry } from "@/components/DictionaryEntry";
 import { DictionaryStats } from "@/components/DictionaryStats";
 import { useDictionarySearch } from "@/hooks/useDictionarySearch";
-import { comprehensiveDictionaryEntries } from "@/data/fullDictionaryData";
 import { Book, Languages, Globe, ArrowLeftRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -14,7 +13,8 @@ const Index = () => {
     setSearchDirection,
     searchResults,
     getSearchPlaceholder,
-    getSearchDirectionLabel
+    getSearchDirectionLabel,
+    isLoading
   } = useDictionarySearch();
 
   return (
@@ -56,7 +56,7 @@ const Index = () => {
           searchDirection={searchDirection}
           onDirectionChange={setSearchDirection}
           placeholder={getSearchPlaceholder()}
-          totalResults={comprehensiveDictionaryEntries.length}
+          totalResults={searchResults.totalResults}
         />
       </section>
 
@@ -66,7 +66,7 @@ const Index = () => {
           {/* Sidebar with stats */}
           <aside className="lg:col-span-1">
             <div className="sticky top-8 space-y-6">
-              <DictionaryStats entries={comprehensiveDictionaryEntries} />
+              <DictionaryStats entries={searchResults.entries} />
               
               {/* Search Direction Info */}
               <div className="dictionary-card bg-gradient-to-br from-accent/5 to-primary/5">
@@ -115,7 +115,22 @@ const Index = () => {
               </div>
             </div>
 
-            {searchResults.totalResults === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center animate-pulse">
+                  <Book className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2 font-sans">
+                  Chargement du dictionnaire...
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  Traitement de milliers d'entrées en cours
+                </p>
+                <div className="text-sm text-muted-foreground">
+                  Veuillez patienter pendant le chargement complet
+                </div>
+              </div>
+            ) : searchResults.totalResults === 0 && searchQuery ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
                   <Book className="h-8 w-8 text-muted-foreground" />
@@ -150,6 +165,21 @@ const Index = () => {
                   </div>
                 </div>
               </div>
+            ) : !searchQuery ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center">
+                  <Languages className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2 font-sans">
+                  Dictionnaire Bariba-Français complet
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  Tapez un mot pour commencer votre recherche
+                </p>
+                <div className="text-sm text-muted-foreground">
+                  Plus de {searchResults.totalResults} mots disponibles en recherche bidirectionnelle
+                </div>
+              </div>
             ) : (
               <div className="space-y-6">
                 {searchResults.entries.map((entry, index) => (
@@ -170,7 +200,7 @@ const Index = () => {
               <span>•</span>
               <span className="bariba-text">Bààtɔ̀nú ↔ Fãsi</span>
               <span>•</span>
-              <span>{comprehensiveDictionaryEntries.length} mots</span>
+              <span>{searchResults.totalResults} mots</span>
             </div>
             <p className="text-xs text-muted-foreground/70 font-sans">
               Préservation et partage de la langue bariba • Recherche bidirectionnelle intelligente

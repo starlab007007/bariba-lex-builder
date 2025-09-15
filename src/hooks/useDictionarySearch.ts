@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { type DictionaryEntry, dictionaryIndex, comprehensiveDictionaryEntries } from "@/data/fullDictionaryData";
+import { useState, useMemo, useEffect } from "react";
+import { type DictionaryEntry, getDictionaryIndex, loadComprehensiveDictionary } from "@/data/fullDictionaryData";
 
 export type SearchDirection = "bariba-to-french" | "french-to-bariba" | "all";
 
@@ -13,12 +13,44 @@ export interface SearchResult {
 export const useDictionarySearch = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchDirection, setSearchDirection] = useState<SearchDirection>("all");
+  const [entries, setEntries] = useState<DictionaryEntry[]>([]);
+  const [dictionaryIndex, setDictionaryIndex] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Charger le dictionnaire au montage
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [loadedEntries, index] = await Promise.all([
+          loadComprehensiveDictionary(),
+          getDictionaryIndex()
+        ]);
+        setEntries(loadedEntries);
+        setDictionaryIndex(index);
+      } catch (error) {
+        console.error('Error loading dictionary:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
 
   const searchResults = useMemo((): SearchResult => {
+    if (isLoading || !dictionaryIndex) {
+      return {
+        entries: [],
+        totalResults: 0,
+        searchDirection,
+        query: ""
+      };
+    }
+
     if (!searchQuery.trim()) {
       return {
-        entries: comprehensiveDictionaryEntries,
-        totalResults: comprehensiveDictionaryEntries.length,
+        entries: entries,
+        totalResults: entries.length,
         searchDirection,
         query: ""
       };
@@ -30,14 +62,14 @@ export const useDictionarySearch = () => {
     // Recherche selon la direction spécifiée
     if (searchDirection === "bariba-to-french" || searchDirection === "all") {
       // Recherche dans les mots bariba
-      for (const [baribaWord, entries] of dictionaryIndex.bariba_to_french) {
+      for (const [baribaWord, entryList] of dictionaryIndex.bariba_to_french) {
         if (baribaWord.includes(query)) {
-          entries.forEach(entry => resultSet.add(entry));
+          entryList.forEach(entry => resultSet.add(entry));
         }
       }
 
       // Recherche dans les exemples bariba
-      comprehensiveDictionaryEntries.forEach(entry => {
+      entries.forEach(entry => {
         const foundInBariba = entry.example_bariba.some(example => 
           example.toLowerCase().includes(query)
         );
@@ -47,7 +79,7 @@ export const useDictionarySearch = () => {
       });
 
       // Recherche phonétique
-      comprehensiveDictionaryEntries.forEach(entry => {
+      entries.forEach(entry => {
         if (entry.phonetic && entry.phonetic.toLowerCase().includes(query)) {
           resultSet.add(entry);
         }
@@ -56,21 +88,21 @@ export const useDictionarySearch = () => {
 
     if (searchDirection === "french-to-bariba" || searchDirection === "all") {
       // Recherche dans les mots français
-      for (const [frenchWord, entries] of dictionaryIndex.french_to_bariba) {
+      for (const [frenchWord, entryList] of dictionaryIndex.french_to_bariba) {
         if (frenchWord.includes(query)) {
-          entries.forEach(entry => resultSet.add(entry));
+          entryList.forEach(entry => resultSet.add(entry));
         }
       }
 
       // Recherche dans les définitions françaises
-      comprehensiveDictionaryEntries.forEach(entry => {
+      entries.forEach(entry => {
         if (entry.definition.toLowerCase().includes(query)) {
           resultSet.add(entry);
         }
       });
 
       // Recherche dans les exemples français
-      comprehensiveDictionaryEntries.forEach(entry => {
+      entries.forEach(entry => {
         const foundInFrench = entry.example_francais.some(example => 
           example.toLowerCase().includes(query)
         );
@@ -80,17 +112,17 @@ export const useDictionarySearch = () => {
       });
 
       // Recherche dans les notes
-      comprehensiveDictionaryEntries.forEach(entry => {
+      entries.forEach(entry => {
         if (entry.notes.toLowerCase().includes(query)) {
           resultSet.add(entry);
         }
       });
     }
 
-    const entries = Array.from(resultSet);
+    const resultEntries = Array.from(resultSet);
     
     // Tri par pertinence : mots exacts en premier, puis par ordre alphabétique
-    entries.sort((a, b) => {
+    resultEntries.sort((a, b) => {
       const aWordMatch = a.word.toLowerCase() === query;
       const bWordMatch = b.word.toLowerCase() === query;
       
@@ -107,12 +139,12 @@ export const useDictionarySearch = () => {
     });
 
     return {
-      entries,
-      totalResults: entries.length,
+      entries: resultEntries,
+      totalResults: resultEntries.length,
       searchDirection,
       query
     };
-  }, [searchQuery, searchDirection]);
+  }, [searchQuery, searchDirection, entries, dictionaryIndex, isLoading]);
 
   const getSearchPlaceholder = () => {
     switch (searchDirection) {
@@ -143,6 +175,7 @@ export const useDictionarySearch = () => {
     setSearchDirection,
     searchResults,
     getSearchPlaceholder,
-    getSearchDirectionLabel
+    getSearchDirectionLabel,
+    isLoading
   };
 };
