@@ -15,6 +15,7 @@ export const PhraseTranslator = () => {
   const [direction, setDirection] = useState<TranslationDirection>("french-to-bariba");
   const [isTranslating, setIsTranslating] = useState(false);
   const [useAI, setUseAI] = useState(true);
+  const [autoTranslate, setAutoTranslate] = useState(true);
   const { toast } = useToast();
   
   // Hook pour le modèle IA
@@ -27,6 +28,34 @@ export const PhraseTranslator = () => {
     error: aiError,
     modelStats
   } = useTranslationAI();
+
+  // Traduction automatique en temps réel
+  useEffect(() => {
+    if (!autoTranslate || !sourceText.trim() || !aiReady || isTranslating) {
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        setIsTranslating(true);
+        let translation = "";
+        
+        if (direction === "french-to-bariba") {
+          translation = await translateFrenchToBariba(sourceText);
+        } else {
+          translation = await translateBaribaToFrench(sourceText);
+        }
+        
+        setTranslatedText(translation);
+      } catch (error) {
+        console.error("Erreur de traduction automatique:", error);
+      } finally {
+        setIsTranslating(false);
+      }
+    }, 1000); // Délai de 1 seconde après l'arrêt de la saisie
+
+    return () => clearTimeout(timeoutId);
+  }, [sourceText, direction, autoTranslate, aiReady, translateFrenchToBariba, translateBaribaToFrench, isTranslating]);
 
   const translatePhrase = async () => {
     if (!sourceText.trim()) {
@@ -203,6 +232,18 @@ export const PhraseTranslator = () => {
         >
           {useAI ? <Zap className="h-3 w-3" /> : <Brain className="h-3 w-3" />}
           {useAI ? "IA Activée" : "Mode Simple"}
+        </Button>
+        
+        {/* Toggle Traduction Automatique */}
+        <Button
+          variant={autoTranslate ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAutoTranslate(!autoTranslate)}
+          disabled={isTranslating || aiLoading || !aiReady}
+          className="flex items-center gap-2"
+        >
+          <ArrowRight className="h-3 w-3" />
+          {autoTranslate ? "Auto" : "Manuel"}
         </Button>
       </div>
 
