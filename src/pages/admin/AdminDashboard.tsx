@@ -15,7 +15,9 @@ import {
   FlaskConical,
   Activity,
   Sparkles,
-  GitCompare
+  GitCompare,
+  Search,
+  Database
 } from 'lucide-react';
 import AdminOverview from '@/components/admin/AdminOverview';
 import DictionaryManager from '@/components/admin/DictionaryManager';
@@ -30,6 +32,8 @@ import ModelTestingPanel from '@/components/admin/ModelTestingPanel';
 import ModelPerformanceDashboard from '@/components/admin/ModelPerformanceDashboard';
 import TranslationComparisonDashboard from '@/components/admin/TranslationComparisonDashboard';
 import TrainingDataEnhancer from '@/components/admin/TrainingDataEnhancer';
+import DictionaryEnricher from '@/components/admin/DictionaryEnricher';
+import AdvancedDictionarySearch from '@/components/AdvancedDictionarySearch';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -107,6 +111,14 @@ export default function AdminDashboard() {
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Paramètres</span>
             </TabsTrigger>
+            <TabsTrigger value="enrich" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              <span className="hidden sm:inline">Enrichissement</span>
+            </TabsTrigger>
+            <TabsTrigger value="advanced-search" className="flex items-center gap-2">
+              <Search className="h-4 w-4" />
+              <span className="hidden sm:inline">Recherche Avancée</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -162,6 +174,14 @@ export default function AdminDashboard() {
 
           <TabsContent value="settings" className="space-y-4">
             <AdminSettings />
+          </TabsContent>
+
+          <TabsContent value="enrich" className="space-y-4">
+            <DictionaryEnricher />
+          </TabsContent>
+
+          <TabsContent value="advanced-search" className="space-y-4">
+            <AdvancedDictionarySearch />
           </TabsContent>
         </Tabs>
       </main>
