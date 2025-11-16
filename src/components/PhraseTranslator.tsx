@@ -217,46 +217,37 @@ export const PhraseTranslator = () => {
       {/* Header */}
       <div className="text-center space-y-4">
         <h2 className="text-2xl lg:text-3xl font-bold text-foreground font-sans">
-          Traducteur IA <span className="bariba-text">Bààtɔ̀nú</span>
+          Traducteur <span className="bariba-text">Bààtɔ̀nú</span>
         </h2>
         <p className="text-muted-foreground">
-          Traduisez des phrases complètes avec l'IA entraînée sur le dictionnaire <span className="bariba-text">Bààtɔ̀nú</span>
+          Traduction de phrases complètes basée sur le dictionnaire
         </p>
         
-        {/* Statut IA */}
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          <Badge variant={aiReady ? "default" : aiLoading ? "secondary" : "destructive"} className="text-sm">
-            <Brain className="h-3 w-3 mr-1" />
-            {aiLoading ? "Initialisation IA..." : aiReady ? "IA Prête" : "IA Indisponible"}
-          </Badge>
-          
-          {modelStats && (
-            <Badge variant="outline" className="text-xs">
-              Modèle entraîné sur dictionnaire complet
-            </Badge>
-          )}
-
-          {/* Active Mode Indicator */}
-          {useAI && aiReady && (
-            <Badge variant="secondary" className="text-sm">
-              <Brain className="h-3 w-3 mr-1" />
-              Mode Gratuit: Modèle Local
-            </Badge>
-          )}
-        </div>
-        
+        {/* Message d'erreur seulement */}
         {aiError && (
           <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
             {aiError}
           </div>
         )}
+        
+        {/* Chargement */}
+        {aiLoading && (
+          <div className="text-sm text-muted-foreground">
+            Initialisation en cours...
+          </div>
+        )}
       </div>
 
-      {/* Direction Controls */}
-      <div className="flex items-center justify-center gap-4 flex-wrap">
-        <Badge variant={direction === "french-to-bariba" ? "default" : "outline"} className="text-sm">
-          Français → <span className="bariba-text">Bààtɔ̀nú</span>
-        </Badge>
+      {/* Direction Controls - Simplifié */}
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        <Button
+          variant={direction === "french-to-bariba" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setDirection("french-to-bariba")}
+          disabled={isTranslating}
+        >
+          Français → <span className="bariba-text ml-1">Bààtɔ̀nú</span>
+        </Button>
         
         <Button
           variant="ghost"
@@ -264,24 +255,18 @@ export const PhraseTranslator = () => {
           onClick={swapLanguages}
           className="p-2"
           disabled={isTranslating}
+          title="Inverser les langues"
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
         
-        <Badge variant={direction === "bariba-to-french" ? "default" : "outline"} className="text-sm">
-          <span className="bariba-text">Bààtɔ̀nú</span> → Français
-        </Badge>
-        
-        {/* Toggle IA */}
         <Button
-          variant={useAI ? "default" : "outline"}
+          variant={direction === "bariba-to-french" ? "default" : "outline"}
           size="sm"
-          onClick={() => setUseAI(!useAI)}
-          disabled={isTranslating || aiLoading}
-          className="flex items-center gap-2"
+          onClick={() => setDirection("bariba-to-french")}
+          disabled={isTranslating}
         >
-          {useAI ? <Zap className="h-3 w-3" /> : <Brain className="h-3 w-3" />}
-          {useAI ? "IA Gratuite" : "Mode Simple"}
+          <span className="bariba-text mr-1">Bààtɔ̀nú</span> → Français
         </Button>
         
         {/* Toggle Traduction Automatique */}
@@ -291,6 +276,7 @@ export const PhraseTranslator = () => {
           onClick={() => setAutoTranslate(!autoTranslate)}
           disabled={isTranslating || aiLoading || !aiReady}
           className="flex items-center gap-2"
+          title="Activer/désactiver la traduction automatique"
         >
           <ArrowRight className="h-3 w-3" />
           {autoTranslate ? "Auto" : "Manuel"}
@@ -394,12 +380,12 @@ export const PhraseTranslator = () => {
           {isTranslating || isCacheLoading ? (
             <>
               <Brain className="mr-2 h-4 w-4 animate-pulse" />
-              {isCacheLoading ? "Recherche cache..." : useAI ? "Traduction IA (Gratuite)..." : "Traduction..."}
+              {isCacheLoading ? "Recherche..." : "Traduction..."}
             </>
           ) : (
             <>
-              {useAI ? <Zap className="mr-2 h-4 w-4" /> : <Brain className="mr-2 h-4 w-4" />}
-              Traduire {useAI ? "(IA Gratuite)" : ""}
+              <Brain className="mr-2 h-4 w-4" />
+              Traduire
               {direction === "french-to-bariba" ? (
                 <ArrowRight className="ml-2 h-4 w-4" />
               ) : (
@@ -446,14 +432,8 @@ export const PhraseTranslator = () => {
       <Card className="p-4 bg-gradient-to-br from-accent/5 to-primary/5">
         <div className="flex items-center justify-between mb-3">
           <h4 className="font-semibold text-foreground font-sans">
-            Exemples de phrases {useAI ? "(Testez l'IA)" : ""}
+            Exemples de phrases
           </h4>
-          {useAI && aiReady && (
-            <Badge variant="secondary" className="text-xs">
-              <Zap className="h-3 w-3 mr-1" />
-              IA Entraînée
-            </Badge>
-          )}
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
