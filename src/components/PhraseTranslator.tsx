@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap } from "lucide-react";
+import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslationAI } from "@/hooks/useTranslationAI";
+import { useAITranslation } from "@/hooks/useAITranslation";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
@@ -15,10 +16,11 @@ export const PhraseTranslator = () => {
   const [direction, setDirection] = useState<TranslationDirection>("french-to-bariba");
   const [isTranslating, setIsTranslating] = useState(false);
   const [useAI, setUseAI] = useState(true);
+  const [useEnhancedAI, setUseEnhancedAI] = useState(false);
   const [autoTranslate, setAutoTranslate] = useState(true);
   const { toast } = useToast();
   
-  // Hook pour le modèle IA
+  // Hook pour le modèle IA local
   const {
     translateFrenchToBariba,
     translateBaribaToFrench,
@@ -28,6 +30,9 @@ export const PhraseTranslator = () => {
     error: aiError,
     modelStats
   } = useTranslationAI();
+
+  // Hook pour le modèle IA amélioré (Lovable AI)
+  const { translateWithAI, isLoading: enhancedAILoading } = useAITranslation();
 
   // Traduction automatique en temps réel
   useEffect(() => {
@@ -226,7 +231,10 @@ export const PhraseTranslator = () => {
         <Button
           variant={useAI ? "default" : "outline"}
           size="sm"
-          onClick={() => setUseAI(!useAI)}
+          onClick={() => {
+            setUseAI(!useAI);
+            if (!useAI) setUseEnhancedAI(false); // Désactiver l'IA améliorée si on désactive l'IA
+          }}
           disabled={isTranslating || aiLoading}
           className="flex items-center gap-2"
         >
@@ -234,12 +242,26 @@ export const PhraseTranslator = () => {
           {useAI ? "IA Activée" : "Mode Simple"}
         </Button>
         
+        {/* Toggle IA Améliorée (Lovable AI) */}
+        {useAI && (
+          <Button
+            variant={useEnhancedAI ? "default" : "outline"}
+            size="sm"
+            onClick={() => setUseEnhancedAI(!useEnhancedAI)}
+            disabled={isTranslating || enhancedAILoading}
+            className="flex items-center gap-2"
+          >
+            <Sparkles className="h-3 w-3" />
+            {useEnhancedAI ? "IA Avancée" : "IA Standard"}
+          </Button>
+        )}
+        
         {/* Toggle Traduction Automatique */}
         <Button
           variant={autoTranslate ? "default" : "outline"}
           size="sm"
           onClick={() => setAutoTranslate(!autoTranslate)}
-          disabled={isTranslating || aiLoading || !aiReady}
+          disabled={isTranslating || aiLoading || !aiReady || useEnhancedAI}
           className="flex items-center gap-2"
         >
           <ArrowRight className="h-3 w-3" />
@@ -338,18 +360,18 @@ export const PhraseTranslator = () => {
       <div className="flex items-center justify-center gap-4">
         <Button
           onClick={translatePhrase}
-          disabled={!sourceText.trim() || isTranslating || (useAI && !aiReady)}
+          disabled={!sourceText.trim() || isTranslating || (useAI && !useEnhancedAI && !aiReady) || enhancedAILoading}
           className="px-8"
         >
-          {isTranslating ? (
+          {isTranslating || enhancedAILoading ? (
             <>
               <Brain className="mr-2 h-4 w-4 animate-pulse" />
-              {useAI ? "Traduction IA..." : "Traduction..."}
+              {useEnhancedAI ? "Traduction IA Avancée..." : useAI ? "Traduction IA..." : "Traduction..."}
             </>
           ) : (
             <>
-              {useAI ? <Zap className="mr-2 h-4 w-4" /> : <Brain className="mr-2 h-4 w-4" />}
-              Traduire {useAI ? "(IA)" : ""}
+              {useEnhancedAI ? <Sparkles className="mr-2 h-4 w-4" /> : useAI ? <Zap className="mr-2 h-4 w-4" /> : <Brain className="mr-2 h-4 w-4" />}
+              Traduire {useEnhancedAI ? "(IA Avancée)" : useAI ? "(IA)" : ""}
               {direction === "french-to-bariba" ? (
                 <ArrowRight className="ml-2 h-4 w-4" />
               ) : (
