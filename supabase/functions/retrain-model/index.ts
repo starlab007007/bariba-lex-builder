@@ -60,8 +60,8 @@ serve(async (req) => {
       throw dictError;
     }
 
-    // Fetch training phrases
-    const { data: trainingPhrases, error: phrasesError } = await supabaseClient
+    // Fetch training phrases (try validated first, then all if not enough)
+    let { data: trainingPhrases, error: phrasesError } = await supabaseClient
       .from('training_phrases')
       .select('*')
       .eq('is_validated', true);
@@ -70,16 +70,42 @@ serve(async (req) => {
       throw phrasesError;
     }
 
+    // If not enough validated phrases, use all phrases
+    if (!trainingPhrases || trainingPhrases.length < 50) {
+      const { data: allPhrases, error: allPhrasesError } = await supabaseClient
+        .from('training_phrases')
+        .select('*');
+      
+      if (!allPhrasesError && allPhrases) {
+        trainingPhrases = allPhrases;
+      }
+    }
+
     console.log(`Retraining model with ${dictionaryEntries?.length || 0} dictionary entries and ${trainingPhrases?.length || 0} training phrases`);
 
     // Check minimum data requirements
-    if ((dictionaryEntries?.length || 0) < 100 || (trainingPhrases?.length || 0) < 50) {
+    const minDictionary = 100;
+    const minPhrases = 10; // Reduced from 50 to allow initial training
+    
+    if ((dictionaryEntries?.length || 0) < minDictionary) {
       return new Response(
         JSON.stringify({ 
-          error: 'Insufficient data',
-          message: 'At least 100 dictionary entries and 50 validated phrases required',
+          error: 'Insufficient dictionary data',
+          message: `At least ${minDictionary} dictionary entries required`,
           current: {
             dictionary: dictionaryEntries?.length || 0,
+          }
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if ((trainingPhrases?.length || 0) < minPhrases) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Insufficient phrase data',
+          message: `At least ${minPhrases} training phrases required. Import phrases in the Training tab.`,
+          current: {
             phrases: trainingPhrases?.length || 0,
           }
         }),
