@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useGamification } from '@/hooks/useGamification';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -23,6 +24,7 @@ export default function TranslationFeedback({ translationLogId, onFeedbackSubmit
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const { updateAchievement } = useGamification();
 
   const handleQuickFeedback = async (type: 'positive' | 'negative') => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -61,6 +63,9 @@ export default function TranslationFeedback({ translationLogId, onFeedbackSubmit
         variant: 'destructive',
       });
     } else {
+      // Update gamification achievements
+      await updateAchievement('feedback_given');
+      
       toast({
         title: 'Merci !',
         description: 'Votre avis a été enregistré',
@@ -110,6 +115,9 @@ export default function TranslationFeedback({ translationLogId, onFeedbackSubmit
         variant: 'destructive',
       });
     } else {
+      // Update gamification achievements
+      await updateAchievement('feedback_given');
+      
       toast({
         title: 'Merci !',
         description: 'Votre suggestion a été enregistrée',

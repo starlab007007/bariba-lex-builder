@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useGamification } from '@/hooks/useGamification';
 import { Upload, Loader2 } from 'lucide-react';
 
 interface TrainingPhraseImporterProps {
@@ -20,6 +21,7 @@ export default function TrainingPhraseImporter({
 }: TrainingPhraseImporterProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { updateAchievement } = useGamification();
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
@@ -92,6 +94,9 @@ export default function TrainingPhraseImporter({
       );
 
       if (error) throw error;
+
+      // Update gamification achievements
+      await updateAchievement('phrases_contributed', phrases.length);
 
       toast({
         title: 'Import réussi',
