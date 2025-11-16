@@ -13,6 +13,26 @@ export interface DictionaryEntry {
   // Nouveaux champs pour la recherche bidirectionnelle
   french_keywords: string[]; // mots-clés français extraits pour la recherche inverse
   variants: string[]; // variantes du mot bariba
+  
+  // Nouvelles propriétés grammaticales Baatɔnum
+  nominal_class?: string;
+  plural_form?: string;
+  plural_class?: string;
+  verb_root?: string;
+  verb_radical?: string;
+  accomplished_form?: string;
+  negative_form?: string;
+  verbal_group?: number;
+  verb_type?: string;
+  benefactive_form?: string;
+  derivational_suffixes?: string[];
+  tone_pattern?: string;
+  low_tone_optional?: boolean;
+  adjective_forms?: Record<string, string> | null;
+  cross_reference?: string;
+  is_main_entry?: boolean;
+  grammatical_notes?: string;
+  usage_context?: string;
 }
 
 export interface BiDirectionalIndex {
