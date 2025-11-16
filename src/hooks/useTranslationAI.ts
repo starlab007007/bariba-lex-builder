@@ -1,9 +1,9 @@
-import { BaatonuTranslationAI } from "@/services/BaatonuTranslationAI";
+import { SimplifiedTranslationAI } from "@/services/SimplifiedTranslationAI";
 import { loadComprehensiveDictionary } from "@/data/fullDictionaryData";
 import { useState, useEffect, useCallback } from "react";
 
 export const useTranslationAI = () => {
-  const [translationModel, setTranslationModel] = useState<BaatonuTranslationAI | null>(null);
+  const [translationModel, setTranslationModel] = useState<SimplifiedTranslationAI | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,19 +18,16 @@ export const useTranslationAI = () => {
         console.log("🔄 Chargement des données du dictionnaire...");
         const dictionaryEntries = await loadComprehensiveDictionary();
         
-        console.log("🤖 Création du modèle de traduction IA...");
-        const model = new BaatonuTranslationAI(dictionaryEntries);
-        
-        console.log("⚡ Initialisation du modèle...");
-        await model.initialize();
+        console.log("🤖 Création du traducteur simplifié...");
+        const model = new SimplifiedTranslationAI(dictionaryEntries);
         
         setTranslationModel(model);
         setIsInitialized(true);
         
-        console.log("✅ Modèle de traduction IA prêt!");
+        console.log("✅ Traducteur prêt!");
       } catch (err) {
-        console.error("❌ Erreur lors de l'initialisation du modèle:", err);
-        setError("Erreur lors de l'initialisation du modèle de traduction");
+        console.error("❌ Erreur lors de l'initialisation:", err);
+        setError("Erreur lors de l'initialisation du traducteur");
       } finally {
         setIsLoading(false);
       }
@@ -42,47 +39,60 @@ export const useTranslationAI = () => {
   // Traduction français vers bariba
   const translateFrenchToBariba = useCallback(async (text: string): Promise<string> => {
     if (!translationModel || !isInitialized) {
-      throw new Error("Modèle de traduction non initialisé");
+      throw new Error("Traducteur non initialisé");
     }
     
-    return await translationModel.translateFrenchToBariba(text);
+    const result = await translationModel.translateFrenchToBariba(text);
+    return result.translation;
   }, [translationModel, isInitialized]);
 
   // Traduction bariba vers français
   const translateBaribaToFrench = useCallback(async (text: string): Promise<string> => {
     if (!translationModel || !isInitialized) {
-      throw new Error("Modèle de traduction non initialisé");
+      throw new Error("Traducteur non initialisé");
     }
     
-    return await translationModel.translateBaribaToFrench(text);
+    const result = await translationModel.translateBaribaToFrench(text);
+    return result.translation;
   }, [translationModel, isInitialized]);
 
-  // Traduction intelligente (détection automatique de la langue)
-  const translateIntelligent = useCallback(async (text: string): Promise<{ translation: string; detectedLanguage: 'french' | 'bariba' }> => {
+  // Traduction intelligente avec détection automatique
+  const translateIntelligent = useCallback(async (text: string): Promise<{ translation: string; detectedLanguage: 'french' | 'bariba' | 'mixed' }> => {
     if (!translationModel || !isInitialized) {
-      throw new Error("Modèle de traduction non initialisé");
+      throw new Error("Traducteur non initialisé");
     }
 
-    // Détection simple de la langue basée sur des caractères typiques
-    const hasFrenchChars = /[àâäéèêëîïôùûüÿç]/i.test(text);
-    const hasCommonFrenchWords = /\b(le|la|les|un|une|des|de|du|et|ou|est|sont|avec|pour|dans|sur|par|au|aux|ce|cette|ces|qui|que|dont|où)\b/i.test(text);
+    const result = await translationModel.translateIntelligent(text);
+    return {
+      translation: result.translation,
+      detectedLanguage: result.detectedLanguage
+    };
+  }, [translationModel, isInitialized]);
+
+  // Obtenir des suggestions de phrases
+  const getSuggestions = useCallback((text: string, maxSuggestions: number = 5): string[] => {
+    if (!translationModel || !isInitialized) {
+      return [];
+    }
     
-    const isFrench = hasFrenchChars || hasCommonFrenchWords || 
-                    !/[\u0300-\u036f\u1E00-\u1EFF]/.test(text); // Pas de diacritiques bariba
+    return translationModel.getSuggestions(text, maxSuggestions);
+  }, [translationModel, isInitialized]);
 
-    if (isFrench) {
-      const translation = await translateFrenchToBariba(text);
-      return { translation, detectedLanguage: 'french' };
-    } else {
-      const translation = await translateBaribaToFrench(text);
-      return { translation, detectedLanguage: 'bariba' };
+  // Détecter la langue
+  const detectLanguage = useCallback((text: string): 'french' | 'bariba' | 'mixed' => {
+    if (!translationModel || !isInitialized) {
+      return 'mixed';
     }
-  }, [translateFrenchToBariba, translateBaribaToFrench]);
+    
+    return translationModel.detectLanguage(text);
+  }, [translationModel, isInitialized]);
 
   return {
     translateFrenchToBariba,
     translateBaribaToFrench,
     translateIntelligent,
+    getSuggestions,
+    detectLanguage,
     isLoading,
     isInitialized,
     error,

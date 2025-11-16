@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap } from "lucide-react";
+import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -22,14 +22,18 @@ export const PhraseTranslator = () => {
   const [useAI, setUseAI] = useState(true);
   const [autoTranslate, setAutoTranslate] = useState(true);
   const [usedCache, setUsedCache] = useState(false);
+  const [phraseSuggestions, setPhraseSuggestions] = useState<string[]>([]);
+  const [detectedLang, setDetectedLang] = useState<'french' | 'bariba' | 'mixed'>('mixed');
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
   
-  // Hook pour le modèle IA local (gratuit)
+  // Hook pour le traducteur
   const {
     translateFrenchToBariba,
     translateBaribaToFrench,
     translateIntelligent,
+    getSuggestions,
+    detectLanguage,
     isLoading: aiLoading,
     isInitialized: aiReady,
     error: aiError,
@@ -42,6 +46,35 @@ export const PhraseTranslator = () => {
     cacheTranslation, 
     isCacheLoading 
   } = useTranslationCache();
+
+  // Mettre à jour les suggestions de phrases pendant la saisie
+  useEffect(() => {
+    if (!sourceText.trim() || !aiReady || sourceText.length < 2) {
+      setPhraseSuggestions([]);
+      return;
+    }
+
+    const suggestions = getSuggestions(sourceText, 5);
+    setPhraseSuggestions(suggestions);
+  }, [sourceText, aiReady, getSuggestions]);
+
+  // Détecter automatiquement la langue et ajuster la direction
+  useEffect(() => {
+    if (!sourceText.trim() || !aiReady) {
+      setDetectedLang('mixed');
+      return;
+    }
+
+    const lang = detectLanguage(sourceText);
+    setDetectedLang(lang);
+
+    // Ajuster automatiquement la direction en fonction de la langue détectée
+    if (lang === 'french' && direction !== 'french-to-bariba') {
+      setDirection('french-to-bariba');
+    } else if (lang === 'bariba' && direction !== 'bariba-to-french') {
+      setDirection('bariba-to-french');
+    }
+  }, [sourceText, aiReady, detectLanguage]);
 
   // Traduction automatique en temps réel
   useEffect(() => {
@@ -66,6 +99,11 @@ export const PhraseTranslator = () => {
         await updateAchievement('translations_made');
       } catch (error) {
         console.error("Erreur de traduction automatique:", error);
+        toast({
+          title: "Erreur de traduction",
+          description: "Impossible de traduire automatiquement. Essayez manuellement.",
+          variant: "destructive"
+        });
       } finally {
         setIsTranslating(false);
       }
@@ -269,6 +307,14 @@ export const PhraseTranslator = () => {
           <span className="bariba-text mr-1">Bààtɔ̀nú</span> → Français
         </Button>
         
+        {/* Détection automatique de la langue */}
+        {detectedLang !== 'mixed' && sourceText.trim() && (
+          <Badge variant="secondary" className="text-xs">
+            <Languages className="h-3 w-3 mr-1" />
+            Détecté: {detectedLang === 'french' ? 'Français' : 'Bààtɔ̀nú'}
+          </Badge>
+        )}
+        
         {/* Toggle Traduction Automatique */}
         <Button
           variant={autoTranslate ? "default" : "outline"}
@@ -282,6 +328,31 @@ export const PhraseTranslator = () => {
           {autoTranslate ? "Auto" : "Manuel"}
         </Button>
       </div>
+
+      {/* Suggestions de phrases */}
+      {phraseSuggestions.length > 0 && (
+        <Card className="p-4 bg-accent/5">
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" />
+              Suggestions de phrases
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {phraseSuggestions.map((suggestion, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setSourceText(suggestion);
+                  }}
+                  className="text-xs px-3 py-2 bg-background hover:bg-primary/10 border border-border rounded-lg transition-colors text-foreground hover:text-primary"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Translation Interface */}
       <div className="grid lg:grid-cols-2 gap-6">
