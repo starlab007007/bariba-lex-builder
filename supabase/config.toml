@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.bulk-validate-phrases]
 verify_jwt = false
+
+[functions.suggest-dictionary-fix]
+verify_jwt = true
