@@ -121,44 +121,53 @@ export const SmartSearchBar = ({
   }, []);
 
   return (
-    <div className="search-container space-y-6">
-      {/* Direction Selector */}
+    <div className="space-y-4 w-full max-w-4xl mx-auto">
+      {/* Label explicite pour le champ de recherche */}
+      <div className="text-center mb-2">
+        <label htmlFor="dictionary-search" className="text-sm font-medium text-muted-foreground">
+          🔍 Recherchez un mot dans le dictionnaire
+        </label>
+      </div>
+
+      {/* Direction Selector - Responsive */}
       <div className="flex flex-wrap items-center justify-center gap-2">
         <Button
           variant={getDirectionVariant("all")}
           size="sm"
           onClick={() => onDirectionChange("all")}
-          className="font-sans"
+          className="font-sans text-xs sm:text-sm"
         >
-          <ArrowLeftRight className="h-4 w-4 mr-2" />
-          Tout chercher
+          <ArrowLeftRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+          <span className="hidden sm:inline">Tout chercher</span>
+          <span className="sm:hidden">Tous</span>
         </Button>
         <Button
           variant={getDirectionVariant("bariba-to-french")}
           size="sm"
           onClick={() => onDirectionChange("bariba-to-french")}
-          className="font-sans"
+          className="font-sans text-xs sm:text-sm"
         >
-          <span className="bariba-text mr-2">Bààtɔ̀nú</span>
-          <ArrowRight className="h-4 w-4 mx-1" />
+          <span className="bariba-text mr-1.5 sm:mr-2">Bààtɔ̀nú</span>
+          <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 mx-0.5 sm:mx-1" />
           <span>Français</span>
         </Button>
         <Button
           variant={getDirectionVariant("french-to-bariba")}
           size="sm"
           onClick={() => onDirectionChange("french-to-bariba")}
-          className="font-sans"
+          className="font-sans text-xs sm:text-sm"
         >
-          <span className="mr-2">Français</span>
-          <ArrowLeft className="h-4 w-4 mx-1" />
+          <span className="mr-1.5 sm:mr-2">Français</span>
+          <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mx-0.5 sm:mx-1" />
           <span className="bariba-text">Bààtɔ̀nú</span>
         </Button>
       </div>
 
-      {/* Smart Search Input */}
+      {/* Smart Search Input - Enhanced Visibility */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
+        <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-primary z-10" />
         <Input
+          id="dictionary-search"
           ref={inputRef}
           type="text"
           placeholder={placeholder}
@@ -166,9 +175,9 @@ export const SmartSearchBar = ({
           onChange={(e) => handleInputChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(searchQuery.trim().length > 0)}
-          className="pl-12 pr-4 py-4 text-lg font-sans border-0 bg-background/50 backdrop-blur-sm
-                     focus:ring-2 focus:ring-primary/20 focus:bg-background/80 transition-all duration-300
-                     placeholder:text-muted-foreground/70"
+          className="pl-10 sm:pl-12 pr-4 py-3 sm:py-4 text-base sm:text-lg font-sans border-2 border-primary/30 focus:border-primary focus:ring-4 focus:ring-primary/20
+                     shadow-md hover:shadow-lg transition-all duration-200 bg-background/50 backdrop-blur-sm
+                     placeholder:text-muted-foreground/70 font-medium"
         />
         <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
           {searchQuery && !showFullResults && (
