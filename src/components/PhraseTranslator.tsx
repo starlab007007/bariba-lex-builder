@@ -20,7 +20,7 @@ export const PhraseTranslator = () => {
   const [direction, setDirection] = useState<TranslationDirection>("french-to-bariba");
   const [isTranslating, setIsTranslating] = useState(false);
   const [useAI, setUseAI] = useState(true);
-  const [autoTranslate, setAutoTranslate] = useState(true);
+  const [autoTranslate, setAutoTranslate] = useState(false); // Mode manuel par défaut
   const [usedCache, setUsedCache] = useState(false);
   const [phraseSuggestions, setPhraseSuggestions] = useState<string[]>([]);
   const [detectedLang, setDetectedLang] = useState<'french' | 'bariba' | 'mixed'>('mixed');
@@ -47,16 +47,8 @@ export const PhraseTranslator = () => {
     isCacheLoading 
   } = useTranslationCache();
 
-  // Mettre à jour les suggestions de phrases pendant la saisie
-  useEffect(() => {
-    if (!sourceText.trim() || !aiReady || sourceText.length < 2) {
-      setPhraseSuggestions([]);
-      return;
-    }
-
-    const suggestions = getSuggestions(sourceText, 5);
-    setPhraseSuggestions(suggestions);
-  }, [sourceText, aiReady, getSuggestions]);
+  // DÉSACTIVÉ: Plus de suggestions de phrases automatiques pendant la saisie
+  // Les utilisateurs veulent des corrections orthographiques, pas des suggestions de phrases
 
   // Détecter automatiquement la langue et ajuster la direction
   useEffect(() => {
@@ -276,13 +268,14 @@ export const PhraseTranslator = () => {
         )}
       </div>
 
-      {/* Direction Controls - Simplifié */}
-      <div className="flex items-center justify-center gap-3 flex-wrap">
+      {/* Direction Controls - Responsive */}
+      <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
         <Button
           variant={direction === "french-to-bariba" ? "default" : "outline"}
           size="sm"
           onClick={() => setDirection("french-to-bariba")}
           disabled={isTranslating}
+          className="text-xs sm:text-sm"
         >
           Français → <span className="bariba-text ml-1">Bààtɔ̀nú</span>
         </Button>

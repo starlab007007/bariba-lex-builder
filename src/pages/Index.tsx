@@ -36,63 +36,68 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Header */}
+      {/* Hero Header - Responsive */}
       <header className="bg-gradient-to-br from-primary/10 via-background to-accent/5 border-b border-border/50">
-        <div className="container mx-auto px-4 py-8 lg:py-12">
-          {/* Auth Buttons */}
-          <div className="flex justify-end mb-4 gap-2">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-12">
+          {/* Auth Buttons - Responsive */}
+          <div className="flex flex-wrap justify-end mb-3 sm:mb-4 gap-1.5 sm:gap-2">
             {user ? (
               <>
                 <Button
                   onClick={() => navigate('/gamification')}
                   variant="outline"
                   size="sm"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  <Trophy className="mr-2 h-4 w-4" />
-                  Récompenses
+                  <Trophy className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Récompenses</span>
+                  <span className="sm:hidden">Points</span>
                 </Button>
                 {isAdmin && (
                   <Button
                     onClick={() => navigate('/admin')}
                     variant="outline"
                     size="sm"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
                   >
-                    <Shield className="mr-2 h-4 w-4" />
-                    Administration
+                    <Shield className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Administration</span>
+                    <span className="sm:hidden">Admin</span>
                   </Button>
                 )}
-                <Button onClick={signOut} variant="ghost" size="sm">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Déconnexion
+                <Button onClick={signOut} variant="ghost" size="sm" className="text-xs sm:text-sm h-8 sm:h-9">
+                  <LogOut className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Déconnexion</span>
+                  <span className="sm:hidden">Quitter</span>
                 </Button>
               </>
             ) : (
-              <Button onClick={() => navigate('/auth')} variant="default" size="sm">
-                <LogIn className="mr-2 h-4 w-4" />
+              <Button onClick={() => navigate('/auth')} variant="default" size="sm" className="text-xs sm:text-sm h-8 sm:h-9">
+                <LogIn className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 Connexion
               </Button>
             )}
           </div>
           
-          <div className="text-center space-y-4 lg:space-y-6">
-            <div className="flex items-center justify-center gap-2 lg:gap-3 mb-3 lg:mb-4">
-              <Book className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
-              <ArrowLeftRight className="h-5 w-5 lg:h-6 lg:w-6 text-accent" />
-              <Languages className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
+          <div className="text-center space-y-3 sm:space-y-4 lg:space-y-6">
+            <div className="flex items-center justify-center gap-2 sm:gap-2 lg:gap-3 mb-2 sm:mb-3 lg:mb-4">
+              <Book className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-primary" />
+              <ArrowLeftRight className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-accent" />
+              <Languages className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-primary" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground font-sans tracking-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground font-sans tracking-tight px-2">
               Dictionnaire & Traducteur <span className="bariba-text">Bààtɔ̀nú</span>
             </h1>
-            <div className="flex flex-wrap items-center justify-center gap-2 mb-3 lg:mb-4">
-              <Badge variant="secondary" className="font-sans text-xs lg:text-sm">
-                <Globe className="h-3 w-3 lg:h-4 lg:w-4 mr-1" />
+            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 lg:mb-4 px-2">
+              <Badge variant="secondary" className="font-sans text-xs sm:text-xs lg:text-sm">
+                <Globe className="h-3 w-3 sm:h-3 sm:w-3 lg:h-4 lg:w-4 mr-1" />
                 <span className="bariba-text">Bààtɔ̀nú</span> ↔ Français
               </Badge>
-              <Badge variant="outline" className="font-sans text-xs lg:text-sm">
+              <Badge variant="outline" className="font-sans text-xs sm:text-xs lg:text-sm">
                 Dictionnaire & Traduction
               </Badge>
             </div>
-            <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-4">
+            <p className="text-sm sm:text-base lg:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-3 sm:px-4">
               Explorez la richesse de la langue bariba (<span className="bariba-text">Bààtɔ̀nú</span>) avec ce dictionnaire interactif 
               et traduisez des phrases complètes entre le français et le bariba.
             </p>
@@ -100,17 +105,17 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Main Content with Tabs */}
-      <div className="container mx-auto px-4 py-8">
+      {/* Main Content with Tabs - Responsive */}
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
         <Tabs defaultValue="dictionary" className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
-            <TabsTrigger value="dictionary" className="flex items-center gap-2">
-              <Book className="h-4 w-4" />
-              Dictionnaire
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-4 sm:mb-6 lg:mb-8">
+            <TabsTrigger value="dictionary" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+              <Book className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Dictionnaire</span>
             </TabsTrigger>
-            <TabsTrigger value="translator" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Traducteur
+            <TabsTrigger value="translator" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+              <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Traducteur</span>
             </TabsTrigger>
           </TabsList>
 

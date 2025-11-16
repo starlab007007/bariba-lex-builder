@@ -186,7 +186,7 @@ export const useSmartDictionarySearch = () => {
     return null;
   }, [smartIndex, entries]);
 
-  // Suggestions intelligentes (rapide)
+  // Suggestions intelligentes de MOTS INDIVIDUELS UNIQUEMENT (pas de phrases)
   const wordSuggestions = useMemo((): WordSuggestion[] => {
     if (isLoading || !smartIndex || !searchQuery.trim()) {
       return [];
@@ -200,27 +200,40 @@ export const useSmartDictionarySearch = () => {
     const trieEntries = smartIndex.wordTrie.get(query) || [];
     
     trieEntries.forEach(entry => {
+      // FILTRE IMPORTANT: Suggérer UNIQUEMENT des mots individuels (pas de phrases)
+      const word = entry.word;
+      
+      // Ignorer les entrées qui contiennent des espaces (phrases)
+      if (word.includes(' ')) {
+        return;
+      }
+      
       // Suggestion pour le mot bariba principal
-      if (!seenWords.has(entry.word)) {
+      if (!seenWords.has(word)) {
         const matchesDirection = 
           searchDirection === "all" || 
-          (searchDirection === "bariba-to-french" && entry.word.toLowerCase().startsWith(query)) ||
+          (searchDirection === "bariba-to-french" && word.toLowerCase().startsWith(query)) ||
           (searchDirection === "french-to-bariba" && entry.definition.toLowerCase().includes(query));
 
         if (matchesDirection) {
           suggestions.push({
-            word: entry.word,
+            word: word,
             type: "bariba",
-            isExact: entry.word.toLowerCase() === query,
+            isExact: word.toLowerCase() === query,
             entry
           });
-          seenWords.add(entry.word);
+          seenWords.add(word);
         }
       }
 
       // Suggestions pour les mots français
       if (entry.french_keywords) {
         entry.french_keywords.forEach(keyword => {
+          // FILTRE: Ignorer les mots-clés qui sont des phrases
+          if (keyword.includes(' ')) {
+            return;
+          }
+          
           if (keyword.toLowerCase().startsWith(query) && !seenWords.has(keyword)) {
             const matchesDirection = 
               searchDirection === "all" || 
@@ -240,27 +253,15 @@ export const useSmartDictionarySearch = () => {
       }
     });
 
-    // Trier par pertinence : traductions exactes en premier, puis mots exacts, puis alphabétique
-    return suggestions
-      .sort((a, b) => {
-        // 1. Priorité absolue aux correspondances exactes de traduction directe
-        const aIsDirectTranslation = (searchDirection === "french-to-bariba" && a.type === "french" && a.isExact) ||
-                                    (searchDirection === "bariba-to-french" && a.type === "bariba" && a.isExact);
-        const bIsDirectTranslation = (searchDirection === "french-to-bariba" && b.type === "french" && b.isExact) ||
-                                    (searchDirection === "bariba-to-french" && b.type === "bariba" && b.isExact);
-        
-        if (aIsDirectTranslation && !bIsDirectTranslation) return -1;
-        if (!aIsDirectTranslation && bIsDirectTranslation) return 1;
-        
-        // 2. Puis les correspondances exactes générales
-        if (a.isExact && !b.isExact) return -1;
-        if (!a.isExact && b.isExact) return 1;
-        
-        // 3. Alphabétique en dernier recours
-        return a.word.localeCompare(b.word);
-      })
-      .slice(0, 8); // Limiter à 8 suggestions
-  }, [searchQuery, searchDirection, smartIndex, isLoading]);
+    // Trier : matchs exacts en premier
+    suggestions.sort((a, b) => {
+      if (a.isExact && !b.isExact) return -1;
+      if (!a.isExact && b.isExact) return 1;
+      return a.word.localeCompare(b.word);
+    });
+
+    return suggestions.slice(0, 8);
+  }, [isLoading, smartIndex, searchQuery, searchDirection]);
 
   // Résultats complets avec scoring de pertinence (seulement quand demandé)
   const fullSearchResults = useMemo((): SearchResult => {
