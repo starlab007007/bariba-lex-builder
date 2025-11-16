@@ -6,5 +6,8 @@ verify_jwt = true
 [functions.ai-translate]
 verify_jwt = false
 
+[functions.analyze-phrase-quality]
+verify_jwt = true
+
 [functions.train-translation-model]
 verify_jwt = true
