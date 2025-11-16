@@ -45,49 +45,67 @@ export async function loadComprehensiveDictionary(): Promise<DictionaryEntry[]> 
 // Export synchrone pour compatibilité
 export { comprehensiveDictionaryEntries };
 
-// Fonction pour créer l'index bidirectionnel
+// Fonction pour créer l'index bidirectionnel optimisé
 export function createBiDirectionalIndex(entries: DictionaryEntry[]): BiDirectionalIndex {
   const bariba_to_french = new Map<string, DictionaryEntry[]>();
   const french_to_bariba = new Map<string, DictionaryEntry[]>();
 
   entries.forEach(entry => {
-    // Index Bariba -> Français
-    const baribaKey = entry.word.toLowerCase();
-    if (!bariba_to_french.has(baribaKey)) {
-      bariba_to_french.set(baribaKey, []);
-    }
-    bariba_to_french.get(baribaKey)!.push(entry);
+    // Index Bariba -> Français (mots principaux et variantes)
+    const addToBaribaIndex = (word: string) => {
+      const key = word.toLowerCase().trim();
+      if (!key) return;
+      
+      if (!bariba_to_french.has(key)) {
+        bariba_to_french.set(key, []);
+      }
+      bariba_to_french.get(key)!.push(entry);
+    };
+
+    // Ajouter le mot principal
+    addToBaribaIndex(entry.word);
 
     // Ajouter les variantes
-    entry.variants.forEach(variant => {
-      const variantKey = variant.toLowerCase();
-      if (!bariba_to_french.has(variantKey)) {
-        bariba_to_french.set(variantKey, []);
-      }
-      bariba_to_french.get(variantKey)!.push(entry);
-    });
+    entry.variants.forEach(variant => addToBaribaIndex(variant));
 
-    // Index Français -> Bariba
-    entry.french_keywords.forEach(keyword => {
-      const frenchKey = keyword.toLowerCase();
-      if (!french_to_bariba.has(frenchKey)) {
-        french_to_bariba.set(frenchKey, []);
+    // Index Français -> Bariba (mots-clés et définition)
+    const addToFrenchIndex = (word: string) => {
+      const key = word.toLowerCase().trim();
+      if (!key || key.length < 3) return; // Ignorer les mots trop courts
+      
+      // Ignorer les mots trop communs
+      const stopWords = ['les', 'des', 'une', 'pour', 'dans', 'avec', 'sans', 'sur', 'sous', 'par'];
+      if (stopWords.includes(key)) return;
+      
+      if (!french_to_bariba.has(key)) {
+        french_to_bariba.set(key, []);
       }
-      french_to_bariba.get(frenchKey)!.push(entry);
-    });
+      
+      const entries = french_to_bariba.get(key)!;
+      if (!entries.includes(entry)) {
+        entries.push(entry);
+      }
+    };
 
-    // Ajouter aussi les mots de la définition
-    const definitionWords = entry.definition.toLowerCase()
-      .split(/[,\s\-\.;:!?]+/)
+    // Ajouter les mots-clés français
+    entry.french_keywords.forEach(keyword => addToFrenchIndex(keyword));
+
+    // Ajouter les mots de la définition
+    const definitionWords = entry.definition
+      .toLowerCase()
+      .split(/[,\s\-\.;:!?()\[\]]+/)
       .filter(word => word.length > 2);
     
-    definitionWords.forEach(word => {
-      if (!french_to_bariba.has(word)) {
-        french_to_bariba.set(word, []);
-      }
-      if (!french_to_bariba.get(word)!.includes(entry)) {
-        french_to_bariba.get(word)!.push(entry);
-      }
+    definitionWords.forEach(word => addToFrenchIndex(word));
+
+    // Ajouter les mots des exemples français
+    entry.example_francais.forEach(example => {
+      const exampleWords = example
+        .toLowerCase()
+        .split(/[,\s\-\.;:!?()\[\]]+/)
+        .filter(word => word.length > 2);
+      
+      exampleWords.forEach(word => addToFrenchIndex(word));
     });
   });
 

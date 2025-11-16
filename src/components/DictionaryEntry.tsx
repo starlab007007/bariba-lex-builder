@@ -4,9 +4,29 @@ import { type DictionaryEntry as DictionaryEntryType } from "@/data/fullDictiona
 
 interface DictionaryEntryProps {
   entry: DictionaryEntryType;
+  searchQuery?: string;
+  relevanceScore?: number;
 }
 
-export const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
+export const DictionaryEntry = ({ entry, searchQuery = "", relevanceScore }: DictionaryEntryProps) => {
+  const highlightText = (text: string, query: string) => {
+    if (!query || !text) return text;
+    
+    const regex = new RegExp(`(${query})`, 'gi');
+    const parts = text.split(regex);
+    
+    return (
+      <>
+        {parts.map((part, i) => 
+          regex.test(part) ? (
+            <mark key={i} className="bg-primary/20 text-primary font-semibold rounded px-0.5">
+              {part}
+            </mark>
+          ) : part
+        )}
+      </>
+    );
+  };
   const getPartOfSpeechLabel = (pos: string) => {
     const labels: Record<string, string> = {
       n: "nom",
@@ -35,14 +55,19 @@ export const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
       <div className="space-y-4">
         {/* Header with word and phonetics */}
         <div className="border-b border-border/50 pb-4">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <h2 className="bariba-text text-2xl font-bold tracking-wide">
-              {entry.word}
+              {highlightText(entry.word, searchQuery)}
             </h2>
             {entry.phonetic && (
               <span className="phonetic-text">
                 {entry.phonetic}
               </span>
+            )}
+            {relevanceScore !== undefined && relevanceScore > 80 && (
+              <Badge variant="default" className="text-xs bg-accent ml-auto">
+                ⭐ Très pertinent
+              </Badge>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -65,7 +90,7 @@ export const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
         <div className="definition-card">
           <h3 className="font-semibold text-foreground mb-2 font-sans">Définition</h3>
           <p className="text-foreground/90 leading-relaxed">
-            {entry.definition}
+            {highlightText(entry.definition, searchQuery)}
           </p>
         </div>
 
@@ -77,11 +102,11 @@ export const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
               {entry.example_bariba.map((example, index) => (
                 <div key={index} className="space-y-1">
                   <div className="example-text">
-                    <p className="bariba-text font-medium">{example}</p>
+                    <p className="bariba-text font-medium">{highlightText(example, searchQuery)}</p>
                   </div>
                   {entry.example_francais[index] && (
                     <div className="example-text bg-muted/50">
-                      <p className="text-foreground/80 italic">{entry.example_francais[index]}</p>
+                      <p className="text-foreground/80 italic">{highlightText(entry.example_francais[index], searchQuery)}</p>
                     </div>
                   )}
                 </div>
