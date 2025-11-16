@@ -1,4 +1,4 @@
-import { loadAndProcessDictionary, ProcessedDictionaryEntry } from '../utils/dictionaryParser';
+import { supabase } from "@/integrations/supabase/client";
 
 export interface DictionaryEntry {
   word: string;
@@ -44,19 +44,97 @@ export interface BiDirectionalIndex {
 let comprehensiveDictionaryEntries: DictionaryEntry[] = [];
 let isLoaded = false;
 
-// Fonction pour charger le dictionnaire complet
+// Fonction pour extraire les mots-clés français d'une entrée
+function extractFrenchKeywords(definition: string, examples: string[]): string[] {
+  const keywords = new Set<string>();
+  
+  // Extract from definition
+  const defWords = definition
+    .toLowerCase()
+    .split(/[,\s\-\.;:!?()]+/)
+    .filter(word => word.length > 2 && !/^\d+$/.test(word));
+  
+  defWords.forEach(word => keywords.add(word));
+  
+  // Extract from French examples
+  examples.forEach(example => {
+    const exampleWords = example
+      .toLowerCase()
+      .split(/[,\s\-\.;:!?()]+/)
+      .filter(word => word.length > 2 && !/^\d+$/.test(word));
+    
+    exampleWords.forEach(word => keywords.add(word));
+  });
+  
+  return Array.from(keywords);
+}
+
+// Fonction pour charger le dictionnaire complet depuis Supabase
 export async function loadComprehensiveDictionary(): Promise<DictionaryEntry[]> {
   if (isLoaded && comprehensiveDictionaryEntries.length > 0) {
     return comprehensiveDictionaryEntries;
   }
 
   try {
-    const processedEntries = await loadAndProcessDictionary();
-    comprehensiveDictionaryEntries = processedEntries as DictionaryEntry[];
+    console.log('Loading dictionary from database...');
+    const { data, error } = await supabase
+      .from('dictionary_entries')
+      .select('*')
+      .order('word', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('No dictionary entries found in database');
+      return [];
+    }
+
+    console.log(`Loaded ${data.length} entries from database`);
+
+    // Transformer les données de la base en format DictionaryEntry
+    comprehensiveDictionaryEntries = data.map(entry => ({
+      word: entry.word,
+      phonetic: entry.phonetic,
+      part_of_speech: entry.part_of_speech || 'n',
+      definition: entry.definition,
+      example_bariba: entry.example_bariba || [],
+      example_francais: entry.example_francais || [],
+      notes: [
+        entry.grammatical_notes,
+        entry.usage_context,
+        entry.cross_reference ? `Voir aussi: ${entry.cross_reference}` : ''
+      ].filter(Boolean).join('. '),
+      source_flags: [],
+      incertitude: entry.quality_score ? 1 - (entry.quality_score / 100) : 0.5,
+      french_keywords: entry.french_keywords || extractFrenchKeywords(entry.definition, entry.example_francais || []),
+      variants: entry.variants || [],
+      nominal_class: entry.nominal_class || undefined,
+      plural_form: entry.plural_form || undefined,
+      plural_class: entry.plural_class || undefined,
+      verb_root: entry.verb_root || undefined,
+      verb_radical: entry.verb_radical || undefined,
+      accomplished_form: entry.accomplished_form || undefined,
+      negative_form: entry.negative_form || undefined,
+      verbal_group: entry.verbal_group || undefined,
+      verb_type: entry.verb_type || undefined,
+      benefactive_form: entry.benefactive_form || undefined,
+      derivational_suffixes: entry.derivational_suffixes || undefined,
+      tone_pattern: entry.tone_pattern || undefined,
+      low_tone_optional: entry.low_tone_optional || undefined,
+      adjective_forms: entry.adjective_forms ? (entry.adjective_forms as Record<string, string>) : null,
+      cross_reference: entry.cross_reference || undefined,
+      is_main_entry: entry.is_main_entry ?? true,
+      grammatical_notes: entry.grammatical_notes || undefined,
+      usage_context: entry.usage_context || undefined
+    }));
+
     isLoaded = true;
+    console.log('Dictionary loaded successfully');
     return comprehensiveDictionaryEntries;
   } catch (error) {
-    console.error('Error loading comprehensive dictionary:', error);
+    console.error('Error loading dictionary from database:', error);
     // Fallback to empty array if loading fails
     return [];
   }
