@@ -292,6 +292,102 @@ Le système implémente une approche **Transformer Seq2Seq** pour la traduction 
 - **Validation Humaine** : Essentielle pour garantir la qualité
 - **Contexte Biblique** : Le modèle est spécialisé sur ce domaine
 
+## 🔄 Validation en Masse Optimisée (NOUVEAU)
+
+### Validation Complète en Un Clic
+
+Le système permet maintenant de valider **toutes les phrases non validées** d'un seul coup, sans limitation :
+
+**Fonctionnement** :
+1. Allez dans l'onglet "Entraînement" → "Validation en Masse"
+2. Vous verrez le nombre total de phrases non validées
+3. Cliquez sur "Valider TOUT (X phrases)"
+4. Confirmez l'action dans la boîte de dialogue
+5. **Validation instantanée** : Utilise une seule requête SQL pour valider toutes les phrases
+
+**Avantages** :
+- ✅ **Ultra-rapide** : Une seule requête au lieu de lots de 500
+- ✅ **Sans limite** : Valide 111 703 phrases ou plus d'un coup
+- ✅ **Fiable** : Transaction atomique (tout ou rien)
+- ✅ **Traçable** : Mise à jour automatique des achievements
+
+**Sécurité** :
+- Double confirmation requise
+- Message d'avertissement clair sur l'impact
+- Impossible d'annuler après validation
+
+## 📊 Tableau de Bord Comparatif (NOUVEAU)
+
+### Comparer les 3 Méthodes de Traduction
+
+Un nouvel onglet "Comparaison" permet d'évaluer côte à côte :
+
+**1. Modèle Local (BaatonuTranslationAI)**
+- ✓ Gratuit
+- ✓ Rapide (temps en ms)
+- ✓ Basé sur dictionnaire
+- ⚠️ Limité au vocabulaire connu
+
+**2. API Lovable AI (Gemini 2.5 Flash)**
+- 💰 Payant (crédits Lovable)
+- ⚡ Rapide (temps en ms)
+- 🧠 Contextuel et intelligent
+- ✓ Score de confiance (%)
+- ✓ Comprend les nuances linguistiques
+
+**3. Validation Humaine**
+- 👤 Gold standard
+- ✓ Parfait pour la qualité
+- ⚠️ À ajouter manuellement
+
+### Utilisation
+
+1. **Entrez un texte** à traduire (français ou bariba)
+2. **Sélectionnez la direction** de traduction
+3. **Lancez la comparaison** : Les 3 méthodes sont testées simultanément
+4. **Analysez les résultats** :
+   - Traductions côte à côte
+   - Temps de réponse pour chaque méthode
+   - Score de confiance API
+   - Analyse de similarité automatique
+
+### Analyse de Similarité
+
+Le système calcule automatiquement :
+- ✅ **Identiques** : Les deux modèles donnent la même traduction
+- ⚠️ **Similaires (>80%)** : Traductions très proches
+- ⚠️ **Différentes (50-80%)** : Variations notables
+- ❌ **Très différentes (<50%)** : Résultats divergents
+
+### Statistiques
+
+Le dashboard affiche :
+- Temps moyen de réponse (local vs API)
+- Score de confiance moyen de l'API
+- Historique complet des comparaisons
+- Export possible pour analyse
+
+### Cas d'Usage
+
+**Quand utiliser le Modèle Local** :
+- Traductions simples et directes
+- Mots du dictionnaire
+- Volume élevé (gratuit)
+- Hors ligne
+
+**Quand utiliser l'API Lovable AI** :
+- Phrases complexes
+- Contexte culturel important
+- Expressions idiomatiques
+- Vocabulaire moderne/technique
+- Qualité maximale requise
+
+**Validation Recommandée** :
+- Pour l'entraînement du modèle
+- Contenu officiel/publié
+- Documentation importante
+- Corpus de référence
+
 ## 🆘 Support
 
 Si vous rencontrez des problèmes :
