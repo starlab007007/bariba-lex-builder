@@ -24,6 +24,26 @@ export default function TrainingPhraseImporter({
   const [file, setFile] = useState<File | null>(null);
 
   const parseFile = async (file: File): Promise<any[]> => {
+    const fileName = file.name.toLowerCase();
+    
+    // Check if JSON file
+    if (fileName.endsWith('.json')) {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      
+      if (!Array.isArray(json)) {
+        throw new Error('Le fichier JSON doit contenir un tableau de phrases');
+      }
+      
+      return json.map((item: any) => ({
+        french_text: item.french_text || item.french || item.fr || '',
+        bariba_text: item.bariba_text || item.bariba || item.baatonum || '',
+        is_validated: item.is_validated !== undefined ? item.is_validated : false,
+        quality_score: item.quality_score || null,
+      }));
+    }
+    
+    // Parse TXT/CSV files
     const text = await file.text();
     const lines = text.split('\n').filter((line) => line.trim());
 
@@ -34,12 +54,12 @@ export default function TrainingPhraseImporter({
       if (line.includes('|')) {
         const [french, bariba] = line.split('|').map((s) => s.trim());
         if (french && bariba) {
-          phrases.push({ french_text: french, bariba_text: bariba });
+          phrases.push({ french_text: french, bariba_text: bariba, is_validated: false });
         }
       } else if (line.includes('\t')) {
         const [french, bariba] = line.split('\t').map((s) => s.trim());
         if (french && bariba) {
-          phrases.push({ french_text: french, bariba_text: bariba });
+          phrases.push({ french_text: french, bariba_text: bariba, is_validated: false });
         }
       }
     }
@@ -65,6 +85,8 @@ export default function TrainingPhraseImporter({
           french_text: p.french_text,
           bariba_text: p.bariba_text,
           source: 'import',
+          is_validated: p.is_validated || false,
+          quality_score: p.quality_score || null,
           created_by: user?.id,
         }))
       );
@@ -97,7 +119,7 @@ export default function TrainingPhraseImporter({
           <div className="border-2 border-dashed rounded-lg p-8 text-center">
             <input
               type="file"
-              accept=".txt,.csv"
+              accept=".txt,.csv,.json"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="hidden"
               id="file-upload"
@@ -117,9 +139,10 @@ export default function TrainingPhraseImporter({
           <div className="text-sm text-muted-foreground space-y-2">
             <p className="font-medium">Formats acceptés:</p>
             <ul className="list-disc list-inside space-y-1">
+              <li>JSON: {`[{"french_text": "...", "bariba_text": "...", "is_validated": true}]`}</li>
               <li>TXT ou CSV avec séparateur | (pipe)</li>
               <li>TXT avec séparateur TAB</li>
-              <li>Format: français|bariba (une phrase par ligne)</li>
+              <li>Format texte: français|bariba (une phrase par ligne)</li>
             </ul>
             <p className="text-xs pt-2">
               Exemple: "Bonjour|O daapu" ou "Comment vas-tu?|Kan gama?"

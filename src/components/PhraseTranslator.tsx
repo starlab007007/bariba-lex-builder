@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslationAI } from "@/hooks/useTranslationAI";
 import { useAITranslation } from "@/hooks/useAITranslation";
+import TranslationFeedback from "./TranslationFeedback";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
 export const PhraseTranslator = () => {
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
+  const [translationLogId, setTranslationLogId] = useState<string | undefined>(undefined);
   const [direction, setDirection] = useState<TranslationDirection>("french-to-bariba");
   const [isTranslating, setIsTranslating] = useState(false);
   const [useAI, setUseAI] = useState(true);
