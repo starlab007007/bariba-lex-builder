@@ -203,13 +203,13 @@ export default function BulkEditPanel() {
                   <Label>Classe nominale</Label>
                   <Select
                     value={filters.nominalClass}
-                    onValueChange={(value) => setFilters({ ...filters, nominalClass: value })}
+                    onValueChange={(value) => setFilters({ ...filters, nominalClass: value === 'all' ? undefined : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Toutes" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Toutes</SelectItem>
+                      <SelectItem value="all">Toutes</SelectItem>
                       {nominalClasses.map(cls => (
                         <SelectItem key={cls} value={cls}>Classe {cls}</SelectItem>
                       ))}
@@ -221,13 +221,13 @@ export default function BulkEditPanel() {
                   <Label>Groupe verbal</Label>
                   <Select
                     value={filters.verbalGroup}
-                    onValueChange={(value) => setFilters({ ...filters, verbalGroup: value })}
+                    onValueChange={(value) => setFilters({ ...filters, verbalGroup: value === 'all' ? undefined : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Tous" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tous</SelectItem>
+                      <SelectItem value="all">Tous</SelectItem>
                       {verbalGroups.map(group => (
                         <SelectItem key={group} value={group}>Groupe {group}</SelectItem>
                       ))}
@@ -239,13 +239,13 @@ export default function BulkEditPanel() {
                   <Label>Type de verbe</Label>
                   <Select
                     value={filters.verbType}
-                    onValueChange={(value) => setFilters({ ...filters, verbType: value })}
+                    onValueChange={(value) => setFilters({ ...filters, verbType: value === 'all' ? undefined : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Tous" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tous</SelectItem>
+                      <SelectItem value="all">Tous</SelectItem>
                       {verbTypes.map(type => (
                         <SelectItem key={type} value={type}>{type}</SelectItem>
                       ))}
@@ -257,13 +257,13 @@ export default function BulkEditPanel() {
                   <Label>Champ manquant</Label>
                   <Select
                     value={filters.missingField}
-                    onValueChange={(value) => setFilters({ ...filters, missingField: value })}
+                    onValueChange={(value) => setFilters({ ...filters, missingField: value === 'none' ? undefined : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Aucun" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Aucun</SelectItem>
+                      <SelectItem value="none">Aucun</SelectItem>
                       {missingFields.map(field => (
                         <SelectItem key={field.value} value={field.value}>
                           {field.label}
