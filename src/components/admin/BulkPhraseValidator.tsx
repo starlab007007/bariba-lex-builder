@@ -107,7 +107,7 @@ export default function BulkPhraseValidator() {
       `Cette action va :\n` +
       `• Marquer toutes les phrases comme validées\n` +
       `• Les ajouter aux données d'entraînement\n` +
-      `• Peut prendre plusieurs minutes\n\n` +
+      `• S'exécuter en arrière-plan (2-3 minutes)\n\n` +
       `Êtes-vous ABSOLUMENT sûr de vouloir continuer ?`
     );
 
@@ -118,37 +118,54 @@ export default function BulkPhraseValidator() {
     setProcessing(true);
 
     try {
-      console.log(`🚀 Starting mass validation of ${totalUnvalidated} phrases...`);
+      console.log(`🚀 Calling bulk validation edge function for ${totalUnvalidated} phrases...`);
 
-      // Validate ALL unvalidated phrases in one operation using a single update query
-      const { data: validatedPhrases, error } = await supabase
-        .from('training_phrases')
-        .update({ 
-          is_validated: true,
-          quality_score: 1.0 
-        })
-        .eq('is_validated', false)
-        .select();
+      // Call edge function for background processing
+      const { data, error } = await supabase.functions.invoke('bulk-validate-phrases', {
+        body: {}
+      });
 
       if (error) {
         throw error;
       }
 
-      const totalValidated = validatedPhrases?.length || 0;
-
-      console.log(`✅ Successfully validated ${totalValidated} phrases`);
-
-      // Update achievement
-      await updateAchievement('phrases_validated', totalValidated);
-
-      // Refetch to update UI
-      await refetch();
+      console.log('✅ Bulk validation started:', data);
 
       toast({
-        title: '✅ Validation massive terminée !',
-        description: `${totalValidated.toLocaleString()} phrases ont été validées avec succès`,
-        duration: 5000,
+        title: '✅ Validation en arrière-plan démarrée',
+        description: `${totalUnvalidated.toLocaleString()} phrases seront validées dans 2-3 minutes. Vous pouvez continuer à travailler.`,
+        duration: 10000,
       });
+
+      // Poll for completion every 10 seconds
+      const pollInterval = setInterval(async () => {
+        await refetch();
+        
+        // Check if validation is complete
+        const { count } = await supabase
+          .from('training_phrases')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_validated', false);
+
+        if (count === 0) {
+          clearInterval(pollInterval);
+          
+          toast({
+            title: '🎉 Validation massive terminée !',
+            description: 'Toutes les phrases ont été validées avec succès',
+            duration: 5000,
+          });
+
+          await updateAchievement('phrases_validated', totalUnvalidated);
+          setProcessing(false);
+        }
+      }, 10000); // Check every 10 seconds
+
+      // Auto-stop polling after 5 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        setProcessing(false);
+      }, 300000);
 
     } catch (error: any) {
       console.error('❌ Error in mass validation:', error);
@@ -157,7 +174,6 @@ export default function BulkPhraseValidator() {
         description: error.message || 'Une erreur est survenue',
         variant: 'destructive',
       });
-    } finally {
       setProcessing(false);
     }
   };
