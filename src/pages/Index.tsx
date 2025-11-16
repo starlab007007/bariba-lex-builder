@@ -5,6 +5,8 @@ import { DictionaryEntry } from "@/components/DictionaryEntry";
 import { DirectTranslation } from "@/components/DirectTranslation";
 import { DictionaryStats } from "@/components/DictionaryStats";
 import { PhraseTranslator } from "@/components/PhraseTranslator";
+import { SelectedEntryDisplay } from "@/components/SelectedEntryDisplay";
+import { SimilarSuggestions } from "@/components/SimilarSuggestions";
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
 import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +29,9 @@ const Index = () => {
     getSearchPlaceholder,
     getSearchDirectionLabel,
     isLoading,
-    totalWords
+    totalWords,
+    selectEntry,
+    selectedEntry
   } = useSmartDictionarySearch();
 
   return (
@@ -243,6 +247,24 @@ const Index = () => {
                         Veuillez patienter pendant le chargement complet
                       </div>
                     </div>
+                  ) : selectedEntry ? (
+                    /* Affichage intelligent en 3 sections */
+                    <div className="space-y-6">
+                      {/* Section 1 & 2: Entrée sélectionnée avec détails complets */}
+                      <SelectedEntryDisplay 
+                        entry={selectedEntry}
+                        searchDirection={searchDirection}
+                      />
+                      
+                      {/* Section 3: Suggestions similaires */}
+                      {fullSearchResults.entries.length > 1 && (
+                        <SimilarSuggestions
+                          suggestions={fullSearchResults.entries}
+                          onSelectEntry={selectEntry}
+                          selectedEntry={selectedEntry}
+                        />
+                      )}
+                    </div>
                   ) : showFullResults && fullSearchResults.totalResults === 0 && searchQuery ? (
                     <div className="text-center py-12">
                       <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
@@ -335,15 +357,15 @@ const Index = () => {
                         <p className="text-sm lg:text-base text-muted-foreground mb-4">
                           {wordSuggestions.length} suggestion{wordSuggestions.length > 1 ? "s" : ""} trouvée{wordSuggestions.length > 1 ? "s" : ""} pour "{searchQuery}"
                         </p>
-                        <Button onClick={performFullSearch} size="sm" className="mb-4">
-                          Voir tous les résultats
-                        </Button>
                       </div>
                       
                       <div className="grid gap-3 lg:gap-4">
                         {wordSuggestions.map((suggestion, index) => (
-                          <div key={`${suggestion.word}-${index}`} 
-                               className="p-3 lg:p-4 border border-border/50 rounded-lg bg-card hover:bg-muted/30 transition-colors">
+                          <button
+                            key={`${suggestion.word}-${index}`}
+                            onClick={() => selectEntry(suggestion.entry)}
+                            className="text-left p-3 lg:p-4 border border-border/50 rounded-lg bg-card hover:bg-muted/30 transition-all hover:border-primary/30 hover:shadow-md"
+                          >
                             <div className="flex items-start justify-between gap-3 lg:gap-4">
                               <div className="flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -366,19 +388,8 @@ const Index = () => {
                                   </p>
                                 )}
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="shrink-0 text-xs lg:text-sm"
-                                onClick={() => {
-                                  setSearchQuery(suggestion.word);
-                                  performFullSearch();
-                                }}
-                              >
-                                Détails
-                              </Button>
                             </div>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>

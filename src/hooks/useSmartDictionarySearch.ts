@@ -38,6 +38,7 @@ export const useSmartDictionarySearch = () => {
   const [smartIndex, setSmartIndex] = useState<SmartIndex | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showFullResults, setShowFullResults] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<DictionaryEntry | null>(null);
 
   // Créer l'index intelligent pour la recherche rapide avec Tries optimisés
   const createSmartIndex = useCallback((entriesData: DictionaryEntry[]): SmartIndex => {
@@ -141,6 +142,49 @@ export const useSmartDictionarySearch = () => {
     
     loadData();
   }, [createSmartIndex]);
+
+  // Détecter automatiquement la langue du mot tapé
+  const detectLanguage = useCallback((query: string): "bariba" | "french" | "unknown" => {
+    if (!query) return "unknown";
+    
+    const baribaChars = /[ɔɛáàãéèẽíìĩóòõúùũɛ̃ɔ̃]/i;
+    const frenchChars = /[àâäæçéèêëïîôùûüÿœ]/i;
+    
+    // Si contient des caractères bariba spécifiques
+    if (baribaChars.test(query)) return "bariba";
+    
+    // Si contient des accents français
+    if (frenchChars.test(query)) return "french";
+    
+    // Vérifier dans l'index
+    if (smartIndex) {
+      const queryLower = query.toLowerCase();
+      if (smartIndex.baribaWords.has(queryLower)) return "bariba";
+      if (smartIndex.frenchWords.has(queryLower)) return "french";
+    }
+    
+    return "unknown";
+  }, [smartIndex]);
+
+  // Trouver une correspondance exacte
+  const findExactMatch = useCallback((query: string): DictionaryEntry | null => {
+    if (!smartIndex || !query.trim()) return null;
+    
+    const queryLower = query.toLowerCase().trim();
+    
+    // Chercher dans les mots bariba
+    for (const entry of entries) {
+      if (entry.word.toLowerCase() === queryLower) return entry;
+      if (entry.variants?.some(v => v.toLowerCase() === queryLower)) return entry;
+    }
+    
+    // Chercher dans les mots français
+    for (const entry of entries) {
+      if (entry.french_keywords?.some(k => k.toLowerCase() === queryLower)) return entry;
+    }
+    
+    return null;
+  }, [smartIndex, entries]);
 
   // Suggestions intelligentes (rapide)
   const wordSuggestions = useMemo((): WordSuggestion[] => {
@@ -355,7 +399,30 @@ export const useSmartDictionarySearch = () => {
 
   const clearFullSearch = useCallback(() => {
     setShowFullResults(false);
+    setSelectedEntry(null);
   }, []);
+
+  // Sélectionner une entrée spécifique
+  const selectEntry = useCallback((entry: DictionaryEntry) => {
+    setSelectedEntry(entry);
+    setShowFullResults(true);
+  }, []);
+
+  // Détecter automatiquement les correspondances exactes et déclencher la recherche
+  useEffect(() => {
+    if (searchQuery.trim().length >= 3 && !isLoading) {
+      const exactMatch = findExactMatch(searchQuery);
+      if (exactMatch) {
+        setSelectedEntry(exactMatch);
+        setShowFullResults(true);
+      } else {
+        setSelectedEntry(null);
+      }
+    } else {
+      setSelectedEntry(null);
+      setShowFullResults(false);
+    }
+  }, [searchQuery, findExactMatch, isLoading]);
 
   const getSearchPlaceholder = () => {
     switch (searchDirection) {
@@ -379,10 +446,13 @@ export const useSmartDictionarySearch = () => {
     }
   };
 
-  // Reset full search when query or direction changes
+  // Réinitialiser quand la direction change
   useEffect(() => {
-    setShowFullResults(false);
-  }, [searchQuery, searchDirection]);
+    if (!searchQuery.trim()) {
+      setShowFullResults(false);
+      setSelectedEntry(null);
+    }
+  }, [searchDirection, searchQuery]);
 
   return {
     searchQuery,
@@ -394,6 +464,9 @@ export const useSmartDictionarySearch = () => {
     showFullResults,
     performFullSearch,
     clearFullSearch,
+    selectEntry,
+    selectedEntry,
+    detectLanguage,
     getSearchPlaceholder,
     getSearchDirectionLabel,
     isLoading,
