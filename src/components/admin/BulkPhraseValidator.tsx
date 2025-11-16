@@ -24,6 +24,20 @@ export default function BulkPhraseValidator() {
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
 
+  // Get total count of unvalidated phrases
+  const { data: totalUnvalidated } = useQuery({
+    queryKey: ['total-unvalidated-phrases'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('training_phrases')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_validated', false);
+      
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
   const { data: phrases, isLoading, refetch } = useQuery({
     queryKey: ['phrases-for-validation', searchQuery, filterStatus],
     queryFn: async () => {
@@ -65,8 +79,93 @@ export default function BulkPhraseValidator() {
     }
   };
 
+  const selectBatch = () => {
+    if (phrases) {
+      // Select up to 50 phrases
+      const batch = phrases.slice(0, 50);
+      setSelectedPhrases(new Set(batch.map(p => p.id)));
+    }
+  };
+
   const deselectAll = () => {
     setSelectedPhrases(new Set());
+  };
+
+  const handleValidateAll = async () => {
+    if (!totalUnvalidated || totalUnvalidated === 0) {
+      toast({
+        title: 'Aucune phrase à valider',
+        description: 'Toutes les phrases sont déjà validées',
+      });
+      return;
+    }
+
+    if (!confirm(`Êtes-vous sûr de vouloir valider TOUTES les ${totalUnvalidated} phrases non validées ? Cette action peut prendre du temps.`)) {
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      // Validate all unvalidated phrases in batches
+      const BATCH_SIZE = 500;
+      let totalValidated = 0;
+
+      // Get all unvalidated phrase IDs
+      const { data: allUnvalidated, error: fetchError } = await supabase
+        .from('training_phrases')
+        .select('id')
+        .eq('is_validated', false);
+
+      if (fetchError) throw fetchError;
+
+      const phraseIds = allUnvalidated?.map(p => p.id) || [];
+
+      // Process in batches
+      for (let i = 0; i < phraseIds.length; i += BATCH_SIZE) {
+        const batch = phraseIds.slice(i, i + BATCH_SIZE);
+        
+        const { error } = await supabase
+          .from('training_phrases')
+          .update({ is_validated: true })
+          .in('id', batch);
+
+        if (error) throw error;
+        
+        totalValidated += batch.length;
+        
+        // Show progress
+        toast({
+          title: 'Validation en cours...',
+          description: `${totalValidated} / ${phraseIds.length} phrases validées`,
+          duration: 1000,
+        });
+
+        // Pause to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Update gamification achievements
+      await updateAchievement('phrases_validated', totalValidated);
+
+      toast({
+        title: '✅ Validation complète',
+        description: `${totalValidated} phrases validées avec succès`,
+        duration: 5000,
+      });
+
+      setSelectedPhrases(new Set());
+      refetch();
+    } catch (error: any) {
+      console.error('Validate all error:', error);
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleBulkValidate = async (validate: boolean) => {
@@ -184,11 +283,43 @@ export default function BulkPhraseValidator() {
           </Select>
         </div>
 
+        {/* Statistics Banner */}
+        {totalUnvalidated !== undefined && totalUnvalidated > 0 && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
+                  📊 {totalUnvalidated.toLocaleString()} phrases non validées
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                  Vous pouvez valider tout en une fois ou par lots de 50
+                </p>
+              </div>
+              <Button 
+                onClick={handleValidateAll}
+                disabled={processing}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {processing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                Valider TOUT ({totalUnvalidated})
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Bulk Actions */}
         <div className="flex gap-2 items-center justify-between border-b pb-3">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={selectAll} disabled={!phrases || phrases.length === 0}>
-              Tout sélectionner
+              Tout sélectionner (page)
+            </Button>
+            <Button variant="outline" size="sm" onClick={selectBatch} disabled={!phrases || phrases.length === 0}>
+              Sélectionner 50
             </Button>
             <Button variant="outline" size="sm" onClick={deselectAll} disabled={selectedPhrases.size === 0}>
               Tout désélectionner
