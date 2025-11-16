@@ -100,67 +100,61 @@ export default function BulkPhraseValidator() {
       return;
     }
 
-    if (!confirm(`Êtes-vous sûr de vouloir valider TOUTES les ${totalUnvalidated} phrases non validées ? Cette action peut prendre du temps.`)) {
+    // Confirm with user
+    const confirmed = confirm(
+      `⚠️ VALIDATION MASSIVE ⚠️\n\n` +
+      `Vous êtes sur le point de valider TOUTES les ${totalUnvalidated.toLocaleString()} phrases non validées.\n\n` +
+      `Cette action va :\n` +
+      `• Marquer toutes les phrases comme validées\n` +
+      `• Les ajouter aux données d'entraînement\n` +
+      `• Peut prendre plusieurs minutes\n\n` +
+      `Êtes-vous ABSOLUMENT sûr de vouloir continuer ?`
+    );
+
+    if (!confirmed) {
       return;
     }
 
     setProcessing(true);
 
     try {
-      // Validate all unvalidated phrases in batches
-      const BATCH_SIZE = 500;
-      let totalValidated = 0;
+      console.log(`🚀 Starting mass validation of ${totalUnvalidated} phrases...`);
 
-      // Get all unvalidated phrase IDs
-      const { data: allUnvalidated, error: fetchError } = await supabase
+      // Validate ALL unvalidated phrases in one operation using a single update query
+      const { data: validatedPhrases, error } = await supabase
         .from('training_phrases')
-        .select('id')
-        .eq('is_validated', false);
+        .update({ 
+          is_validated: true,
+          quality_score: 1.0 
+        })
+        .eq('is_validated', false)
+        .select();
 
-      if (fetchError) throw fetchError;
-
-      const phraseIds = allUnvalidated?.map(p => p.id) || [];
-
-      // Process in batches
-      for (let i = 0; i < phraseIds.length; i += BATCH_SIZE) {
-        const batch = phraseIds.slice(i, i + BATCH_SIZE);
-        
-        const { error } = await supabase
-          .from('training_phrases')
-          .update({ is_validated: true })
-          .in('id', batch);
-
-        if (error) throw error;
-        
-        totalValidated += batch.length;
-        
-        // Show progress
-        toast({
-          title: 'Validation en cours...',
-          description: `${totalValidated} / ${phraseIds.length} phrases validées`,
-          duration: 1000,
-        });
-
-        // Pause to avoid overwhelming the server
-        await new Promise(resolve => setTimeout(resolve, 100));
+      if (error) {
+        throw error;
       }
 
-      // Update gamification achievements
+      const totalValidated = validatedPhrases?.length || 0;
+
+      console.log(`✅ Successfully validated ${totalValidated} phrases`);
+
+      // Update achievement
       await updateAchievement('phrases_validated', totalValidated);
 
+      // Refetch to update UI
+      await refetch();
+
       toast({
-        title: '✅ Validation complète',
-        description: `${totalValidated} phrases validées avec succès`,
+        title: '✅ Validation massive terminée !',
+        description: `${totalValidated.toLocaleString()} phrases ont été validées avec succès`,
         duration: 5000,
       });
 
-      setSelectedPhrases(new Set());
-      refetch();
     } catch (error: any) {
-      console.error('Validate all error:', error);
+      console.error('❌ Error in mass validation:', error);
       toast({
-        title: 'Erreur',
-        description: error.message,
+        title: 'Erreur lors de la validation',
+        description: error.message || 'Une erreur est survenue',
         variant: 'destructive',
       });
     } finally {
@@ -168,7 +162,7 @@ export default function BulkPhraseValidator() {
     }
   };
 
-  const handleBulkValidate = async (validate: boolean) => {
+  const validateSelected = async (validate: boolean) => {
     if (selectedPhrases.size === 0) {
       toast({
         title: 'Aucune phrase sélectionnée',
@@ -334,7 +328,7 @@ export default function BulkPhraseValidator() {
           <div className="flex gap-2 p-3 bg-accent/50 rounded-lg">
             <Button
               size="sm"
-              onClick={() => handleBulkValidate(true)}
+              onClick={() => validateSelected(true)}
               disabled={processing}
               className="flex-1"
             >
@@ -348,7 +342,7 @@ export default function BulkPhraseValidator() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleBulkValidate(false)}
+              onClick={() => validateSelected(false)}
               disabled={processing}
               className="flex-1"
             >
