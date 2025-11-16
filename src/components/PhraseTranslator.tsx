@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslationAI } from "@/hooks/useTranslationAI";
-import { useAITranslation } from "@/hooks/useAITranslation";
 import { useGamification } from "@/hooks/useGamification";
 import TranslationFeedback from "./TranslationFeedback";
 
@@ -19,12 +18,11 @@ export const PhraseTranslator = () => {
   const [direction, setDirection] = useState<TranslationDirection>("french-to-bariba");
   const [isTranslating, setIsTranslating] = useState(false);
   const [useAI, setUseAI] = useState(true);
-  const [useEnhancedAI, setUseEnhancedAI] = useState(false);
   const [autoTranslate, setAutoTranslate] = useState(true);
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
   
-  // Hook pour le modèle IA local
+  // Hook pour le modèle IA local (gratuit)
   const {
     translateFrenchToBariba,
     translateBaribaToFrench,
@@ -34,9 +32,6 @@ export const PhraseTranslator = () => {
     error: aiError,
     modelStats
   } = useTranslationAI();
-
-  // Hook pour le modèle IA amélioré (Lovable AI)
-  const { translateWithAI, isLoading: enhancedAILoading } = useAITranslation();
 
   // Traduction automatique en temps réel
   useEffect(() => {
@@ -94,29 +89,8 @@ export const PhraseTranslator = () => {
     try {
       let translation = "";
       
-      // PRIORITY: Use Enhanced AI (Lovable AI API) if enabled
-      if (useEnhancedAI && useAI) {
-        const sourceLang = direction === "french-to-bariba" ? 'french' : 'bariba';
-        const targetLang = direction === "french-to-bariba" ? 'bariba' : 'french';
-        
-        const result = await translateWithAI(sourceText, sourceLang, targetLang);
-        
-        if (result) {
-          translation = result.translation;
-          setTranslationLogId(result.logId);
-          
-          const duration = Math.round(performance.now() - startTime);
-          
-          toast({
-            title: "✨ Traduction IA Avancée terminée",
-            description: `Confiance: ${result.confidence}% (${duration}ms)`,
-          });
-        } else {
-          throw new Error("Échec de la traduction avancée");
-        }
-      } 
-      // FALLBACK: Use Local AI Model
-      else if (useAI && aiReady) {
+      // Use local AI model (free, dictionary-based)
+      if (useAI && aiReady) {
         if (direction === "french-to-bariba") {
           translation = await translateFrenchToBariba(sourceText);
         } else {
@@ -124,9 +98,10 @@ export const PhraseTranslator = () => {
         }
         
         const duration = Math.round(performance.now() - startTime);
+        
         toast({
-          title: "🧠 Traduction Modèle Local terminée",
-          description: `Temps: ${duration}ms`,
+          title: "🧠 Traduction IA (Gratuite)",
+          description: `Traduction effectuée en ${duration}ms avec le modèle local.`
         });
       } else {
         // Fallback: traduction de démonstration
@@ -167,11 +142,6 @@ export const PhraseTranslator = () => {
       
       // Update gamification achievements
       await updateAchievement('translations_made');
-      
-      toast({
-        title: useAI ? "Traduction IA terminée" : "Traduction terminée",
-        description: useAI ? "Votre texte a été traduit par l'IA entraînée sur le dictionnaire." : "Votre texte a été traduit avec succès."
-      });
     } catch (error) {
       console.error("Erreur de traduction:", error);
       toast({
@@ -238,28 +208,13 @@ export const PhraseTranslator = () => {
           )}
 
           {/* Active Mode Indicator */}
-          {useAI && useEnhancedAI && (
-            <Badge variant="default" className="text-sm bg-gradient-to-r from-primary to-secondary animate-pulse">
-              <Sparkles className="h-3 w-3 mr-1" />
-              Mode Actif: IA Avancée (API)
-            </Badge>
-          )}
-          
-          {useAI && !useEnhancedAI && aiReady && (
+          {useAI && aiReady && (
             <Badge variant="secondary" className="text-sm">
               <Brain className="h-3 w-3 mr-1" />
-              Mode Actif: Modèle Local
+              Mode Gratuit: Modèle Local
             </Badge>
           )}
         </div>
-        
-        {/* API Cost Warning */}
-        {useAI && useEnhancedAI && (
-          <div className="flex items-center justify-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 rounded-md">
-            <Zap className="h-3 w-3" />
-            ⚠️ Mode API actif : consomme des crédits Lovable AI
-          </div>
-        )}
         
         {aiError && (
           <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
@@ -292,37 +247,20 @@ export const PhraseTranslator = () => {
         <Button
           variant={useAI ? "default" : "outline"}
           size="sm"
-          onClick={() => {
-            setUseAI(!useAI);
-            if (!useAI) setUseEnhancedAI(false); // Désactiver l'IA améliorée si on désactive l'IA
-          }}
+          onClick={() => setUseAI(!useAI)}
           disabled={isTranslating || aiLoading}
           className="flex items-center gap-2"
         >
           {useAI ? <Zap className="h-3 w-3" /> : <Brain className="h-3 w-3" />}
-          {useAI ? "IA Activée" : "Mode Simple"}
+          {useAI ? "IA Gratuite" : "Mode Simple"}
         </Button>
-        
-        {/* Toggle IA Améliorée (Lovable AI) */}
-        {useAI && (
-          <Button
-            variant={useEnhancedAI ? "default" : "outline"}
-            size="sm"
-            onClick={() => setUseEnhancedAI(!useEnhancedAI)}
-            disabled={isTranslating || enhancedAILoading}
-            className="flex items-center gap-2"
-          >
-            <Sparkles className="h-3 w-3" />
-            {useEnhancedAI ? "IA Avancée" : "IA Standard"}
-          </Button>
-        )}
         
         {/* Toggle Traduction Automatique */}
         <Button
           variant={autoTranslate ? "default" : "outline"}
           size="sm"
           onClick={() => setAutoTranslate(!autoTranslate)}
-          disabled={isTranslating || aiLoading || !aiReady || useEnhancedAI}
+          disabled={isTranslating || aiLoading || !aiReady}
           className="flex items-center gap-2"
         >
           <ArrowRight className="h-3 w-3" />
@@ -421,18 +359,18 @@ export const PhraseTranslator = () => {
       <div className="flex items-center justify-center gap-4">
         <Button
           onClick={translatePhrase}
-          disabled={!sourceText.trim() || isTranslating || (useAI && !useEnhancedAI && !aiReady) || enhancedAILoading}
+          disabled={!sourceText.trim() || isTranslating || (useAI && !aiReady)}
           className="px-8"
         >
-          {isTranslating || enhancedAILoading ? (
+          {isTranslating ? (
             <>
               <Brain className="mr-2 h-4 w-4 animate-pulse" />
-              {useEnhancedAI ? "Traduction IA Avancée..." : useAI ? "Traduction IA..." : "Traduction..."}
+              {useAI ? "Traduction IA (Gratuite)..." : "Traduction..."}
             </>
           ) : (
             <>
-              {useEnhancedAI ? <Sparkles className="mr-2 h-4 w-4" /> : useAI ? <Zap className="mr-2 h-4 w-4" /> : <Brain className="mr-2 h-4 w-4" />}
-              Traduire {useEnhancedAI ? "(IA Avancée)" : useAI ? "(IA)" : ""}
+              {useAI ? <Zap className="mr-2 h-4 w-4" /> : <Brain className="mr-2 h-4 w-4" />}
+              Traduire {useAI ? "(IA Gratuite)" : ""}
               {direction === "french-to-bariba" ? (
                 <ArrowRight className="ml-2 h-4 w-4" />
               ) : (
