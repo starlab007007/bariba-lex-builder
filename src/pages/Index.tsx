@@ -1,15 +1,20 @@
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { SmartSearchBar } from "@/components/SmartSearchBar";
 import { DictionaryEntry } from "@/components/DictionaryEntry";
 import { DirectTranslation } from "@/components/DirectTranslation";
 import { DictionaryStats } from "@/components/DictionaryStats";
 import { PhraseTranslator } from "@/components/PhraseTranslator";
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
-import { Book, Languages, Globe, ArrowLeftRight, MessageSquare } from "lucide-react";
+import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { user, isAdmin, signOut } = useAuth();
+  
   const {
     searchQuery,
     setSearchQuery,
@@ -30,6 +35,33 @@ const Index = () => {
       {/* Hero Header */}
       <header className="bg-gradient-to-br from-primary/10 via-background to-accent/5 border-b border-border/50">
         <div className="container mx-auto px-4 py-8 lg:py-12">
+          {/* Auth Buttons */}
+          <div className="flex justify-end mb-4 gap-2">
+            {user ? (
+              <>
+                {isAdmin && (
+                  <Button
+                    onClick={() => navigate('/admin')}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Administration
+                  </Button>
+                )}
+                <Button onClick={signOut} variant="ghost" size="sm">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Déconnexion
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => navigate('/auth')} variant="default" size="sm">
+                <LogIn className="mr-2 h-4 w-4" />
+                Connexion
+              </Button>
+            )}
+          </div>
+          
           <div className="text-center space-y-4 lg:space-y-6">
             <div className="flex items-center justify-center gap-2 lg:gap-3 mb-3 lg:mb-4">
               <Book className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
