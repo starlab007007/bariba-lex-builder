@@ -89,17 +89,45 @@ export const PhraseTranslator = () => {
     }
 
     setIsTranslating(true);
+    const startTime = performance.now();
     
     try {
       let translation = "";
       
-      if (useAI && aiReady) {
-        // Utiliser le modèle IA entraîné sur le dictionnaire
+      // PRIORITY: Use Enhanced AI (Lovable AI API) if enabled
+      if (useEnhancedAI && useAI) {
+        const sourceLang = direction === "french-to-bariba" ? 'french' : 'bariba';
+        const targetLang = direction === "french-to-bariba" ? 'bariba' : 'french';
+        
+        const result = await translateWithAI(sourceText, sourceLang, targetLang);
+        
+        if (result) {
+          translation = result.translation;
+          setTranslationLogId(result.logId);
+          
+          const duration = Math.round(performance.now() - startTime);
+          
+          toast({
+            title: "✨ Traduction IA Avancée terminée",
+            description: `Confiance: ${result.confidence}% (${duration}ms)`,
+          });
+        } else {
+          throw new Error("Échec de la traduction avancée");
+        }
+      } 
+      // FALLBACK: Use Local AI Model
+      else if (useAI && aiReady) {
         if (direction === "french-to-bariba") {
           translation = await translateFrenchToBariba(sourceText);
         } else {
           translation = await translateBaribaToFrench(sourceText);
         }
+        
+        const duration = Math.round(performance.now() - startTime);
+        toast({
+          title: "🧠 Traduction Modèle Local terminée",
+          description: `Temps: ${duration}ms`,
+        });
       } else {
         // Fallback: traduction de démonstration
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -197,7 +225,7 @@ export const PhraseTranslator = () => {
         </p>
         
         {/* Statut IA */}
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-4 flex-wrap">
           <Badge variant={aiReady ? "default" : aiLoading ? "secondary" : "destructive"} className="text-sm">
             <Brain className="h-3 w-3 mr-1" />
             {aiLoading ? "Initialisation IA..." : aiReady ? "IA Prête" : "IA Indisponible"}
@@ -208,7 +236,30 @@ export const PhraseTranslator = () => {
               Modèle entraîné sur dictionnaire complet
             </Badge>
           )}
+
+          {/* Active Mode Indicator */}
+          {useAI && useEnhancedAI && (
+            <Badge variant="default" className="text-sm bg-gradient-to-r from-primary to-secondary animate-pulse">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Mode Actif: IA Avancée (API)
+            </Badge>
+          )}
+          
+          {useAI && !useEnhancedAI && aiReady && (
+            <Badge variant="secondary" className="text-sm">
+              <Brain className="h-3 w-3 mr-1" />
+              Mode Actif: Modèle Local
+            </Badge>
+          )}
         </div>
+        
+        {/* API Cost Warning */}
+        {useAI && useEnhancedAI && (
+          <div className="flex items-center justify-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 rounded-md">
+            <Zap className="h-3 w-3" />
+            ⚠️ Mode API actif : consomme des crédits Lovable AI
+          </div>
+        )}
         
         {aiError && (
           <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
