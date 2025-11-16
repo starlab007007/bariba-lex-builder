@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { type DictionaryEntry, getDictionaryIndex, loadComprehensiveDictionary } from "@/data/fullDictionaryData";
+import { calculateRelevance, Trie, LRUCache } from "@/utils/searchAlgorithms";
 
 export type SearchDirection = "bariba-to-french" | "french-to-bariba" | "all";
 
@@ -8,6 +9,7 @@ export interface SearchResult {
   totalResults: number;
   searchDirection: SearchDirection;
   query: string;
+  relevanceScores?: Map<string, number>;
 }
 
 export interface WordSuggestion {
@@ -21,7 +23,12 @@ interface SmartIndex {
   baribaWords: Set<string>;
   frenchWords: Set<string>;
   wordTrie: Map<string, DictionaryEntry[]>;
+  baribaTrie: Trie;
+  frenchTrie: Trie;
 }
+
+// Cache LRU global pour les recherches
+const searchCache = new LRUCache<string, SearchResult>(50);
 
 export const useSmartDictionarySearch = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,16 +39,19 @@ export const useSmartDictionarySearch = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showFullResults, setShowFullResults] = useState(false);
 
-  // Créer l'index intelligent pour la recherche rapide
+  // Créer l'index intelligent pour la recherche rapide avec Tries optimisés
   const createSmartIndex = useCallback((entriesData: DictionaryEntry[]): SmartIndex => {
     const baribaWords = new Set<string>();
     const frenchWords = new Set<string>();
     const wordTrie = new Map<string, DictionaryEntry[]>();
+    const baribaTrie = new Trie();
+    const frenchTrie = new Trie();
 
     entriesData.forEach(entry => {
       // Indexer le mot bariba principal
       const mainWord = entry.word.toLowerCase();
       baribaWords.add(mainWord);
+      baribaTrie.insert(mainWord, entry);
       
       // Créer des préfixes pour la recherche intelligente
       for (let i = 1; i <= mainWord.length; i++) {
@@ -56,6 +66,8 @@ export const useSmartDictionarySearch = () => {
       entry.variants?.forEach(variant => {
         const variantLower = variant.toLowerCase();
         baribaWords.add(variantLower);
+        baribaTrie.insert(variantLower, entry);
+        
         for (let i = 1; i <= variantLower.length; i++) {
           const prefix = variantLower.substring(0, i);
           if (!wordTrie.has(prefix)) {
@@ -67,11 +79,13 @@ export const useSmartDictionarySearch = () => {
         }
       });
 
-      // Indexer les mots français de la définition
+      // Indexer les mots français de la définition et mots-clés
       const frenchKeywords = entry.french_keywords || [];
       frenchKeywords.forEach(keyword => {
         const keywordLower = keyword.toLowerCase();
         frenchWords.add(keywordLower);
+        frenchTrie.insert(keywordLower, entry);
+        
         for (let i = 1; i <= keywordLower.length; i++) {
           const prefix = keywordLower.substring(0, i);
           if (!wordTrie.has(prefix)) {
@@ -90,6 +104,8 @@ export const useSmartDictionarySearch = () => {
       
       definitionWords.forEach(word => {
         frenchWords.add(word);
+        frenchTrie.insert(word, entry);
+        
         for (let i = 1; i <= word.length; i++) {
           const prefix = word.substring(0, i);
           if (!wordTrie.has(prefix)) {
@@ -102,7 +118,7 @@ export const useSmartDictionarySearch = () => {
       });
     });
 
-    return { baribaWords, frenchWords, wordTrie };
+    return { baribaWords, frenchWords, wordTrie, baribaTrie, frenchTrie };
   }, []);
 
   // Charger le dictionnaire au montage
@@ -202,9 +218,9 @@ export const useSmartDictionarySearch = () => {
       .slice(0, 8); // Limiter à 8 suggestions
   }, [searchQuery, searchDirection, smartIndex, isLoading]);
 
-  // Résultats complets (seulement quand demandé)
+  // Résultats complets avec scoring de pertinence (seulement quand demandé)
   const fullSearchResults = useMemo((): SearchResult => {
-    if (isLoading || !dictionaryIndex || !showFullResults) {
+    if (isLoading || !dictionaryIndex || !showFullResults || !entries.length) {
       return {
         entries: [],
         totalResults: 0,
@@ -223,105 +239,114 @@ export const useSmartDictionarySearch = () => {
     }
 
     const query = searchQuery.toLowerCase().trim();
-    const resultSet = new Set<DictionaryEntry>();
 
-    // Recherche selon la direction spécifiée
+    // Vérifier le cache d'abord
+    const cacheKey = `${searchDirection}-${query}`;
+    const cached = searchCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const resultSet = new Set<DictionaryEntry>();
+    const relevanceScores = new Map<string, number>();
+
+    // Recherche selon la direction spécifiée avec scoring
     if (searchDirection === "bariba-to-french" || searchDirection === "all") {
       // Recherche dans les mots bariba
       for (const [baribaWord, entryList] of dictionaryIndex.bariba_to_french) {
         if (baribaWord.includes(query)) {
-          entryList.forEach(entry => resultSet.add(entry));
+          entryList.forEach(entry => {
+            resultSet.add(entry);
+            const score = calculateRelevance(query, baribaWord);
+            const currentScore = relevanceScores.get(entry.word) || 0;
+            relevanceScores.set(entry.word, Math.max(currentScore, score.totalScore));
+          });
         }
       }
 
-      // Recherche dans les exemples bariba
+      // Recherche dans les exemples bariba et phonétique
       entries.forEach(entry => {
         const foundInBariba = entry.example_bariba?.some(example => 
           example.toLowerCase().includes(query)
         );
         if (foundInBariba) {
           resultSet.add(entry);
+          const currentScore = relevanceScores.get(entry.word) || 0;
+          relevanceScores.set(entry.word, Math.max(currentScore, 40));
         }
-      });
 
-      // Recherche phonétique
-      entries.forEach(entry => {
         if (entry.phonetic && entry.phonetic.toLowerCase().includes(query)) {
           resultSet.add(entry);
+          const currentScore = relevanceScores.get(entry.word) || 0;
+          relevanceScores.set(entry.word, Math.max(currentScore, 50));
         }
       });
     }
 
     if (searchDirection === "french-to-bariba" || searchDirection === "all") {
-      // Recherche dans les mots français
+      // Recherche dans les mots français avec scoring
       for (const [frenchWord, entryList] of dictionaryIndex.french_to_bariba) {
         if (frenchWord.includes(query)) {
-          entryList.forEach(entry => resultSet.add(entry));
+          entryList.forEach(entry => {
+            resultSet.add(entry);
+            const score = calculateRelevance(query, frenchWord);
+            const currentScore = relevanceScores.get(entry.word) || 0;
+            relevanceScores.set(entry.word, Math.max(currentScore, score.totalScore));
+          });
         }
       }
 
-      // Recherche dans les définitions françaises
+      // Recherche dans définitions, exemples et notes
       entries.forEach(entry => {
         if (entry.definition.toLowerCase().includes(query)) {
           resultSet.add(entry);
+          const score = calculateRelevance(query, entry.definition.toLowerCase());
+          const currentScore = relevanceScores.get(entry.word) || 0;
+          relevanceScores.set(entry.word, Math.max(currentScore, score.totalScore + 10));
         }
-      });
 
-      // Recherche dans les exemples français
-      entries.forEach(entry => {
         const foundInFrench = entry.example_francais?.some(example => 
           example.toLowerCase().includes(query)
         );
         if (foundInFrench) {
           resultSet.add(entry);
+          const currentScore = relevanceScores.get(entry.word) || 0;
+          relevanceScores.set(entry.word, Math.max(currentScore, 40));
         }
-      });
 
-      // Recherche dans les notes
-      entries.forEach(entry => {
         if (entry.notes && entry.notes.toLowerCase().includes(query)) {
           resultSet.add(entry);
+          const currentScore = relevanceScores.get(entry.word) || 0;
+          relevanceScores.set(entry.word, Math.max(currentScore, 30));
         }
       });
     }
 
     const resultEntries = Array.from(resultSet);
     
-    // Tri par pertinence avec priorité à la traduction directe
+    // Tri par score de pertinence
     resultEntries.sort((a, b) => {
-      // 1. Priorité absolue: correspondance exacte du mot principal
-      const aExactMatch = a.word.toLowerCase() === query;
-      const bExactMatch = b.word.toLowerCase() === query;
+      const scoreA = relevanceScores.get(a.word) || 0;
+      const scoreB = relevanceScores.get(b.word) || 0;
       
-      if (aExactMatch && !bExactMatch) return -1;
-      if (!aExactMatch && bExactMatch) return 1;
+      if (scoreA !== scoreB) return scoreB - scoreA;
       
-      // 2. Priorité aux mots qui commencent par la requête
-      const aStartsWith = a.word.toLowerCase().startsWith(query);
-      const bStartsWith = b.word.toLowerCase().startsWith(query);
-      
-      if (aStartsWith && !bStartsWith) return -1;
-      if (!aStartsWith && bStartsWith) return 1;
-      
-      // 3. Pour les recherches français->bariba, priorité aux entrées avec mot-clé exact
-      if (searchDirection === "french-to-bariba" || searchDirection === "all") {
-        const aHasExactKeyword = a.french_keywords?.some(k => k.toLowerCase() === query) || false;
-        const bHasExactKeyword = b.french_keywords?.some(k => k.toLowerCase() === query) || false;
-        
-        if (aHasExactKeyword && !bHasExactKeyword) return -1;
-        if (!aHasExactKeyword && bHasExactKeyword) return 1;
-      }
-      
-      // 4. Alphabétique en dernier recours
+      // En cas d'égalité, tri alphabétique
       return a.word.localeCompare(b.word);
     });
 
-    return {
+    const result: SearchResult = {
       entries: resultEntries,
       totalResults: resultEntries.length,
       searchDirection,
-      query
+      query: searchQuery,
+      relevanceScores
     };
+
+    // Mettre en cache
+    searchCache.set(cacheKey, result);
+    
+    return result;
   }, [searchQuery, searchDirection, entries, dictionaryIndex, isLoading, showFullResults]);
 
   const performFullSearch = useCallback(() => {

@@ -278,7 +278,12 @@ const Index = () => {
                       )}
                       
                       {fullSearchResults.entries.map((entry, index) => (
-                        <DictionaryEntry key={`${entry.word}-${index}`} entry={entry} />
+                        <DictionaryEntry 
+                          key={`${entry.word}-${index}`} 
+                          entry={entry}
+                          searchQuery={searchQuery}
+                          relevanceScore={fullSearchResults.relevanceScores?.get(entry.word)}
+                        />
                       ))}
                     </div>
                   ) : (
