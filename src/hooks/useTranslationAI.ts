@@ -1,5 +1,5 @@
 import { SimplifiedTranslationAI } from "@/services/SimplifiedTranslationAI";
-import { loadComprehensiveDictionary } from "@/data/fullDictionaryData";
+import { loadEnhancedDictionary } from "@/data/enhancedDictionaryLoader";
 import { useState, useEffect, useCallback } from "react";
 
 export const useTranslationAI = () => {
@@ -16,7 +16,7 @@ export const useTranslationAI = () => {
         setError(null);
         
         console.log("🔄 Chargement de toutes les données (dictionnaire + phrases + exemples)...");
-        const { entries, phrases, examples } = await loadComprehensiveDictionary();
+        const { entries, phrases, examples } = await loadEnhancedDictionary();
         
         console.log("🤖 Création du traducteur avec 220k+ entrées...");
         const model = new SimplifiedTranslationAI(entries, phrases, examples);
