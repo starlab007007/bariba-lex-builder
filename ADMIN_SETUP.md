@@ -131,6 +131,90 @@ Le module d'administration est protégé par :
 - Voir les analytics
 - Réentraîner le modèle
 
+## 🧪 Test du Modèle
+
+Le panneau "Test du Modèle" permet de comparer les performances entre le modèle local et l'API Lovable AI.
+
+### Fonctionnalités
+
+1. **Test Interactif**
+   - Saisissez une phrase en français ou bariba
+   - Choisissez la direction de traduction
+   - Testez individuellement ou comparez les deux modèles
+
+2. **Métriques Affichées**
+   - Temps de traduction (en millisecondes)
+   - Score de confiance
+   - Texte traduit
+
+3. **Historique des Tests**
+   - Sauvegardez vos tests pour analyse
+   - Exportez l'historique en CSV
+   - Comparez les performances au fil du temps
+
+### Comparaison Modèle Local vs API
+
+| Critère | Modèle Local | API Lovable AI |
+|---------|--------------|----------------|
+| **Coût** | Gratuit | Payant (crédits) |
+| **Vitesse** | Très rapide (~100-500ms) | Variable (~500-2000ms) |
+| **Qualité** | Basée sur le dictionnaire | IA contextuelle avancée |
+| **Disponibilité** | Toujours disponible | Requiert connexion |
+| **Contexte** | Mot à mot | Comprend le contexte |
+
+**Recommandation** : Utilisez le modèle local pour les traductions courantes et l'API pour les phrases complexes nécessitant une compréhension contextuelle.
+
+## 📊 Dashboard de Performance
+
+Le panneau "Performance" affiche des statistiques détaillées sur l'utilisation du modèle.
+
+### Métriques Disponibles
+
+1. **Vue d'Ensemble**
+   - Version actuelle du modèle
+   - Nombre d'entrées du dictionnaire
+   - Total de traductions effectuées
+   - Taux de succès global
+
+2. **Métriques d'Entraînement**
+   - Entrées du dictionnaire utilisées
+   - Phrases d'entraînement validées
+   - Durée de l'entraînement
+   - Patterns linguistiques identifiés
+
+3. **Statistiques d'Utilisation**
+   - Évolution du volume de traductions
+   - Répartition français ↔ bariba
+   - Distribution des scores de confiance
+   - Comparaison local vs API
+
+### Interprétation des Scores
+
+- **Score de Confiance ≥ 70%** : Traduction de haute qualité ✅
+- **Score 50-69%** : Traduction acceptable mais à vérifier ⚠️
+- **Score < 50%** : Traduction à corriger manuellement ❌
+
+## 🔄 Réentraînement du Modèle
+
+Pour améliorer la qualité des traductions :
+
+1. **Quand Réentraîner ?**
+   - Après avoir ajouté 1000+ nouvelles entrées au dictionnaire
+   - Après validation de 500+ nouvelles phrases
+   - Si le taux de confiance moyen baisse
+   - Après import de données bibliques ou massives
+
+2. **Processus**
+   - Allez dans l'onglet "Performance"
+   - Vérifiez que les données sont prêtes (indicateur vert)
+   - Cliquez sur "Train Model"
+   - Attendez la fin du traitement (peut prendre 2-5 minutes pour 68k+ entrées)
+
+3. **Validation Post-Entraînement**
+   - Testez des phrases dans "Test du Modèle"
+   - Vérifiez l'amélioration des scores de confiance
+   - Comparez avec les résultats précédents
+
 ## 🆘 Support
 
 Si vous rencontrez des problèmes :

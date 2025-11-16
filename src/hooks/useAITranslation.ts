@@ -10,7 +10,7 @@ export const useAITranslation = () => {
     text: string,
     sourceLang: 'french' | 'bariba',
     targetLang: 'french' | 'bariba'
-  ): Promise<{ translation: string; confidence: number } | null> => {
+  ): Promise<{ translation: string; confidence: number; logId?: string } | null> => {
     if (!text.trim()) {
       return null;
     }
@@ -37,6 +37,7 @@ export const useAITranslation = () => {
       return {
         translation: data.translation,
         confidence: data.confidence || 75,
+        logId: data.logId,
       };
     } catch (error: any) {
       console.error('Translation error:', error);

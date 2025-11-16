@@ -164,6 +164,54 @@ export type Database = {
         }
         Relationships: []
       }
+      model_test_results: {
+        Row: {
+          api_confidence: number | null
+          api_duration_ms: number | null
+          api_translation: string | null
+          id: string
+          local_confidence: number | null
+          local_duration_ms: number | null
+          local_translation: string | null
+          notes: string | null
+          source_language: string
+          target_language: string
+          test_phrase: string
+          tested_at: string | null
+          tested_by: string | null
+        }
+        Insert: {
+          api_confidence?: number | null
+          api_duration_ms?: number | null
+          api_translation?: string | null
+          id?: string
+          local_confidence?: number | null
+          local_duration_ms?: number | null
+          local_translation?: string | null
+          notes?: string | null
+          source_language: string
+          target_language: string
+          test_phrase: string
+          tested_at?: string | null
+          tested_by?: string | null
+        }
+        Update: {
+          api_confidence?: number | null
+          api_duration_ms?: number | null
+          api_translation?: string | null
+          id?: string
+          local_confidence?: number | null
+          local_duration_ms?: number | null
+          local_translation?: string | null
+          notes?: string | null
+          source_language?: string
+          target_language?: string
+          test_phrase?: string
+          tested_at?: string | null
+          tested_by?: string | null
+        }
+        Relationships: []
+      }
       training_phrases: {
         Row: {
           bariba_text: string
@@ -242,34 +290,40 @@ export type Database = {
         Row: {
           confidence_score: number | null
           created_at: string | null
+          duration_ms: number | null
           id: string
           input_text: string
           model_version: string | null
           output_text: string
           source_language: string
           target_language: string
+          translation_method: string | null
           user_id: string | null
         }
         Insert: {
           confidence_score?: number | null
           created_at?: string | null
+          duration_ms?: number | null
           id?: string
           input_text: string
           model_version?: string | null
           output_text: string
           source_language: string
           target_language: string
+          translation_method?: string | null
           user_id?: string | null
         }
         Update: {
           confidence_score?: number | null
           created_at?: string | null
+          duration_ms?: number | null
           id?: string
           input_text?: string
           model_version?: string | null
           output_text?: string
           source_language?: string
           target_language?: string
+          translation_method?: string | null
           user_id?: string | null
         }
         Relationships: []

@@ -11,7 +11,9 @@ import {
   Users,
   TrendingUp,
   LogOut,
-  Upload
+  Upload,
+  FlaskConical,
+  Activity
 } from 'lucide-react';
 import AdminOverview from '@/components/admin/AdminOverview';
 import DictionaryManager from '@/components/admin/DictionaryManager';
@@ -22,6 +24,8 @@ import UserRoleManager from '@/components/admin/UserRoleManager';
 import TrainingAnalytics from '@/components/admin/TrainingAnalytics';
 import ModelTrainingPanel from '@/components/admin/ModelTrainingPanel';
 import { MassDataImporter } from '@/components/admin/MassDataImporter';
+import ModelTestingPanel from '@/components/admin/ModelTestingPanel';
+import ModelPerformanceDashboard from '@/components/admin/ModelPerformanceDashboard';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -50,7 +54,7 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Vue d'ensemble</span>
@@ -67,9 +71,17 @@ export default function AdminDashboard() {
               <Upload className="h-4 w-4" />
               <span className="hidden sm:inline">Import Massif</span>
             </TabsTrigger>
+            <TabsTrigger value="test" className="flex items-center gap-2">
+              <FlaskConical className="h-4 w-4" />
+              <span className="hidden sm:inline">Test du Modèle</span>
+            </TabsTrigger>
+            <TabsTrigger value="model-performance" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              <span className="hidden sm:inline">Performance</span>
+            </TabsTrigger>
             <TabsTrigger value="performance" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Performance</span>
+              <span className="hidden sm:inline">Entraînement</span>
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -106,6 +118,14 @@ export default function AdminDashboard() {
 
           <TabsContent value="import" className="space-y-4">
             <MassDataImporter />
+          </TabsContent>
+
+          <TabsContent value="test" className="space-y-4">
+            <ModelTestingPanel />
+          </TabsContent>
+
+          <TabsContent value="model-performance" className="space-y-4">
+            <ModelPerformanceDashboard />
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-4">

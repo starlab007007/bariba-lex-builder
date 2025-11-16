@@ -140,17 +140,38 @@ Fournis une analyse structurée en JSON avec :
       trainingData = { analysis: analysisText };
     }
 
-    // Save training context
+    const trainingStartTime = Date.now();
+
+    // Calculate advanced metrics
+    const uniqueWords = new Set();
+    dictionaryEntries?.forEach(e => {
+      uniqueWords.add(e.word.toLowerCase());
+      e.variants?.forEach(v => uniqueWords.add(v.toLowerCase()));
+    });
+
+    const avgQualityScore = dictionaryEntries?.reduce((sum, e) => sum + (e.quality_score || 0), 0) / (dictionaryEntries?.length || 1);
+    const verifiedCount = dictionaryEntries?.filter(e => e.is_verified).length || 0;
+    const biblicalPhrases = trainingPhrases?.filter(p => p.source === 'biblical').length || 0;
+
+    // Save training context with enhanced metrics
     const { data: contextData, error: contextError } = await supabaseClient
       .from('ai_training_context')
       .insert({
-        model_version: '1.0.0',
+        model_version: `v1.${Date.now()}`,
         dictionary_count: dictionaryEntries?.length || 0,
         phrases_count: trainingPhrases?.length || 0,
         training_data: trainingData,
         metrics: {
           analysis_timestamp: new Date().toISOString(),
+          training_duration_ms: Date.now() - trainingStartTime,
           data_quality: 'analyzed',
+          unique_words: uniqueWords.size,
+          avg_quality_score: avgQualityScore,
+          verified_entries: verifiedCount,
+          biblical_phrases: biblicalPhrases,
+          manual_phrases: (trainingPhrases?.length || 0) - biblicalPhrases,
+          dictionary_coverage: (uniqueWords.size / (dictionaryEntries?.length || 1)) * 100,
+          patterns_identified: trainingData.translation_patterns?.length || 0,
         },
         created_by: user.id,
       })
