@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import TrainingPhraseImporter from './TrainingPhraseImporter';
+import GenerateTrainingPhrases from './GenerateTrainingPhrases';
 
 export default function TrainingManager() {
   const [showImporter, setShowImporter] = useState(false);
@@ -141,8 +142,11 @@ export default function TrainingManager() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              Aucune phrase d'entraînement
+            <div className="text-center py-8 space-y-4">
+              <p className="text-muted-foreground">
+                Aucune phrase d'entraînement
+              </p>
+              <GenerateTrainingPhrases />
             </div>
           )}
         </CardContent>

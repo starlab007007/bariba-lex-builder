@@ -31,16 +31,25 @@ export default function ModelTrainingPanel() {
     queryFn: async () => {
       const [
         { count: dictionaryCount },
-        { count: phrasesCount },
+        { count: validatedPhrasesCount },
+        { count: allPhrasesCount },
       ] = await Promise.all([
         supabase.from('dictionary_entries').select('*', { count: 'exact', head: true }),
         supabase.from('training_phrases').select('*', { count: 'exact', head: true }).eq('is_validated', true),
+        supabase.from('training_phrases').select('*', { count: 'exact', head: true }),
       ]);
+
+      // Use all phrases if not enough validated ones
+      const phrasesCount = (validatedPhrasesCount || 0) >= 10 
+        ? (validatedPhrasesCount || 0)
+        : (allPhrasesCount || 0);
 
       return {
         dictionaryCount: dictionaryCount || 0,
-        phrasesCount: phrasesCount || 0,
-        isReady: (dictionaryCount || 0) >= 100 && (phrasesCount || 0) >= 50,
+        phrasesCount: phrasesCount,
+        validatedCount: validatedPhrasesCount || 0,
+        totalCount: allPhrasesCount || 0,
+        isReady: (dictionaryCount || 0) >= 100 && phrasesCount >= 10,
       };
     },
   });
@@ -151,14 +160,17 @@ export default function ModelTrainingPanel() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {(stats?.phrasesCount || 0) >= 50 ? (
+              {(stats?.phrasesCount || 0) >= 10 ? (
                 <CheckCircle className="h-5 w-5 text-green-500" />
               ) : (
                 <AlertCircle className="h-5 w-5 text-yellow-500" />
               )}
               <div>
-                <p className="text-sm font-medium">{stats?.phrasesCount || 0} phrases validées</p>
-                <p className="text-xs text-muted-foreground">Minimum : 50</p>
+                <p className="text-sm font-medium">
+                  {stats?.phrasesCount || 0} phrases
+                  {stats && stats.validatedCount > 0 && ` (${stats.validatedCount} validées)`}
+                </p>
+                <p className="text-xs text-muted-foreground">Minimum : 10</p>
               </div>
             </div>
           </div>
@@ -166,7 +178,8 @@ export default function ModelTrainingPanel() {
           {!stats?.isReady && (
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
               <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                Données insuffisantes pour l'entraînement. Ajoutez plus de mots au dictionnaire ou validez plus de phrases.
+                Données insuffisantes pour l'entraînement. Il faut au moins 100 mots et 10 phrases.
+                Utilisez le bouton "Générer Phrases d'Entraînement" dans l'onglet Entraînement pour créer des phrases depuis le dictionnaire.
               </p>
             </div>
           )}
