@@ -8,7 +8,7 @@ export interface DictionaryEntry {
   example_bariba: string[];
   example_francais: string[];
   notes: string;
-  source_flags: string[];
+  source_flags: string[]; // Source indicators: 'db', 'dict', 'biblical'
   incertitude: number;
   // Nouveaux champs pour la recherche bidirectionnelle
   french_keywords: string[]; // mots-clés français extraits pour la recherche inverse
@@ -35,14 +35,28 @@ export interface DictionaryEntry {
   usage_context?: string;
 }
 
+interface CacheData {
+  version: string;
+  timestamp: number;
+  sources: {
+    supabase: { count: number; checksum: string };
+    dictionnaire_10_2: { count: number; checksum: string };
+    fra_bba: { count: number; checksum: string };
+  };
+  entries: DictionaryEntry[];
+}
+
 export interface BiDirectionalIndex {
   bariba_to_french: Map<string, DictionaryEntry[]>;
   french_to_bariba: Map<string, DictionaryEntry[]>;
 }
 
-// Variable globale pour stocker les entrées chargées
+// Variables globales
 let comprehensiveDictionaryEntries: DictionaryEntry[] = [];
 let isLoaded = false;
+const CACHE_VERSION = "2.0";
+const CACHE_KEY = "dictionary_cache_v2";
+const CACHE_EXPIRY_DAYS = 7;
 
 // Fonction pour extraire les mots-clés français d'une entrée
 function extractFrenchKeywords(definition: string, examples: string[]): string[] {
@@ -69,32 +83,154 @@ function extractFrenchKeywords(definition: string, examples: string[]): string[]
   return Array.from(keywords);
 }
 
-// Fonction pour charger le dictionnaire complet depuis Supabase
-export async function loadComprehensiveDictionary(): Promise<DictionaryEntry[]> {
-  if (isLoaded && comprehensiveDictionaryEntries.length > 0) {
-    return comprehensiveDictionaryEntries;
+// Simple checksum function
+function simpleChecksum(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
   }
+  return Math.abs(hash).toString(36);
+}
 
+// Load from cache
+function loadFromCache(): DictionaryEntry[] | null {
   try {
-    console.log('Loading dictionary from database...');
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+
+    const cacheData: CacheData = JSON.parse(cached);
+    
+    // Check version and expiry
+    if (cacheData.version !== CACHE_VERSION) return null;
+    
+    const ageInDays = (Date.now() - cacheData.timestamp) / (1000 * 60 * 60 * 24);
+    if (ageInDays > CACHE_EXPIRY_DAYS) return null;
+
+    console.log(`✅ Cache loaded: ${cacheData.entries.length} entries`);
+    return cacheData.entries;
+  } catch (error) {
+    console.error('Cache load error:', error);
+    return null;
+  }
+}
+
+// Save to cache
+function saveToCache(entries: DictionaryEntry[], sources: CacheData['sources']): void {
+  try {
+    const cacheData: CacheData = {
+      version: CACHE_VERSION,
+      timestamp: Date.now(),
+      sources,
+      entries
+    };
+    
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    console.log(`💾 Cache saved: ${entries.length} entries`);
+  } catch (error) {
+    console.error('Cache save error:', error);
+  }
+}
+
+// Load from dictionnaire-10-2.json
+async function loadDictionnaire10_2(): Promise<DictionaryEntry[]> {
+  try {
+    console.log('📖 Loading dictionnaire-10-2.json...');
+    const dict = await import('./dictionnaire-10-2.json');
+    const data = dict.default || dict;
+    
+    const entries: DictionaryEntry[] = data
+      .filter((item: any) => item.word && item.word.trim())
+      .map((item: any) => ({
+        word: item.word.trim(),
+        phonetic: item.phonetic || null,
+        part_of_speech: item.part_of_speech || 'n',
+        definition: item.definition || '',
+        example_bariba: item.example_bariba ? [item.example_bariba] : [],
+        example_francais: item.example_francais ? [item.example_francais] : [],
+        notes: '',
+        source_flags: ['dict'],
+        incertitude: 0.3,
+        french_keywords: extractFrenchKeywords(item.definition || '', item.example_francais ? [item.example_francais] : []),
+        variants: []
+      }));
+    
+    console.log(`✅ Loaded ${entries.length} entries from dictionnaire-10-2.json`);
+    return entries;
+  } catch (error) {
+    console.error('Error loading dictionnaire-10-2.json:', error);
+    return [];
+  }
+}
+
+// Load from fra_bba_dictionnary.json
+async function loadFraBbaDictionary(): Promise<DictionaryEntry[]> {
+  try {
+    console.log('📜 Loading fra_bba_dictionnary.json...');
+    const dict = await import('./fra_bba_dictionnary.json');
+    const data = dict.default || dict;
+    
+    // Extract unique phrases as dictionary entries
+    const entries: DictionaryEntry[] = [];
+    const seen = new Set<string>();
+    
+    for (const item of data) {
+      if (!item.bariba || !item.french) continue;
+      
+      // Extract main words from Bariba text
+      const baribaWords = item.bariba
+        .toLowerCase()
+        .split(/[\s,\.!?;:]+/)
+        .filter((w: string) => w.length > 2);
+      
+      const frenchWords = item.french
+        .toLowerCase()
+        .split(/[\s,\.!?;:]+/)
+        .filter((w: string) => w.length > 2);
+      
+      // Create entry for the phrase
+      const key = item.bariba.toLowerCase().trim();
+      if (!seen.has(key) && baribaWords.length > 0) {
+        seen.add(key);
+        
+        entries.push({
+          word: baribaWords[0], // Use first word as main entry
+          phonetic: null,
+          part_of_speech: 'phrase',
+          definition: item.french,
+          example_bariba: [item.bariba],
+          example_francais: [item.french],
+          notes: item.reference || '',
+          source_flags: ['biblical'],
+          incertitude: 0.2,
+          french_keywords: frenchWords,
+          variants: baribaWords.slice(1)
+        });
+      }
+    }
+    
+    console.log(`✅ Loaded ${entries.length} phrases from fra_bba_dictionnary.json`);
+    return entries;
+  } catch (error) {
+    console.error('Error loading fra_bba_dictionnary.json:', error);
+    return [];
+  }
+}
+
+// Load from Supabase
+async function loadFromDatabase(): Promise<DictionaryEntry[]> {
+  try {
+    console.log('🗄️ Loading from database...');
     const { data, error } = await supabase
       .from('dictionary_entries')
       .select('*')
       .order('word', { ascending: true });
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
+    if (!data || data.length === 0) return [];
 
-    if (!data || data.length === 0) {
-      console.warn('No dictionary entries found in database');
-      return [];
-    }
-
-    console.log(`Loaded ${data.length} entries from database`);
-
-    // Transformer les données de la base en format DictionaryEntry
-    comprehensiveDictionaryEntries = data.map(entry => ({
+    const entries: DictionaryEntry[] = data.map(entry => ({
       word: entry.word,
       phonetic: entry.phonetic,
       part_of_speech: entry.part_of_speech || 'n',
@@ -106,8 +242,8 @@ export async function loadComprehensiveDictionary(): Promise<DictionaryEntry[]> 
         entry.usage_context,
         entry.cross_reference ? `Voir aussi: ${entry.cross_reference}` : ''
       ].filter(Boolean).join('. '),
-      source_flags: [],
-      incertitude: entry.quality_score ? 1 - (entry.quality_score / 100) : 0.5,
+      source_flags: ['db'],
+      incertitude: entry.quality_score ? 1 - (entry.quality_score / 100) : 0.1,
       french_keywords: entry.french_keywords || extractFrenchKeywords(entry.definition, entry.example_francais || []),
       variants: entry.variants || [],
       nominal_class: entry.nominal_class || undefined,
@@ -130,12 +266,120 @@ export async function loadComprehensiveDictionary(): Promise<DictionaryEntry[]> 
       usage_context: entry.usage_context || undefined
     }));
 
-    isLoaded = true;
-    console.log('Dictionary loaded successfully');
-    return comprehensiveDictionaryEntries;
+    console.log(`✅ Loaded ${entries.length} entries from database`);
+    return entries;
   } catch (error) {
-    console.error('Error loading dictionary from database:', error);
-    // Fallback to empty array if loading fails
+    console.error('Error loading from database:', error);
+    return [];
+  }
+}
+
+// Deduplicate and merge entries
+function mergeDictionarySources(
+  dbEntries: DictionaryEntry[],
+  dictEntries: DictionaryEntry[],
+  biblicalEntries: DictionaryEntry[]
+): DictionaryEntry[] {
+  const merged = new Map<string, DictionaryEntry>();
+  
+  // Priority: database > dictionary > biblical
+  const addEntries = (entries: DictionaryEntry[], priority: number) => {
+    for (const entry of entries) {
+      const key = entry.word.toLowerCase().trim();
+      if (!key) continue;
+      
+      const existing = merged.get(key);
+      if (!existing || existing.source_flags.includes('biblical')) {
+        // Keep DB/dict entry, but merge examples from biblical
+        if (existing && entry.source_flags.includes('biblical')) {
+          existing.example_bariba = [...new Set([...existing.example_bariba, ...entry.example_bariba])];
+          existing.example_francais = [...new Set([...existing.example_francais, ...entry.example_francais])];
+          existing.source_flags = [...new Set([...existing.source_flags, ...entry.source_flags])];
+        } else {
+          merged.set(key, { ...entry });
+        }
+      }
+    }
+  };
+  
+  addEntries(biblicalEntries, 3);
+  addEntries(dictEntries, 2);
+  addEntries(dbEntries, 1);
+  
+  return Array.from(merged.values());
+}
+
+// Main loading function
+export async function loadComprehensiveDictionary(): Promise<DictionaryEntry[]> {
+  if (isLoaded && comprehensiveDictionaryEntries.length > 0) {
+    return comprehensiveDictionaryEntries;
+  }
+
+  // Try cache first
+  const cached = loadFromCache();
+  if (cached && cached.length > 0) {
+    comprehensiveDictionaryEntries = cached;
+    isLoaded = true;
+    
+    // Load fresh data in background
+    loadAllSources().then(entries => {
+      if (entries.length > cached.length) {
+        comprehensiveDictionaryEntries = entries;
+        console.log(`🔄 Updated cache with ${entries.length} entries`);
+      }
+    });
+    
+    return cached;
+  }
+
+  // Load all sources
+  comprehensiveDictionaryEntries = await loadAllSources();
+  isLoaded = true;
+  
+  return comprehensiveDictionaryEntries;
+}
+
+// Load all sources and merge
+async function loadAllSources(): Promise<DictionaryEntry[]> {
+  try {
+    console.log('🔄 Loading all dictionary sources...');
+    
+    // Load all sources in parallel
+    const [dbEntries, dictEntries, biblicalEntries] = await Promise.all([
+      loadFromDatabase(),
+      loadDictionnaire10_2(),
+      loadFraBbaDictionary()
+    ]);
+    
+    // Merge all sources
+    const merged = mergeDictionarySources(dbEntries, dictEntries, biblicalEntries);
+    
+    console.log(`🎉 Total entries: ${merged.length}`);
+    console.log(`   - Database: ${dbEntries.length}`);
+    console.log(`   - Dictionary: ${dictEntries.length}`);
+    console.log(`   - Biblical: ${biblicalEntries.length}`);
+    
+    // Save to cache
+    const sources = {
+      supabase: { 
+        count: dbEntries.length, 
+        checksum: simpleChecksum(JSON.stringify(dbEntries.slice(0, 10))) 
+      },
+      dictionnaire_10_2: { 
+        count: dictEntries.length, 
+        checksum: simpleChecksum(JSON.stringify(dictEntries.slice(0, 10))) 
+      },
+      fra_bba: { 
+        count: biblicalEntries.length, 
+        checksum: simpleChecksum(JSON.stringify(biblicalEntries.slice(0, 10))) 
+      }
+    };
+    
+    saveToCache(merged, sources);
+    
+    return merged;
+  } catch (error) {
+    console.error('Error loading all sources:', error);
     return [];
   }
 }
