@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.suggest-dictionary-fix]
 verify_jwt = true
+
+[functions.enrich-training-data]
+verify_jwt = true
