@@ -14,8 +14,8 @@ const NASAL_VOWEL_PAIRS: Record<string, string> = {
   'ã': 'a', 'ɛ̃': 'ɛ', 'ĩ': 'i', 'ɔ̃': 'ɔ', 'ũ': 'u'
 };
 
-// Suffixes dérivatifs verbaux
-export type DerivationalSuffix = '-ma' | '-na' | '-ra' | '-ri' | '-si' | '-sia';
+// Suffixes dérivatifs verbaux (complets avec combinaisons)
+export type DerivationalSuffix = '-ma' | '-na' | '-ra' | '-ri' | '-si' | '-sia' | '-sina' | '-siama' | '-rima' | '-nama' | '-rina';
 
 export const DERIVATIONAL_MEANINGS: Record<DerivationalSuffix, string> = {
   '-ma': 'action ramenée vers le locuteur, ou action débutante',
@@ -23,8 +23,39 @@ export const DERIVATIONAL_MEANINGS: Record<DerivationalSuffix, string> = {
   '-ra': 'passif, action subie',
   '-ri': 'action faite contre, à l\'insu de, au détriment de',
   '-si': 'vers, en direction, dans, sur, à l\'aide de',
-  '-sia': 'actif, faire faire'
+  '-sia': 'actif, faire faire',
+  '-sina': 'asseoir mutuellement (combinaison -si + -na)',
+  '-siama': 'faire asseoir vers soi (combinaison -sia + -ma)',
+  '-rima': 'subir vers soi (combinaison -ri + -ma)',
+  '-nama': 'mutuellement vers soi (combinaison -na + -ma)',
+  '-rina': 'contre mutuellement (combinaison -ri + -na)'
 };
+
+// Classes verbales (5 groupes selon les terminaisons)
+export const VERBAL_GROUPS = {
+  GROUP_1: 1, // Verbes en -a
+  GROUP_2: 2, // Verbes en -e  
+  GROUP_3: 3, // Verbes en -i
+  GROUP_4: 4, // Verbes en -o
+  GROUP_5: 5  // Verbes irréguliers
+};
+
+// Verbes de qualité (veq) - verbes d'état invariables
+export interface QualityVerb {
+  base: string; // Forme invariable
+  relatedActionVerb?: string; // Verbe d'action associé
+  meaning: string;
+}
+
+export const QUALITY_VERBS: QualityVerb[] = [
+  { base: 'yɔ̃̀', relatedActionVerb: 'yɔ̃ra', meaning: 'être debout' },
+  { base: 'sɔ̃̀', relatedActionVerb: 'sina', meaning: 'être assis' },
+  { base: 'kpã', relatedActionVerb: 'kpɛ̃̀a', meaning: 'être grand' },
+  { base: 'kpĩ', relatedActionVerb: 'kpuna', meaning: 'être couché' },
+  { base: 'duku', relatedActionVerb: 'dukua', meaning: 'être profond' },
+  { base: 'nɔɔra', meaning: 'être bon' },
+  { base: 'wɑri', meaning: 'être mauvais' }
+];
 
 export interface NominalClassAttributes {
   classCode: string;
@@ -35,12 +66,14 @@ export interface NominalClassAttributes {
 }
 
 export interface VerbForms {
-  root: string;
-  radical: string;
-  accomplished?: string;
-  negative?: string;
-  benefactive?: string;
-  group?: number;
+  root: string; // Racine (utilisée avec futur: u koo...)
+  radical: string; // Radical (pour suffixes: -mɔ, -re, -bu)
+  accomplished?: string; // Forme accomplie (action terminée)
+  negative?: string; // Forme négative accomplie
+  benefactive?: string; // Forme bénéfactive (action faite pour quelqu'un)
+  group?: number; // Groupe verbal (1-5)
+  inaccompli?: string; // Forme inaccomplie (-mɔ)
+  imperative?: string; // Impératif
 }
 
 // Comparer deux caractères selon l'ordre alphabétique Baatɔnum

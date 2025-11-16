@@ -15,16 +15,16 @@ export const useTranslationAI = () => {
         setIsLoading(true);
         setError(null);
         
-        console.log("🔄 Chargement des données du dictionnaire...");
-        const dictionaryEntries = await loadComprehensiveDictionary();
+        console.log("🔄 Chargement de toutes les données (dictionnaire + phrases + exemples)...");
+        const { entries, phrases, examples } = await loadComprehensiveDictionary();
         
-        console.log("🤖 Création du traducteur simplifié...");
-        const model = new SimplifiedTranslationAI(dictionaryEntries);
+        console.log("🤖 Création du traducteur avec 220k+ entrées...");
+        const model = new SimplifiedTranslationAI(entries, phrases, examples);
         
         setTranslationModel(model);
         setIsInitialized(true);
         
-        console.log("✅ Traducteur prêt!");
+        console.log("✅ Traducteur entièrement entraîné et prêt!");
       } catch (err) {
         console.error("❌ Erreur lors de l'initialisation:", err);
         setError("Erreur lors de l'initialisation du traducteur");
