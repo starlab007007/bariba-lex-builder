@@ -215,6 +215,83 @@ Pour améliorer la qualité des traductions :
    - Vérifiez l'amélioration des scores de confiance
    - Comparez avec les résultats précédents
 
+## ✨ Enrichissement IA Avancé (NOUVEAU)
+
+### Architecture NMT (Neural Machine Translation)
+
+Le système implémente une approche **Transformer Seq2Seq** pour la traduction French-Bariba :
+
+**1. Tokenisation Bariba Personnalisée**
+- Reconnaissance des caractères spéciaux : ɔ, ɛ, ɑ, ɡ, kp
+- Gestion des marques tonales : á, à, ã, ā
+- Identification des morphèmes bariba
+
+**2. Encodeur (Français)**
+- Analyse sémantique de la phrase source
+- Représentations vectorielles contextuelles
+- Mécanisme d'attention
+
+**3. Décodeur (Bariba)**
+- Génération token par token
+- Application des règles grammaticales (S+V+O)
+- Insertion des marques tonales appropriées
+
+**4. Apprentissage Supervisé**
+- Comparaison prédiction vs vérité terrain
+- Ajustement des paramètres neuronaux
+
+### Modes de Génération
+
+**Mode "Génération"** :
+- Crée 15 nouvelles phrases complètes
+- Utilise le vocabulaire du dictionnaire
+- Couvre différents contextes (salutations, vie quotidienne, nature, famille)
+
+**Mode "Augmentation"** :
+- Génère 3 variations par entrée du dictionnaire
+- Crée des contextes d'utilisation variés
+- Traduit automatiquement en bariba
+
+### Utilisation Recommandée
+
+1. **Démarrer avec le Mode Génération** :
+   - Générer 15-20 phrases pour diversifier le corpus
+   - Valider manuellement les meilleures
+
+2. **Utiliser l'Augmentation pour Enrichir** :
+   - Cibler les mots du dictionnaire peu utilisés
+   - Créer des contextes variés
+
+3. **Valider Rigoureusement** :
+   - Vérifier les caractères spéciaux (ɔ, ɛ, kp, etc.)
+   - Confirmer les marques tonales
+   - Valider la grammaire bariba
+
+4. **Ré-entraîner le Modèle** :
+   - Après avoir validé 50+ nouvelles phrases
+   - Tester les améliorations dans l'onglet "Test"
+
+### Contexte Linguistique Intégré
+
+**Inventaire Phonétique** :
+- Voyelles : a, e, i, o, u, ɑ, ɛ, ɔ (+ marques tonales)
+- Consonnes spéciales : ɡ (vélaire voisée), kp (labio-vélaire)
+- Nasalisation : ã, ẽ, ĩ, õ, ũ
+
+**Patterns Morphologiques** :
+- Pronoms : n (je), a (tu/il), u (nous), yi (vous), ba (ils)
+- Négation : ka/kã avant le verbe
+
+**Syntaxe** :
+- Ordre : Sujet + Verbe + Objet
+- Adjectifs suivent les noms
+
+### Limitations
+
+- **Coût API** : La génération utilise des crédits Lovable AI
+- **Validation Humaine** : Essentielle pour garantir la qualité
+- **Contexte Biblique** : Le modèle est spécialisé sur ce domaine
+
 ## 🆘 Support
 
 Si vous rencontrez des problèmes :

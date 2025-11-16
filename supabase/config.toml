@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.train-translation-model]
 verify_jwt = true
+
+[functions.enhance-training-data]
+verify_jwt = false

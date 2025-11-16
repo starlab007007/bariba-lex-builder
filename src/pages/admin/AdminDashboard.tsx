@@ -13,7 +13,8 @@ import {
   LogOut,
   Upload,
   FlaskConical,
-  Activity
+  Activity,
+  Sparkles
 } from 'lucide-react';
 import AdminOverview from '@/components/admin/AdminOverview';
 import DictionaryManager from '@/components/admin/DictionaryManager';
@@ -26,6 +27,7 @@ import ModelTrainingPanel from '@/components/admin/ModelTrainingPanel';
 import { MassDataImporter } from '@/components/admin/MassDataImporter';
 import ModelTestingPanel from '@/components/admin/ModelTestingPanel';
 import ModelPerformanceDashboard from '@/components/admin/ModelPerformanceDashboard';
+import TrainingDataEnhancer from '@/components/admin/TrainingDataEnhancer';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -54,7 +56,7 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-11 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Vue d'ensemble</span>
@@ -78,6 +80,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="model-performance" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
               <span className="hidden sm:inline">Performance</span>
+            </TabsTrigger>
+            <TabsTrigger value="enhance" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">IA Avancée</span>
             </TabsTrigger>
             <TabsTrigger value="performance" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -126,6 +132,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="model-performance" className="space-y-4">
             <ModelPerformanceDashboard />
+          </TabsContent>
+
+          <TabsContent value="enhance" className="space-y-4">
+            <TrainingDataEnhancer />
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-4">

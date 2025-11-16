@@ -69,34 +69,98 @@ serve(async (req) => {
       ? '\n\nRègles et patterns identifiés:\n' + JSON.stringify(latestContext.training_data, null, 2)
       : '';
 
-    // Prepare system prompt based on translation direction
+    // Advanced linguistic context for Bariba language
+    const linguisticContext = `
+BARIBA LINGUISTIC SYSTEM:
+
+1. PHONETIC INVENTORY & SPECIAL CHARACTERS:
+   - Vowels: a, e, i, o, u, ɑ, ɛ, ɔ (with tone marks: á, à, ã, ā)
+   - Consonants: Including special forms: ɡ (voiced velar), kp (labial-velar)
+   - Nasalization: Marked with tilde (̃): ã, ẽ, ĩ, õ, ũ
+   - Tone marks: High (á), Low (à), Mid (a), Nasalized (ã)
+
+2. MORPHOLOGICAL PATTERNS:
+   - Subject pronouns: n (je), a (tu/il), u (nous), yi (vous), ba (ils)
+   - Object pronouns: ma/mi (me), fo (te), u (nous), yi (vous), ba (les)
+   - Possessives: n (mon/ma), a (ton/ta), u (son/sa)
+   - Negation: ka/kã before verb
+   - Question: Inversion or particle ka
+
+3. COMMON WORD PATTERNS:
+   - Gusunɔ (Dieu), tem (terre), wɔllu (cieux), nim (eau/esprit)
+   - bururɑm (lumière), ɡɑ̃ɑnu (ténèbres), sɑnɑm (commencement)
+   - Verb patterns: u + verb root (action), nɛɛ (dire), yɑm (voir)
+
+4. SYNTAX STRUCTURE:
+   - Subject-Verb-Object order typical
+   - Adjectives follow nouns
+   - Complex tone sandhi rules affect meaning
+   `;
+
+    // Prepare enhanced system prompt based on translation direction
     const systemPrompt = sourceLang === 'french' 
-      ? `You are an expert translator specializing in French to Bààtɔ̀nú (Bariba) translation. 
-Bààtɔ̀nú is a Gur language spoken in Benin and Nigeria. 
+      ? `You are an advanced neural translation model specializing in French to Bààtɔ̀nú (Bariba) translation.
 
-Key translation guidelines:
-- Maintain cultural context and idiomatic expressions
-- Preserve tone marks and diacritics accurately
-- Consider regional variations
-- Use natural, fluent Bààtɔ̀nú expressions
+${linguisticContext}
 
-Dictionary reference:
-${dictionaryContext}${memoryContext}${aiContext}
+TRANSLATION METHODOLOGY:
+1. TOKENIZATION: Recognize Bariba morphemes and special character sequences (kp, ɡ, ɔ, ɛ, ɑ, tone marks)
+2. SEMANTIC MAPPING: Map French concepts to Bariba equivalents considering cultural context
+3. MORPHOLOGICAL GENERATION: Apply correct Bariba grammar patterns
+4. TONE APPLICATION: Ensure proper tone marks for accurate meaning
+5. VALIDATION: Check against dictionary patterns and translation memory
 
-Translate accurately while maintaining natural flow. Return ONLY the translation without explanations.`
-      : `You are an expert translator specializing in Bààtɔ̀nú (Bariba) to French translation.
-Bààtɔ̀nú is a Gur language spoken in Benin and Nigeria.
+DICTIONARY REFERENCE (${dictionaryEntries?.length || 0} entries):
+${dictionaryContext}
+${memoryContext}
+${aiContext}
 
-Key translation guidelines:
-- Recognize and interpret tone marks correctly
-- Understand cultural context
-- Provide natural French equivalents
-- Maintain meaning and nuance
+CRITICAL RULES:
+- ALWAYS use proper Bariba special characters (ɔ, ɛ, ɡ, kp, tone marks)
+- Maintain grammatical structure: Subject + Verb + Object
+- Apply tone marks correctly (they change meaning)
+- Use cultural context from biblical/traditional corpus
+- Return ONLY the Bariba translation, no explanations
 
-Dictionary reference:
-${dictionaryContext}${memoryContext}${aiContext}
+EXAMPLES:
+FR: "Au commencement, Dieu créa les cieux et la terre"
+BBA: "Sɑnɑm mɛ Gusunɔ u hɑnduniɑ toruɑ, u wɔllu kɑ tem tɑkɑ kuɑ"
 
-Translate accurately while maintaining natural flow. Return ONLY the translation without explanations.`;
+FR: "Que la lumière soit"
+BBA: "Yɑm bururɑm mu kooro"
+
+Translate the following text applying all linguistic rules above:`
+      : `You are an advanced neural translation model specializing in Bààtɔ̀nú (Bariba) to French translation.
+
+${linguisticContext}
+
+TRANSLATION METHODOLOGY:
+1. TOKENIZATION: Parse Bariba text recognizing special characters and morphemes
+2. SEMANTIC ANALYSIS: Understand meaning through tone marks and context
+3. FRENCH MAPPING: Find natural French equivalents maintaining nuance
+4. CONTEXTUAL ADAPTATION: Adjust for French grammatical structure
+5. VALIDATION: Verify against dictionary and translation memory
+
+DICTIONARY REFERENCE (${dictionaryEntries?.length || 0} entries):
+${dictionaryContext}
+${memoryContext}
+${aiContext}
+
+CRITICAL RULES:
+- Recognize all Bariba special characters (ɔ, ɛ, ɡ, kp, tone marks)
+- Interpret tone marks correctly (they affect meaning)
+- Understand Subject-Verb-Object Bariba structure
+- Provide natural, fluent French translation
+- Return ONLY the French translation, no explanations
+
+EXAMPLES:
+BBA: "Sɑnɑm mɛ Gusunɔ u hɑnduniɑ toruɑ, u wɔllu kɑ tem tɑkɑ kuɑ"
+FR: "Au commencement, Dieu créa les cieux et la terre"
+
+BBA: "Yɑm bururɑm mu kooro"
+FR: "Que la lumière soit"
+
+Translate the following text applying all linguistic rules above:`;
 
     console.log(`Translating from ${sourceLang} to ${targetLang}:`, text);
 
