@@ -43,18 +43,20 @@ export default function AnalyticsDashboard() {
   });
 
   // Prepare chart data
-  const chartData = translationStats?.slice(0, 20).reverse().map((log, index) => ({
+  const safeTranslationStats = Array.isArray(translationStats) ? translationStats : [];
+  
+  const chartData = safeTranslationStats.slice(0, 20).reverse().map((log, index) => ({
     name: `T${index + 1}`,
     confidence: log.confidence_score || 0,
-  })) || [];
+  }));
 
   const avgConfidence =
-    translationStats && translationStats.length > 0
+    safeTranslationStats.length > 0
       ? (
-          translationStats.reduce(
+          safeTranslationStats.reduce(
             (sum, log) => sum + (log.confidence_score || 0),
             0
-          ) / translationStats.length
+          ) / safeTranslationStats.length
         ).toFixed(2)
       : '0';
 
@@ -86,7 +88,7 @@ export default function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {translationStats?.length || 0}
+              {safeTranslationStats.length}
             </div>
           </CardContent>
         </Card>
