@@ -17,7 +17,9 @@ import {
   Sparkles,
   GitCompare,
   Search,
-  Database
+  Database,
+  PieChart,
+  Edit3
 } from 'lucide-react';
 import AdminOverview from '@/components/admin/AdminOverview';
 import DictionaryManager from '@/components/admin/DictionaryManager';
@@ -34,6 +36,8 @@ import TranslationComparisonDashboard from '@/components/admin/TranslationCompar
 import TrainingDataEnhancer from '@/components/admin/TrainingDataEnhancer';
 import DictionaryEnricher from '@/components/admin/DictionaryEnricher';
 import AdvancedDictionarySearch from '@/components/AdvancedDictionarySearch';
+import GrammaticalStatsDashboard from '@/components/admin/GrammaticalStatsDashboard';
+import BulkEditPanel from '@/components/admin/BulkEditPanel';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -119,6 +123,14 @@ export default function AdminDashboard() {
               <Search className="h-4 w-4" />
               <span className="hidden sm:inline">Recherche Avancée</span>
             </TabsTrigger>
+            <TabsTrigger value="stats" className="flex items-center gap-2">
+              <PieChart className="h-4 w-4" />
+              <span className="hidden sm:inline">Statistiques</span>
+            </TabsTrigger>
+            <TabsTrigger value="bulk-edit" className="flex items-center gap-2">
+              <Edit3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Édition Masse</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -182,6 +194,14 @@ export default function AdminDashboard() {
 
           <TabsContent value="advanced-search" className="space-y-4">
             <AdvancedDictionarySearch />
+          </TabsContent>
+
+          <TabsContent value="stats" className="space-y-4">
+            <GrammaticalStatsDashboard />
+          </TabsContent>
+
+          <TabsContent value="bulk-edit" className="space-y-4">
+            <BulkEditPanel />
           </TabsContent>
         </Tabs>
       </main>
