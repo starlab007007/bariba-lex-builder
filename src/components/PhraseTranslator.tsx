@@ -6,8 +6,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslationAI } from "@/hooks/useTranslationAI";
+import { useTranslationCache } from "@/hooks/useTranslationCache";
 import { useGamification } from "@/hooks/useGamification";
 import TranslationFeedback from "./TranslationFeedback";
+import { TranslationSuggestions } from "./TranslationSuggestions";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
@@ -19,6 +21,7 @@ export const PhraseTranslator = () => {
   const [isTranslating, setIsTranslating] = useState(false);
   const [useAI, setUseAI] = useState(true);
   const [autoTranslate, setAutoTranslate] = useState(true);
+  const [usedCache, setUsedCache] = useState(false);
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
   
@@ -32,6 +35,13 @@ export const PhraseTranslator = () => {
     error: aiError,
     modelStats
   } = useTranslationAI();
+
+  // Hook pour le cache de traductions
+  const { 
+    getCachedTranslation, 
+    cacheTranslation, 
+    isCacheLoading 
+  } = useTranslationCache();
 
   // Traduction automatique en temps réel
   useEffect(() => {
@@ -88,9 +98,25 @@ export const PhraseTranslator = () => {
     
     try {
       let translation = "";
+      const sourceLang = direction === "french-to-bariba" ? 'french' : 'bariba';
+      const targetLang = direction === "french-to-bariba" ? 'bariba' : 'french';
       
-      // Use local AI model (free, dictionary-based)
-      if (useAI && aiReady) {
+      // 1. Vérifier d'abord le cache
+      const cached = await getCachedTranslation(sourceText, sourceLang, targetLang);
+      if (cached) {
+        translation = cached.target_text;
+        setUsedCache(true);
+        
+        const duration = Math.round(performance.now() - startTime);
+        toast({
+          title: "⚡ Traduction instantanée (Cache)",
+          description: `Traduction trouvée dans le cache (${duration}ms). Utilisée ${cached.usage_count} fois.`
+        });
+      }
+      // 2. Sinon, utiliser le modèle local AI (gratuit)
+      else if (useAI && aiReady) {
+        setUsedCache(false);
+        
         if (direction === "french-to-bariba") {
           translation = await translateFrenchToBariba(sourceText);
         } else {
@@ -99,9 +125,12 @@ export const PhraseTranslator = () => {
         
         const duration = Math.round(performance.now() - startTime);
         
+        // Sauvegarder dans le cache
+        await cacheTranslation(sourceText, translation, sourceLang, targetLang, 85);
+        
         toast({
           title: "🧠 Traduction IA (Gratuite)",
-          description: `Traduction effectuée en ${duration}ms avec le modèle local.`
+          description: `Traduction effectuée en ${duration}ms avec le modèle local enrichi.`
         });
       } else {
         // Fallback: traduction de démonstration
@@ -359,13 +388,13 @@ export const PhraseTranslator = () => {
       <div className="flex items-center justify-center gap-4">
         <Button
           onClick={translatePhrase}
-          disabled={!sourceText.trim() || isTranslating || (useAI && !aiReady)}
+          disabled={!sourceText.trim() || isTranslating || (useAI && !aiReady) || isCacheLoading}
           className="px-8"
         >
-          {isTranslating ? (
+          {isTranslating || isCacheLoading ? (
             <>
               <Brain className="mr-2 h-4 w-4 animate-pulse" />
-              {useAI ? "Traduction IA (Gratuite)..." : "Traduction..."}
+              {isCacheLoading ? "Recherche cache..." : useAI ? "Traduction IA (Gratuite)..." : "Traduction..."}
             </>
           ) : (
             <>
@@ -388,6 +417,30 @@ export const PhraseTranslator = () => {
           Effacer tout
         </Button>
       </div>
+
+      {/* Translation Suggestions - Système d'amélioration communautaire */}
+      {translatedText && (
+        <TranslationSuggestions
+          sourceText={sourceText}
+          translatedText={translatedText}
+          translationLogId={translationLogId}
+          onSuggestionSubmitted={() => {
+            toast({
+              title: "🎉 Contribution enregistrée",
+              description: "Merci d'aider à améliorer le traducteur Bààtɔ̀nú !"
+            });
+          }}
+        />
+      )}
+
+      {/* Cache indicator */}
+      {usedCache && translatedText && (
+        <div className="flex justify-center">
+          <Badge variant="outline" className="text-xs">
+            ⚡ Traduction issue du cache (instantanée)
+          </Badge>
+        </div>
+      )}
 
       {/* Examples */}
       <Card className="p-4 bg-gradient-to-br from-accent/5 to-primary/5">

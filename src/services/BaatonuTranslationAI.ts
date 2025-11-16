@@ -26,6 +26,41 @@ export class BaatonuTranslationAI implements TranslationModel {
   private sentenceTransformer: any = null;
   private textGenerator: any = null;
 
+  // Règles linguistiques spécifiques au Bariba
+  private linguisticRules = {
+    // Préfixes nominaux
+    prefixes: {
+      'le': 'u', 'la': 'u', 'les': 'ba', 'un': 'kɑ', 'une': 'kɑ', 'des': 'ba'
+    },
+    // Conjugaisons de base
+    conjugations: {
+      'je': 'n', 'tu': 'a', 'il': 'u', 'elle': 'u', 'nous': 'ti', 'vous': 'yi', 'ils': 'ba', 'elles': 'ba'
+    },
+    // Patterns de tons (simplifié)
+    tonePatterns: {
+      'haut': '́', 'bas': '̀', 'moyen': '̄'
+    },
+    // Mots de liaison communs
+    connectors: {
+      'et': 'kɑ', 'ou': 'subu', 'mais': 'ɑmɑ', 'donc': 'yerɑ', 'car': 'bɑru', 
+      'si': 'foo', 'que': 'kɑ', 'parce que': 'bɑru', 'pour': 'tɔ̃'
+    },
+    // Adjectifs de base
+    adjectives: {
+      'grand': 'deburu', 'petit': 'biiku', 'bon': 'nɔɔrɑ', 'mauvais': 'bɔkɔ',
+      'beau': 'nɔɔrɑ', 'nouveau': 'kuru', 'vieux': 'kpɑɑru', 'jeune': 'sɑnɑwu'
+    },
+    // Verbes courants avec leurs formes
+    commonVerbs: {
+      'être': 'de', 'avoir': 'gbee', 'faire': 'yo', 'dire': 'nɛ', 'aller': 'su',
+      'venir': 'wɑ', 'voir': 'yɑm', 'savoir': 'mɔ', 'pouvoir': 'seke', 'vouloir': 'bɑɑ'
+    },
+    // Négations
+    negations: {
+      'ne...pas': 'kɑ...sɑ', 'ne...plus': 'kɑ...gbenɑ', 'ne...jamais': 'kɑ...dɑɑ'
+    }
+  };
+
   constructor(entries: DictionaryEntry[]) {
     this.dictionaryEntries = entries;
   }
@@ -184,15 +219,26 @@ export class BaatonuTranslationAI implements TranslationModel {
 
     console.log(`🔄 Traduction FR->Bààtɔ̀nú: "${text}"`);
     
-    // 1. Nettoyage et préparation du texte
+    // 1. Appliquer les règles linguistiques pré-traduction
+    text = this.applyPreTranslationRules(text, 'french-to-bariba');
+    
+    // 2. Nettoyage et préparation du texte
     const cleanText = this.cleanText(text);
     const words = this.tokenize(cleanText);
     
-    // 2. Traduction mot par mot avec le dictionnaire
+    // 3. Traduction mot par mot avec le dictionnaire et les règles
     const translatedWords: string[] = [];
     const unmatchedWords: string[] = [];
     
     for (const word of words) {
+      // D'abord vérifier les règles linguistiques
+      const ruleTranslation = this.applyLinguisticRulesForWord(word.toLowerCase(), 'french-to-bariba');
+      if (ruleTranslation) {
+        translatedWords.push(ruleTranslation);
+        continue;
+      }
+
+      // Ensuite chercher dans le dictionnaire
       const translations = this.translationPatterns.get(word.toLowerCase());
       if (translations && translations.length > 0) {
         // Prendre la première traduction (plus fréquente)
@@ -313,6 +359,55 @@ export class BaatonuTranslationAI implements TranslationModel {
   private isStopWord(word: string): boolean {
     const stopWords = ['le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'est', 'sont', 'avec', 'pour', 'par', 'sur', 'dans', 'à', 'au', 'aux'];
     return stopWords.includes(word.toLowerCase());
+  }
+
+  // Nouvelles méthodes pour les règles linguistiques
+  private applyPreTranslationRules(text: string, direction: 'french-to-bariba' | 'bariba-to-french'): string {
+    if (direction === 'french-to-bariba') {
+      // Remplacer les négations françaises
+      text = text.replace(/ne\s+(\w+)\s+pas/g, (match, verb) => `kɑ ${verb} sɑ`);
+      text = text.replace(/ne\s+(\w+)\s+plus/g, (match, verb) => `kɑ ${verb} gbenɑ`);
+      text = text.replace(/ne\s+(\w+)\s+jamais/g, (match, verb) => `kɑ ${verb} dɑɑ`);
+      
+      // Gérer les articles définis/indéfinis
+      text = text.replace(/\b(le|la)\s+/gi, 'u ');
+      text = text.replace(/\bles\s+/gi, 'ba ');
+      text = text.replace(/\b(un|une)\s+/gi, 'kɑ ');
+      text = text.replace(/\bdes\s+/gi, 'ba ');
+    }
+    
+    return text;
+  }
+
+  private applyLinguisticRulesForWord(word: string, direction: 'french-to-bariba' | 'bariba-to-french'): string | null {
+    if (direction === 'french-to-bariba') {
+      // Vérifier les pronoms
+      if (this.linguisticRules.conjugations[word]) {
+        return this.linguisticRules.conjugations[word];
+      }
+      
+      // Vérifier les connecteurs
+      if (this.linguisticRules.connectors[word]) {
+        return this.linguisticRules.connectors[word];
+      }
+      
+      // Vérifier les adjectifs
+      if (this.linguisticRules.adjectives[word]) {
+        return this.linguisticRules.adjectives[word];
+      }
+      
+      // Vérifier les verbes courants
+      if (this.linguisticRules.commonVerbs[word]) {
+        return this.linguisticRules.commonVerbs[word];
+      }
+      
+      // Vérifier les préfixes
+      if (this.linguisticRules.prefixes[word]) {
+        return this.linguisticRules.prefixes[word];
+      }
+    }
+    
+    return null;
   }
 
   private cleanText(text: string): string {
