@@ -6,11 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Search, Download, Upload } from 'lucide-react';
 import DictionaryEntryForm from './DictionaryEntryForm';
+import DictionaryJsonImporter from './DictionaryJsonImporter';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DictionaryManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showImporter, setShowImporter] = useState(false);
   const { toast } = useToast();
 
   const { data: entries, isLoading, refetch } = useQuery({
@@ -76,6 +78,10 @@ export default function DictionaryManager() {
             <Download className="mr-2 h-4 w-4" />
             Exporter
           </Button>
+          <Button variant="outline" onClick={() => setShowImporter(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importer JSON
+          </Button>
           <Button onClick={() => setShowForm(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Ajouter
@@ -134,6 +140,16 @@ export default function DictionaryManager() {
         <DictionaryEntryForm
           onClose={() => {
             setShowForm(false);
+            refetch();
+          }}
+        />
+      )}
+
+      {showImporter && (
+        <DictionaryJsonImporter
+          onClose={() => setShowImporter(false)}
+          onSuccess={() => {
+            setShowImporter(false);
             refetch();
           }}
         />

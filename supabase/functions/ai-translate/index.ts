@@ -31,16 +31,43 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
+    // Get training context
+    const { data: latestContext } = await supabaseClient
+      .from('ai_training_context')
+      .select('training_data')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     // Get dictionary context for better translations
     const { data: dictionaryEntries } = await supabaseClient
       .from('dictionary_entries')
       .select('word, definition, french_keywords, example_francais, example_bariba')
       .limit(100);
 
-    // Build context from dictionary
+    // Search for similar phrases in translation memory
+    const searchText = text.toLowerCase();
+    const { data: similarPhrases } = await supabaseClient
+      .from('translation_memory')
+      .select('*')
+      .eq('source_language', sourceLang)
+      .eq('target_language', targetLang)
+      .ilike('source_text', `%${searchText.split(' ')[0]}%`)
+      .limit(5);
+
+    // Build enhanced context
     const dictionaryContext = dictionaryEntries
       ?.map(entry => `${entry.word}: ${entry.definition}`)
       .join('\n') || '';
+
+    const memoryContext = similarPhrases && similarPhrases.length > 0
+      ? '\n\nPhrases similaires déjà traduites:\n' + 
+        similarPhrases.map(p => `"${p.source_text}" → "${p.target_text}"`).join('\n')
+      : '';
+
+    const aiContext = latestContext?.training_data 
+      ? '\n\nRègles et patterns identifiés:\n' + JSON.stringify(latestContext.training_data, null, 2)
+      : '';
 
     // Prepare system prompt based on translation direction
     const systemPrompt = sourceLang === 'french' 
@@ -54,7 +81,7 @@ Key translation guidelines:
 - Use natural, fluent Bààtɔ̀nú expressions
 
 Dictionary reference:
-${dictionaryContext}
+${dictionaryContext}${memoryContext}${aiContext}
 
 Translate accurately while maintaining natural flow. Return ONLY the translation without explanations.`
       : `You are an expert translator specializing in Bààtɔ̀nú (Bariba) to French translation.
@@ -67,7 +94,7 @@ Key translation guidelines:
 - Maintain meaning and nuance
 
 Dictionary reference:
-${dictionaryContext}
+${dictionaryContext}${memoryContext}${aiContext}
 
 Translate accurately while maintaining natural flow. Return ONLY the translation without explanations.`;
 

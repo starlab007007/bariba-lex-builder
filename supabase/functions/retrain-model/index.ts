@@ -72,13 +72,35 @@ serve(async (req) => {
 
     console.log(`Retraining model with ${dictionaryEntries?.length || 0} dictionary entries and ${trainingPhrases?.length || 0} training phrases`);
 
-    // Here you would implement the actual model retraining logic
-    // For now, we'll simulate it and save metrics
+    // Check minimum data requirements
+    if ((dictionaryEntries?.length || 0) < 100 || (trainingPhrases?.length || 0) < 50) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Insufficient data',
+          message: 'At least 100 dictionary entries and 50 validated phrases required',
+          current: {
+            dictionary: dictionaryEntries?.length || 0,
+            phrases: trainingPhrases?.length || 0,
+          }
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Call train-translation-model function for AI analysis
+    const { data: trainingResult, error: trainingError } = await supabaseClient.functions.invoke(
+      'train-translation-model'
+    );
+
+    if (trainingError) {
+      console.error('Training error:', trainingError);
+    }
 
     const metrics = {
       dictionary_size: dictionaryEntries?.length || 0,
       training_phrases: trainingPhrases?.length || 0,
       retrained_at: new Date().toISOString(),
+      training_context_created: !trainingError,
     };
 
     // Save performance metrics

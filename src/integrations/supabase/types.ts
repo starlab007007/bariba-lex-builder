@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_training_context: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          dictionary_count: number
+          id: string
+          metrics: Json | null
+          model_version: string
+          phrases_count: number
+          training_data: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          dictionary_count?: number
+          id?: string
+          metrics?: Json | null
+          model_version: string
+          phrases_count?: number
+          training_data?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          dictionary_count?: number
+          id?: string
+          metrics?: Json | null
+          model_version?: string
+          phrases_count?: number
+          training_data?: Json | null
+        }
+        Relationships: []
+      }
       dictionary_entries: {
         Row: {
           created_at: string | null
@@ -131,6 +164,44 @@ export type Database = {
         }
         Relationships: []
       }
+      translation_feedback: {
+        Row: {
+          created_at: string | null
+          feedback_type: string
+          id: string
+          notes: string | null
+          suggested_translation: string | null
+          translation_log_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          feedback_type: string
+          id?: string
+          notes?: string | null
+          suggested_translation?: string | null
+          translation_log_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          feedback_type?: string
+          id?: string
+          notes?: string | null
+          suggested_translation?: string | null
+          translation_log_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "translation_feedback_translation_log_id_fkey"
+            columns: ["translation_log_id"]
+            isOneToOne: false
+            referencedRelation: "translation_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       translation_logs: {
         Row: {
           confidence_score: number | null
@@ -164,6 +235,45 @@ export type Database = {
           source_language?: string
           target_language?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      translation_memory: {
+        Row: {
+          confidence_score: number | null
+          context: Json | null
+          created_at: string | null
+          id: string
+          source_language: string
+          source_text: string
+          target_language: string
+          target_text: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          source_language: string
+          source_text: string
+          target_language: string
+          target_text: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          confidence_score?: number | null
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          source_language?: string
+          source_text?: string
+          target_language?: string
+          target_text?: string
+          updated_at?: string | null
+          usage_count?: number | null
         }
         Relationships: []
       }
