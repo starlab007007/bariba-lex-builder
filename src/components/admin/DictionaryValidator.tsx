@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, AlertCircle, XCircle, Loader2, Play } from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle, Loader2, Play, Sparkles, Check } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ValidationIssue {
   id: string;
@@ -15,6 +16,13 @@ interface ValidationIssue {
   category: string;
   message: string;
   field: string;
+  entry?: any;
+}
+
+interface AISuggestion {
+  field: string;
+  value: any;
+  explanation: string;
 }
 
 export default function DictionaryValidator() {
@@ -22,6 +30,9 @@ export default function DictionaryValidator() {
   const [isValidating, setIsValidating] = useState(false);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [suggestions, setSuggestions] = useState<Map<string, AISuggestion>>(new Map());
+  const [loadingSuggestions, setLoadingSuggestions] = useState<Set<string>>(new Set());
+  const [applyingFixes, setApplyingFixes] = useState<Set<string>>(new Set());
 
   const validateDictionary = async () => {
     setIsValidating(true);
@@ -47,7 +58,8 @@ export default function DictionaryValidator() {
             severity: 'error',
             category: 'Verbe',
             message: 'Groupe verbal défini mais racine verbale manquante',
-            field: 'verb_root'
+            field: 'verb_root',
+            entry
           });
           errorCount++;
         }
@@ -60,7 +72,8 @@ export default function DictionaryValidator() {
             severity: 'warning',
             category: 'Verbe',
             message: 'Racine verbale définie mais groupe verbal manquant',
-            field: 'verbal_group'
+            field: 'verbal_group',
+            entry
           });
           warningCount++;
         }
@@ -73,7 +86,8 @@ export default function DictionaryValidator() {
             severity: 'warning',
             category: 'Nom',
             message: 'Classe nominale définie mais forme plurielle manquante',
-            field: 'plural_form'
+            field: 'plural_form',
+            entry
           });
           warningCount++;
         }
@@ -86,7 +100,8 @@ export default function DictionaryValidator() {
             severity: 'error',
             category: 'Nom',
             message: 'Forme plurielle définie mais classe nominale manquante',
-            field: 'nominal_class'
+            field: 'nominal_class',
+            entry
           });
           errorCount++;
         }
@@ -100,7 +115,8 @@ export default function DictionaryValidator() {
             severity: 'error',
             category: 'Nom',
             message: `Classe nominale invalide: "${entry.nominal_class}". Classes valides: ${validClasses.join(', ')}`,
-            field: 'nominal_class'
+            field: 'nominal_class',
+            entry
           });
           errorCount++;
         }
@@ -113,7 +129,8 @@ export default function DictionaryValidator() {
             severity: 'error',
             category: 'Verbe',
             message: `Groupe verbal invalide: ${entry.verbal_group}. Doit être entre 1 et 5`,
-            field: 'verbal_group'
+            field: 'verbal_group',
+            entry
           });
           errorCount++;
         }
@@ -126,7 +143,8 @@ export default function DictionaryValidator() {
             severity: 'warning',
             category: 'Verbe',
             message: 'Information verbale présente mais type de verbe manquant',
-            field: 'verb_type'
+            field: 'verb_type',
+            entry
           });
           warningCount++;
         }
@@ -139,7 +157,8 @@ export default function DictionaryValidator() {
             severity: 'info',
             category: 'Général',
             message: 'Catégorie grammaticale non définie',
-            field: 'part_of_speech'
+            field: 'part_of_speech',
+            entry
           });
           infoCount++;
         }
@@ -152,7 +171,8 @@ export default function DictionaryValidator() {
             severity: 'info',
             category: 'Phonétique',
             message: 'Pattern tonal non défini',
-            field: 'tone_pattern'
+            field: 'tone_pattern',
+            entry
           });
           infoCount++;
         }
@@ -165,7 +185,8 @@ export default function DictionaryValidator() {
             severity: 'info',
             category: 'Général',
             message: 'Définition très courte (moins de 10 caractères)',
-            field: 'definition'
+            field: 'definition',
+            entry
           });
           infoCount++;
         }
@@ -178,7 +199,8 @@ export default function DictionaryValidator() {
             severity: 'info',
             category: 'Général',
             message: 'Entrée principale sans exemple Baatɔnum',
-            field: 'example_bariba'
+            field: 'example_bariba',
+            entry
           });
           infoCount++;
         }
@@ -191,7 +213,8 @@ export default function DictionaryValidator() {
             severity: 'warning',
             category: 'Verbe',
             message: 'Le radical verbal ne contient pas la racine verbale',
-            field: 'verb_radical'
+            field: 'verb_radical',
+            entry
           });
           warningCount++;
         }
@@ -221,6 +244,117 @@ export default function DictionaryValidator() {
     }
   };
 
+  const getSuggestion = async (issue: ValidationIssue) => {
+    if (!issue.entry) return;
+
+    const issueKey = `${issue.id}-${issue.field}`;
+    setLoadingSuggestions(prev => new Set(prev).add(issueKey));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-dictionary-fix', {
+        body: {
+          entry: issue.entry,
+          issue: {
+            category: issue.category,
+            message: issue.message,
+            field: issue.field
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast({
+          title: 'Erreur',
+          description: data.error,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      setSuggestions(prev => {
+        const newMap = new Map(prev);
+        newMap.set(issueKey, data.suggestion);
+        return newMap;
+      });
+
+      toast({
+        title: 'Suggestion générée',
+        description: 'L\'IA a proposé une correction'
+      });
+    } catch (error: any) {
+      console.error('Error getting suggestion:', error);
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Impossible d\'obtenir une suggestion',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingSuggestions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(issueKey);
+        return newSet;
+      });
+    }
+  };
+
+  const applySuggestion = async (issue: ValidationIssue, suggestion: AISuggestion) => {
+    const issueKey = `${issue.id}-${issue.field}`;
+    setApplyingFixes(prev => new Set(prev).add(issueKey));
+
+    try {
+      const updateData: any = {
+        [suggestion.field]: suggestion.value,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('dictionary_entries')
+        .update(updateData)
+        .eq('id', issue.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Correction appliquée',
+        description: `Le champ "${suggestion.field}" a été mis à jour`
+      });
+
+      // Retirer le problème de la liste
+      setIssues(prev => prev.filter(i => `${i.id}-${i.field}` !== issueKey));
+      
+      // Retirer la suggestion
+      setSuggestions(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(issueKey);
+        return newMap;
+      });
+
+      // Mettre à jour les stats
+      if (stats) {
+        setStats({
+          ...stats,
+          [issue.severity === 'error' ? 'errors' : issue.severity === 'warning' ? 'warnings' : 'info']: 
+            stats[issue.severity === 'error' ? 'errors' : issue.severity === 'warning' ? 'warnings' : 'info'] - 1
+        });
+      }
+    } catch (error: any) {
+      console.error('Error applying fix:', error);
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Impossible d\'appliquer la correction',
+        variant: 'destructive'
+      });
+    } finally {
+      setApplyingFixes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(issueKey);
+        return newSet;
+      });
+    }
+  };
+
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'error':
@@ -247,16 +381,123 @@ export default function DictionaryValidator() {
     return issues.filter(issue => issue.severity === severity);
   };
 
+  const renderIssueCard = (issue: ValidationIssue, idx: number) => {
+    const issueKey = `${issue.id}-${issue.field}`;
+    const suggestion = suggestions.get(issueKey);
+    const isLoadingSuggestion = loadingSuggestions.has(issueKey);
+    const isApplyingFix = applyingFixes.has(issueKey);
+
+    return (
+      <div
+        key={idx}
+        className="flex flex-col gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-start gap-3">
+          {getSeverityIcon(issue.severity)}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="font-semibold">{issue.word}</span>
+              {getSeverityBadge(issue.severity)}
+              <Badge variant="outline" className="text-xs">
+                {issue.category}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">{issue.message}</p>
+            <p className="text-xs text-muted-foreground">
+              Champ: <code className="bg-muted px-1 rounded">{issue.field}</code>
+            </p>
+          </div>
+        </div>
+
+        {/* Bouton pour demander une suggestion */}
+        {!suggestion && (
+          <Button
+            onClick={() => getSuggestion(issue)}
+            disabled={isLoadingSuggestion}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            {isLoadingSuggestion ? (
+              <>
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                Génération de la suggestion...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-3 w-3" />
+                Suggérer une correction (IA)
+              </>
+            )}
+          </Button>
+        )}
+
+        {/* Afficher la suggestion */}
+        {suggestion && (
+          <Alert className="bg-primary/5 border-primary/20">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <AlertDescription className="space-y-3">
+              <div>
+                <p className="text-sm font-medium mb-1">Suggestion IA :</p>
+                <div className="bg-background p-2 rounded border">
+                  <code className="text-sm">
+                    {suggestion.field} = {JSON.stringify(suggestion.value)}
+                  </code>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground italic">
+                {suggestion.explanation}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => applySuggestion(issue, suggestion)}
+                  disabled={isApplyingFix}
+                  size="sm"
+                  className="flex-1"
+                >
+                  {isApplyingFix ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Application...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="mr-2 h-3 w-3" />
+                      Appliquer
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSuggestions(prev => {
+                      const newMap = new Map(prev);
+                      newMap.delete(issueKey);
+                      return newMap;
+                    });
+                  }}
+                  size="sm"
+                  variant="ghost"
+                >
+                  Ignorer
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5" />
-            Validateur de Cohérence Grammaticale
+            Validateur de Cohérence avec Correction IA
           </CardTitle>
           <CardDescription>
-            Vérifiez automatiquement la cohérence des informations grammaticales du dictionnaire
+            Vérifiez la cohérence grammaticale et obtenez des suggestions de correction par IA
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -344,109 +585,32 @@ export default function DictionaryValidator() {
 
                 <TabsContent value="all">
                   <ScrollArea className="h-[500px] rounded-md border">
-                    <div className="p-4 space-y-2">
-                      {issues.map((issue, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                        >
-                          {getSeverityIcon(issue.severity)}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold">{issue.word}</span>
-                              {getSeverityBadge(issue.severity)}
-                              <Badge variant="outline" className="text-xs">
-                                {issue.category}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{issue.message}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Champ: <code className="bg-muted px-1 rounded">{issue.field}</code>
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="p-4 space-y-3">
+                      {issues.map((issue, idx) => renderIssueCard(issue, idx))}
                     </div>
                   </ScrollArea>
                 </TabsContent>
 
                 <TabsContent value="error">
                   <ScrollArea className="h-[500px] rounded-md border">
-                    <div className="p-4 space-y-2">
-                      {filterIssues('error').map((issue, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-3 p-3 rounded-lg border border-destructive/50 hover:bg-destructive/5 transition-colors"
-                        >
-                          {getSeverityIcon(issue.severity)}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold">{issue.word}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {issue.category}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{issue.message}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Champ: <code className="bg-muted px-1 rounded">{issue.field}</code>
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="p-4 space-y-3">
+                      {filterIssues('error').map((issue, idx) => renderIssueCard(issue, idx))}
                     </div>
                   </ScrollArea>
                 </TabsContent>
 
                 <TabsContent value="warning">
                   <ScrollArea className="h-[500px] rounded-md border">
-                    <div className="p-4 space-y-2">
-                      {filterIssues('warning').map((issue, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-3 p-3 rounded-lg border border-warning/50 hover:bg-warning/5 transition-colors"
-                        >
-                          {getSeverityIcon(issue.severity)}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold">{issue.word}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {issue.category}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{issue.message}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Champ: <code className="bg-muted px-1 rounded">{issue.field}</code>
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="p-4 space-y-3">
+                      {filterIssues('warning').map((issue, idx) => renderIssueCard(issue, idx))}
                     </div>
                   </ScrollArea>
                 </TabsContent>
 
                 <TabsContent value="info">
                   <ScrollArea className="h-[500px] rounded-md border">
-                    <div className="p-4 space-y-2">
-                      {filterIssues('info').map((issue, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                        >
-                          {getSeverityIcon(issue.severity)}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold">{issue.word}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {issue.category}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{issue.message}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Champ: <code className="bg-muted px-1 rounded">{issue.field}</code>
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="p-4 space-y-3">
+                      {filterIssues('info').map((issue, idx) => renderIssueCard(issue, idx))}
                     </div>
                   </ScrollArea>
                 </TabsContent>
