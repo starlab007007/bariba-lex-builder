@@ -1,4 +1,7 @@
-import { type DictionaryEntry } from "@/data/fullDictionaryData";
+import type { DictionaryEntry } from "@/data/fullDictionaryData";
+import type { BiblicalPhrase, DictionaryExample } from "@/data/enhancedDictionaryLoader";
+import { BaatonumTokenizer } from "./BaatonumTokenizer";
+import { LinguisticEngine } from "./LinguisticEngine";
 
 /**
  * Service de traduction simplifié et robuste
@@ -17,17 +20,131 @@ export interface TranslationResult {
 
 export class SimplifiedTranslationAI {
   private dictionaryEntries: DictionaryEntry[] = [];
+  private isInitialized = false;
+
+  // INDEX POUR TRADUCTION DE PHRASES COMPLÈTES
+  private phrasePatterns: Map<string, string> = new Map(); // Français -> Bariba (phrases)
+  private baribaToFrenchPhrases: Map<string, string> = new Map(); // Bariba -> Français (phrases)
+  private phraseIndex: Map<string, Set<string>> = new Map(); // Mot-clé -> Phrases contenant ce mot
+  private examplePairs: Map<string, string> = new Map(); // Exemples du dictionnaire
+
+  // INDEX POUR TRADUCTION MOT-À-MOT
   private frenchToBariba: Map<string, string[]> = new Map();
   private baribaToFrench: Map<string, string[]> = new Map();
   private commonPhrases: Map<string, string> = new Map();
-  private isInitialized = false;
 
-  constructor(entries: DictionaryEntry[]) {
+  // MODULES LINGUISTIQUES
+  private tokenizer: BaatonumTokenizer | null = null;
+  private linguisticEngine: LinguisticEngine;
+
+  // STATISTIQUES
+  public isReady = false;
+
+  constructor(entries: DictionaryEntry[], phrases: BiblicalPhrase[], examples: DictionaryExample[]) {
     this.dictionaryEntries = entries;
-    this.initialize();
+    this.linguisticEngine = new LinguisticEngine();
+    this.initialize(phrases, examples);
   }
 
-  private initialize(): void {
+  private initialize(phrases: BiblicalPhrase[], examples: DictionaryExample[]): void {
+    console.log("🚀 Entraînement du traducteur sur TOUTES les données...");
+    
+    const startTime = Date.now();
+
+    // ÉTAPE 1 : Charger les 152,000+ phrases bibliques
+    this.loadBiblicalPhrases(phrases);
+    
+    // ÉTAPE 2 : Charger les exemples du dictionnaire
+    this.loadDictionaryExamples(examples);
+    
+    // ÉTAPE 3 : Construire l'index mot-à-mot (code existant)
+    this.buildWordIndex();
+    
+    // ÉTAPE 4 : Construire l'index de recherche rapide de phrases
+    this.buildPhraseIndex();
+    
+    // ÉTAPE 5 : Initialiser le tokenizer Baatɔnum
+    const allBaribaTexts = this.extractAllBaribaTexts();
+    this.tokenizer = new BaatonumTokenizer(allBaribaTexts);
+
+    const duration = Date.now() - startTime;
+
+    // LOGS DE VALIDATION
+    console.log("📊 Statistiques d'entraînement :");
+    console.log(`  ✅ Entrées dictionnaire : ${this.dictionaryEntries.length}`);
+    console.log(`  ✅ Phrases complètes (FR->BBA) : ${this.phrasePatterns.size}`);
+    console.log(`  ✅ Phrases complètes (BBA->FR) : ${this.baribaToFrenchPhrases.size}`);
+    console.log(`  ✅ Exemples du dictionnaire : ${this.examplePairs.size}`);
+    console.log(`  ✅ Index mots français : ${this.frenchToBariba.size}`);
+    console.log(`  ✅ Index mots bariba : ${this.baribaToFrench.size}`);
+    console.log(`  ✅ Vocabulaire tokenizer : ${this.tokenizer.getVocabularySize()} tokens`);
+    console.log(`  ✅ Index de phrases : ${this.phraseIndex.size} mots-clés`);
+    console.log(`  ⏱️ Temps d'entraînement : ${duration}ms`);
+    
+    this.isInitialized = true;
+    this.isReady = true;
+    console.log("✅ Traducteur COMPLÈTEMENT entraîné et prêt !");
+  }
+
+  /**
+   * Extraire tous les textes Bariba pour le tokenizer
+   */
+  private extractAllBaribaTexts(): string[] {
+    const texts: string[] = [];
+    
+    // Textes des phrases bibliques
+    for (const [, bariba] of this.phrasePatterns) {
+      texts.push(bariba);
+    }
+    
+    // Textes des exemples
+    this.dictionaryEntries.forEach(entry => {
+      entry.example_bariba.forEach(ex => texts.push(ex));
+    });
+    
+    return texts;
+  }
+
+  /**
+   * Charger les phrases bibliques (152k+)
+   */
+  private loadBiblicalPhrases(phrases: BiblicalPhrase[]): void {
+    phrases.forEach(phrase => {
+      const frenchKey = phrase.french.toLowerCase().trim();
+      const baribaKey = phrase.bariba.toLowerCase().trim();
+      
+      // Français -> Bariba
+      this.phrasePatterns.set(frenchKey, phrase.bariba);
+      
+      // Bariba -> Français
+      this.baribaToFrenchPhrases.set(baribaKey, phrase.french);
+    });
+    
+    console.log(`✅ ${phrases.length} phrases bibliques chargées`);
+  }
+
+  /**
+   * Charger les exemples du dictionnaire
+   */
+  private loadDictionaryExamples(examples: DictionaryExample[]): void {
+    examples.forEach(ex => {
+      if (ex.french && ex.bariba) {
+        const frenchKey = ex.french.toLowerCase().trim();
+        const baribaKey = ex.bariba.toLowerCase().trim();
+        
+        // Bidirectionnel
+        this.examplePairs.set(frenchKey, ex.bariba);
+        this.examplePairs.set(baribaKey, ex.french);
+      }
+    });
+    
+    console.log(`✅ ${examples.length} paires d'exemples chargées`);
+  }
+
+  /**
+   * Construire l'index mot-à-mot (code existant amélioré)
+   */
+  private buildWordIndex(): void {
     console.log("🚀 Initialisation du traducteur simplifié...");
 
     // Construire les index de traduction
@@ -78,6 +195,37 @@ export class SimplifiedTranslationAI {
 
     this.isInitialized = true;
     console.log("✅ Traducteur initialisé avec succès!");
+  }
+
+  /**
+   * Construire l'index de recherche rapide de phrases
+   */
+  private buildPhraseIndex(): void {
+    // Indexer les phrases françaises
+    for (const [frenchPhrase] of this.phrasePatterns) {
+      const words = frenchPhrase.split(/\s+/).filter(w => w.length > 2);
+      
+      words.forEach(word => {
+        if (!this.phraseIndex.has(word)) {
+          this.phraseIndex.set(word, new Set());
+        }
+        this.phraseIndex.get(word)!.add(frenchPhrase);
+      });
+    }
+
+    // Indexer les exemples français  
+    for (const [text] of this.examplePairs) {
+      const words = text.split(/\s+/).filter(w => w.length > 2);
+      
+      words.forEach(word => {
+        if (!this.phraseIndex.has(word)) {
+          this.phraseIndex.set(word, new Set());
+        }
+        this.phraseIndex.get(word)!.add(text);
+      });
+    }
+    
+    console.log(`✅ Index de phrases construit avec ${this.phraseIndex.size} mots-clés`);
   }
 
   /**
@@ -178,6 +326,107 @@ export class SimplifiedTranslationAI {
    * Traduit du français vers le bariba
    */
   async translateFrenchToBariba(text: string): Promise<TranslationResult> {
+    if (!this.isInitialized) {
+      throw new Error("Traducteur non initialisé");
+    }
+
+    const cleanText = text.toLowerCase().trim();
+    
+    // NIVEAU 1 : Recherche de phrase complète EXACTE
+    if (this.phrasePatterns.has(cleanText)) {
+      return {
+        translation: this.phrasePatterns.get(cleanText)!,
+        confidence: 1.0,
+        detectedLanguage: 'french'
+      };
+    }
+
+    // Vérifier aussi dans les exemples
+    if (this.examplePairs.has(cleanText)) {
+      return {
+        translation: this.examplePairs.get(cleanText)!,
+        confidence: 0.95,
+        detectedLanguage: 'french'
+      };
+    }
+    
+    // NIVEAU 2 : Recherche de phrase PARTIELLE (fuzzy matching)
+    const fuzzyResult = this.findBestPhraseMatch(cleanText, 'french');
+    if (fuzzyResult) {
+      return {
+        translation: fuzzyResult.translation,
+        confidence: fuzzyResult.confidence,
+        detectedLanguage: 'french'
+      };
+    }
+    
+    // NIVEAU 3 : Traduction MOT-À-MOT (code existant)
+    return this.translateWordByWord(text, 'french');
+  }
+
+  /**
+   * Fuzzy matching sur les phrases (Jaccard similarity)
+   */
+  private findBestPhraseMatch(
+    text: string,
+    sourceLanguage: 'french' | 'bariba'
+  ): { translation: string; confidence: number } | null {
+    
+    const words = new Set(text.split(/\s+/).filter(w => w.length > 2));
+    if (words.size === 0) return null;
+    
+    // Récupérer les phrases candidates via l'index
+    const candidates = new Set<string>();
+    words.forEach(word => {
+      const phrases = this.phraseIndex.get(word);
+      if (phrases) {
+        phrases.forEach(p => candidates.add(p));
+      }
+    });
+    
+    if (candidates.size === 0) return null;
+
+    // Calculer la similarité de Jaccard
+    let bestMatch: { phrase: string; similarity: number } | null = null;
+    
+    for (const candidatePhrase of candidates) {
+      const candidateWords = new Set(candidatePhrase.split(/\s+/));
+      
+      // Jaccard similarity = intersection / union
+      const intersection = new Set([...words].filter(w => candidateWords.has(w)));
+      const union = new Set([...words, ...candidateWords]);
+      const similarity = intersection.size / union.size;
+      
+      if (similarity > 0.6 && (!bestMatch || similarity > bestMatch.similarity)) {
+        bestMatch = { phrase: candidatePhrase, similarity };
+      }
+    }
+    
+    if (bestMatch) {
+      // Obtenir la traduction
+      let translation: string | undefined;
+      
+      if (sourceLanguage === 'french') {
+        translation = this.phrasePatterns.get(bestMatch.phrase) || this.examplePairs.get(bestMatch.phrase);
+      } else {
+        translation = this.baribaToFrenchPhrases.get(bestMatch.phrase) || this.examplePairs.get(bestMatch.phrase);
+      }
+      
+      if (translation) {
+        return {
+          translation,
+          confidence: bestMatch.similarity * 0.9 // Réduire légèrement pour indiquer le fuzzy
+        };
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Traduction mot-à-mot (méthode existante renommée)
+   */
+  private translateWordByWord(text: string, sourceLanguage: 'french' | 'bariba'): TranslationResult {
     const cleanText = text.toLowerCase().trim();
     
     // Vérifier les phrases communes d'abord
@@ -351,9 +600,5 @@ export class SimplifiedTranslationAI {
     });
 
     return suggestions.slice(0, maxSuggestions);
-  }
-
-  get isReady(): boolean {
-    return this.isInitialized;
   }
 }

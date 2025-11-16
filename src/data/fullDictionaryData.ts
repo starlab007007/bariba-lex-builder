@@ -460,7 +460,7 @@ let dictionaryIndex: BiDirectionalIndex | null = null;
 // Fonction pour obtenir l'index (lazy loading)
 export async function getDictionaryIndex(): Promise<BiDirectionalIndex> {
   if (!dictionaryIndex) {
-    const entries = await loadComprehensiveDictionary();
+    const { entries } = await loadComprehensiveDictionary();
     dictionaryIndex = createBiDirectionalIndex(entries);
   }
   return dictionaryIndex;
