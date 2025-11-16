@@ -19,7 +19,9 @@ import {
   Search,
   Database,
   PieChart,
-  Edit3
+  Edit3,
+  Download,
+  CheckCircle
 } from 'lucide-react';
 import AdminOverview from '@/components/admin/AdminOverview';
 import DictionaryManager from '@/components/admin/DictionaryManager';
@@ -38,6 +40,8 @@ import DictionaryEnricher from '@/components/admin/DictionaryEnricher';
 import AdvancedDictionarySearch from '@/components/AdvancedDictionarySearch';
 import GrammaticalStatsDashboard from '@/components/admin/GrammaticalStatsDashboard';
 import BulkEditPanel from '@/components/admin/BulkEditPanel';
+import DictionaryExporter from '@/components/admin/DictionaryExporter';
+import DictionaryValidator from '@/components/admin/DictionaryValidator';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -131,6 +135,14 @@ export default function AdminDashboard() {
               <Edit3 className="h-4 w-4" />
               <span className="hidden sm:inline">Édition Masse</span>
             </TabsTrigger>
+            <TabsTrigger value="export" className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Export</span>
+            </TabsTrigger>
+            <TabsTrigger value="validation" className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Validation</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -202,6 +214,14 @@ export default function AdminDashboard() {
 
           <TabsContent value="bulk-edit" className="space-y-4">
             <BulkEditPanel />
+          </TabsContent>
+
+          <TabsContent value="export" className="space-y-4">
+            <DictionaryExporter />
+          </TabsContent>
+
+          <TabsContent value="validation" className="space-y-4">
+            <DictionaryValidator />
           </TabsContent>
         </Tabs>
       </main>
