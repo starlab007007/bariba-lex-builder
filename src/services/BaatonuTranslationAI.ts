@@ -236,58 +236,269 @@ export class BaatonuTranslationAI implements TranslationModel {
 
     console.log(`🔄 Traduction FR->Bààtɔ̀nú: "${text}"`);
     
-    // 1. Appliquer les règles linguistiques pré-traduction
+    // 1. Analyser la structure de la phrase française
+    const sentenceAnalysis = this.analyzeFrenchSentence(text);
+    
+    // 2. Appliquer les règles linguistiques pré-traduction
     text = this.applyPreTranslationRules(text, 'french-to-bariba');
     
-    // 2. Nettoyage et préparation du texte
+    // 3. Nettoyage et préparation du texte
     const cleanText = this.cleanText(text);
     const words = this.tokenize(cleanText);
     
-    // 3. Traduction mot par mot avec le dictionnaire et les règles
-    const translatedWords: string[] = [];
-    const unmatchedWords: string[] = [];
+    // 4. Identifier les éléments de la phrase (sujet, verbe, objet, adjectifs)
+    const sentenceElements = this.identifySentenceElements(words, sentenceAnalysis);
     
-    for (const word of words) {
-      // D'abord vérifier les règles linguistiques
-      const ruleTranslation = this.applyLinguisticRulesForWord(word.toLowerCase(), 'french-to-bariba');
-      if (ruleTranslation) {
-        translatedWords.push(ruleTranslation);
-        continue;
-      }
+    // 5. Traduction avec accords grammaticaux
+    const translatedElements = await this.translateWithGrammar(sentenceElements);
+    
+    // 6. Assembler la phrase finale avec l'ordre correct
+    let result = this.assembleSentenceWithWordOrder(translatedElements);
+    
+    // 7. Post-traitement et optimisation contextuelle
+    result = await this.optimizeTranslation(result, 'bariba');
+    
+    console.log(`✅ Résultat: "${result}"`);
+    return result;
+  }
 
-      // Ensuite chercher dans le dictionnaire
-      const translations = this.translationPatterns.get(word.toLowerCase());
-      if (translations && translations.length > 0) {
-        // Prendre la première traduction (plus fréquente)
-        translatedWords.push(translations[0]);
-      } else {
-        // Essayer de trouver des mots similaires
-        const similarWord = await this.findSimilarWord(word, 'french');
-        if (similarWord) {
-          const similarTranslations = this.translationPatterns.get(similarWord);
-          if (similarTranslations) {
-            translatedWords.push(similarTranslations[0]);
-          } else {
-            translatedWords.push(`[${word}]`);
-            unmatchedWords.push(word);
+  // Analyser une phrase française pour en extraire la structure
+  private analyzeFrenchSentence(text: string): any {
+    const analysis = {
+      hasNegation: /\bne\b.*\b(pas|plus|jamais)\b/i.test(text),
+      hasQuestion: text.includes('?'),
+      tense: this.detectTense(text),
+      hasAdjectives: /\b(grand|petit|bon|mauvais|beau|nouveau|vieux|jeune)\b/i.test(text)
+    };
+    return analysis;
+  }
+
+  // Détecter le temps d'une phrase française
+  private detectTense(text: string): 'present' | 'past' | 'future' | 'imperative' {
+    if (/\b(va|vais|allons|allez|vont)\s+\w+/i.test(text)) return 'future';
+    if (/\b(a|as|avons|avez|ont|ai)\s+\w+(é|i|u)\b/i.test(text)) return 'past';
+    if (/^[A-Z]?\w+z?\s*[!.]?$/i.test(text.trim())) return 'imperative';
+    return 'present';
+  }
+
+  // Identifier les éléments de la phrase
+  private identifySentenceElements(words: string[], analysis: any): any {
+    const elements: any = {
+      subject: null,
+      verb: null,
+      object: null,
+      adjectives: [],
+      complements: []
+    };
+
+    // Identification simple basée sur la position et les mots-clés
+    const subjectPronouns = ['je', 'tu', 'il', 'elle', 'nous', 'vous', 'ils', 'elles'];
+    const articles = ['le', 'la', 'les', 'un', 'une', 'des'];
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i].toLowerCase();
+
+      if (subjectPronouns.includes(word) && !elements.subject) {
+        elements.subject = { word, type: 'pronoun', index: i };
+      } else if (articles.includes(word)) {
+        // Possible début d'un groupe nominal
+        const nounGroup = this.extractNounGroup(words, i);
+        if (nounGroup) {
+          if (!elements.subject) {
+            elements.subject = nounGroup;
+          } else if (!elements.object) {
+            elements.object = nounGroup;
           }
-        } else {
-          translatedWords.push(`[${word}]`);
-          unmatchedWords.push(word);
+        }
+      }
+    }
+
+    return elements;
+  }
+
+  // Extraire un groupe nominal (article + nom + adjectifs)
+  private extractNounGroup(words: string[], startIndex: number): any | null {
+    const articles = ['le', 'la', 'les', 'un', 'une', 'des'];
+    const word = words[startIndex].toLowerCase();
+
+    if (!articles.includes(word)) return null;
+
+    const group: any = {
+      article: word,
+      noun: null,
+      adjectives: [],
+      startIndex,
+      endIndex: startIndex
+    };
+
+    // Chercher le nom (mot suivant l'article généralement)
+    if (startIndex + 1 < words.length) {
+      const nextWord = words[startIndex + 1];
+      const entry = this.findDictionaryEntry(nextWord);
+      if (entry) {
+        group.noun = nextWord;
+        group.nounEntry = entry;
+        group.endIndex = startIndex + 1;
+
+        // Chercher les adjectifs qui suivent
+        for (let i = startIndex + 2; i < words.length && i < startIndex + 4; i++) {
+          const adjWord = words[i];
+          if (this.isAdjective(adjWord)) {
+            group.adjectives.push(adjWord);
+            group.endIndex = i;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    return group.noun ? group : null;
+  }
+
+  // Trouver une entrée dans le dictionnaire
+  private findDictionaryEntry(word: string): any {
+    const translations = this.translationPatterns.get(word.toLowerCase());
+    if (translations && translations.length > 0) {
+      // Retrouver l'entrée complète du dictionnaire
+      return this.dictionaryEntries.find(e => 
+        e.word === translations[0] || 
+        e.french_keywords?.includes(word.toLowerCase())
+      );
+    }
+    return null;
+  }
+
+  // Vérifier si un mot est un adjectif
+  private isAdjective(word: string): boolean {
+    return Object.keys(this.linguisticRules.adjectives).includes(word.toLowerCase());
+  }
+
+  // Traduire avec application des règles grammaticales
+  private async translateWithGrammar(elements: any): Promise<any> {
+    const translated: any = {
+      subject: null,
+      verb: null,
+      object: null,
+      complements: []
+    };
+
+    // Traduire le sujet
+    if (elements.subject) {
+      if (elements.subject.type === 'pronoun') {
+        translated.subject = this.linguisticRules.conjugations[elements.subject.word] || elements.subject.word;
+      } else if (elements.subject.noun) {
+        // Groupe nominal avec article, nom et éventuellement adjectifs
+        const nounEntry = elements.subject.nounEntry;
+        if (nounEntry) {
+          const nounPhrase: any = {
+            noun: nounEntry,
+            adjectives: []
+          };
+
+          // Appliquer les adjectifs avec accord
+          for (const adj of elements.subject.adjectives) {
+            const declined = this.grammarEngine.applyNounAdjectiveAgreement(nounEntry, adj);
+            nounPhrase.adjectives.push(declined);
+          }
+
+          translated.subject = nounPhrase;
+        }
+      }
+    }
+
+    // Traduire le verbe (à implémenter avec conjugaison)
+    if (elements.verb) {
+      translated.verb = await this.translateVerb(elements.verb, elements.subject);
+    }
+
+    // Traduire l'objet
+    if (elements.object) {
+      translated.object = await this.translateNounPhrase(elements.object);
+    }
+
+    return translated;
+  }
+
+  // Traduire un verbe avec conjugaison
+  private async translateVerb(verbWord: string, subject: any): Promise<string> {
+    const translations = this.translationPatterns.get(verbWord.toLowerCase());
+    if (translations && translations.length > 0) {
+      const verbEntry = this.dictionaryEntries.find(e => e.word === translations[0]);
+      if (verbEntry && verbEntry.verb_root) {
+        // Utiliser la conjugaison selon le sujet
+        const person = this.getPersonFromSubject(subject);
+        return conjugateVerb(verbEntry.verb_root, person, 'accomplished', verbEntry.verbal_group || 1);
+      }
+      return translations[0];
+    }
+    return `[${verbWord}]`;
+  }
+
+  // Déterminer la personne grammaticale à partir du sujet
+  private getPersonFromSubject(subject: any): '1sg' | '2sg' | '3sg' | '1pl' | '2pl' | '3pl' {
+    if (!subject) return '3sg';
+    
+    if (subject.type === 'pronoun') {
+      const pronounMap: Record<string, any> = {
+        'je': '1sg', 'tu': '2sg', 'il': '3sg', 'elle': '3sg',
+        'nous': '1pl', 'vous': '2pl', 'ils': '3pl', 'elles': '3pl'
+      };
+      return pronounMap[subject.word] || '3sg';
+    }
+    
+    return '3sg'; // Par défaut pour les noms
+  }
+
+  // Traduire un groupe nominal
+  private async translateNounPhrase(nounGroup: any): Promise<string> {
+    if (!nounGroup || !nounGroup.noun) return '';
+    
+    const parts: string[] = [];
+    
+    // Traduire le nom
+    const translations = this.translationPatterns.get(nounGroup.noun.toLowerCase());
+    if (translations && translations.length > 0) {
+      parts.push(translations[0]);
+      
+      // Ajouter les adjectifs avec accord
+      const nounEntry = this.findDictionaryEntry(nounGroup.noun);
+      if (nounEntry) {
+        for (const adj of nounGroup.adjectives || []) {
+          const declined = this.grammarEngine.applyNounAdjectiveAgreement(nounEntry, adj);
+          parts.push(declined);
         }
       }
     }
     
-    // 3. Post-traitement et optimisation contextuelle
-    let result = translatedWords.join(' ');
-    result = await this.optimizeTranslation(result, 'bariba');
-    
-    if (unmatchedWords.length > 0) {
-      console.log(`⚠️ Mots non traduits: ${unmatchedWords.join(', ')}`);
+    return parts.join(' ');
+  }
+
+  // Assembler la phrase avec le bon ordre des mots
+  private assembleSentenceWithWordOrder(elements: any): string {
+    const parts: string[] = [];
+
+    // Ordre SVO (Sujet-Verbe-Objet) pour le Baatɔnum
+    if (elements.subject) {
+      if (typeof elements.subject === 'string') {
+        parts.push(elements.subject);
+      } else if (elements.subject.noun) {
+        parts.push(elements.subject.noun.word);
+        parts.push(...elements.subject.adjectives);
+      }
     }
-    
-    console.log(`✅ Résultat: "${result}"`);
-    return result;
+
+    if (elements.verb) {
+      parts.push(elements.verb);
+    }
+
+    if (elements.object) {
+      parts.push(elements.object);
+    }
+
+    parts.push(...elements.complements);
+
+    return parts.filter(Boolean).join(' ');
   }
 
   async translateBaribaToFrench(text: string): Promise<string> {
