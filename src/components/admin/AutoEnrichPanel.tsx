@@ -68,6 +68,10 @@ export default function AutoEnrichPanel() {
 
       if (error) throw error;
 
+      if (!data) {
+        throw new Error('Aucune réponse reçue de la fonction');
+      }
+
       if (data.error) {
         if (data.error.includes('429') || data.error.includes('rate limit')) {
           toast({
@@ -87,10 +91,28 @@ export default function AutoEnrichPanel() {
         return;
       }
 
-      toast({
-        title: 'Enrichissement terminé',
-        description: `${data.generated.words} mots et ${data.generated.phrases} phrases générées par l'IA`
-      });
+      // Vérifier si les objectifs sont déjà atteints
+      if (data.message && data.message.includes('Objectifs déjà atteints')) {
+        toast({
+          title: 'Objectifs atteints',
+          description: `La base de données contient déjà ${data.current?.words || 0} mots et ${data.current?.phrases || 0} phrases, ce qui dépasse vos objectifs.`,
+        });
+        await loadCurrentStats();
+        return;
+      }
+
+      // Vérifier que la structure de données est correcte
+      if (data.generated) {
+        toast({
+          title: 'Enrichissement terminé',
+          description: `${data.generated.words || 0} mots et ${data.generated.phrases || 0} phrases générées par l'IA`
+        });
+      } else {
+        toast({
+          title: 'Enrichissement terminé',
+          description: 'Les données ont été traitées avec succès'
+        });
+      }
 
       // Recharger les statistiques
       await loadCurrentStats();
