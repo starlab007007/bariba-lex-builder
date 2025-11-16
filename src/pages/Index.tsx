@@ -6,7 +6,7 @@ import { DirectTranslation } from "@/components/DirectTranslation";
 import { DictionaryStats } from "@/components/DictionaryStats";
 import { PhraseTranslator } from "@/components/PhraseTranslator";
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
-import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut } from "lucide-react";
+import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,6 +39,14 @@ const Index = () => {
           <div className="flex justify-end mb-4 gap-2">
             {user ? (
               <>
+                <Button
+                  onClick={() => navigate('/gamification')}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Trophy className="mr-2 h-4 w-4" />
+                  Récompenses
+                </Button>
                 {isAdmin && (
                   <Button
                     onClick={() => navigate('/admin')}

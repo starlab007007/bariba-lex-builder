@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useGamification } from '@/hooks/useGamification';
 import { CheckCircle, XCircle, Loader2, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,6 +22,7 @@ export default function BulkPhraseValidator() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'validated' | 'unvalidated'>('unvalidated');
   const { toast } = useToast();
+  const { updateAchievement } = useGamification();
 
   const { data: phrases, isLoading, refetch } = useQuery({
     queryKey: ['phrases-for-validation', searchQuery, filterStatus],
@@ -86,6 +88,11 @@ export default function BulkPhraseValidator() {
         .in('id', Array.from(selectedPhrases));
 
       if (error) throw error;
+
+      // Update gamification achievements if validating
+      if (validate) {
+        await updateAchievement('phrases_validated', selectedPhrases.size);
+      }
 
       toast({
         title: 'Mise à jour réussie',

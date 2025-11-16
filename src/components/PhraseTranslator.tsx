@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslationAI } from "@/hooks/useTranslationAI";
 import { useAITranslation } from "@/hooks/useAITranslation";
+import { useGamification } from "@/hooks/useGamification";
 import TranslationFeedback from "./TranslationFeedback";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
@@ -21,6 +22,7 @@ export const PhraseTranslator = () => {
   const [useEnhancedAI, setUseEnhancedAI] = useState(false);
   const [autoTranslate, setAutoTranslate] = useState(true);
   const { toast } = useToast();
+  const { updateAchievement } = useGamification();
   
   // Hook pour le modèle IA local
   const {
@@ -54,6 +56,9 @@ export const PhraseTranslator = () => {
         }
         
         setTranslatedText(translation);
+        
+        // Update gamification achievements
+        await updateAchievement('translations_made');
       } catch (error) {
         console.error("Erreur de traduction automatique:", error);
       } finally {
@@ -131,6 +136,9 @@ export const PhraseTranslator = () => {
       }
       
       setTranslatedText(translation);
+      
+      // Update gamification achievements
+      await updateAchievement('translations_made');
       
       toast({
         title: useAI ? "Traduction IA terminée" : "Traduction terminée",
