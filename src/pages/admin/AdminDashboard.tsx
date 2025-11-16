@@ -7,7 +7,8 @@ import {
   BookOpen, 
   Brain, 
   BarChart3, 
-  Settings, 
+  Settings,
+  Users,
   LogOut 
 } from 'lucide-react';
 import AdminOverview from '@/components/admin/AdminOverview';
@@ -15,6 +16,7 @@ import DictionaryManager from '@/components/admin/DictionaryManager';
 import TrainingManager from '@/components/admin/TrainingManager';
 import AnalyticsDashboard from '@/components/admin/AnalyticsDashboard';
 import AdminSettings from '@/components/admin/AdminSettings';
+import UserRoleManager from '@/components/admin/UserRoleManager';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -43,7 +45,7 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Vue d'ensemble</span>
@@ -59,6 +61,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Utilisateurs</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -80,6 +86,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="analytics" className="space-y-4">
             <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-4">
+            <UserRoleManager />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4">
