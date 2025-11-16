@@ -85,54 +85,108 @@ export type Database = {
       }
       dictionary_entries: {
         Row: {
+          accomplished_form: string | null
+          adjective_forms: Json | null
+          benefactive_form: string | null
           created_at: string | null
           created_by: string | null
+          cross_reference: string | null
           definition: string
+          derivational_suffixes: string[] | null
           example_bariba: string[] | null
           example_francais: string[] | null
           french_keywords: string[] | null
+          grammatical_notes: string | null
           id: string
+          is_main_entry: boolean | null
           is_verified: boolean | null
+          low_tone_optional: boolean | null
+          negative_form: string | null
+          nominal_class: string | null
           part_of_speech: string | null
           phonetic: string | null
+          plural_class: string | null
+          plural_form: string | null
           quality_score: number | null
+          tone_pattern: string | null
           updated_at: string | null
           updated_by: string | null
+          usage_context: string | null
           variants: string[] | null
+          verb_radical: string | null
+          verb_root: string | null
+          verb_type: string | null
+          verbal_group: number | null
           word: string
         }
         Insert: {
+          accomplished_form?: string | null
+          adjective_forms?: Json | null
+          benefactive_form?: string | null
           created_at?: string | null
           created_by?: string | null
+          cross_reference?: string | null
           definition: string
+          derivational_suffixes?: string[] | null
           example_bariba?: string[] | null
           example_francais?: string[] | null
           french_keywords?: string[] | null
+          grammatical_notes?: string | null
           id?: string
+          is_main_entry?: boolean | null
           is_verified?: boolean | null
+          low_tone_optional?: boolean | null
+          negative_form?: string | null
+          nominal_class?: string | null
           part_of_speech?: string | null
           phonetic?: string | null
+          plural_class?: string | null
+          plural_form?: string | null
           quality_score?: number | null
+          tone_pattern?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          usage_context?: string | null
           variants?: string[] | null
+          verb_radical?: string | null
+          verb_root?: string | null
+          verb_type?: string | null
+          verbal_group?: number | null
           word: string
         }
         Update: {
+          accomplished_form?: string | null
+          adjective_forms?: Json | null
+          benefactive_form?: string | null
           created_at?: string | null
           created_by?: string | null
+          cross_reference?: string | null
           definition?: string
+          derivational_suffixes?: string[] | null
           example_bariba?: string[] | null
           example_francais?: string[] | null
           french_keywords?: string[] | null
+          grammatical_notes?: string | null
           id?: string
+          is_main_entry?: boolean | null
           is_verified?: boolean | null
+          low_tone_optional?: boolean | null
+          negative_form?: string | null
+          nominal_class?: string | null
           part_of_speech?: string | null
           phonetic?: string | null
+          plural_class?: string | null
+          plural_form?: string | null
           quality_score?: number | null
+          tone_pattern?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          usage_context?: string | null
           variants?: string[] | null
+          verb_radical?: string | null
+          verb_root?: string | null
+          verb_type?: string | null
+          verbal_group?: number | null
           word?: string
         }
         Relationships: []
@@ -209,6 +263,42 @@ export type Database = {
           test_phrase?: string
           tested_at?: string | null
           tested_by?: string | null
+        }
+        Relationships: []
+      }
+      noun_class_attributes: {
+        Row: {
+          class_code: string
+          created_at: string | null
+          id: string
+          plural_determiner: string | null
+          plural_subject: string | null
+          possessive_pattern: string | null
+          relative_pronoun: string | null
+          singular_determiner: string | null
+          singular_subject: string | null
+        }
+        Insert: {
+          class_code: string
+          created_at?: string | null
+          id?: string
+          plural_determiner?: string | null
+          plural_subject?: string | null
+          possessive_pattern?: string | null
+          relative_pronoun?: string | null
+          singular_determiner?: string | null
+          singular_subject?: string | null
+        }
+        Update: {
+          class_code?: string
+          created_at?: string | null
+          id?: string
+          plural_determiner?: string | null
+          plural_subject?: string | null
+          possessive_pattern?: string | null
+          relative_pronoun?: string | null
+          singular_determiner?: string | null
+          singular_subject?: string | null
         }
         Relationships: []
       }
@@ -453,6 +543,42 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      verbal_conjugations: {
+        Row: {
+          created_at: string | null
+          example: string | null
+          id: string
+          particle: string | null
+          person: string
+          prefix: string | null
+          suffix: string | null
+          tense_aspect: string
+          verb_group: number
+        }
+        Insert: {
+          created_at?: string | null
+          example?: string | null
+          id?: string
+          particle?: string | null
+          person: string
+          prefix?: string | null
+          suffix?: string | null
+          tense_aspect: string
+          verb_group: number
+        }
+        Update: {
+          created_at?: string | null
+          example?: string | null
+          id?: string
+          particle?: string | null
+          person?: string
+          prefix?: string | null
+          suffix?: string | null
+          tense_aspect?: string
+          verb_group?: number
         }
         Relationships: []
       }

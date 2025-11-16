@@ -1,5 +1,18 @@
 import { pipeline } from "@huggingface/transformers";
 import { type DictionaryEntry } from "@/data/fullDictionaryData";
+import { GrammaticalRulesEngine } from './GrammaticalRulesEngine';
+import {
+  sortBaatonum,
+  normalizeNasalVowels,
+  normalizeTones,
+  extractNominalClass,
+  conjugateVerb,
+  declineAdjective,
+  generateBenefactiveForm,
+  applyDerivationalSuffix,
+  type DerivationalSuffix
+} from '@/utils/baatonumLinguistics';
+import { parseFullDictionaryEntry, extractExamples, detectTonePattern } from '@/utils/baatonumParser';
 
 export interface TranslationModel {
   translateFrenchToBariba: (text: string) => Promise<string>;
@@ -25,6 +38,9 @@ export class BaatonuTranslationAI implements TranslationModel {
   // Modèles IA pour améliorer la traduction
   private sentenceTransformer: any = null;
   private textGenerator: any = null;
+  
+  // Moteur de règles grammaticales
+  private grammarEngine: GrammaticalRulesEngine;
 
   // Règles linguistiques spécifiques au Bariba
   private linguisticRules = {
@@ -63,6 +79,7 @@ export class BaatonuTranslationAI implements TranslationModel {
 
   constructor(entries: DictionaryEntry[]) {
     this.dictionaryEntries = entries;
+    this.grammarEngine = new GrammaticalRulesEngine();
   }
 
   async initialize(): Promise<void> {
