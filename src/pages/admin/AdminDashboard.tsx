@@ -42,6 +42,7 @@ import GrammaticalStatsDashboard from '@/components/admin/GrammaticalStatsDashbo
 import BulkEditPanel from '@/components/admin/BulkEditPanel';
 import DictionaryExporter from '@/components/admin/DictionaryExporter';
 import DictionaryValidator from '@/components/admin/DictionaryValidator';
+import AutoEnrichPanel from '@/components/admin/AutoEnrichPanel';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -123,6 +124,10 @@ export default function AdminDashboard() {
               <Database className="h-4 w-4" />
               <span className="hidden sm:inline">Enrichissement</span>
             </TabsTrigger>
+            <TabsTrigger value="auto-enrich" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Auto-enrichissement</span>
+            </TabsTrigger>
             <TabsTrigger value="advanced-search" className="flex items-center gap-2">
               <Search className="h-4 w-4" />
               <span className="hidden sm:inline">Recherche Avancée</span>
@@ -202,6 +207,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="enrich" className="space-y-4">
             <DictionaryEnricher />
+          </TabsContent>
+
+          <TabsContent value="auto-enrich" className="space-y-4">
+            <AutoEnrichPanel />
           </TabsContent>
 
           <TabsContent value="advanced-search" className="space-y-4">
