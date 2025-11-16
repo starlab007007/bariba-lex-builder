@@ -294,8 +294,14 @@ export default function BulkEditPanel() {
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <Select onValueChange={(field) => {
-                    const value = field === 'nominal_class' ? 'b' : field === 'verbal_group' ? '1' : '';
-                    addBulkUpdate(field, value);
+                    const defaultValues: Record<string, string> = {
+                      'nominal_class': 'b',
+                      'verbal_group': '1',
+                      'verb_type': 'action',
+                      'tone_pattern': 'H',
+                      'is_main_entry': 'true'
+                    };
+                    addBulkUpdate(field, defaultValues[field] || 'default');
                   }}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Sélectionner un champ à modifier..." />
