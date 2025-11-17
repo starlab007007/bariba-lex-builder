@@ -24,6 +24,7 @@ export default function TrainingPhraseImporter({
   const { updateAchievement } = useGamification();
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [autoValidate, setAutoValidate] = useState(false);
 
   const parseFile = async (file: File): Promise<any[]> => {
     const fileName = file.name.toLowerCase();
@@ -87,7 +88,7 @@ export default function TrainingPhraseImporter({
           french_text: p.french_text,
           bariba_text: p.bariba_text,
           source: 'import',
-          is_validated: p.is_validated || false,
+          is_validated: autoValidate ? true : (p.is_validated || false),
           quality_score: p.quality_score || null,
           created_by: user?.id,
         }))
@@ -100,7 +101,9 @@ export default function TrainingPhraseImporter({
 
       toast({
         title: 'Import réussi',
-        description: `${phrases.length} phrases importées`,
+        description: autoValidate 
+          ? `${phrases.length} phrases importées et validées (prêtes pour l'entraînement)`
+          : `${phrases.length} phrases importées (nécessitent validation)`,
       });
       onClose();
     } catch (error: any) {
@@ -121,6 +124,21 @@ export default function TrainingPhraseImporter({
           <DialogTitle>Importer des Phrases d'Entraînement</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="flex items-center space-x-2 p-4 bg-muted rounded-lg">
+            <input
+              type="checkbox"
+              id="autoValidate"
+              checked={autoValidate}
+              onChange={(e) => setAutoValidate(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <label htmlFor="autoValidate" className="text-sm font-medium cursor-pointer">
+              Valider automatiquement toutes les phrases importées
+              <span className="block text-xs text-muted-foreground mt-1">
+                Les phrases validées seront immédiatement utilisées pour l'entraînement du modèle
+              </span>
+            </label>
+          </div>
           <div className="border-2 border-dashed rounded-lg p-8 text-center">
             <input
               type="file"

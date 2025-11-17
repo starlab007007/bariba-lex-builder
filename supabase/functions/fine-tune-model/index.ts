@@ -42,12 +42,11 @@ serve(async (req) => {
     // 1. Collecter les données d'entraînement
     const trainingData: TrainingPair[] = [];
 
-    // 1.1 Charger les phrases d'entraînement existantes
+    // 1.1 Charger TOUTES les phrases d'entraînement validées (pas de limite)
     const { data: trainingPhrases, error: phrasesError } = await supabaseClient
       .from('training_phrases')
       .select('french_text, bariba_text, metadata, source')
-      .eq('is_validated', true)
-      .limit(maxPairs);
+      .eq('is_validated', true);
 
     if (phrasesError) {
       throw new Error(`Erreur chargement phrases: ${phrasesError.message}`);
@@ -92,13 +91,12 @@ serve(async (req) => {
       }
     }
 
-    // 1.3 Ajouter les exemples du dictionnaire
+    // 1.3 Ajouter TOUS les exemples du dictionnaire (pas de limite)
     const { data: examples, error: examplesError } = await supabaseClient
       .from('dictionary_entries')
       .select('example_francais, example_bariba, part_of_speech')
       .not('example_francais', 'is', null)
-      .not('example_bariba', 'is', null)
-      .limit(Math.max(0, maxPairs - trainingData.length));
+      .not('example_bariba', 'is', null);
 
     if (!examplesError && examples) {
       examples.forEach(entry => {
@@ -107,7 +105,6 @@ serve(async (req) => {
         const minLength = Math.min(frExamples.length, bbExamples.length);
 
         for (let i = 0; i < minLength; i++) {
-          if (trainingData.length >= maxPairs) break;
           trainingData.push({
             french: frExamples[i],
             bariba: bbExamples[i],
@@ -119,8 +116,9 @@ serve(async (req) => {
       console.log(`✅ Total: ${trainingData.length} paires d'entraînement`);
     }
 
-    // 2. Préparer les données au format requis pour le fine-tuning
-    const formattedData = trainingData.slice(0, maxPairs).map(pair => ({
+    // 2. Préparer TOUTES les données au format requis pour le fine-tuning
+    console.log(`📊 Total de ${trainingData.length} paires collectées`);
+    const formattedData = trainingData.map(pair => ({
       messages: [
         { role: "system", content: "Tu es un traducteur expert Français-Baatonum. Tu traduis avec précision en respectant la grammaire et les expressions idiomatiques." },
         { role: "user", content: `Traduis en baatonum: ${pair.french}` },
@@ -155,7 +153,26 @@ serve(async (req) => {
 
     console.log(`✅ Contexte d'entraînement sauvegardé: ${trainingContext.id}`);
 
-    // 4. Simuler le fine-tuning (dans un vrai scénario, on appellerait l'API de fine-tuning)
+    // 4. Marquer les phrases d'entraînement comme utilisées
+    if (trainingData.filter(p => p.source === 'training_phrases').length > 0) {
+      await supabaseClient
+        .from('training_phrases')
+        .update({ metadata: { used_in_training: trainingContext.id, used_at: new Date().toISOString() } })
+        .eq('is_validated', true);
+      console.log(`✅ Phrases d'entraînement marquées comme utilisées`);
+    }
+
+    // 5. Marquer les feedbacks comme utilisés
+    if (trainingData.filter(p => p.source === 'validated_feedback').length > 0) {
+      await supabaseClient
+        .from('translation_feedback')
+        .update({ used_for_training: true })
+        .eq('is_validated', true)
+        .eq('used_for_training', false);
+      console.log(`✅ Feedbacks marqués comme utilisés`);
+    }
+
+    // 6. Simuler le fine-tuning (dans un vrai scénario, on appellerait l'API de fine-tuning)
     // Pour l'instant, on stocke juste les données et on retourne un résumé
     
     // Note: Le vrai fine-tuning nécessiterait:

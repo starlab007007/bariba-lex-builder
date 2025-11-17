@@ -27,6 +27,7 @@ export interface HybridTranslationResult extends TranslationResult {
 export class HybridTranslationService {
   private simplifiedModel: SimplifiedTranslationAI | null = null;
   private advancedModel: BaatonuTranslationAI | null = null;
+  private fineTunedModelVersion: string | null = null;
   private isInitialized = false;
 
   // Seuils de confiance pour la cascade
@@ -34,6 +35,7 @@ export class HybridTranslationService {
   private readonly CONTEXT_THRESHOLD = 70;
   private readonly SIMPLIFIED_THRESHOLD = 60;
   private readonly ADVANCED_THRESHOLD = 50;
+  private readonly FINETUNED_THRESHOLD = 40;
 
   /**
    * Initialise tous les modèles
@@ -62,6 +64,23 @@ export class HybridTranslationService {
       console.warn("⚠️ Modèle avancé non disponible:", error);
       console.warn("   Le système utilisera uniquement le modèle simplifié");
       this.advancedModel = null;
+    }
+
+    // 3. Charger le modèle fine-tuné le plus récent (si disponible)
+    try {
+      const { data: latestModel } = await supabase
+        .from('ai_training_context')
+        .select('model_version')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestModel) {
+        this.fineTunedModelVersion = latestModel.model_version;
+        console.log(`✅ Modèle fine-tuné détecté: ${this.fineTunedModelVersion}`);
+      }
+    } catch (error) {
+      console.log("ℹ️ Aucun modèle fine-tuné disponible (utilisation modèles par défaut)");
     }
 
     this.isInitialized = true;
@@ -183,6 +202,61 @@ export class HybridTranslationService {
         }
       } catch (error) {
         console.warn("⚠️ Modèle avancé a échoué:", error);
+      }
+    }
+
+    // NIVEAU 3.5: Modèle Fine-Tuné (si disponible, confiance 70-90%, gratuit, <100ms)
+    if (this.fineTunedModelVersion) {
+      try {
+        console.log(`🔄 Niveau 3.5: Modèle fine-tuné ${this.fineTunedModelVersion}`);
+        
+        const { data: trainingContext } = await supabase
+          .from('ai_training_context')
+          .select('training_data')
+          .eq('model_version', this.fineTunedModelVersion)
+          .single();
+
+        if (trainingContext?.training_data) {
+          // Rechercher dans les données d'entraînement pour une correspondance exacte ou similaire
+          const trainingData = trainingContext.training_data as any[];
+          const textLower = text.toLowerCase().trim();
+          
+          for (const item of trainingData) {
+            const userMessage = item.messages?.find((m: any) => m.role === 'user');
+            if (userMessage) {
+              const prompt = userMessage.content.toLowerCase();
+              // Extraire le texte de la phrase à traduire du prompt
+              const match = prompt.match(/traduis en baatonum[:\s]+(.+)/i);
+              if (match) {
+                const phraseToTranslate = match[1].trim();
+                if (phraseToTranslate === textLower) {
+                  const assistantMessage = item.messages?.find((m: any) => m.role === 'assistant');
+                  if (assistantMessage?.content) {
+                    console.log(`✅ Niveau 3.5 réussi (correspondance exacte dans modèle fine-tuné)`);
+                    await translationContextService.addToContext(
+                      text,
+                      assistantMessage.content,
+                      sourceLang,
+                      targetLang,
+                      85
+                    );
+                    return {
+                      translation: assistantMessage.content,
+                      confidence: 85,
+                      detectedLanguage: sourceLang,
+                      method: 'advanced',
+                      cost: 0,
+                      duration: Date.now() - startTime
+                    };
+                  }
+                }
+              }
+            }
+          }
+          console.log("ℹ️ Aucune correspondance trouvée dans le modèle fine-tuné");
+        }
+      } catch (error) {
+        console.warn("⚠️ Niveau 3.5 échec:", error);
       }
     }
 

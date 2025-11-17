@@ -100,6 +100,37 @@ export function FeedbackManager() {
     }
   };
 
+  const validateAllPending = async () => {
+    if (pendingFeedbacks.length === 0) {
+      toast.error('Aucun feedback en attente');
+      return;
+    }
+
+    if (!confirm(`Valider les ${pendingFeedbacks.length} feedbacks en attente ?`)) {
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from('translation_feedback')
+        .update({
+          is_validated: true,
+          validated_by: user?.id,
+          validated_at: new Date().toISOString()
+        })
+        .eq('is_validated', false);
+
+      if (error) throw error;
+
+      toast.success(`${pendingFeedbacks.length} feedbacks validés`);
+      loadFeedbacks();
+    } catch (error: any) {
+      toast.error(`Erreur: ${error.message}`);
+    }
+  };
+
   const triggerRetraining = async () => {
     if (!confirm('Déclencher le réentraînement du modèle ? Cela peut prendre plusieurs minutes.')) {
       return;
@@ -182,7 +213,15 @@ export function FeedbackManager() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4 mb-6">
+          <div className="flex gap-4 mb-6 flex-wrap">
+            <Button
+              onClick={validateAllPending}
+              variant="outline"
+              disabled={stats.pending === 0}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Tout valider ({stats.pending})
+            </Button>
             <Button
               onClick={triggerRetraining}
               disabled={isRetraining || stats.validated - stats.usedForTraining === 0}
