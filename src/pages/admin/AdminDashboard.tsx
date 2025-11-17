@@ -43,6 +43,9 @@ import BulkEditPanel from '@/components/admin/BulkEditPanel';
 import DictionaryExporter from '@/components/admin/DictionaryExporter';
 import DictionaryValidator from '@/components/admin/DictionaryValidator';
 import AutoEnrichPanel from '@/components/admin/AutoEnrichPanel';
+import { IdiomManager } from '@/components/admin/IdiomManager';
+import { FeedbackManager } from '@/components/admin/FeedbackManager';
+import { ModelTrainingDashboard } from '@/components/admin/ModelTrainingDashboard';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -128,6 +131,21 @@ export default function AdminDashboard() {
                 <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Utilisateurs</span>
                 <span className="sm:hidden">Users</span>
+              </TabsTrigger>
+              <TabsTrigger value="idioms" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Idiomes</span>
+                <span className="sm:hidden">Idiom</span>
+              </TabsTrigger>
+              <TabsTrigger value="feedback" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Feedback</span>
+                <span className="sm:hidden">Feed</span>
+              </TabsTrigger>
+              <TabsTrigger value="fine-tuning" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Fine-Tuning</span>
+                <span className="sm:hidden">AI</span>
               </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
                 <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -221,6 +239,18 @@ export default function AdminDashboard() {
 
           <TabsContent value="users" className="space-y-4">
             <UserRoleManager />
+          </TabsContent>
+
+          <TabsContent value="idioms" className="space-y-4">
+            <IdiomManager />
+          </TabsContent>
+
+          <TabsContent value="feedback" className="space-y-4">
+            <FeedbackManager />
+          </TabsContent>
+
+          <TabsContent value="fine-tuning" className="space-y-4">
+            <ModelTrainingDashboard />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4">
