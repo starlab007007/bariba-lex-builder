@@ -52,13 +52,15 @@ export class HybridTranslationService {
     this.simplifiedModel = new SimplifiedTranslationAI(entries, phrases, examples);
     await this.simplifiedModel.initializeAdvancedFeatures();
 
-    // 2. Initialiser BaatonuTranslationAI (priorité 2)
+    // 2. Initialiser BaatonuTranslationAI (priorité 2) - ACTIVÉ
     try {
+      console.log("🔄 Activation du modèle avancé (Hugging Face Transformers)...");
       this.advancedModel = new BaatonuTranslationAI(entries);
       await this.advancedModel.initialize();
-      console.log("✅ Modèle avancé (Hugging Face) activé");
+      console.log("✅ Modèle avancé (Hugging Face) activé avec embeddings sémantiques");
     } catch (error) {
-      console.warn("⚠️ Modèle avancé non disponible, utilisation du modèle simplifié uniquement");
+      console.warn("⚠️ Modèle avancé non disponible:", error);
+      console.warn("   Le système utilisera uniquement le modèle simplifié");
       this.advancedModel = null;
     }
 
