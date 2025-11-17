@@ -191,6 +191,42 @@ export type Database = {
         }
         Relationships: []
       }
+      idiomatic_expressions: {
+        Row: {
+          bariba_expression: string
+          category: string
+          created_at: string | null
+          created_by: string | null
+          french_expression: string
+          id: string
+          is_verified: boolean | null
+          updated_at: string | null
+          usage_context: string | null
+        }
+        Insert: {
+          bariba_expression: string
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          french_expression: string
+          id?: string
+          is_verified?: boolean | null
+          updated_at?: string | null
+          usage_context?: string | null
+        }
+        Update: {
+          bariba_expression?: string
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          french_expression?: string
+          id?: string
+          is_verified?: boolean | null
+          updated_at?: string | null
+          usage_context?: string | null
+        }
+        Relationships: []
+      }
       model_performance: {
         Row: {
           id: string
@@ -338,33 +374,81 @@ export type Database = {
         }
         Relationships: []
       }
+      translation_context: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          session_id: string
+          source_language: string
+          source_text: string
+          target_language: string
+          target_text: string
+          user_id: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          session_id: string
+          source_language: string
+          source_text: string
+          target_language: string
+          target_text: string
+          user_id?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          session_id?: string
+          source_language?: string
+          source_text?: string
+          target_language?: string
+          target_text?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       translation_feedback: {
         Row: {
           created_at: string | null
           feedback_type: string
           id: string
+          is_validated: boolean | null
           notes: string | null
           suggested_translation: string | null
           translation_log_id: string | null
+          used_for_training: boolean | null
           user_id: string | null
+          validated_at: string | null
+          validated_by: string | null
         }
         Insert: {
           created_at?: string | null
           feedback_type: string
           id?: string
+          is_validated?: boolean | null
           notes?: string | null
           suggested_translation?: string | null
           translation_log_id?: string | null
+          used_for_training?: boolean | null
           user_id?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
         }
         Update: {
           created_at?: string | null
           feedback_type?: string
           id?: string
+          is_validated?: boolean | null
           notes?: string | null
           suggested_translation?: string | null
           translation_log_id?: string | null
+          used_for_training?: boolean | null
           user_id?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
         }
         Relationships: [
           {

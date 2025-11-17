@@ -4,6 +4,8 @@ import { BaatonumTokenizer } from "./BaatonumTokenizer";
 import { LinguisticEngine } from "./LinguisticEngine";
 import { grammaticalCorrector } from "./GrammaticalCorrector";
 import { loadEnhancedCorpus, searchCorpusBySimilarity, type EnhancedCorpus } from "@/data/enhancedCorpusLoader";
+import { idiomService } from "./IdiomService";
+import { translationContextService } from "./TranslationContextService";
 
 /**
  * Service de traduction simplifié et robuste
@@ -103,6 +105,23 @@ export class SimplifiedTranslationAI {
       console.log(`📊 Catégories disponibles:`, Object.keys(this.enhancedCorpus.categoryCounts).length);
     } catch (error) {
       console.warn('⚠️ Impossible de charger le corpus enrichi:', error);
+    }
+  }
+
+  /**
+   * Initialisation complète avec idiomes et contexte (Phase 5 du rapport)
+   */
+  async initializeAdvancedFeatures(): Promise<void> {
+    try {
+      await Promise.all([
+        idiomService.loadIdioms(),
+        translationContextService.loadRecentContext()
+      ]);
+      console.log(`✅ Fonctionnalités avancées initialisées`);
+      console.log(`  - ${idiomService.getIdiomCount()} idiomes chargés`);
+      console.log(`  - ${translationContextService.getContextSize()} entrées contextuelles`);
+    } catch (error) {
+      console.error("❌ Erreur lors de l'initialisation avancée:", error);
     }
   }
 

@@ -1,6 +1,7 @@
 import { SimplifiedTranslationAI } from "@/services/SimplifiedTranslationAI";
 import { loadEnhancedDictionary } from "@/data/enhancedDictionaryLoader";
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 
 export const useTranslationAI = () => {
   const [translationModel, setTranslationModel] = useState<SimplifiedTranslationAI | null>(null);
@@ -8,26 +9,31 @@ export const useTranslationAI = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialisation du modèle
+  // Initialisation du modèle AMÉLIORÉ avec idiomes + contexte
   useEffect(() => {
     const initializeModel = async () => {
       try {
         setIsLoading(true);
         setError(null);
         
-        console.log("🔄 Chargement de toutes les données (dictionnaire + phrases + exemples)...");
+        console.log("🔄 Chargement du système amélioré (220k+ entrées + idiomes + contexte)...");
         const { entries, phrases, examples } = await loadEnhancedDictionary();
         
-        console.log("🤖 Création du traducteur avec 220k+ entrées...");
+        console.log("🤖 Création du traducteur avec fonctionnalités avancées...");
         const model = new SimplifiedTranslationAI(entries, phrases, examples);
+        
+        // Initialiser les fonctionnalités avancées (idiomes + contexte)
+        await model.initializeAdvancedFeatures();
         
         setTranslationModel(model);
         setIsInitialized(true);
         
-        console.log("✅ Traducteur entièrement entraîné et prêt!");
+        console.log("✅ Traducteur haute performance prêt!");
+        toast.success("Traducteur haute performance activé");
       } catch (err) {
         console.error("❌ Erreur lors de l'initialisation:", err);
         setError("Erreur lors de l'initialisation du traducteur");
+        toast.error("Erreur d'initialisation du traducteur");
       } finally {
         setIsLoading(false);
       }
