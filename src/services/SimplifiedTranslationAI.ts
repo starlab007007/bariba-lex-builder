@@ -2,6 +2,8 @@ import type { DictionaryEntry } from "@/data/fullDictionaryData";
 import type { BiblicalPhrase, DictionaryExample } from "@/data/enhancedDictionaryLoader";
 import { BaatonumTokenizer } from "./BaatonumTokenizer";
 import { LinguisticEngine } from "./LinguisticEngine";
+import { grammaticalCorrector } from "./GrammaticalCorrector";
+import { loadEnhancedCorpus, searchCorpusBySimilarity, type EnhancedCorpus } from "@/data/enhancedCorpusLoader";
 
 /**
  * Service de traduction simplifié et robuste
@@ -36,6 +38,7 @@ export class SimplifiedTranslationAI {
   // MODULES LINGUISTIQUES
   private tokenizer: BaatonumTokenizer | null = null;
   private linguisticEngine: LinguisticEngine;
+  private enhancedCorpus: EnhancedCorpus | null = null;
 
   // STATISTIQUES
   public isReady = false;
@@ -67,6 +70,9 @@ export class SimplifiedTranslationAI {
     const allBaribaTexts = this.extractAllBaribaTexts();
     this.tokenizer = new BaatonumTokenizer(allBaribaTexts);
 
+    // ÉTAPE 6 : Charger le corpus enrichi (Phase 1 du rapport technique)
+    this.loadEnhancedCorpusAsync();
+
     const duration = Date.now() - startTime;
 
     // LOGS DE VALIDATION
@@ -84,6 +90,20 @@ export class SimplifiedTranslationAI {
     this.isInitialized = true;
     this.isReady = true;
     console.log("✅ Traducteur COMPLÈTEMENT entraîné et prêt !");
+  }
+
+  /**
+   * Charge le corpus enrichi de manière asynchrone (Phase 1 du rapport)
+   */
+  private async loadEnhancedCorpusAsync(): Promise<void> {
+    try {
+      console.log("📚 Chargement du corpus enrichi avec 2669+ paires...");
+      this.enhancedCorpus = await loadEnhancedCorpus();
+      console.log(`✅ Corpus enrichi chargé: ${this.enhancedCorpus.totalPairs} paires`);
+      console.log(`📊 Catégories disponibles:`, Object.keys(this.enhancedCorpus.categoryCounts).length);
+    } catch (error) {
+      console.warn('⚠️ Impossible de charger le corpus enrichi:', error);
+    }
   }
 
   /**
@@ -323,7 +343,7 @@ export class SimplifiedTranslationAI {
   }
 
   /**
-   * Traduit du français vers le bariba
+   * Traduit du français vers le bariba avec correction grammaticale
    */
   async translateFrenchToBariba(text: string): Promise<TranslationResult> {
     if (!this.isInitialized) {
@@ -334,8 +354,11 @@ export class SimplifiedTranslationAI {
     
     // NIVEAU 1 : Recherche de phrase complète EXACTE
     if (this.phrasePatterns.has(cleanText)) {
+      const translation = this.phrasePatterns.get(cleanText)!;
+      // Appliquer la correction grammaticale (Phase 2 du rapport)
+      const corrected = grammaticalCorrector.correctSentence(translation);
       return {
-        translation: this.phrasePatterns.get(cleanText)!,
+        translation: corrected,
         confidence: 1.0,
         detectedLanguage: 'french'
       };
@@ -343,8 +366,10 @@ export class SimplifiedTranslationAI {
 
     // Vérifier aussi dans les exemples
     if (this.examplePairs.has(cleanText)) {
+      const translation = this.examplePairs.get(cleanText)!;
+      const corrected = grammaticalCorrector.correctSentence(translation);
       return {
-        translation: this.examplePairs.get(cleanText)!,
+        translation: corrected,
         confidence: 0.95,
         detectedLanguage: 'french'
       };
@@ -353,15 +378,45 @@ export class SimplifiedTranslationAI {
     // NIVEAU 2 : Recherche de phrase PARTIELLE (fuzzy matching)
     const fuzzyResult = this.findBestPhraseMatch(cleanText, 'french');
     if (fuzzyResult) {
+      const corrected = grammaticalCorrector.correctSentence(fuzzyResult.translation);
       return {
-        translation: fuzzyResult.translation,
+        translation: corrected,
         confidence: fuzzyResult.confidence,
         detectedLanguage: 'french'
       };
     }
+
+    // NIVEAU 3 : Recherche dans le corpus enrichi (Phase 1 du rapport)
+    if (this.enhancedCorpus) {
+      const similarPairs = searchCorpusBySimilarity(
+        this.enhancedCorpus,
+        cleanText,
+        'french',
+        1
+      );
+
+      if (similarPairs.length > 0) {
+        console.log(`→ Correspondance trouvée dans le corpus enrichi`);
+        const translation = similarPairs[0].bariba;
+        const correctionResult = grammaticalCorrector.analyzeSentence(translation);
+        
+        return {
+          translation: correctionResult.corrected,
+          confidence: Math.min(0.85, correctionResult.confidence / 100),
+          detectedLanguage: 'french'
+        };
+      }
+    }
     
-    // NIVEAU 3 : Traduction MOT-À-MOT (code existant)
-    return this.translateWordByWord(text, 'french');
+    // NIVEAU 4 : Traduction MOT-À-MOT avec correction grammaticale
+    const wordByWord = this.translateWordByWord(text, 'french');
+    const correctionResult = grammaticalCorrector.analyzeSentence(wordByWord.translation);
+    
+    return {
+      translation: correctionResult.corrected,
+      confidence: Math.min(wordByWord.confidence, correctionResult.confidence / 100),
+      detectedLanguage: 'french'
+    };
   }
 
   /**
@@ -486,18 +541,38 @@ export class SimplifiedTranslationAI {
   async translateBaribaToFrench(text: string): Promise<TranslationResult> {
     const cleanText = text.toLowerCase().trim();
     
-    // Vérifier les phrases communes inversées
-    for (const [french, bariba] of this.commonPhrases) {
-      if (cleanText.includes(bariba)) {
+    // NIVEAU 1 : Recherche exacte dans les phrases
+    if (this.baribaToFrenchPhrases.has(cleanText)) {
+      return {
+        translation: this.baribaToFrenchPhrases.get(cleanText)!,
+        confidence: 1.0,
+        detectedLanguage: 'bariba'
+      };
+    }
+
+    // NIVEAU 2 : Fuzzy matching
+    const fuzzyResult = this.findBestPhraseMatch(cleanText, 'bariba');
+    if (fuzzyResult) {
+      return {
+        translation: fuzzyResult.translation,
+        confidence: fuzzyResult.confidence,
+        detectedLanguage: 'bariba'
+      };
+    }
+
+    // NIVEAU 3 : Corpus enrichi
+    if (this.enhancedCorpus) {
+      const similarPairs = searchCorpusBySimilarity(this.enhancedCorpus, cleanText, 'bariba', 1);
+      if (similarPairs.length > 0) {
         return {
-          translation: french,
-          confidence: 1.0,
+          translation: similarPairs[0].french,
+          confidence: 0.85,
           detectedLanguage: 'bariba'
         };
       }
     }
 
-    // Traduction mot par mot avec fuzzy matching
+    // NIVEAU 4 : Traduction mot par mot
     const words = cleanText.split(/\s+/);
     const translatedWords: string[] = [];
     let totalConfidence = 0;
