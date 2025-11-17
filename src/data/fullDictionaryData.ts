@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export interface DictionaryEntry {
+  id?: string; // Optional - only present for database entries
   word: string;
   phonetic: string | null;
   part_of_speech: string;
