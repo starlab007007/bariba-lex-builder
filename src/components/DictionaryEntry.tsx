@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { type DictionaryEntry as DictionaryEntryType } from "@/data/fullDictionaryData";
+import { DictionaryFeedback } from "@/components/DictionaryFeedback";
 
 interface DictionaryEntryProps {
   entry: DictionaryEntryType;
@@ -154,6 +155,14 @@ export const DictionaryEntry = ({ entry, searchQuery = "", relevanceScore }: Dic
               {entry.notes}
             </p>
           </div>
+        )}
+
+        {/* User Feedback Widget - Only show for database entries */}
+        {entry.id && (
+          <DictionaryFeedback 
+            entryId={entry.id} 
+            entryWord={entry.word}
+          />
         )}
       </div>
     </Card>

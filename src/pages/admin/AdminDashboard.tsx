@@ -36,7 +36,7 @@ import ModelTestingPanel from '@/components/admin/ModelTestingPanel';
 import ModelPerformanceDashboard from '@/components/admin/ModelPerformanceDashboard';
 import TranslationComparisonDashboard from '@/components/admin/TranslationComparisonDashboard';
 import TrainingDataEnhancer from '@/components/admin/TrainingDataEnhancer';
-import DictionaryEnricher from '@/components/admin/DictionaryEnricher';
+import AutoDictionaryEnricher from '@/components/admin/AutoDictionaryEnricher';
 import AdvancedDictionarySearch from '@/components/AdvancedDictionarySearch';
 import GrammaticalStatsDashboard from '@/components/admin/GrammaticalStatsDashboard';
 import BulkEditPanel from '@/components/admin/BulkEditPanel';
@@ -147,6 +147,11 @@ export default function AdminDashboard() {
                 <span className="hidden sm:inline">Fine-Tuning</span>
                 <span className="sm:hidden">AI</span>
               </TabsTrigger>
+              <TabsTrigger value="dictionary-enricher" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Enrichissement Dict</span>
+                <span className="sm:hidden">Enrich</span>
+              </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
                 <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Paramètres</span>
@@ -253,12 +258,16 @@ export default function AdminDashboard() {
             <ModelTrainingDashboard />
           </TabsContent>
 
+          <TabsContent value="dictionary-enricher" className="space-y-4">
+            <AutoDictionaryEnricher />
+          </TabsContent>
+
           <TabsContent value="settings" className="space-y-4">
             <AdminSettings />
           </TabsContent>
 
           <TabsContent value="enrich" className="space-y-4">
-            <DictionaryEnricher />
+            <AutoDictionaryEnricher />
           </TabsContent>
 
           <TabsContent value="auto-enrich" className="space-y-4">

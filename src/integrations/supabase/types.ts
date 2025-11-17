@@ -83,6 +83,50 @@ export type Database = {
         }
         Relationships: []
       }
+      dictionary_enrichments: {
+        Row: {
+          applied: boolean | null
+          confidence_score: number | null
+          created_at: string | null
+          enrichment_type: string
+          entry_id: string
+          field_name: string
+          id: string
+          source_data: Json | null
+          suggested_value: string | null
+        }
+        Insert: {
+          applied?: boolean | null
+          confidence_score?: number | null
+          created_at?: string | null
+          enrichment_type: string
+          entry_id: string
+          field_name: string
+          id?: string
+          source_data?: Json | null
+          suggested_value?: string | null
+        }
+        Update: {
+          applied?: boolean | null
+          confidence_score?: number | null
+          created_at?: string | null
+          enrichment_type?: string
+          entry_id?: string
+          field_name?: string
+          id?: string
+          source_data?: Json | null
+          suggested_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dictionary_enrichments_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "dictionary_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dictionary_entries: {
         Row: {
           accomplished_form: string | null
@@ -190,6 +234,59 @@ export type Database = {
           word?: string
         }
         Relationships: []
+      }
+      dictionary_feedback: {
+        Row: {
+          applied: boolean | null
+          created_at: string | null
+          entry_id: string
+          feedback_type: string
+          field_name: string | null
+          id: string
+          is_validated: boolean | null
+          notes: string | null
+          suggested_value: string | null
+          user_id: string | null
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          applied?: boolean | null
+          created_at?: string | null
+          entry_id: string
+          feedback_type: string
+          field_name?: string | null
+          id?: string
+          is_validated?: boolean | null
+          notes?: string | null
+          suggested_value?: string | null
+          user_id?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          applied?: boolean | null
+          created_at?: string | null
+          entry_id?: string
+          feedback_type?: string
+          field_name?: string | null
+          id?: string
+          is_validated?: boolean | null
+          notes?: string | null
+          suggested_value?: string | null
+          user_id?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dictionary_feedback_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "dictionary_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       idiomatic_expressions: {
         Row: {
