@@ -17,11 +17,14 @@ import type { DictionaryEntry } from "@/data/fullDictionaryData";
 import { idiomService } from "./IdiomService";
 import { translationContextService } from "./TranslationContextService";
 import { supabase } from "@/integrations/supabase/client";
+import { semanticRAGService } from "./SemanticRAGService";
+import { grammaticalCorrector } from "./GrammaticalCorrector";
 
 export interface HybridTranslationResult extends TranslationResult {
-  method: 'idiom' | 'context' | 'simplified' | 'advanced' | 'ai' | 'fallback';
+  method: 'idiom' | 'context' | 'rag' | 'simplified' | 'advanced' | 'ai' | 'fallback';
   cost: number; // Coût en crédits
   duration: number; // Durée en ms
+  ragExamples?: number; // Nombre d'exemples RAG utilisés
 }
 
 export class HybridTranslationService {
@@ -30,12 +33,12 @@ export class HybridTranslationService {
   private fineTunedModelVersion: string | null = null;
   private isInitialized = false;
 
-  // Seuils de confiance pour la cascade
-  private readonly IDIOM_THRESHOLD = 95;
-  private readonly CONTEXT_THRESHOLD = 70;
-  private readonly SIMPLIFIED_THRESHOLD = 60;
-  private readonly ADVANCED_THRESHOLD = 50;
-  private readonly FINETUNED_THRESHOLD = 40;
+  // Seuils de confiance pour la cascade (NOUVEAUX - optimisés)
+  private readonly IDIOM_THRESHOLD = 98;  // Idiomes = 100% de confiance
+  private readonly RAG_THRESHOLD = 75;     // RAG prioritaire sur le reste
+  private readonly CONTEXT_THRESHOLD = 60; // Contexte pour information uniquement
+  private readonly ADVANCED_THRESHOLD = 70; // BaatonuTranslationAI avec embeddings
+  private readonly SIMPLIFIED_THRESHOLD = 50; // SimplifiedTranslationAI amélioré
 
   /**
    * Initialise tous les modèles
@@ -47,45 +50,57 @@ export class HybridTranslationService {
   ): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log("🚀 Initialisation du système hybride...");
+    console.log("🚀 Initialisation du système hybride AMÉLIORÉ...");
     const startTime = Date.now();
 
-    // 1. Initialiser SimplifiedTranslationAI (priorité 1)
+    // 1. Initialiser SimplifiedTranslationAI avec analyse grammaticale
     this.simplifiedModel = new SimplifiedTranslationAI(entries, phrases, examples);
     await this.simplifiedModel.initializeAdvancedFeatures();
 
-    // 2. Initialiser BaatonuTranslationAI (priorité 2) - ACTIVÉ
+    // 2. Initialiser SemanticRAGService (NOUVEAU - remplace le mock fine-tuned)
+    try {
+      console.log("🧠 Initialisation du RAG sémantique...");
+      await semanticRAGService.initialize(entries, phrases, examples);
+      console.log("✅ RAG sémantique activé avec embeddings");
+    } catch (error) {
+      console.warn("⚠️ RAG sémantique non disponible:", error);
+    }
+
+    // 3. Initialiser BaatonuTranslationAI (ACTIVÉ dans le flux)
     try {
       console.log("🔄 Activation du modèle avancé (Hugging Face Transformers)...");
       this.advancedModel = new BaatonuTranslationAI(entries);
       await this.advancedModel.initialize();
-      console.log("✅ Modèle avancé (Hugging Face) activé avec embeddings sémantiques");
+      console.log("✅ BaatonuTranslationAI activé avec embeddings sémantiques");
     } catch (error) {
       console.warn("⚠️ Modèle avancé non disponible:", error);
-      console.warn("   Le système utilisera uniquement le modèle simplifié");
       this.advancedModel = null;
     }
 
-    // 3. Charger le modèle fine-tuné le plus récent (si disponible)
+    // 4. Charger le contexte de fine-tuning NLLB-200 (si disponible)
     try {
       const { data: latestModel } = await supabase
         .from('ai_training_context')
-        .select('model_version')
+        .select('model_version, metrics')
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
       if (latestModel) {
         this.fineTunedModelVersion = latestModel.model_version;
-        console.log(`✅ Modèle fine-tuné détecté: ${this.fineTunedModelVersion}`);
+        console.log(`✅ Contexte NLLB-200: ${this.fineTunedModelVersion}`);
+        const metrics = latestModel.metrics as any;
+        if (metrics?.total_training_pairs) {
+          console.log(`   📊 ${metrics.total_training_pairs} paires d'entraînement disponibles`);
+        }
       }
     } catch (error) {
-      console.log("ℹ️ Aucun modèle fine-tuné disponible (utilisation modèles par défaut)");
+      console.log("ℹ️ Pas encore de fine-tuning NLLB-200 (utilisation RAG + modèles locaux)");
     }
 
     this.isInitialized = true;
     const duration = Date.now() - startTime;
-    console.log(`✅ Système hybride initialisé en ${duration}ms`);
+    console.log(`✅ Système hybride COMPLET initialisé en ${duration}ms`);
   }
 
   /**

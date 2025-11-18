@@ -6,6 +6,7 @@ import { grammaticalCorrector } from "./GrammaticalCorrector";
 import { loadEnhancedCorpus, searchCorpusBySimilarity, type EnhancedCorpus } from "@/data/enhancedCorpusLoader";
 import { idiomService } from "./IdiomService";
 import { translationContextService } from "./TranslationContextService";
+import { GrammaticalAnalyzer, type SentenceStructure } from "./GrammaticalAnalyzer";
 
 /**
  * Service de traduction simplifié et robuste
@@ -41,6 +42,11 @@ export class SimplifiedTranslationAI {
   private tokenizer: BaatonumTokenizer | null = null;
   private linguisticEngine: LinguisticEngine;
   private enhancedCorpus: EnhancedCorpus | null = null;
+  private grammaticalAnalyzer: GrammaticalAnalyzer;
+
+  // INDEX N-GRAMS (pour patterns intelligents)
+  private bigramIndex: Map<string, Set<string>> = new Map();
+  private trigramIndex: Map<string, Set<string>> = new Map();
 
   // STATISTIQUES
   public isReady = false;
@@ -48,6 +54,7 @@ export class SimplifiedTranslationAI {
   constructor(entries: DictionaryEntry[], phrases: BiblicalPhrase[], examples: DictionaryExample[]) {
     this.dictionaryEntries = entries;
     this.linguisticEngine = new LinguisticEngine();
+    this.grammaticalAnalyzer = new GrammaticalAnalyzer(entries);
     this.initialize(phrases, examples);
   }
 
@@ -68,11 +75,14 @@ export class SimplifiedTranslationAI {
     // ÉTAPE 4 : Construire l'index de recherche rapide de phrases
     this.buildPhraseIndex();
     
-    // ÉTAPE 5 : Initialiser le tokenizer Baatɔnum
+    // ÉTAPE 5 : Construire les index n-grams pour combinaisons intelligentes
+    this.buildNGramIndexes();
+    
+    // ÉTAPE 6 : Initialiser le tokenizer Baatɔnum
     const allBaribaTexts = this.extractAllBaribaTexts();
     this.tokenizer = new BaatonumTokenizer(allBaribaTexts);
 
-    // ÉTAPE 6 : Charger le corpus enrichi (Phase 1 du rapport technique)
+    // ÉTAPE 7 : Charger le corpus enrichi (Phase 1 du rapport technique)
     this.loadEnhancedCorpusAsync();
 
     const duration = Date.now() - startTime;
@@ -265,6 +275,40 @@ export class SimplifiedTranslationAI {
     }
     
     console.log(`✅ Index de phrases construit avec ${this.phraseIndex.size} mots-clés`);
+  }
+
+  /**
+   * Construire les index n-grams pour combinaisons intelligentes
+   * Permet de détecter des patterns de 2-3 mots au lieu du word-matching strict
+   */
+  private buildNGramIndexes(): void {
+    console.log("🔢 Construction des index n-grams...");
+
+    // Construire depuis les phrases d'entraînement
+    for (const [frenchPhrase, baribaPhrase] of this.phrasePatterns) {
+      const frWords = frenchPhrase.toLowerCase().split(/\s+/);
+      const baWords = baribaPhrase.toLowerCase().split(/\s+/);
+
+      // Bigrams français
+      for (let i = 0; i < frWords.length - 1; i++) {
+        const bigram = `${frWords[i]} ${frWords[i + 1]}`;
+        if (!this.bigramIndex.has(bigram)) {
+          this.bigramIndex.set(bigram, new Set());
+        }
+        this.bigramIndex.get(bigram)!.add(baribaPhrase);
+      }
+
+      // Trigrams français
+      for (let i = 0; i < frWords.length - 2; i++) {
+        const trigram = `${frWords[i]} ${frWords[i + 1]} ${frWords[i + 2]}`;
+        if (!this.trigramIndex.has(trigram)) {
+          this.trigramIndex.set(trigram, new Set());
+        }
+        this.trigramIndex.get(trigram)!.add(baribaPhrase);
+      }
+    }
+
+    console.log(`✅ N-grams: ${this.bigramIndex.size} bigrams, ${this.trigramIndex.size} trigrams`);
   }
 
   /**
