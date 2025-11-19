@@ -46,6 +46,7 @@ import AutoEnrichPanel from '@/components/admin/AutoEnrichPanel';
 import { IdiomManager } from '@/components/admin/IdiomManager';
 import { FeedbackManager } from '@/components/admin/FeedbackManager';
 import { ModelTrainingDashboard } from '@/components/admin/ModelTrainingDashboard';
+import { NLLB200FineTuningPanel } from '@/components/admin/NLLB200FineTuningPanel';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -146,6 +147,11 @@ export default function AdminDashboard() {
                 <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Fine-Tuning</span>
                 <span className="sm:hidden">AI</span>
+              </TabsTrigger>
+              <TabsTrigger value="nllb-fine-tuning" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">NLLB-200</span>
+                <span className="sm:hidden">NLLB</span>
               </TabsTrigger>
               <TabsTrigger value="dictionary-enricher" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
                 <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -256,6 +262,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="fine-tuning" className="space-y-4">
             <ModelTrainingDashboard />
+          </TabsContent>
+
+          <TabsContent value="nllb-fine-tuning" className="space-y-4">
+            <NLLB200FineTuningPanel />
           </TabsContent>
 
           <TabsContent value="dictionary-enricher" className="space-y-4">

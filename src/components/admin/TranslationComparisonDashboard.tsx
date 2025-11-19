@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useTranslationAI } from "@/hooks/useTranslationAI";
+import { useHybridTranslation } from "@/hooks/useHybridTranslation";
 import { useAITranslation } from "@/hooks/useAITranslation";
 import { ArrowRight, Brain, Sparkles, User, Loader2, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,7 +33,7 @@ export default function TranslationComparisonDashboard() {
     translateFrenchToBariba,
     translateBaribaToFrench,
     isInitialized: localReady
-  } = useTranslationAI();
+  } = useHybridTranslation();
 
   const { translateWithAI, isLoading: apiLoading } = useAITranslation();
 
@@ -60,11 +60,13 @@ export default function TranslationComparisonDashboard() {
       if (localReady) {
         const startLocal = performance.now();
         try {
+          let localResult;
           if (direction === 'french-to-bariba') {
-            result.localTranslation = await translateFrenchToBariba(inputText);
+            localResult = await translateFrenchToBariba(inputText);
           } else {
-            result.localTranslation = await translateBaribaToFrench(inputText);
+            localResult = await translateBaribaToFrench(inputText);
           }
+          result.localTranslation = localResult.translation;
           result.localTime = Math.round(performance.now() - startLocal);
         } catch (err) {
           console.error('Local model error:', err);

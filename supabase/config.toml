@@ -3,6 +3,9 @@ project_id = "pmrhezgnyffiskbaiudb"
 [functions.retrain-model]
 verify_jwt = true
 
+[functions.fine-tune-nllb]
+verify_jwt = true
+
 [functions.ai-translate]
 verify_jwt = false
 

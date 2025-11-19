@@ -375,6 +375,26 @@ export class HybridTranslationService {
   }
 
   /**
+   * Détecte la langue du texte
+   */
+  detectLanguage(text: string): 'french' | 'bariba' | 'mixed' {
+    if (!this.simplifiedModel) {
+      throw new Error("Service non initialisé");
+    }
+    return this.simplifiedModel.detectLanguage(text);
+  }
+
+  /**
+   * Génère des suggestions de phrases
+   */
+  getSuggestions(text: string, maxSuggestions: number = 5): string[] {
+    if (!this.simplifiedModel) {
+      return [];
+    }
+    return this.simplifiedModel.getSuggestions(text, maxSuggestions);
+  }
+
+  /**
    * Retourne les statistiques du système
    */
   getStats() {
