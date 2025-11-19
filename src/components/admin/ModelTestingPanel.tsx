@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useTranslationAI } from '@/hooks/useTranslationAI';
+import { useHybridTranslation } from '@/hooks/useHybridTranslation';
 import { useAITranslation } from '@/hooks/useAITranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { FlaskConical, Zap, Brain, TrendingUp, Download } from 'lucide-react';
@@ -33,7 +33,7 @@ export default function ModelTestingPanel() {
   const { toast } = useToast();
 
   // Hooks
-  const { translateFrenchToBariba, translateBaribaToFrench, isInitialized } = useTranslationAI();
+  const { translateFrenchToBariba, translateBaribaToFrench, isInitialized } = useHybridTranslation();
   const { translateWithAI } = useAITranslation();
 
   // Fetch test history
@@ -66,23 +66,23 @@ export default function ModelTestingPanel() {
     const startTime = performance.now();
 
     try {
-      let translation = "";
+      let result;
       if (direction === 'french') {
-        translation = await translateFrenchToBariba(testText);
+        result = await translateFrenchToBariba(testText);
       } else {
-        translation = await translateBaribaToFrench(testText);
+        result = await translateBaribaToFrench(testText);
       }
 
       const duration = Math.round(performance.now() - startTime);
 
-      const result: TestResult = {
+      const testResult: TestResult = {
         timestamp: new Date(),
         testPhrase: testText,
         sourceLanguage: direction,
         targetLanguage: direction === 'french' ? 'bariba' : 'french',
-        localTranslation: translation,
+        localTranslation: result.translation,
         localTime: duration,
-        localConfidence: 85, // Estimate
+        localConfidence: result.confidence,
       };
 
       setCurrentResult(prev => ({ ...prev, ...result }));

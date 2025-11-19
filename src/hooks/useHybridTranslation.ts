@@ -132,6 +132,26 @@ export const useHybridTranslation = () => {
   }, [isInitialized]);
 
   /**
+   * Détecte la langue du texte
+   */
+  const detectLanguage = useCallback((text: string): 'french' | 'bariba' | 'mixed' => {
+    if (!isInitialized) {
+      return 'mixed';
+    }
+    return hybridTranslationService.detectLanguage(text);
+  }, [isInitialized]);
+
+  /**
+   * Génère des suggestions de phrases
+   */
+  const getSuggestions = useCallback((text: string, maxSuggestions: number = 5): string[] => {
+    if (!isInitialized) {
+      return [];
+    }
+    return hybridTranslationService.getSuggestions(text, maxSuggestions);
+  }, [isInitialized]);
+
+  /**
    * Obtenir les statistiques du système
    */
   const getStats = useCallback(() => {
@@ -142,6 +162,8 @@ export const useHybridTranslation = () => {
     translateFrenchToBariba,
     translateBaribaToFrench,
     translateIntelligent,
+    detectLanguage,
+    getSuggestions,
     getStats,
     isLoading,
     isInitialized,

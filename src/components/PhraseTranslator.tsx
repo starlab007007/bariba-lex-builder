@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useTranslationAI } from "@/hooks/useTranslationAI";
+import { useHybridTranslation } from "@/hooks/useHybridTranslation";
 import { useTranslationCache } from "@/hooks/useTranslationCache";
 import { useGamification } from "@/hooks/useGamification";
 import TranslationFeedback from "./TranslationFeedback";
@@ -27,7 +27,7 @@ export const PhraseTranslator = () => {
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
   
-  // Hook pour le traducteur
+  // Hook pour le traducteur hybride
   const {
     translateFrenchToBariba,
     translateBaribaToFrench,
@@ -37,8 +37,11 @@ export const PhraseTranslator = () => {
     isLoading: aiLoading,
     isInitialized: aiReady,
     error: aiError,
-    modelStats
-  } = useTranslationAI();
+    getStats
+  } = useHybridTranslation();
+
+  // Stats du modèle
+  const modelStats = aiReady ? getStats() : null;
 
   // Hook pour le cache de traductions
   const { 
@@ -77,15 +80,15 @@ export const PhraseTranslator = () => {
     const timeoutId = setTimeout(async () => {
       try {
         setIsTranslating(true);
-        let translation = "";
+        let result;
         
         if (direction === "french-to-bariba") {
-          translation = await translateFrenchToBariba(sourceText);
+          result = await translateFrenchToBariba(sourceText);
         } else {
-          translation = await translateBaribaToFrench(sourceText);
+          result = await translateBaribaToFrench(sourceText);
         }
         
-        setTranslatedText(translation);
+        setTranslatedText(result.translation);
         
         // Update gamification achievements
         await updateAchievement('translations_made');
@@ -147,20 +150,22 @@ export const PhraseTranslator = () => {
       else if (useAI && aiReady) {
         setUsedCache(false);
         
+        let result;
         if (direction === "french-to-bariba") {
-          translation = await translateFrenchToBariba(sourceText);
+          result = await translateFrenchToBariba(sourceText);
         } else {
-          translation = await translateBaribaToFrench(sourceText);
+          result = await translateBaribaToFrench(sourceText);
         }
         
+        translation = result.translation;
         const duration = Math.round(performance.now() - startTime);
         
         // Sauvegarder dans le cache
-        await cacheTranslation(sourceText, translation, sourceLang, targetLang, 85);
+        await cacheTranslation(sourceText, translation, sourceLang, targetLang, result.confidence);
         
         toast({
-          title: "🧠 Traduction IA (Gratuite)",
-          description: `Traduction effectuée en ${duration}ms avec le modèle local enrichi.`
+          title: `🧠 Traduction ${result.method.toUpperCase()}`,
+          description: `Traduction effectuée en ${result.duration}ms avec ${result.confidence}% de confiance.`
         });
       } else {
         // Fallback: traduction de démonstration
