@@ -47,6 +47,7 @@ import { IdiomManager } from '@/components/admin/IdiomManager';
 import { FeedbackManager } from '@/components/admin/FeedbackManager';
 import { ModelTrainingDashboard } from '@/components/admin/ModelTrainingDashboard';
 import { NLLB200FineTuningPanel } from '@/components/admin/NLLB200FineTuningPanel';
+import { FullDatasetImporter } from '@/components/admin/FullDatasetImporter';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -82,6 +83,11 @@ export default function AdminDashboard() {
                 <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Vue d'ensemble</span>
                 <span className="sm:hidden">Vue</span>
+              </TabsTrigger>
+              <TabsTrigger value="dataset" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Dataset</span>
+                <span className="sm:hidden">Data</span>
               </TabsTrigger>
               <TabsTrigger value="dictionary" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
                 <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -203,6 +209,14 @@ export default function AdminDashboard() {
 
           <TabsContent value="overview" className="space-y-4">
             <AdminOverview />
+          </TabsContent>
+
+          <TabsContent value="dataset" className="space-y-4">
+            <FullDatasetImporter />
+          </TabsContent>
+
+          <TabsContent value="dataset" className="space-y-4">
+            <FullDatasetImporter />
           </TabsContent>
 
           <TabsContent value="dictionary" className="space-y-4">
