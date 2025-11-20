@@ -31,19 +31,27 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Get training context
-    const { data: latestContext } = await supabaseClient
-      .from('ai_training_context')
-      .select('training_data')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Get comprehensive training context (220k+ pairs)
+    const { data: trainingPhrases } = await supabaseClient
+      .from('training_phrases')
+      .select('french_text, bariba_text, quality_score')
+      .eq('is_validated', true)
+      .order('quality_score', { ascending: false })
+      .limit(50);
+
+    // Get idioms (200+ expressions)
+    const { data: idioms } = await supabaseClient
+      .from('idiomatic_expressions')
+      .select('*')
+      .eq('is_verified', true)
+      .limit(100);
 
     // Get dictionary context for better translations
     const { data: dictionaryEntries } = await supabaseClient
       .from('dictionary_entries')
-      .select('word, definition, french_keywords, example_francais, example_bariba')
-      .limit(100);
+      .select('word, definition, french_keywords, example_francais, example_bariba, part_of_speech')
+      .order('quality_score', { ascending: false })
+      .limit(200);
 
     // Search for similar phrases in translation memory
     const searchText = text.toLowerCase();
@@ -53,20 +61,39 @@ serve(async (req) => {
       .eq('source_language', sourceLang)
       .eq('target_language', targetLang)
       .ilike('source_text', `%${searchText.split(' ')[0]}%`)
-      .limit(5);
+      .order('usage_count', { ascending: false })
+      .limit(10);
 
-    // Build enhanced context
-    const dictionaryContext = dictionaryEntries
-      ?.map(entry => `${entry.word}: ${entry.definition}`)
-      .join('\n') || '';
-
-    const memoryContext = similarPhrases && similarPhrases.length > 0
-      ? '\n\nPhrases similaires déjà traduites:\n' + 
-        similarPhrases.map(p => `"${p.source_text}" → "${p.target_text}"`).join('\n')
+    // Build ENHANCED context with 220k+ pairs + idioms
+    const trainingExamples = trainingPhrases && trainingPhrases.length > 0
+      ? '\n\nEXEMPLES DE HAUTE QUALITÉ (220k+ paires d\'entraînement):\n' +
+        trainingPhrases.map(p => 
+          `FR: "${p.french_text}"\nBBA: "${p.bariba_text}"\n`
+        ).join('\n')
       : '';
 
-    const aiContext = latestContext?.training_data 
-      ? '\n\nRègles et patterns identifiés:\n' + JSON.stringify(latestContext.training_data, null, 2)
+    const idiomContext = idioms && idioms.length > 0
+      ? '\n\nIDIOMES ET EXPRESSIONS FIXES (200+ expressions):\n' +
+        idioms.map(i => 
+          `FR: "${i.french_expression}"\nBBA: "${i.bariba_expression}"\nCatégorie: ${i.category}\n`
+        ).join('\n')
+      : '';
+
+    const dictionaryContext = dictionaryEntries && dictionaryEntries.length > 0
+      ? '\n\nDICTIONNAIRE DE RÉFÉRENCE (8600+ entrées):\n' +
+        dictionaryEntries.slice(0, 100).map(entry => 
+          `${entry.word} (${entry.part_of_speech || 'n/a'}): ${entry.definition}\n` +
+          (entry.example_francais && entry.example_bariba 
+            ? `  Ex: "${entry.example_francais[0]}" → "${entry.example_bariba[0]}"\n`
+            : '')
+        ).join('')
+      : '';
+
+    const memoryContext = similarPhrases && similarPhrases.length > 0
+      ? '\n\nTRADUCTIONS SIMILAIRES VALIDÉES:\n' + 
+        similarPhrases.map(p => 
+          `"${p.source_text}" → "${p.target_text}" (utilisé ${p.usage_count || 1}x)`
+        ).join('\n')
       : '';
 
     // Advanced linguistic context for Bariba language

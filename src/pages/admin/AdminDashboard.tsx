@@ -57,6 +57,7 @@ import DictionaryDataViewer from '@/components/admin/DictionaryDataViewer';
 import { CompleteIdiomImporter } from '@/components/admin/CompleteIdiomImporter';
 import { HybridTranslationTester } from '@/components/admin/HybridTranslationTester';
 import { DataManagementPanel } from '@/components/admin/DataManagementPanel';
+import { FreeFineTuningGuide } from '@/components/admin/FreeFineTuningGuide';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -243,6 +244,11 @@ export default function AdminDashboard() {
                 <span className="hidden sm:inline">Gestion Données</span>
                 <span className="sm:hidden">Données</span>
               </TabsTrigger>
+              <TabsTrigger value="free-finetuning" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2 bg-green-500/10 text-green-600">
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">🎁 Fine-Tuning GRATUIT</span>
+                <span className="sm:hidden">🎁 Free</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -379,6 +385,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="data-management" className="space-y-4">
             <DataManagementPanel />
+          </TabsContent>
+
+          <TabsContent value="free-finetuning" className="space-y-4">
+            <FreeFineTuningGuide />
           </TabsContent>
         </Tabs>
       </main>

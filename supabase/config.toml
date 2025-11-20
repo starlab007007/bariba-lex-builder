@@ -26,3 +26,9 @@ verify_jwt = true
 
 [functions.enrich-training-data]
 verify_jwt = true
+
+[functions.huggingface-translate]
+verify_jwt = false
+
+[functions.enrich-dictionary]
+verify_jwt = true
