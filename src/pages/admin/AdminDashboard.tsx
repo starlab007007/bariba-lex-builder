@@ -52,6 +52,7 @@ import { FullDatasetImporter } from '@/components/admin/FullDatasetImporter';
 import { IdiomImporter } from '@/components/admin/IdiomImporter';
 import QualityMetricsDashboard from '@/components/admin/QualityMetricsDashboard';
 import SystemAuditReport from '@/components/admin/SystemAuditReport';
+import TrainingDataViewer from '@/components/admin/TrainingDataViewer';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -227,6 +228,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="audit" className="space-y-4">
             <SystemAuditReport />
+          </TabsContent>
+
+          <TabsContent value="trainingview" className="space-y-4">
+            <TrainingDataViewer />
           </TabsContent>
 
           <TabsContent value="dataset" className="space-y-4">
