@@ -54,7 +54,7 @@ export const CompleteIdiomImporter = () => {
       const { error: deleteError } = await supabase
         .from('idiomatic_expressions')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Supprimer tout
+        .gte('created_at', '1900-01-01'); // Supprimer tout
 
       if (deleteError) {
         console.warn('Avertissement lors de la suppression:', deleteError);
