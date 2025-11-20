@@ -94,6 +94,11 @@ export default function AdminDashboard() {
                 <span className="hidden sm:inline">Audit Système</span>
                 <span className="sm:hidden">Audit</span>
               </TabsTrigger>
+              <TabsTrigger value="training-viewer" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Données d'Entraînement</span>
+                <span className="sm:hidden">Data</span>
+              </TabsTrigger>
               <TabsTrigger value="dataset" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
                 <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Dataset</span>
@@ -230,7 +235,7 @@ export default function AdminDashboard() {
             <SystemAuditReport />
           </TabsContent>
 
-          <TabsContent value="trainingview" className="space-y-4">
+          <TabsContent value="training-viewer" className="space-y-4">
             <TrainingDataViewer />
           </TabsContent>
 
