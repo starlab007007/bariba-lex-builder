@@ -117,7 +117,7 @@ function loadFromCache(): DictionaryEntry[] | null {
   }
 }
 
-// Save to cache
+// Save to cache with QuotaExceededError handling
 function saveToCache(entries: DictionaryEntry[], sources: CacheData['sources']): void {
   try {
     const cacheData: CacheData = {
@@ -127,10 +127,39 @@ function saveToCache(entries: DictionaryEntry[], sources: CacheData['sources']):
       entries
     };
     
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-    console.log(`💾 Cache saved: ${entries.length} entries`);
-  } catch (error) {
-    console.error('Cache save error:', error);
+    const serialized = JSON.stringify(cacheData);
+    localStorage.setItem(CACHE_KEY, serialized);
+    console.log(`💾 Cache saved: ${entries.length} entries (${(serialized.length / 1024).toFixed(2)} KB)`);
+  } catch (error: any) {
+    if (error.name === 'QuotaExceededError') {
+      console.warn('⚠️ LocalStorage quota exceeded - clearing old cache and retrying...');
+      try {
+        // Clear old cache entries
+        localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem('dictionary_cache'); // Old cache key
+        
+        // Try to save again with minimal data (without examples to reduce size)
+        const minimalEntries = entries.map(e => ({
+          ...e,
+          example_bariba: [],
+          example_francais: []
+        }));
+        
+        const minimalCache: CacheData = {
+          version: CACHE_VERSION,
+          timestamp: Date.now(),
+          sources,
+          entries: minimalEntries
+        };
+        
+        localStorage.setItem(CACHE_KEY, JSON.stringify(minimalCache));
+        console.log(`💾 Minimal cache saved: ${minimalEntries.length} entries (without examples)`);
+      } catch (retryError) {
+        console.warn('⚠️ Unable to save cache - continuing without cache');
+      }
+    } else {
+      console.error('Cache save error:', error);
+    }
   }
 }
 
