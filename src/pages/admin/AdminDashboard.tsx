@@ -58,6 +58,8 @@ import { CompleteIdiomImporter } from '@/components/admin/CompleteIdiomImporter'
 import { HybridTranslationTester } from '@/components/admin/HybridTranslationTester';
 import { DataManagementPanel } from '@/components/admin/DataManagementPanel';
 import { FreeFineTuningGuide } from '@/components/admin/FreeFineTuningGuide';
+import { TranslationDiagnosticDashboard } from '@/components/admin/TranslationDiagnosticDashboard';
+import { ModelABTestingPanel } from '@/components/admin/ModelABTestingPanel';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -249,6 +251,16 @@ export default function AdminDashboard() {
                 <span className="hidden sm:inline">🎁 Fine-Tuning GRATUIT</span>
                 <span className="sm:hidden">🎁 Free</span>
               </TabsTrigger>
+              <TabsTrigger value="diagnostic" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Diagnostic</span>
+                <span className="sm:hidden">Diag</span>
+              </TabsTrigger>
+              <TabsTrigger value="ab-testing" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <GitCompare className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">A/B Testing</span>
+                <span className="sm:hidden">A/B</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -381,6 +393,14 @@ export default function AdminDashboard() {
 
           <TabsContent value="hybrid-test" className="space-y-4">
             <HybridTranslationTester />
+          </TabsContent>
+
+          <TabsContent value="diagnostic" className="space-y-4">
+            <TranslationDiagnosticDashboard />
+          </TabsContent>
+
+          <TabsContent value="ab-testing" className="space-y-4">
+            <ModelABTestingPanel />
           </TabsContent>
 
           <TabsContent value="data-management" className="space-y-4">
