@@ -72,15 +72,25 @@ export const CompleteIdiomImporter = () => {
 
       setProgress(50);
 
-      // Supprimer les anciennes entrées
+      // Supprimer TOUS les idiomes existants
+      toast({
+        title: "Suppression en cours",
+        description: "Suppression de tous les idiomes existants...",
+      });
+
       const { error: deleteError } = await supabase
         .from('idiomatic_expressions')
         .delete()
-        .gte('created_at', '1900-01-01'); // Supprimer tout
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Supprimer tout
 
       if (deleteError) {
-        console.warn('Avertissement lors de la suppression:', deleteError);
+        throw new Error(`Erreur lors de la suppression: ${deleteError.message}`);
       }
+
+      toast({
+        title: "Suppression réussie",
+        description: "Tous les anciens idiomes ont été supprimés",
+      });
 
       setProgress(60);
 
