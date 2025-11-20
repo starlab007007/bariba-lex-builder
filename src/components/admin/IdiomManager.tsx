@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Search, Edit2, Trash2, Check, X } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Check, X, CheckSquare, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -72,6 +74,8 @@ export function IdiomManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIdiom, setEditingIdiom] = useState<Idiom | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -235,6 +239,58 @@ export function IdiomManager() {
     });
   };
 
+  const selectAllNA = () => {
+    const naIdioms = filteredIdioms.filter(
+      idiom => !idiom.bariba_expression || 
+               idiom.bariba_expression.trim() === '' || 
+               idiom.bariba_expression.toUpperCase() === 'N/A'
+    );
+    const naIds = new Set(naIdioms.map(i => i.id));
+    setSelectedIds(naIds);
+    toast.success(`${naIds.size} idiomes N/A sélectionnés`);
+  };
+
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredIdioms.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredIdioms.map(i => i.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) {
+      toast.error('Aucun idiome sélectionné');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('idiomatic_expressions')
+        .delete()
+        .in('id', Array.from(selectedIds));
+
+      if (error) throw error;
+      
+      toast.success(`${selectedIds.size} idiomes supprimés`);
+      setSelectedIds(new Set());
+      setShowDeleteAlert(false);
+      loadIdioms();
+    } catch (error: any) {
+      toast.error(`Erreur: ${error.message}`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* En-tête avec statistiques */}
@@ -287,36 +343,37 @@ export function IdiomManager() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher une expression..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes catégories</SelectItem>
-                {CATEGORIES.map(cat => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat} ({stats.byCategory[cat] || 0})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter
-                </Button>
-              </DialogTrigger>
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher une expression..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes catégories</SelectItem>
+                  {CATEGORIES.map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat} ({stats.byCategory[cat] || 0})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={resetForm}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>
@@ -391,12 +448,53 @@ export function IdiomManager() {
               </DialogContent>
             </Dialog>
           </div>
+        </div>
+
+          {/* Actions en bloc */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+              <span className="text-sm font-medium">
+                {selectedIds.size} idiome{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}
+              </span>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDeleteAlert(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer la sélection
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Désélectionner tout
+              </Button>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={selectAllNA}
+            >
+              Sélectionner tous les N/A
+            </Button>
+          </div>
 
           {/* Table des idiomes */}
           <div className="border rounded-lg">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={selectedIds.size === filteredIdioms.length && filteredIdioms.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>Français</TableHead>
                   <TableHead>Baatonum</TableHead>
                   <TableHead>Catégorie</TableHead>
@@ -407,57 +505,74 @@ export function IdiomManager() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       Chargement...
                     </TableCell>
                   </TableRow>
                 ) : filteredIdioms.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Aucun idiome trouvé
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredIdioms.map((idiom) => (
-                    <TableRow key={idiom.id}>
-                      <TableCell className="font-medium">{idiom.french_expression}</TableCell>
-                      <TableCell>{idiom.bariba_expression}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{idiom.category}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => toggleVerification(idiom)}
-                        >
-                          {idiom.is_verified ? (
-                            <Check className="h-4 w-4 text-green-600" />
+                  filteredIdioms.map((idiom) => {
+                    const isNA = !idiom.bariba_expression || 
+                                 idiom.bariba_expression.trim() === '' || 
+                                 idiom.bariba_expression.toUpperCase() === 'N/A';
+                    return (
+                      <TableRow key={idiom.id} className={isNA ? 'bg-orange-50/50 dark:bg-orange-950/10' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(idiom.id)}
+                            onCheckedChange={() => toggleSelection(idiom.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{idiom.french_expression}</TableCell>
+                        <TableCell>
+                          {isNA ? (
+                            <Badge variant="destructive" className="font-mono">N/A</Badge>
                           ) : (
-                            <X className="h-4 w-4 text-orange-600" />
+                            idiom.bariba_expression
                           )}
-                        </Button>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{idiom.category}</Badge>
+                        </TableCell>
+                        <TableCell>
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleEdit(idiom)}
+                            onClick={() => toggleVerification(idiom)}
                           >
-                            <Edit2 className="h-4 w-4" />
+                            {idiom.is_verified ? (
+                              <Check className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <X className="h-4 w-4 text-orange-600" />
+                            )}
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(idiom.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEdit(idiom)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDelete(idiom.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -468,6 +583,25 @@ export function IdiomManager() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog de confirmation de suppression en bloc */}
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer {selectedIds.size} idiome{selectedIds.size > 1 ? 's' : ''} ?
+              Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
