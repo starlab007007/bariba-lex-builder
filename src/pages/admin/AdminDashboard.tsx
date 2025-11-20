@@ -48,6 +48,8 @@ import { FeedbackManager } from '@/components/admin/FeedbackManager';
 import { ModelTrainingDashboard } from '@/components/admin/ModelTrainingDashboard';
 import { NLLB200FineTuningPanel } from '@/components/admin/NLLB200FineTuningPanel';
 import { FullDatasetImporter } from '@/components/admin/FullDatasetImporter';
+import { IdiomImporter } from '@/components/admin/IdiomImporter';
+import QualityMetricsDashboard from '@/components/admin/QualityMetricsDashboard';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -144,6 +146,11 @@ export default function AdminDashboard() {
                 <span className="hidden sm:inline">Idiomes</span>
                 <span className="sm:hidden">Idiom</span>
               </TabsTrigger>
+              <TabsTrigger value="quality" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Qualité</span>
+                <span className="sm:hidden">Qual</span>
+              </TabsTrigger>
               <TabsTrigger value="feedback" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
                 <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Feedback</span>
@@ -215,10 +222,6 @@ export default function AdminDashboard() {
             <FullDatasetImporter />
           </TabsContent>
 
-          <TabsContent value="dataset" className="space-y-4">
-            <FullDatasetImporter />
-          </TabsContent>
-
           <TabsContent value="dictionary" className="space-y-4">
             <DictionaryManager />
           </TabsContent>
@@ -267,7 +270,14 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="idioms" className="space-y-4">
-            <IdiomManager />
+            <div className="space-y-6">
+              <IdiomImporter />
+              <IdiomManager />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="quality" className="space-y-4">
+            <QualityMetricsDashboard />
           </TabsContent>
 
           <TabsContent value="feedback" className="space-y-4">

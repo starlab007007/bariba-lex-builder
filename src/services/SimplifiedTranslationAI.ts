@@ -59,12 +59,14 @@ export class SimplifiedTranslationAI {
   }
 
   private initialize(phrases: BiblicalPhrase[], examples: DictionaryExample[]): void {
-    console.log("🚀 Entraînement du traducteur sur TOUTES les données...");
+    console.log("🚀 Entraînement du traducteur sur les données disponibles...");
     
     const startTime = Date.now();
 
-    // ÉTAPE 1 : Charger les 152,000+ phrases bibliques
-    this.loadBiblicalPhrases(phrases);
+    // ÉTAPE 1 : Charger les phrases d'entraînement (si disponibles)
+    if (phrases && phrases.length > 0) {
+      this.loadTrainingPhrases(phrases);
+    }
     
     // ÉTAPE 2 : Charger les exemples du dictionnaire
     this.loadDictionaryExamples(examples);
@@ -155,9 +157,9 @@ export class SimplifiedTranslationAI {
   }
 
   /**
-   * Charger les phrases bibliques (152k+)
+   * Charger les phrases d'entraînement
    */
-  private loadBiblicalPhrases(phrases: BiblicalPhrase[]): void {
+  private loadTrainingPhrases(phrases: BiblicalPhrase[]): void {
     phrases.forEach(phrase => {
       const frenchKey = phrase.french.toLowerCase().trim();
       const baribaKey = phrase.bariba.toLowerCase().trim();
@@ -169,7 +171,7 @@ export class SimplifiedTranslationAI {
       this.baribaToFrenchPhrases.set(baribaKey, phrase.french);
     });
     
-    console.log(`✅ ${phrases.length} phrases bibliques chargées`);
+    console.log(`✅ ${phrases.length} phrases d'entraînement chargées`);
   }
 
   /**
@@ -406,7 +408,7 @@ export class SimplifiedTranslationAI {
   }
 
   /**
-   * Traduit du français vers le bariba avec correction grammaticale
+   * Traduit du français vers le bariba
    */
   async translateFrenchToBariba(text: string): Promise<TranslationResult> {
     if (!this.isInitialized) {

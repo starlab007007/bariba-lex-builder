@@ -113,8 +113,8 @@ export class HybridTranslationService {
     sourceLang: 'french' | 'bariba',
     targetLang: 'french' | 'bariba',
     options?: {
-      useAI?: boolean; // Utiliser Lovable AI si local échoue
-      minConfidence?: number; // Confiance minimale acceptée
+      useAI?: boolean;
+      minConfidence?: number;
     }
   ): Promise<HybridTranslationResult> {
     if (!this.isInitialized || !this.simplifiedModel) {
@@ -126,13 +126,49 @@ export class HybridTranslationService {
 
     console.log(`🔄 Traduction hybride: ${sourceLang} → ${targetLang}`);
 
-    // NIVEAU 0: Idiomes (confiance 100%, gratuit, < 1ms)
+    // NIVEAU 0: Idiomes
+          method: 'context',
+          sourceText: text,
+          targetText: contextResult.translation,
+          sourceLang,
+          targetLang,
+          confidence: contextResult.confidence,
+          duration: Date.now() - startTime,
+          cost: 0,
+          timestamp: Date.now(),
+          sessionId
+        });
+
+        return {
+          translation: contextResult.translation,
+          confidence: contextResult.confidence,
+          detectedLanguage: sourceLang,
+          method: 'context',
+          cost: 0,
+          duration: Date.now() - startTime
+        };
+      }
+    }
+
+    // NIVEAU 1: Idiomes (confiance 100%, gratuit, < 1ms)
     const idiomResult = sourceLang === 'french'
       ? idiomService.findFrenchIdiom(text)
       : idiomService.findBaribaIdiom(text);
 
     if (idiomResult && idiomResult.confidence >= this.IDIOM_THRESHOLD) {
-      console.log("✅ Niveau 0: Idiome trouvé");
+      console.log("✅ Niveau 1: Idiome trouvé");
+      
+      if (sessionId) {
+        contextManager.addTranslation(
+          sessionId,
+          text,
+          idiomResult.translation,
+          sourceLang,
+          targetLang,
+          idiomResult.confidence
+        );
+      }
+
       await translationContextService.addToContext(
         text,
         idiomResult.translation,
@@ -140,6 +176,19 @@ export class HybridTranslationService {
         targetLang,
         idiomResult.confidence
       );
+
+      await performanceMetrics.recordTranslation({
+        method: 'idiom',
+        sourceText: text,
+        targetText: idiomResult.translation,
+        sourceLang,
+        targetLang,
+        confidence: idiomResult.confidence,
+        duration: Date.now() - startTime,
+        cost: 0,
+        timestamp: Date.now(),
+        sessionId
+      });
 
       return {
         translation: idiomResult.translation,
@@ -151,7 +200,7 @@ export class HybridTranslationService {
       };
     }
 
-    // NIVEAU 1: Mémoire contextuelle (confiance 70%+, gratuit, < 5ms)
+    // NIVEAU 2: Mémoire contextuelle (confiance 70%+, gratuit, < 5ms)
     const contextResult = translationContextService.findSimilarTranslation(
       text,
       sourceLang,
@@ -159,7 +208,20 @@ export class HybridTranslationService {
     );
 
     if (contextResult && contextResult.confidence >= this.CONTEXT_THRESHOLD) {
-      console.log("✅ Niveau 1: Contexte trouvé");
+      console.log("✅ Niveau 2: Contexte trouvé");
+      
+      await performanceMetrics.recordTranslation({
+        method: 'context',
+        sourceText: text,
+        targetText: contextResult.translation,
+        sourceLang,
+        targetLang,
+        confidence: contextResult.confidence,
+        duration: Date.now() - startTime,
+        cost: 0,
+        timestamp: Date.now(),
+        sessionId
+      });
       return {
         translation: contextResult.translation,
         confidence: contextResult.confidence,
@@ -170,13 +232,13 @@ export class HybridTranslationService {
       };
     }
 
-    // NIVEAU 2: SimplifiedTranslationAI (confiance 40-95%, gratuit, < 50ms)
+    // NIVEAU 3: SimplifiedTranslationAI avec naturalité (confiance 40-95%, gratuit, < 50ms)
     const simplifiedResult = sourceLang === 'french'
-      ? await this.simplifiedModel.translateFrenchToBariba(text)
-      : await this.simplifiedModel.translateBaribaToFrench(text);
+      ? await this.simplifiedModel.translateFrenchToBariba(text, sessionId)
+      : await this.simplifiedModel.translateBaribaToFrench(text, sessionId);
 
     if (simplifiedResult.confidence >= this.SIMPLIFIED_THRESHOLD) {
-      console.log(`✅ Niveau 2: Simplified (${simplifiedResult.confidence}%)`);
+      console.log(`✅ Niveau 3: Simplified avec naturalité (${simplifiedResult.confidence}%)`);
       return {
         ...simplifiedResult,
         method: 'simplified',
@@ -185,26 +247,16 @@ export class HybridTranslationService {
       };
     }
 
-    // NIVEAU 3: BaatonuTranslationAI (confiance 50-90%, gratuit, 200-500ms)
+    // NIVEAU 3: BaatonuTranslationAI
     if (this.advancedModel?.isReady) {
-      console.log("🔄 Niveau 3: Essai avec modèle avancé...");
       try {
         const advancedResult = sourceLang === 'french'
           ? await this.advancedModel.translateFrenchToBariba(text)
           : await this.advancedModel.translateBaribaToFrench(text);
 
         if (advancedResult && advancedResult.length > 0) {
-          // Calculer une confiance basée sur la cohérence
           const confidence = Math.max(simplifiedResult.confidence, this.ADVANCED_THRESHOLD);
-          
-          console.log(`✅ Niveau 3: Advanced (${confidence}%)`);
-          await translationContextService.addToContext(
-            text,
-            advancedResult,
-            sourceLang,
-            targetLang,
-            confidence
-          );
+          console.log(`✅ Advanced (${confidence}%)`);
 
           return {
             translation: advancedResult,
