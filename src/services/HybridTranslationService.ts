@@ -220,72 +220,56 @@ export class HybridTranslationService {
       }
     }
 
-    // NIVEAU 3.5: Modèle Fine-Tuné (si disponible, confiance 70-90%, gratuit, <100ms)
-    if (this.fineTunedModelVersion) {
-      try {
-        console.log(`🔄 Niveau 3.5: Modèle fine-tuné ${this.fineTunedModelVersion}`);
-        
-        const { data: trainingContext } = await supabase
-          .from('ai_training_context')
-          .select('training_data')
-          .eq('model_version', this.fineTunedModelVersion)
-          .single();
+    // NIVEAU 3.5: Cache Translation Memory (confiance 80%+, <5ms, GRATUIT)
+    const cacheResult = await this.checkTranslationCache(text, sourceLang, targetLang);
+    if (cacheResult && cacheResult.confidence >= 80) {
+      console.log(`✅ Niveau 3.5: Cache Hit (${cacheResult.confidence}%)`);
+      return {
+        ...cacheResult,
+        method: 'context',
+        cost: 0,
+        duration: Date.now() - startTime
+      };
+    }
 
-        if (trainingContext?.training_data) {
-          // Rechercher dans les données d'entraînement pour une correspondance exacte ou similaire
-          const trainingData = trainingContext.training_data as any[];
-          const textLower = text.toLowerCase().trim();
-          
-          for (const item of trainingData) {
-            const userMessage = item.messages?.find((m: any) => m.role === 'user');
-            if (userMessage) {
-              const prompt = userMessage.content.toLowerCase();
-              // Extraire le texte de la phrase à traduire du prompt
-              const match = prompt.match(/traduis en baatonum[:\s]+(.+)/i);
-              if (match) {
-                const phraseToTranslate = match[1].trim();
-                if (phraseToTranslate === textLower) {
-                  const assistantMessage = item.messages?.find((m: any) => m.role === 'assistant');
-                  if (assistantMessage?.content) {
-                    console.log(`✅ Niveau 3.5 réussi (correspondance exacte dans modèle fine-tuné)`);
-                    await translationContextService.addToContext(
-                      text,
-                      assistantMessage.content,
-                      sourceLang,
-                      targetLang,
-                      85
-                    );
-                    return {
-                      translation: assistantMessage.content,
-                      confidence: 85,
-                      detectedLanguage: sourceLang,
-                      method: 'advanced',
-                      cost: 0,
-                      duration: Date.now() - startTime
-                    };
-                  }
-                }
-              }
-            }
-          }
-          console.log("ℹ️ Aucune correspondance trouvée dans le modèle fine-tuné");
+    // NIVEAU 3.6: Hugging Face Fine-Tuned Model (confiance 75-92%, GRATUIT via HF Inference API)
+    const wordCount = text.split(/\s+/).length;
+    if (wordCount >= 4) { // Phrases complexes uniquement
+      try {
+        console.log(`🔄 Niveau 3.6: Hugging Face Fine-Tuned Model (${wordCount} mots)`);
+        const hfResult = await this.callHuggingFaceModel(text, sourceLang, targetLang);
+        if (hfResult && hfResult.confidence >= 75) {
+          console.log(`✅ Niveau 3.6: HF Model (${hfResult.confidence}%)`);
+          // Sauvegarder dans le cache
+          await this.saveToCache(text, hfResult.translation, sourceLang, targetLang, hfResult.confidence);
+          return {
+            ...hfResult,
+            method: 'advanced',
+            cost: 0,
+            duration: Date.now() - startTime
+          };
         }
       } catch (error) {
-        console.warn("⚠️ Niveau 3.5 échec:", error);
+        console.warn("⚠️ Niveau 3.6 échec:", error);
       }
     }
 
-    // NIVEAU 4: Lovable AI (confiance 85-95%, payant, 1-3s)
-    if (useAI && simplifiedResult.confidence < minConfidence) {
-      console.log("🔄 Niveau 4: Appel à Lovable AI...");
+    // NIVEAU 4: Lovable AI (confiance 85-95%, quasi-GRATUIT avec crédits, 1-3s)
+    // Appelé pour phrases complexes (5+ mots) OU confiance faible
+    const shouldUseLovableAI = useAI || wordCount >= 5 || simplifiedResult.confidence < 60;
+    
+    if (shouldUseLovableAI) {
+      console.log(`🔄 Niveau 4: Lovable AI (${wordCount} mots, confiance: ${simplifiedResult.confidence}%)`);
       try {
         const aiResult = await this.callLovableAI(text, sourceLang, targetLang);
         if (aiResult) {
           console.log(`✅ Niveau 4: AI (${aiResult.confidence}%)`);
+          // Sauvegarder dans le cache pour réutilisation
+          await this.saveToCache(text, aiResult.translation, sourceLang, targetLang, aiResult.confidence);
           return {
             ...aiResult,
             method: 'ai',
-            cost: 0.001, // Coût approximatif
+            cost: 0, // Utilise crédits gratuits inclus
             duration: Date.now() - startTime
           };
         }
@@ -392,6 +376,127 @@ export class HybridTranslationService {
       return [];
     }
     return this.simplifiedModel.getSuggestions(text, maxSuggestions);
+  }
+
+  /**
+   * Vérifie le cache de traductions pour réutilisation
+   */
+  private async checkTranslationCache(
+    text: string,
+    sourceLang: string,
+    targetLang: string
+  ): Promise<HybridTranslationResult | null> {
+    try {
+      const { data } = await supabase
+        .from('translation_memory')
+        .select('*')
+        .eq('source_text', text.toLowerCase().trim())
+        .eq('source_language', sourceLang)
+        .eq('target_language', targetLang)
+        .order('usage_count', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        // Incrémenter le compteur d'utilisation
+        await supabase
+          .from('translation_memory')
+          .update({ 
+            usage_count: (data.usage_count || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', data.id);
+
+        return {
+          translation: data.target_text,
+          confidence: data.confidence_score || 80,
+          detectedLanguage: sourceLang as any,
+          method: 'context',
+          cost: 0,
+          duration: 0
+        };
+      }
+      return null;
+    } catch (error) {
+      console.warn("Cache lookup error:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Sauvegarde une traduction dans le cache
+   */
+  private async saveToCache(
+    sourceText: string,
+    targetText: string,
+    sourceLang: string,
+    targetLang: string,
+    confidence: number
+  ): Promise<void> {
+    try {
+      const { data: existing } = await supabase
+        .from('translation_memory')
+        .select('id, usage_count')
+        .eq('source_text', sourceText.toLowerCase().trim())
+        .eq('source_language', sourceLang)
+        .eq('target_language', targetLang)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from('translation_memory')
+          .update({ 
+            target_text: targetText,
+            confidence_score: confidence,
+            usage_count: (existing.usage_count || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('translation_memory')
+          .insert({
+            source_text: sourceText.toLowerCase().trim(),
+            target_text: targetText,
+            source_language: sourceLang,
+            target_language: targetLang,
+            confidence_score: confidence,
+            usage_count: 1
+          });
+      }
+    } catch (error) {
+      console.warn("Cache save error:", error);
+    }
+  }
+
+  /**
+   * Appelle le modèle Hugging Face Fine-Tuned
+   */
+  private async callHuggingFaceModel(
+    text: string,
+    sourceLang: string,
+    targetLang: string
+  ): Promise<HybridTranslationResult | null> {
+    try {
+      const { data, error } = await supabase.functions.invoke('huggingface-translate', {
+        body: { text, sourceLang, targetLang }
+      });
+
+      if (error) throw error;
+      if (!data?.translation) return null;
+
+      return {
+        translation: data.translation,
+        confidence: data.confidence || 80,
+        detectedLanguage: sourceLang as any,
+        method: 'advanced',
+        cost: 0,
+        duration: 0
+      };
+    } catch (error) {
+      console.warn("HF Model error:", error);
+      return null;
+    }
   }
 
   /**
