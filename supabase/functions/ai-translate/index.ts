@@ -140,7 +140,6 @@ TRANSLATION METHODOLOGY:
 DICTIONARY REFERENCE (${dictionaryEntries?.length || 0} entries):
 ${dictionaryContext}
 ${memoryContext}
-${aiContext}
 
 CRITICAL RULES:
 - ALWAYS use proper Bariba special characters (ɔ, ɛ, ɡ, kp, tone marks)
@@ -171,7 +170,6 @@ TRANSLATION METHODOLOGY:
 DICTIONARY REFERENCE (${dictionaryEntries?.length || 0} entries):
 ${dictionaryContext}
 ${memoryContext}
-${aiContext}
 
 CRITICAL RULES:
 - Recognize all Bariba special characters (ɔ, ɛ, ɡ, kp, tone marks)
