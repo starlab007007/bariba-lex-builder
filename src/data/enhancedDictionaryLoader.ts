@@ -27,42 +27,12 @@ export interface EnhancedDictionaryData {
 }
 
 /**
- * Charger les phrases bibliques depuis fra_bba_dictionnary.json
+ * SUPPRIMÉ: Les phrases bibliques ne sont plus chargées
+ * Retourne un tableau vide pour maintenir la compatibilité
  */
 async function loadBiblicalPhrases(): Promise<BiblicalPhrase[]> {
-  try {
-    console.log("📖 Chargement des phrases bibliques...");
-    const response = await fetch('/src/data/fra_bba_dictionnary.json');
-    
-    if (!response.ok) {
-      console.error(`Erreur de chargement fra_bba: ${response.status}`);
-      return [];
-    }
-
-    const data = await response.json();
-    const phrases: BiblicalPhrase[] = [];
-    
-    for (const item of data) {
-      if (!item.bariba || !item.french) continue;
-
-      const baribaText = item.bariba.trim();
-      const frenchText = item.french.trim();
-
-      phrases.push({
-        french: frenchText,
-        bariba: baribaText,
-        reference: item.reference || '',
-        frenchWords: frenchText.toLowerCase().split(/\s+/),
-        baribaWords: baribaText.toLowerCase().split(/\s+/)
-      });
-    }
-
-    console.log(`✅ ${phrases.length} phrases bibliques chargées`);
-    return phrases;
-  } catch (error) {
-    console.error("❌ Erreur lors du chargement des phrases bibliques:", error);
-    return [];
-  }
+  console.log("⚠️ Données bibliques désactivées - retour tableau vide");
+  return [];
 }
 
 /**
@@ -118,20 +88,19 @@ async function loadDictionaryExamples(): Promise<DictionaryExample[]> {
 export async function loadEnhancedDictionary(): Promise<EnhancedDictionaryData> {
   console.log("🚀 Chargement des données enrichies...");
   
-  const [entries, phrases, examples] = await Promise.all([
+  const [entries, examples] = await Promise.all([
     loadComprehensiveDictionary(),
-    loadBiblicalPhrases(),
     loadDictionaryExamples()
   ]);
 
-  console.log("📊 Données chargées:");
+  console.log("📊 Données chargées (données bibliques supprimées):");
   console.log(`  - Entrées dictionnaire: ${entries.length}`);
-  console.log(`  - Phrases bibliques: ${phrases.length}`);
+  console.log(`  - Phrases bibliques: SUPPRIMÉES`);
   console.log(`  - Exemples: ${examples.length}`);
 
   return {
     entries,
-    phrases,
+    phrases: [], // Phrases bibliques supprimées
     examples
   };
 }

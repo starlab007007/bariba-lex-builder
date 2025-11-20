@@ -165,58 +165,10 @@ async function loadDictionnaire10_2(): Promise<DictionaryEntry[]> {
   }
 }
 
-// Load from fra_bba_dictionnary.json
+// SUPPRIMÉ: Ne plus charger fra_bba_dictionnary.json (données bibliques)
 async function loadFraBbaDictionary(): Promise<DictionaryEntry[]> {
-  try {
-    console.log('📜 Loading fra_bba_dictionnary.json...');
-    const dict = await import('./fra_bba_dictionnary.json');
-    const data = dict.default || dict;
-    
-    // Extract unique phrases as dictionary entries
-    const entries: DictionaryEntry[] = [];
-    const seen = new Set<string>();
-    
-    for (const item of data) {
-      if (!item.bariba || !item.french) continue;
-      
-      // Extract main words from Bariba text
-      const baribaWords = item.bariba
-        .toLowerCase()
-        .split(/[\s,\.!?;:]+/)
-        .filter((w: string) => w.length > 2);
-      
-      const frenchWords = item.french
-        .toLowerCase()
-        .split(/[\s,\.!?;:]+/)
-        .filter((w: string) => w.length > 2);
-      
-      // Create entry for the phrase
-      const key = item.bariba.toLowerCase().trim();
-      if (!seen.has(key) && baribaWords.length > 0) {
-        seen.add(key);
-        
-        entries.push({
-          word: baribaWords[0], // Use first word as main entry
-          phonetic: null,
-          part_of_speech: 'phrase',
-          definition: item.french,
-          example_bariba: [item.bariba],
-          example_francais: [item.french],
-          notes: item.reference || '',
-          source_flags: ['biblical'],
-          incertitude: 0.2,
-          french_keywords: frenchWords,
-          variants: baribaWords.slice(1)
-        });
-      }
-    }
-    
-    console.log(`✅ Loaded ${entries.length} phrases from fra_bba_dictionnary.json`);
-    return entries;
-  } catch (error) {
-    console.error('Error loading fra_bba_dictionnary.json:', error);
-    return [];
-  }
+  console.log('⚠️ Données bibliques désactivées - fra_bba_dictionnary.json non chargé');
+  return [];
 }
 
 // Load from Supabase
@@ -345,22 +297,21 @@ async function loadAllSources(): Promise<DictionaryEntry[]> {
   try {
     console.log('🔄 Loading all dictionary sources...');
     
-    // Load all sources in parallel
-    const [dbEntries, dictEntries, biblicalEntries] = await Promise.all([
+    // Load all sources in parallel (bibliques supprimées)
+    const [dbEntries, dictEntries] = await Promise.all([
       loadFromDatabase(),
-      loadDictionnaire10_2(),
-      loadFraBbaDictionary()
+      loadDictionnaire10_2()
     ]);
     
-    // Merge all sources
-    const merged = mergeDictionarySources(dbEntries, dictEntries, biblicalEntries);
+    // Merge sources (sans données bibliques)
+    const merged = mergeDictionarySources(dbEntries, dictEntries, []);
     
     console.log(`🎉 Total entries: ${merged.length}`);
     console.log(`   - Database: ${dbEntries.length}`);
     console.log(`   - Dictionary: ${dictEntries.length}`);
-    console.log(`   - Biblical: ${biblicalEntries.length}`);
+    console.log(`   - Biblical: SUPPRIMÉES`);
     
-    // Save to cache
+    // Save to cache (sans données bibliques)
     const sources = {
       supabase: { 
         count: dbEntries.length, 
@@ -371,8 +322,8 @@ async function loadAllSources(): Promise<DictionaryEntry[]> {
         checksum: simpleChecksum(JSON.stringify(dictEntries.slice(0, 10))) 
       },
       fra_bba: { 
-        count: biblicalEntries.length, 
-        checksum: simpleChecksum(JSON.stringify(biblicalEntries.slice(0, 10))) 
+        count: 0, 
+        checksum: 'DISABLED' 
       }
     };
     
