@@ -300,8 +300,8 @@ export class HybridTranslationService {
       const { data, error } = await supabase.functions.invoke('ai-translate', {
         body: {
           text,
-          source_language: sourceLang,
-          target_language: targetLang
+          sourceLang,
+          targetLang
         }
       });
 
