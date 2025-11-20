@@ -1,0 +1,1466 @@
+[
+  {
+    "french": "avoir la tête dans les nuages",
+    "bariba": "u bɔɔru yɛ́ kóró mɛ",
+    "category": "expression_generale",
+    "usage_context": "Être distrait, rêveur"
+  },
+  {
+    "french": "coûter les yeux de la tête",
+    "bariba": "u yíímɑ́ gbɛ́ɛ́rɛ́",
+    "category": "argent",
+    "usage_context": "Très cher"
+  },
+  {
+    "french": "avoir le cœur sur la main",
+    "bariba": "u súúrú yɛ́ nɔ̀ɔ́rɑ́",
+    "category": "caractere",
+    "usage_context": "Être généreux"
+  },
+  {
+    "french": "tomber dans les pommes",
+    "bariba": "dérí kɑ̀ɑ̀",
+    "category": "sante",
+    "usage_context": "S'évanouir"
+  },
+  {
+    "french": "mettre la charrue avant les bœufs",
+    "bariba": "sɔ̀ɔ́rí pɛ́ɛ́ gbɑ̀sɑ̀",
+    "category": "erreur",
+    "usage_context": "Faire les choses dans le mauvais ordre"
+  },
+  {
+    "french": "tourner autour du pot",
+    "bariba": "sòòrí kɔ́ɔ́ dè",
+    "category": "communication",
+    "usage_context": "Ne pas aller droit au but"
+  },
+  {
+    "french": "avoir un chat dans la gorge",
+    "bariba": "kúúrú yɛ́ sɛ̀ɛ̀ mɛ",
+    "category": "sante",
+    "usage_context": "Être enroué"
+  },
+  {
+    "french": "donner sa langue au chat",
+    "bariba": "nɛ̀ɛ̀rɛ́ tɔ́ɔ́",
+    "category": "communication",
+    "usage_context": "Abandonner, ne plus chercher"
+  },
+  {
+    "french": "être dans le pétrin",
+    "bariba": "yɛ́ tɔ̀ɔ̀rɛ́ mɛ",
+    "category": "difficulte",
+    "usage_context": "Avoir des problèmes"
+  },
+  {
+    "french": "jeter l'éponge",
+    "bariba": "wésérí tɔ́ɔ́",
+    "category": "abandon",
+    "usage_context": "Abandonner"
+  },
+  {
+    "french": "casser sa pipe",
+    "bariba": "kúú",
+    "category": "mort",
+    "usage_context": "Mourir"
+  },
+  {
+    "french": "avoir d'autres chats à fouetter",
+    "bariba": "sɔ̀ɔ́rí nɔ́ɔ́rɑ́ yɛ́ gbɛ́ɛ́",
+    "category": "occupation",
+    "usage_context": "Avoir des choses plus importantes à faire"
+  },
+  {
+    "french": "ne pas avoir froid aux yeux",
+    "bariba": "kɑ́ fìírí",
+    "category": "courage",
+    "usage_context": "Être courageux"
+  },
+  {
+    "french": "avoir le bras long",
+    "bariba": "u kɔ̀ɔ̀rú yɛ́ débúrú",
+    "category": "pouvoir",
+    "usage_context": "Avoir de l'influence"
+  },
+  {
+    "french": "se mettre le doigt dans l'œil",
+    "bariba": "yàámú sɛ̀rí",
+    "category": "erreur",
+    "usage_context": "Se tromper complètement"
+  },
+  {
+    "french": "avoir la main verte",
+    "bariba": "sòmbú ní yɛ́ nɔ̀ɔ́rɑ́",
+    "category": "talent",
+    "usage_context": "Avoir du talent pour le jardinage"
+  },
+  {
+    "french": "poser un lapin",
+    "bariba": "wɑ̀sɑ́ tɔ́ɔ́",
+    "category": "engagement",
+    "usage_context": "Ne pas venir à un rendez-vous"
+  },
+  {
+    "french": "prendre ses jambes à son cou",
+    "bariba": "sòsórí gbèsírí",
+    "category": "fuite",
+    "usage_context": "Fuir rapidement"
+  },
+  {
+    "french": "avoir la tête dure",
+    "bariba": "u bɔɔru yɛ́ kpɑ̀ɑ̀rú",
+    "category": "caractere",
+    "usage_context": "Être têtu"
+  },
+  {
+    "french": "mettre son grain de sel",
+    "bariba": "nɛ̀ɛ̀rí bɑ́ɑ́",
+    "category": "interference",
+    "usage_context": "S'immiscer dans une conversation"
+  },
+  {
+    "french": "avoir les yeux plus gros que le ventre",
+    "bariba": "u yíímɑ́ débúrú kɑ u bùùrú",
+    "category": "appetit",
+    "usage_context": "Prendre plus qu'on ne peut manger"
+  },
+  {
+    "french": "se tourner les pouces",
+    "bariba": "kɑ́ sɔ̀ɔ́rí yò",
+    "category": "inactivite",
+    "usage_context": "Ne rien faire"
+  },
+  {
+    "french": "tirer les vers du nez",
+    "bariba": "nɛ̀ɛ̀rɛ́ pú gbɑ̀sɑ̀",
+    "category": "information",
+    "usage_context": "Obtenir des informations avec difficulté"
+  },
+  {
+    "french": "avoir un poil dans la main",
+    "bariba": "kɑ́ sɔ̀ɔ́rí bɑ́ɑ́",
+    "category": "paresse",
+    "usage_context": "Être paresseux"
+  },
+  {
+    "french": "mettre la main à la pâte",
+    "bariba": "sɔ̀ɔ́rí yò gbɑ̀",
+    "category": "travail",
+    "usage_context": "Participer activement"
+  },
+  {
+    "french": "ne pas y aller avec le dos de la cuillère",
+    "bariba": "yò gbɑ̀sɑ̀ né",
+    "category": "intensite",
+    "usage_context": "Ne pas y aller de main morte"
+  },
+  {
+    "french": "avoir un cheveu sur la langue",
+    "bariba": "nɛ̀ɛ̀rɛ́ kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "parole",
+    "usage_context": "Zézayer"
+  },
+  {
+    "french": "être sur son trente-et-un",
+    "bariba": "u yóósú yɛ́ nɔ̀ɔ́rɑ́",
+    "category": "apparence",
+    "usage_context": "Être bien habillé"
+  },
+  {
+    "french": "faire la pluie et le beau temps",
+    "bariba": "sɔ̀ɔ́rí gbíírí yò",
+    "category": "pouvoir",
+    "usage_context": "Avoir beaucoup de pouvoir"
+  },
+  {
+    "french": "avoir le cafard",
+    "bariba": "súúrú kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "emotion",
+    "usage_context": "Être triste, déprimé"
+  },
+  {
+    "french": "tirer le diable par la queue",
+    "bariba": "tɔ̀ɔ̀rɛ́ gbɛ́ɛ́",
+    "category": "difficulte",
+    "usage_context": "Avoir des difficultés financières"
+  },
+  {
+    "french": "mettre de l'eau dans son vin",
+    "bariba": "súúrú yɛ́ gbésérí",
+    "category": "moderation",
+    "usage_context": "Modérer ses exigences"
+  },
+  {
+    "french": "avoir les dents longues",
+    "bariba": "bɑ̀ɑ̀rí yɛ́ débúrú",
+    "category": "ambition",
+    "usage_context": "Être ambitieux"
+  },
+  {
+    "french": "prendre la mouche",
+    "bariba": "sóórí gbèsírí",
+    "category": "colere",
+    "usage_context": "Se vexer facilement"
+  },
+  {
+    "french": "avoir la main heureuse",
+    "bariba": "u kɔ̀ɔ̀rú yɛ́ nɔ̀ɔ́rɑ́",
+    "category": "chance",
+    "usage_context": "Avoir de la chance"
+  },
+  {
+    "french": "se faire l'avocat du diable",
+    "bariba": "nɛ̀ɛ̀rí bɔ̀kɔ́ yò",
+    "category": "argumentation",
+    "usage_context": "Défendre une position contraire"
+  },
+  {
+    "french": "avoir du pain sur la planche",
+    "bariba": "sɔ̀ɔ́rí débúrú yɛ́ gbɛ́ɛ́",
+    "category": "travail",
+    "usage_context": "Avoir beaucoup de travail"
+  },
+  {
+    "french": "ne pas être sorti de l'auberge",
+    "bariba": "tɔ̀ɔ̀rɛ́ yɛ́ gbɛ́ɛ́ gbenɑ",
+    "category": "difficulte",
+    "usage_context": "Les problèmes ne sont pas finis"
+  },
+  {
+    "french": "jeter de l'huile sur le feu",
+    "bariba": "tɔ̀ɔ̀rɛ́ yɛ́ pɛ̀ɛ̀ dè",
+    "category": "conflit",
+    "usage_context": "Aggraver une situation"
+  },
+  {
+    "french": "faire chou blanc",
+    "bariba": "sɔ̀ɔ́rí kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "echec",
+    "usage_context": "Échouer"
+  },
+  {
+    "french": "avoir le compas dans l'œil",
+    "bariba": "u yíímɑ́ yɛ́ nɔ̀ɔ́rɑ́",
+    "category": "precision",
+    "usage_context": "Avoir le coup d'œil"
+  },
+  {
+    "french": "prendre ses cliques et ses claques",
+    "bariba": "u sɔ̀ɔ́rí gbɛ́ɛ́rú",
+    "category": "depart",
+    "usage_context": "Partir avec ses affaires"
+  },
+  {
+    "french": "avoir la langue bien pendue",
+    "bariba": "nɛ̀ɛ̀rɛ́ débúrú",
+    "category": "bavardage",
+    "usage_context": "Être bavard"
+  },
+  {
+    "french": "faire la sourde oreille",
+    "bariba": "kɑ́ sòmbírí",
+    "category": "ignorance",
+    "usage_context": "Faire semblant de ne pas entendre"
+  },
+  {
+    "french": "avoir le coup de foudre",
+    "bariba": "súúrú gbɑ̀sɑ̀ dérí",
+    "category": "amour",
+    "usage_context": "Tomber amoureux instantanément"
+  },
+  {
+    "french": "ne pas avoir la langue dans sa poche",
+    "bariba": "nɛ̀ɛ̀rɛ́ gbèsírí",
+    "category": "franchise",
+    "usage_context": "Parler franchement"
+  },
+  {
+    "french": "avoir les coudées franches",
+    "bariba": "sɔ̀ɔ́rí yò gbɑ̀ né",
+    "category": "liberte",
+    "usage_context": "Avoir toute liberté d'action"
+  },
+  {
+    "french": "mettre les points sur les i",
+    "bariba": "nɛ̀ɛ̀rɛ́ yɛ́ tímírí",
+    "category": "precision",
+    "usage_context": "Être très précis"
+  },
+  {
+    "french": "avoir la gueule de bois",
+    "bariba": "u bɔɔru yɛ́ tɔ̀ɔ̀",
+    "category": "sante",
+    "usage_context": "Avoir mal à la tête après avoir bu"
+  },
+  {
+    "french": "prendre la poudre d'escampette",
+    "bariba": "sòsórí gbèsírí",
+    "category": "fuite",
+    "usage_context": "S'enfuir rapidement"
+  },
+  {
+    "french": "avoir voix au chapitre",
+    "bariba": "nɛ̀ɛ̀rɛ́ yɛ́ gbɛ́ɛ́",
+    "category": "influence",
+    "usage_context": "Avoir son mot à dire"
+  },
+  {
+    "french": "être dans de beaux draps",
+    "bariba": "yɛ́ tɔ̀ɔ̀rɛ́ débúrú mɛ",
+    "category": "difficulte",
+    "usage_context": "Être dans une mauvaise situation"
+  },
+  {
+    "french": "faire la fine bouche",
+    "bariba": "kɑ́ bɑ́ɑ́ né",
+    "category": "dedain",
+    "usage_context": "Faire le difficile"
+  },
+  {
+    "french": "avoir le cœur gros",
+    "bariba": "súúrú débúrú",
+    "category": "tristesse",
+    "usage_context": "Avoir de la peine"
+  },
+  {
+    "french": "mettre les bouchées doubles",
+    "bariba": "sɔ̀ɔ́rí yò gbèsírí",
+    "category": "effort",
+    "usage_context": "Accélérer le travail"
+  },
+  {
+    "french": "avoir le nez creux",
+    "bariba": "u yíímɑ́ yɛ́ nɔ̀ɔ́rɑ́",
+    "category": "intuition",
+    "usage_context": "Avoir de l'intuition"
+  },
+  {
+    "french": "tirer son épingle du jeu",
+    "bariba": "sɔ̀ɔ́rí nɔ̀ɔ́rɑ́ gbɛ̀ɛ́",
+    "category": "reussite",
+    "usage_context": "S'en sortir habilement"
+  },
+  {
+    "french": "ne pas être piqué des hannetons",
+    "bariba": "nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "qualite",
+    "usage_context": "Être remarquable"
+  },
+  {
+    "french": "avoir la tête près du bonnet",
+    "bariba": "sóórí gbèsírí né",
+    "category": "colere",
+    "usage_context": "S'emporter facilement"
+  },
+  {
+    "french": "faire long feu",
+    "bariba": "kɑ́ nɔ̀ɔ́rɑ́ yò",
+    "category": "echec",
+    "usage_context": "Échouer, ne pas durer"
+  },
+  {
+    "french": "avoir du cœur au ventre",
+    "bariba": "súúrú yɛ́ kpɑ̀ɑ̀rú",
+    "category": "courage",
+    "usage_context": "Être courageux"
+  },
+  {
+    "french": "mettre les pieds dans le plat",
+    "bariba": "nɛ̀ɛ̀rɛ́ bɔ̀kɔ́ yò gbɑ̀sɑ̀",
+    "category": "maladresse",
+    "usage_context": "Parler sans tact"
+  },
+  {
+    "french": "avoir le vent en poupe",
+    "bariba": "sɔ̀ɔ́rí yò nɔ̀ɔ́rɑ́ né",
+    "category": "succes",
+    "usage_context": "Avoir du succès"
+  },
+  {
+    "french": "ne pas y aller par quatre chemins",
+    "bariba": "sú gbɑ̀sɑ̀ né",
+    "category": "directness",
+    "usage_context": "Aller droit au but"
+  },
+  {
+    "french": "avoir la main lourde",
+    "bariba": "u kɔ̀ɔ̀rú yɛ́ kpɑ̀ɑ̀rú",
+    "category": "exces",
+    "usage_context": "Exagérer, en faire trop"
+  },
+  {
+    "french": "faire une montagne d'une taupinière",
+    "bariba": "sɔ̀ɔ́rí bíkú yɛ́ pɛ̀ɛ̀ débúrú né",
+    "category": "exageration",
+    "usage_context": "Exagérer un petit problème"
+  },
+  {
+    "french": "avoir bon pied bon œil",
+    "bariba": "u kɔ̀ɔ̀rú ní u yíímɑ́ nɔ̀ɔ́rɑ́",
+    "category": "sante",
+    "usage_context": "Être en bonne santé"
+  },
+  {
+    "french": "mettre du beurre dans les épinards",
+    "bariba": "wéésú yɛ́ pɛ̀ɛ̀ nɔ̀ɔ́rɑ́ né",
+    "category": "amelioration",
+    "usage_context": "Améliorer sa situation financière"
+  },
+  {
+    "french": "avoir la main sur le cœur",
+    "bariba": "súúrú yɛ́ nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "generosite",
+    "usage_context": "Être très généreux"
+  },
+  {
+    "french": "ne pas avoir fini de manger son pain blanc",
+    "bariba": "tɔ̀ɔ̀rɛ́ yɛ́ gbɛ́ɛ́ gbenɑ",
+    "category": "difficulte",
+    "usage_context": "Les problèmes continuent"
+  },
+  {
+    "french": "avoir le feu sacré",
+    "bariba": "súúrú yɛ́ gbɛ́ɛ́ gbèsírí",
+    "category": "passion",
+    "usage_context": "Être passionné"
+  },
+  {
+    "french": "mettre sa main au feu",
+    "bariba": "tímírí gbɑ̀sɑ̀",
+    "category": "certitude",
+    "usage_context": "Être absolument certain"
+  },
+  {
+    "french": "avoir les mains liées",
+    "bariba": "u kɔ̀ɔ̀rú yɛ́ gbɑ̀ɑ̀",
+    "category": "impuissance",
+    "usage_context": "Ne pas pouvoir agir"
+  },
+  {
+    "french": "faire d'une pierre deux coups",
+    "bariba": "sɔ̀ɔ́rí kɑ́ yò sɔ̀ɔ́rí fíírú",
+    "category": "efficacite",
+    "usage_context": "Réaliser deux choses à la fois"
+  },
+  {
+    "french": "avoir les yeux qui font des huit",
+    "bariba": "u yíímɑ́ yɛ́ kòkòò",
+    "category": "fatigue",
+    "usage_context": "Être très fatigué"
+  },
+  {
+    "french": "ne pas avoir inventé la poudre",
+    "bariba": "u bɔɔru kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "intelligence",
+    "usage_context": "Ne pas être très intelligent"
+  },
+  {
+    "french": "avoir la bougeotte",
+    "bariba": "kɑ́ dérí gbèsírí",
+    "category": "mouvement",
+    "usage_context": "Ne pas tenir en place"
+  },
+  {
+    "french": "mettre la clé sous la porte",
+    "bariba": "sɔ̀ɔ́rí tɔ́ɔ́",
+    "category": "fermeture",
+    "usage_context": "Fermer définitivement"
+  },
+  {
+    "french": "avoir la flemme",
+    "bariba": "kɑ́ bɑ́ɑ́ sɔ̀ɔ́rí yò",
+    "category": "paresse",
+    "usage_context": "Ne pas avoir envie de faire quelque chose"
+  },
+  {
+    "french": "faire la grasse matinée",
+    "bariba": "kòòrú gbèsírí",
+    "category": "repos",
+    "usage_context": "Se lever tard"
+  },
+  {
+    "french": "avoir la chair de poule",
+    "bariba": "u kɔ̀ɔ̀rú yɛ́ kòkòò",
+    "category": "sensation",
+    "usage_context": "Frissonner de peur ou de froid"
+  },
+  {
+    "french": "mettre les voiles",
+    "bariba": "sú",
+    "category": "depart",
+    "usage_context": "Partir"
+  },
+  {
+    "french": "avoir la gueule",
+    "bariba": "súúrú bɔ̀kɔ́",
+    "category": "emotion",
+    "usage_context": "Être de mauvaise humeur"
+  },
+  {
+    "french": "ne pas avoir un radis",
+    "bariba": "wéésú kɑ́ gbɛ́ɛ́",
+    "category": "argent",
+    "usage_context": "Ne pas avoir d'argent"
+  },
+  {
+    "french": "avoir du pot",
+    "bariba": "nɔ̀ɔ́rɑ́ yɛ́ gbɛ́ɛ́",
+    "category": "chance",
+    "usage_context": "Avoir de la chance"
+  },
+  {
+    "french": "faire l'école buissonnière",
+    "bariba": "kɑ́ sú yòrí kɑɑnú",
+    "category": "absence",
+    "usage_context": "Manquer l'école"
+  },
+  {
+    "french": "avoir les jetons",
+    "bariba": "fìírí",
+    "category": "peur",
+    "usage_context": "Avoir peur"
+  },
+  {
+    "french": "mettre les bouts",
+    "bariba": "sòsórí",
+    "category": "fuite",
+    "usage_context": "S'enfuir"
+  },
+  {
+    "french": "avoir un ticket avec quelqu'un",
+    "bariba": "u yéérú gbɛ̀ɛ́ kɑ ɲɑ̀ɑ̀",
+    "category": "seduction",
+    "usage_context": "Plaire à quelqu'un"
+  },
+  {
+    "french": "faire un tabac",
+    "bariba": "nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "succes",
+    "usage_context": "Avoir beaucoup de succès"
+  },
+  {
+    "french": "avoir le moral dans les chaussettes",
+    "bariba": "súúrú bɔ̀kɔ́ gbèsírí",
+    "category": "tristesse",
+    "usage_context": "Être très déprimé"
+  },
+  {
+    "french": "mettre le paquet",
+    "bariba": "sɔ̀ɔ́rí yò gbèsírí gbɑ̀sɑ̀",
+    "category": "effort",
+    "usage_context": "Donner le maximum"
+  },
+  {
+    "french": "avoir la patate",
+    "bariba": "súúrú nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "energie",
+    "usage_context": "Avoir beaucoup d'énergie"
+  },
+  {
+    "french": "faire la tête",
+    "bariba": "súúrú bɔ̀kɔ́ yò",
+    "category": "bouderie",
+    "usage_context": "Bouder"
+  },
+  {
+    "french": "avoir la pêche",
+    "bariba": "súúrú nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "forme",
+    "usage_context": "Être en forme"
+  },
+  {
+    "french": "mettre au parfum",
+    "bariba": "nɛ̀ɛ̀rɛ́ yò tímírí",
+    "category": "information",
+    "usage_context": "Informer"
+  },
+  {
+    "french": "avoir la banane",
+    "bariba": "yámú gbèsírí",
+    "category": "joie",
+    "usage_context": "Sourire beaucoup"
+  },
+  {
+    "french": "faire la une",
+    "bariba": "tímírí gbèsírí",
+    "category": "actualite",
+    "usage_context": "Être à la une des journaux"
+  },
+  {
+    "french": "avoir les crocs",
+    "bariba": "bòòrú yɛ́ gbɛ́ɛ́",
+    "category": "faim",
+    "usage_context": "Avoir très faim"
+  },
+  {
+    "french": "mettre les gaz",
+    "bariba": "sú gbèsírí",
+    "category": "acceleration",
+    "usage_context": "Accélérer"
+  },
+  {
+    "french": "avoir le seum",
+    "bariba": "súúrú bɔ̀kɔ́ gbèsírí",
+    "category": "frustration",
+    "usage_context": "Être très contrarié"
+  },
+  {
+    "french": "faire le pont",
+    "bariba": "kɑ́ sú sɔ̀ɔ́rí",
+    "category": "conge",
+    "usage_context": "Prendre un jour de congé"
+  },
+  {
+    "french": "avoir le melon",
+    "bariba": "u bɔɔru yɛ́ débúrú",
+    "category": "orgueil",
+    "usage_context": "Être prétentieux"
+  },
+  {
+    "french": "mettre un vent",
+    "bariba": "kɑ́ bɑ́ɑ́",
+    "category": "rejet",
+    "usage_context": "Rejeter quelqu'un"
+  },
+  {
+    "french": "avoir la dalle",
+    "bariba": "bòòrú yɛ́ gbɛ́ɛ́ gbèsírí",
+    "category": "faim",
+    "usage_context": "Avoir très faim"
+  },
+  {
+    "french": "faire une croix dessus",
+    "bariba": "tɔ́ɔ́",
+    "category": "abandon",
+    "usage_context": "Renoncer définitivement"
+  },
+  {
+    "french": "avoir la gueule de l'emploi",
+    "bariba": "u yéérú nɔ̀ɔ́rɑ́ yɛ́ gbɛ́ɛ́",
+    "category": "apparence",
+    "usage_context": "Avoir l'air qui correspond"
+  },
+  {
+    "french": "mettre de côté",
+    "bariba": "gbèè kɑ́",
+    "category": "epargne",
+    "usage_context": "Économiser"
+  },
+  {
+    "french": "avoir les chocottes",
+    "bariba": "fìírí gbèsírí",
+    "category": "peur",
+    "usage_context": "Avoir très peur"
+  },
+  {
+    "french": "faire mouche",
+    "bariba": "nɔ̀ɔ́rɑ́ yò gbɑ̀sɑ̀",
+    "category": "reussite",
+    "usage_context": "Réussir parfaitement"
+  },
+  {
+    "french": "tenir le coup",
+    "bariba": "dérí gbɑ̀ɑ̀",
+    "category": "resistance",
+    "usage_context": "Résister, persévérer"
+  },
+  {
+    "french": "prendre le large",
+    "bariba": "sú gbèsírí",
+    "category": "fuite",
+    "usage_context": "Partir loin"
+  },
+  {
+    "french": "être à côté de la plaque",
+    "bariba": "yàámú gbèsírí",
+    "category": "erreur",
+    "usage_context": "Se tromper complètement"
+  },
+  {
+    "french": "casser la baraque",
+    "bariba": "nɔ̀ɔ́rɑ́ gbèsírí yò",
+    "category": "succes",
+    "usage_context": "Avoir énormément de succès"
+  },
+  {
+    "french": "avoir le moral à zéro",
+    "bariba": "súúrú kɑ́ gbɛ́ɛ́",
+    "category": "depression",
+    "usage_context": "Être très déprimé"
+  },
+  {
+    "french": "faire ses choux gras",
+    "bariba": "wéésú gbɛ̀ɛ́ gbèsírí",
+    "category": "profit",
+    "usage_context": "Profiter d'une situation"
+  },
+  {
+    "french": "tomber des nues",
+    "bariba": "yàámú gbèsírí",
+    "category": "surprise",
+    "usage_context": "Être très surpris"
+  },
+  {
+    "french": "lever le pied",
+    "bariba": "gbésérí",
+    "category": "ralentissement",
+    "usage_context": "Ralentir, diminuer l'effort"
+  },
+  {
+    "french": "être dans les choux",
+    "bariba": "yɛ́ bɔ̀kɔ́ mɛ",
+    "category": "echec",
+    "usage_context": "Être en mauvaise position"
+  },
+  {
+    "french": "tenir la chandelle",
+    "bariba": "dérí gbɑ̀ɑ̀ sɔ̀ɔ́rí kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "gene",
+    "usage_context": "Être de trop"
+  },
+  {
+    "french": "prendre ses désirs pour des réalités",
+    "bariba": "yàámú u bɑ̀ɑ̀rɛ́",
+    "category": "illusion",
+    "usage_context": "Se faire des illusions"
+  },
+  {
+    "french": "être aux anges",
+    "bariba": "súúrú nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "bonheur",
+    "usage_context": "Être très heureux"
+  },
+  {
+    "french": "casser les pieds",
+    "bariba": "tɔ̀ɔ̀rɛ́ yò",
+    "category": "agacement",
+    "usage_context": "Ennuyer"
+  },
+  {
+    "french": "avoir la classe",
+    "bariba": "u yéérú nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "elegance",
+    "usage_context": "Avoir du style"
+  },
+  {
+    "french": "faire figure de",
+    "bariba": "yéé yɛ́ yòò",
+    "category": "apparence",
+    "usage_context": "Apparaître comme"
+  },
+  {
+    "french": "tomber à pic",
+    "bariba": "wɑ́ gbɑ̀sɑ̀ né",
+    "category": "opportunite",
+    "usage_context": "Arriver au bon moment"
+  },
+  {
+    "french": "lever l'ancre",
+    "bariba": "sú",
+    "category": "depart",
+    "usage_context": "Partir"
+  },
+  {
+    "french": "être dans le coaltar",
+    "bariba": "u bɔɔru kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "confusion",
+    "usage_context": "Être confus"
+  },
+  {
+    "french": "tenir la route",
+    "bariba": "dérí nɔ̀ɔ́rɑ́ né",
+    "category": "coherence",
+    "usage_context": "Être cohérent"
+  },
+  {
+    "french": "prendre le taureau par les cornes",
+    "bariba": "sɔ̀ɔ́rí yò gbɑ̀sɑ̀ né",
+    "category": "action",
+    "usage_context": "Affronter un problème directement"
+  },
+  {
+    "french": "être lessivé",
+    "bariba": "wésérú gbèsírí",
+    "category": "fatigue",
+    "usage_context": "Être épuisé"
+  },
+  {
+    "french": "casser du sucre sur le dos",
+    "bariba": "nɛ̀ɛ̀rɛ́ bɔ̀kɔ́ yò",
+    "category": "critique",
+    "usage_context": "Critiquer en l'absence de quelqu'un"
+  },
+  {
+    "french": "avoir le béguin",
+    "bariba": "súúrú yɛ́ gbɛ́ɛ́ kɑ ɲɑ̀ɑ̀",
+    "category": "amour",
+    "usage_context": "Être amoureux"
+  },
+  {
+    "french": "faire faux bond",
+    "bariba": "wɑ̀sɑ́ tɔ́ɔ́",
+    "category": "trahison",
+    "usage_context": "Ne pas honorer un engagement"
+  },
+  {
+    "french": "en dire des vertes et des pas mûres",
+    "bariba": "nɛ̀ɛ̀rɛ́ bɔ̀kɔ́ gbèsírí",
+    "category": "critique",
+    "usage_context": "Dire du mal"
+  },
+  {
+    "french": "voir midi à sa porte",
+    "bariba": "yàámú u bɑ̀ɑ̀rɛ́ kɑ́",
+    "category": "egoisme",
+    "usage_context": "Juger selon son intérêt"
+  },
+  {
+    "french": "avoir la tête dans le guidon",
+    "bariba": "sɔ̀ɔ́rí yò gbèsírí né",
+    "category": "concentration",
+    "usage_context": "Être très concentré sur son travail"
+  },
+  {
+    "french": "faire la grève de la faim",
+    "bariba": "kɑ́ ɲí gbɑ̀sɑ̀",
+    "category": "protestation",
+    "usage_context": "Refuser de manger pour protester"
+  },
+  {
+    "french": "avoir un verre dans le nez",
+    "bariba": "ɲòmú gbèsírí",
+    "category": "ivresse",
+    "usage_context": "Être légèrement ivre"
+  },
+  {
+    "french": "mettre au ban",
+    "bariba": "pùrú kɑ́ kɑ̀ɑ̀",
+    "category": "exclusion",
+    "usage_context": "Exclure"
+  },
+  {
+    "french": "avoir bon dos",
+    "bariba": "tɔ̀ɔ̀rɛ́ gbɛ́ɛ́ gbèsírí",
+    "category": "blame",
+    "usage_context": "Servir de bouc émissaire"
+  },
+  {
+    "french": "faire cavalier seul",
+    "bariba": "sɔ̀ɔ́rí yò kɑ́ né",
+    "category": "independance",
+    "usage_context": "Agir seul"
+  },
+  {
+    "french": "tenir le bon bout",
+    "bariba": "yɛ́ nɔ̀ɔ́rɑ́ mɛ",
+    "category": "progression",
+    "usage_context": "Être sur la bonne voie"
+  },
+  {
+    "french": "prendre la tangente",
+    "bariba": "sú gbèsírí",
+    "category": "evitement",
+    "usage_context": "Partir discrètement"
+  },
+  {
+    "french": "être à cheval sur les principes",
+    "bariba": "dérí tímírí gbɑ̀ɑ̀",
+    "category": "rigueur",
+    "usage_context": "Être strict sur les règles"
+  },
+  {
+    "french": "casser sa tirelire",
+    "bariba": "wéésú gbíírí pú",
+    "category": "depense",
+    "usage_context": "Dépenser ses économies"
+  },
+  {
+    "french": "avoir du bagou",
+    "bariba": "nɛ̀ɛ̀rɛ́ nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "eloquence",
+    "usage_context": "Bien parler"
+  },
+  {
+    "french": "faire des pieds et des mains",
+    "bariba": "sɔ̀ɔ́rí yò gbèsírí gbɑ̀sɑ̀",
+    "category": "effort",
+    "usage_context": "Faire beaucoup d'efforts"
+  },
+  {
+    "french": "tomber de Charybde en Scylla",
+    "bariba": "tɔ̀ɔ̀rɛ́ kɑ̀ɑ̀ tɔ̀ɔ̀rɛ́ débúrú",
+    "category": "aggravation",
+    "usage_context": "Passer d'un problème à un pire"
+  },
+  {
+    "french": "lever le voile",
+    "bariba": "tímírí yò",
+    "category": "revelation",
+    "usage_context": "Révéler un secret"
+  },
+  {
+    "french": "être sur des charbons ardents",
+    "bariba": "súúrú kɑ́ dérí gbɑ̀ɑ̀",
+    "category": "impatience",
+    "usage_context": "Être très impatient"
+  },
+  {
+    "french": "tenir la dragée haute",
+    "bariba": "sɔ̀ɔ́rí yò kpɑ̀ɑ̀rú",
+    "category": "resistance",
+    "usage_context": "Résister, ne pas céder"
+  },
+  {
+    "french": "prendre fait et cause pour",
+    "bariba": "ɲɑ̀ɑ̀ kɑ́ bɑ́ɑ́",
+    "category": "soutien",
+    "usage_context": "Défendre quelqu'un"
+  },
+  {
+    "french": "être le dindon de la farce",
+    "bariba": "yɛ́ bɔ̀kɔ́ mɛ",
+    "category": "victime",
+    "usage_context": "Être la victime"
+  },
+  {
+    "french": "rire jaune",
+    "bariba": "yámú né kɑ súúrú bɔ̀kɔ́",
+    "category": "malaise",
+    "usage_context": "Rire de façon forcée"
+  },
+  {
+    "french": "avoir la berlue",
+    "bariba": "yàámú bɔ̀kɔ́",
+    "category": "illusion",
+    "usage_context": "Voir des choses qui n'existent pas"
+  },
+  {
+    "french": "battre son plein",
+    "bariba": "yò nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "intensite",
+    "usage_context": "Être à son maximum"
+  },
+  {
+    "french": "avoir carte blanche",
+    "bariba": "sɔ̀ɔ́rí yò gbɑ̀ né gbíírí",
+    "category": "liberte",
+    "usage_context": "Avoir toute liberté"
+  },
+  {
+    "french": "faire des gorges chaudes",
+    "bariba": "yámú gbèsírí kɑ ɲɑ̀ɑ̀",
+    "category": "moquerie",
+    "usage_context": "Se moquer de quelqu'un"
+  },
+  {
+    "french": "en faire voir de toutes les couleurs",
+    "bariba": "tɔ̀ɔ̀rɛ́ yò gbèsírí",
+    "category": "difficulte",
+    "usage_context": "Causer beaucoup de problèmes"
+  },
+  {
+    "french": "voir trente-six chandelles",
+    "bariba": "yàámú gbèsírí né tɔ̀ɔ̀",
+    "category": "choc",
+    "usage_context": "Avoir la tête qui tourne"
+  },
+  {
+    "french": "avoir la grosse tête",
+    "bariba": "u bɔɔru débúrú gbèsírí",
+    "category": "orgueil",
+    "usage_context": "Être orgueilleux"
+  },
+  {
+    "french": "battre de l'aile",
+    "bariba": "yɛ́ bɔ̀kɔ́ mɛ",
+    "category": "declin",
+    "usage_context": "Aller mal"
+  },
+  {
+    "french": "avoir plusieurs cordes à son arc",
+    "bariba": "sɔ̀ɔ́rí yɛ́ gbɛ́ɛ́ débúrú",
+    "category": "competence",
+    "usage_context": "Avoir plusieurs compétences"
+  },
+  {
+    "french": "faire amende honorable",
+    "bariba": "nɛ̀ɛ̀rɛ́ yò bɔ̀kɔ́ tímírí",
+    "category": "excuse",
+    "usage_context": "Présenter ses excuses"
+  },
+  {
+    "french": "en avoir plein le dos",
+    "bariba": "wésérú gbèsírí",
+    "category": "fatigue",
+    "usage_context": "En avoir assez"
+  },
+  {
+    "french": "voir la vie en rose",
+    "bariba": "yàámú sɔ̀ɔ́rí nɔ̀ɔ́rɑ́",
+    "category": "optimisme",
+    "usage_context": "Être optimiste"
+  },
+  {
+    "french": "avoir du chien",
+    "bariba": "u yéérú nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "charme",
+    "usage_context": "Avoir du charme"
+  },
+  {
+    "french": "battre la campagne",
+    "bariba": "nɛ̀ɛ̀rɛ́ yɛ́ kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "delire",
+    "usage_context": "Divaguer"
+  },
+  {
+    "french": "avoir l'eau à la bouche",
+    "bariba": "ɲí gbɛ́ɛ́ yɛ́ dérí",
+    "category": "envie",
+    "usage_context": "Avoir très envie de manger"
+  },
+  {
+    "french": "faire des étincelles",
+    "bariba": "nɔ̀ɔ́rɑ́ yò gbèsírí gbɑ̀sɑ̀",
+    "category": "performance",
+    "usage_context": "Réussir brillamment"
+  },
+  {
+    "french": "en voir de belles",
+    "bariba": "yàámú tɔ̀ɔ̀rɛ́ débúrú",
+    "category": "epreuve",
+    "usage_context": "Vivre des épreuves"
+  },
+  {
+    "french": "vendre la mèche",
+    "bariba": "tímírí pú",
+    "category": "revelation",
+    "usage_context": "Révéler un secret"
+  },
+  {
+    "french": "avoir les foies",
+    "bariba": "fìírí gbèsírí",
+    "category": "peur",
+    "usage_context": "Avoir très peur"
+  },
+  {
+    "french": "battre la chamade",
+    "bariba": "súúrú yɛ́ tòòtòò gbèsírí",
+    "category": "emotion",
+    "usage_context": "Le cœur bat très fort"
+  },
+  {
+    "french": "avoir la bosse de",
+    "bariba": "nɔ̀ɔ́rɑ́ yɛ́ gbɛ́ɛ́ kɑ sɔ̀ɔ́rí",
+    "category": "talent",
+    "usage_context": "Avoir du talent pour"
+  },
+  {
+    "french": "faire grise mine",
+    "bariba": "u yéérú bɔ̀kɔ́ yò",
+    "category": "mecontentement",
+    "usage_context": "Montrer son mécontentement"
+  },
+  {
+    "french": "en perdre son latin",
+    "bariba": "u bɔɔru yɛ́ kɑ́ tímírí",
+    "category": "confusion",
+    "usage_context": "Ne plus rien comprendre"
+  },
+  {
+    "french": "vendre son âme au diable",
+    "bariba": "u súúrú pú kɑ sɔ̀ɔ́rí bɔ̀kɔ́",
+    "category": "compromis",
+    "usage_context": "Tout sacrifier pour réussir"
+  },
+  {
+    "french": "avoir la tête dans un étau",
+    "bariba": "u bɔɔru yɛ́ tɔ̀ɔ̀ gbèsírí",
+    "category": "douleur",
+    "usage_context": "Avoir très mal à la tête"
+  },
+  {
+    "french": "battre le pavé",
+    "bariba": "sòòrí kɔ́ɔ́ dè",
+    "category": "errance",
+    "usage_context": "Marcher sans but"
+  },
+  {
+    "french": "avoir du culot",
+    "bariba": "súúrú yɛ́ kpɑ̀ɑ̀rú gbèsírí",
+    "category": "audace",
+    "usage_context": "Être audacieux, effronté"
+  },
+  {
+    "french": "faire des ronds de jambe",
+    "bariba": "yòò gbèsírí né",
+    "category": "flatterie",
+    "usage_context": "Flatter exagérément"
+  },
+  {
+    "french": "en faire tout un fromage",
+    "bariba": "sɔ̀ɔ́rí bíkú yɛ́ pɛ̀ɛ̀ débúrú",
+    "category": "exageration",
+    "usage_context": "Exagérer l'importance"
+  },
+  {
+    "french": "verser des larmes de crocodile",
+    "bariba": "kɔ̀ɔ̀ yɛ́ pú bɔ̀kɔ́",
+    "category": "hypocrisie",
+    "usage_context": "Pleurer faussement"
+  },
+  {
+    "french": "avoir les dents qui rayent le parquet",
+    "bariba": "bɑ́ɑ́ gbèsírí né wéésú gbɛ́ɛ́",
+    "category": "avidite",
+    "usage_context": "Être très avide"
+  },
+  {
+    "french": "baisser les bras",
+    "bariba": "wésérí tɔ́ɔ́",
+    "category": "abandon",
+    "usage_context": "Abandonner"
+  },
+  {
+    "french": "avoir les yeux de Chimène",
+    "bariba": "u yíímɑ́ yɛ́ nɔ̀ɔ́rɑ́ kɑ ɲɑ̀ɑ̀",
+    "category": "amour",
+    "usage_context": "Regarder amoureusement"
+  },
+  {
+    "french": "faire des pieds de nez",
+    "bariba": "yámú gbèsírí kɑ ɲɑ̀ɑ̀",
+    "category": "moquerie",
+    "usage_context": "Se moquer"
+  },
+  {
+    "french": "en mettre plein la vue",
+    "bariba": "nɔ̀ɔ́rɑ́ yò gbèsírí",
+    "category": "impression",
+    "usage_context": "Impressionner"
+  },
+  {
+    "french": "veiller au grain",
+    "bariba": "yàámú tímírí",
+    "category": "vigilance",
+    "usage_context": "Être vigilant"
+  },
+  {
+    "french": "avoir maille à partir",
+    "bariba": "tɔ̀ɔ̀rɛ́ yɛ́ gbɛ́ɛ́ kɑ ɲɑ̀ɑ̀",
+    "category": "conflit",
+    "usage_context": "Avoir un conflit"
+  },
+  {
+    "french": "battre froid",
+    "bariba": "kɑ́ nɛ̀ɛ̀rɛ́ né kɑ ɲɑ̀ɑ̀",
+    "category": "hostilite",
+    "usage_context": "Être froid avec quelqu'un"
+  },
+  {
+    "french": "avoir du fil à retordre",
+    "bariba": "tɔ̀ɔ̀rɛ́ débúrú yɛ́ gbɛ́ɛ́",
+    "category": "difficulte",
+    "usage_context": "Avoir des difficultés"
+  },
+  {
+    "french": "faire des économies de bouts de chandelles",
+    "bariba": "wéésú bíkú gbèè",
+    "category": "economie",
+    "usage_context": "Faire de petites économies"
+  },
+  {
+    "french": "en avoir par-dessus la tête",
+    "bariba": "wésérú gbèsírí gbɑ̀sɑ̀",
+    "category": "saturation",
+    "usage_context": "En avoir vraiment assez"
+  },
+  {
+    "french": "vendre la peau de l'ours",
+    "bariba": "pú sɔ̀ɔ́rí kɑ yò gbenɑ",
+    "category": "anticipation",
+    "usage_context": "Agir avant d'être sûr"
+  },
+  {
+    "french": "avoir la tête sur les épaules",
+    "bariba": "u bɔɔru yɛ́ nɔ̀ɔ́rɑ́",
+    "category": "sagesse",
+    "usage_context": "Être sensé"
+  },
+  {
+    "french": "battre en retraite",
+    "bariba": "sòsórí kpɑ̀ɑ̀",
+    "category": "retraite",
+    "usage_context": "Reculer"
+  },
+  {
+    "french": "avoir du flair",
+    "bariba": "u yíímɑ́ yɛ́ nɔ̀ɔ́rɑ́",
+    "category": "intuition",
+    "usage_context": "Avoir de l'intuition"
+  },
+  {
+    "french": "faire un malheur",
+    "bariba": "nɔ̀ɔ́rɑ́ gbèsírí gbɑ̀sɑ̀",
+    "category": "succes",
+    "usage_context": "Avoir beaucoup de succès"
+  },
+  {
+    "french": "en rester comme deux ronds de flan",
+    "bariba": "yàámú gbèsírí né dérí kɑ̀ɑ̀",
+    "category": "surprise",
+    "usage_context": "Être stupéfait"
+  },
+  {
+    "french": "verser dans l'excès",
+    "bariba": "sɔ̀ɔ́rí yò gbèsírí né",
+    "category": "exces",
+    "usage_context": "Exagérer"
+  },
+  {
+    "french": "avoir les cheveux qui se dressent sur la tête",
+    "bariba": "fìírí gbèsírí gbɑ̀sɑ̀",
+    "category": "peur",
+    "usage_context": "Avoir très peur"
+  },
+  {
+    "french": "baisser pavillon",
+    "bariba": "wésérí tɔ́ɔ́",
+    "category": "capitulation",
+    "usage_context": "Capituler"
+  },
+  {
+    "french": "avoir les oreilles qui sifflent",
+    "bariba": "tòò yɛ́ sòmbírí",
+    "category": "pressentiment",
+    "usage_context": "Sentir qu'on parle de soi"
+  },
+  {
+    "french": "faire des salamalecs",
+    "bariba": "yòò gbèsírí né",
+    "category": "ceremonie",
+    "usage_context": "Faire trop de politesses"
+  },
+  {
+    "french": "en baver",
+    "bariba": "tɔ̀ɔ̀rɛ́ gbɛ́ɛ́ gbèsírí",
+    "category": "souffrance",
+    "usage_context": "Souffrir beaucoup"
+  },
+  {
+    "french": "venir comme un cheveu sur la soupe",
+    "bariba": "wɑ́ kɑ wééró kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "inopportun",
+    "usage_context": "Arriver au mauvais moment"
+  },
+  {
+    "french": "avoir les yeux plus grands que le ventre",
+    "bariba": "u yíímɑ́ débúrú kɑ u bùùrú",
+    "category": "exces",
+    "usage_context": "Voir trop grand"
+  },
+  {
+    "french": "battre monnaie",
+    "bariba": "wéésú yò",
+    "category": "profit",
+    "usage_context": "Gagner de l'argent"
+  },
+  {
+    "french": "avoir du répondant",
+    "bariba": "nɛ̀ɛ̀rɛ́ nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "caractere",
+    "usage_context": "Savoir se défendre"
+  },
+  {
+    "french": "faire des mamours",
+    "bariba": "yòò nɔ̀ɔ́rɑ́",
+    "category": "affection",
+    "usage_context": "Faire des câlins"
+  },
+  {
+    "french": "en mettre sa main au feu",
+    "bariba": "tímírí gbɑ̀sɑ̀ gbèsírí",
+    "category": "certitude",
+    "usage_context": "Être absolument certain"
+  },
+  {
+    "french": "venir aux mains",
+    "bariba": "kpɑ̀ɑ̀ wɑ́",
+    "category": "bagarre",
+    "usage_context": "Se battre"
+  },
+  {
+    "french": "avoir les idées larges",
+    "bariba": "u bɔɔru yɛ́ débúrú",
+    "category": "tolerance",
+    "usage_context": "Être tolérant"
+  },
+  {
+    "french": "battre sa coulpe",
+    "bariba": "bɔ̀kɔ́ tímírí",
+    "category": "regret",
+    "usage_context": "Reconnaître ses torts"
+  },
+  {
+    "french": "avoir du tempérament",
+    "bariba": "súúrú yɛ́ kpɑ̀ɑ̀rú",
+    "category": "caractere",
+    "usage_context": "Avoir une forte personnalité"
+  },
+  {
+    "french": "faire des manières",
+    "bariba": "yòò gbèsírí né",
+    "category": "affectation",
+    "usage_context": "Être affecté"
+  },
+  {
+    "french": "en pincer pour quelqu'un",
+    "bariba": "súúrú yɛ́ gbɛ́ɛ́ kɑ ɲɑ̀ɑ̀",
+    "category": "attirance",
+    "usage_context": "Être attiré par quelqu'un"
+  },
+  {
+    "french": "venir à bout de",
+    "bariba": "sɔ̀ɔ́rí yò tímírí",
+    "category": "accomplissement",
+    "usage_context": "Accomplir quelque chose de difficile"
+  },
+  {
+    "french": "avoir mauvais genre",
+    "bariba": "u yéérú bɔ̀kɔ́",
+    "category": "reputation",
+    "usage_context": "Avoir mauvaise réputation"
+  },
+  {
+    "french": "battre à plate couture",
+    "bariba": "kpɑ̀ɑ̀ gbèsírí gbɑ̀sɑ̀",
+    "category": "victoire",
+    "usage_context": "Vaincre complètement"
+  },
+  {
+    "french": "avoir l'embarras du choix",
+    "bariba": "yɛ́ tɔ̀ɔ̀rɛ́ mɛ kɑ sɔ̀ɔ́rí wùùrú",
+    "category": "choix",
+    "usage_context": "Avoir trop de choix"
+  },
+  {
+    "french": "faire des singeries",
+    "bariba": "yòò bɔ̀kɔ́",
+    "category": "betise",
+    "usage_context": "Faire l'idiot"
+  },
+  {
+    "french": "en savoir long",
+    "bariba": "mɔ́ sɔ̀ɔ́rí débúrú",
+    "category": "connaissance",
+    "usage_context": "En savoir beaucoup"
+  },
+  {
+    "french": "venir à résipiscence",
+    "bariba": "súúrú yɛ́ gbésérí",
+    "category": "repentir",
+    "usage_context": "Se repentir"
+  },
+  {
+    "french": "avoir le sens de l'humour",
+    "bariba": "yámú nɔ̀ɔ́rɑ́ gbèsírí",
+    "category": "caractere",
+    "usage_context": "Savoir rire"
+  },
+  {
+    "french": "batailler ferme",
+    "bariba": "kpɑ̀ɑ̀ gbèsírí né",
+    "category": "lutte",
+    "usage_context": "Se battre énergiquement"
+  },
+  {
+    "french": "avoir ses têtes",
+    "bariba": "ɲɑ̀ɑ̀ bɑ́ɑ́ gbɛ́ɛ́",
+    "category": "preference",
+    "usage_context": "Avoir ses préférences"
+  },
+  {
+    "french": "faire des châteaux en Espagne",
+    "bariba": "yàámú sɔ̀ɔ́rí kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "reve",
+    "usage_context": "Rêver l'impossible"
+  },
+  {
+    "french": "en tenir une couche",
+    "bariba": "u bɔɔru kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "betise",
+    "usage_context": "Être stupide"
+  },
+  {
+    "french": "verdir de rage",
+    "bariba": "sóórí gbèsírí gbɑ̀sɑ̀",
+    "category": "colere",
+    "usage_context": "Être très en colère"
+  },
+  {
+    "french": "avoir toute sa tête",
+    "bariba": "u bɔɔru yɛ́ nɔ̀ɔ́rɑ́",
+    "category": "lucidite",
+    "usage_context": "Être lucide"
+  },
+  {
+    "french": "battre le rappel",
+    "bariba": "ɲɑ̀ɑ̀ gbɑ́rí",
+    "category": "rassemblement",
+    "usage_context": "Rassembler les gens"
+  },
+  {
+    "french": "en vouloir à mort",
+    "bariba": "súúrú bɔ̀kɔ́ gbèsírí gbɑ̀sɑ̀",
+    "category": "rancune",
+    "usage_context": "Avoir beaucoup de rancune"
+  },
+  {
+    "french": "avoir un œil sur",
+    "bariba": "yàámú né",
+    "category": "surveillance",
+    "usage_context": "Surveiller"
+  },
+  {
+    "french": "faire des salamalecs",
+    "bariba": "yòò gbèsírí né",
+    "category": "politesse",
+    "usage_context": "Faire trop de politesses"
+  },
+  {
+    "french": "en venir aux mains",
+    "bariba": "kpɑ̀ɑ̀ wɑ́",
+    "category": "violence",
+    "usage_context": "En venir à la violence"
+  },
+  {
+    "french": "verser son sang",
+    "bariba": "u wúúrú pú",
+    "category": "sacrifice",
+    "usage_context": "Se sacrifier"
+  },
+  {
+    "french": "avoir une araignée au plafond",
+    "bariba": "u bɔɔru kɑ́ nɔ̀ɔ́rɑ́",
+    "category": "folie",
+    "usage_context": "Être un peu fou"
+  },
+  {
+    "french": "battre le fer pendant qu'il est chaud",
+    "bariba": "sɔ̀ɔ́rí yò gbɑ̀sɑ̀ né",
+    "category": "opportunite",
+    "usage_context": "Profiter du bon moment"
+  },
+  {
+    "french": "avoir une mémoire d'éléphant",
+    "bariba": "mɔ́ gbèsírí né",
+    "category": "memoire",
+    "usage_context": "Avoir une excellente mémoire"
+  },
+  {
+    "french": "faire des pieds et des mains",
+    "bariba": "sɔ̀ɔ́rí yò gbèsírí gbɑ̀sɑ̀",
+    "category": "effort",
+    "usage_context": "Faire tous les efforts possibles"
+  }
+]

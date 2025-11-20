@@ -54,6 +54,7 @@ import QualityMetricsDashboard from '@/components/admin/QualityMetricsDashboard'
 import SystemAuditReport from '@/components/admin/SystemAuditReport';
 import TrainingDataViewer from '@/components/admin/TrainingDataViewer';
 import DictionaryDataViewer from '@/components/admin/DictionaryDataViewer';
+import { CompleteIdiomImporter } from '@/components/admin/CompleteIdiomImporter';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -302,6 +303,7 @@ export default function AdminDashboard() {
 
           <TabsContent value="idioms" className="space-y-4">
             <div className="space-y-6">
+              <CompleteIdiomImporter />
               <IdiomImporter />
               <IdiomManager />
             </div>
