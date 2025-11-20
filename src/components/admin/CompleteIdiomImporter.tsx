@@ -110,10 +110,10 @@ export const CompleteIdiomImporter = () => {
       setProgress(100);
 
       const result = {
-        total: idiomsData.length,
+        total: idiomsToInsert.length,
         inserted,
         errors,
-        categories: Array.from(new Set(idiomsData.map((i: any) => i.category))),
+        categories: Array.from(new Set(idiomsToInsert.map((i: any) => i.category))),
       };
 
       setImportResult(result);
