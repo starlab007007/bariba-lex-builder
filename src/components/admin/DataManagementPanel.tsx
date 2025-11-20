@@ -54,6 +54,11 @@ export const DataManagementPanel = () => {
     action: 'clear' | 'reset' | null;
   }>({ open: false, type: null, action: null });
 
+  // Charger les statistiques au montage
+  useEffect(() => {
+    loadStats();
+  }, []);
+
   // Charger les statistiques
   const loadStats = async () => {
     try {
