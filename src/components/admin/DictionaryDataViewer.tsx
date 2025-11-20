@@ -1,7 +1,7 @@
 /**
- * Visualisation et Édition des Données d'Entraînement
+ * Visualisation et Édition des Données du Dictionnaire
  * 
- * Affiche les données d'entraînement actuellement chargées dans le système
+ * Affiche les entrées du dictionnaire actuellement dans le système
  * Permet de les modifier, supprimer ou en ajouter
  */
 
@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { 
-  Database, 
+  BookOpen, 
   Search, 
   Edit, 
   Trash2,
@@ -34,53 +34,55 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
-interface TrainingPhrase {
+interface DictionaryEntry {
   id: string;
-  french_text: string;
-  bariba_text: string;
-  source: string;
+  word: string;
+  definition: string;
+  part_of_speech: string | null;
+  phonetic: string | null;
+  is_verified: boolean;
   quality_score: number | null;
-  is_validated: boolean;
   created_at: string;
+  example_bariba: string[] | null;
+  example_francais: string[] | null;
 }
 
-export default function TrainingDataViewer() {
+export default function DictionaryDataViewer() {
   const { toast } = useToast();
-  const [phrases, setPhrases] = useState<TrainingPhrase[]>([]);
+  const [entries, setEntries] = useState<DictionaryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPhrase, setSelectedPhrase] = useState<TrainingPhrase | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<DictionaryEntry | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ french: '', bariba: '' });
+  const [editForm, setEditForm] = useState({ word: '', definition: '', phonetic: '' });
   
   // Filtres avancés
-  const [filterValidated, setFilterValidated] = useState<string>('all');
-  const [filterSource, setFilterSource] = useState<string>('all');
+  const [filterVerified, setFilterVerified] = useState<string>('all');
+  const [filterPOS, setFilterPOS] = useState<string>('all');
   const [filterQualityMin, setFilterQualityMin] = useState<number>(0);
-  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
 
   useEffect(() => {
-    loadTrainingData();
+    loadDictionaryData();
   }, []);
 
-  const loadTrainingData = async () => {
+  const loadDictionaryData = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('training_phrases')
+        .from('dictionary_entries')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(1000);
 
       if (error) throw error;
 
-      setPhrases(data || []);
-      console.log(`📚 ${data?.length || 0} phrases d'entraînement chargées`);
+      setEntries(data || []);
+      console.log(`📚 ${data?.length || 0} entrées du dictionnaire chargées`);
     } catch (error) {
-      console.error('Erreur chargement données:', error);
+      console.error('Erreur chargement dictionnaire:', error);
       toast({
         title: "Erreur de chargement",
-        description: "Impossible de charger les données d'entraînement",
+        description: "Impossible de charger les données du dictionnaire",
         variant: "destructive"
       });
     } finally {
@@ -88,81 +90,78 @@ export default function TrainingDataViewer() {
     }
   };
 
-  const filteredPhrases = phrases.filter(phrase => {
+  const filteredEntries = entries.filter(entry => {
     // Filtre de recherche
     const matchesSearch = 
-      phrase.french_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      phrase.bariba_text.toLowerCase().includes(searchQuery.toLowerCase());
+      entry.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      entry.definition.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Filtre validation
-    const matchesValidated = 
-      filterValidated === 'all' ||
-      (filterValidated === 'validated' && phrase.is_validated) ||
-      (filterValidated === 'unvalidated' && !phrase.is_validated);
+    // Filtre vérifié
+    const matchesVerified = 
+      filterVerified === 'all' ||
+      (filterVerified === 'verified' && entry.is_verified) ||
+      (filterVerified === 'unverified' && !entry.is_verified);
     
-    // Filtre source
-    const matchesSource = 
-      filterSource === 'all' ||
-      phrase.source === filterSource;
+    // Filtre partie du discours
+    const matchesPOS = 
+      filterPOS === 'all' ||
+      entry.part_of_speech === filterPOS;
     
     // Filtre qualité
     const matchesQuality = 
-      !phrase.quality_score || phrase.quality_score >= filterQualityMin;
+      !entry.quality_score || entry.quality_score >= filterQualityMin;
     
-    // Filtre date
-    const matchesDate = 
-      !filterDateFrom ||
-      new Date(phrase.created_at) >= new Date(filterDateFrom);
-    
-    return matchesSearch && matchesValidated && matchesSource && matchesQuality && matchesDate;
+    return matchesSearch && matchesVerified && matchesPOS && matchesQuality;
   });
 
-  const handleEdit = (phrase: TrainingPhrase) => {
-    setSelectedPhrase(phrase);
+  const handleEdit = (entry: DictionaryEntry) => {
+    setSelectedEntry(entry);
     setEditForm({
-      french: phrase.french_text,
-      bariba: phrase.bariba_text
+      word: entry.word,
+      definition: entry.definition,
+      phonetic: entry.phonetic || ''
     });
     setIsEditDialogOpen(true);
   };
 
   const handleSaveEdit = async () => {
-    if (!selectedPhrase) return;
+    if (!selectedEntry) return;
 
     try {
       const { error } = await supabase
-        .from('training_phrases')
+        .from('dictionary_entries')
         .update({
-          french_text: editForm.french,
-          bariba_text: editForm.bariba
+          word: editForm.word,
+          definition: editForm.definition,
+          phonetic: editForm.phonetic || null
         })
-        .eq('id', selectedPhrase.id);
+        .eq('id', selectedEntry.id);
 
       if (error) throw error;
 
       toast({
         title: "Modifié",
-        description: "Phrase mise à jour avec succès"
+        description: "Entrée mise à jour avec succès"
       });
 
       setIsEditDialogOpen(false);
-      loadTrainingData();
+      loadDictionaryData();
     } catch (error) {
       console.error('Erreur mise à jour:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour la phrase",
+        description: "Impossible de mettre à jour l'entrée",
         variant: "destructive"
       });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cette phrase d\'entraînement ?')) return;
+    if (!confirm('Supprimer cette entrée du dictionnaire ?')) return;
 
     try {
       const { error } = await supabase
-        .from('training_phrases')
+        .from('dictionary_entries')
         .delete()
         .eq('id', id);
 
@@ -170,52 +169,51 @@ export default function TrainingDataViewer() {
 
       toast({
         title: "Supprimé",
-        description: "Phrase supprimée avec succès"
+        description: "Entrée supprimée avec succès"
       });
 
-      loadTrainingData();
+      loadDictionaryData();
     } catch (error) {
       console.error('Erreur suppression:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer la phrase",
+        description: "Impossible de supprimer l'entrée",
         variant: "destructive"
       });
     }
   };
 
   const handleExport = () => {
-    const json = JSON.stringify(filteredPhrases, null, 2);
+    const json = JSON.stringify(entries, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `training-phrases-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `dictionnaire-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
 
     toast({
       title: "Export réussi",
-      description: `${filteredPhrases.length} phrases exportées`
+      description: `${entries.length} entrées exportées`
     });
   };
 
   const resetFilters = () => {
-    setFilterValidated('all');
-    setFilterSource('all');
+    setFilterVerified('all');
+    setFilterPOS('all');
     setFilterQualityMin(0);
-    setFilterDateFrom('');
     setSearchQuery('');
   };
 
-  // Obtenir les sources uniques
-  const uniqueSources = Array.from(new Set(phrases.map(p => p.source).filter(Boolean))) as string[];
+  // Obtenir les parties du discours uniques
+  const uniquePOS = Array.from(new Set(entries.map(e => e.part_of_speech).filter(Boolean))) as string[];
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Données d'Entraînement</CardTitle>
+          <CardTitle>Données du Dictionnaire</CardTitle>
           <CardDescription>Chargement...</CardDescription>
         </CardHeader>
         <CardContent>
@@ -232,15 +230,15 @@ export default function TrainingDataViewer() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Données d'Entraînement
+                <BookOpen className="h-5 w-5" />
+                Données du Dictionnaire
               </CardTitle>
               <CardDescription>
-                {phrases.length} phrases actuellement en base de données
+                {entries.length} entrées actuellement en base de données
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button onClick={loadTrainingData} variant="outline" size="sm">
+              <Button onClick={loadDictionaryData} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualiser
               </Button>
@@ -256,7 +254,7 @@ export default function TrainingDataViewer() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher une phrase..."
+              placeholder="Rechercher un mot ou une définition..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -264,122 +262,123 @@ export default function TrainingDataViewer() {
           </div>
 
           {/* Filtres avancés */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg bg-muted/50">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg bg-muted/50">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Filtres</span>
             </div>
             
-            <Select value={filterValidated} onValueChange={setFilterValidated}>
+            <Select value={filterVerified} onValueChange={setFilterVerified}>
               <SelectTrigger>
-                <SelectValue placeholder="Validation" />
+                <SelectValue placeholder="Vérification" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Toutes</SelectItem>
-                <SelectItem value="validated">Validées</SelectItem>
-                <SelectItem value="unvalidated">Non validées</SelectItem>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="verified">Vérifiés</SelectItem>
+                <SelectItem value="unverified">Non vérifiés</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select value={filterSource} onValueChange={setFilterSource}>
+            <Select value={filterPOS} onValueChange={setFilterPOS}>
               <SelectTrigger>
-                <SelectValue placeholder="Source" />
+                <SelectValue placeholder="Catégorie" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Toutes sources</SelectItem>
-                {uniqueSources.map(source => (
-                  <SelectItem key={source} value={source}>{source}</SelectItem>
+                <SelectItem value="all">Toutes catégories</SelectItem>
+                {uniquePOS.map(pos => (
+                  <SelectItem key={pos} value={pos}>{pos}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <Input
-              type="number"
-              placeholder="Qualité min (%)"
-              value={filterQualityMin}
-              onChange={(e) => setFilterQualityMin(Number(e.target.value))}
-              min="0"
-              max="100"
-            />
-
             <div className="flex gap-2">
-              <Input
-                type="date"
-                placeholder="Date depuis"
-                value={filterDateFrom}
-                onChange={(e) => setFilterDateFrom(e.target.value)}
-              />
+              <div className="flex-1">
+                <Input
+                  type="number"
+                  placeholder="Qualité min"
+                  value={filterQualityMin}
+                  onChange={(e) => setFilterQualityMin(Number(e.target.value))}
+                  min="0"
+                  max="100"
+                />
+              </div>
               <Button onClick={resetFilters} variant="ghost" size="sm">
-                Reset
+                Réinitialiser
               </Button>
             </div>
           </div>
-
-          {/* Résultats filtrés */}
-          {filteredPhrases.length !== phrases.length && (
-            <div className="text-sm text-muted-foreground">
-              Affichage de {filteredPhrases.length} sur {phrases.length} phrases
-            </div>
-          )}
 
           {/* Statistiques */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Total</div>
-              <div className="text-2xl font-bold">{phrases.length}</div>
+              <div className="text-2xl font-bold">{entries.length}</div>
             </div>
             <div className="p-4 border rounded-lg">
-              <div className="text-sm text-muted-foreground">Validées</div>
+              <div className="text-sm text-muted-foreground">Vérifiées</div>
               <div className="text-2xl font-bold">
-                {phrases.filter(p => p.is_validated).length}
+                {entries.filter(e => e.is_verified).length}
               </div>
             </div>
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Score moyen</div>
               <div className="text-2xl font-bold">
                 {Math.round(
-                  phrases.reduce((sum, p) => sum + (p.quality_score || 0), 0) / phrases.length
+                  entries.reduce((sum, e) => sum + (e.quality_score || 0), 0) / entries.length
                 )}%
               </div>
             </div>
             <div className="p-4 border rounded-lg">
-              <div className="text-sm text-muted-foreground">Sources</div>
+              <div className="text-sm text-muted-foreground">Catégories</div>
               <div className="text-2xl font-bold">
-                {new Set(phrases.map(p => p.source)).size}
+                {uniquePOS.length}
               </div>
             </div>
           </div>
+
+          {/* Résultats filtrés */}
+          {filteredEntries.length !== entries.length && (
+            <div className="text-sm text-muted-foreground">
+              Affichage de {filteredEntries.length} sur {entries.length} entrées
+            </div>
+          )}
 
           {/* Table */}
           <div className="border rounded-lg">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Français</TableHead>
-                  <TableHead>Bariba</TableHead>
-                  <TableHead>Source</TableHead>
+                  <TableHead>Mot Baatonum</TableHead>
+                  <TableHead>Définition</TableHead>
+                  <TableHead>Catégorie</TableHead>
+                  <TableHead>Phonétique</TableHead>
                   <TableHead>Qualité</TableHead>
-                  <TableHead>Validé</TableHead>
+                  <TableHead>Vérifié</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPhrases.slice(0, 50).map((phrase) => (
-                  <TableRow key={phrase.id}>
+                {filteredEntries.slice(0, 50).map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell className="font-bariba font-medium">
+                      {entry.word}
+                    </TableCell>
                     <TableCell className="max-w-xs truncate">
-                      {phrase.french_text}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate font-bariba">
-                      {phrase.bariba_text}
+                      {entry.definition}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{phrase.source}</Badge>
+                      {entry.part_of_speech && (
+                        <Badge variant="outline">{entry.part_of_speech}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {entry.phonetic || '-'}
                     </TableCell>
                     <TableCell>
-                      {phrase.quality_score ? `${phrase.quality_score}%` : '-'}
+                      {entry.quality_score ? `${entry.quality_score}%` : '-'}
                     </TableCell>
                     <TableCell>
-                      {phrase.is_validated ? (
+                      {entry.is_verified ? (
                         <Badge variant="default">Oui</Badge>
                       ) : (
                         <Badge variant="secondary">Non</Badge>
@@ -390,14 +389,14 @@ export default function TrainingDataViewer() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleEdit(phrase)}
+                          onClick={() => handleEdit(entry)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleDelete(phrase.id)}
+                          onClick={() => handleDelete(entry.id)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -409,9 +408,9 @@ export default function TrainingDataViewer() {
             </Table>
           </div>
 
-          {filteredPhrases.length > 50 && (
+          {filteredEntries.length > 50 && (
             <p className="text-sm text-muted-foreground text-center">
-              Affichage de 50 sur {filteredPhrases.length} résultats
+              Affichage de 50 sur {filteredEntries.length} résultats
             </p>
           )}
         </CardContent>
@@ -421,27 +420,34 @@ export default function TrainingDataViewer() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Modifier la phrase</DialogTitle>
+            <DialogTitle>Modifier l'entrée</DialogTitle>
             <DialogDescription>
-              Modifiez la traduction français-bariba
+              Modifiez l'entrée du dictionnaire Baatonum-Français
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Français</Label>
+              <Label>Mot Baatonum</Label>
+              <Input
+                value={editForm.word}
+                onChange={(e) => setEditForm({ ...editForm, word: e.target.value })}
+                className="font-bariba"
+              />
+            </div>
+            <div>
+              <Label>Définition Française</Label>
               <Textarea
-                value={editForm.french}
-                onChange={(e) => setEditForm({ ...editForm, french: e.target.value })}
+                value={editForm.definition}
+                onChange={(e) => setEditForm({ ...editForm, definition: e.target.value })}
                 rows={3}
               />
             </div>
             <div>
-              <Label>Bariba</Label>
-              <Textarea
-                value={editForm.bariba}
-                onChange={(e) => setEditForm({ ...editForm, bariba: e.target.value })}
-                rows={3}
-                className="font-bariba"
+              <Label>Phonétique</Label>
+              <Input
+                value={editForm.phonetic}
+                onChange={(e) => setEditForm({ ...editForm, phonetic: e.target.value })}
+                placeholder="Optionnel"
               />
             </div>
             <div className="flex justify-end gap-2">
