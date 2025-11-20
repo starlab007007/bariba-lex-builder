@@ -66,14 +66,21 @@ export class HybridTranslationService {
       console.warn("⚠️ RAG sémantique non disponible:", error);
     }
 
-    // 3. Initialiser BaatonuTranslationAI (ACTIVÉ dans le flux)
+    // 3. Initialiser BaatonuTranslationAI avec Hugging Face Transformers (NIVEAU 3)
     try {
-      console.log("🔄 Activation du modèle avancé (Hugging Face Transformers)...");
+      console.log("🔄 Activation du modèle avancé BaatonuTranslationAI...");
       this.advancedModel = new BaatonuTranslationAI(entries);
       await this.advancedModel.initialize();
-      console.log("✅ BaatonuTranslationAI activé avec embeddings sémantiques");
+      
+      if (this.advancedModel.isReady) {
+        console.log("✅ BaatonuTranslationAI activé avec succès");
+        console.log("   📊 Utilise des embeddings sémantiques pour traduction contextuelle");
+        console.log("   🧠 Analyse grammaticale avancée avec règles linguistiques Bààtɔ̀nú");
+      } else {
+        console.log("⚠️ BaatonuTranslationAI en mode dictionnaire (sans IA)");
+      }
     } catch (error) {
-      console.warn("⚠️ Modèle avancé non disponible:", error);
+      console.warn("❌ Échec activation BaatonuTranslationAI:", error);
       this.advancedModel = null;
     }
 
@@ -185,19 +192,27 @@ export class HybridTranslationService {
       };
     }
 
-    // NIVEAU 3: BaatonuTranslationAI (confiance 50-90%, gratuit, 200-500ms)
+    // NIVEAU 3: BaatonuTranslationAI avancé avec Hugging Face Transformers (confiance 70-85%, <1s, GRATUIT)
     if (this.advancedModel?.isReady) {
-      console.log("🔄 Niveau 3: Essai avec modèle avancé...");
+      console.log("🔄 Niveau 3: BaatonuTranslationAI (Hugging Face Transformers + Embeddings sémantiques)");
       try {
         const advancedResult = sourceLang === 'french'
           ? await this.advancedModel.translateFrenchToBariba(text)
           : await this.advancedModel.translateBaribaToFrench(text);
 
-        if (advancedResult && advancedResult.length > 0) {
-          // Calculer une confiance basée sur la cohérence
-          const confidence = Math.max(simplifiedResult.confidence, this.ADVANCED_THRESHOLD);
+        if (advancedResult && advancedResult.length > 0 && !advancedResult.includes('[') && !advancedResult.includes('undefined')) {
+          // Calculer une confiance basée sur la qualité du résultat
+          const hasSpecialChars = /[ɔɛɑɡãẽĩõũ]/.test(advancedResult);
+          const hasValidStructure = advancedResult.split(/\s+/).length >= text.split(/\s+/).length * 0.7;
+          const confidence = Math.max(
+            simplifiedResult.confidence, 
+            this.ADVANCED_THRESHOLD + (hasSpecialChars ? 8 : 0) + (hasValidStructure ? 7 : 0)
+          );
           
-          console.log(`✅ Niveau 3: Advanced (${confidence}%)`);
+          console.log(`✅ Niveau 3: BaatonuTranslationAI activé (${confidence}%)`);
+          console.log(`   📝 Résultat: "${advancedResult}"`);
+          console.log(`   🧠 Caractères spéciaux: ${hasSpecialChars}, Structure: ${hasValidStructure}`);
+          
           await translationContextService.addToContext(
             text,
             advancedResult,
@@ -214,10 +229,14 @@ export class HybridTranslationService {
             cost: 0,
             duration: Date.now() - startTime
           };
+        } else {
+          console.log("⚠️ Résultat BaatonuTranslationAI invalide, passage au niveau suivant");
         }
       } catch (error) {
-        console.warn("⚠️ Modèle avancé a échoué:", error);
+        console.warn("❌ BaatonuTranslationAI a échoué:", error);
       }
+    } else if (this.advancedModel && !this.advancedModel.isReady) {
+      console.log("⏳ BaatonuTranslationAI non prêt (initialisation en cours ou échec), passage au niveau suivant");
     }
 
     // NIVEAU 3.5: Cache Translation Memory (confiance 80%+, <5ms, GRATUIT)

@@ -145,18 +145,33 @@ export class BaatonuTranslationAI implements TranslationModel {
 
   private async initializeAIModels(): Promise<void> {
     try {
-      console.log("🤖 Initialisation des modèles IA...");
+      console.log("🤖 Initialisation des modèles IA (Hugging Face Transformers)...");
       
-      // Modèle pour comprendre le contexte et les similarités
-      this.sentenceTransformer = await pipeline(
-        "feature-extraction",
-        "mixedbread-ai/mxbai-embed-xsmall-v1",
-        { device: "webgpu" }
-      );
-      
-      console.log("✅ Modèles IA initialisés");
+      // Vérifier la disponibilité de WebGPU
+      if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
+        console.log("✅ WebGPU détecté, tentative d'initialisation...");
+        
+        // Modèle pour comprendre le contexte et les similarités
+        this.sentenceTransformer = await pipeline(
+          "feature-extraction",
+          "mixedbread-ai/mxbai-embed-xsmall-v1",
+          { device: "webgpu" }
+        );
+        
+        console.log("✅ Modèle d'embeddings sémantiques initialisé avec WebGPU");
+      } else {
+        // Fallback: utiliser CPU si WebGPU indisponible
+        console.log("⚠️ WebGPU non disponible, utilisation du CPU...");
+        this.sentenceTransformer = await pipeline(
+          "feature-extraction",
+          "mixedbread-ai/mxbai-embed-xsmall-v1",
+          { device: "wasm" }
+        );
+        console.log("✅ Modèle d'embeddings sémantiques initialisé avec WASM (CPU)");
+      }
     } catch (error) {
-      console.warn("⚠️ Impossible d'initialiser les modèles IA, utilisation du mode dictionnaire:", error);
+      console.warn("⚠️ Impossible d'initialiser les modèles IA, utilisation du mode dictionnaire uniquement:", error);
+      this.sentenceTransformer = null;
     }
   }
 
