@@ -44,28 +44,12 @@ export async function loadCorpusInitial(): Promise<TrainingPair[]> {
 }
 
 /**
- * Charge les phrases bibliques
+ * SUPPRIMÉ: Les phrases bibliques ne sont plus utilisées
+ * Le système utilise uniquement les données du corpus initial et du dictionnaire
  */
 export async function loadBiblicalPhrases(): Promise<TrainingPair[]> {
-  try {
-    const response = await fetch('/src/data/fra_bba_dictionnary.json');
-    if (!response.ok) {
-      return [];
-    }
-    
-    const data = await response.json();
-    
-    return data.map((item: any, index: number) => ({
-      id: `BIBLICAL_${index}`,
-      category: 'Biblical',
-      french: item.french || '',
-      bariba: item.bariba || '',
-      source: 'biblical' as const
-    })).filter((pair: TrainingPair) => pair.french && pair.bariba);
-  } catch (error) {
-    console.error('Erreur lors du chargement des phrases bibliques:', error);
-    return [];
-  }
+  console.log('⚠️ Données bibliques désactivées - retour tableau vide');
+  return [];
 }
 
 /**
@@ -142,20 +126,14 @@ function calculateCategoryStats(pairs: TrainingPair[]): { [category: string]: nu
 export async function loadEnhancedCorpus(): Promise<EnhancedCorpus> {
   console.log('📚 Chargement du corpus enrichi...');
 
-  // Charger toutes les sources en parallèle
-  const [corpusInitial, biblicalPhrases] = await Promise.all([
-    loadCorpusInitial(),
-    loadBiblicalPhrases()
-  ]);
+  // Charger uniquement le corpus initial (données bibliques supprimées)
+  const corpusInitial = await loadCorpusInitial();
 
   console.log(`✓ Corpus initial: ${corpusInitial.length} paires`);
-  console.log(`✓ Phrases bibliques: ${biblicalPhrases.length} paires`);
+  console.log(`✓ Données bibliques: SUPPRIMÉES`);
 
-  // Combiner toutes les paires
-  let allPairs = [
-    ...corpusInitial,
-    ...biblicalPhrases
-  ];
+  // Utiliser uniquement les données du corpus initial
+  let allPairs = [...corpusInitial];
 
   console.log(`→ Total avant nettoyage: ${allPairs.length} paires`);
 

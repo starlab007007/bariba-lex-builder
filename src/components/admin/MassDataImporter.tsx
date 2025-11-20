@@ -2,10 +2,9 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FullDictionaryImporter } from "./FullDictionaryImporter";
-import { BiblicalPhrasesImporter } from "./BiblicalPhrasesImporter";
 import DictionaryJsonImporter from "./DictionaryJsonImporter";
 import TrainingPhraseImporter from "./TrainingPhraseImporter";
-import { Database, BookOpen, Upload, Info } from "lucide-react";
+import { Database, Upload, Info, FileText } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function MassDataImporter() {
@@ -31,10 +30,6 @@ export function MassDataImporter() {
             <Database className="h-4 w-4" />
             Dictionnaire Complet
           </TabsTrigger>
-          <TabsTrigger value="biblical" className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            Phrases Bibliques
-          </TabsTrigger>
           <TabsTrigger value="custom" className="flex items-center gap-2">
             <Upload className="h-4 w-4" />
             Import Personnalisé
@@ -43,14 +38,6 @@ export function MassDataImporter() {
 
         <TabsContent value="dictionary" className="space-y-4">
           <FullDictionaryImporter 
-            onSuccess={() => {
-              // Refresh any dependent data
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value="biblical" className="space-y-4">
-          <BiblicalPhrasesImporter 
             onSuccess={() => {
               // Refresh any dependent data
             }}
@@ -91,7 +78,7 @@ export function MassDataImporter() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
+                  <FileText className="h-5 w-5" />
                   Import Phrases d'Entraînement
                 </CardTitle>
                 <CardDescription>
