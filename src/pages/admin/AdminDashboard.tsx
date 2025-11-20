@@ -56,6 +56,7 @@ import TrainingDataViewer from '@/components/admin/TrainingDataViewer';
 import DictionaryDataViewer from '@/components/admin/DictionaryDataViewer';
 import { CompleteIdiomImporter } from '@/components/admin/CompleteIdiomImporter';
 import { HybridTranslationTester } from '@/components/admin/HybridTranslationTester';
+import { DataManagementPanel } from '@/components/admin/DataManagementPanel';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -237,6 +238,11 @@ export default function AdminDashboard() {
                 <span className="hidden sm:inline">Test Hybride</span>
                 <span className="sm:hidden">Test</span>
               </TabsTrigger>
+              <TabsTrigger value="data-management" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Gestion Données</span>
+                <span className="sm:hidden">Données</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -369,6 +375,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="hybrid-test" className="space-y-4">
             <HybridTranslationTester />
+          </TabsContent>
+
+          <TabsContent value="data-management" className="space-y-4">
+            <DataManagementPanel />
           </TabsContent>
         </Tabs>
       </main>
