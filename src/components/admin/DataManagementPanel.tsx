@@ -85,19 +85,19 @@ export const DataManagementPanel = () => {
         const result = await supabase
           .from('dictionary_entries')
           .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
+          .gte('created_at', '1900-01-01');
         error = result.error;
       } else if (type === 'training') {
         const result = await supabase
           .from('training_phrases')
           .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
+          .gte('created_at', '1900-01-01');
         error = result.error;
       } else if (type === 'idioms') {
         const result = await supabase
           .from('idiomatic_expressions')
           .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
+          .gte('created_at', '1900-01-01');
         error = result.error;
       }
 
@@ -142,17 +142,17 @@ export const DataManagementPanel = () => {
         await supabase
           .from('dictionary_entries')
           .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
+          .gte('created_at', '1900-01-01');
       } else if (type === 'training') {
         await supabase
           .from('training_phrases')
           .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
+          .gte('created_at', '1900-01-01');
       } else if (type === 'idioms') {
         await supabase
           .from('idiomatic_expressions')
           .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
+          .gte('created_at', '1900-01-01');
       }
 
       setProgress(30);
