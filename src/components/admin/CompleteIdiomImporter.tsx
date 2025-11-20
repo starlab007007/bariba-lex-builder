@@ -28,8 +28,8 @@ export const CompleteIdiomImporter = () => {
         description: "Récupération du fichier complet...",
       });
 
-      // Charger le fichier JSON
-      const response = await fetch('/idiomes_complets.json');
+      // Charger le nouveau fichier JSON (format par catégories)
+      const response = await fetch('/idiomes_fr_bariba.json');
       if (!response.ok) {
         throw new Error('Fichier non trouvé');
       }
@@ -37,16 +37,38 @@ export const CompleteIdiomImporter = () => {
       const idiomsData = await response.json();
       setProgress(30);
 
-      console.log(`📚 ${idiomsData.length} idiomes à importer`);
+      // Transformer le format (objet avec catégories) en array plat
+      const idiomsToInsert: any[] = [];
+      
+      // Si le format est un objet avec des catégories (nouveau format)
+      if (typeof idiomsData === 'object' && !Array.isArray(idiomsData)) {
+        Object.entries(idiomsData).forEach(([category, items]: [string, any]) => {
+          if (Array.isArray(items)) {
+            items.forEach((idiom: any) => {
+              idiomsToInsert.push({
+                french_expression: idiom.french,
+                bariba_expression: idiom.bariba,
+                category: category,
+                usage_context: idiom.usage_context || null,
+                is_verified: true,
+              });
+            });
+          }
+        });
+      } else {
+        // Format ancien (array direct)
+        idiomsData.forEach((idiom: any) => {
+          idiomsToInsert.push({
+            french_expression: idiom.french,
+            bariba_expression: idiom.bariba,
+            category: idiom.category,
+            usage_context: idiom.usage_context,
+            is_verified: true,
+          });
+        });
+      }
 
-      // Préparer les données pour l'insertion
-      const idiomsToInsert = idiomsData.map((idiom: any) => ({
-        french_expression: idiom.french,
-        bariba_expression: idiom.bariba,
-        category: idiom.category,
-        usage_context: idiom.usage_context,
-        is_verified: true,
-      }));
+      console.log(`📚 ${idiomsToInsert.length} idiomes à importer`);
 
       setProgress(50);
 
@@ -121,14 +143,14 @@ export const CompleteIdiomImporter = () => {
           Import Complet d'Idiomes
         </CardTitle>
         <CardDescription>
-          Importer 200+ expressions idiomatiques essentielles en français-bariba
+          Importer 14000+ expressions idiomatiques organisées par catégories en français-bariba
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Cet import va remplacer tous les idiomes existants par le fichier complet de 200+ expressions.
+            Cet import va remplacer tous les idiomes existants par le fichier complet de 14000+ expressions organisées par catégories.
           </AlertDescription>
         </Alert>
 
