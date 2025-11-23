@@ -24,7 +24,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Download, RefreshCw, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { systemConfig } from '@/services/SystemConfigService';
 
 interface TrainingPhrase {
   id: string;
@@ -55,12 +54,11 @@ export function SMTDataViewer() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const limit = systemConfig.get('databaseQueryLimit');
+      // Charger TOUTES les phrases sans limite pour l'affichage
       const { data, error } = await supabase
         .from('training_phrases')
         .select('id, french_text, bariba_text, source, quality_score, created_at')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -93,9 +91,11 @@ export function SMTDataViewer() {
         });
       }
 
+      console.log(`📊 SMT Data Viewer: ${data?.length || 0} phrases chargées au total`);
+      
       toast({
         title: "✅ Données chargées",
-        description: `${data?.length || 0} phrases affichées`
+        description: `${(data?.length || 0).toLocaleString()} phrases chargées`
       });
     } catch (error: any) {
       console.error("Erreur chargement données:", error);

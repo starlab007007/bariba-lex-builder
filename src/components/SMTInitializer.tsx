@@ -19,15 +19,13 @@ export function SMTInitializer() {
         const status = await smtInitializer.initialize();
         
         if (status.isInitialized && status.smtReady) {
-          console.log(`✅ SMT system initialized with ${status.phrasesCount} phrases`);
+          console.log(`✅ SMT system initialized with ${status.phrasesCount.toLocaleString()} phrases`);
           setInitialized(true);
           
-          if (status.phrasesCount > 0) {
-            toast({
-              title: "✅ Moteur SMT activé",
-              description: `${status.phrasesCount.toLocaleString()} paires FR-BBA chargées`,
-            });
-          }
+          toast({
+            title: "✅ Moteur SMT activé",
+            description: `${status.phrasesCount.toLocaleString()} paires FR-BBA chargées et prêtes`,
+          });
         } else {
           console.warn("⚠️ SMT system initialized but not fully ready");
         }

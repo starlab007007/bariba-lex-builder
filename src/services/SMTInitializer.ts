@@ -55,9 +55,17 @@ export class SMTInitializer {
 
     try {
       console.log("🚀 Initializing SMT System from database...");
-      console.log("📊 Loading ALL training phrases (no limits)...");
+      console.log("📊 Loading ALL training phrases (NO LIMITS - TOUTES LES PHRASES)...");
 
-      // Load ALL training phrases (no limits, no source filter)
+      // Compter d'abord le total exact
+      const { count: totalCount, error: countError } = await supabase
+        .from('training_phrases')
+        .select('*', { count: 'exact', head: true });
+      
+      if (countError) throw countError;
+      console.log(`📊 Total exact dans DB: ${totalCount} phrases`);
+
+      // Load ALL training phrases (AUCUNE LIMITE)
       const { data: phrases, error: phrasesError } = await supabase
         .from('training_phrases')
         .select('french_text, bariba_text, quality_score, source')
@@ -66,6 +74,12 @@ export class SMTInitializer {
       if (phrasesError) throw phrasesError;
 
       const trainingPhrases = phrases || [];
+      
+      console.log(`📊 PHRASES RÉELLEMENT CHARGÉES: ${trainingPhrases.length} / ${totalCount} au total`);
+      
+      if (trainingPhrases.length !== totalCount) {
+        console.warn(`⚠️ ATTENTION: Seulement ${trainingPhrases.length} phrases chargées sur ${totalCount} dans la DB!`);
+      }
 
       // Log detailed statistics by source
       const sourceStats = trainingPhrases.reduce((acc, p) => {
@@ -74,9 +88,9 @@ export class SMTInitializer {
         return acc;
       }, {} as Record<string, number>);
 
-      console.log("📊 Phrases par source:");
+      console.log("📊 RÉPARTITION PAR SOURCE:");
       Object.entries(sourceStats).forEach(([source, count]) => {
-        console.log(`   - ${source}: ${count} phrases`);
+        console.log(`   ✓ ${source}: ${count.toLocaleString()} phrases`);
       });
 
       // Load ALL dictionary entries (no limit)
@@ -88,9 +102,11 @@ export class SMTInitializer {
 
       console.log(`📊 Total loaded: ${trainingPhrases.length} phrases, ${dictionary?.length || 0} dictionary entries`);
 
-      if (trainingPhrases.length < 100) {
+      if (trainingPhrases.length === 0) {
         throw new Error(`Insufficient data for SMT initialization (${trainingPhrases.length} phrases). Import premium data first.`);
       }
+      
+      console.log(`✅ Proceeding with SMT initialization using ALL ${trainingPhrases.length} phrases`);
 
       // Initialize engines in parallel
       const [smtResult, correctorResult, trieResult] = await Promise.allSettled([
@@ -127,13 +143,14 @@ export class SMTInitializer {
         duration
       };
 
-      console.log("✅ SMT System initialized successfully:");
-      console.log(`   📊 Phrases: ${this.initializationStatus.phrasesCount}`);
-      console.log(`   📖 Dictionary: ${this.initializationStatus.dictionaryCount}`);
-      console.log(`   🤖 SMT Engine: ${this.initializationStatus.smtReady ? '✅' : '❌'}`);
-      console.log(`   📝 Corrector: ${this.initializationStatus.correctoReady ? '✅' : '❌'}`);
-      console.log(`   🌳 Trie Index: ${this.initializationStatus.trieReady ? '✅' : '❌'}`);
+      console.log("✅ ====== SMT SYSTEM INITIALIZED ======");
+      console.log(`   📊 TOTAL PHRASES: ${this.initializationStatus.phrasesCount.toLocaleString()}`);
+      console.log(`   📖 Dictionary: ${this.initializationStatus.dictionaryCount.toLocaleString()}`);
+      console.log(`   🤖 SMT Engine: ${this.initializationStatus.smtReady ? '✅ READY' : '❌ NOT READY'}`);
+      console.log(`   📝 Corrector: ${this.initializationStatus.correctoReady ? '✅ READY' : '❌ NOT READY'}`);
+      console.log(`   🌳 Trie Index: ${this.initializationStatus.trieReady ? '✅ READY' : '❌ NOT READY'}`);
       console.log(`   ⏱️ Duration: ${(duration / 1000).toFixed(2)}s`);
+      console.log("✅ ====================================");
 
       return this.initializationStatus;
     } catch (error) {
