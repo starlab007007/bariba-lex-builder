@@ -26,6 +26,7 @@ import UnifiedDataManager from '@/components/admin/UnifiedDataManager';
 import AdvancedDictionaryManager from '@/components/admin/AdvancedDictionaryManager';
 import { SMTSystemDashboard } from '@/components/admin/SMTSystemDashboard';
 import { SMTABTestingPanel } from '@/components/admin/SMTABTestingPanel';
+import { SMTRealTimeMonitor } from '@/components/admin/SMTRealTimeMonitor';
 import SystemAuditReport from '@/components/admin/SystemAuditReport';
 import { 
   Settings, Users, BarChart3, Database, 
@@ -77,6 +78,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="smt-monitoring" className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Monitoring SMT
+              </TabsTrigger>
+              <TabsTrigger value="smt-realtime" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Performance Temps Réel
               </TabsTrigger>
               <TabsTrigger value="dictionary" className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-[hsl(var(--section-data))]" />
@@ -216,6 +221,7 @@ export default function AdminDashboard() {
           <TabsContent value="overview"><AdminOverview /></TabsContent>
           <TabsContent value="unified-data"><UnifiedDataManager /></TabsContent>
           <TabsContent value="smt-monitoring"><SMTSystemDashboard /></TabsContent>
+          <TabsContent value="smt-realtime"><SMTRealTimeMonitor /></TabsContent>
           <TabsContent value="dictionary"><DictionaryManager /></TabsContent>
           <TabsContent value="dictionary-advanced"><AdvancedDictionaryManager /></TabsContent>
           <TabsContent value="idioms"><IdiomManager /></TabsContent>
