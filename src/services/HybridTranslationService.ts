@@ -44,7 +44,7 @@ export class HybridTranslationService {
   // Seuils de confiance pour la cascade (OPTIMISÉS pour performance)
   private readonly IDIOM_THRESHOLD = 98;  // Idiomes = 100% de confiance
   private readonly FUZZY_JSD_THRESHOLD = 85; // Fuzzy match avec JSD
-  private readonly SIMPLIFIED_PLUS_THRESHOLD = 70; // SimplifiedAI+ avec patterns statistiques (NOUVEAU)
+  private readonly SIMPLIFIED_PLUS_THRESHOLD = 65; // PHASE 5: Réduit de 70% à 65%
   private readonly SMT_THRESHOLD = 65;     // Statistical MT Engine (simplifié)
   private readonly CONTEXT_THRESHOLD = 60; // Contexte pour information uniquement
   private readonly ADVANCED_THRESHOLD = 70; // BaatonuTranslationAI avec embeddings
@@ -277,7 +277,12 @@ export class HybridTranslationService {
       try {
         // Déterminer la direction de traduction
         const direction = sourceLang === 'french' ? 'fr-bba' : 'bba-fr';
-        const smtResult = statisticalEngine.translate(text, 12, direction);
+        
+        // PHASE 3: Beam size dynamique (1 pour <5 mots, 3 sinon)
+        const wordCount = text.split(/\s+/).length;
+        const beamSize = wordCount < 5 ? 1 : 3;
+        
+        const smtResult = statisticalEngine.translate(text, beamSize, direction);
         
         console.log(`   📊 SMT Résultat: confiance=${smtResult.confidence}%, seuil=${this.SMT_THRESHOLD}%`);
         
@@ -437,7 +442,7 @@ export class HybridTranslationService {
 
     // NIVEAU 3.6: Lovable AI pour phrases complexes (confiance 85-95%, quasi-GRATUIT)
     const wordCount = text.split(/\s+/).length;
-    if (wordCount >= 4) { // Phrases complexes uniquement
+    if (wordCount >= 7) { // PHASE 5: Phrases 7+ mots uniquement (au lieu de 4+)
       try {
         console.log(`🔄 Niveau 3.6: Lovable AI (${wordCount} mots)`);
         const aiResult = await this.callLovableAI(text, sourceLang, targetLang);
@@ -458,7 +463,7 @@ export class HybridTranslationService {
     }
 
     // NIVEAU 5: Lovable AI en DERNIER RECOURS (confiance 85-95%, coût réduit, 1-3s)
-    // Appelé UNIQUEMENT si tous les autres niveaux ont échoué
+    // PHASE 5: Appelé UNIQUEMENT pour phrases 7+ mots (au lieu de 4+)
     const shouldUseLovableAI = useAI || wordCount >= 7;
     
     if (shouldUseLovableAI) {
