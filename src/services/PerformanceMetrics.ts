@@ -33,9 +33,14 @@ export interface QualityMetrics {
   userSatisfaction?: number; // basé sur feedback
 }
 
+import { systemConfig } from './SystemConfigService';
+
 export class PerformanceMetrics {
   private metrics: TranslationMetrics[] = [];
-  private readonly MAX_METRICS = 1000;
+
+  get maxMetrics(): number {
+    return systemConfig.get('performanceMetricsLimit');
+  }
 
   /**
    * Enregistre une métrique de traduction
@@ -45,8 +50,8 @@ export class PerformanceMetrics {
     this.metrics.push(metric);
 
     // Limiter la taille
-    if (this.metrics.length > this.MAX_METRICS) {
-      this.metrics = this.metrics.slice(-this.MAX_METRICS);
+    if (this.metrics.length > this.maxMetrics) {
+      this.metrics = this.metrics.slice(-this.maxMetrics);
     }
 
     // Enregistrer dans la base de données (async, non-bloquant)
@@ -200,13 +205,14 @@ export class PerformanceMetrics {
   /**
    * Récupère les métriques depuis la base de données
    */
-  async loadHistoricalMetrics(limit: number = 1000): Promise<void> {
+  async loadHistoricalMetrics(limit?: number): Promise<void> {
     try {
+      const actualLimit = limit || systemConfig.get('performanceMetricsLimit');
       const { data, error } = await supabase
         .from('translation_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(actualLimit);
 
       if (error) throw error;
 

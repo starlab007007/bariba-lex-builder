@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TrendingUp, Database, Brain, Activity, Clock, Target } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { systemConfig } from '@/services/SystemConfigService';
 
 export default function ModelPerformanceDashboard() {
   // Fetch latest training context
@@ -26,11 +27,12 @@ export default function ModelPerformanceDashboard() {
   const { data: translationStats } = useQuery({
     queryKey: ['translation-stats'],
     queryFn: async () => {
+      const limit = systemConfig.get('translationLogsLimit');
       const { data, error } = await supabase
         .from('translation_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(limit);
       
       if (error) throw error;
 

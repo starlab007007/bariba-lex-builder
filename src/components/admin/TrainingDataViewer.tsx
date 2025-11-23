@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { systemConfig } from '@/services/SystemConfigService';
 
 interface TrainingPhrase {
   id: string;
@@ -66,11 +67,12 @@ export default function TrainingDataViewer() {
   const loadTrainingData = async () => {
     setIsLoading(true);
     try {
+      const limit = systemConfig.get('databaseQueryLimit');
       const { data, error } = await supabase
         .from('training_phrases')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(limit);
 
       if (error) throw error;
 
