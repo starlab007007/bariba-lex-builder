@@ -6,19 +6,31 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { SMTInitializer } from "@/components/SMTInitializer";
+import { AutoInitializer } from "@/components/AutoInitializer";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Gamification from "./pages/Gamification";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Optimize QueryClient with aggressive caching
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 min
+      gcTime: 10 * 60 * 1000, // 10 min
+      refetchOnWindowFocus: false,
+      retry: 1
+    }
+  }
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
         <SMTInitializer />
+        <AutoInitializer />
         <Toaster />
         <Sonner />
         <BrowserRouter>
