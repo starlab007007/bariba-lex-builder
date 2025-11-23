@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,12 @@ interface DataPreview {
   count: number;
   sample: any[];
   quality: number;
+  detectedFields: string[];
+  mappedFields?: {
+    source: string;
+    target: string;
+  }[];
+  confidence: number;
 }
 
 export default function UnifiedDataManager() {
@@ -42,6 +48,11 @@ export default function UnifiedDataManager() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filterSource, setFilterSource] = useState<string>('all');
   const itemsPerPage = 50;
+
+  // Auto-load stats on mount
+  useEffect(() => {
+    loadStats();
+  }, []);
 
   // Charger les statistiques
   const loadStats = async () => {
@@ -76,7 +87,94 @@ export default function UnifiedDataManager() {
     }
   };
 
-  // Analyser le fichier
+  // Reconnaissance intelligente des champs
+  const detectFieldMapping = (data: any[]) => {
+    if (!data || data.length === 0) return { type: null, mappings: [], confidence: 0, fields: [] };
+
+    const firstItem = data[0];
+    const fields = Object.keys(firstItem);
+
+    // Patterns pour phrases
+    const frenchPatterns = ['french', 'francais', 'français', 'fr', 'french_text', 'texte_francais'];
+    const baribaPatterns = ['bariba', 'baatonum', 'bba', 'bariba_text', 'texte_bariba'];
+    
+    // Patterns pour dictionnaire
+    const wordPatterns = ['word', 'mot', 'terme', 'entry', 'headword'];
+    const definitionPatterns = ['definition', 'sens', 'meaning', 'traduction', 'translation'];
+    
+    // Patterns pour idiomes
+    const frenchExprPatterns = ['french_expression', 'expression_francaise', 'idiom_fr'];
+    const baribaExprPatterns = ['bariba_expression', 'expression_bariba', 'idiom_bba'];
+
+    let bestMatch = { type: null as any, confidence: 0, mappings: [] as any[], fields: [] as string[] };
+
+    // Test phrases
+    const frenchField = fields.find(f => frenchPatterns.some(p => f.toLowerCase().includes(p)));
+    const baribaField = fields.find(f => baribaPatterns.some(p => f.toLowerCase().includes(p)));
+    
+    if (frenchField && baribaField) {
+      const validCount = data.filter(item => item[frenchField]?.trim() && item[baribaField]?.trim()).length;
+      const confidence = (validCount / data.length) * 100;
+      
+      if (confidence > bestMatch.confidence) {
+        bestMatch = {
+          type: 'phrases',
+          confidence,
+          mappings: [
+            { source: frenchField, target: 'french_text' },
+            { source: baribaField, target: 'bariba_text' }
+          ],
+          fields
+        };
+      }
+    }
+
+    // Test dictionnaire
+    const wordField = fields.find(f => wordPatterns.some(p => f.toLowerCase().includes(p)));
+    const defField = fields.find(f => definitionPatterns.some(p => f.toLowerCase().includes(p)));
+    
+    if (wordField && defField) {
+      const validCount = data.filter(item => item[wordField]?.trim() && item[defField]?.trim()).length;
+      const confidence = (validCount / data.length) * 100;
+      
+      if (confidence > bestMatch.confidence) {
+        bestMatch = {
+          type: 'dictionary',
+          confidence,
+          mappings: [
+            { source: wordField, target: 'word' },
+            { source: defField, target: 'definition' }
+          ],
+          fields
+        };
+      }
+    }
+
+    // Test idiomes
+    const frExprField = fields.find(f => frenchExprPatterns.some(p => f.toLowerCase().includes(p)));
+    const baExprField = fields.find(f => baribaExprPatterns.some(p => f.toLowerCase().includes(p)));
+    
+    if (frExprField && baExprField) {
+      const validCount = data.filter(item => item[frExprField]?.trim() && item[baExprField]?.trim()).length;
+      const confidence = (validCount / data.length) * 100;
+      
+      if (confidence > bestMatch.confidence) {
+        bestMatch = {
+          type: 'idioms',
+          confidence,
+          mappings: [
+            { source: frExprField, target: 'french_expression' },
+            { source: baExprField, target: 'bariba_expression' }
+          ],
+          fields
+        };
+      }
+    }
+
+    return bestMatch;
+  };
+
+  // Analyser le fichier avec intelligence
   const analyzeFile = async (file: File) => {
     try {
       const text = await file.text();
@@ -86,39 +184,69 @@ export default function UnifiedDataManager() {
         throw new Error('Le fichier doit contenir un tableau JSON');
       }
 
-      // Détection automatique du type
-      let type: 'phrases' | 'dictionary' | 'idioms' = 'phrases';
+      if (data.length === 0) {
+        throw new Error('Le fichier est vide');
+      }
+
+      // Détection intelligente
+      const detection = detectFieldMapping(data);
+      
+      if (!detection.type || detection.confidence < 50) {
+        throw new Error(
+          `Format non reconnu. Champs détectés: ${detection.fields.join(', ')}. ` +
+          `Le fichier doit contenir des paires français-bariba, des entrées de dictionnaire, ou des idiomes.`
+        );
+      }
+
+      // Compter les éléments valides selon le mapping
       let validCount = 0;
       let totalQuality = 0;
 
-      const sample = data.slice(0, 100);
-
-      if (data[0]?.french_text && data[0]?.bariba_text) {
-        type = 'phrases';
-        validCount = data.filter((item: any) => item.french_text && item.bariba_text).length;
+      if (detection.type === 'phrases') {
+        const frField = detection.mappings.find(m => m.target === 'french_text')?.source;
+        const baField = detection.mappings.find(m => m.target === 'bariba_text')?.source;
+        
+        validCount = data.filter((item: any) => 
+          item[frField as string]?.trim() && item[baField as string]?.trim()
+        ).length;
+        
         data.forEach((item: any) => {
           if (item.quality_score) totalQuality += item.quality_score;
         });
-      } else if (data[0]?.word && data[0]?.definition) {
-        type = 'dictionary';
-        validCount = data.filter((item: any) => item.word && item.definition).length;
-      } else if (data[0]?.french_expression && data[0]?.bariba_expression) {
-        type = 'idioms';
-        validCount = data.filter((item: any) => item.french_expression && item.bariba_expression).length;
+      } else if (detection.type === 'dictionary') {
+        const wordField = detection.mappings.find(m => m.target === 'word')?.source;
+        const defField = detection.mappings.find(m => m.target === 'definition')?.source;
+        
+        validCount = data.filter((item: any) => 
+          item[wordField as string]?.trim() && item[defField as string]?.trim()
+        ).length;
+      } else if (detection.type === 'idioms') {
+        const frField = detection.mappings.find(m => m.target === 'french_expression')?.source;
+        const baField = detection.mappings.find(m => m.target === 'bariba_expression')?.source;
+        
+        validCount = data.filter((item: any) => 
+          item[frField as string]?.trim() && item[baField as string]?.trim()
+        ).length;
       }
 
+      const sample = data.slice(0, 20);
+
       setPreview({
-        type,
+        type: detection.type,
         count: validCount,
         sample,
-        quality: validCount > 0 ? (totalQuality / validCount) * 100 : 0
+        quality: validCount > 0 ? (totalQuality / validCount) * 100 : 0,
+        detectedFields: detection.fields,
+        mappedFields: detection.mappings,
+        confidence: detection.confidence
       });
 
       toast({
-        title: 'Analyse terminée',
-        description: `${validCount} éléments valides détectés (${type})`,
+        title: '✅ Analyse réussie',
+        description: `${validCount} ${detection.type} valides détectés (${detection.confidence.toFixed(0)}% confiance)`,
       });
     } catch (error: any) {
+      console.error('Erreur analyse:', error);
       toast({
         title: 'Erreur d\'analyse',
         description: error.message,
@@ -135,9 +263,9 @@ export default function UnifiedDataManager() {
     }
   };
 
-  // Import unifié
+  // Import intelligent avec mapping
   const handleImport = async () => {
-    if (!file || !preview) return;
+    if (!file || !preview || !preview.mappedFields) return;
 
     setLoading(true);
     setProgress(0);
@@ -145,62 +273,110 @@ export default function UnifiedDataManager() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      const batchSize = 500;
+      const batchSize = 200;
       let imported = 0;
-      const sourceName = `${targetModel}_premium`;
+      let skipped = 0;
+      const sourceName = `${preview.type}_premium`;
 
-      // Déduplication et nettoyage
+      // Déduplication et nettoyage avec mapping
       const cleanedData = new Map();
 
       for (const item of data) {
         let key = '';
         let cleanItem: any = {};
 
-        if (preview.type === 'phrases') {
-          if (!item.french_text || !item.bariba_text) continue;
-          key = `${item.french_text.trim()}_${item.bariba_text.trim()}`;
-          cleanItem = {
-            french_text: item.french_text.trim(),
-            bariba_text: item.bariba_text.trim(),
-            source: sourceName,
-            is_validated: true,
-            quality_score: item.quality_score || 0.8,
-            created_by: user?.id
-          };
-        } else if (preview.type === 'dictionary') {
-          if (!item.word || !item.definition) continue;
-          key = item.word.trim();
-          cleanItem = {
-            word: item.word.trim(),
-            definition: item.definition.trim(),
-            part_of_speech: item.part_of_speech || null,
-            phonetic: item.phonetic || null,
-            is_verified: true,
-            quality_score: 0.9,
-            created_by: user?.id
-          };
-        } else if (preview.type === 'idioms') {
-          if (!item.french_expression || !item.bariba_expression) continue;
-          key = `${item.french_expression.trim()}_${item.bariba_expression.trim()}`;
-          cleanItem = {
-            french_expression: item.french_expression.trim(),
-            bariba_expression: item.bariba_expression.trim(),
-            category: item.category || 'general',
-            is_verified: true,
-            created_by: user?.id
-          };
-        }
+        try {
+          if (preview.type === 'phrases') {
+            const frField = preview.mappedFields.find(m => m.target === 'french_text')?.source;
+            const baField = preview.mappedFields.find(m => m.target === 'bariba_text')?.source;
+            
+            if (!frField || !baField) continue;
+            
+            const frText = item[frField]?.toString().trim();
+            const baText = item[baField]?.toString().trim();
+            
+            if (!frText || !baText) {
+              skipped++;
+              continue;
+            }
+            
+            key = `${frText}_${baText}`;
+            cleanItem = {
+              french_text: frText,
+              bariba_text: baText,
+              source: sourceName,
+              is_validated: true,
+              quality_score: item.quality_score || 0.85,
+              created_by: user?.id
+            };
+          } else if (preview.type === 'dictionary') {
+            const wordField = preview.mappedFields.find(m => m.target === 'word')?.source;
+            const defField = preview.mappedFields.find(m => m.target === 'definition')?.source;
+            
+            if (!wordField || !defField) continue;
+            
+            const word = item[wordField]?.toString().trim();
+            const def = item[defField]?.toString().trim();
+            
+            if (!word || !def) {
+              skipped++;
+              continue;
+            }
+            
+            key = word;
+            cleanItem = {
+              word,
+              definition: def,
+              part_of_speech: item.part_of_speech || item.pos || null,
+              phonetic: item.phonetic || item.pronunciation || null,
+              example_bariba: Array.isArray(item.example_bariba) ? item.example_bariba : null,
+              example_francais: Array.isArray(item.example_francais) ? item.example_francais : null,
+              is_verified: true,
+              quality_score: item.quality_score || 0.9,
+              created_by: user?.id
+            };
+          } else if (preview.type === 'idioms') {
+            const frField = preview.mappedFields.find(m => m.target === 'french_expression')?.source;
+            const baField = preview.mappedFields.find(m => m.target === 'bariba_expression')?.source;
+            
+            if (!frField || !baField) continue;
+            
+            const frExpr = item[frField]?.toString().trim();
+            const baExpr = item[baField]?.toString().trim();
+            
+            if (!frExpr || !baExpr) {
+              skipped++;
+              continue;
+            }
+            
+            key = `${frExpr}_${baExpr}`;
+            cleanItem = {
+              french_expression: frExpr,
+              bariba_expression: baExpr,
+              category: item.category || 'general',
+              is_verified: true,
+              created_by: user?.id
+            };
+          }
 
-        // Garder le meilleur en cas de doublon
-        if (!cleanedData.has(key) || (item.quality_score > cleanedData.get(key).quality_score)) {
-          cleanedData.set(key, cleanItem);
+          // Garder le meilleur en cas de doublon
+          if (!cleanedData.has(key) || 
+              (item.quality_score && item.quality_score > (cleanedData.get(key).quality_score || 0))) {
+            cleanedData.set(key, cleanItem);
+          }
+        } catch (err) {
+          console.error('Erreur traitement item:', err);
+          skipped++;
         }
       }
 
       const uniqueData = Array.from(cleanedData.values());
-      const totalBatches = Math.ceil(uniqueData.length / batchSize);
+      
+      if (uniqueData.length === 0) {
+        throw new Error('Aucune donnée valide à importer après nettoyage');
+      }
 
-      // Import par batch avec upsert
+      // Import par batch
       for (let i = 0; i < uniqueData.length; i += batchSize) {
         const batch = uniqueData.slice(i, i + batchSize);
         const tableName = preview.type === 'phrases' 
@@ -210,37 +386,49 @@ export default function UnifiedDataManager() {
           : 'idiomatic_expressions';
 
         let result;
-        if (preview.type === 'dictionary') {
-          result = await supabase.from(tableName).upsert(batch, { 
-            onConflict: 'word',
-            ignoreDuplicates: false 
-          });
-        } else if (preview.type === 'phrases') {
-          // Pour phrases, on utilise insert car il n'y a pas de clé unique naturelle
-          result = await supabase.from(tableName).insert(batch);
-        } else {
-          // Pour idiomes, insert aussi
-          result = await supabase.from(tableName).insert(batch);
-        }
+        try {
+          if (preview.type === 'dictionary') {
+            result = await supabase.from(tableName).upsert(batch, { 
+              onConflict: 'word',
+              ignoreDuplicates: false 
+            });
+          } else {
+            result = await supabase.from(tableName).insert(batch);
+          }
 
-        if (result.error) {
-          console.error(`Erreur batch ${i}-${i + batchSize}:`, result.error);
-          throw new Error(`Import échoué: ${result.error.message}`);
-        }
+          if (result.error) {
+            console.error(`❌ Erreur batch ${i}:`, result.error);
+            throw result.error;
+          }
 
-        imported += batch.length;
-        setProgress((imported / uniqueData.length) * 100);
+          imported += batch.length;
+          setProgress((imported / uniqueData.length) * 100);
+        } catch (batchError: any) {
+          console.error(`Erreur sur batch ${i}-${i + batchSize}:`, batchError);
+          throw new Error(`Import échoué au batch ${i}: ${batchError.message}`);
+        }
       }
 
       toast({
-        title: 'Import réussi',
-        description: `${imported} éléments importés (${data.length - imported} doublons supprimés)`,
+        title: '✅ Import terminé',
+        description: `${imported} ${preview.type} importés, ${skipped} ignorés, ${data.length - imported - skipped} doublons`,
       });
 
       await loadStats();
+      
+      // Auto-switch to visualization tab
+      if (preview.type === 'phrases') {
+        await loadViewData('phrases');
+      } else if (preview.type === 'dictionary') {
+        await loadViewData('dictionary');
+      } else {
+        await loadViewData('idioms');
+      }
+      
       setFile(null);
       setPreview(null);
     } catch (error: any) {
+      console.error('❌ Erreur import:', error);
       toast({
         title: 'Erreur d\'import',
         description: error.message,
@@ -476,13 +664,35 @@ export default function UnifiedDataManager() {
               </div>
 
               {preview && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Détecté:</strong> {preview.count} {preview.type} valides
-                    {preview.quality > 0 && ` (Qualité: ${preview.quality.toFixed(1)}%)`}
-                  </AlertDescription>
-                </Alert>
+                <div className="space-y-3">
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-1">
+                        <div><strong>Type:</strong> {preview.type} ({preview.confidence.toFixed(0)}% confiance)</div>
+                        <div><strong>Valides:</strong> {preview.count} éléments</div>
+                        {preview.quality > 0 && <div><strong>Qualité:</strong> {preview.quality.toFixed(1)}%</div>}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Mapping des champs détecté</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-1 text-sm">
+                        {preview.mappedFields?.map((m, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <Badge variant="outline">{m.source}</Badge>
+                            <span>→</span>
+                            <Badge>{m.target}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
               {loading && (
@@ -502,15 +712,29 @@ export default function UnifiedDataManager() {
           {preview && preview.sample.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Aperçu (100 premiers éléments)</CardTitle>
+                <CardTitle>Aperçu ({preview.sample.length} éléments)</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-96 overflow-auto">
-                  {preview.sample.slice(0, 20).map((item, idx) => (
-                    <div key={idx} className="p-2 border rounded text-sm">
-                      <pre className="text-xs overflow-auto">{JSON.stringify(item, null, 2)}</pre>
-                    </div>
-                  ))}
+                  {preview.sample.map((item, idx) => {
+                    const mappedData: any = {};
+                    preview.mappedFields?.forEach(m => {
+                      if (item[m.source]) mappedData[m.target] = item[m.source];
+                    });
+                    
+                    return (
+                      <div key={idx} className="p-3 border rounded">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          {Object.entries(mappedData).map(([key, value]) => (
+                            <div key={key}>
+                              <span className="font-semibold text-muted-foreground">{key}:</span>
+                              <div className="mt-1">{String(value)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -569,7 +793,24 @@ export default function UnifiedDataManager() {
               <CardTitle>Dictionnaire ({viewData.length} entrées)</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Visualisation disponible prochainement</p>
+              <div className="overflow-auto max-h-[600px]">
+                <div className="min-w-[800px]">
+                  <div className="grid grid-cols-3 gap-4 p-2 font-medium border-b">
+                    <div>Mot (Bariba)</div>
+                    <div>Définition (Français)</div>
+                    <div>Type</div>
+                  </div>
+                  {viewData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item: any) => (
+                    <div key={item.id} className="grid grid-cols-3 gap-4 p-2 border-b hover:bg-muted/50">
+                      <div className="font-medium">{item.word}</div>
+                      <div className="truncate">{item.definition}</div>
+                      <div>
+                        {item.part_of_speech && <Badge variant="outline">{item.part_of_speech}</Badge>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -580,7 +821,24 @@ export default function UnifiedDataManager() {
               <CardTitle>Idiomes ({viewData.length} expressions)</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Visualisation disponible prochainement</p>
+              <div className="overflow-auto max-h-[600px]">
+                <div className="min-w-[800px]">
+                  <div className="grid grid-cols-3 gap-4 p-2 font-medium border-b">
+                    <div>Expression française</div>
+                    <div>Expression bariba</div>
+                    <div>Catégorie</div>
+                  </div>
+                  {viewData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item: any) => (
+                    <div key={item.id} className="grid grid-cols-3 gap-4 p-2 border-b hover:bg-muted/50">
+                      <div>{item.french_expression}</div>
+                      <div>{item.bariba_expression}</div>
+                      <div>
+                        <Badge variant="outline">{item.category}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
