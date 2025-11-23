@@ -65,18 +65,35 @@ export class SMTInitializer {
       if (countError) throw countError;
       console.log(`📊 Total exact dans DB: ${totalCount} phrases`);
 
-      // Load ALL training phrases (AUCUNE LIMITE - TOUTES LES PHRASES)
-      // IMPORTANT: Supabase par défaut ne limite PAS, mais on force explicitement
-      const { data: phrases, error: phrasesError } = await supabase
-        .from('training_phrases')
-        .select('french_text, bariba_text, quality_score, source')
-        .order('created_at', { ascending: false });
-
-      if (phrasesError) throw phrasesError;
-
-      const trainingPhrases = phrases || [];
+      // CHARGEMENT DE TOUTES LES PHRASES PAR PAGINATION
+      // Supabase limite à 1000 résultats par défaut, donc on pagine pour tout charger
+      console.log(`🔄 Chargement de TOUTES les ${totalCount} phrases par pagination...`);
       
-      console.log(`📊 PHRASES RÉELLEMENT CHARGÉES: ${trainingPhrases.length} / ${totalCount} au total`);
+      const BATCH_SIZE = 1000;
+      const trainingPhrases: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: batch, error: batchError } = await supabase
+          .from('training_phrases')
+          .select('french_text, bariba_text, quality_score, source')
+          .order('created_at', { ascending: false })
+          .range(offset, offset + BATCH_SIZE - 1);
+
+        if (batchError) throw batchError;
+
+        if (batch && batch.length > 0) {
+          trainingPhrases.push(...batch);
+          offset += batch.length;
+          console.log(`   ✓ Chargé ${trainingPhrases.length} / ${totalCount} phrases...`);
+          hasMore = batch.length === BATCH_SIZE;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      console.log(`✅ TOUTES LES PHRASES CHARGÉES: ${trainingPhrases.length} / ${totalCount} au total`);
       
       if (trainingPhrases.length !== totalCount) {
         console.warn(`⚠️ ATTENTION: Seulement ${trainingPhrases.length} phrases chargées sur ${totalCount} dans la DB!`);
