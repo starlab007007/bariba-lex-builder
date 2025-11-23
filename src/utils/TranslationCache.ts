@@ -112,6 +112,13 @@ export class TranslationCache {
   }
 
   /**
+   * Get cache size
+   */
+  getSize(): number {
+    return this.cache.size;
+  }
+
+  /**
    * Clear cache
    */
   clear(): void {

@@ -24,6 +24,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Download, RefreshCw, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { systemConfig } from '@/services/SystemConfigService';
 
 interface TrainingPhrase {
   id: string;
@@ -54,11 +55,12 @@ export function SMTDataViewer() {
   const loadData = async () => {
     setLoading(true);
     try {
+      const limit = systemConfig.get('databaseQueryLimit');
       const { data, error } = await supabase
         .from('training_phrases')
         .select('id, french_text, bariba_text, source, quality_score, created_at')
         .order('created_at', { ascending: false })
-        .limit(1000); // Show last 1000 for performance
+        .limit(limit);
 
       if (error) throw error;
 
