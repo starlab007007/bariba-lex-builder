@@ -19,6 +19,11 @@ import { translationContextService } from "./TranslationContextService";
 import { supabase } from "@/integrations/supabase/client";
 import { semanticRAGService } from "./SemanticRAGService";
 import { grammaticalCorrector } from "./GrammaticalCorrector";
+import { statisticalEngine } from "./StatisticalTranslationEngine";
+import { enhancedCorrector } from "./EnhancedGrammaticalCorrector";
+import { translationCache } from "@/utils/TranslationCache";
+import { trieIndex } from "@/utils/TrieIndex";
+import { smtInitializer } from "./SMTInitializer";
 
 export interface HybridTranslationResult extends TranslationResult {
   method: 'idiom' | 'context' | 'rag' | 'simplified' | 'advanced' | 'ai' | 'fallback';
@@ -33,9 +38,10 @@ export class HybridTranslationService {
   private fineTunedModelVersion: string | null = null;
   private isInitialized = false;
 
-  // Seuils de confiance pour la cascade (NOUVEAUX - optimisés)
+  // Seuils de confiance pour la cascade (OPTIMISÉS BALANCE)
   private readonly IDIOM_THRESHOLD = 98;  // Idiomes = 100% de confiance
-  private readonly RAG_THRESHOLD = 75;     // RAG prioritaire sur le reste
+  private readonly FUZZY_JSD_THRESHOLD = 85; // Fuzzy match avec JSD
+  private readonly SMT_THRESHOLD = 65;     // Statistical MT Engine (NOUVEAU)
   private readonly CONTEXT_THRESHOLD = 60; // Contexte pour information uniquement
   private readonly ADVANCED_THRESHOLD = 70; // BaatonuTranslationAI avec embeddings
   private readonly SIMPLIFIED_THRESHOLD = 50; // SimplifiedTranslationAI amélioré
@@ -50,10 +56,22 @@ export class HybridTranslationService {
   ): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log("🚀 Initialisation du système hybride AMÉLIORÉ...");
+    console.log("🚀 Initialisation du système hybride avec SMT...");
     const startTime = Date.now();
 
-    // 1. Initialiser SimplifiedTranslationAI avec analyse grammaticale
+    // 1. Initialiser Statistical Translation Engine via SMTInitializer (NIVEAU 3)
+    try {
+      console.log("📊 Initialisation du moteur statistique SMT...");
+      await smtInitializer.initialize();
+      const status = smtInitializer.getStatus();
+      if (status?.isInitialized) {
+        console.log(`✅ Moteur SMT prêt: ${status.phrasesCount} paires, ${status.dictionaryCount} entrées`);
+      }
+    } catch (error) {
+      console.warn("⚠️ SMT non disponible:", error);
+    }
+
+    // 2. Initialiser SimplifiedTranslationAI avec analyse grammaticale
     this.simplifiedModel = new SimplifiedTranslationAI(entries, phrases, examples);
     await this.simplifiedModel.initializeAdvancedFeatures();
 
@@ -158,7 +176,37 @@ export class HybridTranslationService {
       };
     }
 
-    // NIVEAU 1: Mémoire contextuelle (confiance 70%+, gratuit, < 5ms)
+    // NIVEAU 1: Exact Match via Trie (confiance 100%, gratuit, < 1ms)
+    if (trieIndex.getSize() > 0) {
+      const exactMatch = trieIndex.search(text);
+      if (exactMatch) {
+        console.log("✅ Niveau 1: Exact Match (Trie)");
+        return {
+          translation: exactMatch.translation,
+          confidence: 100,
+          detectedLanguage: sourceLang,
+          method: 'context',
+          cost: 0,
+          duration: Date.now() - startTime
+        };
+      }
+    }
+
+    // NIVEAU 2: Fuzzy Match avec JSD (confiance 85%+, gratuit, < 10ms)
+    const cached = translationCache.get(text);
+    if (cached && cached.confidence >= this.FUZZY_JSD_THRESHOLD) {
+      console.log(`✅ Niveau 2: Cache Hit (${cached.confidence}%)`);
+      return {
+        translation: cached.translation,
+        confidence: cached.confidence,
+        detectedLanguage: sourceLang,
+        method: 'context',
+        cost: 0,
+        duration: Date.now() - startTime
+      };
+    }
+
+    // NIVEAU 2.5: Mémoire contextuelle (confiance 60%+, gratuit, < 5ms)
     const contextResult = translationContextService.findSimilarTranslation(
       text,
       sourceLang,
@@ -166,7 +214,7 @@ export class HybridTranslationService {
     );
 
     if (contextResult && contextResult.confidence >= this.CONTEXT_THRESHOLD) {
-      console.log("✅ Niveau 1: Contexte trouvé");
+      console.log("✅ Niveau 2.5: Contexte trouvé");
       return {
         translation: contextResult.translation,
         confidence: contextResult.confidence,
@@ -177,13 +225,56 @@ export class HybridTranslationService {
       };
     }
 
-    // NIVEAU 2: SimplifiedTranslationAI (confiance 40-95%, gratuit, < 50ms)
+    // NIVEAU 3: Statistical MT Engine (confiance 65-90%, gratuit, 40-120ms) - NOUVEAU!
+    if (statisticalEngine.isReady()) {
+      console.log("🔄 Niveau 3: Statistical Machine Translation");
+      try {
+        const smtResult = statisticalEngine.translate(text, 12); // beamSize=12 (BALANCE)
+        
+        if (smtResult.confidence >= this.SMT_THRESHOLD) {
+          // Apply enhanced grammatical correction
+          const corrected = enhancedCorrector.isReady() 
+            ? enhancedCorrector.correctSentence(smtResult.translation)
+            : smtResult.translation;
+          
+          const finalConfidence = Math.min(smtResult.confidence + 5, 95); // Bonus for correction
+          
+          console.log(`✅ Niveau 3: SMT Engine (${finalConfidence}%)`);
+          console.log(`   📝 Brut: "${smtResult.translation}"`);
+          console.log(`   ✨ Corrigé: "${corrected}"`);
+          
+          // Save to cache
+          translationCache.set(text, corrected, finalConfidence, 'statistical_smt');
+          
+          await translationContextService.addToContext(
+            text,
+            corrected,
+            sourceLang,
+            targetLang,
+            finalConfidence
+          );
+          
+          return {
+            translation: corrected,
+            confidence: finalConfidence,
+            detectedLanguage: sourceLang,
+            method: 'advanced',
+            cost: 0,
+            duration: Date.now() - startTime
+          };
+        }
+      } catch (error) {
+        console.warn("⚠️ SMT Engine error:", error);
+      }
+    }
+
+    // NIVEAU 4: SimplifiedTranslationAI (confiance 40-95%, gratuit, < 50ms)
     const simplifiedResult = sourceLang === 'french'
       ? await this.simplifiedModel.translateFrenchToBariba(text)
       : await this.simplifiedModel.translateBaribaToFrench(text);
 
     if (simplifiedResult.confidence >= this.SIMPLIFIED_THRESHOLD) {
-      console.log(`✅ Niveau 2: Simplified (${simplifiedResult.confidence}%)`);
+      console.log(`✅ Niveau 4: Simplified (${simplifiedResult.confidence}%)`);
       return {
         ...simplifiedResult,
         method: 'simplified',
