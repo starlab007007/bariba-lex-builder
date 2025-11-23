@@ -14,17 +14,20 @@ export function SMTInitializer() {
     const initializeSMT = async () => {
       try {
         console.log("🔄 Initializing SMT system...");
+        // Force fresh initialization to get latest data
+        smtInitializer.reset();
         const status = await smtInitializer.initialize();
         
         if (status.isInitialized && status.smtReady) {
-          console.log("✅ SMT system initialized successfully");
+          console.log(`✅ SMT system initialized with ${status.phrasesCount} phrases`);
           setInitialized(true);
           
-          // Show accurate phrase count
-          toast({
-            title: "✅ Moteur SMT activé",
-            description: `${status.phrasesCount.toLocaleString()} paires FR-BBA chargées`,
-          });
+          if (status.phrasesCount > 0) {
+            toast({
+              title: "✅ Moteur SMT activé",
+              description: `${status.phrasesCount.toLocaleString()} paires FR-BBA chargées`,
+            });
+          }
         } else {
           console.warn("⚠️ SMT system initialized but not fully ready");
         }
@@ -40,9 +43,8 @@ export function SMTInitializer() {
       }
     };
 
-    // Initialize after a short delay
-    const timer = setTimeout(initializeSMT, 1000);
-    return () => clearTimeout(timer);
+    // Initialize immediately to get latest data
+    initializeSMT();
   }, [toast]);
 
   return null; // This component doesn't render anything

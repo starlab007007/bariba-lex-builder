@@ -26,6 +26,11 @@ export function AutoInitializer() {
     setDetails('Chargement des données de la base...');
 
     try {
+      // Force fresh initialization to get latest data
+      setProgress(20);
+      setDetails('Rechargement des dernières données...');
+      smtInitializer.reset();
+      
       // Initialize SMT System
       setProgress(30);
       setDetails('Initialisation du moteur SMT...');
@@ -38,7 +43,7 @@ export function AutoInitializer() {
       setStats(result);
       setProgress(100);
       setStatus('success');
-      setDetails('Tous les modèles sont prêts');
+      setDetails(`✅ ${result.phrasesCount.toLocaleString()} phrases FR-BBA chargées`);
 
       // Auto-hide after 3 seconds on success
       setTimeout(() => {
