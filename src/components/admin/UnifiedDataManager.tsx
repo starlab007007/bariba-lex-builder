@@ -427,10 +427,12 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
       let imported = 0;
-      const errors: string[] = [];
+      let skipped = 0;
+      const errors: { batch: number; error: string; code?: string; details?: string; hint?: string }[] = [];
+      const errorDetails: string[] = [];
       const batchSize = 100;
 
-      // PHASE 3: Batch Import with Individual Error Handling
+      // PHASE 2 & 3: Enhanced Error Handling with Detailed Logging
       for (let i = 0; i < arrayData.length; i += batchSize) {
         const batch = arrayData.slice(i, i + batchSize);
         setProgress((i / arrayData.length) * 100);
@@ -451,11 +453,25 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
             });
 
             if (error) {
-              console.error(`❌ Batch ${i} error:`, error);
-              errors.push(`Batch ${i}: ${error.message}`);
+              console.error(`❌ BATCH ${i}-${i+batchSize} ERROR:`, {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+              });
+              errors.push({
+                batch: i,
+                error: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+              });
+              errorDetails.push(`Batch ${i}: ${error.message} (${error.code || 'N/A'})`);
             } else {
-              imported += count || items.length;
-              console.log(`✅ Batch ${i}: ${count || items.length} phrases`);
+              const actualImported = count || items.length;
+              imported += actualImported;
+              skipped += items.length - actualImported;
+              console.log(`✅ BATCH ${i}-${i+batchSize}: ${actualImported} importées, ${items.length - actualImported} doublons ignorés`);
             }
 
           } else if (preview.type === 'dictionary') {
@@ -471,11 +487,25 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
             });
 
             if (error) {
-              console.error(`❌ Batch ${i} error:`, error);
-              errors.push(`Batch ${i}: ${error.message}`);
+              console.error(`❌ BATCH ${i}-${i+batchSize} ERROR:`, {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+              });
+              errors.push({
+                batch: i,
+                error: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+              });
+              errorDetails.push(`Batch ${i}: ${error.message} (${error.code || 'N/A'})`);
             } else {
-              imported += count || items.length;
-              console.log(`✅ Batch ${i}: ${count || items.length} entrées`);
+              const actualImported = count || items.length;
+              imported += actualImported;
+              skipped += items.length - actualImported;
+              console.log(`✅ BATCH ${i}-${i+batchSize}: ${actualImported} importées, ${items.length - actualImported} doublons ignorés`);
             }
 
           } else if (preview.type === 'idioms') {
@@ -492,16 +522,36 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
             });
 
             if (error) {
-              console.error(`❌ Batch ${i} error:`, error);
-              errors.push(`Batch ${i}: ${error.message}`);
+              console.error(`❌ BATCH ${i}-${i+batchSize} ERROR:`, {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+              });
+              errors.push({
+                batch: i,
+                error: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+              });
+              errorDetails.push(`Batch ${i}: ${error.message} (${error.code || 'N/A'})`);
             } else {
-              imported += count || items.length;
-              console.log(`✅ Batch ${i}: ${count || items.length} idiomes`);
+              const actualImported = count || items.length;
+              imported += actualImported;
+              skipped += items.length - actualImported;
+              console.log(`✅ BATCH ${i}-${i+batchSize}: ${actualImported} importées, ${items.length - actualImported} doublons ignorés`);
             }
           }
         } catch (batchError: any) {
-          console.error(`❌ Batch ${i} exception:`, batchError);
-          errors.push(`Batch ${i}: ${batchError.message}`);
+          console.error(`❌ BATCH ${i} EXCEPTION:`, batchError);
+          errors.push({
+            batch: i,
+            error: batchError.message,
+            code: 'EXCEPTION',
+            details: batchError.stack
+          });
+          errorDetails.push(`Batch ${i}: ${batchError.message} (EXCEPTION)`);
         }
       }
 
@@ -525,15 +575,29 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
       console.log("📊 RAPPORT FINAL:", {
         totalAnalyzed: arrayData.length,
         imported,
+        skipped,
         errors: errors.length,
-        errorDetails: errors
+        errorDetails
       });
 
       if (errors.length > 0) {
         toast({
           title: "⚠️ Import partiel",
-          description: `${imported}/${arrayData.length} entrées importées. ${errors.length} erreurs.`,
+          description: `✅ ${imported} importées, ⚠️ ${skipped} doublons, ❌ ${errors.length} erreurs`,
           variant: "destructive",
+          action: errors.length > 0 ? (
+            <Button variant="outline" size="sm" onClick={() => {
+              console.log("📋 ERREURS DÉTAILLÉES:", errors);
+              alert(`Erreurs d'import:\n\n${errorDetails.join('\n\n')}`);
+            }}>
+              Voir erreurs
+            </Button>
+          ) : undefined
+        });
+      } else if (skipped > 0) {
+        toast({
+          title: "✅ Import terminé",
+          description: `${imported.toLocaleString()} nouvelles entrées, ${skipped} doublons ignorés`,
         });
       } else {
         toast({
@@ -730,7 +794,9 @@ function PhrasesImportTab({ user, onComplete }: { user: any; onComplete: () => v
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
       let imported = 0;
-      const errors: string[] = [];
+      let skipped = 0;
+      const errors: { batch: number; error: string; code?: string; details?: string; hint?: string }[] = [];
+      const errorDetails: string[] = [];
       const batchSize = 100;
 
       for (let i = 0; i < arrayData.length; i += batchSize) {
@@ -752,30 +818,80 @@ function PhrasesImportTab({ user, onComplete }: { user: any; onComplete: () => v
           });
 
           if (error) {
-            console.error(`❌ Batch ${i} error:`, error);
-            errors.push(`Batch ${i}: ${error.message}`);
+            console.error(`❌ BATCH ${i}-${i+batchSize} ERROR:`, {
+              message: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            });
+            errors.push({
+              batch: i,
+              error: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            });
+            errorDetails.push(`Batch ${i}: ${error.message} (${error.code || 'N/A'})`);
           } else {
-            imported += count || items.length;
-            console.log(`✅ Batch ${i}: ${count || items.length} phrases`);
+            const actualImported = count || items.length;
+            imported += actualImported;
+            skipped += items.length - actualImported;
+            console.log(`✅ BATCH ${i}-${i+batchSize}: ${actualImported} importées, ${items.length - actualImported} doublons ignorés`);
           }
         } catch (batchError: any) {
-          errors.push(`Batch ${i}: ${batchError.message}`);
+          console.error(`❌ BATCH ${i} EXCEPTION:`, batchError);
+          errors.push({
+            batch: i,
+            error: batchError.message,
+            code: 'EXCEPTION',
+            details: batchError.stack
+          });
+          errorDetails.push(`Batch ${i}: ${batchError.message} (EXCEPTION)`);
         }
       }
 
       setProgress(100);
 
-      // PHASE 4: Refresh SMT system after import
+      // Refresh SMT system after import
       console.log("🔄 Rafraîchissement SMT...");
       const smtStatus = await smtInitializer.refresh();
       console.log("✅ SMT Status:", smtStatus);
 
       onComplete();
 
-      toast({
-        title: "✅ Import réussi",
-        description: `${imported.toLocaleString()} phrases importées. SMT: ${smtStatus.phrasesCount.toLocaleString()} phrases actives`,
+      console.log("📊 RAPPORT FINAL PHRASES:", {
+        totalAnalyzed: arrayData.length,
+        imported,
+        skipped,
+        errors: errors.length,
+        errorDetails
       });
+
+      if (errors.length > 0) {
+        toast({
+          title: "⚠️ Import partiel",
+          description: `✅ ${imported} importées, ⚠️ ${skipped} doublons, ❌ ${errors.length} erreurs. SMT: ${smtStatus.phrasesCount.toLocaleString()}`,
+          variant: "destructive",
+          action: (
+            <Button variant="outline" size="sm" onClick={() => {
+              console.log("📋 ERREURS DÉTAILLÉES:", errors);
+              alert(`Erreurs d'import:\n\n${errorDetails.join('\n\n')}`);
+            }}>
+              Voir erreurs
+            </Button>
+          )
+        });
+      } else if (skipped > 0) {
+        toast({
+          title: "✅ Import terminé",
+          description: `${imported.toLocaleString()} nouvelles, ${skipped} doublons. SMT: ${smtStatus.phrasesCount.toLocaleString()} actives`,
+        });
+      } else {
+        toast({
+          title: "✅ Import réussi",
+          description: `${imported.toLocaleString()} phrases. SMT: ${smtStatus.phrasesCount.toLocaleString()} actives`,
+        });
+      }
 
     } catch (error: any) {
       console.error('❌ Import error:', error);
@@ -947,7 +1063,9 @@ function DictionaryImportTab({ user, onComplete }: { user: any; onComplete: () =
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
       let imported = 0;
-      const errors: string[] = [];
+      let skipped = 0;
+      const errors: { batch: number; error: string; code?: string; details?: string; hint?: string }[] = [];
+      const errorDetails: string[] = [];
       const batchSize = 100;
 
       for (let i = 0; i < arrayData.length; i += batchSize) {
@@ -967,14 +1085,35 @@ function DictionaryImportTab({ user, onComplete }: { user: any; onComplete: () =
           });
 
           if (error) {
-            console.error(`❌ Batch ${i} error:`, error);
-            errors.push(`Batch ${i}: ${error.message}`);
+            console.error(`❌ BATCH ${i}-${i+batchSize} ERROR:`, {
+              message: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            });
+            errors.push({
+              batch: i,
+              error: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            });
+            errorDetails.push(`Batch ${i}: ${error.message} (${error.code || 'N/A'})`);
           } else {
-            imported += count || items.length;
-            console.log(`✅ Batch ${i}: ${count || items.length} entrées`);
+            const actualImported = count || items.length;
+            imported += actualImported;
+            skipped += items.length - actualImported;
+            console.log(`✅ BATCH ${i}-${i+batchSize}: ${actualImported} importées, ${items.length - actualImported} doublons ignorés`);
           }
         } catch (batchError: any) {
-          errors.push(`Batch ${i}: ${batchError.message}`);
+          console.error(`❌ BATCH ${i} EXCEPTION:`, batchError);
+          errors.push({
+            batch: i,
+            error: batchError.message,
+            code: 'EXCEPTION',
+            details: batchError.stack
+          });
+          errorDetails.push(`Batch ${i}: ${batchError.message} (EXCEPTION)`);
         }
       }
 
@@ -982,10 +1121,39 @@ function DictionaryImportTab({ user, onComplete }: { user: any; onComplete: () =
 
       onComplete();
 
-      toast({
-        title: "✅ Import réussi",
-        description: `${imported.toLocaleString()} entrées de dictionnaire importées`,
+      console.log("📊 RAPPORT FINAL DICTIONNAIRE:", {
+        totalAnalyzed: arrayData.length,
+        imported,
+        skipped,
+        errors: errors.length,
+        errorDetails
       });
+
+      if (errors.length > 0) {
+        toast({
+          title: "⚠️ Import partiel",
+          description: `✅ ${imported} importées, ⚠️ ${skipped} doublons, ❌ ${errors.length} erreurs`,
+          variant: "destructive",
+          action: (
+            <Button variant="outline" size="sm" onClick={() => {
+              console.log("📋 ERREURS DÉTAILLÉES:", errors);
+              alert(`Erreurs d'import:\n\n${errorDetails.join('\n\n')}`);
+            }}>
+              Voir erreurs
+            </Button>
+          )
+        });
+      } else if (skipped > 0) {
+        toast({
+          title: "✅ Import terminé",
+          description: `${imported.toLocaleString()} nouvelles entrées, ${skipped} doublons ignorés`,
+        });
+      } else {
+        toast({
+          title: "✅ Import réussi",
+          description: `${imported.toLocaleString()} entrées de dictionnaire importées`,
+        });
+      }
 
     } catch (error: any) {
       console.error('❌ Import error:', error);
@@ -1157,7 +1325,9 @@ function IdiomsImportTab({ user, onComplete }: { user: any; onComplete: () => vo
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
       let imported = 0;
-      const errors: string[] = [];
+      let skipped = 0;
+      const errors: { batch: number; error: string; code?: string; details?: string; hint?: string }[] = [];
+      const errorDetails: string[] = [];
       const batchSize = 100;
 
       for (let i = 0; i < arrayData.length; i += batchSize) {
@@ -1178,14 +1348,35 @@ function IdiomsImportTab({ user, onComplete }: { user: any; onComplete: () => vo
           });
 
           if (error) {
-            console.error(`❌ Batch ${i} error:`, error);
-            errors.push(`Batch ${i}: ${error.message}`);
+            console.error(`❌ BATCH ${i}-${i+batchSize} ERROR:`, {
+              message: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            });
+            errors.push({
+              batch: i,
+              error: error.message,
+              code: error.code,
+              details: error.details,
+              hint: error.hint
+            });
+            errorDetails.push(`Batch ${i}: ${error.message} (${error.code || 'N/A'})`);
           } else {
-            imported += count || items.length;
-            console.log(`✅ Batch ${i}: ${count || items.length} idiomes`);
+            const actualImported = count || items.length;
+            imported += actualImported;
+            skipped += items.length - actualImported;
+            console.log(`✅ BATCH ${i}-${i+batchSize}: ${actualImported} importées, ${items.length - actualImported} doublons ignorés`);
           }
         } catch (batchError: any) {
-          errors.push(`Batch ${i}: ${batchError.message}`);
+          console.error(`❌ BATCH ${i} EXCEPTION:`, batchError);
+          errors.push({
+            batch: i,
+            error: batchError.message,
+            code: 'EXCEPTION',
+            details: batchError.stack
+          });
+          errorDetails.push(`Batch ${i}: ${batchError.message} (EXCEPTION)`);
         }
       }
 
@@ -1193,10 +1384,39 @@ function IdiomsImportTab({ user, onComplete }: { user: any; onComplete: () => vo
 
       onComplete();
 
-      toast({
-        title: "✅ Import réussi",
-        description: `${imported.toLocaleString()} idiomes importés`,
+      console.log("📊 RAPPORT FINAL IDIOMES:", {
+        totalAnalyzed: arrayData.length,
+        imported,
+        skipped,
+        errors: errors.length,
+        errorDetails
       });
+
+      if (errors.length > 0) {
+        toast({
+          title: "⚠️ Import partiel",
+          description: `✅ ${imported} importées, ⚠️ ${skipped} doublons, ❌ ${errors.length} erreurs`,
+          variant: "destructive",
+          action: (
+            <Button variant="outline" size="sm" onClick={() => {
+              console.log("📋 ERREURS DÉTAILLÉES:", errors);
+              alert(`Erreurs d'import:\n\n${errorDetails.join('\n\n')}`);
+            }}>
+              Voir erreurs
+            </Button>
+          )
+        });
+      } else if (skipped > 0) {
+        toast({
+          title: "✅ Import terminé",
+          description: `${imported.toLocaleString()} nouveaux idiomes, ${skipped} doublons ignorés`,
+        });
+      } else {
+        toast({
+          title: "✅ Import réussi",
+          description: `${imported.toLocaleString()} idiomes importés`,
+        });
+      }
 
     } catch (error: any) {
       console.error('❌ Import error:', error);
