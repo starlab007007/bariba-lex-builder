@@ -17,8 +17,12 @@ export function SMTInitializer() {
   const [stage, setStage] = useState("Initialisation...");
 
   useEffect(() => {
+    let isMounted = true;
+    
     const initializeSMT = async () => {
       try {
+        if (!isMounted) return;
+        
         setLoading(true);
         setProgress(10);
         setStage("Chargement des données...");
@@ -26,10 +30,14 @@ export function SMTInitializer() {
         
         // Force fresh initialization to get latest data
         smtInitializer.reset();
-        setProgress(20);
-        setStage("Construction du modèle statistique...");
+        
+        if (!isMounted) return;
+        setProgress(30);
+        setStage("Chargement des 13k+ phrases...");
         
         const status = await smtInitializer.initialize();
+        
+        if (!isMounted) return;
         setProgress(90);
         
         if (status.isInitialized && status.smtReady) {
@@ -74,6 +82,10 @@ export function SMTInitializer() {
 
     // Initialize immediately to get latest data
     initializeSMT();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [toast]);
 
   // Show loading indicator during initialization

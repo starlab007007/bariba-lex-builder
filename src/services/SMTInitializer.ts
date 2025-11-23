@@ -42,10 +42,17 @@ export class SMTInitializer {
     }
 
     if (this.isInitializing) {
-      console.log("⏳ Initialization already in progress...");
-      // Wait for initialization to complete
-      while (this.isInitializing) {
+      console.log("⏳ Initialization already in progress, waiting...");
+      // Wait for initialization with timeout (max 60s)
+      const maxWait = 60000; // 60 seconds
+      const startWait = Date.now();
+      while (this.isInitializing && (Date.now() - startWait) < maxWait) {
         await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      if (this.isInitializing) {
+        console.error("❌ Initialization timeout - forcing reset");
+        this.isInitializing = false;
+        throw new Error("Initialization timeout");
       }
       return this.initializationStatus!;
     }
@@ -75,20 +82,27 @@ export class SMTInitializer {
       let hasMore = true;
 
       while (hasMore) {
+        console.log(`🔄 Chargement batch ${Math.floor(offset / BATCH_SIZE) + 1}...`);
+        
         const { data: batch, error: batchError } = await supabase
           .from('training_phrases')
           .select('french_text, bariba_text, quality_score, source')
           .order('created_at', { ascending: false })
           .range(offset, offset + BATCH_SIZE - 1);
 
-        if (batchError) throw batchError;
+        if (batchError) {
+          console.error(`❌ Erreur batch à offset ${offset}:`, batchError);
+          throw batchError;
+        }
 
         if (batch && batch.length > 0) {
           trainingPhrases.push(...batch);
           offset += batch.length;
-          console.log(`   ✓ Chargé ${trainingPhrases.length} / ${totalCount} phrases...`);
+          const percentage = Math.round((trainingPhrases.length / (totalCount || 1)) * 100);
+          console.log(`   ✓ Chargé ${trainingPhrases.length} / ${totalCount} phrases (${percentage}%)...`);
           hasMore = batch.length === BATCH_SIZE;
         } else {
+          console.log(`   ⚠️ Batch vide à offset ${offset}, arrêt de la pagination`);
           hasMore = false;
         }
       }
@@ -127,6 +141,11 @@ export class SMTInitializer {
       console.log(`✅ Proceeding with SMT initialization using ALL ${trainingPhrases.length} phrases`);
 
       // Initialize engines in parallel
+      console.log(`🔄 Initialisation des moteurs avec ${trainingPhrases.length} phrases...`);
+      console.log(`   1️⃣ Initialisation moteur statistique SMT...`);
+      console.log(`   2️⃣ Apprentissage correcteur grammatical...`);
+      console.log(`   3️⃣ Construction index Trie...`);
+      
       const [smtResult, correctorResult, trieResult] = await Promise.allSettled([
         statisticalEngine.initialize(
           trainingPhrases.map(p => ({
@@ -148,6 +167,14 @@ export class SMTInitializer {
           }))
         )
       ]);
+
+      console.log(`   ${smtResult.status === 'fulfilled' ? '✅' : '❌'} Moteur SMT: ${smtResult.status}`);
+      console.log(`   ${correctorResult.status === 'fulfilled' ? '✅' : '❌'} Correcteur: ${correctorResult.status}`);
+      console.log(`   ${trieResult.status === 'fulfilled' ? '✅' : '❌'} Trie Index: ${trieResult.status}`);
+      
+      if (smtResult.status === 'rejected') console.error("❌ SMT Error:", smtResult.reason);
+      if (correctorResult.status === 'rejected') console.error("❌ Corrector Error:", correctorResult.reason);
+      if (trieResult.status === 'rejected') console.error("❌ Trie Error:", trieResult.reason);
 
       const duration = Date.now() - startTime;
 
