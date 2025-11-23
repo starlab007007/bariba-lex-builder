@@ -472,6 +472,11 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
               imported += actualImported;
               skipped += items.length - actualImported;
               console.log(`✅ BATCH ${i}-${i+batchSize}: ${actualImported} importées, ${items.length - actualImported} doublons ignorés`);
+              
+              // 🔄 SOLUTION 4: Invalider le cache SMT après import de phrases
+              if (actualImported > 0) {
+                localStorage.removeItem('smt_initialization_status');
+              }
             }
 
           } else if (preview.type === 'dictionary') {
