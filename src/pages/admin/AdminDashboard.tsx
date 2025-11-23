@@ -63,6 +63,7 @@ import { ModelABTestingPanel } from '@/components/admin/ModelABTestingPanel';
 import { ComprehensiveDataImporter } from '@/components/admin/ComprehensiveDataImporter';
 import { SMTPerformanceMonitor } from '@/components/admin/SMTPerformanceMonitor';
 import { SMTABTestingPanel } from '@/components/admin/SMTABTestingPanel';
+import { SMTSystemDashboard } from '@/components/admin/SMTSystemDashboard';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -300,17 +301,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="smt-monitor" className="space-y-4">
-            <div className="space-y-4">
-              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                <h2 className="text-xl font-bold text-green-700 dark:text-green-400 mb-2">
-                  📊 Monitoring SMT en Temps Réel
-                </h2>
-                <p className="text-muted-foreground">
-                  Visualisez les performances du moteur statistique : BLEU score, vitesse, couverture par niveau, cache hit rate.
-                </p>
-              </div>
-              <SMTPerformanceMonitor />
-            </div>
+            <SMTSystemDashboard />
           </TabsContent>
 
           <TabsContent value="smt-ab-test" className="space-y-4">
