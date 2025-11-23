@@ -55,36 +55,38 @@ export class SMTInitializer {
 
     try {
       console.log("🚀 Initializing SMT System from database...");
+      console.log("📊 Loading ALL training phrases (no limits)...");
 
-      // Load training phrases
+      // Load ALL training phrases (no limits, no source filter)
       const { data: phrases, error: phrasesError } = await supabase
         .from('training_phrases')
-        .select('french_text, bariba_text, quality_score')
-        .eq('source', 'premium_merged')
+        .select('french_text, bariba_text, quality_score, source')
         .order('created_at', { ascending: false });
 
       if (phrasesError) throw phrasesError;
 
-      // Fallback to all phrases if no premium data
-      let trainingPhrases = phrases || [];
-      if (trainingPhrases.length === 0) {
-        console.warn("⚠️ No premium data found, loading all phrases...");
-        const { data: allPhrases } = await supabase
-          .from('training_phrases')
-          .select('french_text, bariba_text, quality_score')
-          .limit(10000);
-        trainingPhrases = allPhrases || [];
-      }
+      const trainingPhrases = phrases || [];
 
-      // Load dictionary
+      // Log detailed statistics by source
+      const sourceStats = trainingPhrases.reduce((acc, p) => {
+        const source = p.source || 'unknown';
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      console.log("📊 Phrases par source:");
+      Object.entries(sourceStats).forEach(([source, count]) => {
+        console.log(`   - ${source}: ${count} phrases`);
+      });
+
+      // Load ALL dictionary entries (no limit)
       const { data: dictionary, error: dictError } = await supabase
         .from('dictionary_entries')
-        .select('id, word, definition')
-        .limit(10000);
+        .select('id, word, definition');
 
       if (dictError) throw dictError;
 
-      console.log(`📊 Loaded ${trainingPhrases.length} phrases, ${dictionary?.length || 0} dictionary entries`);
+      console.log(`📊 Total loaded: ${trainingPhrases.length} phrases, ${dictionary?.length || 0} dictionary entries`);
 
       if (trainingPhrases.length < 100) {
         throw new Error(`Insufficient data for SMT initialization (${trainingPhrases.length} phrases). Import premium data first.`);

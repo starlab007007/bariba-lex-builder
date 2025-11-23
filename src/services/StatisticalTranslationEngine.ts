@@ -26,41 +26,66 @@ interface PhraseTableEntry {
 }
 
 export class StatisticalTranslationEngine {
-  private phraseTable: Map<string, PhraseTableEntry[]> = new Map();
-  private languageModel: Map<string, number> = new Map();
-  private wordAlignment: Map<string, Map<string, number>> = new Map();
-  private trigramCounts: Map<string, number> = new Map();
-  private fourgramCounts: Map<string, number> = new Map();
+  // FR→BBA direction
+  private phraseTableFrBba: Map<string, PhraseTableEntry[]> = new Map();
+  private languageModelBba: Map<string, number> = new Map();
+  private wordAlignmentFrBba: Map<string, Map<string, number>> = new Map();
+  private trigramCountsBba: Map<string, number> = new Map();
+  private fourgramCountsBba: Map<string, number> = new Map();
   private baribaWordFreq: Map<string, number> = new Map();
+  
+  // BBA→FR direction (inverted)
+  private phraseTableBbaFr: Map<string, PhraseTableEntry[]> = new Map();
+  private languageModelFr: Map<string, number> = new Map();
+  private wordAlignmentBbaFr: Map<string, Map<string, number>> = new Map();
+  private trigramCountsFr: Map<string, number> = new Map();
+  private fourgramCountsFr: Map<string, number> = new Map();
+  private frenchWordFreq: Map<string, number> = new Map();
+  
   private isInitialized = false;
 
   /**
-   * Initialize and train the SMT engine
+   * Initialize and train the SMT engine (bidirectional FR↔BBA)
    */
   async initialize(trainingPairs: TrainingPair[]): Promise<void> {
-    console.log('🚀 Initializing Statistical Translation Engine...');
+    console.log('🚀 Initializing Bidirectional Statistical Translation Engine...');
     console.log(`📊 Training data: ${trainingPairs.length} pairs`);
     
     const startTime = Date.now();
 
-    // Build all models in parallel for speed
+    // Build all models in parallel for BOTH directions
     await Promise.all([
-      this.buildPhraseTable(trainingPairs),
-      this.buildLanguageModel(trainingPairs),
-      this.trainWordAlignment(trainingPairs)
+      // FR→BBA direction
+      this.buildPhraseTable(trainingPairs, 'fr-bba'),
+      this.buildLanguageModel(trainingPairs, 'bba'),
+      this.trainWordAlignment(trainingPairs, 'fr-bba'),
+      
+      // BBA→FR direction (inverted)
+      this.buildPhraseTable(
+        trainingPairs.map(p => ({ french: p.bariba, bariba: p.french, quality_score: p.quality_score })),
+        'bba-fr'
+      ),
+      this.buildLanguageModel(trainingPairs, 'fr'),
+      this.trainWordAlignment(
+        trainingPairs.map(p => ({ french: p.bariba, bariba: p.french, quality_score: p.quality_score })),
+        'bba-fr'
+      )
     ]);
 
     this.isInitialized = true;
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`✅ Engine initialized in ${duration}s`);
+    console.log(`✅ Bidirectional engine initialized in ${duration}s`);
+    console.log(`   📊 FR→BBA: ${this.phraseTableFrBba.size} phrases`);
+    console.log(`   📊 BBA→FR: ${this.phraseTableBbaFr.size} phrases`);
   }
 
   /**
    * Build phrase translation table with n-grams (1-7 words)
    */
-  private async buildPhraseTable(pairs: TrainingPair[]): Promise<void> {
-    console.log('📖 Building phrase translation table...');
+  private async buildPhraseTable(pairs: TrainingPair[], direction: 'fr-bba' | 'bba-fr'): Promise<void> {
+    console.log(`📖 Building phrase translation table (${direction})...`);
     const phraseCounts = new Map<string, Map<string, number>>();
+    const targetTable = direction === 'fr-bba' ? this.phraseTableFrBba : this.phraseTableBbaFr;
 
     for (const pair of pairs) {
       const frenchWords = this.tokenize(pair.french);
@@ -102,81 +127,92 @@ export class StatisticalTranslationEngine {
 
       // Keep top 5 translations per source phrase (BALANCE optimization)
       entries.sort((a, b) => b.probability - a.probability);
-      this.phraseTable.set(frPhrase, entries.slice(0, 5));
+      targetTable.set(frPhrase, entries.slice(0, 5));
     }
 
-    console.log(`  ✓ Phrase table: ${this.phraseTable.size} entries`);
+    console.log(`  ✓ Phrase table (${direction}): ${targetTable.size} entries`);
   }
 
   /**
    * Build n-gram language model (trigrams + 4-grams)
    */
-  private async buildLanguageModel(pairs: TrainingPair[]): Promise<void> {
-    console.log('📚 Building n-gram language model...');
+  private async buildLanguageModel(pairs: TrainingPair[], lang: 'bba' | 'fr'): Promise<void> {
+    console.log(`📚 Building n-gram language model (${lang})...`);
+    
+    const wordFreq = lang === 'bba' ? this.baribaWordFreq : this.frenchWordFreq;
+    const trigramCounts = lang === 'bba' ? this.trigramCountsBba : this.trigramCountsFr;
+    const fourgramCounts = lang === 'bba' ? this.fourgramCountsBba : this.fourgramCountsFr;
+    const languageModel = lang === 'bba' ? this.languageModelBba : this.languageModelFr;
 
     for (const pair of pairs) {
-      const words = this.tokenize(pair.bariba);
+      const words = this.tokenize(lang === 'bba' ? pair.bariba : pair.french);
       
       // Count word frequencies
       for (const word of words) {
-        this.baribaWordFreq.set(word, (this.baribaWordFreq.get(word) || 0) + 1);
+        wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
       }
 
       // Trigrams: P(w3 | w1, w2)
       for (let i = 2; i < words.length; i++) {
         const trigram = `${words[i-2]} ${words[i-1]} ${words[i]}`;
-        this.trigramCounts.set(trigram, (this.trigramCounts.get(trigram) || 0) + 1);
+        trigramCounts.set(trigram, (trigramCounts.get(trigram) || 0) + 1);
       }
 
       // 4-grams: P(w4 | w1, w2, w3) - BALANCE: not 5-grams for speed
       for (let i = 3; i < words.length; i++) {
         const fourgram = `${words[i-3]} ${words[i-2]} ${words[i-1]} ${words[i]}`;
-        this.fourgramCounts.set(fourgram, (this.fourgramCounts.get(fourgram) || 0) + 1);
+        fourgramCounts.set(fourgram, (fourgramCounts.get(fourgram) || 0) + 1);
       }
     }
 
     // Apply Kneser-Ney smoothing
-    this.applyKneserNeySmoothing();
+    this.applyKneserNeySmoothing(lang);
 
-    console.log(`  ✓ Language model: ${this.languageModel.size} n-grams`);
+    console.log(`  ✓ Language model (${lang}): ${languageModel.size} n-grams`);
   }
 
   /**
    * Apply Kneser-Ney smoothing for better handling of rare words
    */
-  private applyKneserNeySmoothing(): void {
+  private applyKneserNeySmoothing(lang: 'bba' | 'fr'): void {
     const discount = 0.75; // Standard discount factor
+    
+    const trigramCounts = lang === 'bba' ? this.trigramCountsBba : this.trigramCountsFr;
+    const fourgramCounts = lang === 'bba' ? this.fourgramCountsBba : this.fourgramCountsFr;
+    const languageModel = lang === 'bba' ? this.languageModelBba : this.languageModelFr;
 
     // Smooth trigrams
-    for (const [trigram, count] of this.trigramCounts.entries()) {
+    for (const [trigram, count] of trigramCounts.entries()) {
       const words = trigram.split(' ');
       const context = `${words[0]} ${words[1]}`;
-      const contextCount = Array.from(this.trigramCounts.entries())
+      const contextCount = Array.from(trigramCounts.entries())
         .filter(([t]) => t.startsWith(context))
         .reduce((sum, [, c]) => sum + c, 0);
       
       const probability = Math.max(count - discount, 0) / contextCount;
-      this.languageModel.set(trigram, probability);
+      languageModel.set(trigram, probability);
     }
 
     // Smooth 4-grams
-    for (const [fourgram, count] of this.fourgramCounts.entries()) {
+    for (const [fourgram, count] of fourgramCounts.entries()) {
       const words = fourgram.split(' ');
       const context = `${words[0]} ${words[1]} ${words[2]}`;
-      const contextCount = Array.from(this.fourgramCounts.entries())
+      const contextCount = Array.from(fourgramCounts.entries())
         .filter(([f]) => f.startsWith(context))
         .reduce((sum, [, c]) => sum + c, 0);
       
       const probability = Math.max(count - discount, 0) / contextCount;
-      this.languageModel.set(fourgram, probability);
+      languageModel.set(fourgram, probability);
     }
   }
 
   /**
    * Train word alignment using simplified IBM Model 1
    */
-  private async trainWordAlignment(pairs: TrainingPair[]): Promise<void> {
-    console.log('🔗 Training word alignment (IBM Model 1)...');
+  private async trainWordAlignment(pairs: TrainingPair[], direction: 'fr-bba' | 'bba-fr'): Promise<void> {
+    console.log(`🔗 Training word alignment (IBM Model 1, ${direction})...`);
+    
+    const wordAlignment = direction === 'fr-bba' ? this.wordAlignmentFrBba : this.wordAlignmentBbaFr;
 
     // Initialize uniform distribution
     const vocabFr = new Set<string>();
@@ -228,23 +264,23 @@ export class StatisticalTranslationEngine {
           alignments.set(bbaWord, count / total);
         }
         
-        this.wordAlignment.set(frWord, alignments);
+        wordAlignment.set(frWord, alignments);
       }
     }
 
-    console.log(`  ✓ Word alignment: ${this.wordAlignment.size} alignments`);
+    console.log(`  ✓ Word alignment (${direction}): ${wordAlignment.size} alignments`);
   }
 
   /**
-   * Translate using Enhanced Beam Search
+   * Translate using Enhanced Beam Search (supports both FR→BBA and BBA→FR)
    */
-  translate(text: string, beamSize: number = 12): TranslationResult {
+  translate(text: string, beamSize: number = 12, direction: 'fr-bba' | 'bba-fr' = 'fr-bba'): TranslationResult {
     if (!this.isInitialized) {
       throw new Error('Engine not initialized. Call initialize() first.');
     }
 
-    const frenchWords = this.tokenize(text);
-    const candidates = this.beamSearch(frenchWords, beamSize);
+    const sourceWords = this.tokenize(text);
+    const candidates = this.beamSearch(sourceWords, beamSize, direction);
 
     if (candidates.length === 0) {
       return {
@@ -268,15 +304,19 @@ export class StatisticalTranslationEngine {
   }
 
   /**
-   * Beam Search decoder with dynamic restructuring
+   * Beam Search decoder with dynamic restructuring (bidirectional)
    */
-  private beamSearch(frenchWords: string[], beamSize: number): Array<{
+  private beamSearch(sourceWords: string[], beamSize: number, direction: 'fr-bba' | 'bba-fr'): Array<{
     translation: string;
     score: number;
     phraseScore: number;
     lmScore: number;
     alignmentScore: number;
   }> {
+    const phraseTable = direction === 'fr-bba' ? this.phraseTableFrBba : this.phraseTableBbaFr;
+    const wordAlignment = direction === 'fr-bba' ? this.wordAlignmentFrBba : this.wordAlignmentBbaFr;
+    const languageModel = direction === 'fr-bba' ? this.languageModelBba : this.languageModelFr;
+    
     const candidates: Array<{
       translation: string;
       score: number;
@@ -287,18 +327,18 @@ export class StatisticalTranslationEngine {
 
     // Generate multiple translation candidates
     for (let beam = 0; beam < beamSize; beam++) {
-      const baribaWords: string[] = [];
+      const targetWords: string[] = [];
       let phraseScore = 0;
       let alignmentScore = 0;
 
       let i = 0;
-      while (i < frenchWords.length) {
+      while (i < sourceWords.length) {
         let bestMatch: { phrase: string; length: number; score: number } | null = null;
 
         // Try longest phrase first (7 down to 1)
-        for (let len = Math.min(7, frenchWords.length - i); len >= 1; len--) {
-          const frPhrase = frenchWords.slice(i, i + len).join(' ');
-          const entries = this.phraseTable.get(frPhrase);
+        for (let len = Math.min(7, sourceWords.length - i); len >= 1; len--) {
+          const srcPhrase = sourceWords.slice(i, i + len).join(' ');
+          const entries = phraseTable.get(srcPhrase);
 
           if (entries && entries.length > 0) {
             // Pick different candidates for diversity
@@ -312,29 +352,29 @@ export class StatisticalTranslationEngine {
         }
 
         if (bestMatch) {
-          baribaWords.push(...bestMatch.phrase.split(' '));
+          targetWords.push(...bestMatch.phrase.split(' '));
           phraseScore += Math.log(bestMatch.score + 1e-10);
           i += bestMatch.length;
         } else {
           // Fallback: word-level alignment
-          const frWord = frenchWords[i];
-          const alignments = this.wordAlignment.get(frWord);
+          const srcWord = sourceWords[i];
+          const alignments = wordAlignment.get(srcWord);
           
           if (alignments && alignments.size > 0) {
             const sorted = Array.from(alignments.entries()).sort((a, b) => b[1] - a[1]);
             const idx = Math.min(beam % sorted.length, sorted.length - 1);
-            baribaWords.push(sorted[idx][0]);
+            targetWords.push(sorted[idx][0]);
             alignmentScore += Math.log(sorted[idx][1] + 1e-10);
           } else {
-            baribaWords.push(frWord); // Keep original if no translation
+            targetWords.push(srcWord); // Keep original if no translation
           }
           i++;
         }
       }
 
       // Calculate language model score
-      const translation = baribaWords.join(' ');
-      const lmScore = this.scoreLanguageModel(baribaWords);
+      const translation = targetWords.join(' ');
+      const lmScore = this.scoreLanguageModel(targetWords, languageModel);
 
       // Combined score (BALANCE: 40% phrase, 40% LM, 20% alignment)
       const totalScore = 0.4 * phraseScore + 0.4 * lmScore + 0.2 * alignmentScore;
@@ -356,14 +396,14 @@ export class StatisticalTranslationEngine {
   /**
    * Score translation using language model
    */
-  private scoreLanguageModel(words: string[]): number {
+  private scoreLanguageModel(words: string[], languageModel: Map<string, number>): number {
     let score = 0;
     let count = 0;
 
     // Score with 4-grams
     for (let i = 3; i < words.length; i++) {
       const fourgram = `${words[i-3]} ${words[i-2]} ${words[i-1]} ${words[i]}`;
-      const prob = this.languageModel.get(fourgram);
+      const prob = languageModel.get(fourgram);
       if (prob) {
         score += Math.log(prob + 1e-10);
         count++;
@@ -373,7 +413,7 @@ export class StatisticalTranslationEngine {
     // Score with trigrams
     for (let i = 2; i < words.length; i++) {
       const trigram = `${words[i-2]} ${words[i-1]} ${words[i]}`;
-      const prob = this.languageModel.get(trigram);
+      const prob = languageModel.get(trigram);
       if (prob) {
         score += Math.log(prob + 1e-10);
         count++;
@@ -384,10 +424,10 @@ export class StatisticalTranslationEngine {
   }
 
   /**
-   * Get word alignment probability
+   * Get word alignment probability (kept for backward compatibility, uses FR→BBA)
    */
   private getAlignment(frenchWord: string, baribaWord: string): number | undefined {
-    return this.wordAlignment.get(frenchWord)?.get(baribaWord);
+    return this.wordAlignmentFrBba.get(frenchWord)?.get(baribaWord);
   }
 
   /**
