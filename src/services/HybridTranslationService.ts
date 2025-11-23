@@ -582,7 +582,22 @@ export class HybridTranslationService {
         body: { text, sourceLang, targetLang }
       });
 
-      if (error) throw error;
+      // Gérer gracieusement le cas où le token HF n'est pas configuré
+      if (error) {
+        const errorMsg = error.message || String(error);
+        if (errorMsg.includes('503') || errorMsg.includes('Model not configured')) {
+          console.log('ℹ️ Hugging Face non configuré - passage au niveau suivant');
+          return null;
+        }
+        throw error;
+      }
+      
+      // Vérifier aussi si la réponse contient une erreur
+      if (data?.error) {
+        console.log('ℹ️ HF Model non disponible:', data.message || data.error);
+        return null;
+      }
+      
       if (!data?.translation) return null;
 
       return {
