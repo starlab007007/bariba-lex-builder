@@ -23,6 +23,7 @@ import QualityMetricsDashboard from '@/components/admin/QualityMetricsDashboard'
 import BulkEditPanel from '@/components/admin/BulkEditPanel';
 import { IdiomManager } from '@/components/admin/IdiomManager';
 import UnifiedDataManager from '@/components/admin/UnifiedDataManager';
+import AdvancedDictionaryManager from '@/components/admin/AdvancedDictionaryManager';
 import { SMTSystemDashboard } from '@/components/admin/SMTSystemDashboard';
 import { SMTABTestingPanel } from '@/components/admin/SMTABTestingPanel';
 import SystemAuditReport from '@/components/admin/SystemAuditReport';
@@ -80,6 +81,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="dictionary" className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Dictionnaire
+              </TabsTrigger>
+              <TabsTrigger value="dictionary-advanced" className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Dictionnaire Avancé
               </TabsTrigger>
               <TabsTrigger value="idioms" className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-[hsl(var(--section-data))]" />
@@ -212,6 +217,7 @@ export default function AdminDashboard() {
           <TabsContent value="unified-data"><UnifiedDataManager /></TabsContent>
           <TabsContent value="smt-monitoring"><SMTSystemDashboard /></TabsContent>
           <TabsContent value="dictionary"><DictionaryManager /></TabsContent>
+          <TabsContent value="dictionary-advanced"><AdvancedDictionaryManager /></TabsContent>
           <TabsContent value="idioms"><IdiomManager /></TabsContent>
           
           <TabsContent value="smt-ab-test"><SMTABTestingPanel /></TabsContent>
