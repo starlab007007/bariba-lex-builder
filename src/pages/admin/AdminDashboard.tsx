@@ -61,6 +61,8 @@ import { FreeFineTuningGuide } from '@/components/admin/FreeFineTuningGuide';
 import { TranslationDiagnosticDashboard } from '@/components/admin/TranslationDiagnosticDashboard';
 import { ModelABTestingPanel } from '@/components/admin/ModelABTestingPanel';
 import { ComprehensiveDataImporter } from '@/components/admin/ComprehensiveDataImporter';
+import { SMTPerformanceMonitor } from '@/components/admin/SMTPerformanceMonitor';
+import { SMTABTestingPanel } from '@/components/admin/SMTABTestingPanel';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -101,6 +103,16 @@ export default function AdminDashboard() {
                 <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Import SMT Premium</span>
                 <span className="sm:hidden">Import</span>
+              </TabsTrigger>
+              <TabsTrigger value="smt-monitor" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2 bg-green-500/10">
+                <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">📊 Monitoring SMT</span>
+                <span className="sm:hidden">📊 SMT</span>
+              </TabsTrigger>
+              <TabsTrigger value="smt-ab-test" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2 bg-blue-500/10">
+                <GitCompare className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">🧪 Test A/B SMT</span>
+                <span className="sm:hidden">🧪 A/B</span>
               </TabsTrigger>
               <TabsTrigger value="audit" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
                 <FileSearch className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -284,6 +296,34 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <ComprehensiveDataImporter />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="smt-monitor" className="space-y-4">
+            <div className="space-y-4">
+              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <h2 className="text-xl font-bold text-green-700 dark:text-green-400 mb-2">
+                  📊 Monitoring SMT en Temps Réel
+                </h2>
+                <p className="text-muted-foreground">
+                  Visualisez les performances du moteur statistique : BLEU score, vitesse, couverture par niveau, cache hit rate.
+                </p>
+              </div>
+              <SMTPerformanceMonitor />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="smt-ab-test" className="space-y-4">
+            <div className="space-y-4">
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h2 className="text-xl font-bold text-blue-700 dark:text-blue-400 mb-2">
+                  🧪 Test A/B : Ancien vs Nouveau Système
+                </h2>
+                <p className="text-muted-foreground">
+                  Comparez les performances entre l'ancien système (SimplifiedAI) et le nouveau moteur SMT sur vos phrases test.
+                </p>
+              </div>
+              <SMTABTestingPanel />
             </div>
           </TabsContent>
 
