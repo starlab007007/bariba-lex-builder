@@ -1,6 +1,6 @@
 /**
- * Intelligent LRU Translation Cache
- * Caches up to 20k translations with smart eviction
+ * Intelligent LRU Translation Cache with SMT Optimization
+ * Caches up to 50k translations with smart eviction and pre-warming
  */
 
 interface CacheEntry {
@@ -10,11 +10,14 @@ interface CacheEntry {
   timestamp: number;
   usageCount: number;
   lastUsed: number;
+  avgDuration?: number; // Track translation speed
 }
 
 export class TranslationCache {
   private cache: Map<string, CacheEntry> = new Map();
-  private maxSize = 20000; // BALANCE: 20k entries
+  private maxSize = 50000; // OPTIMIZED: 50k entries for better SMT performance
+  private hits = 0;
+  private misses = 0;
 
   /**
    * Get cached translation
@@ -26,16 +29,18 @@ export class TranslationCache {
       // Update usage stats
       entry.usageCount++;
       entry.lastUsed = Date.now();
+      this.hits++;
       return entry;
     }
     
+    this.misses++;
     return null;
   }
 
   /**
-   * Set cached translation
+   * Set cached translation with duration tracking
    */
-  set(key: string, translation: string, confidence: number, method: string): void {
+  set(key: string, translation: string, confidence: number, method: string, duration?: number): void {
     const normalizedKey = key.toLowerCase();
     
     // Check if we need to evict
@@ -43,13 +48,19 @@ export class TranslationCache {
       this.evict();
     }
 
+    const existing = this.cache.get(normalizedKey);
+    const avgDuration = existing?.avgDuration 
+      ? (existing.avgDuration + (duration || 0)) / 2 
+      : duration;
+
     this.cache.set(normalizedKey, {
       translation,
       confidence,
       method,
       timestamp: Date.now(),
-      usageCount: 1,
-      lastUsed: Date.now()
+      usageCount: existing ? existing.usageCount + 1 : 1,
+      lastUsed: Date.now(),
+      avgDuration
     });
   }
 
@@ -81,33 +92,47 @@ export class TranslationCache {
   }
 
   /**
-   * Calculate cache hit rate
+   * Calculate real-time cache hit rate
    */
   getHitRate(): number {
-    const entries = Array.from(this.cache.values());
-    const totalUsage = entries.reduce((sum, e) => sum + e.usageCount, 0);
-    const uniqueEntries = entries.length;
-    
-    return uniqueEntries > 0 ? (totalUsage - uniqueEntries) / totalUsage : 0;
+    const total = this.hits + this.misses;
+    return total > 0 ? this.hits / total : 0;
   }
 
   /**
-   * Get cache stats
+   * Pre-warm cache with frequent translations
+   */
+  preWarm(translations: Array<{ source: string; target: string; method: string }>): void {
+    console.log(`🔥 Pre-warming cache with ${translations.length} translations...`);
+    translations.forEach(t => {
+      this.set(t.source, t.target, 95, t.method);
+    });
+    console.log(`✅ Cache pre-warmed: ${this.cache.size} entries`);
+  }
+
+  /**
+   * Get comprehensive cache stats
    */
   getStats() {
     const entries = Array.from(this.cache.values());
+    const totalUsage = entries.reduce((sum, e) => sum + e.usageCount, 0);
+    const avgDuration = entries
+      .filter(e => e.avgDuration)
+      .reduce((sum, e) => sum + (e.avgDuration || 0), 0) / entries.length;
     
     return {
       size: this.cache.size,
       maxSize: this.maxSize,
-      totalUsage: entries.reduce((sum, e) => sum + e.usageCount, 0),
-      avgUsage: entries.length > 0 
-        ? entries.reduce((sum, e) => sum + e.usageCount, 0) / entries.length 
-        : 0,
+      totalUsage,
+      avgUsage: entries.length > 0 ? totalUsage / entries.length : 0,
       hitRate: this.getHitRate(),
+      hits: this.hits,
+      misses: this.misses,
+      avgDuration: avgDuration || 0,
       oldestEntry: entries.length > 0
         ? Math.min(...entries.map(e => e.timestamp))
-        : null
+        : null,
+      utilizationRate: (this.cache.size / this.maxSize) * 100
     };
   }
 

@@ -233,8 +233,10 @@ export class HybridTranslationService {
           console.log(`   📝 Brut: "${smtResult.translation}"`);
           console.log(`   ✨ Corrigé: "${corrected}"`);
           
-          // Save to cache
-          translationCache.set(text, corrected, finalConfidence, 'statistical_smt');
+          const duration = Date.now() - startTime;
+          
+          // Save to cache with duration
+          translationCache.set(text, corrected, finalConfidence, 'statistical_smt', duration);
           
           await translationContextService.addToContext(
             text,
