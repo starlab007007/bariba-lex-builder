@@ -179,11 +179,49 @@ export default function AdvancedDictionaryManager() {
   };
 
   /**
-   * Analyze uploaded dictionary file
+   * Intelligent field detection for dictionary entries
+   */
+  const detectDictionaryFields = (sample: any[]) => {
+    console.log("🔍 Analyzing dictionary structure...");
+    
+    const fieldPatterns = {
+      word: ['word', 'mot', 'terme', 'entry', 'headword', 'lemme', 'lexeme', 'bariba', 'baatonum'],
+      definition: ['definition', 'def', 'sens', 'meaning', 'traduction', 'translation', 'french', 'francais', 'français'],
+      phonetic: ['phonetic', 'phonétique', 'ipa', 'pronunciation'],
+      part_of_speech: ['part_of_speech', 'pos', 'type', 'category', 'categorie', 'grammatical_category'],
+      examples_bariba: ['example_bariba', 'examples_bariba', 'exemples_bariba', 'examples', 'exemples'],
+      examples_french: ['example_francais', 'examples_french', 'exemples_francais', 'french_examples']
+    };
+
+    const detected: Record<string, string> = {};
+    
+    if (sample.length > 0) {
+      const sampleKeys = Object.keys(sample[0]);
+      
+      for (const [targetField, patterns] of Object.entries(fieldPatterns)) {
+        for (const pattern of patterns) {
+          const match = sampleKeys.find(key => 
+            key.toLowerCase().includes(pattern.toLowerCase())
+          );
+          if (match) {
+            detected[targetField] = match;
+            console.log(`   ✓ ${targetField} → ${match}`);
+            break;
+          }
+        }
+      }
+    }
+
+    return detected;
+  };
+
+  /**
+   * Analyze uploaded dictionary file with intelligent detection
    */
   const analyzeFile = async (file: File) => {
     setLoading(true);
     try {
+      console.log("📄 Analyzing file:", file.name);
       const text = await file.text();
       const data = JSON.parse(text);
 
@@ -191,19 +229,40 @@ export default function AdvancedDictionaryManager() {
         throw new Error('Le fichier doit contenir un tableau JSON');
       }
 
-      // Validate dictionary structure
-      const validated = data.filter((entry: any) => 
-        entry.word && entry.definition
-      );
+      console.log(`📊 Found ${data.length} entries in file`);
+
+      // Intelligent field detection
+      const fieldMapping = detectDictionaryFields(data.slice(0, 10));
+      console.log("🔍 Field mapping:", fieldMapping);
+
+      if (!fieldMapping.word || !fieldMapping.definition) {
+        throw new Error('Impossible de détecter les champs "mot" et "définition". Vérifiez la structure du fichier.');
+      }
+
+      // Validate with flexible field mapping
+      const validated = data.filter((entry: any) => {
+        const word = entry[fieldMapping.word];
+        const definition = entry[fieldMapping.definition];
+        const isValid = word && word.toString().trim().length > 0 && 
+                       definition && definition.toString().trim().length > 0;
+        
+        if (!isValid && data.indexOf(entry) < 5) {
+          console.warn("❌ Invalid entry:", entry);
+        }
+        return isValid;
+      });
+
+      console.log(`✅ ${validated.length} valid entries (${data.length - validated.length} rejected)`);
 
       setPreview(validated.slice(0, 200));
       
       toast({
-        title: "Analyse terminée",
-        description: `${validated.length} entrées valides trouvées`
+        title: "✅ Analyse réussie",
+        description: `${validated.length} entrées valides sur ${data.length} trouvées`,
       });
 
     } catch (error: any) {
+      console.error("❌ Analysis error:", error);
       toast({
         title: "Erreur d'analyse",
         description: error.message,
@@ -215,66 +274,116 @@ export default function AdvancedDictionaryManager() {
   };
 
   /**
-   * Import dictionary from file
+   * Import dictionary with intelligent field mapping
    */
   const importDictionary = async () => {
     if (!file || preview.length === 0) return;
 
     setLoading(true);
-    const batchSize = 50; // Réduit pour éviter les timeouts
+    const batchSize = 100;
     let imported = 0;
     let errors = 0;
+    const errorDetails: string[] = [];
 
     try {
+      console.log("🚀 Starting dictionary import...");
       const text = await file.text();
       const fullData = JSON.parse(text);
       
-      // Validation complète
-      const validated = fullData.filter((entry: any) => 
-        entry.word && 
-        entry.word.trim().length > 0 &&
-        entry.definition && 
-        entry.definition.trim().length > 0
-      );
+      // Detect field mapping
+      const fieldMapping = detectDictionaryFields(fullData.slice(0, 10));
+      console.log("📋 Using field mapping:", fieldMapping);
+
+      // Validate with intelligent mapping
+      const validated = fullData.filter((entry: any) => {
+        const word = entry[fieldMapping.word];
+        const definition = entry[fieldMapping.definition];
+        return word && word.toString().trim().length > 0 &&
+               definition && definition.toString().trim().length > 0;
+      }).map((entry: any) => {
+        // Map fields intelligently
+        const mappedEntry: any = {
+          word: entry[fieldMapping.word]?.toString().trim(),
+          definition: entry[fieldMapping.definition]?.toString().trim(),
+          quality_score: 0.7,
+          is_verified: false
+        };
+
+        // Optional fields with flexible mapping
+        if (fieldMapping.phonetic && entry[fieldMapping.phonetic]) {
+          mappedEntry.phonetic = entry[fieldMapping.phonetic].toString().trim();
+        }
+        if (fieldMapping.part_of_speech && entry[fieldMapping.part_of_speech]) {
+          mappedEntry.part_of_speech = entry[fieldMapping.part_of_speech].toString().trim();
+        }
+        
+        // Handle array fields
+        if (fieldMapping.examples_bariba && entry[fieldMapping.examples_bariba]) {
+          mappedEntry.example_bariba = Array.isArray(entry[fieldMapping.examples_bariba]) 
+            ? entry[fieldMapping.examples_bariba] 
+            : [entry[fieldMapping.examples_bariba]];
+        }
+        if (fieldMapping.examples_french && entry[fieldMapping.examples_french]) {
+          mappedEntry.example_francais = Array.isArray(entry[fieldMapping.examples_french])
+            ? entry[fieldMapping.examples_french]
+            : [entry[fieldMapping.examples_french]];
+        }
+
+        // Additional optional fields
+        ['nominal_class', 'verbal_group', 'tone_pattern', 'verb_type'].forEach(field => {
+          if (entry[field]) mappedEntry[field] = entry[field];
+        });
+
+        return mappedEntry;
+      });
+
+      console.log(`📊 Importing ${validated.length} validated entries in batches of ${batchSize}...`);
 
       for (let i = 0; i < validated.length; i += batchSize) {
         const batch = validated.slice(i, i + batchSize);
+        const batchNum = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(validated.length / batchSize);
+        
+        console.log(`📦 Batch ${batchNum}/${totalBatches}: importing ${batch.length} entries...`);
         
         try {
-          const { error } = await supabase
+          const { error, data } = await supabase
             .from('dictionary_entries')
-            .upsert(batch.map(entry => ({
-              word: entry.word.trim(),
-              definition: entry.definition.trim(),
-              phonetic: entry.phonetic?.trim() || null,
-              part_of_speech: entry.part_of_speech?.trim() || null,
-              example_bariba: Array.isArray(entry.example_bariba) ? entry.example_bariba : [],
-              example_francais: Array.isArray(entry.example_francais) ? entry.example_francais : [],
-              french_keywords: Array.isArray(entry.french_keywords) ? entry.french_keywords : null,
-              quality_score: typeof entry.quality_score === 'number' ? entry.quality_score : 0.5,
-              is_verified: false,
-              nominal_class: entry.nominal_class || null,
-              verbal_group: entry.verbal_group || null
-            })), { 
+            .upsert(batch, { 
               onConflict: 'word',
               ignoreDuplicates: false 
             });
 
           if (error) {
-            console.error(`Batch ${i}-${i+batchSize} error:`, error);
+            console.error(`❌ Batch ${batchNum} error:`, error);
+            errorDetails.push(`Batch ${batchNum}: ${error.message}`);
             errors += batch.length;
           } else {
+            console.log(`✅ Batch ${batchNum} success: ${batch.length} entries`);
             imported += batch.length;
           }
         } catch (batchError: any) {
-          console.error(`Batch ${i} failed:`, batchError);
+          console.error(`❌ Batch ${batchNum} exception:`, batchError);
+          errorDetails.push(`Batch ${batchNum}: ${batchError.message}`);
           errors += batch.length;
         }
+
+        // Progress update
+        const progress = Math.round(((i + batch.length) / validated.length) * 100);
+        console.log(`⏳ Progress: ${progress}%`);
+      }
+
+      console.log(`✅ Import complete: ${imported} imported, ${errors} errors`);
+
+      if (errorDetails.length > 0) {
+        console.error("Error details:", errorDetails);
       }
 
       toast({
-        title: imported > 0 ? "Import terminé" : "Import échoué",
-        description: `${imported} entrées importées${errors > 0 ? `, ${errors} erreurs` : ''}`,
+        title: imported > 0 ? "✅ Import réussi" : "❌ Import échoué",
+        description: imported > 0 
+          ? `${imported.toLocaleString()} entrées importées${errors > 0 ? ` (${errors} erreurs)` : ''}`
+          : `Échec total. Vérifiez les logs de la console.`,
         variant: imported > 0 ? "default" : "destructive"
       });
 
@@ -283,10 +392,10 @@ export default function AdvancedDictionaryManager() {
       await loadStats();
 
     } catch (error: any) {
-      console.error('Import error:', error);
+      console.error('❌ Fatal import error:', error);
       toast({
-        title: "Erreur d'import",
-        description: `${error.message}. Vérifiez le format JSON et la structure des données.`,
+        title: "Erreur critique d'import",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
