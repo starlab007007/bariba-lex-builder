@@ -334,18 +334,18 @@ export class HybridTranslationService {
       };
     }
 
-    // NIVEAU 3.6: Hugging Face Fine-Tuned Model (confiance 75-92%, GRATUIT via HF Inference API)
+    // NIVEAU 3.6: Lovable AI pour phrases complexes (confiance 85-95%, quasi-GRATUIT)
     const wordCount = text.split(/\s+/).length;
     if (wordCount >= 4) { // Phrases complexes uniquement
       try {
-        console.log(`🔄 Niveau 3.6: Hugging Face Fine-Tuned Model (${wordCount} mots)`);
-        const hfResult = await this.callHuggingFaceModel(text, sourceLang, targetLang);
-        if (hfResult && hfResult.confidence >= 75) {
-          console.log(`✅ Niveau 3.6: HF Model (${hfResult.confidence}%)`);
+        console.log(`🔄 Niveau 3.6: Lovable AI (${wordCount} mots)`);
+        const aiResult = await this.callLovableAI(text, sourceLang, targetLang);
+        if (aiResult && aiResult.confidence >= 75) {
+          console.log(`✅ Niveau 3.6: Lovable AI (${aiResult.confidence}%)`);
           // Sauvegarder dans le cache
-          await this.saveToCache(text, hfResult.translation, sourceLang, targetLang, hfResult.confidence);
+          await this.saveToCache(text, aiResult.translation, sourceLang, targetLang, aiResult.confidence);
           return {
-            ...hfResult,
+            ...aiResult,
             method: 'advanced',
             cost: 0,
             duration: Date.now() - startTime
@@ -388,51 +388,6 @@ export class HybridTranslationService {
       cost: 0,
       duration: Date.now() - startTime
     };
-  }
-
-  /**
-   * Appelle Lovable AI pour traduction haute qualité
-   */
-  private async callLovableAI(
-    text: string,
-    sourceLang: string,
-    targetLang: string
-  ): Promise<HybridTranslationResult | null> {
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-translate', {
-        body: {
-          text,
-          sourceLang,
-          targetLang
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.translation) {
-        await translationContextService.addToContext(
-          text,
-          data.translation,
-          sourceLang as any,
-          targetLang as any,
-          data.confidence || 90
-        );
-
-        return {
-          translation: data.translation,
-          confidence: data.confidence || 90,
-          detectedLanguage: sourceLang as any,
-          method: 'ai',
-          cost: 0.001,
-          duration: 0
-        };
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Erreur Lovable AI:", error);
-      return null;
-    }
   }
 
   /**
@@ -572,23 +527,23 @@ export class HybridTranslationService {
   }
 
   /**
-   * Appelle le modèle Hugging Face Fine-Tuned
+   * Appelle Lovable AI pour traduction intelligente
    */
-  private async callHuggingFaceModel(
+  private async callLovableAI(
     text: string,
     sourceLang: string,
     targetLang: string
   ): Promise<HybridTranslationResult | null> {
     try {
-      const { data, error } = await supabase.functions.invoke('huggingface-translate', {
+      const { data, error } = await supabase.functions.invoke('ai-translate-lovable', {
         body: { text, sourceLang, targetLang }
       });
 
-      // Gérer gracieusement le cas où le token HF n'est pas configuré
+      // Gérer les erreurs gracieusement
       if (error) {
         const errorMsg = error.message || String(error);
-        if (errorMsg.includes('503') || errorMsg.includes('Model not configured')) {
-          console.log('ℹ️ Hugging Face non configuré - passage au niveau suivant');
+        if (errorMsg.includes('503') || errorMsg.includes('not configured')) {
+          console.log('ℹ️ Lovable AI non disponible - passage au niveau suivant');
           return null;
         }
         throw error;
