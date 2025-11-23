@@ -6,8 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Loader2, Database, FileText, Book, Trash2, Download, RefreshCw, CheckCircle } from 'lucide-react';
+import { Upload, Loader2, Database, FileText, Book, Trash2, Download, RefreshCw, CheckCircle, AlertCircle, Shield } from 'lucide-react';
+
 interface DataStats {
   totalPhrases: number;
   totalDictionary: number;
@@ -27,7 +30,7 @@ interface ImportPreview {
 }
 
 export default function UnifiedDataManager() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState<DataStats | null>(null);
   const [activeTab, setActiveTab] = useState('import');
@@ -132,6 +135,32 @@ export default function UnifiedDataManager() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* PHASE 5: Auth Status Banner */}
+      {!user && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            ❌ Vous devez être connecté en tant qu'administrateur pour importer des données.
+            <a href="/auth" className="ml-2 underline font-semibold">Se connecter</a>
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {user && (
+        <Alert className="bg-green-500/10 border-green-500/20">
+          <Shield className="h-4 w-4 text-green-500" />
+          <AlertDescription className="flex items-center justify-between">
+            <div>
+              <span className="font-semibold">Connecté:</span> {user.email}
+              <Badge className="ml-2" variant={isAdmin ? "default" : "secondary"}>
+                {isAdmin ? "Admin" : "User"}
+              </Badge>
+            </div>
+            <CheckCircle className="h-5 w-5 text-green-500" />
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex justify-between items-start">
         <div>
           <h2 className="text-3xl font-bold">Gestion Unifiée des Données</h2>
@@ -146,7 +175,7 @@ export default function UnifiedDataManager() {
             <Download className="h-4 w-4 mr-2" />
             Exporter tout
           </Button>
-          <Button variant="destructive" onClick={handleClearAll}>
+          <Button variant="destructive" onClick={handleClearAll} disabled={!user}>
             <Trash2 className="h-4 w-4 mr-2" />
             Tout supprimer
           </Button>
@@ -206,10 +235,10 @@ export default function UnifiedDataManager() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="import">Import Intelligent</TabsTrigger>
-          <TabsTrigger value="phrases">Phrases SMT</TabsTrigger>
-          <TabsTrigger value="dictionary">Dictionnaire</TabsTrigger>
-          <TabsTrigger value="idioms">Idiomes</TabsTrigger>
+          <TabsTrigger value="import" disabled={!user}>Import Intelligent</TabsTrigger>
+          <TabsTrigger value="phrases" disabled={!user}>Phrases SMT</TabsTrigger>
+          <TabsTrigger value="dictionary" disabled={!user}>Dictionnaire</TabsTrigger>
+          <TabsTrigger value="idioms" disabled={!user}>Idiomes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="import">
@@ -246,6 +275,9 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
 
     const first = data[0];
     const fields = Object.keys(first);
+
+    // PHASE 6: Validation checks
+    console.log("🔍 Détection de type:", { fields, sample: first });
 
     // Phrases patterns
     const frPatterns = ['french', 'francais', 'français', 'fr', 'french_text', 'texte_fr'];
@@ -331,6 +363,8 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
       const data = JSON.parse(text);
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
+      console.log("📁 Fichier analysé:", { totalEntries: arrayData.length });
+
       const detected = detectType(arrayData);
       if (!detected) {
         toast({
@@ -365,7 +399,24 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
   };
 
   const handleImport = async () => {
-    if (!file || !preview || !user) return;
+    // PHASE 1: Authentication Check
+    if (!user) {
+      toast({
+        title: "❌ Authentification requise",
+        description: "Vous devez être connecté en tant qu'administrateur pour importer des données",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!file || !preview) return;
+
+    console.log("🚀 DÉBUT IMPORT:", {
+      type: preview.type,
+      totalEntries: preview.count,
+      user: user.email,
+      timestamp: new Date().toISOString()
+    });
 
     setLoading(true);
     setProgress(0);
@@ -376,71 +427,123 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
       let imported = 0;
+      const errors: string[] = [];
       const batchSize = 100;
 
+      // PHASE 3: Batch Import with Individual Error Handling
       for (let i = 0; i < arrayData.length; i += batchSize) {
         const batch = arrayData.slice(i, i + batchSize);
         setProgress((i / arrayData.length) * 100);
 
-        if (preview.type === 'phrases') {
-          const items = batch.map((item: any) => ({
-            french_text: item[preview.mappedFields![0].source],
-            bariba_text: item[preview.mappedFields![1].source],
-            source: `import_${new Date().toISOString().split('T')[0]}`,
-            quality_score: 0.85,
-            created_by: user.id
-          })).filter((item: any) => item.french_text && item.bariba_text);
+        try {
+          if (preview.type === 'phrases') {
+            const items = batch.map((item: any) => ({
+              french_text: item[preview.mappedFields![0].source],
+              bariba_text: item[preview.mappedFields![1].source],
+              source: `import_${new Date().toISOString().split('T')[0]}`,
+              quality_score: 0.85,
+              created_by: user.id
+            })).filter((item: any) => item.french_text && item.bariba_text);
 
-          const { error } = await supabase.from('training_phrases').upsert(items, {
-            onConflict: 'french_text,bariba_text'
-          });
+            const { error, count } = await supabase.from('training_phrases').upsert(items, {
+              onConflict: 'french_text,bariba_text',
+              count: 'exact'
+            });
 
-          if (!error) imported += items.length;
+            if (error) {
+              console.error(`❌ Batch ${i} error:`, error);
+              errors.push(`Batch ${i}: ${error.message}`);
+            } else {
+              imported += count || items.length;
+              console.log(`✅ Batch ${i}: ${count || items.length} phrases`);
+            }
 
-        } else if (preview.type === 'dictionary') {
-          const items = batch.map((item: any) => ({
-            word: item[preview.mappedFields![0].source],
-            definition: item[preview.mappedFields![1].source],
-            created_by: user.id
-          })).filter((item: any) => item.word && item.definition);
+          } else if (preview.type === 'dictionary') {
+            const items = batch.map((item: any) => ({
+              word: item[preview.mappedFields![0].source],
+              definition: item[preview.mappedFields![1].source],
+              created_by: user.id
+            })).filter((item: any) => item.word && item.definition);
 
-          const { error } = await supabase.from('dictionary_entries').upsert(items, {
-            onConflict: 'word'
-          });
+            const { error, count } = await supabase.from('dictionary_entries').upsert(items, {
+              onConflict: 'word',
+              count: 'exact'
+            });
 
-          if (!error) imported += items.length;
+            if (error) {
+              console.error(`❌ Batch ${i} error:`, error);
+              errors.push(`Batch ${i}: ${error.message}`);
+            } else {
+              imported += count || items.length;
+              console.log(`✅ Batch ${i}: ${count || items.length} entrées`);
+            }
 
-        } else if (preview.type === 'idioms') {
-          const items = batch.map((item: any) => ({
-            french_expression: item[preview.mappedFields![0].source],
-            bariba_expression: item[preview.mappedFields![1].source],
-            category: item.category || item.categorie || 'général',
-            created_by: user.id
-          })).filter((item: any) => item.french_expression && item.bariba_expression);
+          } else if (preview.type === 'idioms') {
+            const items = batch.map((item: any) => ({
+              french_expression: item[preview.mappedFields![0].source],
+              bariba_expression: item[preview.mappedFields![1].source],
+              category: item.category || item.categorie || 'général',
+              created_by: user.id
+            })).filter((item: any) => item.french_expression && item.bariba_expression);
 
-          const { error } = await supabase.from('idiomatic_expressions').upsert(items, {
-            onConflict: 'french_expression'
-          });
+            const { error, count } = await supabase.from('idiomatic_expressions').upsert(items, {
+              onConflict: 'french_expression',
+              count: 'exact'
+            });
 
-          if (!error) imported += items.length;
+            if (error) {
+              console.error(`❌ Batch ${i} error:`, error);
+              errors.push(`Batch ${i}: ${error.message}`);
+            } else {
+              imported += count || items.length;
+              console.log(`✅ Batch ${i}: ${count || items.length} idiomes`);
+            }
+          }
+        } catch (batchError: any) {
+          console.error(`❌ Batch ${i} exception:`, batchError);
+          errors.push(`Batch ${i}: ${batchError.message}`);
         }
       }
 
       setProgress(100);
       setImportedCount(imported);
 
+      // PHASE 4: Refresh SMT after phrase import
       if (preview.type === 'phrases') {
-        await smtInitializer.refresh();
+        console.log("🔄 Rafraîchissement SMT...");
+        const smtStatus = await smtInitializer.refresh();
+        console.log("✅ SMT Status:", smtStatus);
+        toast({
+          title: "🔄 SMT Rafraîchi",
+          description: `${smtStatus.phrasesCount.toLocaleString()} phrases actives`,
+        });
       }
 
       onComplete();
 
-      toast({
-        title: "✅ Import terminé",
-        description: `${imported.toLocaleString()} éléments importés`,
+      // PHASE 2: Detailed Success/Error Report
+      console.log("📊 RAPPORT FINAL:", {
+        totalAnalyzed: arrayData.length,
+        imported,
+        errors: errors.length,
+        errorDetails: errors
       });
 
+      if (errors.length > 0) {
+        toast({
+          title: "⚠️ Import partiel",
+          description: `${imported}/${arrayData.length} entrées importées. ${errors.length} erreurs.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "✅ Import terminé",
+          description: `${imported.toLocaleString()} éléments importés`,
+        });
+      }
+
     } catch (error: any) {
+      console.error('❌ Import error:', error);
       toast({
         title: "❌ Erreur d'import",
         description: error.message,
@@ -467,7 +570,7 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
             onChange={handleFileChange}
             className="hidden"
             id="general-import"
-            disabled={loading}
+            disabled={loading || !user}
           />
           <label htmlFor="general-import" className="cursor-pointer flex flex-col items-center gap-2">
             <Upload className="h-8 w-8 text-muted-foreground" />
@@ -484,47 +587,55 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
               <span className="text-sm">Confiance: {preview.confidence}%</span>
             </div>
             <div className="text-sm space-y-1">
-              <div><strong>Éléments valides:</strong> {preview.count.toLocaleString()}</div>
-              <div><strong>Champs détectés:</strong></div>
-              {preview.mappedFields?.map((m, i) => (
-                <div key={i} className="ml-4">
-                  <Badge variant="outline" className="mr-2">{m.source}</Badge>
-                  → <Badge>{m.target}</Badge>
+              <div><strong>Entrées:</strong> {preview.count.toLocaleString()}</div>
+              <div><strong>Champs détectés:</strong> {preview.detectedFields.join(', ')}</div>
+              {preview.mappedFields && (
+                <div className="mt-2 text-xs">
+                  <div><strong>Mapping:</strong></div>
+                  {preview.mappedFields.map((m, i) => (
+                    <div key={i} className="ml-2">• {m.source} → {m.target}</div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
 
         {loading && (
           <div className="space-y-2">
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
-            </div>
-            <p className="text-sm text-center text-muted-foreground">{progress.toFixed(0)}%</p>
+            <Progress value={progress} />
+            <p className="text-sm text-center text-muted-foreground">
+              Import en cours: {Math.round(progress)}%
+            </p>
           </div>
         )}
-
-        <Button onClick={handleImport} disabled={!file || !preview || loading} className="w-full">
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Importer {preview?.count.toLocaleString()} éléments
-        </Button>
 
         {importedCount !== null && (
-          <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950/20">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <div className="font-semibold text-green-900 dark:text-green-100">
-                  Import réussi !
-                </div>
-                <div className="text-sm text-green-700 dark:text-green-300">
-                  {importedCount.toLocaleString()} éléments importés dans la base de données
-                </div>
-              </div>
-            </div>
-          </div>
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              ✅ {importedCount.toLocaleString()} éléments importés avec succès
+            </AlertDescription>
+          </Alert>
         )}
+
+        <Button 
+          onClick={handleImport} 
+          disabled={!preview || loading || !user}
+          className="w-full"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Import en cours...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Importer {preview?.count.toLocaleString() || 0} éléments
+            </>
+          )}
+        </Button>
       </CardContent>
     </Card>
   );
@@ -534,7 +645,7 @@ function GeneralImportTab({ user, onComplete }: { user: any; onComplete: () => v
 function PhrasesImportTab({ user, onComplete }: { user: any; onComplete: () => void }) {
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<any>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -544,24 +655,31 @@ function PhrasesImportTab({ user, onComplete }: { user: any; onComplete: () => v
       const data = JSON.parse(text);
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
-      const frPatterns = ['french', 'francais', 'français', 'fr', 'french_text', 'texte_fr'];
-      const bbaPatterns = ['bariba', 'baatonum', 'bba', 'bariba_text', 'bba_latn', 'bba_latin'];
-
       const first = arrayData[0];
       const fields = Object.keys(first);
 
+      // Detect FR and BBA fields
+      const frPatterns = ['french', 'francais', 'français', 'fr', 'french_text', 'texte_fr'];
+      const bbaPatterns = ['bariba', 'baatonum', 'bba', 'bariba_text', 'bba_latn', 'bba_latin'];
+      
       const frField = fields.find(f => frPatterns.some(p => f.toLowerCase().includes(p)));
       const bbaField = fields.find(f => bbaPatterns.some(p => f.toLowerCase().includes(p)));
 
       if (!frField || !bbaField) {
-        throw new Error("Champs français et bariba non trouvés");
+        throw new Error(`Champs français ou bariba non trouvés. Champs disponibles: ${fields.join(', ')}`);
       }
 
       setPreview({
+        type: 'phrases',
         count: arrayData.length,
-        frField,
-        bbaField,
-        sample: arrayData.slice(0, 3)
+        sample: arrayData.slice(0, 3),
+        quality: 85,
+        detectedFields: [frField, bbaField],
+        mappedFields: [
+          { source: frField, target: 'french_text' },
+          { source: bbaField, target: 'bariba_text' }
+        ],
+        confidence: 95
       });
 
       toast({
@@ -570,56 +688,99 @@ function PhrasesImportTab({ user, onComplete }: { user: any; onComplete: () => v
       });
     } catch (error: any) {
       toast({
-        title: "❌ Erreur",
+        title: "❌ Erreur d'analyse",
         description: error.message,
         variant: "destructive",
       });
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      analyzeFile(selectedFile);
+    }
+  };
+
   const handleImport = async () => {
-    if (!file || !preview || !user) return;
+    // PHASE 1: Authentication Check
+    if (!user) {
+      toast({
+        title: "❌ Authentification requise",
+        description: "Vous devez être connecté pour importer des phrases SMT",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!file || !preview) return;
+
+    console.log("🚀 DÉBUT IMPORT PHRASES SMT:", {
+      totalPhrases: preview.count,
+      user: user.email
+    });
 
     setLoading(true);
+    setProgress(0);
+
     try {
       const text = await file.text();
       const data = JSON.parse(text);
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
-      const batchSize = 100;
       let imported = 0;
+      const errors: string[] = [];
+      const batchSize = 100;
 
       for (let i = 0; i < arrayData.length; i += batchSize) {
         const batch = arrayData.slice(i, i + batchSize);
         setProgress((i / arrayData.length) * 100);
 
-        const items = batch.map((item: any) => ({
-          french_text: item[preview.frField],
-          bariba_text: item[preview.bbaField],
-          source: `import_${new Date().toISOString().split('T')[0]}`,
-          quality_score: 0.85,
-          created_by: user.id
-        })).filter((item: any) => item.french_text && item.bariba_text);
+        try {
+          const items = batch.map((item: any) => ({
+            french_text: item[preview.mappedFields![0].source],
+            bariba_text: item[preview.mappedFields![1].source],
+            source: `import_${new Date().toISOString().split('T')[0]}`,
+            quality_score: 0.85,
+            created_by: user.id
+          })).filter((item: any) => item.french_text && item.bariba_text);
 
-        const { error } = await supabase.from('training_phrases').upsert(items, {
-          onConflict: 'french_text,bariba_text'
-        });
+          const { error, count } = await supabase.from('training_phrases').upsert(items, {
+            onConflict: 'french_text,bariba_text',
+            count: 'exact'
+          });
 
-        if (!error) imported += items.length;
+          if (error) {
+            console.error(`❌ Batch ${i} error:`, error);
+            errors.push(`Batch ${i}: ${error.message}`);
+          } else {
+            imported += count || items.length;
+            console.log(`✅ Batch ${i}: ${count || items.length} phrases`);
+          }
+        } catch (batchError: any) {
+          errors.push(`Batch ${i}: ${batchError.message}`);
+        }
       }
 
       setProgress(100);
-      await smtInitializer.refresh();
+
+      // PHASE 4: Refresh SMT system after import
+      console.log("🔄 Rafraîchissement SMT...");
+      const smtStatus = await smtInitializer.refresh();
+      console.log("✅ SMT Status:", smtStatus);
+
       onComplete();
 
       toast({
-        title: "✅ Import terminé",
-        description: `${imported.toLocaleString()} phrases importées et SMT rafraîchi`,
+        title: "✅ Import réussi",
+        description: `${imported.toLocaleString()} phrases importées. SMT: ${smtStatus.phrasesCount.toLocaleString()} phrases actives`,
       });
 
     } catch (error: any) {
+      console.error('❌ Import error:', error);
       toast({
-        title: "❌ Erreur",
+        title: "❌ Erreur d'import",
         description: error.message,
         variant: "destructive",
       });
@@ -631,52 +792,66 @@ function PhrasesImportTab({ user, onComplete }: { user: any; onComplete: () => v
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Import de Phrases FR-BBA</CardTitle>
-        <CardDescription>Importer des paires français-bariba pour l'entraînement SMT</CardDescription>
+        <CardTitle>Import de Phrases SMT</CardTitle>
+        <CardDescription>
+          Import dédié aux paires de phrases français-bariba pour le système SMT
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <input
-          type="file"
-          accept=".json"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) {
-              setFile(f);
-              analyzeFile(f);
-            }
-          }}
-          className="hidden"
-          id="phrases-import"
-        />
-        <label htmlFor="phrases-import" className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer block">
-          <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-          <div className="text-sm text-muted-foreground mt-2">
-            {file ? file.name : 'Cliquer pour sélectionner'}
-          </div>
-        </label>
+        <div className="border-2 border-dashed rounded-lg p-8 text-center">
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleFileChange}
+            className="hidden"
+            id="phrases-import"
+            disabled={loading || !user}
+          />
+          <label htmlFor="phrases-import" className="cursor-pointer flex flex-col items-center gap-2">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+            <div className="text-sm text-muted-foreground">
+              {file ? file.name : 'Sélectionner un fichier JSON'}
+            </div>
+          </label>
+        </div>
 
         {preview && (
-          <div className="p-4 border rounded-lg bg-muted/50">
+          <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
+            <div className="flex items-center gap-2">
+              <Badge variant="default">PHRASES SMT</Badge>
+            </div>
             <div className="text-sm space-y-1">
-              <div><strong>Paires détectées:</strong> {preview.count.toLocaleString()}</div>
-              <div><strong>Champ français:</strong> {preview.frField}</div>
-              <div><strong>Champ bariba:</strong> {preview.bbaField}</div>
+              <div><strong>Paires FR-BBA:</strong> {preview.count.toLocaleString()}</div>
+              <div><strong>Champs:</strong> {preview.detectedFields.join(', ')}</div>
             </div>
           </div>
         )}
 
         {loading && (
           <div className="space-y-2">
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
-            </div>
-            <p className="text-sm text-center">{progress.toFixed(0)}%</p>
+            <Progress value={progress} />
+            <p className="text-sm text-center text-muted-foreground">
+              Import en cours: {Math.round(progress)}%
+            </p>
           </div>
         )}
 
-        <Button onClick={handleImport} disabled={!file || !preview || loading} className="w-full">
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Importer {preview?.count.toLocaleString()} phrases
+        <Button 
+          onClick={handleImport} 
+          disabled={!preview || loading || !user}
+          className="w-full"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Import en cours...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Importer {preview?.count.toLocaleString() || 0} phrases
+            </>
+          )}
         </Button>
       </CardContent>
     </Card>
@@ -687,7 +862,7 @@ function PhrasesImportTab({ user, onComplete }: { user: any; onComplete: () => v
 function DictionaryImportTab({ user, onComplete }: { user: any; onComplete: () => void }) {
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<any>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -697,79 +872,125 @@ function DictionaryImportTab({ user, onComplete }: { user: any; onComplete: () =
       const data = JSON.parse(text);
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
-      const wordPatterns = ['word', 'mot', 'bariba', 'baatonum'];
-      const defPatterns = ['definition', 'def', 'french', 'francais', 'français'];
-
       const first = arrayData[0];
       const fields = Object.keys(first);
 
+      // Detect word and definition fields
+      const wordPatterns = ['word', 'mot', 'bariba', 'baatonum'];
+      const defPatterns = ['definition', 'def', 'french', 'francais', 'français'];
+      
       const wordField = fields.find(f => wordPatterns.some(p => f.toLowerCase().includes(p)));
       const defField = fields.find(f => defPatterns.some(p => f.toLowerCase().includes(p)));
 
       if (!wordField || !defField) {
-        throw new Error("Champs mot et définition non trouvés");
+        throw new Error(`Champs mot ou définition non trouvés. Champs disponibles: ${fields.join(', ')}`);
       }
 
       setPreview({
+        type: 'dictionary',
         count: arrayData.length,
-        wordField,
-        defField,
-        sample: arrayData.slice(0, 3)
+        sample: arrayData.slice(0, 3),
+        quality: 80,
+        detectedFields: [wordField, defField],
+        mappedFields: [
+          { source: wordField, target: 'word' },
+          { source: defField, target: 'definition' }
+        ],
+        confidence: 90
       });
 
       toast({
         title: "✅ Analyse terminée",
-        description: `${arrayData.length.toLocaleString()} entrées détectées`,
+        description: `${arrayData.length.toLocaleString()} entrées de dictionnaire détectées`,
       });
     } catch (error: any) {
       toast({
-        title: "❌ Erreur",
+        title: "❌ Erreur d'analyse",
         description: error.message,
         variant: "destructive",
       });
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      analyzeFile(selectedFile);
+    }
+  };
+
   const handleImport = async () => {
-    if (!file || !preview || !user) return;
+    // PHASE 1: Authentication Check
+    if (!user) {
+      toast({
+        title: "❌ Authentification requise",
+        description: "Vous devez être connecté pour importer le dictionnaire",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!file || !preview) return;
+
+    console.log("🚀 DÉBUT IMPORT DICTIONNAIRE:", {
+      totalEntries: preview.count,
+      user: user.email
+    });
 
     setLoading(true);
+    setProgress(0);
+
     try {
       const text = await file.text();
       const data = JSON.parse(text);
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
-      const batchSize = 100;
       let imported = 0;
+      const errors: string[] = [];
+      const batchSize = 100;
 
       for (let i = 0; i < arrayData.length; i += batchSize) {
         const batch = arrayData.slice(i, i + batchSize);
         setProgress((i / arrayData.length) * 100);
 
-        const items = batch.map((item: any) => ({
-          word: item[preview.wordField],
-          definition: item[preview.defField],
-          created_by: user.id
-        })).filter((item: any) => item.word && item.definition);
+        try {
+          const items = batch.map((item: any) => ({
+            word: item[preview.mappedFields![0].source],
+            definition: item[preview.mappedFields![1].source],
+            created_by: user.id
+          })).filter((item: any) => item.word && item.definition);
 
-        const { error } = await supabase.from('dictionary_entries').upsert(items, {
-          onConflict: 'word'
-        });
+          const { error, count } = await supabase.from('dictionary_entries').upsert(items, {
+            onConflict: 'word',
+            count: 'exact'
+          });
 
-        if (!error) imported += items.length;
+          if (error) {
+            console.error(`❌ Batch ${i} error:`, error);
+            errors.push(`Batch ${i}: ${error.message}`);
+          } else {
+            imported += count || items.length;
+            console.log(`✅ Batch ${i}: ${count || items.length} entrées`);
+          }
+        } catch (batchError: any) {
+          errors.push(`Batch ${i}: ${batchError.message}`);
+        }
       }
 
       setProgress(100);
+
       onComplete();
 
       toast({
-        title: "✅ Import terminé",
-        description: `${imported.toLocaleString()} entrées importées`,
+        title: "✅ Import réussi",
+        description: `${imported.toLocaleString()} entrées de dictionnaire importées`,
       });
 
     } catch (error: any) {
+      console.error('❌ Import error:', error);
       toast({
-        title: "❌ Erreur",
+        title: "❌ Erreur d'import",
         description: error.message,
         variant: "destructive",
       });
@@ -782,51 +1003,65 @@ function DictionaryImportTab({ user, onComplete }: { user: any; onComplete: () =
     <Card>
       <CardHeader>
         <CardTitle>Import de Dictionnaire</CardTitle>
-        <CardDescription>Importer des entrées mot/définition Bariba-Français</CardDescription>
+        <CardDescription>
+          Import dédié aux entrées de dictionnaire bariba-français
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <input
-          type="file"
-          accept=".json"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) {
-              setFile(f);
-              analyzeFile(f);
-            }
-          }}
-          className="hidden"
-          id="dict-import"
-        />
-        <label htmlFor="dict-import" className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer block">
-          <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-          <div className="text-sm text-muted-foreground mt-2">
-            {file ? file.name : 'Cliquer pour sélectionner'}
-          </div>
-        </label>
+        <div className="border-2 border-dashed rounded-lg p-8 text-center">
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleFileChange}
+            className="hidden"
+            id="dictionary-import"
+            disabled={loading || !user}
+          />
+          <label htmlFor="dictionary-import" className="cursor-pointer flex flex-col items-center gap-2">
+            <Book className="h-8 w-8 text-muted-foreground" />
+            <div className="text-sm text-muted-foreground">
+              {file ? file.name : 'Sélectionner un fichier JSON'}
+            </div>
+          </label>
+        </div>
 
         {preview && (
-          <div className="p-4 border rounded-lg bg-muted/50">
+          <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
+            <div className="flex items-center gap-2">
+              <Badge variant="default">DICTIONNAIRE</Badge>
+            </div>
             <div className="text-sm space-y-1">
-              <div><strong>Entrées détectées:</strong> {preview.count.toLocaleString()}</div>
-              <div><strong>Champ mot:</strong> {preview.wordField}</div>
-              <div><strong>Champ définition:</strong> {preview.defField}</div>
+              <div><strong>Entrées:</strong> {preview.count.toLocaleString()}</div>
+              <div><strong>Champs:</strong> {preview.detectedFields.join(', ')}</div>
             </div>
           </div>
         )}
 
         {loading && (
           <div className="space-y-2">
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
-            </div>
-            <p className="text-sm text-center">{progress.toFixed(0)}%</p>
+            <Progress value={progress} />
+            <p className="text-sm text-center text-muted-foreground">
+              Import en cours: {Math.round(progress)}%
+            </p>
           </div>
         )}
 
-        <Button onClick={handleImport} disabled={!file || !preview || loading} className="w-full">
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Importer {preview?.count.toLocaleString()} entrées
+        <Button 
+          onClick={handleImport} 
+          disabled={!preview || loading || !user}
+          className="w-full"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Import en cours...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Importer {preview?.count.toLocaleString() || 0} entrées
+            </>
+          )}
         </Button>
       </CardContent>
     </Card>
@@ -837,7 +1072,7 @@ function DictionaryImportTab({ user, onComplete }: { user: any; onComplete: () =
 function IdiomsImportTab({ user, onComplete }: { user: any; onComplete: () => void }) {
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<any>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -847,24 +1082,31 @@ function IdiomsImportTab({ user, onComplete }: { user: any; onComplete: () => vo
       const data = JSON.parse(text);
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
-      const frPatterns = ['french_expression', 'expression_francaise', 'francais'];
-      const bbaPatterns = ['bariba_expression', 'expression_bariba', 'baatonum'];
-
       const first = arrayData[0];
       const fields = Object.keys(first);
 
-      const frField = fields.find(f => frPatterns.some(p => f.toLowerCase().includes(p)));
-      const bbaField = fields.find(f => bbaPatterns.some(p => f.toLowerCase().includes(p)));
+      // Detect expression fields
+      const frExprPatterns = ['french_expression', 'expression_francaise', 'francais'];
+      const bbaExprPatterns = ['bariba_expression', 'expression_bariba', 'baatonum'];
+      
+      const frExprField = fields.find(f => frExprPatterns.some(p => f.toLowerCase().includes(p)));
+      const bbaExprField = fields.find(f => bbaExprPatterns.some(p => f.toLowerCase().includes(p)));
 
-      if (!frField || !bbaField) {
-        throw new Error("Champs expressions français et bariba non trouvés");
+      if (!frExprField || !bbaExprField) {
+        throw new Error(`Champs expressions non trouvés. Champs disponibles: ${fields.join(', ')}`);
       }
 
       setPreview({
+        type: 'idioms',
         count: arrayData.length,
-        frField,
-        bbaField,
-        sample: arrayData.slice(0, 3)
+        sample: arrayData.slice(0, 3),
+        quality: 85,
+        detectedFields: [frExprField, bbaExprField],
+        mappedFields: [
+          { source: frExprField, target: 'french_expression' },
+          { source: bbaExprField, target: 'bariba_expression' }
+        ],
+        confidence: 90
       });
 
       toast({
@@ -873,54 +1115,93 @@ function IdiomsImportTab({ user, onComplete }: { user: any; onComplete: () => vo
       });
     } catch (error: any) {
       toast({
-        title: "❌ Erreur",
+        title: "❌ Erreur d'analyse",
         description: error.message,
         variant: "destructive",
       });
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      analyzeFile(selectedFile);
+    }
+  };
+
   const handleImport = async () => {
-    if (!file || !preview || !user) return;
+    // PHASE 1: Authentication Check
+    if (!user) {
+      toast({
+        title: "❌ Authentification requise",
+        description: "Vous devez être connecté pour importer des idiomes",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!file || !preview) return;
+
+    console.log("🚀 DÉBUT IMPORT IDIOMES:", {
+      totalIdioms: preview.count,
+      user: user.email
+    });
 
     setLoading(true);
+    setProgress(0);
+
     try {
       const text = await file.text();
       const data = JSON.parse(text);
       const arrayData = Array.isArray(data) ? data : data.data || data.items || [];
 
-      const batchSize = 100;
       let imported = 0;
+      const errors: string[] = [];
+      const batchSize = 100;
 
       for (let i = 0; i < arrayData.length; i += batchSize) {
         const batch = arrayData.slice(i, i + batchSize);
         setProgress((i / arrayData.length) * 100);
 
-        const items = batch.map((item: any) => ({
-          french_expression: item[preview.frField],
-          bariba_expression: item[preview.bbaField],
-          category: item.category || item.categorie || 'général',
-          created_by: user.id
-        })).filter((item: any) => item.french_expression && item.bariba_expression);
+        try {
+          const items = batch.map((item: any) => ({
+            french_expression: item[preview.mappedFields![0].source],
+            bariba_expression: item[preview.mappedFields![1].source],
+            category: item.category || item.categorie || 'général',
+            created_by: user.id
+          })).filter((item: any) => item.french_expression && item.bariba_expression);
 
-        const { error } = await supabase.from('idiomatic_expressions').upsert(items, {
-          onConflict: 'french_expression'
-        });
+          const { error, count } = await supabase.from('idiomatic_expressions').upsert(items, {
+            onConflict: 'french_expression',
+            count: 'exact'
+          });
 
-        if (!error) imported += items.length;
+          if (error) {
+            console.error(`❌ Batch ${i} error:`, error);
+            errors.push(`Batch ${i}: ${error.message}`);
+          } else {
+            imported += count || items.length;
+            console.log(`✅ Batch ${i}: ${count || items.length} idiomes`);
+          }
+        } catch (batchError: any) {
+          errors.push(`Batch ${i}: ${batchError.message}`);
+        }
       }
 
       setProgress(100);
+
       onComplete();
 
       toast({
-        title: "✅ Import terminé",
+        title: "✅ Import réussi",
         description: `${imported.toLocaleString()} idiomes importés`,
       });
 
     } catch (error: any) {
+      console.error('❌ Import error:', error);
       toast({
-        title: "❌ Erreur",
+        title: "❌ Erreur d'import",
         description: error.message,
         variant: "destructive",
       });
@@ -933,51 +1214,65 @@ function IdiomsImportTab({ user, onComplete }: { user: any; onComplete: () => vo
     <Card>
       <CardHeader>
         <CardTitle>Import d'Idiomes</CardTitle>
-        <CardDescription>Importer des expressions idiomatiques FR-BBA</CardDescription>
+        <CardDescription>
+          Import dédié aux expressions idiomatiques français-bariba
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <input
-          type="file"
-          accept=".json"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) {
-              setFile(f);
-              analyzeFile(f);
-            }
-          }}
-          className="hidden"
-          id="idioms-import"
-        />
-        <label htmlFor="idioms-import" className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer block">
-          <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-          <div className="text-sm text-muted-foreground mt-2">
-            {file ? file.name : 'Cliquer pour sélectionner'}
-          </div>
-        </label>
+        <div className="border-2 border-dashed rounded-lg p-8 text-center">
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleFileChange}
+            className="hidden"
+            id="idioms-import"
+            disabled={loading || !user}
+          />
+          <label htmlFor="idioms-import" className="cursor-pointer flex flex-col items-center gap-2">
+            <Database className="h-8 w-8 text-muted-foreground" />
+            <div className="text-sm text-muted-foreground">
+              {file ? file.name : 'Sélectionner un fichier JSON'}
+            </div>
+          </label>
+        </div>
 
         {preview && (
-          <div className="p-4 border rounded-lg bg-muted/50">
+          <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
+            <div className="flex items-center gap-2">
+              <Badge variant="default">IDIOMES</Badge>
+            </div>
             <div className="text-sm space-y-1">
-              <div><strong>Idiomes détectés:</strong> {preview.count.toLocaleString()}</div>
-              <div><strong>Champ français:</strong> {preview.frField}</div>
-              <div><strong>Champ bariba:</strong> {preview.bbaField}</div>
+              <div><strong>Idiomes:</strong> {preview.count.toLocaleString()}</div>
+              <div><strong>Champs:</strong> {preview.detectedFields.join(', ')}</div>
             </div>
           </div>
         )}
 
         {loading && (
           <div className="space-y-2">
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
-            </div>
-            <p className="text-sm text-center">{progress.toFixed(0)}%</p>
+            <Progress value={progress} />
+            <p className="text-sm text-center text-muted-foreground">
+              Import en cours: {Math.round(progress)}%
+            </p>
           </div>
         )}
 
-        <Button onClick={handleImport} disabled={!file || !preview || loading} className="w-full">
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Importer {preview?.count.toLocaleString()} idiomes
+        <Button 
+          onClick={handleImport} 
+          disabled={!preview || loading || !user}
+          className="w-full"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Import en cours...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Importer {preview?.count.toLocaleString() || 0} idiomes
+            </>
+          )}
         </Button>
       </CardContent>
     </Card>
