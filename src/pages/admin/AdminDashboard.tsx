@@ -65,6 +65,7 @@ import { SMTPerformanceMonitor } from '@/components/admin/SMTPerformanceMonitor'
 import { SMTABTestingPanel } from '@/components/admin/SMTABTestingPanel';
 import { SMTSystemDashboard } from '@/components/admin/SMTSystemDashboard';
 import { PremiumSMTImporter } from '@/components/admin/PremiumSMTImporter';
+import UnifiedDataManager from '@/components/admin/UnifiedDataManager';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -285,7 +286,11 @@ export default function AdminDashboard() {
           </div>
 
           <TabsContent value="overview" className="space-y-4">
-            <AdminOverview />
+            <UnifiedDataManager />
+          </TabsContent>
+
+          <TabsContent value="smt-import" className="space-y-4">
+            <PremiumSMTImporter />
           </TabsContent>
 
           <TabsContent value="smt-import" className="space-y-4">
