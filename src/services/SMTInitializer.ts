@@ -107,33 +107,132 @@ export class SMTInitializer {
     const startTime = Date.now();
 
     try {
-      console.log("🚀 Initializing SMT System from database...");
-      console.log("📊 Loading ALL training phrases (NO LIMITS - TOUTES LES PHRASES)...");
+      console.log("🚀 NOUVELLE STRATÉGIE: Chargement HYBRIDE (DB + Fichiers JSON locaux)");
+      console.log("📊 Objectif: Charger les 13,063+ phrases complètes");
       
-      // 🔍 SOLUTION: Diagnostic de l'authentification
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      console.log(`🔐 Auth Status: ${user ? 'AUTHENTICATED ✅' : 'ANONYMOUS ⚠️'}`);
-      if (user) {
-        console.log(`👤 User ID: ${user.id}`);
-        console.log(`📧 Email: ${user.email}`);
-      }
-      if (authError) {
-        console.error('❌ Auth Error:', authError);
-      }
-
-      // 🔍 SOLUTION: Utiliser Edge Function avec Service Role pour garantir l'accès
-      console.log("🔄 Calling SMT initialization Edge Function with Service Role...");
-      
-      const { data: initData, error: edgeFunctionError } = await supabase.functions.invoke('smt-initialize', {
-        body: {}
-      });
-      
+      // Déclaration des variables
       let trainingPhrases: any[] = [];
       let phrasesCount = 0;
       let dictionaryCount = 0;
       let sourceStats: Record<string, number> = {};
       
-      if (edgeFunctionError) {
+      // ÉTAPE 1: Charger depuis Supabase (ce qui existe en DB)
+      console.log("📥 ÉTAPE 1: Chargement depuis Supabase...");
+      const supabasePhrases: any[] = [];
+      
+      try {
+        const BATCH_SIZE = 3000;
+        let offset = 0;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const { data: batch, error: batchError } = await supabase
+            .from('training_phrases')
+            .select('french_text, bariba_text, quality_score, source')
+            .range(offset, offset + BATCH_SIZE - 1);
+          
+          if (batchError || !batch || batch.length === 0) {
+            console.log(`   ✓ Fin chargement Supabase à offset ${offset}`);
+            hasMore = false;
+            break;
+          }
+          
+          supabasePhrases.push(...batch);
+          offset += batch.length;
+          console.log(`   ✓ Supabase: ${supabasePhrases.length} phrases...`);
+          hasMore = batch.length === BATCH_SIZE;
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur Supabase:', error);
+      }
+      
+      console.log(`✅ Supabase: ${supabasePhrases.length} phrases chargées`);
+      
+      // ÉTAPE 2: Charger depuis les fichiers JSON locaux
+      console.log("📥 ÉTAPE 2: Chargement depuis fichiers JSON locaux...");
+      const localPhrases: any[] = [];
+      
+      try {
+        // Charger traducteur_complet_3.json
+        const response1 = await fetch('/traducteur_complet_3.json');
+        const data1 = await response1.json();
+        console.log(`   ✓ traducteur_complet_3.json: ${data1.length} paires`);
+        
+        data1.forEach((pair: any) => {
+          if (pair.french && pair.bariba) {
+            localPhrases.push({
+              french_text: pair.french,
+              bariba_text: pair.bariba,
+              quality_score: 0.8,
+              source: 'json_complet_3'
+            });
+          }
+        });
+        
+        // Charger traducteur_final_2.json
+        const response2 = await fetch('/traducteur_final_2.json');
+        const data2 = await response2.json();
+        console.log(`   ✓ traducteur_final_2.json: ${data2.length} paires`);
+        
+        data2.forEach((pair: any) => {
+          if (pair.fr && pair.bba_Latn) {
+            localPhrases.push({
+              french_text: pair.fr,
+              bariba_text: pair.bba_Latn,
+              quality_score: 0.85,
+              source: 'json_final_2'
+            });
+          }
+        });
+      } catch (error) {
+        console.warn('⚠️ Erreur chargement fichiers JSON:', error);
+      }
+      
+      console.log(`✅ Fichiers JSON: ${localPhrases.length} phrases chargées`);
+      
+      // ÉTAPE 3: Fusionner et dédupliquer
+      console.log("🔄 ÉTAPE 3: Fusion et déduplication...");
+      const phrasesMap = new Map<string, any>();
+      
+      // Ajouter les phrases Supabase (priorité haute)
+      supabasePhrases.forEach(p => {
+        const key = `${p.french_text}|||${p.bariba_text}`.toLowerCase();
+        if (!phrasesMap.has(key)) {
+          phrasesMap.set(key, p);
+        }
+      });
+      
+      // Ajouter les phrases locales (si pas déjà présentes)
+      localPhrases.forEach(p => {
+        const key = `${p.french_text}|||${p.bariba_text}`.toLowerCase();
+        if (!phrasesMap.has(key)) {
+          phrasesMap.set(key, p);
+        }
+      });
+      
+      trainingPhrases = Array.from(phrasesMap.values());
+      phrasesCount = trainingPhrases.length;
+      
+      console.log(`✅ TOTAL APRÈS FUSION: ${phrasesCount} phrases uniques`);
+      console.log(`   📊 Supabase: ${supabasePhrases.length}`);
+      console.log(`   📊 Fichiers JSON: ${localPhrases.length}`);
+      console.log(`   📊 Total fusionné (unique): ${phrasesCount}`);
+      
+      // Statistiques par source
+      sourceStats = trainingPhrases.reduce((acc: any, p: any) => {
+        const source = p.source || 'unknown';
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+      }, {});
+      
+      console.log("📊 RÉPARTITION PAR SOURCE:");
+      Object.entries(sourceStats).forEach(([source, count]: [string, any]) => {
+        console.log(`   ✓ ${source}: ${count.toLocaleString()} phrases`);
+      });
+      
+      const { data: initData, error: edgeFunctionError } = { data: null, error: null };
+      
+      if (false) { // Skip Edge Function fallback - we have data from hybrid loading
         console.error('❌ Edge Function Error:', edgeFunctionError);
         console.error('   Message:', edgeFunctionError.message);
         console.error('   Context:', edgeFunctionError.context);
@@ -190,66 +289,7 @@ export class SMTInitializer {
 
         console.log(`📊 Total loaded: ${phrasesCount} phrases, ${dictionaryCount} dictionary entries`);
         
-      } else if (!initData || initData.error) {
-        console.error('❌ Edge Function returned error:', initData?.error);
-        throw new Error(initData?.error || 'Unknown edge function error');
-      } else {
-        phrasesCount = initData.phrasesCount;
-        dictionaryCount = initData.dictionaryCount;
-        sourceStats = initData.sourceStats;
-        
-        console.log(`✅ Edge Function SUCCESS: ${phrasesCount} phrases confirmed in DB`);
-        console.log("📊 RÉPARTITION PAR SOURCE:");
-        Object.entries(sourceStats).forEach(([source, count]: [string, any]) => {
-          console.log(`   ✓ ${source}: ${count.toLocaleString()} phrases`);
-        });
-
-        console.log(`📊 Total confirmed: ${phrasesCount} phrases, ${dictionaryCount} dictionary entries`);
-        
-        // ⚠️ Charger TOUTES les phrases directement depuis Supabase EN BATCHES
-        // L'Edge Function confirme seulement que les données existent
-        console.log(`🔄 Loading ALL ${phrasesCount} phrases directly from Supabase...`);
-        
-        const BATCH_SIZE = 3000;
-        const allLoadedPhrases: any[] = [];
-        let offset = 0;
-        let hasMore = true;
-        
-        while (hasMore) {
-          const { data: batch, error: batchError } = await supabase
-            .from('training_phrases')
-            .select('french_text, bariba_text, quality_score, source')
-            .range(offset, offset + BATCH_SIZE - 1);
-          
-          if (batchError || !batch || batch.length === 0) {
-            console.log(`   ✓ Fin du chargement à offset ${offset}`);
-            hasMore = false;
-            break;
-          }
-          
-          allLoadedPhrases.push(...batch);
-          const percentage = Math.round((allLoadedPhrases.length / phrasesCount) * 100);
-          console.log(`   ✓ Chargé ${allLoadedPhrases.length} / ${phrasesCount} phrases (${percentage}%)...`);
-          hasMore = batch.length === BATCH_SIZE;
-          offset += batch.length;
-        }
-        
-        const loadedPhrases = allLoadedPhrases;
-        const loadError = allLoadedPhrases.length === 0 ? new Error('No data loaded') : null;
-        
-        // PHASE 1 VALIDATION: Vérifier que nous avons au moins 95% des données
-        if (allLoadedPhrases.length < phrasesCount * 0.95) {
-          console.error(`❌ Chargement incomplet: ${allLoadedPhrases.length} / ${phrasesCount} (${Math.round((allLoadedPhrases.length / phrasesCount) * 100)}%)`);
-          throw new Error(`Incomplete data loading! Only ${allLoadedPhrases.length}/${phrasesCount} phrases loaded`);
-        }
-        
-        if (loadError || !loadedPhrases) {
-          throw new Error(`Failed to load training phrases: ${loadError?.message}`);
-        }
-        
-        trainingPhrases = loadedPhrases;
-        console.log(`✅ Loaded ${trainingPhrases.length} phrases for training`);
-      }
+      } // Edge Function code removed - using hybrid loading instead
 
       if (!trainingPhrases || trainingPhrases.length === 0) {
         throw new Error(`Insufficient data for SMT initialization (0 phrases). Import premium data first.`);
