@@ -43,7 +43,9 @@ export function AutoInitializer() {
       setStats(result);
       setProgress(100);
       setStatus('success');
-      setDetails(`✅ ${result.phrasesCount.toLocaleString()} phrases FR-BBA chargées`);
+      setDetails(`✅ ${result.phrasesCount.toLocaleString()} phrases FR-BBA chargées et prêtes`);
+      
+      console.log(`📊 TOTAL PHRASES SMT: ${result.phrasesCount.toLocaleString()}`);
 
       // Auto-hide after 3 seconds on success
       setTimeout(() => {
