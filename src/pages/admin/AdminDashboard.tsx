@@ -60,6 +60,7 @@ import { DataManagementPanel } from '@/components/admin/DataManagementPanel';
 import { FreeFineTuningGuide } from '@/components/admin/FreeFineTuningGuide';
 import { TranslationDiagnosticDashboard } from '@/components/admin/TranslationDiagnosticDashboard';
 import { ModelABTestingPanel } from '@/components/admin/ModelABTestingPanel';
+import { ComprehensiveDataImporter } from '@/components/admin/ComprehensiveDataImporter';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -95,6 +96,11 @@ export default function AdminDashboard() {
                 <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Vue d'ensemble</span>
                 <span className="sm:hidden">Vue</span>
+              </TabsTrigger>
+              <TabsTrigger value="smt-import" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2 bg-primary/10">
+                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Import SMT Premium</span>
+                <span className="sm:hidden">Import</span>
               </TabsTrigger>
               <TabsTrigger value="audit" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
                 <FileSearch className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -266,6 +272,19 @@ export default function AdminDashboard() {
 
           <TabsContent value="overview" className="space-y-4">
             <AdminOverview />
+          </TabsContent>
+
+          <TabsContent value="smt-import" className="space-y-4">
+            <div className="space-y-4">
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                <h2 className="text-xl font-bold text-primary mb-2">🚀 Import Système SMT Premium</h2>
+                <p className="text-muted-foreground">
+                  Remplacez toutes les données anciennes par les 3 fichiers premium (80k+ paires + 110k dictionnaire) 
+                  et activez le moteur de traduction statistique ultra-performant.
+                </p>
+              </div>
+              <ComprehensiveDataImporter />
+            </div>
           </TabsContent>
 
           <TabsContent value="audit" className="space-y-4">
