@@ -127,33 +127,82 @@ export class SMTInitializer {
         body: {}
       });
       
+      let trainingPhrases: any[] = [];
+      let phrasesCount = 0;
+      let dictionaryCount = 0;
+      let sourceStats: Record<string, number> = {};
+      
       if (edgeFunctionError) {
         console.error('❌ Edge Function Error:', edgeFunctionError);
         console.error('   Message:', edgeFunctionError.message);
         console.error('   Context:', edgeFunctionError.context);
-        throw edgeFunctionError;
-      }
-      
-      if (!initData || initData.error) {
+        
+        // ⚠️ FALLBACK: Si Edge Function échoue, charger directement depuis Supabase
+        console.warn('⚠️ Fallback: Loading directly from Supabase...');
+        const { data: directData, error: directError } = await supabase
+          .from('training_phrases')
+          .select('french_text, bariba_text, quality_score, source')
+          .limit(10000); // Limite pour éviter timeout
+        
+        if (directError || !directData || directData.length === 0) {
+          throw new Error('Both Edge Function and direct access failed');
+        }
+        
+        // Utiliser les données directes comme trainingPhrases
+        trainingPhrases = directData;
+        phrasesCount = directData.length;
+        dictionaryCount = 0;
+        sourceStats = directData.reduce((acc: any, p: any) => {
+          const source = p.source || 'unknown';
+          acc[source] = (acc[source] || 0) + 1;
+          return acc;
+        }, {});
+        
+        console.log(`✅ Fallback SUCCESS: ${phrasesCount} phrases loaded directly`);
+        console.log("📊 RÉPARTITION PAR SOURCE:");
+        Object.entries(sourceStats).forEach(([source, count]: [string, any]) => {
+          console.log(`   ✓ ${source}: ${count.toLocaleString()} phrases`);
+        });
+
+        console.log(`📊 Total loaded: ${phrasesCount} phrases, ${dictionaryCount} dictionary entries`);
+        
+      } else if (!initData || initData.error) {
         console.error('❌ Edge Function returned error:', initData?.error);
         throw new Error(initData?.error || 'Unknown edge function error');
+      } else {
+        phrasesCount = initData.phrasesCount;
+        dictionaryCount = initData.dictionaryCount;
+        sourceStats = initData.sourceStats;
+        
+        console.log(`✅ Edge Function SUCCESS: ${phrasesCount} phrases confirmed in DB`);
+        console.log("📊 RÉPARTITION PAR SOURCE:");
+        Object.entries(sourceStats).forEach(([source, count]: [string, any]) => {
+          console.log(`   ✓ ${source}: ${count.toLocaleString()} phrases`);
+        });
+
+        console.log(`📊 Total confirmed: ${phrasesCount} phrases, ${dictionaryCount} dictionary entries`);
+        
+        // ⚠️ Charger les phrases directement depuis Supabase pour l'entraînement
+        // L'Edge Function confirme seulement que les données existent
+        console.log(`🔄 Loading phrases directly from Supabase for training...`);
+        const { data: loadedPhrases, error: loadError } = await supabase
+          .from('training_phrases')
+          .select('french_text, bariba_text, quality_score, source')
+          .limit(10000); // Limite raisonnable pour performance
+        
+        if (loadError || !loadedPhrases) {
+          throw new Error(`Failed to load training phrases: ${loadError?.message}`);
+        }
+        
+        trainingPhrases = loadedPhrases;
+        console.log(`✅ Loaded ${trainingPhrases.length} phrases for training`);
+      }
+
+      if (!trainingPhrases || trainingPhrases.length === 0) {
+        throw new Error(`Insufficient data for SMT initialization (0 phrases). Import premium data first.`);
       }
       
-      const { phrases: trainingPhrases, phrasesCount, dictionaryCount, sourceStats } = initData;
-      
-      console.log(`✅ Edge Function SUCCESS: ${phrasesCount} phrases loaded via Service Role`);
-      console.log("📊 RÉPARTITION PAR SOURCE:");
-      Object.entries(sourceStats).forEach(([source, count]) => {
-        console.log(`   ✓ ${source}: ${count.toLocaleString()} phrases`);
-      });
-
-      console.log(`📊 Total loaded: ${phrasesCount} phrases, ${dictionaryCount} dictionary entries`);
-
-      if (phrasesCount === 0 || !trainingPhrases || trainingPhrases.length === 0) {
-        throw new Error(`Insufficient data for SMT initialization (${phrasesCount} phrases). Import premium data first.`);
-      }
-      
-      console.log(`✅ Proceeding with SMT initialization using ALL ${phrasesCount} phrases`);
+      console.log(`✅ Proceeding with SMT initialization using ${trainingPhrases.length} phrases`);
 
       // Initialize engines in parallel
       console.log(`🔄 Initialisation des moteurs avec ${phrasesCount} phrases...`);
@@ -195,8 +244,8 @@ export class SMTInitializer {
 
       this.initializationStatus = {
         isInitialized: true,
-        phrasesCount: phrasesCount,
-        dictionaryCount: dictionaryCount,
+        phrasesCount: trainingPhrases.length,
+        dictionaryCount: dictionaryCount || 0,
         smtReady: smtResult.status === 'fulfilled' && statisticalEngine.isReady(),
         correctoReady: correctorResult.status === 'fulfilled' && enhancedCorrector.isReady(),
         trieReady: trieResult.status === 'fulfilled' && trieIndex.getSize() > 0,

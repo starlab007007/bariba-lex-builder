@@ -106,16 +106,19 @@ Deno.serve(async (req) => {
     
     console.log(`✅ Loaded ${dictionary?.length || 0} dictionary entries`);
     
+    // ⚠️ NE PAS retourner toutes les phrases (trop volumineux)
+    // Retourner seulement les statistiques et un échantillon
     const result = {
       success: true,
       phrasesCount: trainingPhrases.length,
       dictionaryCount: dictionary?.length || 0,
       sourceStats,
-      phrases: trainingPhrases,
+      samplePhrases: trainingPhrases.slice(0, 10), // Seulement 10 exemples
       timestamp: Date.now()
     };
     
     console.log('✅ SMT Initialization Edge Function - SUCCESS');
+    console.log(`📦 Response size: ${phrasesCount} phrases (returning stats only)`);
     
     return new Response(
       JSON.stringify(result),
