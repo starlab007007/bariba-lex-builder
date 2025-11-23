@@ -8,6 +8,7 @@ import { PhraseTranslator } from "@/components/PhraseTranslator";
 import { SelectedEntryDisplay } from "@/components/SelectedEntryDisplay";
 import { SimilarSuggestions } from "@/components/SimilarSuggestions";
 import { TranslationModelSelector } from "@/components/TranslationModelSelector";
+import { TranslationTestPanel } from "@/components/TranslationTestPanel";
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
 import { useTranslationModelSelector } from "@/hooks/useTranslationModelSelector";
 import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy } from "lucide-react";
@@ -422,6 +423,9 @@ const Index = () => {
               />
             </Card>
             <PhraseTranslator selectedModel={selectedModel} />
+            
+            {/* Panneau de test pour vérifier le système */}
+            <TranslationTestPanel />
           </TabsContent>
         </Tabs>
       </div>
