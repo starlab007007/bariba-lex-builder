@@ -10,9 +10,11 @@ import { statisticalEngine } from "@/services/StatisticalTranslationEngine";
 import { enhancedCorrector } from "@/services/EnhancedGrammaticalCorrector";
 import { trieIndex } from "@/utils/TrieIndex";
 import { translationCache } from "@/utils/TranslationCache";
-import { RefreshCw, Zap, CheckCircle, XCircle, TrendingUp, BarChart3, Cpu } from "lucide-react";
+import { RefreshCw, Zap, CheckCircle, XCircle, TrendingUp, BarChart3, Cpu, Database, Activity } from "lucide-react";
 import { SMTPerformanceCharts } from "./SMTPerformanceCharts";
 import { AutomaticBenchmarkSystem } from "./AutomaticBenchmarkSystem";
+import { SMTDataViewer } from "./SMTDataViewer";
+import { SMTRealTimeMonitor } from "./SMTRealTimeMonitor";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SystemStatus {
@@ -150,10 +152,18 @@ export function SMTSystemDashboard() {
 
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-6">
+      <TabsList className="grid w-full grid-cols-5 mb-6">
         <TabsTrigger value="overview" className="flex items-center gap-2">
           <Cpu className="w-4 h-4" />
           Vue d'ensemble
+        </TabsTrigger>
+        <TabsTrigger value="realtime" className="flex items-center gap-2">
+          <Activity className="w-4 h-4" />
+          Temps Réel
+        </TabsTrigger>
+        <TabsTrigger value="data" className="flex items-center gap-2">
+          <Database className="w-4 h-4" />
+          Données
         </TabsTrigger>
         <TabsTrigger value="performance" className="flex items-center gap-2">
           <BarChart3 className="w-4 h-4" />
@@ -254,6 +264,14 @@ export function SMTSystemDashboard() {
             </div>
           </Card>
         </Card>
+      </TabsContent>
+
+      <TabsContent value="realtime">
+        <SMTRealTimeMonitor />
+      </TabsContent>
+
+      <TabsContent value="data">
+        <SMTDataViewer />
       </TabsContent>
 
       <TabsContent value="performance">
