@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { statisticalEngine } from "./StatisticalTranslationEngine";
 import { enhancedCorrector } from "./EnhancedGrammaticalCorrector";
 import { trieIndex } from "@/utils/TrieIndex";
+import { statisticalPatterns } from "./StatisticalPatternsService";
 
 interface InitializationStatus {
   isInitialized: boolean;
@@ -206,11 +207,12 @@ export class SMTInitializer {
 
       // Initialize engines in parallel
       console.log(`🔄 Initialisation des moteurs avec ${phrasesCount} phrases...`);
-      console.log(`   1️⃣ Initialisation moteur statistique SMT...`);
-      console.log(`   2️⃣ Apprentissage correcteur grammatical...`);
-      console.log(`   3️⃣ Construction index Trie...`);
+      console.log(`   1️⃣ Moteur statistique SMT (simplifié)...`);
+      console.log(`   2️⃣ Correcteur grammatical...`);
+      console.log(`   3️⃣ Index Trie...`);
+      console.log(`   4️⃣ Patterns statistiques (NOUVEAU)...`);
       
-      const [smtResult, correctorResult, trieResult] = await Promise.allSettled([
+      const [smtResult, correctorResult, trieResult, patternsResult] = await Promise.allSettled([
         statisticalEngine.initialize(
           trainingPhrases.map((p: any) => ({
             french: p.french_text,
@@ -229,16 +231,24 @@ export class SMTInitializer {
             french: p.french_text,
             bariba: p.bariba_text
           }))
+        ),
+        statisticalPatterns.initialize(
+          trainingPhrases.map((p: any) => ({
+            french: p.french_text,
+            bariba: p.bariba_text
+          }))
         )
       ]);
 
-      console.log(`   ${smtResult.status === 'fulfilled' ? '✅' : '❌'} Moteur SMT: ${smtResult.status}`);
+      console.log(`   ${smtResult.status === 'fulfilled' ? '✅' : '❌'} SMT: ${smtResult.status}`);
       console.log(`   ${correctorResult.status === 'fulfilled' ? '✅' : '❌'} Correcteur: ${correctorResult.status}`);
-      console.log(`   ${trieResult.status === 'fulfilled' ? '✅' : '❌'} Trie Index: ${trieResult.status}`);
+      console.log(`   ${trieResult.status === 'fulfilled' ? '✅' : '❌'} Trie: ${trieResult.status}`);
+      console.log(`   ${patternsResult.status === 'fulfilled' ? '✅' : '❌'} Patterns: ${patternsResult.status}`);
       
       if (smtResult.status === 'rejected') console.error("❌ SMT Error:", smtResult.reason);
       if (correctorResult.status === 'rejected') console.error("❌ Corrector Error:", correctorResult.reason);
       if (trieResult.status === 'rejected') console.error("❌ Trie Error:", trieResult.reason);
+      if (patternsResult.status === 'rejected') console.error("❌ Patterns Error:", patternsResult.reason);
 
       const duration = Date.now() - startTime;
 

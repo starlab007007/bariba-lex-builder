@@ -7,6 +7,7 @@ import { loadEnhancedCorpus, searchCorpusBySimilarity, type EnhancedCorpus } fro
 import { idiomService } from "./IdiomService";
 import { translationContextService } from "./TranslationContextService";
 import { GrammaticalAnalyzer, type SentenceStructure } from "./GrammaticalAnalyzer";
+import { statisticalPatterns } from "./StatisticalPatternsService";
 
 /**
  * Service de traduction simplifié et robuste
@@ -451,7 +452,23 @@ export class SimplifiedTranslationAI {
       };
     }
 
-    // NIVEAU 3 : Recherche dans le corpus enrichi (Phase 1 du rapport)
+    // NIVEAU 3 : Statistical Patterns (NOUVEAU - patterns légers appris des données)
+    if (statisticalPatterns.isReady()) {
+      console.log("→ Tentative via Statistical Patterns");
+      const patternsResult = statisticalPatterns.translateWithPatterns(cleanText);
+      
+      if (patternsResult && patternsResult.confidence >= 70) {
+        console.log(`✅ Statistical Patterns: ${patternsResult.confidence}%`);
+        const corrected = grammaticalCorrector.correctSentence(patternsResult.translation);
+        return {
+          translation: corrected,
+          confidence: Math.min(patternsResult.confidence / 100, 0.95),
+          detectedLanguage: 'french'
+        };
+      }
+    }
+
+    // NIVEAU 4 : Recherche dans le corpus enrichi (Phase 1 du rapport)
     if (this.enhancedCorpus) {
       const similarPairs = searchCorpusBySimilarity(
         this.enhancedCorpus,
@@ -473,7 +490,7 @@ export class SimplifiedTranslationAI {
       }
     }
     
-    // NIVEAU 4 : Traduction MOT-À-MOT avec correction grammaticale
+    // NIVEAU 5 : Traduction MOT-À-MOT avec correction grammaticale
     const wordByWord = this.translateWordByWord(text, 'french');
     const correctionResult = grammaticalCorrector.analyzeSentence(wordByWord.translation);
     

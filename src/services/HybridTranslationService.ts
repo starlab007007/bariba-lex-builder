@@ -25,6 +25,7 @@ import { translationCache } from "@/utils/TranslationCache";
 import { trieIndex } from "@/utils/TrieIndex";
 import { smtInitializer } from "./SMTInitializer";
 import { translationMonitoring } from "./TranslationMonitoringService";
+import { statisticalPatterns } from "./StatisticalPatternsService";
 
 export interface HybridTranslationResult extends TranslationResult {
   method: 'idiom' | 'context' | 'rag' | 'simplified' | 'advanced' | 'ai' | 'fallback';
@@ -40,13 +41,14 @@ export class HybridTranslationService {
   private isInitialized = false;
   private dictionaryEntries: DictionaryEntry[] = [];
 
-  // Seuils de confiance pour la cascade (OPTIMISÉS BALANCE)
+  // Seuils de confiance pour la cascade (OPTIMISÉS pour performance)
   private readonly IDIOM_THRESHOLD = 98;  // Idiomes = 100% de confiance
   private readonly FUZZY_JSD_THRESHOLD = 85; // Fuzzy match avec JSD
-  private readonly SMT_THRESHOLD = 65;     // Statistical MT Engine (NOUVEAU)
+  private readonly SIMPLIFIED_PLUS_THRESHOLD = 70; // SimplifiedAI+ avec patterns statistiques (NOUVEAU)
+  private readonly SMT_THRESHOLD = 65;     // Statistical MT Engine (simplifié)
   private readonly CONTEXT_THRESHOLD = 60; // Contexte pour information uniquement
   private readonly ADVANCED_THRESHOLD = 70; // BaatonuTranslationAI avec embeddings
-  private readonly SIMPLIFIED_THRESHOLD = 50; // SimplifiedTranslationAI amélioré
+  private readonly SIMPLIFIED_THRESHOLD = 50; // SimplifiedTranslationAI de base
 
   /**
    * Initialise tous les modèles
@@ -331,16 +333,16 @@ export class HybridTranslationService {
       }
     }
 
-    // NIVEAU 4: SimplifiedTranslationAI (confiance 40-95%, gratuit, < 50ms)
-    console.log("🔄 Niveau 4: SimplifiedTranslationAI");
+    // NIVEAU 4: SimplifiedAI+ avec Statistical Patterns (confiance 70-95%, gratuit, < 50ms)
+    console.log("🔄 Niveau 4: SimplifiedAI+ avec Statistical Patterns");
     const simplifiedResult = sourceLang === 'french'
       ? await this.simplifiedModel.translateFrenchToBariba(text)
       : await this.simplifiedModel.translateBaribaToFrench(text);
 
-    console.log(`   📊 SimplifiedAI: confiance=${simplifiedResult.confidence}%, seuil=${this.SIMPLIFIED_THRESHOLD}%`);
+    console.log(`   📊 SimplifiedAI+: confiance=${simplifiedResult.confidence}%, seuil=${this.SIMPLIFIED_PLUS_THRESHOLD}%`);
     
-    if (simplifiedResult.confidence >= this.SIMPLIFIED_THRESHOLD) {
-      console.log(`✅ Niveau 4: SimplifiedAI accepté (${simplifiedResult.confidence}%)`);
+    if (simplifiedResult.confidence >= this.SIMPLIFIED_PLUS_THRESHOLD) {
+      console.log(`✅ Niveau 4: SimplifiedAI+ accepté (${simplifiedResult.confidence}%)`);
       
       // Sauvegarder dans le cache et le contexte
       await translationContextService.addToContext(
@@ -372,7 +374,7 @@ export class HybridTranslationService {
       return result;
     }
     
-    console.log(`⚠️ SimplifiedAI confiance trop basse: ${simplifiedResult.confidence}% < ${this.SIMPLIFIED_THRESHOLD}%`);
+    console.log(`⚠️ SimplifiedAI+ confiance trop basse: ${simplifiedResult.confidence}% < ${this.SIMPLIFIED_PLUS_THRESHOLD}%`);
 
     // NIVEAU 3: BaatonuTranslationAI avancé avec Hugging Face Transformers (confiance 70-85%, <1s, GRATUIT)
     if (this.advancedModel?.isReady) {
