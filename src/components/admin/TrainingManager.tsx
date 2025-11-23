@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import TrainingPhraseImporter from './TrainingPhraseImporter';
 import GenerateTrainingPhrases from './GenerateTrainingPhrases';
 import BulkPhraseValidator from './BulkPhraseValidator';
 import PhraseQualityDashboard from './PhraseQualityDashboard';
@@ -194,12 +193,11 @@ export default function TrainingManager() {
       {activeView === 'quality' && <PhraseQualityDashboard />}
 
       {showImporter && (
-        <TrainingPhraseImporter
-          onClose={() => {
-            setShowImporter(false);
-            refetch();
-          }}
-        />
+        <div className="mt-4 p-4 border rounded-lg bg-muted">
+          <p className="text-sm text-muted-foreground">
+            Utilisez l'onglet "🎯 Gestion Unifiée" pour importer des données de formation
+          </p>
+        </div>
       )}
     </div>
   );
