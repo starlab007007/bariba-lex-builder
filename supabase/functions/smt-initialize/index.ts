@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
     };
     
     console.log('✅ SMT Initialization Edge Function - SUCCESS');
-    console.log(`📦 Response size: ${phrasesCount} phrases (returning stats only)`);
+    console.log(`📦 Response size: ${trainingPhrases.length} phrases (returning stats only)`);
     
     return new Response(
       JSON.stringify(result),
