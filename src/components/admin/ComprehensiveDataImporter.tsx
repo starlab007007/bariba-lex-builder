@@ -1,11 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Database, Trash2, Upload, Download } from "lucide-react";
+import { 
+  Database, 
+  Trash2, 
+  Upload, 
+  Download, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Loader2, 
+  FileText, 
+  BookOpen, 
+  Languages,
+  RefreshCw 
+} from "lucide-react";
 
 interface ImportStats {
   phrasesProcessed: number;
@@ -16,12 +30,54 @@ interface ImportStats {
   errors: string[];
 }
 
+interface FileImportStatus {
+  status: 'idle' | 'importing' | 'success' | 'error';
+  count: number;
+  message: string;
+  timestamp?: Date;
+}
+
+interface DatabaseStats {
+  trainingPhrases: number;
+  dictionaryEntries: number;
+  idiomaticExpressions: number;
+  lastUpdated?: Date;
+}
+
 export function ComprehensiveDataImporter() {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [stats, setStats] = useState<ImportStats | null>(null);
   const [backupCreated, setBackupCreated] = useState(false);
+  
+  const [file1Status, setFile1Status] = useState<FileImportStatus>({ status: 'idle', count: 0, message: '' });
+  const [file2Status, setFile2Status] = useState<FileImportStatus>({ status: 'idle', count: 0, message: '' });
+  const [dictionaryStatus, setDictionaryStatus] = useState<FileImportStatus>({ status: 'idle', count: 0, message: '' });
+  const [dbStats, setDbStats] = useState<DatabaseStats | null>(null);
+
+  useEffect(() => {
+    loadDatabaseStats();
+  }, []);
+
+  const loadDatabaseStats = async () => {
+    try {
+      const [phrasesCount, dictCount, idiomsCount] = await Promise.all([
+        supabase.from('training_phrases').select('*', { count: 'exact', head: true }),
+        supabase.from('dictionary_entries').select('*', { count: 'exact', head: true }),
+        supabase.from('idiomatic_expressions').select('*', { count: 'exact', head: true })
+      ]);
+
+      setDbStats({
+        trainingPhrases: phrasesCount.count || 0,
+        dictionaryEntries: dictCount.count || 0,
+        idiomaticExpressions: idiomsCount.count || 0,
+        lastUpdated: new Date()
+      });
+    } catch (error) {
+      console.error('Error loading database stats:', error);
+    }
+  };
 
   const createBackup = async () => {
     try {
@@ -29,24 +85,12 @@ export function ComprehensiveDataImporter() {
       setProgress(10);
       toast({ title: "🔄 Création du backup..." });
 
-      // Backup training phrases
-      const { data: phrases } = await supabase
-        .from('training_phrases')
-        .select('*');
-
-      // Backup dictionary
-      const { data: dictionary } = await supabase
-        .from('dictionary_entries')
-        .select('*');
-
-      // Backup idioms
-      const { data: idioms } = await supabase
-        .from('idiomatic_expressions')
-        .select('*');
+      const { data: phrases } = await supabase.from('training_phrases').select('*');
+      const { data: dictionary } = await supabase.from('dictionary_entries').select('*');
+      const { data: idioms } = await supabase.from('idiomatic_expressions').select('*');
 
       setProgress(50);
 
-      // Create backup JSON
       const backup = {
         timestamp: new Date().toISOString(),
         training_phrases: phrases || [],
@@ -54,7 +98,6 @@ export function ComprehensiveDataImporter() {
         idiomatic_expressions: idioms || []
       };
 
-      // Download backup
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -91,7 +134,6 @@ export function ComprehensiveDataImporter() {
       setProgress(10);
       toast({ title: "🗑️ Suppression des anciennes données..." });
 
-      // Clear all tables
       await supabase.from('translation_memory').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       setProgress(25);
       
@@ -104,9 +146,10 @@ export function ComprehensiveDataImporter() {
       await supabase.from('dictionary_entries').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       setProgress(100);
 
-      // Clear localStorage cache
       localStorage.removeItem('dictionary_cache_v2');
       localStorage.removeItem('dictionary_cache');
+
+      await loadDatabaseStats();
 
       toast({ 
         title: "✅ Données supprimées", 
@@ -124,240 +167,488 @@ export function ComprehensiveDataImporter() {
     }
   };
 
-  const importComprehensiveData = async () => {
+  const importFile1 = async () => {
+    setFile1Status({ status: 'importing', count: 0, message: 'Chargement...' });
+    setIsProcessing(true);
+    
     try {
-      setIsProcessing(true);
-      setProgress(0);
-      const newStats: ImportStats = {
-        phrasesProcessed: 0,
-        phrasesImported: 0,
-        dictionaryProcessed: 0,
-        dictionaryImported: 0,
-        duplicatesRemoved: 0,
-        errors: []
-      };
-
-      toast({ title: "📥 Chargement des fichiers..." });
-
-      // Load all 3 files
-      const [file1Response, file2Response, dictResponse] = await Promise.all([
-        fetch('/traducteur_final.json'),
-        fetch('/traducteur_complet_2.json'),
-        fetch('/dictionnaire-10-3.json')
-      ]);
-
-      const phrases1 = await file1Response.json();
-      const phrases2 = await file2Response.json();
-      const dictData = await dictResponse.json();
-
-      setProgress(10);
-      toast({ title: "🔄 Fusion et déduplication des phrases..." });
-
-      // Merge and deduplicate phrases
-      const allPhrases = [...phrases1, ...phrases2];
-      const uniquePhrases = new Map();
-
-      for (const phrase of allPhrases) {
-        const key = `${phrase.french}|||${phrase.bariba}`.toLowerCase();
-        if (!uniquePhrases.has(key)) {
-          uniquePhrases.set(key, {
-            french_text: phrase.french,
-            bariba_text: phrase.bariba,
-            source: 'premium_merged',
-            quality_score: 1.0,
-            is_validated: true
-          });
-        } else {
-          newStats.duplicatesRemoved++;
-        }
-      }
-
-      newStats.phrasesProcessed = uniquePhrases.size;
-      setProgress(20);
-
-      // Import phrases in batches of 1000
-      const phrasesArray = Array.from(uniquePhrases.values());
-      const batchSize = 1000;
+      const response = await fetch('/traducteur_final.json');
+      const data = await response.json();
       
-      for (let i = 0; i < phrasesArray.length; i += batchSize) {
-        const batch = phrasesArray.slice(i, i + batchSize);
-        const { error } = await supabase
-          .from('training_phrases')
-          .insert(batch);
-
-        if (error) {
-          newStats.errors.push(`Phrases batch ${i / batchSize + 1}: ${error.message}`);
-        } else {
-          newStats.phrasesImported += batch.length;
+      setFile1Status({ status: 'importing', count: data.length, message: `${data.length} paires trouvées, import en cours...` });
+      
+      const uniquePhrases = new Map();
+      data.forEach((item: any) => {
+        const key = `${item.french}|||${item.bariba}`;
+        if (!uniquePhrases.has(key)) {
+          uniquePhrases.set(key, item);
         }
+      });
 
-        const progressPhrases = 20 + (30 * (i + batch.length)) / phrasesArray.length;
-        setProgress(progressPhrases);
-      }
-
-      toast({ title: "📚 Import du dictionnaire..." });
-      setProgress(50);
-
-      // Process dictionary entries
-      const dictEntries = Array.isArray(dictData) ? dictData : Object.values(dictData);
-      newStats.dictionaryProcessed = dictEntries.length;
-
-      const formattedDict = dictEntries.map((entry: any) => ({
-        word: entry.word || entry.mot || '',
-        definition: entry.definition || entry.def || '',
-        part_of_speech: entry.part_of_speech || entry.pos || entry.nature || null,
-        phonetic: entry.phonetic || entry.phon || null,
-        example_bariba: Array.isArray(entry.example_bariba) ? entry.example_bariba : 
-                        Array.isArray(entry.exemples) ? entry.exemples : [],
-        example_francais: Array.isArray(entry.example_francais) ? entry.example_francais :
-                         Array.isArray(entry.exemples_fr) ? entry.exemples_fr : [],
-        french_keywords: Array.isArray(entry.french_keywords) ? entry.french_keywords :
-                        Array.isArray(entry.mots_cles) ? entry.mots_cles : [],
-        variants: Array.isArray(entry.variants) ? entry.variants :
-                 Array.isArray(entry.variantes) ? entry.variantes : [],
-        source: 'final_premium',
+      const toImport = Array.from(uniquePhrases.values()).map((item: any) => ({
+        french_text: item.french,
+        bariba_text: item.bariba,
+        source: 'traducteur_final',
         quality_score: 1.0,
-        is_verified: true
+        is_validated: true,
+        metadata: { imported_at: new Date().toISOString() }
       }));
 
-      // Import dictionary in batches
-      for (let i = 0; i < formattedDict.length; i += batchSize) {
-        const batch = formattedDict.slice(i, i + batchSize);
-        const { error } = await supabase
-          .from('dictionary_entries')
-          .insert(batch);
-
-        if (error) {
-          newStats.errors.push(`Dictionary batch ${i / batchSize + 1}: ${error.message}`);
-        } else {
-          newStats.dictionaryImported += batch.length;
-        }
-
-        const progressDict = 50 + (50 * (i + batch.length)) / formattedDict.length;
-        setProgress(progressDict);
+      let imported = 0;
+      for (let i = 0; i < toImport.length; i += 1000) {
+        const batch = toImport.slice(i, i + 1000);
+        const { error } = await supabase.from('training_phrases').insert(batch);
+        if (error) throw error;
+        imported += batch.length;
+        setFile1Status({ status: 'importing', count: imported, message: `${imported}/${toImport.length} importées...` });
       }
 
-      setStats(newStats);
-      setProgress(100);
-
-      toast({ 
-        title: "✅ Import terminé", 
-        description: `${newStats.phrasesImported} phrases + ${newStats.dictionaryImported} entrées importées` 
+      setFile1Status({ 
+        status: 'success', 
+        count: imported, 
+        message: `✅ ${imported} paires importées avec succès`,
+        timestamp: new Date()
+      });
+      
+      await loadDatabaseStats();
+      
+      toast({
+        title: "Fichier 1 importé",
+        description: `${imported} phrases d'entraînement importées`,
       });
     } catch (error: any) {
-      toast({ 
-        title: "❌ Erreur import", 
+      setFile1Status({ status: 'error', count: 0, message: `❌ Erreur: ${error.message}` });
+      toast({
+        title: "Erreur d'import",
         description: error.message,
-        variant: "destructive" 
+        variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const importFile2 = async () => {
+    setFile2Status({ status: 'importing', count: 0, message: 'Chargement...' });
+    setIsProcessing(true);
+    
+    try {
+      const response = await fetch('/traducteur_complet_2.json');
+      const data = await response.json();
+      
+      setFile2Status({ status: 'importing', count: data.length, message: `${data.length} paires trouvées, import en cours...` });
+      
+      const uniquePhrases = new Map();
+      data.forEach((item: any) => {
+        const key = `${item.french}|||${item.bariba}`;
+        if (!uniquePhrases.has(key)) {
+          uniquePhrases.set(key, item);
+        }
+      });
+
+      const toImport = Array.from(uniquePhrases.values()).map((item: any) => ({
+        french_text: item.french,
+        bariba_text: item.bariba,
+        source: 'traducteur_complet_2',
+        quality_score: 1.0,
+        is_validated: true,
+        metadata: { imported_at: new Date().toISOString() }
+      }));
+
+      let imported = 0;
+      for (let i = 0; i < toImport.length; i += 1000) {
+        const batch = toImport.slice(i, i + 1000);
+        const { error } = await supabase.from('training_phrases').insert(batch);
+        if (error) throw error;
+        imported += batch.length;
+        setFile2Status({ status: 'importing', count: imported, message: `${imported}/${toImport.length} importées...` });
+      }
+
+      setFile2Status({ 
+        status: 'success', 
+        count: imported, 
+        message: `✅ ${imported} paires importées avec succès`,
+        timestamp: new Date()
+      });
+      
+      await loadDatabaseStats();
+      
+      toast({
+        title: "Fichier 2 importé",
+        description: `${imported} phrases d'entraînement importées`,
+      });
+    } catch (error: any) {
+      setFile2Status({ status: 'error', count: 0, message: `❌ Erreur: ${error.message}` });
+      toast({
+        title: "Erreur d'import",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const importDictionary = async () => {
+    setDictionaryStatus({ status: 'importing', count: 0, message: 'Chargement...' });
+    setIsProcessing(true);
+    
+    try {
+      const response = await fetch('/dictionnaire-10-3.json');
+      const data = await response.json();
+      
+      setDictionaryStatus({ status: 'importing', count: data.length, message: `${data.length} entrées trouvées, import en cours...` });
+      
+      const toImport = data.map((item: any) => ({
+        word: item.word || item.baatonum || '',
+        definition: item.definition || item.francais || '',
+        phonetic: item.phonetic || null,
+        part_of_speech: item.part_of_speech || item.pos || null,
+        example_bariba: item.example_bariba || item.examples_baatonum || [],
+        example_francais: item.example_francais || item.examples_french || [],
+        variants: item.variants || [],
+        french_keywords: item.french_keywords || [],
+        quality_score: 1.0,
+        is_verified: true,
+        metadata: { source: 'dictionnaire-10-3', imported_at: new Date().toISOString() }
+      }));
+
+      let imported = 0;
+      for (let i = 0; i < toImport.length; i += 1000) {
+        const batch = toImport.slice(i, i + 1000);
+        const { error } = await supabase.from('dictionary_entries').insert(batch);
+        if (error) throw error;
+        imported += batch.length;
+        setDictionaryStatus({ status: 'importing', count: imported, message: `${imported}/${toImport.length} importées...` });
+      }
+
+      setDictionaryStatus({ 
+        status: 'success', 
+        count: imported, 
+        message: `✅ ${imported} entrées importées avec succès`,
+        timestamp: new Date()
+      });
+      
+      await loadDatabaseStats();
+      
+      toast({
+        title: "Dictionnaire importé",
+        description: `${imported} entrées importées`,
+      });
+    } catch (error: any) {
+      setDictionaryStatus({ status: 'error', count: 0, message: `❌ Erreur: ${error.message}` });
+      toast({
+        title: "Erreur d'import",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const getStatusIcon = (status: FileImportStatus['status']) => {
+    switch (status) {
+      case 'importing': return <Loader2 className="h-5 w-5 animate-spin text-primary" />;
+      case 'success': return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+      case 'error': return <AlertTriangle className="h-5 w-5 text-destructive" />;
+      default: return <FileText className="h-5 w-5 text-muted-foreground" />;
+    }
+  };
+
+  const getStatusBadge = (status: FileImportStatus['status']) => {
+    switch (status) {
+      case 'importing': return <Badge variant="outline" className="bg-primary/10">En cours</Badge>;
+      case 'success': return <Badge variant="outline" className="bg-green-500/10 text-green-500">Importé</Badge>;
+      case 'error': return <Badge variant="destructive">Erreur</Badge>;
+      default: return <Badge variant="outline">Non importé</Badge>;
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5" />
-          Import Complet des Données Premium
-        </CardTitle>
-        <CardDescription>
-          Fusion de traducteur_final.json (44,770) + traducteur_complet_2.json (36,854) + dictionnaire-10-3.json (110,331)
-        </CardDescription>
-      </CardHeader>
+    <div className="space-y-6">
+      {/* Database Statistics */}
+      {dbStats && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              État Actuel de la Base de Données
+            </CardTitle>
+            <CardDescription>
+              Données actuellement utilisées par le système SMT
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Languages className="h-4 w-4 text-primary" />
+                  <span className="font-semibold">Phrases d'entraînement</span>
+                </div>
+                <p className="text-3xl font-bold">{dbStats.trainingPhrases.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground mt-1">paires FR-BBA</p>
+              </div>
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                  <span className="font-semibold">Dictionnaire</span>
+                </div>
+                <p className="text-3xl font-bold">{dbStats.dictionaryEntries.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground mt-1">entrées</p>
+              </div>
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="font-semibold">Expressions idiomatiques</span>
+                </div>
+                <p className="text-3xl font-bold">{dbStats.idiomaticExpressions.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground mt-1">expressions</p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Dernière mise à jour : {dbStats.lastUpdated?.toLocaleString('fr-FR')}
+              </p>
+              <Button onClick={loadDatabaseStats} variant="outline" size="sm">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Actualiser
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      <CardContent className="space-y-4">
-        <Alert>
-          <AlertDescription>
-            <strong>⚠️ Processus en 3 étapes :</strong>
-            <ol className="list-decimal list-inside mt-2 space-y-1">
-              <li>Créer un backup des anciennes données</li>
-              <li>Supprimer toutes les anciennes données</li>
-              <li>Importer les nouvelles données (fusion + déduplication)</li>
-            </ol>
-          </AlertDescription>
-        </Alert>
+      <Alert>
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>⚠️ Import des Données Premium SMT</AlertTitle>
+        <AlertDescription>
+          Importez fichier par fichier pour un contrôle total. Vérifiez l'état après chaque import.
+          <br />
+          <strong>Important :</strong> Créez un backup avant de supprimer les anciennes données.
+        </AlertDescription>
+      </Alert>
 
-        {/* Step 1: Backup */}
-        <div className="space-y-2">
-          <h4 className="font-semibold flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Étape 1: Backup des anciennes données
-          </h4>
-          <Button
-            onClick={createBackup}
-            disabled={isProcessing || backupCreated}
-            variant={backupCreated ? "outline" : "default"}
-            className="w-full"
-          >
-            {backupCreated ? "✅ Backup créé" : "Créer le backup"}
-          </Button>
-        </div>
+      <Tabs defaultValue="files" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="files">Import Fichier par Fichier</TabsTrigger>
+          <TabsTrigger value="manage">Gestion des Données</TabsTrigger>
+        </TabsList>
 
-        {/* Step 2: Clear */}
-        <div className="space-y-2">
-          <h4 className="font-semibold flex items-center gap-2">
-            <Trash2 className="h-4 w-4" />
-            Étape 2: Supprimer les anciennes données
-          </h4>
-          <Button
-            onClick={clearAllData}
-            disabled={isProcessing || !backupCreated}
-            variant="destructive"
-            className="w-full"
-          >
-            Supprimer toutes les anciennes données
-          </Button>
-        </div>
-
-        {/* Step 3: Import */}
-        <div className="space-y-2">
-          <h4 className="font-semibold flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Étape 3: Importer les nouvelles données
-          </h4>
-          <Button
-            onClick={importComprehensiveData}
-            disabled={isProcessing}
-            className="w-full"
-          >
-            Importer les données premium (80k+ paires)
-          </Button>
-        </div>
-
-        {isProcessing && (
-          <div className="space-y-2">
-            <Progress value={progress} />
-            <p className="text-sm text-muted-foreground text-center">
-              {progress.toFixed(0)}% complété
-            </p>
-          </div>
-        )}
-
-        {stats && (
-          <Alert>
-            <AlertDescription>
-              <strong>📊 Résultats de l'import :</strong>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li><strong>Phrases :</strong> {stats.phrasesImported.toLocaleString()} / {stats.phrasesProcessed.toLocaleString()} importées</li>
-                <li><strong>Dictionnaire :</strong> {stats.dictionaryImported.toLocaleString()} / {stats.dictionaryProcessed.toLocaleString()} importées</li>
-                <li><strong>Doublons supprimés :</strong> {stats.duplicatesRemoved.toLocaleString()}</li>
-                {stats.errors.length > 0 && (
-                  <li className="text-destructive">
-                    <strong>Erreurs :</strong> {stats.errors.length}
-                    <ul className="ml-4 mt-1">
-                      {stats.errors.slice(0, 3).map((err, i) => (
-                        <li key={i} className="text-xs">{err}</li>
-                      ))}
-                    </ul>
-                  </li>
+        <TabsContent value="files" className="space-y-4">
+          {/* File 1: traducteur_final.json */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(file1Status.status)}
+                  <div>
+                    <CardTitle className="text-lg">Fichier 1 : traducteur_final.json</CardTitle>
+                    <CardDescription>44,770 paires FR-BBA premium</CardDescription>
+                  </div>
+                </div>
+                {getStatusBadge(file1Status.status)}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {file1Status.message && (
+                <Alert>
+                  <AlertDescription>{file1Status.message}</AlertDescription>
+                </Alert>
+              )}
+              {file1Status.timestamp && (
+                <p className="text-sm text-muted-foreground">
+                  Importé le {file1Status.timestamp.toLocaleString('fr-FR')}
+                </p>
+              )}
+              <Button
+                onClick={importFile1}
+                disabled={isProcessing}
+                className="w-full"
+              >
+                {file1Status.status === 'importing' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Import en cours...
+                  </>
+                ) : file1Status.status === 'success' ? (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Réimporter ({file1Status.count} paires)
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importer traducteur_final.json
+                  </>
                 )}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* File 2: traducteur_complet_2.json */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(file2Status.status)}
+                  <div>
+                    <CardTitle className="text-lg">Fichier 2 : traducteur_complet_2.json</CardTitle>
+                    <CardDescription>36,854 paires FR-BBA premium</CardDescription>
+                  </div>
+                </div>
+                {getStatusBadge(file2Status.status)}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {file2Status.message && (
+                <Alert>
+                  <AlertDescription>{file2Status.message}</AlertDescription>
+                </Alert>
+              )}
+              {file2Status.timestamp && (
+                <p className="text-sm text-muted-foreground">
+                  Importé le {file2Status.timestamp.toLocaleString('fr-FR')}
+                </p>
+              )}
+              <Button
+                onClick={importFile2}
+                disabled={isProcessing}
+                className="w-full"
+              >
+                {file2Status.status === 'importing' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Import en cours...
+                  </>
+                ) : file2Status.status === 'success' ? (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Réimporter ({file2Status.count} paires)
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importer traducteur_complet_2.json
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Dictionary: dictionnaire-10-3.json */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(dictionaryStatus.status)}
+                  <div>
+                    <CardTitle className="text-lg">Dictionnaire : dictionnaire-10-3.json</CardTitle>
+                    <CardDescription>110,331 entrées de dictionnaire</CardDescription>
+                  </div>
+                </div>
+                {getStatusBadge(dictionaryStatus.status)}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {dictionaryStatus.message && (
+                <Alert>
+                  <AlertDescription>{dictionaryStatus.message}</AlertDescription>
+                </Alert>
+              )}
+              {dictionaryStatus.timestamp && (
+                <p className="text-sm text-muted-foreground">
+                  Importé le {dictionaryStatus.timestamp.toLocaleString('fr-FR')}
+                </p>
+              )}
+              <Button
+                onClick={importDictionary}
+                disabled={isProcessing}
+                className="w-full"
+              >
+                {dictionaryStatus.status === 'importing' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Import en cours...
+                  </>
+                ) : dictionaryStatus.status === 'success' ? (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Réimporter ({dictionaryStatus.count} entrées)
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importer dictionnaire-10-3.json
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="manage" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gestion des Données</CardTitle>
+              <CardDescription>
+                Backup et suppression des anciennes données
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Créer un backup
+                </h4>
+                <Button
+                  onClick={createBackup}
+                  disabled={isProcessing}
+                  variant={backupCreated ? "outline" : "default"}
+                  className="w-full"
+                >
+                  {backupCreated ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Backup créé
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Créer le backup
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Supprimer les anciennes données
+                </h4>
+                <Button
+                  onClick={clearAllData}
+                  disabled={isProcessing}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Supprimer toutes les anciennes données
+                </Button>
+              </div>
+
+              {isProcessing && progress > 0 && (
+                <div className="space-y-2">
+                  <Progress value={progress} />
+                  <p className="text-sm text-center text-muted-foreground">
+                    {Math.round(progress)}%
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
