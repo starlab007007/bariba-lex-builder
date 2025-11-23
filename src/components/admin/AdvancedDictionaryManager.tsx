@@ -221,46 +221,72 @@ export default function AdvancedDictionaryManager() {
     if (!file || preview.length === 0) return;
 
     setLoading(true);
-    const batchSize = 100;
+    const batchSize = 50; // Réduit pour éviter les timeouts
     let imported = 0;
+    let errors = 0;
 
     try {
-      for (let i = 0; i < preview.length; i += batchSize) {
-        const batch = preview.slice(i, i + batchSize);
-        
-        const { error } = await supabase
-          .from('dictionary_entries')
-          .upsert(batch.map(entry => ({
-            word: entry.word,
-            definition: entry.definition,
-            phonetic: entry.phonetic || null,
-            part_of_speech: entry.part_of_speech || null,
-            example_bariba: entry.example_bariba || [],
-            example_francais: entry.example_francais || [],
-            quality_score: entry.quality_score || 0.5,
-            is_verified: false
-          })), { 
-            onConflict: 'word',
-            ignoreDuplicates: false 
-          });
+      const text = await file.text();
+      const fullData = JSON.parse(text);
+      
+      // Validation complète
+      const validated = fullData.filter((entry: any) => 
+        entry.word && 
+        entry.word.trim().length > 0 &&
+        entry.definition && 
+        entry.definition.trim().length > 0
+      );
 
-        if (error) throw error;
-        imported += batch.length;
+      for (let i = 0; i < validated.length; i += batchSize) {
+        const batch = validated.slice(i, i + batchSize);
+        
+        try {
+          const { error } = await supabase
+            .from('dictionary_entries')
+            .upsert(batch.map(entry => ({
+              word: entry.word.trim(),
+              definition: entry.definition.trim(),
+              phonetic: entry.phonetic?.trim() || null,
+              part_of_speech: entry.part_of_speech?.trim() || null,
+              example_bariba: Array.isArray(entry.example_bariba) ? entry.example_bariba : [],
+              example_francais: Array.isArray(entry.example_francais) ? entry.example_francais : [],
+              french_keywords: Array.isArray(entry.french_keywords) ? entry.french_keywords : null,
+              quality_score: typeof entry.quality_score === 'number' ? entry.quality_score : 0.5,
+              is_verified: false,
+              nominal_class: entry.nominal_class || null,
+              verbal_group: entry.verbal_group || null
+            })), { 
+              onConflict: 'word',
+              ignoreDuplicates: false 
+            });
+
+          if (error) {
+            console.error(`Batch ${i}-${i+batchSize} error:`, error);
+            errors += batch.length;
+          } else {
+            imported += batch.length;
+          }
+        } catch (batchError: any) {
+          console.error(`Batch ${i} failed:`, batchError);
+          errors += batch.length;
+        }
       }
 
       toast({
-        title: "Import réussi",
-        description: `${imported} entrées importées`
+        title: imported > 0 ? "Import terminé" : "Import échoué",
+        description: `${imported} entrées importées${errors > 0 ? `, ${errors} erreurs` : ''}`,
+        variant: imported > 0 ? "default" : "destructive"
       });
 
       setFile(null);
       setPreview([]);
-      loadStats();
+      await loadStats();
 
     } catch (error: any) {
+      console.error('Import error:', error);
       toast({
         title: "Erreur d'import",
-        description: error.message,
+        description: `${error.message}. Vérifiez le format JSON et la structure des données.`,
         variant: "destructive"
       });
     } finally {

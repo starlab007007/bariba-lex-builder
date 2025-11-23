@@ -200,7 +200,7 @@ export default function UnifiedDataManager() {
       const uniqueData = Array.from(cleanedData.values());
       const totalBatches = Math.ceil(uniqueData.length / batchSize);
 
-      // Import par batch
+      // Import par batch avec upsert
       for (let i = 0; i < uniqueData.length; i += batchSize) {
         const batch = uniqueData.slice(i, i + batchSize);
         const tableName = preview.type === 'phrases' 
@@ -209,9 +209,24 @@ export default function UnifiedDataManager() {
           ? 'dictionary_entries' 
           : 'idiomatic_expressions';
 
-        const { error } = await supabase.from(tableName).insert(batch);
+        let result;
+        if (preview.type === 'dictionary') {
+          result = await supabase.from(tableName).upsert(batch, { 
+            onConflict: 'word',
+            ignoreDuplicates: false 
+          });
+        } else if (preview.type === 'phrases') {
+          // Pour phrases, on utilise insert car il n'y a pas de clé unique naturelle
+          result = await supabase.from(tableName).insert(batch);
+        } else {
+          // Pour idiomes, insert aussi
+          result = await supabase.from(tableName).insert(batch);
+        }
 
-        if (error) throw error;
+        if (result.error) {
+          console.error(`Erreur batch ${i}-${i + batchSize}:`, result.error);
+          throw new Error(`Import échoué: ${result.error.message}`);
+        }
 
         imported += batch.length;
         setProgress((imported / uniqueData.length) * 100);
