@@ -219,7 +219,11 @@ export class HybridTranslationService {
     if (statisticalEngine.isReady()) {
       console.log("🔄 Niveau 3: Statistical Machine Translation");
       try {
-        const smtResult = statisticalEngine.translate(text, 12); // beamSize=12 (BALANCE)
+        // Déterminer la direction de traduction
+        const direction = sourceLang === 'french' ? 'fr-bba' : 'bba-fr';
+        const smtResult = statisticalEngine.translate(text, 12, direction);
+        
+        console.log(`   📊 SMT Résultat: confiance=${smtResult.confidence}%, seuil=${this.SMT_THRESHOLD}%`);
         
         if (smtResult.confidence >= this.SMT_THRESHOLD) {
           // Apply enhanced grammatical correction
@@ -261,12 +265,25 @@ export class HybridTranslationService {
     }
 
     // NIVEAU 4: SimplifiedTranslationAI (confiance 40-95%, gratuit, < 50ms)
+    console.log("🔄 Niveau 4: SimplifiedTranslationAI");
     const simplifiedResult = sourceLang === 'french'
       ? await this.simplifiedModel.translateFrenchToBariba(text)
       : await this.simplifiedModel.translateBaribaToFrench(text);
 
+    console.log(`   📊 SimplifiedAI: confiance=${simplifiedResult.confidence}%, seuil=${this.SIMPLIFIED_THRESHOLD}%`);
+    
     if (simplifiedResult.confidence >= this.SIMPLIFIED_THRESHOLD) {
-      console.log(`✅ Niveau 4: Simplified (${simplifiedResult.confidence}%)`);
+      console.log(`✅ Niveau 4: SimplifiedAI accepté (${simplifiedResult.confidence}%)`);
+      
+      // Sauvegarder dans le cache et le contexte
+      await translationContextService.addToContext(
+        text,
+        simplifiedResult.translation,
+        sourceLang,
+        targetLang,
+        simplifiedResult.confidence
+      );
+      
       return {
         ...simplifiedResult,
         method: 'simplified',
@@ -274,6 +291,8 @@ export class HybridTranslationService {
         duration: Date.now() - startTime
       };
     }
+    
+    console.log(`⚠️ SimplifiedAI confiance trop basse: ${simplifiedResult.confidence}% < ${this.SIMPLIFIED_THRESHOLD}%`);
 
     // NIVEAU 3: BaatonuTranslationAI avancé avec Hugging Face Transformers (confiance 70-85%, <1s, GRATUIT)
     if (this.advancedModel?.isReady) {
@@ -356,22 +375,21 @@ export class HybridTranslationService {
       }
     }
 
-    // NIVEAU 4: Lovable AI (confiance 85-95%, quasi-GRATUIT avec crédits, 1-3s)
-    // Appelé pour phrases complexes (5+ mots) OU confiance faible
-    const shouldUseLovableAI = useAI || wordCount >= 5 || simplifiedResult.confidence < 60;
+    // NIVEAU 5: Lovable AI en DERNIER RECOURS (confiance 85-95%, coût réduit, 1-3s)
+    // Appelé UNIQUEMENT si tous les autres niveaux ont échoué
+    const shouldUseLovableAI = useAI || wordCount >= 7;
     
     if (shouldUseLovableAI) {
-      console.log(`🔄 Niveau 4: Lovable AI (${wordCount} mots, confiance: ${simplifiedResult.confidence}%)`);
+      console.log(`🔄 Niveau 5: Lovable AI (dernier recours - ${wordCount} mots)`);
       try {
         const aiResult = await this.callLovableAI(text, sourceLang, targetLang);
         if (aiResult) {
-          console.log(`✅ Niveau 4: AI (${aiResult.confidence}%)`);
-          // Sauvegarder dans le cache pour réutilisation
+          console.log(`✅ Niveau 5: Lovable AI (${aiResult.confidence}%)`);
           await this.saveToCache(text, aiResult.translation, sourceLang, targetLang, aiResult.confidence);
           return {
             ...aiResult,
             method: 'ai',
-            cost: 0, // Utilise crédits gratuits inclus
+            cost: 0,
             duration: Date.now() - startTime
           };
         }
@@ -380,8 +398,10 @@ export class HybridTranslationService {
       }
     }
 
-    // FALLBACK: Retourner SimplifiedTranslationAI même si confiance basse
-    console.log(`⚠️ Fallback: SimplifiedTranslationAI (${simplifiedResult.confidence}%)`);
+    // FALLBACK FINAL: Retourner SimplifiedAI même avec confiance basse
+    console.log(`⚠️ FALLBACK FINAL: SimplifiedAI (${simplifiedResult.confidence}%)`);
+    console.log(`   📝 Traduction: "${simplifiedResult.translation}"`);
+    
     return {
       ...simplifiedResult,
       method: 'fallback',

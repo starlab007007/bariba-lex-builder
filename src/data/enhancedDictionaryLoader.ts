@@ -83,24 +83,87 @@ async function loadDictionaryExamples(): Promise<DictionaryExample[]> {
 }
 
 /**
+ * Charger les phrases de traduction depuis Supabase
+ */
+async function loadTrainingPhrases(): Promise<BiblicalPhrase[]> {
+  try {
+    console.log("📚 Chargement des phrases d'entraînement depuis Supabase...");
+    
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.warn("⚠️ Supabase non configuré, phrases non chargées");
+      return [];
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Charger TOUTES les phrases par batches de 1000
+    const phrases: BiblicalPhrase[] = [];
+    let offset = 0;
+    const batchSize = 1000;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('training_phrases')
+        .select('french_text, bariba_text')
+        .range(offset, offset + batchSize - 1);
+      
+      if (error) {
+        console.error("❌ Erreur chargement phrases:", error);
+        break;
+      }
+      
+      if (!data || data.length === 0) break;
+      
+      for (const item of data) {
+        if (item.french_text && item.bariba_text) {
+          phrases.push({
+            french: item.french_text.trim(),
+            bariba: item.bariba_text.trim(),
+            reference: 'training_data',
+            frenchWords: item.french_text.trim().toLowerCase().split(/\s+/),
+            baribaWords: item.bariba_text.trim().split(/\s+/)
+          });
+        }
+      }
+      
+      if (data.length < batchSize) break;
+      offset += batchSize;
+      
+      console.log(`  ✓ Chargées ${phrases.length} phrases...`);
+    }
+    
+    console.log(`✅ ${phrases.length} phrases d'entraînement chargées`);
+    return phrases;
+  } catch (error) {
+    console.error("❌ Erreur lors du chargement des phrases:", error);
+    return [];
+  }
+}
+
+/**
  * Charger toutes les données enrichies
  */
 export async function loadEnhancedDictionary(): Promise<EnhancedDictionaryData> {
   console.log("🚀 Chargement des données enrichies...");
   
-  const [entries, examples] = await Promise.all([
+  const [entries, phrases, examples] = await Promise.all([
     loadComprehensiveDictionary(),
+    loadTrainingPhrases(),
     loadDictionaryExamples()
   ]);
 
-  console.log("📊 Données chargées (données bibliques supprimées):");
+  console.log("📊 Données chargées:");
   console.log(`  - Entrées dictionnaire: ${entries.length}`);
-  console.log(`  - Phrases bibliques: SUPPRIMÉES`);
+  console.log(`  - Phrases d'entraînement: ${phrases.length}`);
   console.log(`  - Exemples: ${examples.length}`);
 
   return {
     entries,
-    phrases: [], // Phrases bibliques supprimées
+    phrases,
     examples
   };
 }
