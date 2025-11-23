@@ -98,9 +98,9 @@ export default function UnifiedDataManager() {
     const frenchPatterns = ['french', 'francais', 'français', 'fr', 'french_text', 'texte_francais'];
     const baribaPatterns = ['bariba', 'baatonum', 'bba', 'bariba_text', 'texte_bariba'];
     
-    // Patterns pour dictionnaire
-    const wordPatterns = ['word', 'mot', 'terme', 'entry', 'headword'];
-    const definitionPatterns = ['definition', 'sens', 'meaning', 'traduction', 'translation'];
+    // Patterns pour dictionnaire (élargi)
+    const wordPatterns = ['word', 'mot', 'terme', 'entry', 'headword', 'lemme', 'lexeme', 'bariba', 'baatonum'];
+    const definitionPatterns = ['definition', 'def', 'sens', 'meaning', 'traduction', 'translation', 'french', 'francais', 'français'];
     
     // Patterns pour idiomes
     const frenchExprPatterns = ['french_expression', 'expression_francaise', 'idiom_fr'];
@@ -327,12 +327,23 @@ export default function UnifiedDataManager() {
             cleanItem = {
               word,
               definition: def,
-              part_of_speech: item.part_of_speech || item.pos || null,
-              phonetic: item.phonetic || item.pronunciation || null,
-              example_bariba: Array.isArray(item.example_bariba) ? item.example_bariba : null,
-              example_francais: Array.isArray(item.example_francais) ? item.example_francais : null,
+              part_of_speech: item.part_of_speech || item.pos || item.type || null,
+              phonetic: item.phonetic || item.pronunciation || item.phone || null,
+              example_bariba: Array.isArray(item.example_bariba) ? item.example_bariba : 
+                              Array.isArray(item.examples_bariba) ? item.examples_bariba :
+                              item.example ? [item.example] : null,
+              example_francais: Array.isArray(item.example_francais) ? item.example_francais :
+                               Array.isArray(item.examples_francais) ? item.examples_francais :
+                               Array.isArray(item.examples_french) ? item.examples_french :
+                               item.example_french ? [item.example_french] : null,
+              french_keywords: Array.isArray(item.french_keywords) ? item.french_keywords :
+                              Array.isArray(item.keywords) ? item.keywords : null,
+              nominal_class: item.nominal_class || item.noun_class || item.class || null,
+              plural_form: item.plural_form || item.plural || null,
+              verbal_group: item.verbal_group || item.verb_group || null,
+              tone_pattern: item.tone_pattern || item.tones || null,
               is_verified: true,
-              quality_score: item.quality_score || 0.9,
+              quality_score: item.quality_score || item.score || 0.9,
               created_by: user?.id
             };
           } else if (preview.type === 'idioms') {
@@ -441,30 +452,57 @@ export default function UnifiedDataManager() {
   };
 
   const loadViewData = async (type: 'phrases' | 'dictionary' | 'idioms') => {
+    setLoading(true);
     try {
       let data: any[] = [];
       
       if (type === 'phrases') {
+        // Charger TOUTES les phrases (pas de limite)
         const query = filterSource !== 'all' 
-          ? supabase.from('training_phrases').select('*').eq('source', filterSource).order('created_at', { ascending: false }).limit(500)
-          : supabase.from('training_phrases').select('*').order('created_at', { ascending: false }).limit(500);
+          ? supabase.from('training_phrases').select('*').eq('source', filterSource).order('created_at', { ascending: false })
+          : supabase.from('training_phrases').select('*').order('created_at', { ascending: false });
         
         const result = await query;
         if (result.error) throw result.error;
         data = result.data || [];
+        
+        toast({
+          title: '✅ Données chargées',
+          description: `${data.length} phrases affichées`,
+        });
       } else if (type === 'dictionary') {
-        const result = await supabase.from('dictionary_entries').select('*').order('created_at', { ascending: false }).limit(500);
+        // Charger TOUT le dictionnaire (pas de limite)
+        const result = await supabase.from('dictionary_entries').select('*').order('created_at', { ascending: false });
         if (result.error) throw result.error;
         data = result.data || [];
+        
+        toast({
+          title: '✅ Dictionnaire chargé',
+          description: `${data.length} entrées affichées`,
+        });
       } else {
-        const result = await supabase.from('idiomatic_expressions').select('*').order('created_at', { ascending: false }).limit(500);
+        // Charger TOUS les idiomes (pas de limite)
+        const result = await supabase.from('idiomatic_expressions').select('*').order('created_at', { ascending: false });
         if (result.error) throw result.error;
         data = result.data || [];
+        
+        toast({
+          title: '✅ Idiomes chargés',
+          description: `${data.length} expressions affichées`,
+        });
       }
 
       setViewData(data);
+      setCurrentPage(1); // Reset to first page
     } catch (error: any) {
       console.error('Error loading data:', error);
+      toast({
+        title: 'Erreur de chargement',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -632,19 +670,13 @@ export default function UnifiedDataManager() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="targetModel">Modèle cible</Label>
-                <Select value={targetModel} onValueChange={(val: string) => setTargetModel(val as 'smt' | 'dictionary' | 'idioms')}>
-                  <SelectTrigger id="targetModel">
-                    <SelectValue placeholder="Sélectionner un modèle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="smt">SMT (Statistical Machine Translation)</SelectItem>
-                    <SelectItem value="dictionary">Dictionnaire</SelectItem>
-                    <SelectItem value="idioms">Idiomes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Import Intelligent:</strong> Le système détecte automatiquement le type de données 
+                  (phrases pour SMT, entrées de dictionnaire, ou idiomes) et les importe dans la bonne table.
+                </AlertDescription>
+              </Alert>
 
               <div className="border-2 border-dashed rounded-lg p-8 text-center">
                 <input
@@ -745,24 +777,38 @@ export default function UnifiedDataManager() {
         <TabsContent value="phrases" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Données d'entraînement SMT ({viewData.length})</CardTitle>
-              <div className="flex gap-2 items-center mt-2">
-                <Label>Source:</Label>
-                <Select value={filterSource} onValueChange={(val) => setFilterSource(val)}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Toutes les sources" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes les sources</SelectItem>
-                    {stats && Object.entries(stats.phrasesBySource).map(([source]) => (
-                      <SelectItem key={source} value={source}>{source}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button size="sm" variant="outline" onClick={() => loadViewData('phrases')}>
-                  <RefreshCw className="h-4 w-4" />
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Données d'entraînement SMT</CardTitle>
+                  <CardDescription>
+                    {viewData.length > 0 ? `${viewData.length.toLocaleString()} phrases chargées` : 'Aucune donnée'}
+                  </CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => loadViewData('phrases')} disabled={loading}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 </Button>
               </div>
+              {stats && Object.keys(stats.phrasesBySource).length > 0 && (
+                <div className="flex gap-2 items-center mt-4">
+                  <Label>Source:</Label>
+                  <Select value={filterSource} onValueChange={(val) => {
+                    setFilterSource(val);
+                    loadViewData('phrases');
+                  }}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Toutes les sources" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les sources</SelectItem>
+                      {Object.entries(stats.phrasesBySource).map(([source, count]) => (
+                        <SelectItem key={source} value={source}>
+                          {source} ({count})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="overflow-auto max-h-[600px]">
@@ -790,7 +836,17 @@ export default function UnifiedDataManager() {
         <TabsContent value="dictionary">
           <Card>
             <CardHeader>
-              <CardTitle>Dictionnaire ({viewData.length} entrées)</CardTitle>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Dictionnaire Bariba-Français</CardTitle>
+                  <CardDescription>
+                    {viewData.length > 0 ? `${viewData.length.toLocaleString()} entrées chargées` : 'Aucune entrée'}
+                  </CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => loadViewData('dictionary')} disabled={loading}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-auto max-h-[600px]">
@@ -818,7 +874,17 @@ export default function UnifiedDataManager() {
         <TabsContent value="idioms">
           <Card>
             <CardHeader>
-              <CardTitle>Idiomes ({viewData.length} expressions)</CardTitle>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Expressions idiomatiques</CardTitle>
+                  <CardDescription>
+                    {viewData.length > 0 ? `${viewData.length.toLocaleString()} expressions chargées` : 'Aucune expression'}
+                  </CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => loadViewData('idioms')} disabled={loading}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-auto max-h-[600px]">
