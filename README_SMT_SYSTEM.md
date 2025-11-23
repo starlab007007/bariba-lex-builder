@@ -241,6 +241,39 @@ public/
 
 ## 🆘 Dépannage
 
+### ❌ PROBLÈME RÉSOLU : Boucle Infinie d'Initialisation
+
+**Symptôme:** L'indicateur "Initialisation du moteur SMT..." reste bloqué indéfiniment.
+
+**Causes identifiées et corrigées:**
+1. ✅ Boucle d'attente sans timeout → **Timeout 60s ajouté**
+2. ✅ Chargement 13,063 phrases sans feedback → **Logs détaillés par batch**
+3. ✅ Absence cleanup React → **Flag `isMounted` ajouté**
+4. ✅ Erreurs silencieuses → **Logs d'erreur explicites**
+
+**Processus normal d'initialisation:**
+```bash
+🚀 Initializing SMT System from database...
+📊 Total exact dans DB: 13,063 phrases
+🔄 Chargement batch 1... (1000/13063)
+🔄 Chargement batch 2... (2000/13063)
+...
+✅ TOUTES LES PHRASES CHARGÉES: 13,063
+🔄 Initialisation des moteurs...
+   ✅ Moteur SMT: fulfilled
+   ✅ Correcteur: fulfilled
+   ✅ Trie Index: fulfilled
+✅ SMT SYSTÈME COMPLÈTEMENT OPÉRATIONNEL
+```
+
+**Temps attendu:** 15-20 secondes pour 13k+ phrases
+
+**Actions si bloqué:**
+1. **Attendre 60 secondes** → Timeout automatique
+2. **Vérifier console** → Chercher "❌ Initialization timeout"
+3. **Rafraîchir page** → Relance initialisation proprement
+4. **Vérifier connexion DB** → Supabase accessible
+
 ### Le système SMT ne s'initialise pas
 
 ```bash
