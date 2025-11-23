@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Search, Download, Upload } from 'lucide-react';
 import DictionaryEntryForm from './DictionaryEntryForm';
-import DictionaryJsonImporter from './DictionaryJsonImporter';
+import EnhancedDictionaryEntryForm from './EnhancedDictionaryEntryForm';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DictionaryManager() {
@@ -146,13 +146,11 @@ export default function DictionaryManager() {
       )}
 
       {showImporter && (
-        <DictionaryJsonImporter
-          onClose={() => setShowImporter(false)}
-          onSuccess={() => {
-            setShowImporter(false);
-            refetch();
-          }}
-        />
+        <div className="mt-4 p-4 border rounded-lg bg-muted">
+          <p className="text-sm text-muted-foreground">
+            Utilisez l'onglet "🎯 Gestion Unifiée" pour importer des entrées de dictionnaire
+          </p>
+        </div>
       )}
     </div>
   );

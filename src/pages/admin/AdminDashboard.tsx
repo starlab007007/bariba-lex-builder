@@ -1,464 +1,250 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Brain, 
-  BarChart3, 
-  Settings,
-  Users,
-  TrendingUp,
-  LogOut,
-  Upload,
-  FlaskConical,
-  Activity,
-  Sparkles,
-  GitCompare,
-  Search,
-  Database,
-  PieChart,
-  Edit3,
-  Download,
-  CheckCircle,
-  FileSearch
-} from 'lucide-react';
 import AdminOverview from '@/components/admin/AdminOverview';
 import DictionaryManager from '@/components/admin/DictionaryManager';
 import TrainingManager from '@/components/admin/TrainingManager';
 import AnalyticsDashboard from '@/components/admin/AnalyticsDashboard';
-import AdminSettings from '@/components/admin/AdminSettings';
 import UserRoleManager from '@/components/admin/UserRoleManager';
-import TrainingAnalytics from '@/components/admin/TrainingAnalytics';
-import ModelTrainingPanel from '@/components/admin/ModelTrainingPanel';
-import { MassDataImporter } from '@/components/admin/MassDataImporter';
+import AdminSettings from '@/components/admin/AdminSettings';
 import ModelTestingPanel from '@/components/admin/ModelTestingPanel';
-import ModelPerformanceDashboard from '@/components/admin/ModelPerformanceDashboard';
 import TranslationComparisonDashboard from '@/components/admin/TranslationComparisonDashboard';
-import TrainingDataEnhancer from '@/components/admin/TrainingDataEnhancer';
-import AutoDictionaryEnricher from '@/components/admin/AutoDictionaryEnricher';
-import AdvancedDictionarySearch from '@/components/AdvancedDictionarySearch';
-import GrammaticalStatsDashboard from '@/components/admin/GrammaticalStatsDashboard';
-import BulkEditPanel from '@/components/admin/BulkEditPanel';
-import DictionaryExporter from '@/components/admin/DictionaryExporter';
-import DictionaryValidator from '@/components/admin/DictionaryValidator';
-import AutoEnrichPanel from '@/components/admin/AutoEnrichPanel';
-import { IdiomManager } from '@/components/admin/IdiomManager';
-import { FeedbackManager } from '@/components/admin/FeedbackManager';
-import { ModelTrainingDashboard } from '@/components/admin/ModelTrainingDashboard';
-import { NLLB200FineTuningPanel } from '@/components/admin/NLLB200FineTuningPanel';
-import { FullDatasetImporter } from '@/components/admin/FullDatasetImporter';
-import { IdiomImporter } from '@/components/admin/IdiomImporter';
-import QualityMetricsDashboard from '@/components/admin/QualityMetricsDashboard';
-import SystemAuditReport from '@/components/admin/SystemAuditReport';
-import TrainingDataViewer from '@/components/admin/TrainingDataViewer';
-import DictionaryDataViewer from '@/components/admin/DictionaryDataViewer';
-import { CompleteIdiomImporter } from '@/components/admin/CompleteIdiomImporter';
-import { HybridTranslationTester } from '@/components/admin/HybridTranslationTester';
-import { DataManagementPanel } from '@/components/admin/DataManagementPanel';
-import { FreeFineTuningGuide } from '@/components/admin/FreeFineTuningGuide';
 import { TranslationDiagnosticDashboard } from '@/components/admin/TranslationDiagnosticDashboard';
-import { ModelABTestingPanel } from '@/components/admin/ModelABTestingPanel';
-import { ComprehensiveDataImporter } from '@/components/admin/ComprehensiveDataImporter';
-import { SMTPerformanceMonitor } from '@/components/admin/SMTPerformanceMonitor';
-import { SMTABTestingPanel } from '@/components/admin/SMTABTestingPanel';
-import { SMTSystemDashboard } from '@/components/admin/SMTSystemDashboard';
-import { PremiumSMTImporter } from '@/components/admin/PremiumSMTImporter';
+import GrammaticalStatsDashboard from '@/components/admin/GrammaticalStatsDashboard';
+import ModelTrainingPanel from '@/components/admin/ModelTrainingPanel';
+import { ModelTrainingDashboard } from '@/components/admin/ModelTrainingDashboard';
+import DictionaryExporter from '@/components/admin/DictionaryExporter';
+import { NLLB200FineTuningPanel } from '@/components/admin/NLLB200FineTuningPanel';
+import { FreeFineTuningGuide } from '@/components/admin/FreeFineTuningGuide';
+import { HybridTranslationTester } from '@/components/admin/HybridTranslationTester';
+import ModelPerformanceDashboard from '@/components/admin/ModelPerformanceDashboard';
+import TrainingAnalytics from '@/components/admin/TrainingAnalytics';
+import AutoEnrichPanel from '@/components/admin/AutoEnrichPanel';
+import QualityMetricsDashboard from '@/components/admin/QualityMetricsDashboard';
+import BulkEditPanel from '@/components/admin/BulkEditPanel';
+import { IdiomManager } from '@/components/admin/IdiomManager';
 import UnifiedDataManager from '@/components/admin/UnifiedDataManager';
+import { SMTSystemDashboard } from '@/components/admin/SMTSystemDashboard';
+import { SMTABTestingPanel } from '@/components/admin/SMTABTestingPanel';
+import SystemAuditReport from '@/components/admin/SystemAuditReport';
+import { 
+  Settings, Users, BarChart3, Database, 
+  FileText, Brain, TestTube2, Globe, 
+  BookOpen, TrendingUp, 
+  Sparkles, Zap, Shield, Target, 
+  Activity, Download, Edit3
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 
 export default function AdminDashboard() {
-  const { signOut, user } = useAuth();
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Administration</h1>
-              <p className="text-sm text-muted-foreground">
-                Dictionnaire Bààtɔ̀nú - {user?.email}
-              </p>
-            </div>
-            <Button onClick={signOut} variant="outline" size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold">Admin - Dictionnaire Bààtɔ̀nú</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">{user?.email}</span>
+            <Button variant="outline" size="sm" onClick={signOut}>
               Déconnexion
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Content - Responsive avec ScrollArea */}
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          {/* Tabs en mode scroll horizontal pour mobile */}
-          <div className="w-full overflow-x-auto">
-            <TabsList className="inline-flex h-auto p-1 gap-1 min-w-full lg:min-w-0 flex-nowrap lg:flex-wrap">
-              <TabsTrigger value="overview" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Vue d'ensemble</span>
-                <span className="sm:hidden">Vue</span>
+      <div className="container py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <div className="overflow-x-auto">
+            <TabsList className="inline-flex flex-wrap h-auto gap-1 bg-muted/50 p-2 min-w-full">
+              {/* 🎯 SECTION DONNÉES */}
+              <div className="flex items-center gap-1 w-full">
+                <Separator className="flex-1" />
+                <span className="text-xs font-semibold text-[hsl(var(--section-data))] px-2 whitespace-nowrap">🎯 DONNÉES</span>
+                <Separator className="flex-1" />
+              </div>
+              <TabsTrigger value="unified-data" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-data))]">
+                <Database className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Gestion Unifiée
               </TabsTrigger>
-              <TabsTrigger value="smt-import" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2 bg-primary/10">
-                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Import SMT Premium</span>
-                <span className="sm:hidden">Import</span>
+              <TabsTrigger value="smt-monitoring" className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Monitoring SMT
               </TabsTrigger>
-              <TabsTrigger value="smt-monitor" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2 bg-green-500/10">
-                <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">📊 Monitoring SMT</span>
-                <span className="sm:hidden">📊 SMT</span>
+              <TabsTrigger value="dictionary" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Dictionnaire
               </TabsTrigger>
-              <TabsTrigger value="smt-ab-test" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2 bg-blue-500/10">
-                <GitCompare className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">🧪 Test A/B SMT</span>
-                <span className="sm:hidden">🧪 A/B</span>
+              <TabsTrigger value="idioms" className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Idiomes
               </TabsTrigger>
-              <TabsTrigger value="audit" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <FileSearch className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Audit Système</span>
-                <span className="sm:hidden">Audit</span>
+
+              {/* 🧪 SECTION TESTS & QUALITÉ */}
+              <div className="flex items-center gap-1 w-full mt-2">
+                <Separator className="flex-1" />
+                <span className="text-xs font-semibold text-[hsl(var(--section-tests))] px-2 whitespace-nowrap">🧪 TESTS & QUALITÉ</span>
+                <Separator className="flex-1" />
+              </div>
+              <TabsTrigger value="smt-ab-test" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-tests))]">
+                <TestTube2 className="h-4 w-4 text-[hsl(var(--section-tests))]" />
+                Test A/B SMT
               </TabsTrigger>
-              <TabsTrigger value="training-viewer" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Données d'Entraînement</span>
-                <span className="sm:hidden">Train Data</span>
+              <TabsTrigger value="model-testing" className="flex items-center gap-2">
+                <TestTube2 className="h-4 w-4 text-[hsl(var(--section-tests))]" />
+                Test Modèle
               </TabsTrigger>
-              <TabsTrigger value="dictionary-viewer" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Données Dictionnaire</span>
-                <span className="sm:hidden">Dict Data</span>
+              <TabsTrigger value="hybrid-test" className="flex items-center gap-2">
+                <TestTube2 className="h-4 w-4 text-[hsl(var(--section-tests))]" />
+                Test Hybride
               </TabsTrigger>
-              <TabsTrigger value="dataset" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Dataset</span>
-                <span className="sm:hidden">Data</span>
+              <TabsTrigger value="quality" className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-[hsl(var(--section-tests))]" />
+                Qualité
               </TabsTrigger>
-              <TabsTrigger value="dictionary" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Dictionnaire</span>
-                <span className="sm:hidden">Dict</span>
+              <TabsTrigger value="audit" className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-[hsl(var(--section-tests))]" />
+                Audit Système
               </TabsTrigger>
-              <TabsTrigger value="training" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Entraînement</span>
-                <span className="sm:hidden">Train</span>
+
+              {/* 🤖 SECTION IA & ENTRAÎNEMENT */}
+              <div className="flex items-center gap-1 w-full mt-2">
+                <Separator className="flex-1" />
+                <span className="text-xs font-semibold text-[hsl(var(--section-ai))] px-2 whitespace-nowrap">🤖 IA & ENTRAÎNEMENT</span>
+                <Separator className="flex-1" />
+              </div>
+              <TabsTrigger value="training" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-ai))]">
+                <Brain className="h-4 w-4 text-[hsl(var(--section-ai))]" />
+                Entraînement
               </TabsTrigger>
-              <TabsTrigger value="import" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Import Massif</span>
-                <span className="sm:hidden">Import</span>
+              <TabsTrigger value="fine-tuning" className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[hsl(var(--section-ai))]" />
+                Fine-Tuning
               </TabsTrigger>
-              <TabsTrigger value="test" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <FlaskConical className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Test du Modèle</span>
-                <span className="sm:hidden">Test</span>
+              <TabsTrigger value="nllb" className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-[hsl(var(--section-ai))]" />
+                NLLB-200
               </TabsTrigger>
-              <TabsTrigger value="model-performance" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Performance</span>
-                <span className="sm:hidden">Perf</span>
+              <TabsTrigger value="free-tuning" className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[hsl(var(--section-ai))]" />
+                Fine-Tuning GRATUIT
               </TabsTrigger>
-              <TabsTrigger value="comparison" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <GitCompare className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Comparaison</span>
-                <span className="sm:hidden">Comp</span>
+              <TabsTrigger value="auto-enrich" className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[hsl(var(--section-ai))]" />
+                Auto-Enrichissement
               </TabsTrigger>
-              <TabsTrigger value="enhance" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">IA Avancée</span>
-                <span className="sm:hidden">IA</span>
+
+              {/* 📈 SECTION ANALYTICS & PERFORMANCE */}
+              <div className="flex items-center gap-1 w-full mt-2">
+                <Separator className="flex-1" />
+                <span className="text-xs font-semibold text-[hsl(var(--section-analytics))] px-2 whitespace-nowrap">📈 ANALYTICS</span>
+                <Separator className="flex-1" />
+              </div>
+              <TabsTrigger value="analytics" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-analytics))]">
+                <BarChart3 className="h-4 w-4 text-[hsl(var(--section-analytics))]" />
+                Analytics
               </TabsTrigger>
-              <TabsTrigger value="performance" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Entraînement</span>
-                <span className="sm:hidden">Ent</span>
+              <TabsTrigger value="model-performance" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-[hsl(var(--section-analytics))]" />
+                Performance Modèle
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Analytics</span>
-                <span className="sm:hidden">Ana</span>
+              <TabsTrigger value="training-analytics" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-[hsl(var(--section-analytics))]" />
+                Analytics Training
               </TabsTrigger>
-              <TabsTrigger value="users" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Utilisateurs</span>
-                <span className="sm:hidden">Users</span>
+              <TabsTrigger value="comparison" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-[hsl(var(--section-analytics))]" />
+                Comparaison
               </TabsTrigger>
-              <TabsTrigger value="idioms" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Idiomes</span>
-                <span className="sm:hidden">Idiom</span>
+              <TabsTrigger value="diagnostic" className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-[hsl(var(--section-analytics))]" />
+                Diagnostic
               </TabsTrigger>
-              <TabsTrigger value="quality" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Qualité</span>
-                <span className="sm:hidden">Qual</span>
+
+              {/* 🛠️ SECTION OUTILS */}
+              <div className="flex items-center gap-1 w-full mt-2">
+                <Separator className="flex-1" />
+                <span className="text-xs font-semibold text-[hsl(var(--section-tools))] px-2 whitespace-nowrap">🛠️ OUTILS</span>
+                <Separator className="flex-1" />
+              </div>
+              <TabsTrigger value="grammar-stats" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-tools))]">
+                <BarChart3 className="h-4 w-4 text-[hsl(var(--section-tools))]" />
+                Stats Grammaticales
               </TabsTrigger>
-              <TabsTrigger value="feedback" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Feedback</span>
-                <span className="sm:hidden">Feed</span>
+              <TabsTrigger value="bulk-edit" className="flex items-center gap-2">
+                <Edit3 className="h-4 w-4 text-[hsl(var(--section-tools))]" />
+                Édition Masse
               </TabsTrigger>
-              <TabsTrigger value="fine-tuning" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Fine-Tuning</span>
-                <span className="sm:hidden">AI</span>
+              <TabsTrigger value="export" className="flex items-center gap-2">
+                <Download className="h-4 w-4 text-[hsl(var(--section-tools))]" />
+                Export
               </TabsTrigger>
-              <TabsTrigger value="nllb-fine-tuning" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">NLLB-200</span>
-                <span className="sm:hidden">NLLB</span>
+
+              {/* 👥 SECTION GESTION */}
+              <div className="flex items-center gap-1 w-full mt-2">
+                <Separator className="flex-1" />
+                <span className="text-xs font-semibold text-[hsl(var(--section-management))] px-2 whitespace-nowrap">👥 GESTION</span>
+                <Separator className="flex-1" />
+              </div>
+              <TabsTrigger value="overview" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-management))]">
+                <BarChart3 className="h-4 w-4 text-[hsl(var(--section-management))]" />
+                Vue d'ensemble
               </TabsTrigger>
-              <TabsTrigger value="dictionary-enricher" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Enrichissement Dict</span>
-                <span className="sm:hidden">Enrich</span>
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-[hsl(var(--section-management))]" />
+                Utilisateurs
               </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Paramètres</span>
-                <span className="sm:hidden">Param</span>
-              </TabsTrigger>
-              <TabsTrigger value="enrich" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Enrichissement</span>
-                <span className="sm:hidden">Enrich</span>
-              </TabsTrigger>
-              <TabsTrigger value="auto-enrich" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Auto-enrichissement</span>
-                <span className="sm:hidden">Auto</span>
-              </TabsTrigger>
-              <TabsTrigger value="advanced-search" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Recherche Avancée</span>
-                <span className="sm:hidden">Rech</span>
-              </TabsTrigger>
-              <TabsTrigger value="stats" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <PieChart className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Statistiques</span>
-                <span className="sm:hidden">Stats</span>
-              </TabsTrigger>
-              <TabsTrigger value="bulk-edit" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Édition Masse</span>
-                <span className="sm:hidden">Edit</span>
-              </TabsTrigger>
-              <TabsTrigger value="export" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Export</span>
-                <span className="sm:hidden">Exp</span>
-              </TabsTrigger>
-              <TabsTrigger value="validation" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Validation</span>
-                <span className="sm:hidden">Valid</span>
-              </TabsTrigger>
-              <TabsTrigger value="hybrid-test" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <FlaskConical className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Test Hybride</span>
-                <span className="sm:hidden">Test</span>
-              </TabsTrigger>
-              <TabsTrigger value="data-management" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Gestion Données</span>
-                <span className="sm:hidden">Données</span>
-              </TabsTrigger>
-              <TabsTrigger value="free-finetuning" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2 bg-green-500/10 text-green-600">
-                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">🎁 Fine-Tuning GRATUIT</span>
-                <span className="sm:hidden">🎁 Free</span>
-              </TabsTrigger>
-              <TabsTrigger value="diagnostic" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Diagnostic</span>
-                <span className="sm:hidden">Diag</span>
-              </TabsTrigger>
-              <TabsTrigger value="ab-testing" className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 py-2">
-                <GitCompare className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="hidden sm:inline">A/B Testing</span>
-                <span className="sm:hidden">A/B</span>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-[hsl(var(--section-management))]" />
+                Paramètres
               </TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="overview" className="space-y-4">
-            <UnifiedDataManager />
-          </TabsContent>
-
-          <TabsContent value="smt-import" className="space-y-4">
-            <PremiumSMTImporter />
-          </TabsContent>
-
-          <TabsContent value="smt-import" className="space-y-4">
-            <PremiumSMTImporter />
-          </TabsContent>
-
-          <TabsContent value="smt-monitor" className="space-y-4">
-            <SMTSystemDashboard />
-          </TabsContent>
-
-          <TabsContent value="smt-ab-test" className="space-y-4">
+          {/* Tab Contents */}
+          <TabsContent value="overview"><AdminOverview /></TabsContent>
+          <TabsContent value="unified-data"><UnifiedDataManager /></TabsContent>
+          <TabsContent value="smt-monitoring"><SMTSystemDashboard /></TabsContent>
+          <TabsContent value="dictionary"><DictionaryManager /></TabsContent>
+          <TabsContent value="idioms"><IdiomManager /></TabsContent>
+          
+          <TabsContent value="smt-ab-test"><SMTABTestingPanel /></TabsContent>
+          <TabsContent value="model-testing"><ModelTestingPanel /></TabsContent>
+          <TabsContent value="hybrid-test"><HybridTranslationTester /></TabsContent>
+          <TabsContent value="quality"><QualityMetricsDashboard /></TabsContent>
+          <TabsContent value="audit"><SystemAuditReport /></TabsContent>
+          
+          <TabsContent value="training">
             <div className="space-y-4">
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <h2 className="text-xl font-bold text-blue-700 dark:text-blue-400 mb-2">
-                  🧪 Test A/B : Ancien vs Nouveau Système
-                </h2>
-                <p className="text-muted-foreground">
-                  Comparez les performances entre l'ancien système (SimplifiedAI) et le nouveau moteur SMT sur vos phrases test.
-                </p>
-              </div>
-              <SMTABTestingPanel />
+              <TrainingManager />
+              <ModelTrainingPanel />
             </div>
           </TabsContent>
-
-          <TabsContent value="audit" className="space-y-4">
-            <SystemAuditReport />
-          </TabsContent>
-
-          <TabsContent value="training-viewer" className="space-y-4">
-            <TrainingDataViewer />
-          </TabsContent>
-
-          <TabsContent value="dictionary-viewer" className="space-y-4">
-            <DictionaryDataViewer />
-          </TabsContent>
-
-          <TabsContent value="dataset" className="space-y-4">
-            <FullDatasetImporter />
-          </TabsContent>
-
-          <TabsContent value="dictionary" className="space-y-4">
-            <DictionaryManager />
-          </TabsContent>
-
-          <TabsContent value="training" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <TrainingManager />
-              </div>
-              <div>
-                <ModelTrainingPanel />
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="import" className="space-y-4">
-            <MassDataImporter />
-          </TabsContent>
-
-          <TabsContent value="test" className="space-y-4">
-            <ModelTestingPanel />
-          </TabsContent>
-
-          <TabsContent value="model-performance" className="space-y-4">
-            <ModelPerformanceDashboard />
-          </TabsContent>
-
-          <TabsContent value="comparison" className="space-y-4">
-            <TranslationComparisonDashboard />
-          </TabsContent>
-
-          <TabsContent value="enhance" className="space-y-4">
-            <TrainingDataEnhancer />
-          </TabsContent>
-
-          <TabsContent value="performance" className="space-y-4">
-            <TrainingAnalytics />
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-4">
-            <AnalyticsDashboard />
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-4">
-            <UserRoleManager />
-          </TabsContent>
-
-          <TabsContent value="idioms" className="space-y-4">
-            <div className="space-y-6">
-              <CompleteIdiomImporter />
-              <IdiomImporter />
-              <IdiomManager />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="quality" className="space-y-4">
-            <QualityMetricsDashboard />
-          </TabsContent>
-
-          <TabsContent value="feedback" className="space-y-4">
-            <FeedbackManager />
-          </TabsContent>
-
-          <TabsContent value="fine-tuning" className="space-y-4">
-            <ModelTrainingDashboard />
-          </TabsContent>
-
-          <TabsContent value="nllb-fine-tuning" className="space-y-4">
-            <NLLB200FineTuningPanel />
-          </TabsContent>
-
-          <TabsContent value="dictionary-enricher" className="space-y-4">
-            <AutoDictionaryEnricher />
-          </TabsContent>
-
-          <TabsContent value="settings" className="space-y-4">
-            <AdminSettings />
-          </TabsContent>
-
-          <TabsContent value="enrich" className="space-y-4">
-            <AutoDictionaryEnricher />
-          </TabsContent>
-
-          <TabsContent value="auto-enrich" className="space-y-4">
-            <AutoEnrichPanel />
-          </TabsContent>
-
-          <TabsContent value="advanced-search" className="space-y-4">
-            <AdvancedDictionarySearch />
-          </TabsContent>
-
-          <TabsContent value="stats" className="space-y-4">
-            <GrammaticalStatsDashboard />
-          </TabsContent>
-
-          <TabsContent value="bulk-edit" className="space-y-4">
-            <BulkEditPanel />
-          </TabsContent>
-
-          <TabsContent value="export" className="space-y-4">
-            <DictionaryExporter />
-          </TabsContent>
-
-          <TabsContent value="validation" className="space-y-4">
-            <DictionaryValidator />
-          </TabsContent>
-
-          <TabsContent value="hybrid-test" className="space-y-4">
-            <HybridTranslationTester />
-          </TabsContent>
-
-          <TabsContent value="diagnostic" className="space-y-4">
-            <TranslationDiagnosticDashboard />
-          </TabsContent>
-
-          <TabsContent value="ab-testing" className="space-y-4">
-            <ModelABTestingPanel />
-          </TabsContent>
-
-          <TabsContent value="data-management" className="space-y-4">
-            <DataManagementPanel />
-          </TabsContent>
-
-          <TabsContent value="free-finetuning" className="space-y-4">
-            <FreeFineTuningGuide />
-          </TabsContent>
+          <TabsContent value="fine-tuning"><ModelTrainingDashboard /></TabsContent>
+          <TabsContent value="nllb"><NLLB200FineTuningPanel /></TabsContent>
+          <TabsContent value="free-tuning"><FreeFineTuningGuide /></TabsContent>
+          <TabsContent value="auto-enrich"><AutoEnrichPanel /></TabsContent>
+          
+          <TabsContent value="analytics"><AnalyticsDashboard /></TabsContent>
+          <TabsContent value="model-performance"><ModelPerformanceDashboard /></TabsContent>
+          <TabsContent value="training-analytics"><TrainingAnalytics /></TabsContent>
+          <TabsContent value="comparison"><TranslationComparisonDashboard /></TabsContent>
+          <TabsContent value="diagnostic"><TranslationDiagnosticDashboard /></TabsContent>
+          
+          <TabsContent value="grammar-stats"><GrammaticalStatsDashboard /></TabsContent>
+          <TabsContent value="bulk-edit"><BulkEditPanel /></TabsContent>
+          <TabsContent value="export"><DictionaryExporter /></TabsContent>
+          
+          <TabsContent value="users"><UserRoleManager /></TabsContent>
+          <TabsContent value="settings"><AdminSettings /></TabsContent>
         </Tabs>
-      </main>
+      </div>
     </div>
   );
 }

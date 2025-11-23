@@ -67,6 +67,14 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Admin sections colors */
+    --section-data: 210 100% 56%;
+    --section-tests: 142 76% 36%;
+    --section-ai: 262 52% 47%;
+    --section-analytics: 48 96% 53%;
+    --section-tools: 24 100% 50%;
+    --section-management: 0 72% 51%;
   }
 
   .dark {
@@ -115,6 +123,14 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Admin sections colors (darker for dark mode) */
+    --section-data: 210 90% 50%;
+    --section-tests: 142 70% 40%;
+    --section-ai: 262 48% 55%;
+    --section-analytics: 48 90% 60%;
+    --section-tools: 24 95% 55%;
+    --section-management: 0 68% 58%;
   }
 }
 
