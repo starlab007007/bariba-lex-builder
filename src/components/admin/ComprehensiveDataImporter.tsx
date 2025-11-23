@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { DataQualityValidator } from "./DataQualityValidator";
 import { 
   Database, 
   Trash2, 
@@ -430,8 +431,9 @@ export function ComprehensiveDataImporter() {
       </Alert>
 
       <Tabs defaultValue="files" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="files">Import Fichier par Fichier</TabsTrigger>
+          <TabsTrigger value="quality">Validation & Export</TabsTrigger>
           <TabsTrigger value="manage">Gestion des Données</TabsTrigger>
         </TabsList>
 
@@ -585,6 +587,10 @@ export function ComprehensiveDataImporter() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="quality" className="space-y-4">
+          <DataQualityValidator />
         </TabsContent>
 
         <TabsContent value="manage" className="space-y-4">
