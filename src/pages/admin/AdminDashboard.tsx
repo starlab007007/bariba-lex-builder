@@ -55,6 +55,17 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{user?.email}</span>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => {
+                localStorage.removeItem('smt_initialization_status');
+                window.location.reload();
+              }}
+              title="Force la réinitialisation complète du moteur SMT"
+            >
+              🔄 Reset SMT
+            </Button>
             <Button variant="outline" size="sm" onClick={signOut}>
               Déconnexion
             </Button>

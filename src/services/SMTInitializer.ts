@@ -46,21 +46,37 @@ export class SMTInitializer {
       return this.initializationStatus;
     }
 
+    // 🔍 SOLUTION 5: Vérification de cohérence avec la base de données
+    const { count: dbPhrasesCount } = await supabase
+      .from('training_phrases')
+      .select('*', { count: 'exact', head: true });
+
     // Check localStorage for persistent initialization status
     const storedStatus = localStorage.getItem('smt_initialization_status');
     if (storedStatus) {
       try {
         const parsed = JSON.parse(storedStatus);
         const age = Date.now() - parsed.timestamp;
-        // If initialized less than 24h ago, reuse
-        if (age < 24 * 60 * 60 * 1000 && parsed.isInitialized) {
+        
+        // 🔍 SOLUTION 5: Vérifier la cohérence du cache avec la DB
+        if (parsed.phrasesCount !== dbPhrasesCount) {
+          console.warn(`⚠️ Incohérence détectée: cache=${parsed.phrasesCount}, DB=${dbPhrasesCount}`);
+          console.warn("♻️ Invalidation du cache et réinitialisation...");
+          localStorage.removeItem('smt_initialization_status');
+        }
+        // If initialized less than 24h ago AND coherent
+        else if (age < 24 * 60 * 60 * 1000 && parsed.isInitialized) {
           console.log("✅ SMT System already initialized (from localStorage, age: " + Math.round(age / 1000 / 60) + "min)");
           this.initializationStatus = parsed;
-          // Verify engines are still ready
-          if (statisticalEngine.isReady() && enhancedCorrector.isReady()) {
+          
+          // ✅ SOLUTION 2: Vérifier que les moteurs sont VRAIMENT prêts
+          const enginesReady = statisticalEngine.isReady() && enhancedCorrector.isReady();
+          
+          if (enginesReady) {
+            console.log(`✅ Moteurs validés: SMT=${statisticalEngine.isReady()}, Corrector=${enhancedCorrector.isReady()}`);
             return this.initializationStatus;
           } else {
-            console.log("⚠️ Engines not ready, re-initializing...");
+            console.warn("⚠️ Cache valide mais moteurs non prêts, réinitialisation...");
             localStorage.removeItem('smt_initialization_status');
           }
         }
