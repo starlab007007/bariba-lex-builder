@@ -164,8 +164,18 @@ export class SMTInitializer {
    * Reset initialization (force re-init)
    */
   reset(): void {
+    console.log("🔄 Resetting SMT initialization status...");
     this.initializationStatus = null;
     this.isInitializing = false;
+  }
+
+  /**
+   * Refresh SMT system after data changes
+   */
+  async refresh(): Promise<InitializationStatus> {
+    console.log("🔄 Refreshing SMT system...");
+    this.reset();
+    return await this.initialize();
   }
 }
 

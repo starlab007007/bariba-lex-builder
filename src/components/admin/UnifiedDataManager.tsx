@@ -87,20 +87,16 @@ export default function UnifiedDataManager() {
     }
   };
 
-  // Reconnaissance intelligente des champs
+  // Reconnaissance intelligente des champs (PHRASES ET IDIOMES uniquement)
   const detectFieldMapping = (data: any[]) => {
     if (!data || data.length === 0) return { type: null, mappings: [], confidence: 0, fields: [] };
 
     const firstItem = data[0];
     const fields = Object.keys(firstItem);
 
-    // Patterns pour phrases
+    // Patterns pour phrases (PRIORITÉ)
     const frenchPatterns = ['french', 'francais', 'français', 'fr', 'french_text', 'texte_francais'];
     const baribaPatterns = ['bariba', 'baatonum', 'bba', 'bariba_text', 'texte_bariba'];
-    
-    // Patterns pour dictionnaire (élargi)
-    const wordPatterns = ['word', 'mot', 'terme', 'entry', 'headword', 'lemme', 'lexeme', 'bariba', 'baatonum'];
-    const definitionPatterns = ['definition', 'def', 'sens', 'meaning', 'traduction', 'translation', 'french', 'francais', 'français'];
     
     // Patterns pour idiomes
     const frenchExprPatterns = ['french_expression', 'expression_francaise', 'idiom_fr'];
@@ -108,7 +104,7 @@ export default function UnifiedDataManager() {
 
     let bestMatch = { type: null as any, confidence: 0, mappings: [] as any[], fields: [] as string[] };
 
-    // Test phrases
+    // Test phrases (PRIORITÉ)
     const frenchField = fields.find(f => frenchPatterns.some(p => f.toLowerCase().includes(p)));
     const baribaField = fields.find(f => baribaPatterns.some(p => f.toLowerCase().includes(p)));
     
@@ -116,38 +112,16 @@ export default function UnifiedDataManager() {
       const validCount = data.filter(item => item[frenchField]?.trim() && item[baribaField]?.trim()).length;
       const confidence = (validCount / data.length) * 100;
       
-      if (confidence > bestMatch.confidence) {
-        bestMatch = {
-          type: 'phrases',
-          confidence,
-          mappings: [
-            { source: frenchField, target: 'french_text' },
-            { source: baribaField, target: 'bariba_text' }
-          ],
-          fields
-        };
-      }
-    }
-
-    // Test dictionnaire
-    const wordField = fields.find(f => wordPatterns.some(p => f.toLowerCase().includes(p)));
-    const defField = fields.find(f => definitionPatterns.some(p => f.toLowerCase().includes(p)));
-    
-    if (wordField && defField) {
-      const validCount = data.filter(item => item[wordField]?.trim() && item[defField]?.trim()).length;
-      const confidence = (validCount / data.length) * 100;
-      
-      if (confidence > bestMatch.confidence) {
-        bestMatch = {
-          type: 'dictionary',
-          confidence,
-          mappings: [
-            { source: wordField, target: 'word' },
-            { source: defField, target: 'definition' }
-          ],
-          fields
-        };
-      }
+      bestMatch = {
+        type: 'phrases',
+        confidence,
+        mappings: [
+          { source: frenchField, target: 'french_text' },
+          { source: baribaField, target: 'bariba_text' }
+        ],
+        fields
+      };
+      return bestMatch; // Retourner immédiatement si phrases détectées
     }
 
     // Test idiomes
@@ -158,17 +132,31 @@ export default function UnifiedDataManager() {
       const validCount = data.filter(item => item[frExprField]?.trim() && item[baExprField]?.trim()).length;
       const confidence = (validCount / data.length) * 100;
       
-      if (confidence > bestMatch.confidence) {
-        bestMatch = {
-          type: 'idioms',
-          confidence,
-          mappings: [
-            { source: frExprField, target: 'french_expression' },
-            { source: baExprField, target: 'bariba_expression' }
-          ],
-          fields
-        };
-      }
+      bestMatch = {
+        type: 'idioms',
+        confidence,
+        mappings: [
+          { source: frExprField, target: 'french_expression' },
+          { source: baExprField, target: 'bariba_expression' }
+        ],
+        fields
+      };
+      return bestMatch;
+    }
+
+    // DICTIONNAIRE DÉTECTÉ: Rediriger vers AdvancedDictionaryManager
+    const wordPatterns = ['word', 'mot', 'terme', 'entry', 'headword', 'lemme'];
+    const definitionPatterns = ['definition', 'def', 'sens', 'meaning', 'traduction'];
+    const wordField = fields.find(f => wordPatterns.some(p => f.toLowerCase().includes(p)));
+    const defField = fields.find(f => definitionPatterns.some(p => f.toLowerCase().includes(p)));
+    
+    if (wordField && defField) {
+      return {
+        type: 'dictionary' as any,
+        confidence: 80,
+        mappings: [],
+        fields
+      };
     }
 
     return bestMatch;
@@ -191,10 +179,22 @@ export default function UnifiedDataManager() {
       // Détection intelligente
       const detection = detectFieldMapping(data);
       
+      // BLOQUER les imports de dictionnaire
+      if (detection.type === 'dictionary') {
+        toast({
+          title: "⚠️ Import de dictionnaire détecté",
+          description: "Utilisez l'onglet 'Dictionnaire' dans la section Data pour importer les entrées de dictionnaire",
+          variant: "destructive"
+        });
+        setFile(null);
+        return;
+      }
+      
       if (!detection.type || detection.confidence < 50) {
         throw new Error(
           `Format non reconnu. Champs détectés: ${detection.fields.join(', ')}. ` +
-          `Le fichier doit contenir des paires français-bariba, des entrées de dictionnaire, ou des idiomes.`
+          `Ce gestionnaire accepte uniquement les PHRASES de traduction français-bariba et les IDIOMES. ` +
+          `Pour le dictionnaire, utilisez l'onglet 'Dictionnaire'.`
         );
       }
 
@@ -213,13 +213,6 @@ export default function UnifiedDataManager() {
         data.forEach((item: any) => {
           if (item.quality_score) totalQuality += item.quality_score;
         });
-      } else if (detection.type === 'dictionary') {
-        const wordField = detection.mappings.find(m => m.target === 'word')?.source;
-        const defField = detection.mappings.find(m => m.target === 'definition')?.source;
-        
-        validCount = data.filter((item: any) => 
-          item[wordField as string]?.trim() && item[defField as string]?.trim()
-        ).length;
       } else if (detection.type === 'idioms') {
         const frField = detection.mappings.find(m => m.target === 'french_expression')?.source;
         const baField = detection.mappings.find(m => m.target === 'bariba_expression')?.source;
@@ -309,43 +302,6 @@ export default function UnifiedDataManager() {
               quality_score: item.quality_score || 0.85,
               created_by: user?.id
             };
-          } else if (preview.type === 'dictionary') {
-            const wordField = preview.mappedFields.find(m => m.target === 'word')?.source;
-            const defField = preview.mappedFields.find(m => m.target === 'definition')?.source;
-            
-            if (!wordField || !defField) continue;
-            
-            const word = item[wordField]?.toString().trim();
-            const def = item[defField]?.toString().trim();
-            
-            if (!word || !def) {
-              skipped++;
-              continue;
-            }
-            
-            key = word;
-            cleanItem = {
-              word,
-              definition: def,
-              part_of_speech: item.part_of_speech || item.pos || item.type || null,
-              phonetic: item.phonetic || item.pronunciation || item.phone || null,
-              example_bariba: Array.isArray(item.example_bariba) ? item.example_bariba : 
-                              Array.isArray(item.examples_bariba) ? item.examples_bariba :
-                              item.example ? [item.example] : null,
-              example_francais: Array.isArray(item.example_francais) ? item.example_francais :
-                               Array.isArray(item.examples_francais) ? item.examples_francais :
-                               Array.isArray(item.examples_french) ? item.examples_french :
-                               item.example_french ? [item.example_french] : null,
-              french_keywords: Array.isArray(item.french_keywords) ? item.french_keywords :
-                              Array.isArray(item.keywords) ? item.keywords : null,
-              nominal_class: item.nominal_class || item.noun_class || item.class || null,
-              plural_form: item.plural_form || item.plural || null,
-              verbal_group: item.verbal_group || item.verb_group || null,
-              tone_pattern: item.tone_pattern || item.tones || null,
-              is_verified: true,
-              quality_score: item.quality_score || item.score || 0.9,
-              created_by: user?.id
-            };
           } else if (preview.type === 'idioms') {
             const frField = preview.mappedFields.find(m => m.target === 'french_expression')?.source;
             const baField = preview.mappedFields.find(m => m.target === 'bariba_expression')?.source;
@@ -392,20 +348,11 @@ export default function UnifiedDataManager() {
         const batch = uniqueData.slice(i, i + batchSize);
         const tableName = preview.type === 'phrases' 
           ? 'training_phrases' 
-          : preview.type === 'dictionary' 
-          ? 'dictionary_entries' 
           : 'idiomatic_expressions';
 
         let result;
         try {
-          if (preview.type === 'dictionary') {
-            result = await supabase.from(tableName).upsert(batch, { 
-              onConflict: 'word',
-              ignoreDuplicates: false 
-            });
-          } else {
-            result = await supabase.from(tableName).insert(batch);
-          }
+          result = await supabase.from(tableName).insert(batch);
 
           if (result.error) {
             console.error(`❌ Erreur batch ${i}:`, result.error);
@@ -427,12 +374,22 @@ export default function UnifiedDataManager() {
 
       await loadStats();
       
+      // Rafraîchir le système SMT après import de phrases
+      if (preview.type === 'phrases' && imported > 0) {
+        console.log("🔄 Rafraîchissement du système SMT...");
+        try {
+          const { smtInitializer } = await import('@/services/SMTInitializer');
+          await smtInitializer.refresh();
+          console.log("✅ SMT rafraîchi avec succès");
+        } catch (err) {
+          console.warn("⚠️ Erreur rafraîchissement SMT:", err);
+        }
+      }
+      
       // Auto-switch to visualization tab
       if (preview.type === 'phrases') {
         await loadViewData('phrases');
-      } else if (preview.type === 'dictionary') {
-        await loadViewData('dictionary');
-      } else {
+      } else if (preview.type === 'idioms') {
         await loadViewData('idioms');
       }
       

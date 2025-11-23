@@ -20,24 +20,16 @@ export function SMTInitializer() {
           console.log("✅ SMT system initialized successfully");
           setInitialized(true);
           
-          // Show success toast only if we have premium data
-          if (status.phrasesCount >= 10000) {
-            toast({
-              title: "✅ Moteur SMT activé",
-              description: `${status.phrasesCount.toLocaleString()} paires chargées`,
-            });
-          } else if (status.phrasesCount > 0) {
-            toast({
-              title: "⚠️ SMT initialisé (données limitées)",
-              description: `${status.phrasesCount} paires. Importez plus de données pour des performances optimales.`,
-            });
-          }
+          // Show accurate phrase count
+          toast({
+            title: "✅ Moteur SMT activé",
+            description: `${status.phrasesCount.toLocaleString()} paires FR-BBA chargées`,
+          });
         } else {
           console.warn("⚠️ SMT system initialized but not fully ready");
         }
       } catch (error: any) {
         console.warn("⚠️ SMT initialization skipped:", error.message);
-        // Don't show error toast for missing data - user can initialize manually
         if (!error.message.includes('Insufficient data')) {
           toast({
             title: "ℹ️ SMT non initialisé",
@@ -48,10 +40,10 @@ export function SMTInitializer() {
       }
     };
 
-    // Initialize after a short delay to not block UI
+    // Initialize after a short delay
     const timer = setTimeout(initializeSMT, 1000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [toast]);
 
   return null; // This component doesn't render anything
 }
