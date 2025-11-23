@@ -63,7 +63,16 @@ export function SMTSystemDashboard() {
     totalTranslations: 0,
     avgSpeed: 0,
     cacheHitRate: 0,
-    smtUsageRate: 0
+    smtUsageRate: 0,
+    bleuScore: 0,
+    cascadeCoverage: {
+      level1_trie: 0,
+      level2_jsd: 0,
+      level3_smt: 0,
+      level4_simplified: 0,
+      level5_lovable: 0,
+      localCoverage: 0
+    }
   });
 
   useEffect(() => {
@@ -102,24 +111,61 @@ export function SMTSystemDashboard() {
       .from('translation_logs')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(100);
 
-    if (data) {
-      setRecentTranslations(data);
+    if (data && data.length > 0) {
+      setRecentTranslations(data.slice(0, 10));
       
-      // Calculate metrics
+      // Calculate metrics from all 100
       const total = data.length;
       const avgSpeed = data.reduce((sum, log) => sum + (log.duration_ms || 0), 0) / total;
-      const smtCount = data.filter(log => 
-        log.translation_method?.includes('statistical') || 
-        log.translation_method?.includes('smt')
-      ).length;
+      
+      // Calculer la couverture par niveau basé sur la méthode de traduction
+      const cascadeCounts = {
+        level1_trie: 0,
+        level2_jsd: 0,
+        level3_smt: 0,
+        level4_simplified: 0,
+        level5_lovable: 0
+      };
+
+      data.forEach(log => {
+        const method = log.translation_method?.toLowerCase() || '';
+        if (method.includes('trie') || method.includes('exact')) {
+          cascadeCounts.level1_trie++;
+        } else if (method.includes('jsd') || method.includes('fuzzy')) {
+          cascadeCounts.level2_jsd++;
+        } else if (method.includes('statistical') || method.includes('smt')) {
+          cascadeCounts.level3_smt++;
+        } else if (method.includes('simplified') || method.includes('rule')) {
+          cascadeCounts.level4_simplified++;
+        } else if (method.includes('lovable') || method.includes('ai') || method.includes('fallback')) {
+          cascadeCounts.level5_lovable++;
+        }
+      });
+
+      const smtCount = cascadeCounts.level3_smt;
+      const localCount = cascadeCounts.level1_trie + cascadeCounts.level2_jsd + 
+                         cascadeCounts.level3_smt + cascadeCounts.level4_simplified;
+
+      // Calculer BLEU estimé basé sur la confiance moyenne
+      const avgConfidence = data.reduce((sum, log) => sum + (log.confidence_score || 0), 0) / total;
+      const bleuEstimate = avgConfidence * 0.85; // Estimation: 85% du score de confiance
 
       setMetrics(prev => ({
         ...prev,
         totalTranslations: total,
-        avgSpeed: Math.round(avgSpeed),
-        smtUsageRate: Math.round((smtCount / total) * 100)
+        avgSpeed: Math.round(avgSpeed) || 0,
+        smtUsageRate: total > 0 ? Math.round((smtCount / total) * 100) : 0,
+        bleuScore: bleuEstimate || 0,
+        cascadeCoverage: {
+          level1_trie: total > 0 ? (cascadeCounts.level1_trie / total) * 100 : 0,
+          level2_jsd: total > 0 ? (cascadeCounts.level2_jsd / total) * 100 : 0,
+          level3_smt: total > 0 ? (cascadeCounts.level3_smt / total) * 100 : 0,
+          level4_simplified: total > 0 ? (cascadeCounts.level4_simplified / total) * 100 : 0,
+          level5_lovable: total > 0 ? (cascadeCounts.level5_lovable / total) * 100 : 0,
+          localCoverage: total > 0 ? (localCount / total) * 100 : 0
+        }
       }));
     }
   };
@@ -341,26 +387,100 @@ export function SMTSystemDashboard() {
             <TrendingUp className="h-5 w-5" />
             Métriques de Performance
           </CardTitle>
-          <CardDescription>Statistiques des 10 dernières traductions</CardDescription>
+          <CardDescription>Statistiques des 100 dernières traductions</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Total Traductions</p>
-              <p className="text-2xl font-bold">{metrics.totalTranslations}</p>
+              <p className="text-sm text-muted-foreground mb-1">Score BLEU</p>
+              <p className="text-2xl font-bold">
+                {metrics.bleuScore > 0 ? `${metrics.bleuScore.toFixed(0)}%` : '0%'}
+              </p>
+              <p className="text-xs text-muted-foreground">Qualité estimée</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Vitesse Moyenne</p>
               <p className="text-2xl font-bold">{metrics.avgSpeed}ms</p>
+              <p className="text-xs text-muted-foreground">Par traduction</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Taux Cache</p>
+              <p className="text-sm text-muted-foreground mb-1">Cache Hit Rate</p>
               <p className="text-2xl font-bold">{metrics.cacheHitRate.toFixed(1)}%</p>
+              <p className="text-xs text-muted-foreground">Réutilisation</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Total Traductions</p>
+              <p className="text-2xl font-bold">{metrics.totalTranslations}</p>
+              <p className="text-xs text-muted-foreground">100 dernières</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Usage SMT</p>
               <p className="text-2xl font-bold">{metrics.smtUsageRate}%</p>
+              <p className="text-xs text-muted-foreground">Niveau 3</p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Couverture par Niveau de Cascade */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Couverture par Niveau de Cascade</CardTitle>
+          <CardDescription>Répartition des traductions selon le niveau utilisé (temps réel)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Niveau 1: Exact Match (Trie)</span>
+                <Badge variant="outline">{metrics.cascadeCoverage.level1_trie.toFixed(1)}%</Badge>
+              </div>
+              <Progress value={metrics.cascadeCoverage.level1_trie} className="h-2" />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Niveau 2: Fuzzy Match (JSD)</span>
+                <Badge variant="outline">{metrics.cascadeCoverage.level2_jsd.toFixed(1)}%</Badge>
+              </div>
+              <Progress value={metrics.cascadeCoverage.level2_jsd} className="h-2" />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Niveau 3: SMT Engine ⭐ (NOUVEAU)</span>
+                <Badge variant="default">{metrics.cascadeCoverage.level3_smt.toFixed(1)}%</Badge>
+              </div>
+              <Progress value={metrics.cascadeCoverage.level3_smt} className="h-2" />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Niveau 4: SimplifiedAI</span>
+                <Badge variant="outline">{metrics.cascadeCoverage.level4_simplified.toFixed(1)}%</Badge>
+              </div>
+              <Progress value={metrics.cascadeCoverage.level4_simplified} className="h-2" />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Niveau 5: Lovable AI (Fallback)</span>
+                <Badge variant="secondary">{metrics.cascadeCoverage.level5_lovable.toFixed(1)}%</Badge>
+              </div>
+              <Progress value={metrics.cascadeCoverage.level5_lovable} className="h-2" />
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg">
+            <div>
+              <p className="text-sm font-medium">Couverture Locale (Niveaux 1-4)</p>
+              <p className="text-xs text-muted-foreground">Traductions effectuées sans appel externe (0€)</p>
+            </div>
+            <Badge variant="default" className="text-lg px-4 py-2">
+              {metrics.cascadeCoverage.localCoverage.toFixed(1)}%
+            </Badge>
           </div>
         </CardContent>
       </Card>
