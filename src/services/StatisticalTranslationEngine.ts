@@ -196,14 +196,22 @@ export class StatisticalTranslationEngine {
 
   /**
    * Translate using SIMPLIFIED Beam Search (supports both FR→BBA and BBA→FR)
+   * PHASE 3: Beam size dynamique (1 pour phrases simples <5 mots, 3 sinon)
    */
-  translate(text: string, beamSize: number = 3, direction: 'fr-bba' | 'bba-fr' = 'fr-bba'): TranslationResult {
+  translate(text: string, beamSize?: number, direction: 'fr-bba' | 'bba-fr' = 'fr-bba'): TranslationResult {
     if (!this.isInitialized) {
       throw new Error('Engine not initialized. Call initialize() first.');
     }
 
     const sourceWords = this.tokenize(text);
-    const candidates = this.beamSearch(sourceWords, beamSize, direction);
+    
+    // PHASE 3: Beam size dynamique pour optimiser la vitesse
+    const dynamicBeamSize = beamSize !== undefined 
+      ? beamSize 
+      : (sourceWords.length < 5 ? 1 : 3);
+    
+    console.log(`   🔧 SMT: ${sourceWords.length} mots, beam size = ${dynamicBeamSize}`);
+    const candidates = this.beamSearch(sourceWords, dynamicBeamSize, direction);
 
     if (candidates.length === 0) {
       return {

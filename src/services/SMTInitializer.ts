@@ -138,12 +138,35 @@ export class SMTInitializer {
         console.error('   Message:', edgeFunctionError.message);
         console.error('   Context:', edgeFunctionError.context);
         
-        // ⚠️ FALLBACK: Si Edge Function échoue, charger directement depuis Supabase
-        console.warn('⚠️ Fallback: Loading directly from Supabase...');
-        const { data: directData, error: directError } = await supabase
-          .from('training_phrases')
-          .select('french_text, bariba_text, quality_score, source')
-          .limit(10000); // Limite pour éviter timeout
+        // ⚠️ FALLBACK: Si Edge Function échoue, charger directement depuis Supabase EN BATCHES
+        console.warn('⚠️ Fallback: Loading ALL phrases directly from Supabase...');
+        
+        // PHASE 1: Charger TOUTES les phrases par batches de 3000
+        const BATCH_SIZE = 3000;
+        const allPhrases: any[] = [];
+        let offset = 0;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const { data: batch, error: batchError } = await supabase
+            .from('training_phrases')
+            .select('french_text, bariba_text, quality_score, source')
+            .range(offset, offset + BATCH_SIZE - 1);
+          
+          if (batchError || !batch || batch.length === 0) {
+            console.log(`   ✓ Fin du chargement à offset ${offset}`);
+            hasMore = false;
+            break;
+          }
+          
+          allPhrases.push(...batch);
+          offset += batch.length;
+          console.log(`   ✓ Chargé ${allPhrases.length} phrases...`);
+          hasMore = batch.length === BATCH_SIZE;
+        }
+        
+        const directData = allPhrases;
+        const directError = allPhrases.length === 0 ? new Error('No data loaded') : null;
         
         if (directError || !directData || directData.length === 0) {
           throw new Error('Both Edge Function and direct access failed');
@@ -183,13 +206,42 @@ export class SMTInitializer {
 
         console.log(`📊 Total confirmed: ${phrasesCount} phrases, ${dictionaryCount} dictionary entries`);
         
-        // ⚠️ Charger les phrases directement depuis Supabase pour l'entraînement
+        // ⚠️ Charger TOUTES les phrases directement depuis Supabase EN BATCHES
         // L'Edge Function confirme seulement que les données existent
-        console.log(`🔄 Loading phrases directly from Supabase for training...`);
-        const { data: loadedPhrases, error: loadError } = await supabase
-          .from('training_phrases')
-          .select('french_text, bariba_text, quality_score, source')
-          .limit(10000); // Limite raisonnable pour performance
+        console.log(`🔄 Loading ALL ${phrasesCount} phrases directly from Supabase...`);
+        
+        const BATCH_SIZE = 3000;
+        const allLoadedPhrases: any[] = [];
+        let offset = 0;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const { data: batch, error: batchError } = await supabase
+            .from('training_phrases')
+            .select('french_text, bariba_text, quality_score, source')
+            .range(offset, offset + BATCH_SIZE - 1);
+          
+          if (batchError || !batch || batch.length === 0) {
+            console.log(`   ✓ Fin du chargement à offset ${offset}`);
+            hasMore = false;
+            break;
+          }
+          
+          allLoadedPhrases.push(...batch);
+          const percentage = Math.round((allLoadedPhrases.length / phrasesCount) * 100);
+          console.log(`   ✓ Chargé ${allLoadedPhrases.length} / ${phrasesCount} phrases (${percentage}%)...`);
+          hasMore = batch.length === BATCH_SIZE;
+          offset += batch.length;
+        }
+        
+        const loadedPhrases = allLoadedPhrases;
+        const loadError = allLoadedPhrases.length === 0 ? new Error('No data loaded') : null;
+        
+        // PHASE 1 VALIDATION: Vérifier que nous avons au moins 95% des données
+        if (allLoadedPhrases.length < phrasesCount * 0.95) {
+          console.error(`❌ Chargement incomplet: ${allLoadedPhrases.length} / ${phrasesCount} (${Math.round((allLoadedPhrases.length / phrasesCount) * 100)}%)`);
+          throw new Error(`Incomplete data loading! Only ${allLoadedPhrases.length}/${phrasesCount} phrases loaded`);
+        }
         
         if (loadError || !loadedPhrases) {
           throw new Error(`Failed to load training phrases: ${loadError?.message}`);
