@@ -7,10 +7,13 @@ import { DictionaryStats } from "@/components/DictionaryStats";
 import { PhraseTranslator } from "@/components/PhraseTranslator";
 import { SelectedEntryDisplay } from "@/components/SelectedEntryDisplay";
 import { SimilarSuggestions } from "@/components/SimilarSuggestions";
+import { TranslationModelSelector } from "@/components/TranslationModelSelector";
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
+import { useTranslationModelSelector } from "@/hooks/useTranslationModelSelector";
 import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
@@ -33,6 +36,12 @@ const Index = () => {
     selectEntry,
     selectedEntry
   } = useSmartDictionarySearch();
+
+  const {
+    selectedModel,
+    selectModel,
+    availableModels
+  } = useTranslationModelSelector();
 
   return (
     <div className="min-h-screen bg-background">
@@ -404,8 +413,15 @@ const Index = () => {
             </main>
           </TabsContent>
 
-          <TabsContent value="translator">
-            <PhraseTranslator />
+          <TabsContent value="translator" className="space-y-6">
+            <Card className="p-6">
+              <TranslationModelSelector
+                selectedModel={selectedModel}
+                onSelectModel={selectModel}
+                availableModels={availableModels}
+              />
+            </Card>
+            <PhraseTranslator selectedModel={selectedModel} />
           </TabsContent>
         </Tabs>
       </div>

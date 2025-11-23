@@ -13,7 +13,11 @@ import { TranslationSuggestions } from "./TranslationSuggestions";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
-export const PhraseTranslator = () => {
+interface PhraseTranslatorProps {
+  selectedModel?: string;
+}
+
+export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorProps) => {
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
   const [translationLogId, setTranslationLogId] = useState<string | undefined>(undefined);
