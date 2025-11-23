@@ -64,6 +64,7 @@ import { ComprehensiveDataImporter } from '@/components/admin/ComprehensiveDataI
 import { SMTPerformanceMonitor } from '@/components/admin/SMTPerformanceMonitor';
 import { SMTABTestingPanel } from '@/components/admin/SMTABTestingPanel';
 import { SMTSystemDashboard } from '@/components/admin/SMTSystemDashboard';
+import { PremiumSMTImporter } from '@/components/admin/PremiumSMTImporter';
 
 export default function AdminDashboard() {
   const { signOut, user } = useAuth();
@@ -288,16 +289,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="smt-import" className="space-y-4">
-            <div className="space-y-4">
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                <h2 className="text-xl font-bold text-primary mb-2">🚀 Import Système SMT Premium</h2>
-                <p className="text-muted-foreground">
-                  Remplacez toutes les données anciennes par les 3 fichiers premium (80k+ paires + 110k dictionnaire) 
-                  et activez le moteur de traduction statistique ultra-performant.
-                </p>
-              </div>
-              <ComprehensiveDataImporter />
-            </div>
+            <PremiumSMTImporter />
           </TabsContent>
 
           <TabsContent value="smt-monitor" className="space-y-4">
