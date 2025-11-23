@@ -37,6 +37,7 @@ export class HybridTranslationService {
   private advancedModel: BaatonuTranslationAI | null = null;
   private fineTunedModelVersion: string | null = null;
   private isInitialized = false;
+  private dictionaryEntries: DictionaryEntry[] = [];
 
   // Seuils de confiance pour la cascade (OPTIMISÉS BALANCE)
   private readonly IDIOM_THRESHOLD = 98;  // Idiomes = 100% de confiance
@@ -56,10 +57,12 @@ export class HybridTranslationService {
   ): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log("🚀 Initialisation du système hybride avec SMT...");
+    this.dictionaryEntries = entries;
+
+    console.log("🚀 Initialisation du système hybride OPTIMISÉE...");
     const startTime = Date.now();
 
-    // 1. Initialiser Statistical Translation Engine via SMTInitializer (NIVEAU 3)
+    // 1. Initialiser SMT en priorité (le plus important)
     try {
       console.log("📊 Initialisation du moteur statistique SMT...");
       await smtInitializer.initialize();
@@ -71,36 +74,13 @@ export class HybridTranslationService {
       console.warn("⚠️ SMT non disponible:", error);
     }
 
-    // 2. Initialiser SimplifiedTranslationAI avec analyse grammaticale
+    // 2. Initialiser SimplifiedTranslationAI RAPIDEMENT (sans features avancées au démarrage)
     this.simplifiedModel = new SimplifiedTranslationAI(entries, phrases, examples);
-    await this.simplifiedModel.initializeAdvancedFeatures();
-
-    // 2. Initialiser SemanticRAGService (NOUVEAU - remplace le mock fine-tuned)
-    try {
-      console.log("🧠 Initialisation du RAG sémantique...");
-      await semanticRAGService.initialize(entries, phrases, examples);
-      console.log("✅ RAG sémantique activé avec embeddings");
-    } catch (error) {
-      console.warn("⚠️ RAG sémantique non disponible:", error);
-    }
-
-    // 3. Initialiser BaatonuTranslationAI avec Hugging Face Transformers (NIVEAU 3)
-    try {
-      console.log("🔄 Activation du modèle avancé BaatonuTranslationAI...");
-      this.advancedModel = new BaatonuTranslationAI(entries);
-      await this.advancedModel.initialize();
-      
-      if (this.advancedModel.isReady) {
-        console.log("✅ BaatonuTranslationAI activé avec succès");
-        console.log("   📊 Utilise des embeddings sémantiques pour traduction contextuelle");
-        console.log("   🧠 Analyse grammaticale avancée avec règles linguistiques Bààtɔ̀nú");
-      } else {
-        console.log("⚠️ BaatonuTranslationAI en mode dictionnaire (sans IA)");
-      }
-    } catch (error) {
-      console.warn("❌ Échec activation BaatonuTranslationAI:", error);
-      this.advancedModel = null;
-    }
+    // Features avancées chargées en lazy loading
+    
+    // 3. BaatonuTranslationAI désactivé au démarrage (lazy loading on demand)
+    // Il sera initialisé seulement si l'utilisateur sélectionne ce modèle
+    console.log("⏭️ BaatonuTranslationAI en mode lazy loading (activation à la demande)");
 
     // 4. Charger le contexte de fine-tuning NLLB-200 (si disponible)
     try {
@@ -109,23 +89,33 @@ export class HybridTranslationService {
         .select('model_version, metrics')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (latestModel) {
         this.fineTunedModelVersion = latestModel.model_version;
         console.log(`✅ Contexte NLLB-200: ${this.fineTunedModelVersion}`);
-        const metrics = latestModel.metrics as any;
-        if (metrics?.total_training_pairs) {
-          console.log(`   📊 ${metrics.total_training_pairs} paires d'entraînement disponibles`);
-        }
       }
     } catch (error) {
-      console.log("ℹ️ Pas encore de fine-tuning NLLB-200 (utilisation RAG + modèles locaux)");
+      console.log("ℹ️ Pas encore de fine-tuning NLLB-200");
     }
 
     this.isInitialized = true;
     const duration = Date.now() - startTime;
-    console.log(`✅ Système hybride COMPLET initialisé en ${duration}ms`);
+    console.log(`✅ Système hybride initialisé en ${duration}ms (mode rapide)`);
+  }
+
+  /**
+   * Lazy load BaatonuAI only when needed
+   */
+  private async ensureBaatonuAI(): Promise<void> {
+    if (this.advancedModel?.isReady) return;
+    
+    if (!this.advancedModel) {
+      console.log("🔄 Chargement BaatonuTranslationAI...");
+      this.advancedModel = new BaatonuTranslationAI(this.dictionaryEntries || []);
+      await this.advancedModel.initialize();
+      console.log("✅ BaatonuTranslationAI prêt");
+    }
   }
 
   /**
