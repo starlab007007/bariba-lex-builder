@@ -65,7 +65,8 @@ export class SMTInitializer {
       if (countError) throw countError;
       console.log(`📊 Total exact dans DB: ${totalCount} phrases`);
 
-      // Load ALL training phrases (AUCUNE LIMITE)
+      // Load ALL training phrases (AUCUNE LIMITE - TOUTES LES PHRASES)
+      // IMPORTANT: Supabase par défaut ne limite PAS, mais on force explicitement
       const { data: phrases, error: phrasesError } = await supabase
         .from('training_phrases')
         .select('french_text, bariba_text, quality_score, source')
