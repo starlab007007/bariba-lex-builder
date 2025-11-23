@@ -24,6 +24,7 @@ import { enhancedCorrector } from "./EnhancedGrammaticalCorrector";
 import { translationCache } from "@/utils/TranslationCache";
 import { trieIndex } from "@/utils/TrieIndex";
 import { smtInitializer } from "./SMTInitializer";
+import { translationMonitoring } from "./TranslationMonitoringService";
 
 export interface HybridTranslationResult extends TranslationResult {
   method: 'idiom' | 'context' | 'rag' | 'simplified' | 'advanced' | 'ai' | 'fallback';
@@ -156,14 +157,28 @@ export class HybridTranslationService {
         idiomResult.confidence
       );
 
-      return {
+      const result = {
         translation: idiomResult.translation,
         confidence: idiomResult.confidence,
         detectedLanguage: sourceLang,
-        method: 'idiom',
+        method: 'idiom' as const,
         cost: 0,
         duration: Date.now() - startTime
       };
+      
+      // Log monitoring
+      translationMonitoring.logTranslation({
+        inputText: text,
+        outputText: result.translation,
+        sourceLang,
+        targetLang,
+        method: result.method,
+        confidence: result.confidence,
+        duration: result.duration,
+        cost: result.cost
+      });
+      
+      return result;
     }
 
     // NIVEAU 1: Exact Match via Trie (confiance 100%, gratuit, < 1ms)
@@ -171,14 +186,27 @@ export class HybridTranslationService {
       const exactMatch = trieIndex.search(text);
       if (exactMatch) {
         console.log("✅ Niveau 1: Exact Match (Trie)");
-        return {
+        const result = {
           translation: exactMatch.translation,
           confidence: 100,
           detectedLanguage: sourceLang,
-          method: 'context',
+          method: 'context' as const,
           cost: 0,
           duration: Date.now() - startTime
         };
+        
+        translationMonitoring.logTranslation({
+          inputText: text,
+          outputText: result.translation,
+          sourceLang,
+          targetLang,
+          method: result.method,
+          confidence: result.confidence,
+          duration: result.duration,
+          cost: result.cost
+        });
+        
+        return result;
       }
     }
 
@@ -186,14 +214,27 @@ export class HybridTranslationService {
     const cached = translationCache.get(text);
     if (cached && cached.confidence >= this.FUZZY_JSD_THRESHOLD) {
       console.log(`✅ Niveau 2: Cache Hit (${cached.confidence}%)`);
-      return {
+      const result = {
         translation: cached.translation,
         confidence: cached.confidence,
         detectedLanguage: sourceLang,
-        method: 'context',
+        method: 'context' as const,
         cost: 0,
         duration: Date.now() - startTime
       };
+      
+      translationMonitoring.logTranslation({
+        inputText: text,
+        outputText: result.translation,
+        sourceLang,
+        targetLang,
+        method: result.method,
+        confidence: result.confidence,
+        duration: result.duration,
+        cost: result.cost
+      });
+      
+      return result;
     }
 
     // NIVEAU 2.5: Mémoire contextuelle (confiance 60%+, gratuit, < 5ms)
@@ -205,14 +246,27 @@ export class HybridTranslationService {
 
     if (contextResult && contextResult.confidence >= this.CONTEXT_THRESHOLD) {
       console.log("✅ Niveau 2.5: Contexte trouvé");
-      return {
+      const result = {
         translation: contextResult.translation,
         confidence: contextResult.confidence,
         detectedLanguage: sourceLang,
-        method: 'context',
+        method: 'context' as const,
         cost: 0,
         duration: Date.now() - startTime
       };
+      
+      translationMonitoring.logTranslation({
+        inputText: text,
+        outputText: result.translation,
+        sourceLang,
+        targetLang,
+        method: result.method,
+        confidence: result.confidence,
+        duration: result.duration,
+        cost: result.cost
+      });
+      
+      return result;
     }
 
     // NIVEAU 3: Statistical MT Engine (confiance 65-90%, gratuit, 40-120ms) - NOUVEAU!
@@ -250,14 +304,27 @@ export class HybridTranslationService {
             finalConfidence
           );
           
-          return {
+          const result = {
             translation: corrected,
             confidence: finalConfidence,
             detectedLanguage: sourceLang,
-            method: 'advanced',
+            method: 'advanced' as const,
             cost: 0,
             duration: Date.now() - startTime
           };
+          
+          translationMonitoring.logTranslation({
+            inputText: text,
+            outputText: result.translation,
+            sourceLang,
+            targetLang,
+            method: result.method,
+            confidence: result.confidence,
+            duration: result.duration,
+            cost: result.cost
+          });
+          
+          return result;
         }
       } catch (error) {
         console.warn("⚠️ SMT Engine error:", error);
@@ -284,12 +351,25 @@ export class HybridTranslationService {
         simplifiedResult.confidence
       );
       
-      return {
+      const result = {
         ...simplifiedResult,
-        method: 'simplified',
+        method: 'simplified' as const,
         cost: 0,
         duration: Date.now() - startTime
       };
+      
+      translationMonitoring.logTranslation({
+        inputText: text,
+        outputText: result.translation,
+        sourceLang,
+        targetLang,
+        method: result.method,
+        confidence: result.confidence,
+        duration: result.duration,
+        cost: result.cost
+      });
+      
+      return result;
     }
     
     console.log(`⚠️ SimplifiedAI confiance trop basse: ${simplifiedResult.confidence}% < ${this.SIMPLIFIED_THRESHOLD}%`);
@@ -386,12 +466,26 @@ export class HybridTranslationService {
         if (aiResult) {
           console.log(`✅ Niveau 5: Lovable AI (${aiResult.confidence}%)`);
           await this.saveToCache(text, aiResult.translation, sourceLang, targetLang, aiResult.confidence);
-          return {
+          
+          const result = {
             ...aiResult,
-            method: 'ai',
+            method: 'ai' as const,
             cost: 0,
             duration: Date.now() - startTime
           };
+          
+          translationMonitoring.logTranslation({
+            inputText: text,
+            outputText: result.translation,
+            sourceLang,
+            targetLang,
+            method: result.method,
+            confidence: result.confidence,
+            duration: result.duration,
+            cost: result.cost
+          });
+          
+          return result;
         }
       } catch (error) {
         console.error("❌ Lovable AI a échoué:", error);
@@ -402,12 +496,25 @@ export class HybridTranslationService {
     console.log(`⚠️ FALLBACK FINAL: SimplifiedAI (${simplifiedResult.confidence}%)`);
     console.log(`   📝 Traduction: "${simplifiedResult.translation}"`);
     
-    return {
+    const fallbackResult = {
       ...simplifiedResult,
-      method: 'fallback',
+      method: 'fallback' as const,
       cost: 0,
       duration: Date.now() - startTime
     };
+    
+    translationMonitoring.logTranslation({
+      inputText: text,
+      outputText: fallbackResult.translation,
+      sourceLang,
+      targetLang,
+      method: fallbackResult.method,
+      confidence: fallbackResult.confidence,
+      duration: fallbackResult.duration,
+      cost: fallbackResult.cost
+    });
+    
+    return fallbackResult;
   }
 
   /**
