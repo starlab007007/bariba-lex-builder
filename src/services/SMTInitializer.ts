@@ -108,105 +108,75 @@ export class SMTInitializer {
     try {
       console.log("🚀 Initializing SMT System from database...");
       console.log("📊 Loading ALL training phrases (NO LIMITS - TOUTES LES PHRASES)...");
-
-      // Compter d'abord le total exact
-      const { count: totalCount, error: countError } = await supabase
-        .from('training_phrases')
-        .select('*', { count: 'exact', head: true });
       
-      if (countError) throw countError;
-      console.log(`📊 Total exact dans DB: ${totalCount} phrases`);
-
-      // CHARGEMENT DE TOUTES LES PHRASES PAR PAGINATION
-      // Supabase limite à 1000 résultats par défaut, donc on pagine pour tout charger
-      console.log(`🔄 Chargement de TOUTES les ${totalCount} phrases par pagination...`);
-      
-      const BATCH_SIZE = 1000;
-      const trainingPhrases: any[] = [];
-      let offset = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        console.log(`🔄 Chargement batch ${Math.floor(offset / BATCH_SIZE) + 1}...`);
-        
-        const { data: batch, error: batchError } = await supabase
-          .from('training_phrases')
-          .select('french_text, bariba_text, quality_score, source')
-          .order('created_at', { ascending: false })
-          .range(offset, offset + BATCH_SIZE - 1);
-
-        if (batchError) {
-          console.error(`❌ Erreur batch à offset ${offset}:`, batchError);
-          throw batchError;
-        }
-
-        if (batch && batch.length > 0) {
-          trainingPhrases.push(...batch);
-          offset += batch.length;
-          const percentage = Math.round((trainingPhrases.length / (totalCount || 1)) * 100);
-          console.log(`   ✓ Chargé ${trainingPhrases.length} / ${totalCount} phrases (${percentage}%)...`);
-          hasMore = batch.length === BATCH_SIZE;
-        } else {
-          console.log(`   ⚠️ Batch vide à offset ${offset}, arrêt de la pagination`);
-          hasMore = false;
-        }
+      // 🔍 SOLUTION: Diagnostic de l'authentification
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log(`🔐 Auth Status: ${user ? 'AUTHENTICATED ✅' : 'ANONYMOUS ⚠️'}`);
+      if (user) {
+        console.log(`👤 User ID: ${user.id}`);
+        console.log(`📧 Email: ${user.email}`);
       }
-      
-      console.log(`✅ TOUTES LES PHRASES CHARGÉES: ${trainingPhrases.length} / ${totalCount} au total`);
-      
-      if (trainingPhrases.length !== totalCount) {
-        console.warn(`⚠️ ATTENTION: Seulement ${trainingPhrases.length} phrases chargées sur ${totalCount} dans la DB!`);
+      if (authError) {
+        console.error('❌ Auth Error:', authError);
       }
 
-      // Log detailed statistics by source
-      const sourceStats = trainingPhrases.reduce((acc, p) => {
-        const source = p.source || 'unknown';
-        acc[source] = (acc[source] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
+      // 🔍 SOLUTION: Utiliser Edge Function avec Service Role pour garantir l'accès
+      console.log("🔄 Calling SMT initialization Edge Function with Service Role...");
+      
+      const { data: initData, error: edgeFunctionError } = await supabase.functions.invoke('smt-initialize', {
+        body: {}
+      });
+      
+      if (edgeFunctionError) {
+        console.error('❌ Edge Function Error:', edgeFunctionError);
+        console.error('   Message:', edgeFunctionError.message);
+        console.error('   Context:', edgeFunctionError.context);
+        throw edgeFunctionError;
+      }
+      
+      if (!initData || initData.error) {
+        console.error('❌ Edge Function returned error:', initData?.error);
+        throw new Error(initData?.error || 'Unknown edge function error');
+      }
+      
+      const { phrases: trainingPhrases, phrasesCount, dictionaryCount, sourceStats } = initData;
+      
+      console.log(`✅ Edge Function SUCCESS: ${phrasesCount} phrases loaded via Service Role`);
       console.log("📊 RÉPARTITION PAR SOURCE:");
       Object.entries(sourceStats).forEach(([source, count]) => {
         console.log(`   ✓ ${source}: ${count.toLocaleString()} phrases`);
       });
 
-      // Load ALL dictionary entries (no limit)
-      const { data: dictionary, error: dictError } = await supabase
-        .from('dictionary_entries')
-        .select('id, word, definition');
+      console.log(`📊 Total loaded: ${phrasesCount} phrases, ${dictionaryCount} dictionary entries`);
 
-      if (dictError) throw dictError;
-
-      console.log(`📊 Total loaded: ${trainingPhrases.length} phrases, ${dictionary?.length || 0} dictionary entries`);
-
-      if (trainingPhrases.length === 0) {
-        throw new Error(`Insufficient data for SMT initialization (${trainingPhrases.length} phrases). Import premium data first.`);
+      if (phrasesCount === 0 || !trainingPhrases || trainingPhrases.length === 0) {
+        throw new Error(`Insufficient data for SMT initialization (${phrasesCount} phrases). Import premium data first.`);
       }
       
-      console.log(`✅ Proceeding with SMT initialization using ALL ${trainingPhrases.length} phrases`);
+      console.log(`✅ Proceeding with SMT initialization using ALL ${phrasesCount} phrases`);
 
       // Initialize engines in parallel
-      console.log(`🔄 Initialisation des moteurs avec ${trainingPhrases.length} phrases...`);
+      console.log(`🔄 Initialisation des moteurs avec ${phrasesCount} phrases...`);
       console.log(`   1️⃣ Initialisation moteur statistique SMT...`);
       console.log(`   2️⃣ Apprentissage correcteur grammatical...`);
       console.log(`   3️⃣ Construction index Trie...`);
       
       const [smtResult, correctorResult, trieResult] = await Promise.allSettled([
         statisticalEngine.initialize(
-          trainingPhrases.map(p => ({
+          trainingPhrases.map((p: any) => ({
             french: p.french_text,
             bariba: p.bariba_text,
             quality_score: p.quality_score
           }))
         ),
         enhancedCorrector.learnPatterns(
-          trainingPhrases.map(p => ({
+          trainingPhrases.map((p: any) => ({
             french: p.french_text,
             bariba: p.bariba_text
           }))
         ),
         trieIndex.buildFromPairs(
-          trainingPhrases.map(p => ({
+          trainingPhrases.map((p: any) => ({
             french: p.french_text,
             bariba: p.bariba_text
           }))
@@ -225,8 +195,8 @@ export class SMTInitializer {
 
       this.initializationStatus = {
         isInitialized: true,
-        phrasesCount: trainingPhrases.length,
-        dictionaryCount: dictionary?.length || 0,
+        phrasesCount: phrasesCount,
+        dictionaryCount: dictionaryCount,
         smtReady: smtResult.status === 'fulfilled' && statisticalEngine.isReady(),
         correctoReady: correctorResult.status === 'fulfilled' && enhancedCorrector.isReady(),
         trieReady: trieResult.status === 'fulfilled' && trieIndex.getSize() > 0,
