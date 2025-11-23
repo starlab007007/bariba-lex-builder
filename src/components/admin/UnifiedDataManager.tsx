@@ -94,9 +94,9 @@ export default function UnifiedDataManager() {
     const firstItem = data[0];
     const fields = Object.keys(firstItem);
 
-    // Patterns pour phrases (PRIORITÉ)
-    const frenchPatterns = ['french', 'francais', 'français', 'fr', 'french_text', 'texte_francais'];
-    const baribaPatterns = ['bariba', 'baatonum', 'bba', 'bariba_text', 'texte_bariba'];
+    // Patterns pour phrases (PRIORITÉ) - Support de TOUS les formats
+    const frenchPatterns = ['french', 'francais', 'français', 'fr', 'french_text', 'texte_francais', 'texte_fr'];
+    const baribaPatterns = ['bariba', 'baatonum', 'bba', 'bariba_text', 'texte_bariba', 'bba_latn', 'bba_latin'];
     
     // Patterns pour idiomes
     const frenchExprPatterns = ['french_expression', 'expression_francaise', 'idiom_fr'];
@@ -260,6 +260,16 @@ export default function UnifiedDataManager() {
   const handleImport = async () => {
     if (!file || !preview || !preview.mappedFields) return;
 
+    // VÉRIFICATION CRITIQUE: Utilisateur authentifié
+    if (!user?.id) {
+      toast({
+        title: "❌ Erreur d'authentification",
+        description: "Vous devez être connecté pour importer des données. Veuillez vous reconnecter.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     setProgress(0);
 
@@ -269,7 +279,8 @@ export default function UnifiedDataManager() {
       const batchSize = 200;
       let imported = 0;
       let skipped = 0;
-      const sourceName = `${preview.type}_premium`;
+      let errors = 0;
+      const sourceName = `import_${new Date().toISOString().split('T')[0]}`;
 
       // Déduplication et nettoyage avec mapping
       const cleanedData = new Map();
@@ -300,7 +311,8 @@ export default function UnifiedDataManager() {
               source: sourceName,
               is_validated: true,
               quality_score: item.quality_score || 0.85,
-              created_by: user?.id
+              created_by: user.id, // user.id vérifié ci-dessus
+              metadata: item.categories ? { categories: item.categories } : null
             };
           } else if (preview.type === 'idioms') {
             const frField = preview.mappedFields.find(m => m.target === 'french_expression')?.source;
@@ -320,9 +332,9 @@ export default function UnifiedDataManager() {
             cleanItem = {
               french_expression: frExpr,
               bariba_expression: baExpr,
-              category: item.category || 'general',
+              category: item.category || item.categories?.[0] || 'general',
               is_verified: true,
-              created_by: user?.id
+              created_by: user.id // user.id vérifié ci-dessus
             };
           }
 
@@ -356,31 +368,67 @@ export default function UnifiedDataManager() {
 
           if (result.error) {
             console.error(`❌ Erreur batch ${i}:`, result.error);
-            throw result.error;
+            errors += batch.length;
+            // Continuer avec le prochain batch au lieu de tout arrêter
+            continue;
           }
 
           imported += batch.length;
-          setProgress((imported / uniqueData.length) * 100);
+          const progressPercent = (imported / uniqueData.length) * 100;
+          setProgress(progressPercent);
+          
+          console.log(`✅ Batch ${Math.floor(i / batchSize) + 1}: ${batch.length} ${preview.type} importés (${progressPercent.toFixed(1)}%)`);
         } catch (batchError: any) {
           console.error(`Erreur sur batch ${i}-${i + batchSize}:`, batchError);
-          throw new Error(`Import échoué au batch ${i}: ${batchError.message}`);
+          errors += batch.length;
         }
       }
 
-      toast({
-        title: '✅ Import terminé',
-        description: `${imported} ${preview.type} importés, ${skipped} ignorés, ${data.length - imported - skipped} doublons`,
-      });
+      // RAPPORT DÉTAILLÉ D'IMPORT
+      const report = {
+        total: data.length,
+        imported,
+        skipped,
+        duplicates: data.length - imported - skipped - errors,
+        errors,
+        source: sourceName,
+        type: preview.type,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log("📊 RAPPORT D'IMPORT COMPLET:", report);
+
+      if (imported > 0) {
+        toast({
+          title: '✅ Import réussi',
+          description: `${imported.toLocaleString()} ${preview.type} importés sur ${data.length.toLocaleString()} (${skipped} ignorés, ${errors} erreurs)`,
+        });
+      } else {
+        toast({
+          title: '⚠️ Import incomplet',
+          description: `Aucune donnée importée. ${errors} erreurs, ${skipped} entrées invalides.`,
+          variant: "destructive"
+        });
+      }
 
       await loadStats();
       
       // Rafraîchir le système SMT après import de phrases
       if (preview.type === 'phrases' && imported > 0) {
-        console.log("🔄 Rafraîchissement du système SMT...");
+        console.log("🔄 Rafraîchissement du système SMT avec TOUTES les phrases...");
         try {
           const { smtInitializer } = await import('@/services/SMTInitializer');
           await smtInitializer.refresh();
-          console.log("✅ SMT rafraîchi avec succès");
+          
+          // Vérifier le statut après rafraîchissement
+          const status = smtInitializer.getStatus();
+          if (status) {
+            console.log(`✅ SMT rafraîchi: ${status.phrasesCount.toLocaleString()} phrases chargées`);
+            toast({
+              title: "🚀 SMT Mis à Jour",
+              description: `Moteur SMT activé avec ${status.phrasesCount.toLocaleString()} phrases FR-BBA`,
+            });
+          }
         } catch (err) {
           console.warn("⚠️ Erreur rafraîchissement SMT:", err);
         }
@@ -414,7 +462,9 @@ export default function UnifiedDataManager() {
       let data: any[] = [];
       
       if (type === 'phrases') {
-        // Charger TOUTES les phrases (pas de limite)
+        // Charger TOUTES les phrases (AUCUNE LIMITE)
+        console.log(`📊 Chargement de TOUTES les phrases (filtre: ${filterSource})...`);
+        
         const query = filterSource !== 'all' 
           ? supabase.from('training_phrases').select('*').eq('source', filterSource).order('created_at', { ascending: false })
           : supabase.from('training_phrases').select('*').order('created_at', { ascending: false });
@@ -423,9 +473,11 @@ export default function UnifiedDataManager() {
         if (result.error) throw result.error;
         data = result.data || [];
         
+        console.log(`✅ ${data.length.toLocaleString()} phrases chargées depuis la DB`);
+        
         toast({
           title: '✅ Données chargées',
-          description: `${data.length} phrases affichées`,
+          description: `${data.length.toLocaleString()} phrases affichées (sans limite)`,
         });
       } else if (type === 'dictionary') {
         // Charger TOUT le dictionnaire (pas de limite)
