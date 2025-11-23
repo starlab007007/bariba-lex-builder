@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DataQualityValidator } from "./DataQualityValidator";
+import { SmartDataImporter } from "./SmartDataImporter";
 import { 
   Database, 
   Trash2, 
@@ -430,12 +431,17 @@ export function ComprehensiveDataImporter() {
         </AlertDescription>
       </Alert>
 
-      <Tabs defaultValue="files" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="files">Import Fichier par Fichier</TabsTrigger>
+      <Tabs defaultValue="smart" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="smart">🤖 Import Intelligent</TabsTrigger>
+          <TabsTrigger value="files">Import Manuel</TabsTrigger>
           <TabsTrigger value="quality">Validation & Export</TabsTrigger>
-          <TabsTrigger value="manage">Gestion des Données</TabsTrigger>
+          <TabsTrigger value="manage">Gestion</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="smart" className="space-y-4">
+          <SmartDataImporter />
+        </TabsContent>
 
         <TabsContent value="files" className="space-y-4">
           {/* File 1: traducteur_final.json */}
