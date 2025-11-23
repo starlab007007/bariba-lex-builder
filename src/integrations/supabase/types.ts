@@ -435,6 +435,102 @@ export type Database = {
         }
         Relationships: []
       }
+      smt_initialization_logs: {
+        Row: {
+          cache_preload_count: number | null
+          cache_prewarmed: boolean | null
+          corrector_ready: boolean | null
+          dictionary_count: number
+          duration_ms: number
+          errors: Json | null
+          id: string
+          initialized_at: string | null
+          performance_metrics: Json | null
+          phrases_count: number
+          smt_ready: boolean | null
+          source_stats: Json | null
+          trie_ready: boolean | null
+        }
+        Insert: {
+          cache_preload_count?: number | null
+          cache_prewarmed?: boolean | null
+          corrector_ready?: boolean | null
+          dictionary_count: number
+          duration_ms: number
+          errors?: Json | null
+          id?: string
+          initialized_at?: string | null
+          performance_metrics?: Json | null
+          phrases_count: number
+          smt_ready?: boolean | null
+          source_stats?: Json | null
+          trie_ready?: boolean | null
+        }
+        Update: {
+          cache_preload_count?: number | null
+          cache_prewarmed?: boolean | null
+          corrector_ready?: boolean | null
+          dictionary_count?: number
+          duration_ms?: number
+          errors?: Json | null
+          id?: string
+          initialized_at?: string | null
+          performance_metrics?: Json | null
+          phrases_count?: number
+          smt_ready?: boolean | null
+          source_stats?: Json | null
+          trie_ready?: boolean | null
+        }
+        Relationships: []
+      }
+      smt_quality_metrics: {
+        Row: {
+          avg_confidence: number | null
+          avg_duration_ms: number | null
+          bleu_score: number | null
+          created_at: string | null
+          f1_score: number | null
+          id: string
+          model_version: string | null
+          precision_score: number | null
+          recall_score: number | null
+          test_results: Json | null
+          test_set_name: string
+          tested_by: string | null
+          total_phrases: number
+        }
+        Insert: {
+          avg_confidence?: number | null
+          avg_duration_ms?: number | null
+          bleu_score?: number | null
+          created_at?: string | null
+          f1_score?: number | null
+          id?: string
+          model_version?: string | null
+          precision_score?: number | null
+          recall_score?: number | null
+          test_results?: Json | null
+          test_set_name: string
+          tested_by?: string | null
+          total_phrases: number
+        }
+        Update: {
+          avg_confidence?: number | null
+          avg_duration_ms?: number | null
+          bleu_score?: number | null
+          created_at?: string | null
+          f1_score?: number | null
+          id?: string
+          model_version?: string | null
+          precision_score?: number | null
+          recall_score?: number | null
+          test_results?: Json | null
+          test_set_name?: string
+          tested_by?: string | null
+          total_phrases?: number
+        }
+        Relationships: []
+      }
       training_phrases: {
         Row: {
           bariba_text: string

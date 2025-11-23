@@ -16,6 +16,9 @@ interface InitializationStatus {
   correctoReady: boolean;
   trieReady: boolean;
   duration: number;
+  cachePrewarmed?: boolean;
+  cachePreloadCount?: number;
+  timestamp?: number;
 }
 
 export class SMTInitializer {
@@ -34,11 +37,37 @@ export class SMTInitializer {
 
   /**
    * Initialize the SMT system from database
+   * Checks localStorage first to avoid re-initialization on page reload
    */
   async initialize(): Promise<InitializationStatus> {
+    // Check if already initialized in memory
     if (this.initializationStatus?.isInitialized) {
-      console.log("✅ SMT System already initialized");
+      console.log("✅ SMT System already initialized in memory");
       return this.initializationStatus;
+    }
+
+    // Check localStorage for persistent initialization status
+    const storedStatus = localStorage.getItem('smt_initialization_status');
+    if (storedStatus) {
+      try {
+        const parsed = JSON.parse(storedStatus);
+        const age = Date.now() - parsed.timestamp;
+        // If initialized less than 24h ago, reuse
+        if (age < 24 * 60 * 60 * 1000 && parsed.isInitialized) {
+          console.log("✅ SMT System already initialized (from localStorage, age: " + Math.round(age / 1000 / 60) + "min)");
+          this.initializationStatus = parsed;
+          // Verify engines are still ready
+          if (statisticalEngine.isReady() && enhancedCorrector.isReady()) {
+            return this.initializationStatus;
+          } else {
+            console.log("⚠️ Engines not ready, re-initializing...");
+            localStorage.removeItem('smt_initialization_status');
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to parse stored SMT status:", e);
+        localStorage.removeItem('smt_initialization_status');
+      }
     }
 
     if (this.isInitializing) {
@@ -188,6 +217,9 @@ export class SMTInitializer {
         duration
       };
 
+      // Pre-warm cache with most frequent translations
+      await this.preWarmCache();
+
       console.log("✅ ====== SMT SYSTEM INITIALIZED ======");
       console.log(`   📊 TOTAL PHRASES: ${this.initializationStatus.phrasesCount.toLocaleString()}`);
       console.log(`   📖 Dictionary: ${this.initializationStatus.dictionaryCount.toLocaleString()}`);
@@ -196,6 +228,16 @@ export class SMTInitializer {
       console.log(`   🌳 Trie Index: ${this.initializationStatus.trieReady ? '✅ READY' : '❌ NOT READY'}`);
       console.log(`   ⏱️ Duration: ${(duration / 1000).toFixed(2)}s`);
       console.log("✅ ====================================");
+
+      // Save to localStorage for persistence across page reloads
+      const statusToStore = {
+        ...this.initializationStatus,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('smt_initialization_status', JSON.stringify(statusToStore));
+
+      // Save metrics to database for historical tracking
+      await this.saveInitializationLog(sourceStats);
 
       return this.initializationStatus;
     } catch (error) {
@@ -237,7 +279,82 @@ export class SMTInitializer {
   async refresh(): Promise<InitializationStatus> {
     console.log("🔄 Refreshing SMT system...");
     this.reset();
+    localStorage.removeItem('smt_initialization_status');
     return await this.initialize();
+  }
+
+  /**
+   * Pre-warm cache with most frequent phrases from translation_memory
+   */
+  private async preWarmCache(): Promise<void> {
+    try {
+      console.log("🔥 Pre-warming cache with top 1000 frequent phrases...");
+      
+      const { translationCache } = await import("@/utils/TranslationCache");
+      
+      // Load top 1000 most used translations from memory
+      const { data: frequentPhrases, error } = await supabase
+        .from('translation_memory')
+        .select('source_text, target_text, source_language, target_language')
+        .order('usage_count', { ascending: false })
+        .limit(1000);
+
+      if (error) {
+        console.warn("⚠️ Could not load frequent phrases for cache:", error.message);
+        return;
+      }
+
+      if (frequentPhrases && frequentPhrases.length > 0) {
+        frequentPhrases.forEach(p => {
+          const key = `${p.source_language}:${p.source_text}`;
+          translationCache.set(key, p.target_text, 98, 'prewarmed');
+        });
+        
+        console.log(`✅ Cache pre-warmed with ${frequentPhrases.length} translations`);
+        
+        if (this.initializationStatus) {
+          this.initializationStatus.cachePrewarmed = true;
+          this.initializationStatus.cachePreloadCount = frequentPhrases.length;
+        }
+      }
+    } catch (err) {
+      console.warn("⚠️ Cache pre-warming failed:", err);
+    }
+  }
+
+  /**
+   * Save initialization log to database for historical tracking
+   */
+  private async saveInitializationLog(sourceStats: Record<string, number>): Promise<void> {
+    try {
+      if (!this.initializationStatus) return;
+
+      const { error } = await supabase
+        .from('smt_initialization_logs')
+        .insert({
+          phrases_count: this.initializationStatus.phrasesCount,
+          dictionary_count: this.initializationStatus.dictionaryCount,
+          duration_ms: this.initializationStatus.duration,
+          smt_ready: this.initializationStatus.smtReady,
+          corrector_ready: this.initializationStatus.correctoReady,
+          trie_ready: this.initializationStatus.trieReady,
+          cache_prewarmed: this.initializationStatus.cachePrewarmed || false,
+          cache_preload_count: this.initializationStatus.cachePreloadCount || 0,
+          source_stats: sourceStats,
+          performance_metrics: {
+            phrasesPerSecond: Math.round(this.initializationStatus.phrasesCount / (this.initializationStatus.duration / 1000)),
+            avgLoadTime: this.initializationStatus.duration / 1000
+          }
+        });
+
+      if (error) {
+        console.warn("⚠️ Failed to save initialization log:", error.message);
+      } else {
+        console.log("✅ Initialization metrics saved to database");
+      }
+    } catch (err) {
+      console.warn("⚠️ Error saving initialization log:", err);
+    }
   }
 }
 

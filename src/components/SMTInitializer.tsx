@@ -23,13 +23,28 @@ export function SMTInitializer() {
       try {
         if (!isMounted) return;
         
+        // Check if already initialized (localStorage check)
+        const storedStatus = localStorage.getItem('smt_initialization_status');
+        if (storedStatus) {
+          try {
+            const parsed = JSON.parse(storedStatus);
+            const age = Date.now() - parsed.timestamp;
+            // If initialized less than 24h ago, skip initialization UI
+            if (age < 24 * 60 * 60 * 1000 && parsed.isInitialized) {
+              console.log("✅ SMT already initialized, skipping UI");
+              setInitialized(true);
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            // Continue with initialization if parse fails
+          }
+        }
+        
         setLoading(true);
         setProgress(10);
         setStage("Chargement des données...");
         console.log("🔄 INITIALISATION SMT - Chargement de TOUTES les phrases...");
-        
-        // Force fresh initialization to get latest data
-        smtInitializer.reset();
         
         if (!isMounted) return;
         setProgress(30);
