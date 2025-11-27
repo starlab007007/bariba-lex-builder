@@ -35,10 +35,18 @@ serve(async (req) => {
       );
     }
 
+    // Get Space URL from secrets (configurable via admin UI)
+    let BYT5_SPACE_URL = Deno.env.get('BYT5_SPACE_URL');
+    if (!BYT5_SPACE_URL || BYT5_SPACE_URL === '') {
+      // Default fallback
+      BYT5_SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space';
+    }
+
     const direction = sourceLang === 'french' ? 'fr-ba' : 'ba-fr';
     const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualité maximale';
 
     console.log(`🤖 ByT5 Translation: ${direction} - "${text.substring(0, 30)}..."`);
+    console.log(`📍 Using Space URL: ${BYT5_SPACE_URL}`);
     
     const startTime = Date.now();
     const SPACE_NAME = 'zimesongbian/modele_byt5_bariba_expert_api_v03';
@@ -132,7 +140,7 @@ serve(async (req) => {
 
     // Étape 3: Essayer l'endpoint Gradio direct avec le domaine correct
     console.log(`\n🔄 Step 3: Trying direct Gradio endpoint...`);
-    const gradioBaseUrl = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space';
+    const gradioBaseUrl = BYT5_SPACE_URL;
     
     // Essayer d'abord sans endpoint spécifique pour voir la page d'accueil
     try {
@@ -145,6 +153,28 @@ serve(async (req) => {
       if (homeResponse.status === 404) {
         console.error(`   ❌ Space homepage returns 404 - Space may not exist or URL is wrong`);
         console.error(`   📍 Please verify the exact Space URL on HuggingFace`);
+      } else if (homeResponse.status === 200) {
+        console.log(`   ✅ Space homepage is accessible!`);
+        // Analyser le HTML pour trouver l'API endpoint
+        const html = await homeResponse.text();
+        console.log(`   📄 HTML length: ${html.length} chars`);
+        
+        // Chercher les endpoints Gradio dans le HTML
+        const gradioApiMatch = html.match(/\/gradio_api/);
+        const apiPredictMatch = html.match(/\/api\/predict/);
+        const runPredictMatch = html.match(/\/run\/predict/);
+        const callPredictMatch = html.match(/\/call\/predict/);
+        
+        if (gradioApiMatch) console.log(`   🎯 Found: /gradio_api`);
+        if (apiPredictMatch) console.log(`   🎯 Found: /api/predict`);
+        if (runPredictMatch) console.log(`   🎯 Found: /run/predict`);
+        if (callPredictMatch) console.log(`   🎯 Found: /call/predict`);
+        
+        // Chercher la fonction predict dans le code JS
+        const predictFnMatch = html.match(/function\s+predict|const\s+predict|predict\s*:\s*function/i);
+        if (predictFnMatch) {
+          console.log(`   🎯 Found predict function in page code`);
+        }
       }
     } catch (e) {
       console.error(`   ❌ Homepage check failed: ${e.message}`);
