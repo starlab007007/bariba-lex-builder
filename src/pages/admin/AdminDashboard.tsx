@@ -30,6 +30,7 @@ import { SMTRealTimeMonitor } from '@/components/admin/SMTRealTimeMonitor';
 import { SMTQualityDashboard } from '@/components/admin/SMTQualityDashboard';
 import { TranslationMonitoringDashboard } from '@/components/admin/TranslationMonitoringDashboard';
 import SystemAuditReport from '@/components/admin/SystemAuditReport';
+import { ModelHealthDashboard } from '@/components/admin/ModelHealthDashboard';
 import { 
   Settings, Users, BarChart3, Database, 
   FileText, Brain, TestTube2, Globe, 
@@ -87,6 +88,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="unified-data" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-data))]">
                 <Database className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Gestion Unifiée
+              </TabsTrigger>
+              <TabsTrigger value="model-health" className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Santé Modèles
               </TabsTrigger>
               <TabsTrigger value="smt-monitoring" className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-[hsl(var(--section-data))]" />
@@ -241,6 +246,7 @@ export default function AdminDashboard() {
           {/* Tab Contents */}
           <TabsContent value="overview"><AdminOverview /></TabsContent>
           <TabsContent value="unified-data"><UnifiedDataManager /></TabsContent>
+          <TabsContent value="model-health"><ModelHealthDashboard /></TabsContent>
           <TabsContent value="smt-monitoring"><SMTSystemDashboard /></TabsContent>
           <TabsContent value="translation-monitoring"><TranslationMonitoringDashboard /></TabsContent>
           <TabsContent value="smt-realtime"><SMTRealTimeMonitor /></TabsContent>
