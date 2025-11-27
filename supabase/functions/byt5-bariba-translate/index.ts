@@ -38,7 +38,7 @@ serve(async (req) => {
     // Get Space URL from secrets (configurable via admin UI)
     let BYT5_SPACE_URL = Deno.env.get('BYT5_SPACE_URL');
     if (!BYT5_SPACE_URL || BYT5_SPACE_URL === '') {
-      // Default fallback
+      // Default fallback (NOTE: HuggingFace converts underscores to hyphens in URLs)
       BYT5_SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space';
     }
 
