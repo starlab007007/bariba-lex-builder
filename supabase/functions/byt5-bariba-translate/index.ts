@@ -48,9 +48,9 @@ serve(async (req) => {
     const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualité maximale';
     const advanced = true; // Post-traitement avancé activé
 
-    // Configuration du Space ByT5 Expert
+    // Configuration du Space ByT5 Expert - Gradio 4.x uses /run/predict
     const SPACE_BASE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space';
-    const PREDICT_URL = `${SPACE_BASE_URL}/api/predict`;
+    const PREDICT_URL = `${SPACE_BASE_URL}/run/predict`;
 
     console.log(`🤖 Attempting ByT5 translation: ${direction}, mode: ${gradioMode}`);
     console.log(`📍 Space URL: ${SPACE_BASE_URL}`);
