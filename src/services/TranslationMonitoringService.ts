@@ -10,7 +10,7 @@ export interface TranslationMetric {
   outputText: string;
   sourceLang: 'french' | 'bariba';
   targetLang: 'french' | 'bariba';
-  method: 'idiom' | 'context' | 'rag' | 'simplified' | 'advanced' | 'ai' | 'fallback';
+  method: 'idiom' | 'context' | 'rag' | 'simplified' | 'advanced' | 'byt5-expert' | 'ai' | 'fallback';
   confidence: number;
   duration: number;
   cost: number;

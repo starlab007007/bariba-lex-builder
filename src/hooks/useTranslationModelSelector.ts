@@ -9,6 +9,7 @@ export type TranslationModel =
   | 'smt'            // Statistical Machine Translation uniquement
   | 'simplified'     // SimplifiedAI uniquement
   | 'baatonu'        // BaatonuAI avec embeddings
+  | 'byt5-expert'    // ByT5 Expert fine-tuné Hugging Face
   | 'lovable-ai';    // Lovable AI cloud
 
 export interface ModelInfo {
@@ -59,6 +60,15 @@ export const TRANSLATION_MODELS: ModelInfo[] = [
     quality: 'excellente',
     cost: 'gratuit',
     icon: '🧠'
+  },
+  {
+    id: 'byt5-expert',
+    name: 'ByT5 Expert',
+    description: 'Modèle ByT5 fine-tuné spécifiquement pour Bariba. Haute qualité, spécialisé.',
+    speed: 'moyen',
+    quality: 'excellente',
+    cost: 'gratuit',
+    icon: '🤖'
   },
   {
     id: 'lovable-ai',

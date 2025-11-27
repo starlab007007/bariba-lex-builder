@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.ai-translate-lovable]
 verify_jwt = false
 
+[functions.byt5-bariba-translate]
+verify_jwt = false
+
 [functions.retrain-model]
 verify_jwt = true
 
