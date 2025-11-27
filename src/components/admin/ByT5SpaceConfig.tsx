@@ -2,7 +2,7 @@
  * Configuration du Space Gradio ByT5 Expert
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,43 @@ export const ByT5SpaceConfig = () => {
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [errorDetails, setErrorDetails] = useState<string>("");
   const [detailedLogs, setDetailedLogs] = useState<any>(null);
+  const [urlWarning, setUrlWarning] = useState<string>("");
+
+  // Validate URL format and detect underscores
+  const validateUrl = (url: string) => {
+    if (!url) {
+      setUrlWarning("");
+      return;
+    }
+
+    // Check for underscores in the URL (HuggingFace converts them to hyphens)
+    if (url.includes('_')) {
+      const correctedUrl = url.replace(/_/g, '-');
+      setUrlWarning(`⚠️ L'URL contient des underscores (_) qui seront convertis en tirets (-) par HuggingFace. URL correcte suggérée: ${correctedUrl}`);
+    } else {
+      setUrlWarning("");
+    }
+  };
+
+  // Auto-correct URL by replacing underscores with hyphens
+  const autoCorrectUrl = () => {
+    const correctedUrl = spaceUrl.replace(/_/g, '-');
+    setSpaceUrl(correctedUrl);
+    setUrlWarning("");
+    toast.success("✅ URL corrigée automatiquement");
+  };
+
+  // Validate on URL change
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newUrl = e.target.value;
+    setSpaceUrl(newUrl);
+    validateUrl(newUrl);
+  };
+
+  // Validate initial URL on mount
+  useEffect(() => {
+    validateUrl(spaceUrl);
+  }, []);
 
   const testConnection = async () => {
     setIsTesting(true);
@@ -114,7 +151,7 @@ export const ByT5SpaceConfig = () => {
           <Input
             id="space-url"
             value={spaceUrl}
-            onChange={(e) => setSpaceUrl(e.target.value)}
+            onChange={handleUrlChange}
             placeholder="https://username-space-name.hf.space"
             className="flex-1"
           />
@@ -125,6 +162,28 @@ export const ByT5SpaceConfig = () => {
         <p className="text-xs text-muted-foreground">
           Format: https://username-space-name.hf.space (URL complète avec https://)
         </p>
+        
+        {/* URL Validation Warning */}
+        {urlWarning && (
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  {urlWarning}
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={autoCorrectUrl} 
+              size="sm" 
+              variant="outline"
+              className="w-full border-amber-500/20 hover:bg-amber-500/10"
+            >
+              🔧 Auto-corriger l'URL
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Success details */}
