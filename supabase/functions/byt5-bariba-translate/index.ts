@@ -48,23 +48,21 @@ serve(async (req) => {
     const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualité maximale';
     const advanced = true; // Post-traitement avancé activé
 
-    // Gradio API endpoint - utiliser /api/predict pour une réponse synchrone
     // Configuration du Space ByT5 Expert
-    // IMPORTANT: Vérifiez que l'URL du Space est correcte
-    // Format attendu: https://[username]-[space-name].hf.space
     const SPACE_BASE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space';
-    const PREDICT_URL = `${SPACE_BASE_URL}/call/predict`;
+    const PREDICT_URL = `${SPACE_BASE_URL}/api/predict`;
 
     console.log(`🤖 Attempting ByT5 translation: ${direction}, mode: ${gradioMode}`);
     console.log(`📍 Space URL: ${SPACE_BASE_URL}`);
+    console.log(`📍 API Endpoint: ${PREDICT_URL}`);
     console.log(`📝 Text length: ${text.length} chars`);
+    console.log(`🔑 Token configured: ${HF_TOKEN ? 'YES' : 'NO'}`);
 
     const startTime = Date.now();
 
-    // Étape 1: Initier la prédiction et obtenir l'event_id
-    let initResponse;
     try {
-      initResponse = await fetch(PREDICT_URL, {
+      // Appel direct à l'API Gradio avec endpoint synchrone /api/predict
+      const response = await fetch(PREDICT_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${HF_TOKEN}`,
@@ -75,108 +73,66 @@ serve(async (req) => {
         }),
       });
 
-      if (!initResponse.ok) {
-        const errorText = await initResponse.text();
-        console.error(`❌ ByT5 Space init error (${initResponse.status}):`, errorText);
+      console.log(`📡 API Response Status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ ByT5 API Error (${response.status}):`, errorText);
         console.error(`📍 Attempted URL: ${PREDICT_URL}`);
-        console.error(`⚠️  Possible causes:`);
-        console.error(`   1. Space URL is incorrect (verify on Hugging Face)`);
-        console.error(`   2. Space is private and token doesn't have access`);
-        console.error(`   3. Space doesn't exist or has been moved`);
-        console.error(`   4. Space is sleeping (try again in a few seconds)`);
+        console.error(`⚠️  Troubleshooting:`);
+        console.error(`   1. Verify Space URL: https://huggingface.co/spaces/zimesongbian/modele_byt5_bariba_expert_api_v03`);
+        console.error(`   2. Check Space is RUNNING (not sleeping)`);
+        console.error(`   3. Verify token has access to this private Space`);
+        console.error(`   4. Check if Space uses /api/predict endpoint`);
         
         return new Response(
           JSON.stringify({ 
-            error: 'ByT5 Space unavailable',
-            details: `HTTP ${initResponse.status}: ${errorText}`,
-            status: initResponse.status,
-            spaceUrl: SPACE_BASE_URL,
-            troubleshooting: 'Verify Space URL at Hugging Face and check token permissions'
+            error: 'ByT5 Space API call failed',
+            details: errorText,
+            status: response.status,
+            endpoint: PREDICT_URL,
+            suggestion: 'Verify Space is awake on Hugging Face and token has FINEGRAINED access'
           }),
-          { status: initResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const initData = await initResponse.json();
-      const eventId = initData.event_id;
+      const result = await response.json();
+      console.log(`📦 API Response:`, JSON.stringify(result).substring(0, 200));
 
-      if (!eventId) {
-        console.error('No event_id received from ByT5 Space');
+      // Gradio API response format: { data: [translation] }
+      if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
+        console.error('Invalid API response format:', result);
         return new Response(
-          JSON.stringify({ error: 'Invalid response from ByT5 Space - no event_id' }),
+          JSON.stringify({ 
+            error: 'Invalid ByT5 API response format',
+            details: 'Expected { data: [translation] }',
+            received: result
+          }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      console.log(`Got event_id: ${eventId}, polling for result...`);
+      const translation = result.data[0];
+      const duration = Date.now() - startTime;
+      const confidence = translation && translation.length > 0 ? 90 : 50;
 
-      // Étape 2: Polling pour obtenir le résultat
-      const POLL_URL = `https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space/call/predict/${eventId}`;
-      let attempts = 0;
-      const maxPollAttempts = 60; // 60 secondes max
+      console.log(`✅ ByT5 translation completed in ${duration}ms`);
+      console.log(`📤 Translation: ${translation?.substring(0, 50)}...`);
 
-      while (attempts < maxPollAttempts) {
-        attempts++;
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre 1s entre chaque poll
-
-        const pollResponse = await fetch(POLL_URL, {
-          headers: {
-            'Authorization': `Bearer ${HF_TOKEN}`,
-          },
-        });
-
-        if (!pollResponse.ok) {
-          if (attempts < maxPollAttempts) continue;
-          const errorText = await pollResponse.text();
-          console.error(`Polling failed after ${attempts} attempts:`, errorText);
-          return new Response(
-            JSON.stringify({ error: 'Polling timeout', details: errorText }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const pollData = await pollResponse.json();
-
-        // Vérifier si la prédiction est terminée
-        if (pollData.event === 'complete' && pollData.data) {
-          const translation = pollData.data[0];
-          const duration = Date.now() - startTime;
-          const confidence = translation.length > 0 ? 90 : 50;
-
-          console.log(`✅ ByT5 translation completed in ${duration}ms (${attempts} polls)`);
-
-          return new Response(
-            JSON.stringify({
-              translation,
-              confidence,
-              duration,
-              method: 'byt5-expert',
-              modelInfo: {
-                name: 'ByT5 Expert',
-                version: 'zimesongbian/modele_byt5_bariba_expert_api_v03',
-                mode: gradioMode
-              }
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Si erreur dans la prédiction
-        if (pollData.event === 'error') {
-          console.error('Prediction error:', pollData);
-          return new Response(
-            JSON.stringify({ error: 'Prediction failed', details: pollData }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Sinon, continuer à poller (event === 'generating' ou 'processing')
-      }
-
-      // Timeout après tous les polls
       return new Response(
-        JSON.stringify({ error: 'Prediction timeout after 60s' }),
-        { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          translation,
+          confidence,
+          duration,
+          method: 'byt5-expert',
+          modelInfo: {
+            name: 'ByT5 Expert',
+            version: 'zimesongbian/modele_byt5_bariba_expert_api_v03',
+            mode: gradioMode
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
 
     } catch (error) {
