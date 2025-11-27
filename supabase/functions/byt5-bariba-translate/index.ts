@@ -13,7 +13,6 @@ interface TranslationRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -23,41 +22,55 @@ serve(async (req) => {
 
     if (!text || !sourceLang || !targetLang) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: text, sourceLang, targetLang' }),
+        JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get Hugging Face token from environment
     const HF_TOKEN = Deno.env.get('HUGGING_FACE_API_TOKEN');
     if (!HF_TOKEN) {
-      console.error('HUGGING_FACE_API_TOKEN is not configured');
       return new Response(
         JSON.stringify({ error: 'HF token not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Map to Gradio API format
     const direction = sourceLang === 'french' ? 'fr-ba' : 'ba-fr';
     const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualité maximale';
-    const advanced = true;
 
-    console.log(`🤖 ByT5 Expert Translation Request`);
-    console.log(`   Direction: ${direction}`);
-    console.log(`   Mode: ${gradioMode}`);
-    console.log(`   Text: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
-    console.log(`   Token: ${HF_TOKEN.substring(0, 10)}...`);
-
-    const startTime = Date.now();
-    const SPACE_ID = 'zimesongbian/modele_byt5_bariba_expert_api_v03';
+    console.log(`🤖 ByT5 Translation: ${direction} - "${text.substring(0, 30)}..."`);
     
-    // Liste des endpoints à essayer dans l'ordre
-    const endpoints = [
-      // Méthode 1: API Inference directe (recommandée pour Spaces privés)
-      {
-        name: 'Inference API',
-        url: `https://api-inference.huggingface.co/models/${SPACE_ID}`,
+    const startTime = Date.now();
+    const SPACE_NAME = 'zimesongbian/modele_byt5_bariba_expert_api_v03';
+    
+    // Étape 1: Vérifier si le Space existe et obtenir ses infos
+    console.log(`\n🔍 Step 1: Checking Space info via HF API...`);
+    try {
+      const spaceInfoResponse = await fetch(`https://huggingface.co/api/spaces/${SPACE_NAME}`, {
+        headers: { 'Authorization': `Bearer ${HF_TOKEN}` }
+      });
+      
+      if (spaceInfoResponse.ok) {
+        const spaceInfo = await spaceInfoResponse.json();
+        console.log(`✅ Space found: ${spaceInfo.id}`);
+        console.log(`   SDK: ${spaceInfo.sdk || 'unknown'}`);
+        console.log(`   Runtime: ${JSON.stringify(spaceInfo.runtime)}`);
+        console.log(`   Host: ${spaceInfo.subdomain}.hf.space`);
+      } else {
+        console.warn(`⚠️  Could not fetch Space info (${spaceInfoResponse.status})`);
+      }
+    } catch (e) {
+      console.warn(`⚠️  Space info check failed: ${e.message}`);
+    }
+
+    // Étape 2: Essayer le nouveau Router HuggingFace
+    console.log(`\n🔄 Step 2: Trying new HF Router API...`);
+    try {
+      const routerUrl = `https://router.huggingface.co/spaces/${SPACE_NAME}`;
+      console.log(`   URL: ${routerUrl}`);
+      
+      const routerResponse = await fetch(routerUrl, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${HF_TOKEN}`,
           'Content-Type': 'application/json',
@@ -67,156 +80,171 @@ serve(async (req) => {
           parameters: {
             direction: direction,
             mode: gradioMode,
-            advanced: advanced
+            advanced: true
           }
-        })
-      },
-      // Méthode 2: Gradio API /api/predict
-      {
-        name: 'Gradio /api/predict',
-        url: `https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space/api/predict`,
-        headers: {
-          'Authorization': `Bearer ${HF_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          data: [text, direction, gradioMode, advanced]
-        })
-      },
-      // Méthode 3: Gradio API /run/predict
-      {
-        name: 'Gradio /run/predict',
-        url: `https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space/run/predict`,
-        headers: {
-          'Authorization': `Bearer ${HF_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          data: [text, direction, gradioMode, advanced]
-        })
-      },
-      // Méthode 4: Gradio API /call/predict (avec polling)
-      {
-        name: 'Gradio /call/predict',
-        url: `https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space/call/predict`,
-        headers: {
-          'Authorization': `Bearer ${HF_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          data: [text, direction, gradioMode, advanced]
-        })
+        }),
+      });
+
+      console.log(`   Status: ${routerResponse.status}`);
+
+      if (routerResponse.ok) {
+        const result = await routerResponse.json();
+        console.log(`   Response:`, JSON.stringify(result).substring(0, 200));
+        
+        let translation = null;
+        if (typeof result === 'string') {
+          translation = result;
+        } else if (result.generated_text) {
+          translation = result.generated_text;
+        } else if (Array.isArray(result) && result[0]?.generated_text) {
+          translation = result[0].generated_text;
+        } else if (result.data && result.data[0]) {
+          translation = result.data[0];
+        }
+
+        if (translation) {
+          const duration = Date.now() - startTime;
+          console.log(`✅ SUCCESS via Router in ${duration}ms`);
+          
+          return new Response(
+            JSON.stringify({
+              translation,
+              confidence: 90,
+              duration,
+              method: 'byt5-expert',
+              endpoint: 'HuggingFace Router',
+              modelInfo: {
+                name: 'ByT5 Expert',
+                version: SPACE_NAME,
+                mode: gradioMode
+              }
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        const errorText = await routerResponse.text();
+        console.error(`   ❌ Router failed: ${errorText}`);
       }
+    } catch (e) {
+      console.error(`   ❌ Router exception: ${e.message}`);
+    }
+
+    // Étape 3: Essayer l'endpoint Gradio direct avec le domaine correct
+    console.log(`\n🔄 Step 3: Trying direct Gradio endpoint...`);
+    const gradioBaseUrl = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space';
+    
+    // Essayer d'abord sans endpoint spécifique pour voir la page d'accueil
+    try {
+      console.log(`   Checking Space homepage: ${gradioBaseUrl}`);
+      const homeResponse = await fetch(gradioBaseUrl, {
+        headers: { 'Authorization': `Bearer ${HF_TOKEN}` }
+      });
+      console.log(`   Homepage status: ${homeResponse.status}`);
+      
+      if (homeResponse.status === 404) {
+        console.error(`   ❌ Space homepage returns 404 - Space may not exist or URL is wrong`);
+        console.error(`   📍 Please verify the exact Space URL on HuggingFace`);
+      }
+    } catch (e) {
+      console.error(`   ❌ Homepage check failed: ${e.message}`);
+    }
+
+    // Essayer les endpoints Gradio courants
+    const gradioEndpoints = [
+      { path: '', method: 'GET', name: 'Root' },
+      { path: '/api/predict', method: 'POST', name: 'API Predict', body: { data: [text, direction, gradioMode, true] } },
+      { path: '/run/predict', method: 'POST', name: 'Run Predict', body: { data: [text, direction, gradioMode, true] } },
+      { path: '/gradio_api/call/predict', method: 'POST', name: 'Gradio API Call', body: { data: [text, direction, gradioMode, true] } },
     ];
 
-    const errors = [];
-
-    // Essayer chaque endpoint
-    for (const endpoint of endpoints) {
-      console.log(`\n🔄 Trying ${endpoint.name}...`);
-      console.log(`   URL: ${endpoint.url}`);
-      
+    for (const endpoint of gradioEndpoints) {
       try {
-        const response = await fetch(endpoint.url, {
-          method: 'POST',
-          headers: endpoint.headers,
-          body: endpoint.body,
-        });
+        const url = `${gradioBaseUrl}${endpoint.path}`;
+        console.log(`   Trying: ${endpoint.method} ${url}`);
+        
+        const options: any = {
+          method: endpoint.method,
+          headers: {
+            'Authorization': `Bearer ${HF_TOKEN}`,
+          }
+        };
 
-        console.log(`   Status: ${response.status} ${response.statusText}`);
+        if (endpoint.body) {
+          options.headers['Content-Type'] = 'application/json';
+          options.body = JSON.stringify(endpoint.body);
+        }
+
+        const response = await fetch(url, options);
+        console.log(`   Status: ${response.status}`);
 
         if (response.ok) {
-          const result = await response.json();
-          console.log(`   Response:`, JSON.stringify(result).substring(0, 200));
-
-          // Extraction de la traduction selon le format de réponse
-          let translation = null;
-
-          // Format Inference API: { generated_text: "..." } ou [{"generated_text": "..."}]
-          if (result.generated_text) {
-            translation = result.generated_text;
-          } else if (Array.isArray(result) && result[0]?.generated_text) {
-            translation = result[0].generated_text;
-          }
-          // Format Gradio: { data: [...] }
-          else if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-            translation = result.data[0];
-          }
-          // Format direct: tableau de résultats
-          else if (Array.isArray(result) && result.length > 0) {
-            translation = result[0];
-          }
-
-          if (translation) {
-            const duration = Date.now() - startTime;
-            console.log(`✅ Translation successful via ${endpoint.name} in ${duration}ms`);
-            console.log(`   Result: "${translation.substring(0, 100)}${translation.length > 100 ? '...' : ''}"`);
-
-            return new Response(
-              JSON.stringify({
-                translation,
-                confidence: 90,
-                duration,
-                method: 'byt5-expert',
-                endpoint: endpoint.name,
-                modelInfo: {
-                  name: 'ByT5 Expert',
-                  version: SPACE_ID,
-                  mode: gradioMode
-                }
-              }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+          if (endpoint.method === 'GET') {
+            const html = await response.text();
+            console.log(`   ✅ Space accessible! HTML length: ${html.length}`);
+            // Chercher l'endpoint API dans le HTML
+            const apiMatch = html.match(/\/api\/predict|\/run\/predict|gradio_api/);
+            if (apiMatch) {
+              console.log(`   📍 Found potential endpoint in HTML: ${apiMatch[0]}`);
+            }
           } else {
-            console.warn(`   ⚠️ Success but unexpected response format`);
-            errors.push({
-              endpoint: endpoint.name,
-              status: response.status,
-              error: 'Unexpected response format',
-              response: result
-            });
+            const result = await response.json();
+            let translation = null;
+            
+            if (result.data && result.data[0]) {
+              translation = result.data[0];
+            }
+
+            if (translation) {
+              const duration = Date.now() - startTime;
+              console.log(`✅ SUCCESS via ${endpoint.name} in ${duration}ms`);
+              
+              return new Response(
+                JSON.stringify({
+                  translation,
+                  confidence: 90,
+                  duration,
+                  method: 'byt5-expert',
+                  endpoint: endpoint.name,
+                  modelInfo: {
+                    name: 'ByT5 Expert',
+                    version: SPACE_NAME,
+                    mode: gradioMode
+                  }
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
           }
-        } else {
-          const errorText = await response.text();
-          console.error(`   ❌ Error ${response.status}: ${errorText.substring(0, 200)}`);
-          errors.push({
-            endpoint: endpoint.name,
-            status: response.status,
-            error: errorText
-          });
         }
-      } catch (error) {
-        console.error(`   ❌ Exception: ${error.message}`);
-        errors.push({
-          endpoint: endpoint.name,
-          error: error.message
-        });
+      } catch (e) {
+        console.error(`   ❌ ${endpoint.name} failed: ${e.message}`);
       }
     }
 
-    // Si tous les endpoints ont échoué
+    // Tous les endpoints ont échoué
     const duration = Date.now() - startTime;
-    console.error(`\n❌ All endpoints failed after ${duration}ms`);
-    console.error(`Errors summary:`, JSON.stringify(errors, null, 2));
-
+    console.error(`\n❌ ALL METHODS FAILED after ${duration}ms`);
+    
     return new Response(
       JSON.stringify({ 
-        error: 'ByT5 Space unavailable - all endpoints failed',
-        details: 'Tried multiple API endpoints without success',
-        attempts: errors,
+        error: 'ByT5 Space is not accessible',
+        details: 'All connection methods failed',
         troubleshooting: [
-          `1. Verify Space exists: https://huggingface.co/spaces/${SPACE_ID}`,
-          `2. Check Space is RUNNING (not sleeping or building)`,
-          `3. Verify token ${HF_TOKEN.substring(0, 10)}... has READ access to private Space`,
-          `4. Try accessing the Space URL manually in your browser`,
-          `5. Check Space logs on Hugging Face for errors`
-        ]
+          '⚠️  CRITICAL: Your Space URL may be incorrect',
+          `1. Verify this URL works in browser: https://huggingface.co/spaces/${SPACE_NAME}`,
+          '2. Check if Space is RUNNING (not sleeping/building)',
+          '3. Verify token has READ access to private Space',
+          '4. The Space may use a custom API - check Space README',
+          '5. Try clicking "Duplicate this Space" on HF to create a working copy'
+        ],
+        nextSteps: 'Please verify the exact Space name and URL on HuggingFace, then update the configuration'
       }),
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in byt5-bariba-translate:', error);
+    console.error('Fatal error:', error);
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Translation failed',
