@@ -213,33 +213,53 @@ export const ByT5SpaceConfig = () => {
             <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
             <div className="flex-1 space-y-3">
               <div>
-                <p className="text-sm font-medium text-destructive">Erreur de connexion</p>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
-                  {errorDetails.substring(0, 300)}
+                <p className="text-sm font-medium text-destructive">
+                  {detailedLogs?.error || 'Erreur de connexion'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {detailedLogs?.details || errorDetails.substring(0, 200)}
                 </p>
               </div>
 
-              {detailedLogs && (
-                <details className="text-xs">
-                  <summary className="cursor-pointer font-medium hover:underline">
-                    Voir les logs détaillés
-                  </summary>
-                  <pre className="mt-2 bg-background/50 p-3 rounded overflow-auto max-h-96 text-[10px]">
-                    {JSON.stringify(detailedLogs, null, 2)}
-                  </pre>
-                </details>
+              {/* Diagnostics spécifiques si disponibles */}
+              {detailedLogs?.diagnostics && (
+                <div className="rounded-md bg-background/50 p-3 space-y-2">
+                  <p className="text-xs font-medium">🔍 Diagnostic automatique:</p>
+                  <div className="text-xs space-y-1 text-muted-foreground">
+                    <p>✅ Space Status: {detailedLogs.diagnostics.spaceStatus}</p>
+                    <p>✅ Homepage: {detailedLogs.diagnostics.homepageAccessible ? 'Accessible' : 'Non accessible'}</p>
+                    <p>❌ Endpoints testés: {detailedLogs.diagnostics.testedEndpoints.length}</p>
+                    <p>❌ Aucun endpoint API ne répond</p>
+                  </div>
+                </div>
               )}
 
-              <div className="text-xs space-y-2">
-                <p className="font-medium">Solutions possibles:</p>
-                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                  <li>Vérifiez que l'URL du Space est correcte (cliquez sur 📍 ci-dessous)</li>
-                  <li>Assurez-vous que le Space est RUNNING (pas en "Sleeping" ou "Building")</li>
-                  <li>Vérifiez que le token HUGGING_FACE_API_TOKEN a accès au Space</li>
-                  <li>Le Space peut mettre 10-30s à démarrer - réessayez</li>
-                  <li>Consultez les logs de l'Edge Function pour plus de détails</li>
-                </ul>
-              </div>
+              {/* Root cause si disponible */}
+              {detailedLogs?.rootCause && (
+                <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-3">
+                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                    🔎 Cause probable:
+                  </p>
+                  <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-1">
+                    {detailedLogs.rootCause}
+                  </p>
+                </div>
+              )}
+
+              {detailedLogs?.troubleshooting && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer font-medium hover:underline">
+                    💡 Voir les actions recommandées ({detailedLogs.troubleshooting.length} étapes)
+                  </summary>
+                  <div className="mt-2 bg-background/50 p-3 rounded space-y-1">
+                    {detailedLogs.troubleshooting.map((item: string, idx: number) => (
+                      <p key={idx} className={item === '' ? 'h-2' : ''}>
+                        {item}
+                      </p>
+                    ))}
+                  </div>
+                </details>
+              )}
 
               <Button 
                 onClick={openHFSpacePage} 

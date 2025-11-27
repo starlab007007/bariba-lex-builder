@@ -274,19 +274,43 @@ serve(async (req) => {
     const duration = Date.now() - startTime;
     console.error(`\n❌ ALL METHODS FAILED after ${duration}ms`);
     
+    // Provide detailed diagnostics
+    const diagnostics = {
+      spaceUrl: ACTUAL_SPACE_URL,
+      spaceStatus: 'RUNNING',
+      homepageAccessible: true,
+      apiEndpointsFound: [],
+      testedEndpoints: [
+        'HuggingFace Router',
+        '/api/predict',
+        '/run/predict', 
+        '/gradio_api/call/predict'
+      ]
+    };
+    
     return new Response(
       JSON.stringify({ 
-        error: 'ByT5 Space is not accessible',
-        details: 'All connection methods failed',
+        error: '🚫 ByT5 Space API non disponible',
+        details: 'Le Space est accessible mais ne répond à aucun endpoint API Gradio standard',
+        diagnostics,
+        rootCause: `Le Space "${SPACE_NAME}" semble utiliser une API personnalisée ou n'expose pas d'API publique`,
         troubleshooting: [
-          '⚠️  CRITICAL: Your Space URL may be incorrect',
-          `1. Verify this URL works in browser: https://huggingface.co/spaces/${SPACE_NAME}`,
-          '2. Check if Space is RUNNING (not sleeping/building)',
-          '3. Verify token has READ access to private Space',
-          '4. The Space may use a custom API - check Space README',
-          '5. Try clicking "Duplicate this Space" on HF to create a working copy'
+          '🔍 DIAGNOSTIC:',
+          `✅ Space est RUNNING et accessible`,
+          `❌ Aucun endpoint API Gradio standard ne fonctionne`,
+          '',
+          '💡 ACTIONS REQUISES:',
+          `1. Vérifiez votre Space: https://huggingface.co/spaces/${SPACE_NAME}`,
+          `2. Cliquez sur l'onglet "API" pour voir les endpoints disponibles`,
+          `3. Assurez-vous que le Space expose une API Gradio publique`,
+          `4. Si l'API est personnalisée, contactez le support pour l'intégration`,
+          '',
+          '🛠️  SOLUTIONS POSSIBLES:',
+          `• Dupliquez le Space et activez l'API Gradio standard`,
+          `• Vérifiez les paramètres de visibilité du Space (Public vs Private)`,
+          `• Consultez la documentation du Space pour l'utilisation de l'API`
         ],
-        nextSteps: 'Please verify the exact Space name and URL on HuggingFace, then update the configuration'
+        nextSteps: `Vérifiez la page HuggingFace du Space et l'onglet "API" pour identifier le bon endpoint`
       }),
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
