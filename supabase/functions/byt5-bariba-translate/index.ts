@@ -50,9 +50,10 @@ serve(async (req) => {
     
     const startTime = Date.now();
     const SPACE_NAME = 'zimesongbian/modele_byt5_bariba_expert_api_v03';
+    let ACTUAL_SPACE_URL = BYT5_SPACE_URL; // Fallback to configured URL
     
-    // Étape 1: Vérifier si le Space existe et obtenir ses infos
-    console.log(`\n🔍 Step 1: Checking Space info via HF API...`);
+    // Étape 1: Auto-detect correct Space URL from HuggingFace API
+    console.log(`\n🔍 Step 1: Auto-detecting Space URL from HF API...`);
     try {
       const spaceInfoResponse = await fetch(`https://huggingface.co/api/spaces/${SPACE_NAME}`, {
         headers: { 'Authorization': `Bearer ${HF_TOKEN}` }
@@ -63,16 +64,33 @@ serve(async (req) => {
         console.log(`✅ Space found: ${spaceInfo.id}`);
         console.log(`   SDK: ${spaceInfo.sdk || 'unknown'}`);
         console.log(`   Runtime: ${JSON.stringify(spaceInfo.runtime)}`);
-        console.log(`   Host: ${spaceInfo.subdomain}.hf.space`);
+        
+        // Extract correct domain from API response
+        if (spaceInfo.runtime?.domains?.[0]?.domain) {
+          ACTUAL_SPACE_URL = `https://${spaceInfo.runtime.domains[0].domain}`;
+          console.log(`✅ Auto-detected URL: ${ACTUAL_SPACE_URL}`);
+        } else if (spaceInfo.subdomain) {
+          ACTUAL_SPACE_URL = `https://${spaceInfo.subdomain}.hf.space`;
+          console.log(`✅ Auto-detected URL: ${ACTUAL_SPACE_URL}`);
+        }
+        
+        // Warn if configured URL differs from detected URL
+        if (BYT5_SPACE_URL && BYT5_SPACE_URL !== ACTUAL_SPACE_URL) {
+          console.warn(`⚠️  Configured URL (${BYT5_SPACE_URL}) differs from detected URL (${ACTUAL_SPACE_URL})`);
+          console.warn(`   Using auto-detected URL for better reliability`);
+        }
       } else {
         console.warn(`⚠️  Could not fetch Space info (${spaceInfoResponse.status})`);
+        console.warn(`   Falling back to configured URL: ${BYT5_SPACE_URL}`);
       }
     } catch (e) {
       console.warn(`⚠️  Space info check failed: ${e.message}`);
+      console.warn(`   Falling back to configured URL: ${BYT5_SPACE_URL}`);
     }
 
     // Étape 2: Essayer le nouveau Router HuggingFace
     console.log(`\n🔄 Step 2: Trying new HF Router API...`);
+    console.log(`   Using URL: ${ACTUAL_SPACE_URL}`);
     try {
       const routerUrl = `https://router.huggingface.co/spaces/${SPACE_NAME}`;
       console.log(`   URL: ${routerUrl}`);
@@ -140,7 +158,7 @@ serve(async (req) => {
 
     // Étape 3: Essayer l'endpoint Gradio direct avec le domaine correct
     console.log(`\n🔄 Step 3: Trying direct Gradio endpoint...`);
-    const gradioBaseUrl = BYT5_SPACE_URL;
+    const gradioBaseUrl = ACTUAL_SPACE_URL;
     
     // Essayer d'abord sans endpoint spécifique pour voir la page d'accueil
     try {
