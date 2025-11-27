@@ -26,9 +26,10 @@ import { trieIndex } from "@/utils/TrieIndex";
 import { smtInitializer } from "./SMTInitializer";
 import { translationMonitoring } from "./TranslationMonitoringService";
 import { statisticalPatterns } from "./StatisticalPatternsService";
+import { byT5TranslationService } from "./ByT5TranslationService";
 
 export interface HybridTranslationResult extends TranslationResult {
-  method: 'idiom' | 'context' | 'rag' | 'simplified' | 'advanced' | 'ai' | 'fallback';
+  method: 'idiom' | 'context' | 'rag' | 'simplified' | 'advanced' | 'byt5-expert' | 'ai' | 'fallback';
   cost: number; // Coût en crédits
   duration: number; // Durée en ms
   ragExamples?: number; // Nombre d'exemples RAG utilisés
@@ -440,6 +441,53 @@ export class HybridTranslationService {
       };
     }
 
+    // NIVEAU 3.55: ByT5 Expert pour traduction haute qualité (confiance 85-95%, GRATUIT)
+    const wordCount2 = text.split(/\s+/).length;
+    if (wordCount2 >= 3) { // ByT5 pour phrases 3+ mots
+      try {
+        console.log(`🔄 Niveau 3.55: ByT5 Expert (${wordCount2} mots)`);
+        const byt5Result = await this.callByT5Expert(text, sourceLang, targetLang, 'quality');
+        if (byt5Result && byt5Result.confidence >= 80) {
+          console.log(`✅ Niveau 3.55: ByT5 Expert (${byt5Result.confidence}%)`);
+          
+          // Sauvegarder dans le cache et contexte
+          await this.saveToCache(text, byt5Result.translation, sourceLang, targetLang, byt5Result.confidence);
+          await translationContextService.addToContext(
+            text,
+            byt5Result.translation,
+            sourceLang,
+            targetLang,
+            byt5Result.confidence
+          );
+          
+          const result: HybridTranslationResult = {
+            translation: byt5Result.translation,
+            confidence: byt5Result.confidence,
+            detectedLanguage: sourceLang,
+            method: 'byt5-expert',
+            cost: 0,
+            duration: Date.now() - startTime
+          };
+          
+          translationMonitoring.logTranslation({
+            inputText: text,
+            outputText: result.translation,
+            sourceLang,
+            targetLang,
+            method: result.method,
+            confidence: result.confidence,
+            duration: result.duration,
+            cost: result.cost
+          });
+          
+          return result;
+        }
+        console.log(`⚠️ ByT5 Expert confiance insuffisante: ${byt5Result?.confidence || 0}%`);
+      } catch (error) {
+        console.warn("⚠️ ByT5 Expert a échoué:", error);
+      }
+    }
+
     // NIVEAU 3.6: Lovable AI pour phrases complexes (confiance 85-95%, quasi-GRATUIT)
     const wordCount = text.split(/\s+/).length;
     if (wordCount >= 7) { // PHASE 5: Phrases 7+ mots uniquement (au lieu de 4+)
@@ -701,6 +749,44 @@ export class HybridTranslationService {
       };
     } catch (error) {
       console.warn("HF Model error:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Appelle ByT5 Expert pour traduction spécialisée Bariba
+   */
+  private async callByT5Expert(
+    text: string,
+    sourceLang: 'french' | 'bariba',
+    targetLang: 'french' | 'bariba',
+    mode: 'quality' | 'fast' = 'quality'
+  ): Promise<HybridTranslationResult | null> {
+    try {
+      console.log(`🤖 Tentative ByT5 Expert: ${sourceLang} → ${targetLang} (${mode} mode)`);
+      
+      const result = await byT5TranslationService.translate(
+        text,
+        sourceLang,
+        targetLang,
+        mode
+      );
+
+      if (!result?.translation) {
+        console.log('⚠️ ByT5 Expert: pas de traduction');
+        return null;
+      }
+
+      return {
+        translation: result.translation,
+        confidence: result.confidence,
+        detectedLanguage: sourceLang,
+        method: 'byt5-expert',
+        cost: 0, // Gratuit
+        duration: result.duration
+      };
+    } catch (error) {
+      console.warn("⚠️ ByT5 Expert error:", error);
       return null;
     }
   }
