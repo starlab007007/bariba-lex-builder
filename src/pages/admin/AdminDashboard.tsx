@@ -31,6 +31,7 @@ import { SMTQualityDashboard } from '@/components/admin/SMTQualityDashboard';
 import { TranslationMonitoringDashboard } from '@/components/admin/TranslationMonitoringDashboard';
 import SystemAuditReport from '@/components/admin/SystemAuditReport';
 import { ModelHealthDashboard } from '@/components/admin/ModelHealthDashboard';
+import { ByT5SpaceConfig } from '@/components/admin/ByT5SpaceConfig';
 import { 
   Settings, Users, BarChart3, Database, 
   FileText, Brain, TestTube2, Globe, 
@@ -246,7 +247,12 @@ export default function AdminDashboard() {
           {/* Tab Contents */}
           <TabsContent value="overview"><AdminOverview /></TabsContent>
           <TabsContent value="unified-data"><UnifiedDataManager /></TabsContent>
-          <TabsContent value="model-health"><ModelHealthDashboard /></TabsContent>
+          <TabsContent value="model-health">
+            <div className="space-y-6">
+              <ModelHealthDashboard />
+              <ByT5SpaceConfig />
+            </div>
+          </TabsContent>
           <TabsContent value="smt-monitoring"><SMTSystemDashboard /></TabsContent>
           <TabsContent value="translation-monitoring"><TranslationMonitoringDashboard /></TabsContent>
           <TabsContent value="smt-realtime"><SMTRealTimeMonitor /></TabsContent>
