@@ -10,6 +10,7 @@ import { useTranslationCache } from "@/hooks/useTranslationCache";
 import { useGamification } from "@/hooks/useGamification";
 import TranslationFeedback from "./TranslationFeedback";
 import { TranslationSuggestions } from "./TranslationSuggestions";
+import { ModelHealthBadge } from "./ModelHealthBadge";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
@@ -28,6 +29,9 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
   const [usedCache, setUsedCache] = useState(false);
   const [phraseSuggestions, setPhraseSuggestions] = useState<string[]>([]);
   const [detectedLang, setDetectedLang] = useState<'french' | 'bariba' | 'mixed'>('mixed');
+  const [usedMethod, setUsedMethod] = useState<string>('');
+  const [translationConfidence, setTranslationConfidence] = useState<number>(0);
+  const [translationDuration, setTranslationDuration] = useState<number>(0);
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
   
@@ -163,6 +167,11 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
         
         translation = result.translation;
         const duration = Math.round(performance.now() - startTime);
+        
+        // Enregistrer les métriques pour affichage
+        setUsedMethod(result.method);
+        setTranslationConfidence(result.confidence);
+        setTranslationDuration(result.duration);
         
         // Sauvegarder dans le cache
         await cacheTranslation(sourceText, translation, sourceLang, targetLang, result.confidence);
@@ -398,13 +407,22 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
 
         {/* Translated Text */}
         <Card className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-semibold text-foreground">
               {direction === "french-to-bariba" ? "Bààtɔ̀nú" : "Français"}
             </h3>
-            <Badge variant="secondary" className="text-xs">
-              Traduction
-            </Badge>
+            <div className="flex items-center gap-2">
+              {usedMethod && translatedText && (
+                <ModelHealthBadge 
+                  modelId={usedMethod as any} 
+                  confidence={translationConfidence}
+                  duration={translationDuration}
+                />
+              )}
+              <Badge variant="secondary" className="text-xs">
+                Traduction
+              </Badge>
+            </div>
           </div>
           
           <div className={`min-h-32 p-3 bg-muted/30 rounded-md border-2 border-dashed border-border ${
