@@ -12,11 +12,6 @@ interface TranslationRequest {
   mode?: 'quality' | 'fast';
 }
 
-interface GradioResponse {
-  data: [string];
-  duration?: number;
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -46,105 +41,179 @@ serve(async (req) => {
     // Map to Gradio API format
     const direction = sourceLang === 'french' ? 'fr-ba' : 'ba-fr';
     const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualité maximale';
-    const advanced = true; // Post-traitement avancé activé
+    const advanced = true;
 
-    // Configuration du Space ByT5 Expert - Gradio 4.x uses /run/predict
-    const SPACE_BASE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space';
-    const PREDICT_URL = `${SPACE_BASE_URL}/run/predict`;
-
-    console.log(`🤖 Attempting ByT5 translation: ${direction}, mode: ${gradioMode}`);
-    console.log(`📍 Space URL: ${SPACE_BASE_URL}`);
-    console.log(`📍 API Endpoint: ${PREDICT_URL}`);
-    console.log(`📝 Text length: ${text.length} chars`);
-    console.log(`🔑 Token configured: ${HF_TOKEN ? 'YES' : 'NO'}`);
+    console.log(`🤖 ByT5 Expert Translation Request`);
+    console.log(`   Direction: ${direction}`);
+    console.log(`   Mode: ${gradioMode}`);
+    console.log(`   Text: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+    console.log(`   Token: ${HF_TOKEN.substring(0, 10)}...`);
 
     const startTime = Date.now();
-
-    try {
-      // Appel direct à l'API Gradio avec endpoint synchrone /api/predict
-      const response = await fetch(PREDICT_URL, {
-        method: 'POST',
+    const SPACE_ID = 'zimesongbian/modele_byt5_bariba_expert_api_v03';
+    
+    // Liste des endpoints à essayer dans l'ordre
+    const endpoints = [
+      // Méthode 1: API Inference directe (recommandée pour Spaces privés)
+      {
+        name: 'Inference API',
+        url: `https://api-inference.huggingface.co/models/${SPACE_ID}`,
+        headers: {
+          'Authorization': `Bearer ${HF_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: text,
+          parameters: {
+            direction: direction,
+            mode: gradioMode,
+            advanced: advanced
+          }
+        })
+      },
+      // Méthode 2: Gradio API /api/predict
+      {
+        name: 'Gradio /api/predict',
+        url: `https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space/api/predict`,
         headers: {
           'Authorization': `Bearer ${HF_TOKEN}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           data: [text, direction, gradioMode, advanced]
-        }),
-      });
-
-      console.log(`📡 API Response Status: ${response.status}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ ByT5 API Error (${response.status}):`, errorText);
-        console.error(`📍 Attempted URL: ${PREDICT_URL}`);
-        console.error(`⚠️  Troubleshooting:`);
-        console.error(`   1. Verify Space URL: https://huggingface.co/spaces/zimesongbian/modele_byt5_bariba_expert_api_v03`);
-        console.error(`   2. Check Space is RUNNING (not sleeping)`);
-        console.error(`   3. Verify token has access to this private Space`);
-        console.error(`   4. Check if Space uses /api/predict endpoint`);
-        
-        return new Response(
-          JSON.stringify({ 
-            error: 'ByT5 Space API call failed',
-            details: errorText,
-            status: response.status,
-            endpoint: PREDICT_URL,
-            suggestion: 'Verify Space is awake on Hugging Face and token has FINEGRAINED access'
-          }),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        })
+      },
+      // Méthode 3: Gradio API /run/predict
+      {
+        name: 'Gradio /run/predict',
+        url: `https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space/run/predict`,
+        headers: {
+          'Authorization': `Bearer ${HF_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: [text, direction, gradioMode, advanced]
+        })
+      },
+      // Méthode 4: Gradio API /call/predict (avec polling)
+      {
+        name: 'Gradio /call/predict',
+        url: `https://zimesongbian-modele-byt5-bariba-expert-api-v03.hf.space/call/predict`,
+        headers: {
+          'Authorization': `Bearer ${HF_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: [text, direction, gradioMode, advanced]
+        })
       }
+    ];
 
-      const result = await response.json();
-      console.log(`📦 API Response:`, JSON.stringify(result).substring(0, 200));
+    const errors = [];
 
-      // Gradio API response format: { data: [translation] }
-      if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
-        console.error('Invalid API response format:', result);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Invalid ByT5 API response format',
-            details: 'Expected { data: [translation] }',
-            received: result
-          }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    // Essayer chaque endpoint
+    for (const endpoint of endpoints) {
+      console.log(`\n🔄 Trying ${endpoint.name}...`);
+      console.log(`   URL: ${endpoint.url}`);
+      
+      try {
+        const response = await fetch(endpoint.url, {
+          method: 'POST',
+          headers: endpoint.headers,
+          body: endpoint.body,
+        });
 
-      const translation = result.data[0];
-      const duration = Date.now() - startTime;
-      const confidence = translation && translation.length > 0 ? 90 : 50;
+        console.log(`   Status: ${response.status} ${response.statusText}`);
 
-      console.log(`✅ ByT5 translation completed in ${duration}ms`);
-      console.log(`📤 Translation: ${translation?.substring(0, 50)}...`);
+        if (response.ok) {
+          const result = await response.json();
+          console.log(`   Response:`, JSON.stringify(result).substring(0, 200));
 
-      return new Response(
-        JSON.stringify({
-          translation,
-          confidence,
-          duration,
-          method: 'byt5-expert',
-          modelInfo: {
-            name: 'ByT5 Expert',
-            version: 'zimesongbian/modele_byt5_bariba_expert_api_v03',
-            mode: gradioMode
+          // Extraction de la traduction selon le format de réponse
+          let translation = null;
+
+          // Format Inference API: { generated_text: "..." } ou [{"generated_text": "..."}]
+          if (result.generated_text) {
+            translation = result.generated_text;
+          } else if (Array.isArray(result) && result[0]?.generated_text) {
+            translation = result[0].generated_text;
           }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+          // Format Gradio: { data: [...] }
+          else if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+            translation = result.data[0];
+          }
+          // Format direct: tableau de résultats
+          else if (Array.isArray(result) && result.length > 0) {
+            translation = result[0];
+          }
 
-    } catch (error) {
-      console.error('Error calling ByT5 Space:', error);
-      return new Response(
-        JSON.stringify({ 
-          error: error.message || 'Failed to call ByT5 Space',
-          details: error.toString()
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+          if (translation) {
+            const duration = Date.now() - startTime;
+            console.log(`✅ Translation successful via ${endpoint.name} in ${duration}ms`);
+            console.log(`   Result: "${translation.substring(0, 100)}${translation.length > 100 ? '...' : ''}"`);
+
+            return new Response(
+              JSON.stringify({
+                translation,
+                confidence: 90,
+                duration,
+                method: 'byt5-expert',
+                endpoint: endpoint.name,
+                modelInfo: {
+                  name: 'ByT5 Expert',
+                  version: SPACE_ID,
+                  mode: gradioMode
+                }
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          } else {
+            console.warn(`   ⚠️ Success but unexpected response format`);
+            errors.push({
+              endpoint: endpoint.name,
+              status: response.status,
+              error: 'Unexpected response format',
+              response: result
+            });
+          }
+        } else {
+          const errorText = await response.text();
+          console.error(`   ❌ Error ${response.status}: ${errorText.substring(0, 200)}`);
+          errors.push({
+            endpoint: endpoint.name,
+            status: response.status,
+            error: errorText
+          });
+        }
+      } catch (error) {
+        console.error(`   ❌ Exception: ${error.message}`);
+        errors.push({
+          endpoint: endpoint.name,
+          error: error.message
+        });
+      }
     }
+
+    // Si tous les endpoints ont échoué
+    const duration = Date.now() - startTime;
+    console.error(`\n❌ All endpoints failed after ${duration}ms`);
+    console.error(`Errors summary:`, JSON.stringify(errors, null, 2));
+
+    return new Response(
+      JSON.stringify({ 
+        error: 'ByT5 Space unavailable - all endpoints failed',
+        details: 'Tried multiple API endpoints without success',
+        attempts: errors,
+        troubleshooting: [
+          `1. Verify Space exists: https://huggingface.co/spaces/${SPACE_ID}`,
+          `2. Check Space is RUNNING (not sleeping or building)`,
+          `3. Verify token ${HF_TOKEN.substring(0, 10)}... has READ access to private Space`,
+          `4. Try accessing the Space URL manually in your browser`,
+          `5. Check Space logs on Hugging Face for errors`
+        ]
+      }),
+      { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('Error in byt5-bariba-translate:', error);
