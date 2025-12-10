@@ -5,8 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { SMTInitializer } from "@/components/SMTInitializer";
-import { AutoInitializer } from "@/components/AutoInitializer";
+// SMT initialization disabled - components removed
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -29,8 +28,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <SMTInitializer />
-        <AutoInitializer />
+        {/* SMT initialization disabled */}
         <Toaster />
         <Sonner />
         <BrowserRouter>
