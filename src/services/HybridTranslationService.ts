@@ -441,52 +441,11 @@ export class HybridTranslationService {
       };
     }
 
-    // NIVEAU 3.55: ByT5 Expert pour traduction haute qualité (confiance 85-95%, GRATUIT)
-    const wordCount2 = text.split(/\s+/).length;
-    if (wordCount2 >= 3) { // ByT5 pour phrases 3+ mots
-      try {
-        console.log(`🔄 Niveau 3.55: ByT5 Expert (${wordCount2} mots)`);
-        const byt5Result = await this.callByT5Expert(text, sourceLang, targetLang, 'quality');
-        if (byt5Result && byt5Result.confidence >= 80) {
-          console.log(`✅ Niveau 3.55: ByT5 Expert (${byt5Result.confidence}%)`);
-          
-          // Sauvegarder dans le cache et contexte
-          await this.saveToCache(text, byt5Result.translation, sourceLang, targetLang, byt5Result.confidence);
-          await translationContextService.addToContext(
-            text,
-            byt5Result.translation,
-            sourceLang,
-            targetLang,
-            byt5Result.confidence
-          );
-          
-          const result: HybridTranslationResult = {
-            translation: byt5Result.translation,
-            confidence: byt5Result.confidence,
-            detectedLanguage: sourceLang,
-            method: 'byt5-expert',
-            cost: 0,
-            duration: Date.now() - startTime
-          };
-          
-          translationMonitoring.logTranslation({
-            inputText: text,
-            outputText: result.translation,
-            sourceLang,
-            targetLang,
-            method: result.method,
-            confidence: result.confidence,
-            duration: result.duration,
-            cost: result.cost
-          });
-          
-          return result;
-        }
-        console.log(`⚠️ ByT5 Expert confiance insuffisante: ${byt5Result?.confidence || 0}%`);
-      } catch (error) {
-        console.warn("⚠️ ByT5 Expert a échoué:", error);
-      }
-    }
+    // NIVEAU 3.55: ByT5 Expert DÉSACTIVÉ - Space HuggingFace non fonctionnel
+    // Le Space zimesongbian/modele_byt5_bariba_expert_api_v03 n'expose pas d'API Gradio standard
+    // Réactiver quand le Space sera correctement configuré
+    // const wordCount2 = text.split(/\s+/).length;
+    // if (wordCount2 >= 3) { ... }
 
     // NIVEAU 3.6: Lovable AI pour phrases complexes (confiance 85-95%, quasi-GRATUIT)
     const wordCount = text.split(/\s+/).length;
