@@ -11,7 +11,9 @@ import { TranslationModelSelector } from "@/components/TranslationModelSelector"
 import { TranslationTestPanel } from "@/components/TranslationTestPanel";
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
 import { useTranslationModelSelector } from "@/hooks/useTranslationModelSelector";
-import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy } from "lucide-react";
+import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy, Mic, MessagesSquare } from "lucide-react";
+import { VoiceTab } from "@/components/voice/VoiceTab";
+import { ConversationMode } from "@/components/voice/ConversationMode";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -118,14 +120,26 @@ const Index = () => {
       {/* Main Content with Tabs - Responsive */}
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
         <Tabs defaultValue="dictionary" className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-4 sm:mb-6 lg:mb-8">
-            <TabsTrigger value="dictionary" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4 mb-4 sm:mb-6 lg:mb-8">
+            <TabsTrigger value="dictionary" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
               <Book className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span>Dictionnaire</span>
+              <span className="hidden sm:inline">Dictionnaire</span>
+              <span className="sm:hidden">Dict.</span>
             </TabsTrigger>
-            <TabsTrigger value="translator" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+            <TabsTrigger value="translator" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
               <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span>Traducteur</span>
+              <span className="hidden sm:inline">Traducteur</span>
+              <span className="sm:hidden">Trad.</span>
+            </TabsTrigger>
+            <TabsTrigger value="voice" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+              <Mic className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Voix</span>
+              <span className="sm:hidden">🎤</span>
+            </TabsTrigger>
+            <TabsTrigger value="conversation" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+              <MessagesSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Chat</span>
+              <span className="sm:hidden">💬</span>
             </TabsTrigger>
           </TabsList>
 
