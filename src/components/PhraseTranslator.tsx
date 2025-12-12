@@ -243,21 +243,28 @@ export const PhraseTranslator = () => {
       else if (useAI && aiReady) {
         setUsedCache(false);
         
+        // Check if ByT5 is available before trying it - use SimplifiedAI directly if not
+        let effectiveModel = selectedModel;
+        if (selectedModel === 'byt5-expert') {
+          const { byT5TranslationService } = await import('@/services/ByT5TranslationService');
+          const healthStatus = byT5TranslationService.getHealthStatus();
+          if (!healthStatus.isHealthy) {
+            console.log('ByT5 is unhealthy, using SimplifiedAI directly');
+            effectiveModel = 'simplified';
+          }
+        }
+        
         let result;
         try {
           if (direction === "french-to-bariba") {
-            result = await translateFrenchToBariba(sourceText, { preferredModel: selectedModel });
+            result = await translateFrenchToBariba(sourceText, { preferredModel: effectiveModel });
           } else {
-            result = await translateBaribaToFrench(sourceText, { preferredModel: selectedModel });
+            result = await translateBaribaToFrench(sourceText, { preferredModel: effectiveModel });
           }
         } catch (translationError) {
-          // If ByT5 was selected and failed, fallback to SimplifiedAI
-          if (selectedModel === 'byt5-expert') {
+          // If ByT5 was selected and failed, fallback to SimplifiedAI silently
+          if (effectiveModel === 'byt5-expert') {
             console.warn('ByT5 failed, falling back to SimplifiedAI...');
-            toast({
-              title: "⚠️ ByT5 Expert indisponible",
-              description: "Basculement vers SimplifiedAI...",
-            });
             
             if (direction === "french-to-bariba") {
               result = await translateFrenchToBariba(sourceText, { preferredModel: 'simplified' });
