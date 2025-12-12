@@ -137,11 +137,15 @@ export const SmartVoiceRecorder = ({
     }
   };
 
-  // Auto mode: Cancel recording
+  // Auto mode: Cancel recording AND stop listening
   const handleAutoCancel = () => {
+    console.log('[SmartVoiceRecorder] Cancel in auto mode');
     if (isRecording) {
       cancelRecording();
     }
+    // Also stop auto listening after cancel
+    stopDetection();
+    setIsAutoListening(false);
   };
 
   const formatDuration = (seconds: number): string => {
@@ -320,6 +324,16 @@ export const SmartVoiceRecorder = ({
           >
             <X className="h-4 w-4 mr-1" />
             Annuler
+          </Button>
+          
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={isPaused ? resumeRecording : pauseRecording}
+            disabled={isProcessing}
+          >
+            {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            <span className="ml-1">{isPaused ? 'Reprendre' : 'Pause'}</span>
           </Button>
           
           <Badge variant="secondary" className="font-mono text-lg px-4 py-1">
