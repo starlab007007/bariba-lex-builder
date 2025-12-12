@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mic, MicOff, Square, Pause, Play, Loader2 } from 'lucide-react';
+import { Mic, Square, Pause, Play, Loader2, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -45,7 +45,7 @@ export const VoiceRecorder = ({
     onRecordingStart?.();
   };
 
-  const handleStopRecording = async () => {
+  const handleSendRecording = async () => {
     setIsProcessing(true);
     const audioBase64 = await stopRecording();
     setIsProcessing(false);
@@ -53,6 +53,10 @@ export const VoiceRecorder = ({
     if (audioBase64) {
       onRecordingComplete(audioBase64);
     }
+  };
+
+  const handleCancelRecording = () => {
+    cancelRecording();
   };
 
   const formatDuration = (seconds: number): string => {
@@ -88,7 +92,7 @@ export const VoiceRecorder = ({
 
       {/* Recording Button */}
       <div className="relative">
-        {isRecording && (
+        {isRecording && !isPaused && (
           <div className="absolute inset-0 -m-2 rounded-full animate-ping bg-destructive/30" />
         )}
         
@@ -99,7 +103,7 @@ export const VoiceRecorder = ({
             "w-20 h-20 rounded-full transition-all",
             isRecording && "ring-4 ring-destructive/50"
           )}
-          onClick={isRecording ? handleStopRecording : handleStartRecording}
+          onClick={isRecording ? handleSendRecording : handleStartRecording}
           disabled={disabled || isProcessing}
         >
           {isProcessing ? (
@@ -117,10 +121,22 @@ export const VoiceRecorder = ({
         <div className="flex items-center gap-3">
           <Button
             size="sm"
+            variant="destructive"
+            onClick={handleCancelRecording}
+            disabled={isProcessing}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Annuler
+          </Button>
+          
+          <Button
+            size="sm"
             variant="outline"
             onClick={isPaused ? resumeRecording : pauseRecording}
+            disabled={isProcessing}
           >
             {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            <span className="ml-1">{isPaused ? 'Reprendre' : 'Pause'}</span>
           </Button>
           
           <Badge variant="secondary" className="font-mono text-lg px-4 py-1">
@@ -129,10 +145,13 @@ export const VoiceRecorder = ({
           
           <Button
             size="sm"
-            variant="ghost"
-            onClick={cancelRecording}
+            variant="default"
+            onClick={handleSendRecording}
+            disabled={isProcessing}
+            className="bg-primary hover:bg-primary/90"
           >
-            <MicOff className="h-4 w-4" />
+            <Send className="h-4 w-4 mr-1" />
+            Envoyer
           </Button>
         </div>
       )}
@@ -141,10 +160,10 @@ export const VoiceRecorder = ({
       <div className="text-center">
         {isRecording ? (
           <p className="text-sm text-muted-foreground">
-            {isPaused ? 'En pause...' : 'Enregistrement en cours...'}
+            {isPaused ? '⏸️ En pause...' : '🔴 Enregistrement en cours...'}
           </p>
         ) : isProcessing ? (
-          <p className="text-sm text-muted-foreground">Traitement audio...</p>
+          <p className="text-sm text-muted-foreground">📤 Envoi en cours...</p>
         ) : (
           <p className="text-sm text-muted-foreground">
             Appuyez pour parler en {language === 'bariba' ? 'Bààtɔ̀nú' : 'Français'}

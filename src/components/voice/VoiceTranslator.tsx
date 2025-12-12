@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { ArrowRight, ArrowLeft, Mic, Volume2, RotateCcw, Loader2 } from 'lucide-react';
+import { ArrowRight, Mic, Volume2, RotateCcw, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { VoiceRecorder } from './VoiceRecorder';
-import { AudioPlayer } from './AudioPlayer';
+import { SmartVoiceRecorder } from './SmartVoiceRecorder';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
@@ -144,7 +143,7 @@ export const VoiceTranslator = () => {
       {/* Recording Section */}
       <Card className="p-6">
         {isSourceBariba ? (
-          <VoiceRecorder
+          <SmartVoiceRecorder
             language="bariba"
             onRecordingComplete={handleBaribaRecordingComplete}
             disabled={isProcessing}
