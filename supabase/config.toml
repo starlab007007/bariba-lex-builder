@@ -41,3 +41,15 @@ verify_jwt = false
 
 [functions.enrich-dictionary]
 verify_jwt = true
+
+[functions.bariba-tts]
+verify_jwt = false
+
+[functions.bariba-stt]
+verify_jwt = false
+
+[functions.french-tts]
+verify_jwt = false
+
+[functions.french-stt]
+verify_jwt = false

@@ -40,67 +40,104 @@ serve(async (req) => {
     // API Space: zimesongbian/baatonum_asr_stt_api_v001_improve
     const SPACE_URL = 'https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space';
     
-    // Try the Gradio API endpoint
-    const gradioEndpoints = [
-      '/api/predict',
-      '/run/predict',
-      '/gradio_api/call/predict',
-      '/transcribe'
-    ];
+    // First, try the Gradio client queue API
+    const queueResponse = await fetch(`${SPACE_URL}/call/transcribe`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${HF_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        data: [audio, robustMode, speakerType]
+      }),
+    });
 
-    for (const endpoint of gradioEndpoints) {
-      try {
-        const url = `${SPACE_URL}${endpoint}`;
-        console.log(`   Trying: POST ${url}`);
+    console.log(`   Queue response status: ${queueResponse.status}`);
 
-        const response = await fetch(url, {
-          method: 'POST',
+    if (queueResponse.ok) {
+      const queueResult = await queueResponse.json();
+      console.log(`   Queue result:`, JSON.stringify(queueResult).substring(0, 200));
+      
+      if (queueResult.event_id) {
+        // Poll for the result
+        const resultResponse = await fetch(`${SPACE_URL}/call/transcribe/${queueResult.event_id}`, {
+          method: 'GET',
           headers: {
             'Authorization': `Bearer ${HF_TOKEN}`,
-            'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            data: [audio, robustMode, speakerType]
-          }),
         });
 
-        console.log(`   Status: ${response.status}`);
+        if (resultResponse.ok) {
+          const resultText = await resultResponse.text();
+          console.log(`   Result text:`, resultText.substring(0, 300));
+          
+          // Parse SSE response
+          const lines = resultText.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                if (data && data[0]) {
+                  const duration = Date.now() - startTime;
+                  console.log(`✅ Bariba STT Success in ${duration}ms: "${data[0].substring(0, 50)}..."`);
 
-        if (response.ok) {
-          const result = await response.json();
-          console.log(`   Response:`, JSON.stringify(result).substring(0, 200));
-
-          let transcription = null;
-          if (result.data && result.data[0]) {
-            transcription = result.data[0];
-          } else if (typeof result === 'string') {
-            transcription = result;
-          } else if (result.transcription) {
-            transcription = result.transcription;
-          }
-
-          if (transcription) {
-            const duration = Date.now() - startTime;
-            console.log(`✅ Bariba STT Success in ${duration}ms: "${transcription.substring(0, 50)}..."`);
-
-            return new Response(
-              JSON.stringify({
-                transcription,
-                confidence: 90,
-                duration,
-                language: 'bariba',
-                speakerType
-              }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+                  return new Response(
+                    JSON.stringify({
+                      transcription: data[0],
+                      confidence: 90,
+                      duration,
+                      language: 'bariba',
+                      speakerType
+                    }),
+                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                  );
+                }
+              } catch (e) {
+                // Continue parsing
+              }
+            }
           }
         }
-      } catch (e) {
-        console.error(`   ❌ Endpoint ${endpoint} failed: ${e.message}`);
       }
     }
 
-    // Fallback: Return error with diagnostics
+    // Fallback: Try direct predict endpoint
+    const predictResponse = await fetch(`${SPACE_URL}/api/predict`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${HF_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fn_index: 0,
+        data: [audio, robustMode, speakerType]
+      }),
+    });
+
+    console.log(`   Predict response status: ${predictResponse.status}`);
+
+    if (predictResponse.ok) {
+      const result = await predictResponse.json();
+      console.log(`   Predict result:`, JSON.stringify(result).substring(0, 200));
+
+      if (result.data && result.data[0]) {
+        const duration = Date.now() - startTime;
+        console.log(`✅ Bariba STT Success (fallback) in ${duration}ms`);
+
+        return new Response(
+          JSON.stringify({
+            transcription: result.data[0],
+            confidence: 90,
+            duration,
+            language: 'bariba',
+            speakerType
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Return error if all endpoints failed
     const duration = Date.now() - startTime;
     console.error(`❌ All STT endpoints failed after ${duration}ms`);
 

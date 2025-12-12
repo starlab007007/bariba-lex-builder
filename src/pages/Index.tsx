@@ -441,6 +441,14 @@ const Index = () => {
             {/* Panneau de test pour vérifier le système */}
             <TranslationTestPanel />
           </TabsContent>
+
+          <TabsContent value="voice" className="space-y-6">
+            <VoiceTab />
+          </TabsContent>
+
+          <TabsContent value="conversation" className="space-y-6">
+            <ConversationMode />
+          </TabsContent>
         </Tabs>
       </div>
 
