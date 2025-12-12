@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Mic, MicOff, Square, Pause, Play, Loader2, Zap, Hand } from 'lucide-react';
+import { Mic, MicOff, Square, Pause, Play, Loader2, Zap, Hand, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -75,7 +75,7 @@ export const SmartVoiceRecorder = ({
       setIsProcessing(false);
       
       if (audioBase64) {
-        console.log('[SmartVoiceRecorder] Sending audio automatically');
+        console.log('[SmartVoiceRecorder] Auto-sending audio');
         onRecordingComplete(audioBase64);
       }
     }
@@ -120,6 +120,27 @@ export const SmartVoiceRecorder = ({
     
     if (audioBase64) {
       onRecordingComplete(audioBase64);
+    }
+  };
+
+  // Auto mode: Manual send button
+  const handleAutoManualSend = async () => {
+    if (isRecording) {
+      setIsProcessing(true);
+      const audioBase64 = await stopRecording();
+      setIsProcessing(false);
+      
+      if (audioBase64) {
+        console.log('[SmartVoiceRecorder] Manual send in auto mode');
+        onRecordingComplete(audioBase64);
+      }
+    }
+  };
+
+  // Auto mode: Cancel recording
+  const handleAutoCancel = () => {
+    if (isRecording) {
+      cancelRecording();
     }
   };
 
@@ -273,11 +294,34 @@ export const SmartVoiceRecorder = ({
         </div>
       )}
 
-      {/* Duration Display (Auto mode while recording) */}
+      {/* Controls (Auto mode while recording) */}
       {autoMode && isRecording && (
-        <Badge variant="secondary" className="font-mono text-lg px-4 py-1">
-          {formatDuration(duration)}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={handleAutoCancel}
+            disabled={isProcessing}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Annuler
+          </Button>
+          
+          <Badge variant="secondary" className="font-mono text-lg px-4 py-1">
+            {formatDuration(duration)}
+          </Badge>
+          
+          <Button
+            size="sm"
+            variant="default"
+            onClick={handleAutoManualSend}
+            disabled={isProcessing}
+            className="bg-primary hover:bg-primary/90"
+          >
+            <Send className="h-4 w-4 mr-1" />
+            Envoyer
+          </Button>
+        </div>
       )}
 
       {/* Status */}
