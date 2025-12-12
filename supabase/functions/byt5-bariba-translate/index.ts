@@ -260,6 +260,61 @@ async function callGradioTranslate(
     console.log(`   Method 3 error: ${e.message}`);
   }
 
+  // Method 4: Standard /api/predict (Gradio 4-5.x format)
+  console.log(`🔄 Method 4: /api/predict`);
+  try {
+    const response = await fetch(`${spaceUrl}/api/predict`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        data,
+        fn_index: 0
+      }),
+      signal: abortSignal,
+    });
+    
+    console.log(`   /api/predict status: ${response.status}`);
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`   /api/predict result: ${JSON.stringify(result).substring(0, 300)}`);
+      if (result.data && Array.isArray(result.data)) {
+        return { success: true, data: result };
+      }
+    }
+  } catch (e) {
+    console.log(`   Method 4 error: ${e.message}`);
+  }
+
+  // Method 5: /run/predict (alternative Gradio format)
+  console.log(`🔄 Method 5: /run/predict`);
+  try {
+    const response = await fetch(`${spaceUrl}/run/predict`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ data }),
+      signal: abortSignal,
+    });
+    
+    console.log(`   /run/predict status: ${response.status}`);
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`   /run/predict result: ${JSON.stringify(result).substring(0, 300)}`);
+      if (result.data && Array.isArray(result.data)) {
+        return { success: true, data: result };
+      }
+    }
+  } catch (e) {
+    console.log(`   Method 5 error: ${e.message}`);
+  }
+
   return { success: false, error: 'All Gradio API methods failed - Space may be sleeping or has internal errors' };
 }
 
