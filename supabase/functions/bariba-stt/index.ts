@@ -11,37 +11,20 @@ interface STTRequest {
   speakerType?: 'Auto' | 'Enfant' | 'Femme' | 'Homme' | 'PersonneAgee';
 }
 
-// Corrected Space URL based on actual HuggingFace Space name
-const SPACE_NAME = 'zimesongbian/baatonum_asr_stt_api_v001_improve';
 const SPACE_URL = 'https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space';
 
-async function getGradioApiInfo(spaceUrl: string, hfToken: string): Promise<any> {
-  console.log(`📋 Fetching Gradio API info from ${spaceUrl}`);
+async function getGradioConfig(spaceUrl: string, hfToken: string): Promise<any> {
+  console.log(`📋 Fetching Gradio config...`);
   
-  // Try /info endpoint
   try {
-    const infoResponse = await fetch(`${spaceUrl}/info`, {
+    const response = await fetch(`${spaceUrl}/config`, {
       headers: { 'Authorization': `Bearer ${hfToken}` }
     });
     
-    if (infoResponse.ok) {
-      const info = await infoResponse.json();
-      console.log(`   /info response:`, JSON.stringify(info).substring(0, 500));
-      return info;
-    }
-  } catch (e) {
-    console.log(`   /info failed: ${e.message}`);
-  }
-  
-  // Try /config for older Gradio versions
-  try {
-    const configResponse = await fetch(`${spaceUrl}/config`, {
-      headers: { 'Authorization': `Bearer ${hfToken}` }
-    });
-    
-    if (configResponse.ok) {
-      const config = await configResponse.json();
-      console.log(`   /config response:`, JSON.stringify(config).substring(0, 500));
+    if (response.ok) {
+      const config = await response.json();
+      console.log(`   Gradio version: ${config.version}`);
+      console.log(`   API prefix: ${config.api_prefix}`);
       return config;
     }
   } catch (e) {
@@ -53,125 +36,84 @@ async function getGradioApiInfo(spaceUrl: string, hfToken: string): Promise<any>
 
 async function callGradioSTT(
   spaceUrl: string,
+  apiPrefix: string,
   audioData: string,
   robustMode: boolean,
   speakerType: string,
   hfToken: string
 ): Promise<any> {
-  // The audio data needs to be in the right format for Gradio
-  // Gradio expects either a file path or a dict with name, data, etc.
-  
-  // Convert base64 to Gradio-compatible format
+  // Format audio data for Gradio
   const audioInput = audioData.startsWith('data:') 
     ? audioData 
     : `data:audio/webm;base64,${audioData}`;
   
+  // Data array: [audio, robustMode, speakerType]
   const data = [audioInput, robustMode, speakerType];
   
-  // Method 1: Try gradio_api/call/predict (Gradio 4.x+)
-  console.log(`🔄 Trying gradio_api/call/predict...`);
+  // Method 1: Try /gradio_api/call/predict
+  console.log(`🔄 Method 1: POST ${apiPrefix}/call/predict`);
   try {
-    const response = await fetch(`${spaceUrl}/gradio_api/call/predict`, {
+    const response = await fetch(`${spaceUrl}${apiPrefix}/call/predict`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${hfToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ data }),
+      body: JSON.stringify({ 
+        data,
+        fn_index: 0,
+        session_hash: Math.random().toString(36).substring(7)
+      }),
     });
     
-    console.log(`   gradio_api/call/predict status: ${response.status}`);
+    console.log(`   Status: ${response.status}`);
+    const responseText = await response.text();
+    console.log(`   Response: ${responseText.substring(0, 300)}`);
     
     if (response.ok) {
-      const result = await response.json();
-      console.log(`   Result:`, JSON.stringify(result).substring(0, 300));
-      
-      if (result.event_id) {
-        // Poll for SSE result
-        const sseUrl = `${spaceUrl}/gradio_api/call/predict/${result.event_id}`;
-        console.log(`   Polling SSE: ${sseUrl}`);
+      try {
+        const result = JSON.parse(responseText);
         
-        const sseResponse = await fetch(sseUrl, {
-          headers: { 'Authorization': `Bearer ${hfToken}` },
-        });
-        
-        if (sseResponse.ok) {
-          const sseText = await sseResponse.text();
-          console.log(`   SSE response:`, sseText.substring(0, 500));
+        if (result.event_id) {
+          console.log(`   Polling event: ${result.event_id}`);
+          const eventUrl = `${spaceUrl}${apiPrefix}/call/predict/${result.event_id}`;
           
-          // Parse SSE format
-          const lines = sseText.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const parsed = JSON.parse(line.substring(6));
-                if (parsed && (parsed[0] || parsed.data)) {
+          const eventResponse = await fetch(eventUrl, {
+            headers: { 
+              'Authorization': `Bearer ${hfToken}`,
+              'Accept': 'text/event-stream'
+            },
+          });
+          
+          if (eventResponse.ok) {
+            const eventText = await eventResponse.text();
+            console.log(`   Event response: ${eventText.substring(0, 500)}`);
+            
+            const lines = eventText.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const parsed = JSON.parse(line.substring(6));
                   return parsed;
-                }
-              } catch (e) {
-                // Continue parsing
+                } catch (e) { /* continue */ }
               }
             }
           }
         }
+        return result;
+      } catch (e) {
+        console.log(`   Parse error: ${e.message}`);
       }
-      return result;
     }
   } catch (e) {
-    console.log(`   gradio_api/call/predict error: ${e.message}`);
+    console.log(`   Error: ${e.message}`);
   }
 
-  // Method 2: Try /run/predict (Gradio 3.x)
-  console.log(`🔄 Trying /run/predict...`);
-  try {
-    const response = await fetch(`${spaceUrl}/run/predict`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ data }),
-    });
-    
-    console.log(`   /run/predict status: ${response.status}`);
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log(`   Result:`, JSON.stringify(result).substring(0, 300));
-      return result;
-    }
-  } catch (e) {
-    console.log(`   /run/predict error: ${e.message}`);
-  }
-
-  // Method 3: Try /api/predict
-  console.log(`🔄 Trying /api/predict...`);
-  try {
-    const response = await fetch(`${spaceUrl}/api/predict`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ data, fn_index: 0 }),
-    });
-    
-    console.log(`   /api/predict status: ${response.status}`);
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log(`   Result:`, JSON.stringify(result).substring(0, 300));
-      return result;
-    }
-  } catch (e) {
-    console.log(`   /api/predict error: ${e.message}`);
-  }
-
-  // Method 4: Try queue/join
-  console.log(`🔄 Trying /queue/join...`);
+  // Method 2: Try /gradio_api/queue/join
+  console.log(`🔄 Method 2: POST ${apiPrefix}/queue/join`);
   try {
     const sessionHash = Math.random().toString(36).substring(7);
-    const response = await fetch(`${spaceUrl}/queue/join`, {
+    const response = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${hfToken}`,
@@ -180,55 +122,86 @@ async function callGradioSTT(
       body: JSON.stringify({ data, fn_index: 0, session_hash: sessionHash }),
     });
     
-    console.log(`   /queue/join status: ${response.status}`);
+    console.log(`   Status: ${response.status}`);
     
     if (response.ok) {
-      const result = await response.json();
-      console.log(`   Result:`, JSON.stringify(result).substring(0, 300));
-      return result;
+      const responseText = await response.text();
+      console.log(`   Response: ${responseText.substring(0, 300)}`);
+      
+      if (responseText.includes('event:')) {
+        const lines = responseText.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const parsed = JSON.parse(line.substring(6));
+              if (parsed.output || parsed.data) {
+                return parsed.output || parsed;
+              }
+            } catch (e) { /* continue */ }
+          }
+        }
+      }
     }
   } catch (e) {
-    console.log(`   /queue/join error: ${e.message}`);
+    console.log(`   Error: ${e.message}`);
+  }
+
+  // Method 3: Try named endpoints
+  console.log(`🔄 Method 3: Trying named endpoints...`);
+  const endpointNames = ['transcribe', 'recognize', 'stt', 'predict', 'run'];
+  
+  for (const name of endpointNames) {
+    try {
+      const response = await fetch(`${spaceUrl}${apiPrefix}/call/${name}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${hfToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data }),
+      });
+      
+      console.log(`   ${apiPrefix}/call/${name}: ${response.status}`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (result.event_id) {
+          const eventResponse = await fetch(`${spaceUrl}${apiPrefix}/call/${name}/${result.event_id}`, {
+            headers: { 'Authorization': `Bearer ${hfToken}` },
+          });
+          
+          if (eventResponse.ok) {
+            const eventText = await eventResponse.text();
+            const lines = eventText.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  return JSON.parse(line.substring(6));
+                } catch (e) { /* continue */ }
+              }
+            }
+          }
+        }
+        return result;
+      }
+    } catch (e) {
+      // Continue to next
+    }
   }
 
   throw new Error('All Gradio endpoints failed');
 }
 
 function extractTranscription(result: any): string | null {
-  console.log(`🔍 Extracting transcription from result type: ${typeof result}`);
+  console.log(`🔍 Extracting transcription from: ${JSON.stringify(result).substring(0, 200)}`);
   
-  // Handle various response formats
-  if (typeof result === 'string') {
-    return result;
-  }
+  if (typeof result === 'string') return result;
+  if (Array.isArray(result) && typeof result[0] === 'string') return result[0];
+  if (result?.data?.[0] && typeof result.data[0] === 'string') return result.data[0];
+  if (result?.transcription) return result.transcription;
+  if (result?.text) return result.text;
   
-  if (Array.isArray(result)) {
-    if (typeof result[0] === 'string') {
-      return result[0];
-    }
-    if (result[0]?.value) {
-      return result[0].value;
-    }
-  }
-  
-  if (result?.data && Array.isArray(result.data)) {
-    if (typeof result.data[0] === 'string') {
-      return result.data[0];
-    }
-    if (result.data[0]?.value) {
-      return result.data[0].value;
-    }
-  }
-  
-  if (result?.transcription) {
-    return result.transcription;
-  }
-  
-  if (result?.text) {
-    return result.text;
-  }
-  
-  console.log(`   Could not extract transcription from:`, JSON.stringify(result).substring(0, 200));
   return null;
 }
 
@@ -255,19 +228,16 @@ serve(async (req) => {
       );
     }
 
-    console.log(`🎤 Bariba STT Request`);
-    console.log(`   Audio size: ${audio.length} chars`);
-    console.log(`   Params: robustMode=${robustMode}, speaker=${speakerType}`);
-    console.log(`   Space: ${SPACE_URL}`);
-    
+    console.log(`🎤 Bariba STT: audio=${audio.length} chars, robust=${robustMode}`);
     const startTime = Date.now();
 
-    // First, get API info to understand the endpoint structure
-    await getGradioApiInfo(SPACE_URL, HF_TOKEN);
+    const config = await getGradioConfig(SPACE_URL, HF_TOKEN);
+    const apiPrefix = config?.api_prefix || '/gradio_api';
 
     try {
       const result = await callGradioSTT(
         SPACE_URL,
+        apiPrefix,
         audio,
         robustMode,
         speakerType,
@@ -278,22 +248,20 @@ serve(async (req) => {
 
       if (transcription) {
         const duration = Date.now() - startTime;
-        console.log(`✅ Bariba STT Success in ${duration}ms`);
-        console.log(`   Transcription: "${transcription.substring(0, 100)}"`);
+        console.log(`✅ STT Success in ${duration}ms: "${transcription.substring(0, 50)}"`);
 
         return new Response(
           JSON.stringify({
             transcription,
             confidence: 90,
             duration,
-            language: 'bariba',
-            speakerType
+            language: 'bariba'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     } catch (e) {
-      console.error(`❌ Gradio API error: ${e.message}`);
+      console.error(`❌ API error: ${e.message}`);
     }
 
     const duration = Date.now() - startTime;
@@ -302,10 +270,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: 'Bariba STT service unavailable',
-        details: 'HuggingFace Space API endpoints not responding. The Space may need API access enabled.',
+        details: 'HuggingFace Space API not responding. Check if API is enabled.',
         duration,
-        spaceUrl: SPACE_URL,
-        suggestion: 'Check Space settings: Settings → Enable API Access'
+        suggestion: 'Go to Space Settings → Enable "API Access"'
       }),
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
