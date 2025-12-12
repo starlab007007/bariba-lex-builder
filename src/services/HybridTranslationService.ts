@@ -134,6 +134,7 @@ export class HybridTranslationService {
     options?: {
       useAI?: boolean;
       minConfidence?: number;
+      preferredModel?: 'byt5-expert' | 'simplified' | 'lovable-ai';
     }
   ): Promise<HybridTranslationResult> {
     if (!this.isInitialized || !this.simplifiedModel) {
@@ -141,9 +142,94 @@ export class HybridTranslationService {
     }
 
     const startTime = Date.now();
-    const { useAI = false, minConfidence = 50 } = options || {};
+    const { useAI = false, minConfidence = 50, preferredModel = 'byt5-expert' } = options || {};
 
-    console.log(`🔄 Traduction hybride: ${sourceLang} → ${targetLang}`);
+    console.log(`🔄 Traduction hybride: ${sourceLang} → ${targetLang} (modèle préféré: ${preferredModel})`);
+
+    // Si un modèle spécifique est demandé, l'appeler directement (sauf pour idiomes/cache)
+    if (preferredModel === 'byt5-expert') {
+      // Essayer ByT5 Expert en priorité absolue
+      try {
+        console.log(`🤖 Modèle préféré: ByT5 Expert`);
+        const byT5Result = await byT5TranslationService.translate(
+          text,
+          sourceLang,
+          targetLang,
+          'quality',
+          true
+        );
+        
+        if (byT5Result && byT5Result.confidence >= 60) {
+          console.log(`✅ ByT5 Expert (${byT5Result.confidence}%)`);
+          
+          await this.saveToCache(text, byT5Result.translation, sourceLang, targetLang, byT5Result.confidence);
+          await translationContextService.addToContext(
+            text,
+            byT5Result.translation,
+            sourceLang,
+            targetLang,
+            byT5Result.confidence
+          );
+          
+          const result: HybridTranslationResult = {
+            translation: byT5Result.translation,
+            confidence: byT5Result.confidence,
+            detectedLanguage: sourceLang,
+            method: 'byt5-expert',
+            cost: 0,
+            duration: Date.now() - startTime
+          };
+          
+          translationMonitoring.logTranslation({
+            inputText: text,
+            outputText: result.translation,
+            sourceLang,
+            targetLang,
+            method: result.method,
+            confidence: result.confidence,
+            duration: result.duration,
+            cost: result.cost
+          });
+          
+          return result;
+        }
+      } catch (error) {
+        console.warn("⚠️ ByT5 Expert indisponible, fallback en cascade:", error);
+      }
+    } else if (preferredModel === 'lovable-ai') {
+      // Appeler Lovable AI directement
+      try {
+        console.log(`🧠 Modèle préféré: Lovable AI`);
+        const aiResult = await this.callLovableAI(text, sourceLang, targetLang);
+        if (aiResult && aiResult.confidence >= 60) {
+          console.log(`✅ Lovable AI (${aiResult.confidence}%)`);
+          await this.saveToCache(text, aiResult.translation, sourceLang, targetLang, aiResult.confidence);
+          
+          const result = {
+            ...aiResult,
+            method: 'ai' as const,
+            cost: 0,
+            duration: Date.now() - startTime
+          };
+          
+          translationMonitoring.logTranslation({
+            inputText: text,
+            outputText: result.translation,
+            sourceLang,
+            targetLang,
+            method: result.method,
+            confidence: result.confidence,
+            duration: result.duration,
+            cost: result.cost
+          });
+          
+          return result;
+        }
+      } catch (error) {
+        console.warn("⚠️ Lovable AI indisponible, fallback en cascade:", error);
+      }
+    }
+    // preferredModel === 'simplified' ou fallback : continuer avec la cascade standard
 
     // NIVEAU 0: Idiomes (confiance 100%, gratuit, < 1ms)
     const idiomResult = sourceLang === 'french'

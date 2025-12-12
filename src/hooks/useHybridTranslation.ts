@@ -56,7 +56,7 @@ export const useHybridTranslation = () => {
    */
   const translateFrenchToBariba = useCallback(async (
     text: string,
-    options?: { useAI?: boolean }
+    options?: { useAI?: boolean; preferredModel?: 'byt5-expert' | 'simplified' | 'lovable-ai' }
   ): Promise<HybridTranslationResult> => {
     if (!isInitialized) {
       throw new Error("Traducteur non initialisé");
@@ -85,7 +85,7 @@ export const useHybridTranslation = () => {
    */
   const translateBaribaToFrench = useCallback(async (
     text: string,
-    options?: { useAI?: boolean }
+    options?: { useAI?: boolean; preferredModel?: 'byt5-expert' | 'simplified' | 'lovable-ai' }
   ): Promise<HybridTranslationResult> => {
     if (!isInitialized) {
       throw new Error("Traducteur non initialisé");

@@ -17,6 +17,7 @@ import TranslationFeedback from "./TranslationFeedback";
 import { TranslationSuggestions } from "./TranslationSuggestions";
 import { ModelHealthBadge } from "./ModelHealthBadge";
 import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
+import { TranslationModelSwitcher, type TranslationModel } from "./TranslationModelSwitcher";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
@@ -34,6 +35,7 @@ export const PhraseTranslator = () => {
   const [usedMethod, setUsedMethod] = useState<string>('');
   const [translationConfidence, setTranslationConfidence] = useState<number>(0);
   const [translationDuration, setTranslationDuration] = useState<number>(0);
+  const [selectedModel, setSelectedModel] = useState<TranslationModel>('byt5-expert');
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
   
@@ -243,9 +245,9 @@ export const PhraseTranslator = () => {
         
         let result;
         if (direction === "french-to-bariba") {
-          result = await translateFrenchToBariba(sourceText);
+          result = await translateFrenchToBariba(sourceText, { preferredModel: selectedModel });
         } else {
-          result = await translateBaribaToFrench(sourceText);
+          result = await translateBaribaToFrench(sourceText, { preferredModel: selectedModel });
         }
         
         translation = result.translation;
@@ -381,6 +383,15 @@ export const PhraseTranslator = () => {
             Initialisation en cours...
           </div>
         )}
+      </div>
+
+      {/* Model Selector */}
+      <div className="flex justify-center">
+        <TranslationModelSwitcher
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          disabled={isTranslating || aiLoading}
+        />
       </div>
 
       {/* Direction Controls - Responsive */}
