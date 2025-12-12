@@ -287,23 +287,39 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+      
+      // No transcription but no error either
+      const duration = Date.now() - startTime;
+      console.warn(`⚠️ No transcription returned after ${duration}ms`);
+      
+      return new Response(
+        JSON.stringify({
+          error: 'No transcription returned',
+          details: 'Le modèle HuggingFace n\'a pas retourné de transcription. L\'audio peut être trop court ou inaudible.',
+          duration
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+      
     } catch (e) {
-      console.error(`❌ API error: ${e.message}`);
+      const duration = Date.now() - startTime;
+      console.error(`❌ API error after ${duration}ms: ${e.message}`);
+      
+      // Check if it's a HuggingFace-specific error
+      const isHFError = e.message?.includes('HuggingFace');
+      
+      return new Response(
+        JSON.stringify({
+          error: isHFError ? 'HuggingFace model error' : 'Bariba STT service unavailable',
+          details: e.message || 'HuggingFace Space API not responding.',
+          duration,
+          suggestion: isHFError 
+            ? 'Le modèle Bariba a retourné une erreur. Réessayez avec un audio plus clair.'
+            : 'Visit the Space URL to wake it up'
+        }),
+        { status: isHFError ? 400 : 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-
-    const duration = Date.now() - startTime;
-    console.error(`❌ STT failed after ${duration}ms`);
-
-    return new Response(
-      JSON.stringify({
-        error: 'Bariba STT service unavailable',
-        details: 'HuggingFace Space API not responding. The Space may be sleeping or API access is disabled.',
-        duration,
-        suggestion: 'Visit the Space URL to wake it up, then enable API access in Settings'
-      }),
-      { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
   } catch (error) {
     console.error('Fatal error:', error);
     return new Response(
