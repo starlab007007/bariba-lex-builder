@@ -55,10 +55,11 @@ async function pollForResult(
               // CRITICAL: Check for process_completed with success: false
               if (data.msg === 'process_completed') {
                 if (data.success === false) {
-                  console.log(`❌ Model returned error: ${JSON.stringify(data.output)}`);
+                  const errorDetail = data.output?.error || data.title || 'Model processing failed';
+                  console.log(`❌ Model returned error: ${JSON.stringify(data.output)}, title: ${data.title}`);
                   return { 
                     success: false, 
-                    error: data.output?.error || data.title || 'Model processing failed' 
+                    error: `HuggingFace Space error: ${errorDetail}` 
                   };
                 }
                 
