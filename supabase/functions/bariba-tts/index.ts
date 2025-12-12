@@ -14,23 +14,58 @@ interface TTSRequest {
 
 const SPACE_URL = 'https://zimesongbian-baatonum-tts-api-v001.hf.space';
 
-async function getGradioConfig(spaceUrl: string, hfToken: string): Promise<any> {
-  console.log(`📋 Fetching Gradio config...`);
+async function pollForResult(
+  spaceUrl: string,
+  apiPrefix: string,
+  eventId: string,
+  hfToken: string,
+  maxAttempts = 30
+): Promise<any> {
+  const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${eventId}`;
+  console.log(`📡 Polling: ${pollUrl}`);
   
-  try {
-    const response = await fetch(`${spaceUrl}/config`, {
-      headers: { 'Authorization': `Bearer ${hfToken}` }
-    });
-    
-    if (response.ok) {
-      const config = await response.json();
-      console.log(`   Gradio version: ${config.version}`);
-      console.log(`   API prefix: ${config.api_prefix}`);
-      console.log(`   Mode: ${config.mode}`);
-      return config;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const response = await fetch(pollUrl, {
+        headers: { 
+          'Authorization': `Bearer ${hfToken}`,
+          'Accept': 'text/event-stream'
+        },
+      });
+      
+      if (response.ok) {
+        const text = await response.text();
+        console.log(`   Poll ${attempt + 1}: ${text.substring(0, 300)}`);
+        
+        // Parse SSE events
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.substring(6));
+              
+              // Check for complete event
+              if (data.msg === 'process_completed' && data.output?.data) {
+                console.log(`✅ Got result: ${JSON.stringify(data.output).substring(0, 200)}`);
+                return data.output;
+              }
+              
+              // Direct data response
+              if (data.data && Array.isArray(data.data)) {
+                return data;
+              }
+            } catch (e) {
+              // Continue parsing
+            }
+          }
+        }
+      }
+      
+      // Wait before next poll
+      await new Promise(r => setTimeout(r, 500));
+    } catch (e) {
+      console.log(`   Poll error: ${e.message}`);
     }
-  } catch (e) {
-    console.log(`   /config failed: ${e.message}`);
   }
   
   return null;
@@ -45,82 +80,13 @@ async function callGradioTTS(
   noiseScaleW: number,
   hfToken: string
 ): Promise<any> {
-  // Data array must match the component order in the Space
-  // Based on the TTS Space: [text, speaking_rate, noise_scale, noise_scale_w]
+  const sessionHash = Math.random().toString(36).substring(7);
   const data = [text, speakingRate, noiseScale, noiseScaleW];
   
-  // For Gradio 6.x, use the API with proper endpoint format
-  // Try POST to /gradio_api/call/<fn_name> with fn_index
-  
-  // Method 1: Try direct /gradio_api/call/predict with proper body
-  console.log(`🔄 Method 1: POST ${apiPrefix}/call/predict`);
+  // Method 1: Queue-based API (Gradio 4.x+)
+  console.log(`🔄 Trying queue/join with session: ${sessionHash}`);
   try {
-    const response = await fetch(`${spaceUrl}${apiPrefix}/call/predict`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        data,
-        fn_index: 0,
-        session_hash: Math.random().toString(36).substring(7)
-      }),
-    });
-    
-    console.log(`   Status: ${response.status}`);
-    const responseText = await response.text();
-    console.log(`   Response: ${responseText.substring(0, 300)}`);
-    
-    if (response.ok) {
-      try {
-        const result = JSON.parse(responseText);
-        
-        if (result.event_id) {
-          // Poll for result
-          console.log(`   Polling event: ${result.event_id}`);
-          const eventUrl = `${spaceUrl}${apiPrefix}/call/predict/${result.event_id}`;
-          
-          const eventResponse = await fetch(eventUrl, {
-            headers: { 
-              'Authorization': `Bearer ${hfToken}`,
-              'Accept': 'text/event-stream'
-            },
-          });
-          
-          if (eventResponse.ok) {
-            const eventText = await eventResponse.text();
-            console.log(`   Event response: ${eventText.substring(0, 500)}`);
-            
-            // Parse SSE format
-            const lines = eventText.split('\n');
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const parsed = JSON.parse(line.substring(6));
-                  console.log(`   Parsed data: ${JSON.stringify(parsed).substring(0, 200)}`);
-                  return parsed;
-                } catch (e) {
-                  // Not JSON, continue
-                }
-              }
-            }
-          }
-        }
-        return result;
-      } catch (e) {
-        console.log(`   Parse error: ${e.message}`);
-      }
-    }
-  } catch (e) {
-    console.log(`   Error: ${e.message}`);
-  }
-
-  // Method 2: Try /gradio_api/queue/join
-  console.log(`🔄 Method 2: POST ${apiPrefix}/queue/join`);
-  try {
-    const sessionHash = Math.random().toString(36).substring(7);
-    const response = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
+    const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${hfToken}`,
@@ -133,80 +99,85 @@ async function callGradioTTS(
       }),
     });
     
+    console.log(`   Join status: ${joinResponse.status}`);
+    
+    if (joinResponse.ok) {
+      const joinText = await joinResponse.text();
+      console.log(`   Join response: ${joinText.substring(0, 200)}`);
+      
+      // Parse the SSE response to get event_id
+      let eventId = sessionHash;
+      const lines = joinText.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const parsed = JSON.parse(line.substring(6));
+            if (parsed.event_id) eventId = parsed.event_id;
+          } catch (e) { /* continue */ }
+        }
+      }
+      
+      // Poll for result
+      const result = await pollForResult(spaceUrl, apiPrefix, sessionHash, hfToken);
+      if (result) return result;
+    }
+  } catch (e) {
+    console.log(`   Queue error: ${e.message}`);
+  }
+
+  // Method 2: Direct call API
+  console.log(`🔄 Trying direct /call/predict`);
+  try {
+    const response = await fetch(`${spaceUrl}${apiPrefix}/call/predict`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ data }),
+    });
+    
     console.log(`   Status: ${response.status}`);
     
     if (response.ok) {
-      const responseText = await response.text();
-      console.log(`   Response: ${responseText.substring(0, 300)}`);
+      const result = await response.json();
+      console.log(`   Result: ${JSON.stringify(result).substring(0, 200)}`);
       
-      // This returns an SSE stream
-      if (responseText.includes('event:')) {
-        const lines = responseText.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const parsed = JSON.parse(line.substring(6));
-              if (parsed.output || parsed.data) {
-                return parsed.output || parsed;
-              }
-            } catch (e) {
-              // Continue
+      if (result.event_id) {
+        // Poll using SSE endpoint
+        const eventUrl = `${spaceUrl}${apiPrefix}/call/predict/${result.event_id}`;
+        console.log(`   Polling event: ${eventUrl}`);
+        
+        const eventResponse = await fetch(eventUrl, {
+          headers: { 
+            'Authorization': `Bearer ${hfToken}`,
+            'Accept': 'text/event-stream'
+          },
+        });
+        
+        if (eventResponse.ok) {
+          const eventText = await eventResponse.text();
+          console.log(`   Event text: ${eventText.substring(0, 300)}`);
+          
+          const lines = eventText.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const parsed = JSON.parse(line.substring(6));
+                if (parsed.data || Array.isArray(parsed)) return parsed;
+              } catch (e) { /* continue */ }
             }
           }
         }
       }
+      
+      return result;
     }
   } catch (e) {
-    console.log(`   Error: ${e.message}`);
+    console.log(`   Direct call error: ${e.message}`);
   }
 
-  // Method 3: Use the Client SDK approach - /gradio_api/call/<endpoint>
-  // Looking at Gradio 6.x, we need to find the actual endpoint name
-  console.log(`🔄 Method 3: Trying named endpoints...`);
-  
-  const endpointNames = ['synthesize', 'tts', 'generate', 'predict', 'run'];
-  for (const name of endpointNames) {
-    try {
-      const response = await fetch(`${spaceUrl}${apiPrefix}/call/${name}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${hfToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ data }),
-      });
-      
-      console.log(`   ${apiPrefix}/call/${name}: ${response.status}`);
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log(`   Result: ${JSON.stringify(result).substring(0, 200)}`);
-        
-        if (result.event_id) {
-          const eventResponse = await fetch(`${spaceUrl}${apiPrefix}/call/${name}/${result.event_id}`, {
-            headers: { 'Authorization': `Bearer ${hfToken}` },
-          });
-          
-          if (eventResponse.ok) {
-            const eventText = await eventResponse.text();
-            const lines = eventText.split('\n');
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  return JSON.parse(line.substring(6));
-                } catch (e) { /* continue */ }
-              }
-            }
-          }
-        }
-        return result;
-      }
-    } catch (e) {
-      // Continue to next endpoint
-    }
-  }
-
-  throw new Error('All Gradio endpoints failed');
+  throw new Error('All Gradio API methods failed');
 }
 
 async function extractAudio(result: any, spaceUrl: string, hfToken: string): Promise<string | null> {
@@ -230,9 +201,10 @@ async function extractAudio(result: any, spaceUrl: string, hfToken: string): Pro
   }
   
   // Handle file object from Gradio
-  if (typeof audioData === 'object' && (audioData.url || audioData.path)) {
-    const fileUrl = audioData.url || `${spaceUrl}/file=${audioData.path}`;
-    console.log(`   Fetching audio from: ${fileUrl}`);
+  if (typeof audioData === 'object' && (audioData.url || audioData.path || audioData.name)) {
+    const filePath = audioData.path || audioData.name;
+    const fileUrl = audioData.url || `${spaceUrl}/file=${filePath}`;
+    console.log(`   Fetching audio file: ${fileUrl}`);
     
     try {
       const audioResponse = await fetch(fileUrl, {
@@ -287,9 +259,20 @@ serve(async (req) => {
     console.log(`🔊 Bariba TTS: "${text.substring(0, 50)}..."`);
     const startTime = Date.now();
 
-    // Get Gradio config to find API prefix
-    const config = await getGradioConfig(SPACE_URL, HF_TOKEN);
-    const apiPrefix = config?.api_prefix || '/gradio_api';
+    // Get API prefix from config
+    let apiPrefix = '/gradio_api';
+    try {
+      const configResponse = await fetch(`${SPACE_URL}/config`, {
+        headers: { 'Authorization': `Bearer ${HF_TOKEN}` }
+      });
+      if (configResponse.ok) {
+        const config = await configResponse.json();
+        apiPrefix = config.api_prefix || '/gradio_api';
+        console.log(`📋 Gradio ${config.version}, prefix: ${apiPrefix}`);
+      }
+    } catch (e) {
+      console.log(`   Config fetch failed, using default prefix`);
+    }
 
     try {
       const result = await callGradioTTS(
@@ -323,9 +306,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: 'Bariba TTS service unavailable',
-        details: 'HuggingFace Space API not responding. Check if API is enabled in Space settings.',
+        details: 'HuggingFace Space API not responding. The Space may be sleeping or API access is disabled.',
         duration,
-        suggestion: 'Go to Space Settings → Enable "API Access"'
+        suggestion: 'Visit the Space URL to wake it up, then enable API access in Settings'
       }),
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
