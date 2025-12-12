@@ -20,18 +20,14 @@ import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
-interface PhraseTranslatorProps {
-  selectedModel?: string;
-}
-
-export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorProps) => {
+export const PhraseTranslator = () => {
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
   const [translationLogId, setTranslationLogId] = useState<string | undefined>(undefined);
   const [direction, setDirection] = useState<TranslationDirection>("french-to-bariba");
   const [isTranslating, setIsTranslating] = useState(false);
   const [useAI, setUseAI] = useState(true);
-  const [autoTranslate, setAutoTranslate] = useState(false); // Mode manuel par défaut
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const [usedCache, setUsedCache] = useState(false);
   const [phraseSuggestions, setPhraseSuggestions] = useState<string[]>([]);
   const [detectedLang, setDetectedLang] = useState<'french' | 'bariba' | 'mixed'>('mixed');
@@ -89,7 +85,6 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
     if (!audioBlob) return;
     
     try {
-      // Convert blob to base64
       const reader = new FileReader();
       reader.readAsDataURL(audioBlob);
       reader.onloadend = async () => {
@@ -117,14 +112,12 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
 
   const toggleRecording = () => {
     if (direction === 'bariba-to-french') {
-      // Use Bariba STT (via Edge Function)
       if (isRecording) {
         stopRecording();
       } else {
         startRecording();
       }
     } else {
-      // Use French STT (Web Speech API)
       if (isListening) {
         stopListening();
       } else {
@@ -140,10 +133,8 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
     
     try {
       if (direction === 'french-to-bariba') {
-        // Translation is in Bariba
         await speakBariba(translatedText);
       } else {
-        // Translation is in French
         await speakFrench(translatedText);
       }
     } catch (error) {
@@ -156,10 +147,6 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
     }
   };
 
-
-  // DÉSACTIVÉ: Plus de suggestions de phrases automatiques pendant la saisie
-  // Les utilisateurs veulent des corrections orthographiques, pas des suggestions de phrases
-
   // Détecter automatiquement la langue et ajuster la direction
   useEffect(() => {
     if (!sourceText.trim() || !aiReady) {
@@ -170,7 +157,6 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
     const lang = detectLanguage(sourceText);
     setDetectedLang(lang);
 
-    // Ajuster automatiquement la direction en fonction de la langue détectée
     if (lang === 'french' && direction !== 'french-to-bariba') {
       setDirection('french-to-bariba');
     } else if (lang === 'bariba' && direction !== 'bariba-to-french') {
@@ -196,8 +182,6 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
         }
         
         setTranslatedText(result.translation);
-        
-        // Update gamification achievements
         await updateAchievement('translations_made');
       } catch (error) {
         console.error("Erreur de traduction automatique:", error);
@@ -209,7 +193,7 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
       } finally {
         setIsTranslating(false);
       }
-    }, 1000); // Délai de 1 seconde après l'arrêt de la saisie
+    }, 1000);
 
     return () => clearTimeout(timeoutId);
   }, [sourceText, direction, autoTranslate, aiReady, translateFrenchToBariba, translateBaribaToFrench, isTranslating]);
@@ -315,8 +299,6 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
       }
       
       setTranslatedText(translation);
-      
-      // Update gamification achievements
       await updateAchievement('translations_made');
     } catch (error) {
       console.error("Erreur de traduction:", error);
@@ -492,242 +474,155 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
               Source
             </Badge>
           </div>
-          
           <div className="relative">
             <Textarea
-              placeholder={
-                direction === "french-to-bariba"
-                  ? "Saisissez votre texte en français..."
-                  : "Saisissez votre texte en Bààtɔ̀nú..."
-              }
               value={sourceText}
               onChange={(e) => setSourceText(e.target.value)}
-              className={`min-h-32 resize-none pr-12 ${direction === "bariba-to-french" ? "bariba-text" : ""}`}
-              disabled={isTranslating || isVoiceActive}
-            />
-            {/* Microphone Button */}
-            <Button
-              variant={isVoiceActive ? "default" : "ghost"}
-              size="sm"
-              className={`absolute right-2 top-2 ${isVoiceActive ? 'animate-pulse bg-destructive hover:bg-destructive/90' : ''}`}
-              onClick={toggleRecording}
+              placeholder={
+                direction === "french-to-bariba"
+                  ? "Entrez votre texte en français..."
+                  : "Saisissez votre texte en bariba..."
+              }
+              className="min-h-[120px] resize-none"
               disabled={isTranslating}
-              title={isVoiceActive ? "Arrêter l'enregistrement" : "Parler"}
+            />
+            {/* Voice Input Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleRecording}
+              disabled={isTranslating || isTranscribingBariba}
+              className={`absolute bottom-2 right-2 ${isVoiceActive ? 'text-red-500 animate-pulse' : ''}`}
+              title={isVoiceActive ? "Arrêter l'enregistrement" : "Dicter"}
             >
               {isVoiceActive ? (
-                <MicOff className="h-4 w-4" />
-              ) : isTranscribingBariba ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Mic className="h-4 w-4" />
               )}
             </Button>
           </div>
-          
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{sourceText.length} caractères</span>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => copyToClipboard(sourceText)}
-                disabled={!sourceText || isTranslating}
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </div>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">
+              {sourceText.length} caractères
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAll}
+              disabled={!sourceText && !translatedText}
+            >
+              Effacer
+            </Button>
           </div>
         </Card>
 
         {/* Translated Text */}
         <Card className="p-4 space-y-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center justify-between">
             <h3 className="font-semibold text-foreground">
               {direction === "french-to-bariba" ? "Bààtɔ̀nú" : "Français"}
             </h3>
             <div className="flex items-center gap-2">
-              {usedMethod && translatedText && (
-                <ModelHealthBadge 
-                  modelId={usedMethod as any} 
-                  confidence={translationConfidence}
-                  duration={translationDuration}
-                />
+              {usedMethod && (
+                <Badge variant="secondary" className="text-xs">
+                  {usedMethod}
+                </Badge>
               )}
-              <Badge variant="secondary" className="text-xs">
-                Traduction
-              </Badge>
+              {translationConfidence > 0 && (
+                <Badge variant={translationConfidence >= 70 ? "default" : "outline"} className="text-xs">
+                  {translationConfidence}%
+                </Badge>
+              )}
+              {translationDuration > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {translationDuration}ms
+                </Badge>
+              )}
             </div>
           </div>
-          
-          <div className={`min-h-32 p-3 bg-muted/30 rounded-md border-2 border-dashed border-border ${
-            translatedText ? 'border-solid bg-background' : ''
-          }`}>
-            {isTranslating ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="animate-pulse text-muted-foreground text-sm">
-                  Traduction en cours...
-                </div>
+          <div className="relative">
+            <Textarea
+              value={translatedText}
+              readOnly
+              placeholder="La traduction apparaîtra ici..."
+              className="min-h-[120px] resize-none bg-muted/50"
+            />
+            {translatedText && (
+              <div className="absolute bottom-2 right-2 flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={speakTranslation}
+                  disabled={isSpeakingBariba || isSpeakingFrench}
+                  title="Écouter"
+                >
+                  {(isSpeakingBariba || isSpeakingFrench) ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(translatedText)}
+                  title="Copier"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
-            ) : translatedText ? (
-              <p className={`text-foreground ${direction === "french-to-bariba" ? "bariba-text" : ""}`}>
-                {translatedText}
-              </p>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                La traduction apparaîtra ici...
-              </p>
             )}
           </div>
-          
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{translatedText.length} caractères</span>
-            <div className="flex gap-2">
-              {/* Play Button for TTS */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={speakTranslation}
-                disabled={!translatedText || isTranslating || isSpeakingBariba || isSpeakingFrench}
-                title="Écouter la traduction"
-              >
-                {isSpeakingBariba || isSpeakingFrench ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Volume2 className="h-3 w-3" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => copyToClipboard(translatedText)}
-                disabled={!translatedText || isTranslating}
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </div>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">
+              {translatedText.length} caractères
+              {usedCache && " • Cache"}
+            </span>
+            {usedMethod && (
+              <ModelHealthBadge modelId={usedMethod as any} confidence={translationConfidence} duration={translationDuration} />
+            )}
           </div>
         </Card>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex items-center justify-center gap-4">
+      {/* Translate Button */}
+      <div className="flex justify-center">
         <Button
           onClick={translatePhrase}
-          disabled={!sourceText.trim() || isTranslating || (useAI && !aiReady) || isCacheLoading}
-          className="px-8"
+          disabled={isTranslating || !sourceText.trim() || (useAI && !aiReady)}
+          size="lg"
+          className="min-w-[200px]"
         >
-          {isTranslating || isCacheLoading ? (
+          {isTranslating ? (
             <>
-              <Brain className="mr-2 h-4 w-4 animate-pulse" />
-              {isCacheLoading ? "Recherche..." : "Traduction..."}
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Traduction...
             </>
           ) : (
             <>
               <Brain className="mr-2 h-4 w-4" />
               Traduire
-              {direction === "french-to-bariba" ? (
-                <ArrowRight className="ml-2 h-4 w-4" />
-              ) : (
-                <ArrowLeft className="ml-2 h-4 w-4" />
-              )}
             </>
           )}
         </Button>
-        
-        <Button
-          variant="outline"
-          onClick={clearAll}
-          disabled={isTranslating}
-        >
-          Effacer tout
-        </Button>
       </div>
 
-      {/* Translation Suggestions - Système d'amélioration communautaire */}
-      {translatedText && (
+      {/* Translation Suggestions */}
+      {translatedText && translationLogId && (
         <TranslationSuggestions
           sourceText={sourceText}
           translatedText={translatedText}
           translationLogId={translationLogId}
-          onSuggestionSubmitted={() => {
-            toast({
-              title: "🎉 Contribution enregistrée",
-              description: "Merci d'aider à améliorer le traducteur Bààtɔ̀nú !"
-            });
-          }}
         />
       )}
 
-      {/* Cache indicator */}
-      {usedCache && translatedText && (
-        <div className="flex justify-center">
-          <Badge variant="outline" className="text-xs">
-            ⚡ Traduction issue du cache (instantanée)
-          </Badge>
-        </div>
+      {/* Feedback Section */}
+      {translatedText && translationLogId && (
+        <TranslationFeedback
+          translationLogId={translationLogId}
+        />
       )}
-
-      {/* Examples */}
-      <Card className="p-4 bg-gradient-to-br from-accent/5 to-primary/5">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="font-semibold text-foreground font-sans">
-            Exemples de phrases
-          </h4>
-        </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <h5 className="text-sm font-medium text-muted-foreground">Français → Bààtɔ̀nú</h5>
-            <div className="space-y-1 text-sm">
-              <button 
-                className="block text-left hover:text-primary transition-colors cursor-pointer"
-                onClick={() => {
-                  setDirection("french-to-bariba");
-                  setSourceText("Bonjour, comment allez-vous ?");
-                  setTranslatedText("");
-                }}
-              >
-                "Bonjour, comment allez-vous ?"
-              </button>
-              <button 
-                className="block text-left hover:text-primary transition-colors cursor-pointer"
-                onClick={() => {
-                  setDirection("french-to-bariba");
-                  setSourceText("Je vais bien, merci");
-                  setTranslatedText("");
-                }}
-              >
-                "Je vais bien, merci"
-              </button>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <h5 className="text-sm font-medium text-muted-foreground">Bààtɔ̀nú → Français</h5>
-            <div className="space-y-1 text-sm">
-              <button 
-                className="block text-left hover:text-primary transition-colors cursor-pointer bariba-text"
-                onClick={() => {
-                  setDirection("bariba-to-french");
-                  setSourceText("Aagu, foo ka bani");
-                  setTranslatedText("");
-                }}
-              >
-                "Aagu, foo ka bani"
-              </button>
-              <button 
-                className="block text-left hover:text-primary transition-colors cursor-pointer bariba-text"
-                onClick={() => {
-                  setDirection("bariba-to-french");
-                  setSourceText("N de bani gandi, gando");
-                  setTranslatedText("");
-                }}
-              >
-                "N de bani gandi, gando"
-              </button>
-            </div>
-          </div>
-        </div>
-      </Card>
     </div>
   );
 };

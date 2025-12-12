@@ -7,16 +7,13 @@ import { DictionaryStats } from "@/components/DictionaryStats";
 import { PhraseTranslator } from "@/components/PhraseTranslator";
 import { SelectedEntryDisplay } from "@/components/SelectedEntryDisplay";
 import { SimilarSuggestions } from "@/components/SimilarSuggestions";
-import { TranslationModelSelector } from "@/components/TranslationModelSelector";
 import { TranslationTestPanel } from "@/components/TranslationTestPanel";
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
-import { useTranslationModelSelector } from "@/hooks/useTranslationModelSelector";
 import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy, Mic, MessagesSquare } from "lucide-react";
 import { VoiceTab } from "@/components/voice/VoiceTab";
 import { ConversationMode } from "@/components/voice/ConversationMode";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
@@ -39,12 +36,6 @@ const Index = () => {
     selectEntry,
     selectedEntry
   } = useSmartDictionarySearch();
-
-  const {
-    selectedModel,
-    selectModel,
-    availableModels
-  } = useTranslationModelSelector();
 
   return (
     <div className="min-h-screen bg-background">
@@ -335,92 +326,49 @@ const Index = () => {
                         <Languages className="h-8 w-8 text-primary" />
                       </div>
                       <h3 className="text-lg font-semibold text-foreground mb-2 font-sans">
-                        Dictionnaire Bariba-Français complet
+                        Commencez votre recherche
                       </h3>
                       <p className="text-muted-foreground mb-4">
-                        Tapez un mot pour commencer votre recherche
+                        Tapez un mot en bariba ou en français dans la barre de recherche
                       </p>
-                      <div className="text-sm text-muted-foreground">
-                        Plus de {totalWords} mots disponibles en recherche bidirectionnelle
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Essayez par exemple :</p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          <button 
+                            onClick={() => setSearchQuery("aagu")}
+                            className="text-sm px-3 py-1 bg-muted rounded-full hover:bg-muted/80 transition-colors"
+                          >
+                            <span className="bariba-text">aagu</span>
+                          </button>
+                          <button 
+                            onClick={() => setSearchQuery("salut")}
+                            className="text-sm px-3 py-1 bg-muted rounded-full hover:bg-muted/80 transition-colors"
+                          >
+                            salut
+                          </button>
+                          <button 
+                            onClick={() => setSearchQuery("maison")}
+                            className="text-sm px-3 py-1 bg-muted rounded-full hover:bg-muted/80 transition-colors"
+                          >
+                            maison
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : showFullResults ? (
-                    <div className="space-y-4 lg:space-y-6">
-                      {/* Traduction directe en première position si applicable */}
-                      {searchQuery && fullSearchResults.entries.length > 0 && (searchDirection !== "all") && (
-                        (() => {
-                          const directEntry = fullSearchResults.entries.find(entry => {
-                            if (searchDirection === "bariba-to-french") {
-                              return entry.word.toLowerCase() === searchQuery.toLowerCase();
-                            } else if (searchDirection === "french-to-bariba") {
-                              return entry.french_keywords?.some(k => k.toLowerCase() === searchQuery.toLowerCase());
-                            }
-                            return false;
-                          });
-                          
-                          return directEntry ? (
-                            <DirectTranslation 
-                              searchQuery={searchQuery}
-                              searchDirection={searchDirection}
-                              entry={directEntry}
-                            />
-                          ) : null;
-                        })()
-                      )}
-                      
-                      {fullSearchResults.entries.map((entry, index) => (
-                        <DictionaryEntry 
-                          key={`${entry.word}-${index}`} 
-                          entry={entry}
-                          searchQuery={searchQuery}
-                          relevanceScore={fullSearchResults.relevanceScores?.get(entry.word)}
-                        />
-                      ))}
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="text-center py-6 lg:py-8">
-                        <h3 className="text-base lg:text-lg font-semibold text-foreground mb-2 font-sans">
-                          Suggestions intelligentes
-                        </h3>
-                        <p className="text-sm lg:text-base text-muted-foreground mb-4">
-                          {wordSuggestions.length} suggestion{wordSuggestions.length > 1 ? "s" : ""} trouvée{wordSuggestions.length > 1 ? "s" : ""} pour "{searchQuery}"
-                        </p>
-                      </div>
-                      
-                      <div className="grid gap-3 lg:gap-4">
-                        {wordSuggestions.map((suggestion, index) => (
-                          <button
-                            key={`${suggestion.word}-${index}`}
-                            onClick={() => selectEntry(suggestion.entry)}
-                            className="text-left p-3 lg:p-4 border border-border/50 rounded-lg bg-card hover:bg-muted/30 transition-all hover:border-primary/30 hover:shadow-md"
-                          >
-                            <div className="flex items-start justify-between gap-3 lg:gap-4">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 mb-2">
-                                  <h4 className={`text-base lg:text-lg font-semibold truncate ${suggestion.type === 'bariba' ? 'bariba-text' : ''}`}>
-                                    {suggestion.word}
-                                  </h4>
-                                  <Badge variant={suggestion.type === 'bariba' ? 'default' : 'secondary'} className="text-xs shrink-0">
-                                    {suggestion.type === 'bariba' ? 'Bààtɔ̀nú' : 'Français'}
-                                  </Badge>
-                                  {suggestion.isExact && (
-                                    <Badge variant="outline" className="text-xs shrink-0">Exact</Badge>
-                                  )}
-                                </div>
-                                <p className="text-muted-foreground text-sm mb-2 line-clamp-2">
-                                  {suggestion.entry.definition}
-                                </p>
-                                {suggestion.entry.phonetic && (
-                                  <p className="text-xs text-muted-foreground/70 truncate">
-                                    Phonétique: {suggestion.entry.phonetic}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
+                    <div className="grid gap-3 sm:gap-4">
+                      {(showFullResults ? fullSearchResults.entries : wordSuggestions).map((entry, index) => (
+                        <div 
+                          key={`${entry.word}-${index}`} 
+                          onClick={() => selectEntry(entry)}
+                          className="cursor-pointer transition-transform hover:scale-[1.01]"
+                        >
+                          <DictionaryEntry
+                            entry={entry}
+                            searchQuery={searchQuery}
+                          />
+                        </div>
+                      ))}
                     </div>
                   )}
                 </section>
@@ -429,46 +377,18 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="translator" className="space-y-6">
-            <Card className="p-6">
-              <TranslationModelSelector
-                selectedModel={selectedModel}
-                onSelectModel={selectModel}
-                availableModels={availableModels}
-              />
-            </Card>
-            <PhraseTranslator selectedModel={selectedModel} />
-            
-            {/* Panneau de test pour vérifier le système */}
-            <TranslationTestPanel />
+            <PhraseTranslator />
           </TabsContent>
-
+          
           <TabsContent value="voice" className="space-y-6">
             <VoiceTab />
           </TabsContent>
-
+          
           <TabsContent value="conversation" className="space-y-6">
             <ConversationMode />
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-muted/30">
-        <div className="container mx-auto px-4 py-6 lg:py-8">
-          <div className="text-center space-y-3 lg:space-y-4">
-            <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4 text-xs lg:text-sm text-muted-foreground font-sans">
-              <span>Dictionnaire & Traducteur <span className="bariba-text">Bààtɔ̀nú</span>-Français</span>
-              <span className="hidden sm:inline">•</span>
-              <span className="bariba-text">Bààtɔ̀nú ↔ Fãsi</span>
-              <span className="hidden sm:inline">•</span>
-              <span>{totalWords} mots</span>
-            </div>
-            <p className="text-xs text-muted-foreground/70 font-sans px-4">
-              Préservation et partage de la langue bariba • Recherche bidirectionnelle & traduction intelligente
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
