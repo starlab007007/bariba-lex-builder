@@ -46,17 +46,28 @@ export const useVoiceDetection = (): UseVoiceDetectionReturn => {
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(dataArray);
 
-    // Calculate average volume
-    const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+    // Calculate average volume (focus on voice frequencies 300-3000Hz)
+    const voiceFreqStart = Math.floor(300 * analyser.fftSize / 24000);
+    const voiceFreqEnd = Math.floor(3000 * analyser.fftSize / 24000);
+    let voiceSum = 0;
+    let voiceCount = 0;
+    
+    for (let i = voiceFreqStart; i < Math.min(voiceFreqEnd, dataArray.length); i++) {
+      voiceSum += dataArray[i];
+      voiceCount++;
+    }
+    
+    const average = voiceCount > 0 ? voiceSum / voiceCount : 0;
     
     // Threshold based on sensitivity (higher sensitivity = lower threshold)
-    const threshold = 30 - (sensitivity / 100) * 25; // Range: 5-30
+    const threshold = 35 - (sensitivity / 100) * 30; // Range: 5-35
 
     const isCurrentlySpeaking = average > threshold;
 
     if (isCurrentlySpeaking) {
       // Speech detected
       if (!isSpeaking) {
+        console.log('[VAD] Speech started, avg:', average.toFixed(1), 'threshold:', threshold.toFixed(1));
         setIsSpeaking(true);
         speechStartTimeRef.current = Date.now();
         speechStartCallbackRef.current?.();
@@ -76,6 +87,8 @@ export const useVoiceDetection = (): UseVoiceDetectionReturn => {
             ? Date.now() - speechStartTimeRef.current 
             : 0;
 
+          console.log('[VAD] Silence detected, speech duration:', speechDuration, 'ms');
+          
           if (speechDuration >= MIN_SPEECH_DURATION) {
             speechEndCallbackRef.current?.(speechDuration);
           }

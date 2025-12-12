@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { VoiceRecorder } from './VoiceRecorder';
+import { SmartVoiceRecorder } from './SmartVoiceRecorder';
 import { AudioPlayer } from './AudioPlayer';
 import { useBaribaSTT, SpeakerType } from '@/hooks/useBaribaSTT';
 import { useFrenchSTT } from '@/hooks/useFrenchSTT';
@@ -83,7 +83,7 @@ export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
 
         <TabsContent value="bariba" className="space-y-6 pt-4">
           <Card className="p-6">
-            <VoiceRecorder
+            <SmartVoiceRecorder
               language="bariba"
               onRecordingComplete={handleBaribaRecordingComplete}
               showSpeakerType={true}
