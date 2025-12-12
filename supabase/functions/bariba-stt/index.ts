@@ -207,7 +207,8 @@ serve(async (req) => {
     }
 
     // Check minimum audio length (avoid sending too short recordings)
-    const minAudioLength = 1000; // ~1KB minimum
+    // Base64 audio of ~0.5 second is approximately 500+ chars
+    const minAudioLength = 100; // Very short threshold - let HuggingFace validate
     if (audio.length < minAudioLength) {
       console.log(`⚠️ Audio too short: ${audio.length} chars (min: ${minAudioLength})`);
       return new Response(
