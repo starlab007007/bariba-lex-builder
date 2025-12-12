@@ -32,12 +32,13 @@ import { TranslationMonitoringDashboard } from '@/components/admin/TranslationMo
 import SystemAuditReport from '@/components/admin/SystemAuditReport';
 import { ModelHealthDashboard } from '@/components/admin/ModelHealthDashboard';
 import { ByT5SpaceConfig } from '@/components/admin/ByT5SpaceConfig';
+import { AudioServicesMonitor } from '@/components/admin/AudioServicesMonitor';
 import { 
   Settings, Users, BarChart3, Database, 
   FileText, Brain, TestTube2, Globe, 
   BookOpen, TrendingUp, 
   Sparkles, Zap, Shield, Target, 
-  Activity, Download, Edit3
+  Activity, Download, Edit3, Volume2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -101,6 +102,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="translation-monitoring" className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Monitoring Traductions
+              </TabsTrigger>
+              <TabsTrigger value="audio-services" className="flex items-center gap-2">
+                <Volume2 className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Services Audio
               </TabsTrigger>
               <TabsTrigger value="smt-realtime" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-[hsl(var(--section-data))]" />
@@ -255,6 +260,7 @@ export default function AdminDashboard() {
           </TabsContent>
           <TabsContent value="smt-monitoring"><SMTSystemDashboard /></TabsContent>
           <TabsContent value="translation-monitoring"><TranslationMonitoringDashboard /></TabsContent>
+          <TabsContent value="audio-services"><AudioServicesMonitor /></TabsContent>
           <TabsContent value="smt-realtime"><SMTRealTimeMonitor /></TabsContent>
           <TabsContent value="smt-quality"><SMTQualityDashboard /></TabsContent>
           <TabsContent value="dictionary"><DictionaryManager /></TabsContent>
