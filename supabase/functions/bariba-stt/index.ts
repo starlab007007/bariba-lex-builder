@@ -179,16 +179,27 @@ async function callGradioSTT(
   throw new Error('All Gradio API methods failed');
 }
 
-function extractTranscription(result: any): string | null {
-  console.log(`🔍 Extracting transcription from: ${JSON.stringify(result).substring(0, 200)}`);
+function extractTranscription(result: any): { transcription: string | null; error: string | null } {
+  console.log(`🔍 Extracting from result: ${JSON.stringify(result).substring(0, 500)}`);
   
-  if (typeof result === 'string') return result;
-  if (Array.isArray(result) && typeof result[0] === 'string') return result[0];
-  if (result?.data?.[0] && typeof result.data[0] === 'string') return result.data[0];
-  if (result?.transcription) return result.transcription;
-  if (result?.text) return result.text;
+  // Check for errors first
+  if (result?.error) {
+    console.error(`❌ Result contains error: ${result.error}`);
+    return { transcription: null, error: result.error };
+  }
   
-  return null;
+  if (result?.data?.[0]?.error) {
+    return { transcription: null, error: result.data[0].error };
+  }
+  
+  // Extract transcription
+  if (typeof result === 'string') return { transcription: result, error: null };
+  if (Array.isArray(result) && typeof result[0] === 'string') return { transcription: result[0], error: null };
+  if (result?.data?.[0] && typeof result.data[0] === 'string') return { transcription: result.data[0], error: null };
+  if (result?.transcription) return { transcription: result.transcription, error: null };
+  if (result?.text) return { transcription: result.text, error: null };
+  
+  return { transcription: null, error: null };
 }
 
 serve(async (req) => {
@@ -271,10 +282,24 @@ serve(async (req) => {
         HF_TOKEN
       );
 
-      const transcription = extractTranscription(result);
+      const { transcription, error: extractError } = extractTranscription(result);
+      const duration = Date.now() - startTime;
+
+      // Check for extraction error
+      if (extractError) {
+        console.error(`❌ HuggingFace model returned error: ${extractError}`);
+        return new Response(
+          JSON.stringify({
+            error: 'HuggingFace model error',
+            details: extractError,
+            duration,
+            suggestion: 'Le modèle ASR Bariba a rencontré un problème. Essayez avec un enregistrement plus long et clair.'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       if (transcription) {
-        const duration = Date.now() - startTime;
         console.log(`✅ STT Success in ${duration}ms: "${transcription.substring(0, 50)}"`);
 
         return new Response(
@@ -289,7 +314,6 @@ serve(async (req) => {
       }
       
       // No transcription but no error either
-      const duration = Date.now() - startTime;
       console.warn(`⚠️ No transcription returned after ${duration}ms`);
       
       return new Response(
