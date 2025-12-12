@@ -86,9 +86,14 @@ export const useBaribaTTS = (): UseBaribaTTSReturn => {
       const errorMessage = err.message || 'Erreur TTS Bariba';
       setError(errorMessage);
       
+      // Provide helpful message for HuggingFace Space issues
+      const isSpaceIssue = errorMessage.includes('unavailable') || errorMessage.includes('503');
+      
       toast({
-        title: "Erreur de synthèse vocale",
-        description: errorMessage,
+        title: isSpaceIssue ? "🔧 Service TTS Bariba temporairement indisponible" : "Erreur de synthèse vocale",
+        description: isSpaceIssue 
+          ? "Le service HuggingFace est en veille. Réessayez dans 30 secondes ou visitez le Space directement pour le réveiller."
+          : errorMessage,
         variant: "destructive"
       });
     } finally {
