@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap, Languages } from "lucide-react";
+import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap, Languages, Mic, MicOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -8,6 +8,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useHybridTranslation } from "@/hooks/useHybridTranslation";
 import { useTranslationCache } from "@/hooks/useTranslationCache";
 import { useGamification } from "@/hooks/useGamification";
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { useBaribaSTT } from "@/hooks/useBaribaSTT";
+import { useFrenchSTT } from "@/hooks/useFrenchSTT";
+import { useBaribaTTS } from "@/hooks/useBaribaTTS";
+import { useFrenchTTS } from "@/hooks/useFrenchTTS";
 import TranslationFeedback from "./TranslationFeedback";
 import { TranslationSuggestions } from "./TranslationSuggestions";
 import { ModelHealthBadge } from "./ModelHealthBadge";
@@ -35,6 +40,13 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
   
+  // Hooks audio
+  const { startRecording, stopRecording, isRecording, audioBlob } = useAudioRecorder();
+  const { transcribe: transcribeBariba, isTranscribing: isTranscribingBariba } = useBaribaSTT();
+  const { startListening, stopListening, isListening, transcript: frenchTranscript } = useFrenchSTT();
+  const { speak: speakBariba, isSpeaking: isSpeakingBariba } = useBaribaTTS();
+  const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
+  
   // Hook pour le traducteur hybride
   const {
     translateFrenchToBariba,
@@ -57,6 +69,92 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
     cacheTranslation, 
     isCacheLoading 
   } = useTranslationCache();
+
+  // Handle audio recording completion for Bariba
+  useEffect(() => {
+    if (audioBlob && !isRecording && direction === 'bariba-to-french') {
+      handleBaribaVoiceInput();
+    }
+  }, [audioBlob, isRecording]);
+
+  // Handle French transcript update
+  useEffect(() => {
+    if (frenchTranscript && direction === 'french-to-bariba') {
+      setSourceText(frenchTranscript);
+    }
+  }, [frenchTranscript]);
+
+  const handleBaribaVoiceInput = async () => {
+    if (!audioBlob) return;
+    
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      reader.onloadend = async () => {
+        const base64Audio = (reader.result as string).split(',')[1];
+        
+        const result = await transcribeBariba(base64Audio);
+        
+        if (result && result.transcription) {
+          setSourceText(result.transcription);
+          toast({
+            title: "🎤 Transcription réussie",
+            description: `Texte reconnu: "${result.transcription.substring(0, 50)}${result.transcription.length > 50 ? '...' : ''}"`
+          });
+        }
+      };
+    } catch (error) {
+      console.error('Voice input error:', error);
+      toast({
+        title: "Erreur de transcription",
+        description: "Impossible de transcrire l'audio",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleRecording = () => {
+    if (direction === 'bariba-to-french') {
+      // Use Bariba STT (via Edge Function)
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    } else {
+      // Use French STT (Web Speech API)
+      if (isListening) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    }
+  };
+
+  const isVoiceActive = isRecording || isListening || isTranscribingBariba;
+
+  const speakTranslation = async () => {
+    if (!translatedText) return;
+    
+    try {
+      if (direction === 'french-to-bariba') {
+        // Translation is in Bariba
+        await speakBariba(translatedText);
+      } else {
+        // Translation is in French
+        await speakFrench(translatedText);
+      }
+    } catch (error) {
+      console.error('TTS error:', error);
+      toast({
+        title: "Erreur audio",
+        description: "Impossible de lire la traduction",
+        variant: "destructive"
+      });
+    }
+  };
+
 
   // DÉSACTIVÉ: Plus de suggestions de phrases automatiques pendant la saisie
   // Les utilisateurs veulent des corrections orthographiques, pas des suggestions de phrases
@@ -378,17 +476,36 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
             </Badge>
           </div>
           
-          <Textarea
-            placeholder={
-              direction === "french-to-bariba"
-                ? "Saisissez votre texte en français..."
-                : "Saisissez votre texte en Bààtɔ̀nú..."
-            }
-            value={sourceText}
-            onChange={(e) => setSourceText(e.target.value)}
-            className={`min-h-32 resize-none ${direction === "bariba-to-french" ? "bariba-text" : ""}`}
-            disabled={isTranslating}
-          />
+          <div className="relative">
+            <Textarea
+              placeholder={
+                direction === "french-to-bariba"
+                  ? "Saisissez votre texte en français..."
+                  : "Saisissez votre texte en Bààtɔ̀nú..."
+              }
+              value={sourceText}
+              onChange={(e) => setSourceText(e.target.value)}
+              className={`min-h-32 resize-none pr-12 ${direction === "bariba-to-french" ? "bariba-text" : ""}`}
+              disabled={isTranslating || isVoiceActive}
+            />
+            {/* Microphone Button */}
+            <Button
+              variant={isVoiceActive ? "default" : "ghost"}
+              size="sm"
+              className={`absolute right-2 top-2 ${isVoiceActive ? 'animate-pulse bg-destructive hover:bg-destructive/90' : ''}`}
+              onClick={toggleRecording}
+              disabled={isTranslating}
+              title={isVoiceActive ? "Arrêter l'enregistrement" : "Parler"}
+            >
+              {isVoiceActive ? (
+                <MicOff className="h-4 w-4" />
+              ) : isTranscribingBariba ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
           
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{sourceText.length} caractères</span>
@@ -448,6 +565,20 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{translatedText.length} caractères</span>
             <div className="flex gap-2">
+              {/* Play Button for TTS */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={speakTranslation}
+                disabled={!translatedText || isTranslating || isSpeakingBariba || isSpeakingFrench}
+                title="Écouter la traduction"
+              >
+                {isSpeakingBariba || isSpeakingFrench ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Volume2 className="h-3 w-3" />
+                )}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
