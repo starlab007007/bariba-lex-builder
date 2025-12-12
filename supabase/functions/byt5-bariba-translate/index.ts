@@ -13,26 +13,32 @@ interface TranslationRequest {
   advanced?: boolean;
 }
 
-// NEW IMPROVED Space URL from screenshots
 const SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space';
+const GLOBAL_TIMEOUT_MS = 15000; // 15 seconds max
 
 async function pollForResult(
   spaceUrl: string,
   apiPrefix: string,
   sessionHash: string,
   hfToken: string,
-  maxAttempts = 60
-): Promise<any> {
+  maxAttempts = 30, // Reduced from 60
+  abortSignal?: AbortSignal
+): Promise<{ success: boolean; data?: any; error?: string }> {
   const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
   console.log(`📡 Polling: ${pollUrl}`);
   
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (abortSignal?.aborted) {
+      return { success: false, error: 'Request timeout' };
+    }
+    
     try {
       const response = await fetch(pollUrl, {
         headers: { 
           'Authorization': `Bearer ${hfToken}`,
           'Accept': 'text/event-stream'
         },
+        signal: abortSignal,
       });
       
       if (response.ok) {
@@ -46,16 +52,26 @@ async function pollForResult(
             try {
               const data = JSON.parse(line.substring(6));
               
-              // Check for complete event
-              if (data.msg === 'process_completed' && data.output?.data) {
-                console.log(`✅ Got result: ${JSON.stringify(data.output).substring(0, 300)}`);
-                return data.output;
+              // CRITICAL: Check for process_completed with success: false
+              if (data.msg === 'process_completed') {
+                if (data.success === false) {
+                  console.log(`❌ Model returned error: ${JSON.stringify(data.output)}`);
+                  return { 
+                    success: false, 
+                    error: data.output?.error || data.title || 'Model processing failed' 
+                  };
+                }
+                
+                if (data.output?.data) {
+                  console.log(`✅ Got result: ${JSON.stringify(data.output).substring(0, 300)}`);
+                  return { success: true, data: data.output };
+                }
               }
               
               // Direct data response
               if (data.data && Array.isArray(data.data)) {
                 console.log(`✅ Got direct data: ${JSON.stringify(data.data).substring(0, 300)}`);
-                return data;
+                return { success: true, data };
               }
             } catch (e) {
               // Continue parsing
@@ -64,15 +80,18 @@ async function pollForResult(
         }
       }
       
-      // Wait before next poll (progressive backoff)
-      const waitTime = attempt < 10 ? 300 : attempt < 30 ? 500 : 800;
+      // Wait before next poll (faster polling, shorter wait)
+      const waitTime = attempt < 5 ? 200 : attempt < 15 ? 400 : 600;
       await new Promise(r => setTimeout(r, waitTime));
     } catch (e) {
+      if (abortSignal?.aborted) {
+        return { success: false, error: 'Request timeout' };
+      }
       console.log(`   Poll error: ${e.message}`);
     }
   }
   
-  return null;
+  return { success: false, error: 'Polling timeout - no response received' };
 }
 
 async function callGradioTranslate(
@@ -82,15 +101,13 @@ async function callGradioTranslate(
   direction: string,
   mode: string,
   advanced: boolean,
-  hfToken: string
-): Promise<any> {
+  hfToken: string,
+  abortSignal?: AbortSignal
+): Promise<{ success: boolean; data?: any; error?: string }> {
   const sessionHash = Math.random().toString(36).substring(7);
-  
-  // Parameters from the API documentation:
-  // text: str, direction: 'fr-ba'|'ba-fr', mode: 'Qualité maximale'|'Rapide', advanced: bool
   const data = [text, direction, mode, advanced];
   
-  // Method 1: Queue-based API with named endpoint /traduire_byt5
+  // Method 1: Queue-based API with named endpoint
   console.log(`🔄 Method 1: Queue/join with endpoint /traduire_byt5`);
   try {
     const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
@@ -104,6 +121,7 @@ async function callGradioTranslate(
         endpoint: '/traduire_byt5',
         session_hash: sessionHash 
       }),
+      signal: abortSignal,
     });
     
     console.log(`   Join status: ${joinResponse.status}`);
@@ -112,11 +130,16 @@ async function callGradioTranslate(
       const joinText = await joinResponse.text();
       console.log(`   Join response: ${joinText.substring(0, 200)}`);
       
-      // Poll for result
-      const result = await pollForResult(spaceUrl, apiPrefix, sessionHash, hfToken);
-      if (result) return result;
+      const result = await pollForResult(spaceUrl, apiPrefix, sessionHash, hfToken, 30, abortSignal);
+      if (result.success) return result;
+      if (result.error && result.error !== 'Polling timeout - no response received') {
+        return result; // Return error immediately if model failed
+      }
     }
   } catch (e) {
+    if (abortSignal?.aborted) {
+      return { success: false, error: 'Request timeout' };
+    }
     console.log(`   Method 1 error: ${e.message}`);
   }
 
@@ -135,19 +158,26 @@ async function callGradioTranslate(
         fn_index: 0,
         session_hash: sessionHash2 
       }),
+      signal: abortSignal,
     });
     
     console.log(`   Join status: ${joinResponse.status}`);
     
     if (joinResponse.ok) {
-      const result = await pollForResult(spaceUrl, apiPrefix, sessionHash2, hfToken);
-      if (result) return result;
+      const result = await pollForResult(spaceUrl, apiPrefix, sessionHash2, hfToken, 30, abortSignal);
+      if (result.success) return result;
+      if (result.error && result.error !== 'Polling timeout - no response received') {
+        return result;
+      }
     }
   } catch (e) {
+    if (abortSignal?.aborted) {
+      return { success: false, error: 'Request timeout' };
+    }
     console.log(`   Method 2 error: ${e.message}`);
   }
 
-  // Method 3: Direct /call/traduire_byt5 endpoint
+  // Method 3: Direct /call/traduire_byt5
   console.log(`🔄 Method 3: Direct /call/traduire_byt5`);
   try {
     const response = await fetch(`${spaceUrl}${apiPrefix}/call/traduire_byt5`, {
@@ -157,6 +187,7 @@ async function callGradioTranslate(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ data }),
+      signal: abortSignal,
     });
     
     console.log(`   Status: ${response.status}`);
@@ -166,17 +197,21 @@ async function callGradioTranslate(
       console.log(`   Result: ${JSON.stringify(result).substring(0, 200)}`);
       
       if (result.event_id) {
-        // Poll using SSE endpoint
         const eventUrl = `${spaceUrl}${apiPrefix}/call/traduire_byt5/${result.event_id}`;
         console.log(`   Polling event: ${eventUrl}`);
         
-        for (let attempt = 0; attempt < 30; attempt++) {
+        for (let attempt = 0; attempt < 15; attempt++) {
+          if (abortSignal?.aborted) {
+            return { success: false, error: 'Request timeout' };
+          }
+          
           try {
             const eventResponse = await fetch(eventUrl, {
               headers: { 
                 'Authorization': `Bearer ${hfToken}`,
                 'Accept': 'text/event-stream'
               },
+              signal: abortSignal,
             });
             
             if (eventResponse.ok) {
@@ -188,8 +223,12 @@ async function callGradioTranslate(
                 if (line.startsWith('data: ')) {
                   try {
                     const parsed = JSON.parse(line.substring(6));
-                    if (Array.isArray(parsed) && parsed.length >= 1) return { data: parsed };
-                    if (parsed.data && Array.isArray(parsed.data)) return parsed;
+                    if (Array.isArray(parsed) && parsed.length >= 1) {
+                      return { success: true, data: { data: parsed } };
+                    }
+                    if (parsed.data && Array.isArray(parsed.data)) {
+                      return { success: true, data: parsed };
+                    }
                   } catch (e) { /* continue */ }
                 }
               }
@@ -201,65 +240,31 @@ async function callGradioTranslate(
         }
       }
       
-      if (result.data) return result;
+      if (result.data) return { success: true, data: result };
     }
   } catch (e) {
+    if (abortSignal?.aborted) {
+      return { success: false, error: 'Request timeout' };
+    }
     console.log(`   Method 3 error: ${e.message}`);
   }
 
-  // Method 4: Direct /run/traduire_byt5
-  console.log(`🔄 Method 4: Direct /run/traduire_byt5`);
-  try {
-    const response = await fetch(`${spaceUrl}${apiPrefix}/run/traduire_byt5`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ data }),
-    });
-    
-    console.log(`   Status: ${response.status}`);
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log(`   Result: ${JSON.stringify(result).substring(0, 200)}`);
-      if (result.data) return result;
-    }
-  } catch (e) {
-    console.log(`   Method 4 error: ${e.message}`);
-  }
-
-  // Method 5: Legacy /api/predict
-  console.log(`🔄 Method 5: Legacy /api/predict`);
-  try {
-    const response = await fetch(`${spaceUrl}/api/predict`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ data, fn_index: 0 }),
-    });
-    
-    console.log(`   Status: ${response.status}`);
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log(`   Result: ${JSON.stringify(result).substring(0, 200)}`);
-      if (result.data) return result;
-    }
-  } catch (e) {
-    console.log(`   Method 5 error: ${e.message}`);
-  }
-
-  throw new Error('All Gradio API methods failed - Space may be sleeping or API access disabled');
+  return { success: false, error: 'All Gradio API methods failed - Space may be sleeping or has internal errors' };
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const startTime = Date.now();
+  const abortController = new AbortController();
+  
+  // Global timeout
+  const timeoutId = setTimeout(() => {
+    abortController.abort();
+    console.log(`⏰ Global timeout reached (${GLOBAL_TIMEOUT_MS}ms)`);
+  }, GLOBAL_TIMEOUT_MS);
 
   try {
     const { 
@@ -271,6 +276,7 @@ serve(async (req) => {
     }: TranslationRequest = await req.json();
 
     if (!text || !sourceLang || !targetLang) {
+      clearTimeout(timeoutId);
       return new Response(
         JSON.stringify({ error: 'Missing required fields: text, sourceLang, targetLang' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -279,27 +285,26 @@ serve(async (req) => {
 
     const HF_TOKEN = Deno.env.get('HUGGING_FACE_API_TOKEN');
     if (!HF_TOKEN) {
+      clearTimeout(timeoutId);
       return new Response(
         JSON.stringify({ error: 'HuggingFace token not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Map direction
     const direction = sourceLang === 'french' ? 'fr-ba' : 'ba-fr';
     const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualité maximale';
 
     console.log(`🤖 ByT5 Expert: ${direction} - "${text.substring(0, 100)}..."`);
     console.log(`📍 Space URL: ${SPACE_URL}`);
     console.log(`   Mode: ${gradioMode}, Advanced: ${advanced}`);
-    
-    const startTime = Date.now();
 
     // Get API prefix from config
     let apiPrefix = '/gradio_api';
     try {
       const configResponse = await fetch(`${SPACE_URL}/config`, {
-        headers: { 'Authorization': `Bearer ${HF_TOKEN}` }
+        headers: { 'Authorization': `Bearer ${HF_TOKEN}` },
+        signal: abortController.signal,
       });
       if (configResponse.ok) {
         const config = await configResponse.json();
@@ -310,84 +315,95 @@ serve(async (req) => {
       console.log(`   Config fetch failed, using default prefix`);
     }
 
-    try {
-      const result = await callGradioTranslate(
-        SPACE_URL,
-        apiPrefix,
-        text,
-        direction,
-        gradioMode,
-        advanced,
-        HF_TOKEN
+    const result = await callGradioTranslate(
+      SPACE_URL,
+      apiPrefix,
+      text,
+      direction,
+      gradioMode,
+      advanced,
+      HF_TOKEN,
+      abortController.signal
+    );
+
+    clearTimeout(timeoutId);
+    const duration = Date.now() - startTime;
+
+    if (!result.success) {
+      console.error(`❌ ByT5 failed after ${duration}ms: ${result.error}`);
+      return new Response(
+        JSON.stringify({
+          error: 'ByT5 translation service unavailable',
+          details: result.error || 'HuggingFace Space API not responding',
+          duration,
+          spaceUrl: SPACE_URL
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-
-      // Extract translation from result
-      // API returns tuple: [0] main translation, [1] reformulation suggestions
-      let translation = null;
-      let suggestions = null;
-
-      if (result?.data && Array.isArray(result.data)) {
-        translation = result.data[0];
-        suggestions = result.data[1];
-      } else if (Array.isArray(result)) {
-        translation = result[0];
-        suggestions = result[1];
-      }
-
-      if (translation && typeof translation === 'string' && translation.length > 0) {
-        const duration = Date.now() - startTime;
-        
-        // Calculate confidence based on translation quality
-        const hasSpecialChars = /[ɔɛɑɡãẽĩõũàèìòùâêîôûäëïöü]/.test(translation);
-        const hasValidLength = translation.length >= text.length * 0.3;
-        const baseConfidence = 85;
-        const confidence = Math.min(
-          95,
-          baseConfidence + (hasSpecialChars ? 5 : 0) + (hasValidLength ? 5 : 0)
-        );
-        
-        console.log(`✅ ByT5 Success in ${duration}ms: "${translation.substring(0, 150)}"`);
-        if (suggestions) console.log(`   Suggestions: "${suggestions.substring(0, 100)}"`);
-
-        return new Response(
-          JSON.stringify({ 
-            translation,
-            suggestions,
-            confidence,
-            duration,
-            method: 'byt5-expert',
-            modelInfo: {
-              name: 'ByT5 Expert (Improved)',
-              version: 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve',
-              mode: gradioMode,
-              advanced
-            }
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } catch (e) {
-      console.error(`❌ API error: ${e.message}`);
     }
 
-    const duration = Date.now() - startTime;
-    console.error(`❌ ByT5 failed after ${duration}ms`);
+    // Extract translation from result
+    let translation = null;
+    let suggestions = null;
 
+    if (result.data?.data && Array.isArray(result.data.data)) {
+      translation = result.data.data[0];
+      suggestions = result.data.data[1];
+    } else if (Array.isArray(result.data)) {
+      translation = result.data[0];
+      suggestions = result.data[1];
+    }
+
+    if (translation && typeof translation === 'string' && translation.length > 0) {
+      const hasSpecialChars = /[ɔɛɑɡãẽĩõũàèìòùâêîôûäëïöü]/.test(translation);
+      const hasValidLength = translation.length >= text.length * 0.3;
+      const baseConfidence = 85;
+      const confidence = Math.min(
+        95,
+        baseConfidence + (hasSpecialChars ? 5 : 0) + (hasValidLength ? 5 : 0)
+      );
+      
+      console.log(`✅ ByT5 Success in ${duration}ms: "${translation.substring(0, 150)}"`);
+      if (suggestions) console.log(`   Suggestions: "${String(suggestions).substring(0, 100)}"`);
+
+      return new Response(
+        JSON.stringify({ 
+          translation,
+          suggestions,
+          confidence,
+          duration,
+          method: 'byt5-expert',
+          modelInfo: {
+            name: 'ByT5 Expert (Improved)',
+            version: 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve',
+            mode: gradioMode,
+            advanced
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.error(`❌ ByT5 no valid translation in response after ${duration}ms`);
     return new Response(
       JSON.stringify({
-        error: 'ByT5 translation service unavailable',
-        details: 'HuggingFace Space API not responding. The Space may be sleeping or API access is disabled.',
+        error: 'ByT5 returned no valid translation',
+        details: 'Model processed but returned empty or invalid response',
         duration,
-        spaceUrl: SPACE_URL,
-        suggestion: 'Visit the Space URL to wake it up and enable API access in Settings'
+        spaceUrl: SPACE_URL
       }),
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Fatal error:', error);
+    clearTimeout(timeoutId);
+    const duration = Date.now() - startTime;
+    console.error(`Fatal error after ${duration}ms:`, error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Translation failed' }),
+      JSON.stringify({ 
+        error: error.message || 'Translation failed',
+        duration 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

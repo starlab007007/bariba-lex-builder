@@ -17,11 +17,13 @@ export interface ByT5TranslationResult {
     name: string;
     version: string;
     mode: string;
-    advanced?: boolean;
+    advanced: boolean;
   };
 }
 
-export class ByT5TranslationService {
+const TIMEOUT_MS = 12000; // 12 seconds client-side timeout
+
+class ByT5TranslationService {
   private static instance: ByT5TranslationService;
   private isHealthy: boolean = false;
   private lastHealthCheck: number = 0;
@@ -36,9 +38,6 @@ export class ByT5TranslationService {
     return ByT5TranslationService.instance;
   }
 
-  /**
-   * Traduit un texte en utilisant le modèle ByT5 Expert
-   */
   async translate(
     text: string,
     sourceLang: 'french' | 'bariba',
@@ -47,10 +46,14 @@ export class ByT5TranslationService {
     advanced: boolean = true
   ): Promise<ByT5TranslationResult> {
     const startTime = Date.now();
+    
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
-      console.log(`🤖 ByT5 Expert: translating ${sourceLang} → ${targetLang} (${mode} mode)`);
-
+      console.log(`🤖 ByT5TranslationService: Calling Edge Function...`);
+      
       const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
         body: {
           text,
@@ -61,44 +64,50 @@ export class ByT5TranslationService {
         }
       });
 
+      clearTimeout(timeoutId);
+
       if (error) {
         console.error('❌ ByT5 Edge Function error:', error);
         this.isHealthy = false;
-        throw new Error(`ByT5 translation failed: ${error.message}`);
+        throw new Error(error.message || 'ByT5 service unavailable');
       }
 
-      if (!data || !data.translation) {
-        console.error('❌ Invalid ByT5 response:', data);
+      if (data?.error) {
+        console.error('❌ ByT5 returned error:', data.error, data.details);
         this.isHealthy = false;
-        throw new Error(data?.error || 'Invalid response from ByT5 service');
+        throw new Error(data.details || data.error);
       }
 
-      const totalDuration = Date.now() - startTime;
+      if (!data?.translation) {
+        console.error('❌ ByT5 no translation in response');
+        this.isHealthy = false;
+        throw new Error('No translation received from ByT5');
+      }
+
       this.isHealthy = true;
       this.lastHealthCheck = Date.now();
-
-      console.log(`✅ ByT5 translation completed in ${totalDuration}ms (confidence: ${data.confidence}%)`);
+      
+      console.log(`✅ ByT5 translation received in ${data.duration || (Date.now() - startTime)}ms`);
 
       return {
         translation: data.translation,
-        confidence: data.confidence,
-        duration: totalDuration,
+        confidence: data.confidence || 85,
+        duration: data.duration || (Date.now() - startTime),
         method: 'byt5-expert',
         suggestions: data.suggestions,
         modelInfo: data.modelInfo
       };
-
     } catch (error) {
-      const duration = Date.now() - startTime;
-      console.error(`❌ ByT5 translation error after ${duration}ms:`, error);
+      clearTimeout(timeoutId);
       this.isHealthy = false;
-      throw error;
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ ByT5TranslationService error: ${errorMessage}`);
+      
+      throw new Error(`ByT5 indisponible: ${errorMessage}`);
     }
   }
 
-  /**
-   * Vérifie si le service ByT5 est disponible
-   */
   async checkHealth(): Promise<boolean> {
     // Use cached result if recent
     if (Date.now() - this.lastHealthCheck < this.healthCheckInterval) {
@@ -106,29 +115,20 @@ export class ByT5TranslationService {
     }
 
     try {
-      console.log('🏥 Checking ByT5 Expert health...');
-      const testResult = await this.translate(
-        'Bonjour',
-        'french',
-        'bariba',
-        'fast',
-        false
-      );
-      this.isHealthy = testResult.translation.length > 0;
+      console.log('🏥 ByT5 health check...');
+      const result = await this.translate('bonjour', 'french', 'bariba', 'fast', false);
+      this.isHealthy = !!result.translation;
       this.lastHealthCheck = Date.now();
-      console.log(`🏥 ByT5 health: ${this.isHealthy ? '✅ OK' : '❌ DOWN'}`);
+      console.log(`🏥 ByT5 health: ${this.isHealthy ? '✅ OK' : '❌ Failed'}`);
       return this.isHealthy;
     } catch (error) {
-      console.error('❌ ByT5 health check failed:', error);
+      console.log('🏥 ByT5 health: ❌ Failed');
       this.isHealthy = false;
       this.lastHealthCheck = Date.now();
       return false;
     }
   }
 
-  /**
-   * Retourne l'état de santé du service (sans appel réseau)
-   */
   getHealthStatus(): { isHealthy: boolean; lastCheck: number } {
     return {
       isHealthy: this.isHealthy,
@@ -136,27 +136,14 @@ export class ByT5TranslationService {
     };
   }
 
-  /**
-   * Retourne les informations sur le modèle
-   */
   getModelInfo() {
     return {
-      id: 'byt5-expert',
-      name: 'ByT5 Expert (Improved)',
+      name: 'ByT5 Expert',
       version: 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve',
-      description: 'Modèle ByT5 fine-tuné spécifiquement pour le Bariba avec correction grammaticale avancée',
-      capabilities: {
-        frenchToBariba: true,
-        baribaToFrench: true,
-        qualityMode: true,
-        fastMode: true,
-        advancedCorrection: true,
-        reformulationSuggestions: true,
-        maxChars: 500
-      }
+      description: 'Modèle ByT5 fine-tuné pour la traduction Français-Bariba',
+      isAvailable: this.isHealthy
     };
   }
 }
 
-// Export singleton instance
 export const byT5TranslationService = ByT5TranslationService.getInstance();
