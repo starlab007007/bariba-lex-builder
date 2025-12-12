@@ -206,9 +206,23 @@ serve(async (req) => {
       );
     }
 
+    // Handle health check requests (short strings like "test")
+    if (audio === 'test' || audio.length < 20) {
+      console.log(`🏥 Health check request detected (audio="${audio.substring(0, 10)}")`);
+      return new Response(
+        JSON.stringify({ 
+          status: 'ok',
+          service: 'bariba-stt',
+          message: 'Service is available',
+          isHealthCheck: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check minimum audio length (avoid sending too short recordings)
     // Base64 audio of ~0.5 second is approximately 500+ chars
-    const minAudioLength = 100; // Very short threshold - let HuggingFace validate
+    const minAudioLength = 100;
     if (audio.length < minAudioLength) {
       console.log(`⚠️ Audio too short: ${audio.length} chars (min: ${minAudioLength})`);
       return new Response(
