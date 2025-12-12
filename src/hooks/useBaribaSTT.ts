@@ -32,6 +32,8 @@ export const useBaribaSTT = (): UseBaribaSTTReturn => {
     setError(null);
 
     try {
+      console.log('[useBaribaSTT] Sending audio for transcription, length:', audioBase64.length);
+      
       const { data, error: fnError } = await supabase.functions.invoke('bariba-stt', {
         body: {
           audio: audioBase64,
@@ -40,12 +42,20 @@ export const useBaribaSTT = (): UseBaribaSTTReturn => {
         }
       });
 
+      console.log('[useBaribaSTT] Response:', { data, fnError });
+
       if (fnError) {
+        console.error('[useBaribaSTT] Function error:', fnError);
         throw new Error(fnError.message);
       }
 
-      if (data.error) {
+      if (data?.error) {
+        console.error('[useBaribaSTT] Data error:', data.error);
         throw new Error(data.error);
+      }
+      
+      if (!data?.transcription) {
+        throw new Error('Aucune transcription reçue');
       }
 
       const result: BaribaSTTResult = {

@@ -274,10 +274,22 @@ export const SmartVoiceRecorder = ({
         <div className="flex items-center gap-3">
           <Button
             size="sm"
+            variant="destructive"
+            onClick={cancelRecording}
+            disabled={isProcessing}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Annuler
+          </Button>
+          
+          <Button
+            size="sm"
             variant="outline"
             onClick={isPaused ? resumeRecording : pauseRecording}
+            disabled={isProcessing}
           >
             {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            <span className="ml-1">{isPaused ? 'Reprendre' : 'Pause'}</span>
           </Button>
           
           <Badge variant="secondary" className="font-mono text-lg px-4 py-1">
@@ -286,10 +298,13 @@ export const SmartVoiceRecorder = ({
           
           <Button
             size="sm"
-            variant="ghost"
-            onClick={cancelRecording}
+            variant="default"
+            onClick={handleManualStop}
+            disabled={isProcessing}
+            className="bg-primary hover:bg-primary/90"
           >
-            <MicOff className="h-4 w-4" />
+            <Send className="h-4 w-4 mr-1" />
+            Envoyer
           </Button>
         </div>
       )}
