@@ -6,9 +6,100 @@ const corsHeaders = {
 };
 
 interface STTRequest {
-  audio: string; // Base64 encoded audio
+  audio: string;
   robustMode?: boolean;
   speakerType?: 'Auto' | 'Enfant' | 'Femme' | 'Homme' | 'PersonneAgee';
+}
+
+async function callGradioAPI(
+  spaceUrl: string,
+  fnName: string,
+  data: any[],
+  hfToken: string
+): Promise<any> {
+  // Step 1: Try the call endpoint (Gradio 4.x)
+  const callResponse = await fetch(`${spaceUrl}/call/${fnName}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${hfToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ data }),
+  });
+
+  console.log(`   Call endpoint status: ${callResponse.status}`);
+
+  if (callResponse.ok) {
+    const callResult = await callResponse.json();
+    console.log(`   Call result:`, JSON.stringify(callResult).substring(0, 200));
+    
+    if (callResult.event_id) {
+      // Poll for result using SSE
+      const resultResponse = await fetch(`${spaceUrl}/call/${fnName}/${callResult.event_id}`, {
+        headers: { 'Authorization': `Bearer ${hfToken}` },
+      });
+
+      if (resultResponse.ok) {
+        const text = await resultResponse.text();
+        console.log(`   SSE response:`, text.substring(0, 300));
+        
+        // Parse SSE format
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const parsed = JSON.parse(line.substring(6));
+              return parsed;
+            } catch (e) {
+              // Continue
+            }
+          }
+        }
+      }
+    }
+    return callResult;
+  }
+
+  // Fallback: queue/join endpoint
+  const queueResponse = await fetch(`${spaceUrl}/queue/join`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${hfToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      data: data,
+      fn_index: 0,
+      session_hash: Math.random().toString(36).substring(7)
+    }),
+  });
+
+  console.log(`   Queue join status: ${queueResponse.status}`);
+  
+  if (queueResponse.ok) {
+    return await queueResponse.json();
+  }
+
+  // Try direct API predict
+  const predictResponse = await fetch(`${spaceUrl}/api/predict`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${hfToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      data: data,
+      fn_index: 0
+    }),
+  });
+
+  console.log(`   API predict status: ${predictResponse.status}`);
+
+  if (predictResponse.ok) {
+    return await predictResponse.json();
+  }
+
+  throw new Error(`All Gradio endpoints failed`);
 }
 
 serve(async (req) => {
@@ -37,96 +128,35 @@ serve(async (req) => {
     console.log(`🎤 Bariba STT: Processing audio, robustMode=${robustMode}, speaker=${speakerType}`);
     const startTime = Date.now();
 
-    // API Space: zimesongbian/baatonum_asr_stt_api_v001_improve
     const SPACE_URL = 'https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space';
-    
-    // First, try the Gradio client queue API
-    const queueResponse = await fetch(`${SPACE_URL}/call/transcribe`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${HF_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        data: [audio, robustMode, speakerType]
-      }),
-    });
 
-    console.log(`   Queue response status: ${queueResponse.status}`);
+    try {
+      const result = await callGradioAPI(
+        SPACE_URL,
+        'transcribe',
+        [audio, robustMode, speakerType],
+        HF_TOKEN
+      );
 
-    if (queueResponse.ok) {
-      const queueResult = await queueResponse.json();
-      console.log(`   Queue result:`, JSON.stringify(queueResult).substring(0, 200));
+      let transcription = null;
       
-      if (queueResult.event_id) {
-        // Poll for the result
-        const resultResponse = await fetch(`${SPACE_URL}/call/transcribe/${queueResult.event_id}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${HF_TOKEN}`,
-          },
-        });
-
-        if (resultResponse.ok) {
-          const resultText = await resultResponse.text();
-          console.log(`   Result text:`, resultText.substring(0, 300));
-          
-          // Parse SSE response
-          const lines = resultText.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.substring(6));
-                if (data && data[0]) {
-                  const duration = Date.now() - startTime;
-                  console.log(`✅ Bariba STT Success in ${duration}ms: "${data[0].substring(0, 50)}..."`);
-
-                  return new Response(
-                    JSON.stringify({
-                      transcription: data[0],
-                      confidence: 90,
-                      duration,
-                      language: 'bariba',
-                      speakerType
-                    }),
-                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                  );
-                }
-              } catch (e) {
-                // Continue parsing
-              }
-            }
-          }
-        }
+      if (result && result.data && result.data[0]) {
+        transcription = result.data[0];
+      } else if (result && Array.isArray(result) && result[0]) {
+        transcription = result[0];
+      } else if (result && result.transcription) {
+        transcription = result.transcription;
+      } else if (typeof result === 'string') {
+        transcription = result;
       }
-    }
 
-    // Fallback: Try direct predict endpoint
-    const predictResponse = await fetch(`${SPACE_URL}/api/predict`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${HF_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fn_index: 0,
-        data: [audio, robustMode, speakerType]
-      }),
-    });
-
-    console.log(`   Predict response status: ${predictResponse.status}`);
-
-    if (predictResponse.ok) {
-      const result = await predictResponse.json();
-      console.log(`   Predict result:`, JSON.stringify(result).substring(0, 200));
-
-      if (result.data && result.data[0]) {
+      if (transcription) {
         const duration = Date.now() - startTime;
-        console.log(`✅ Bariba STT Success (fallback) in ${duration}ms`);
+        console.log(`✅ Bariba STT Success in ${duration}ms: "${transcription.substring(0, 50)}..."`);
 
         return new Response(
           JSON.stringify({
-            transcription: result.data[0],
+            transcription,
             confidence: 90,
             duration,
             language: 'bariba',
@@ -135,16 +165,17 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+    } catch (e) {
+      console.error(`   Gradio API error: ${e.message}`);
     }
 
-    // Return error if all endpoints failed
     const duration = Date.now() - startTime;
-    console.error(`❌ All STT endpoints failed after ${duration}ms`);
+    console.error(`❌ STT failed after ${duration}ms`);
 
     return new Response(
       JSON.stringify({
         error: 'Bariba STT service unavailable',
-        details: 'Could not connect to HuggingFace Space',
+        details: 'HuggingFace Space may be sleeping. Please try again in 30 seconds.',
         duration
       }),
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
