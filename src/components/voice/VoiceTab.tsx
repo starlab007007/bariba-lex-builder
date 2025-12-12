@@ -4,6 +4,7 @@ import { VoiceDictation } from './VoiceDictation';
 import { TextReader } from './TextReader';
 import { VoiceTranslator } from './VoiceTranslator';
 import { ConversationMode } from './ConversationMode';
+import { ServiceStatusIndicator } from '@/components/ServiceStatusIndicator';
 
 interface VoiceTabProps {
   onTranslate?: (text: string, language: 'bariba' | 'french') => void;
@@ -19,6 +20,9 @@ export const VoiceTab = ({ onTranslate }: VoiceTabProps) => {
         <p className="text-muted-foreground">
           Parlez, écoutez et traduisez entre le français et le bariba
         </p>
+        <div className="flex justify-center mt-2">
+          <ServiceStatusIndicator compact />
+        </div>
       </div>
 
       <Tabs defaultValue="dictation" className="w-full">
