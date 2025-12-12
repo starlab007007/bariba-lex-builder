@@ -70,14 +70,15 @@ export const ServiceStatusIndicator = ({ compact = false }: ServiceStatusIndicat
         body: { audio: 'test', robustMode: true }
       });
       
-      const hasError = error || data?.error;
+      // Health check returns { status: 'ok', isHealthCheck: true }
+      const isAvailable = !error && (data?.status === 'ok' || data?.isHealthCheck || data?.transcription);
       setServices(prev => ({
         ...prev,
         baribaSTT: {
           ...prev.baribaSTT,
-          status: hasError ? 'unavailable' : 'available',
+          status: isAvailable ? 'available' : 'unavailable',
           lastCheck: new Date(),
-          message: hasError ? 'HuggingFace Space indisponible' : 'Opérationnel'
+          message: isAvailable ? 'Opérationnel' : 'HuggingFace Space indisponible'
         }
       }));
     } catch {
