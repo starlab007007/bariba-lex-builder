@@ -297,8 +297,8 @@ serve(async (req) => {
       );
     }
 
-    // CRITICAL: Use exact direction format expected by the HuggingFace Space API
-    const direction = sourceLang === 'french' ? 'Français → Bàátɔ̀nú' : 'Bàátɔ̀nú → Français';
+    // CRITICAL: Use exact direction format from the Space UI: "fr-ba" or "ba-fr"
+    const direction = sourceLang === 'french' ? 'fr-ba' : 'ba-fr';
     const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualité maximale';
 
     console.log(`🤖 ByT5 Expert: ${direction} - "${text.substring(0, 100)}..."`);
