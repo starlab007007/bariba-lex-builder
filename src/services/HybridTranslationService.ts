@@ -441,11 +441,65 @@ export class HybridTranslationService {
       };
     }
 
-    // NIVEAU 3.55: ByT5 Expert DÉSACTIVÉ - Space HuggingFace non fonctionnel
-    // Le Space zimesongbian/modele_byt5_bariba_expert_api_v03 n'expose pas d'API Gradio standard
-    // Réactiver quand le Space sera correctement configuré
-    // const wordCount2 = text.split(/\s+/).length;
-    // if (wordCount2 >= 3) { ... }
+    // NIVEAU 3.55: ByT5 Expert - Modèle spécialisé Bariba (confiance 85-95%, 200-500ms)
+    const wordCount2 = text.split(/\s+/).length;
+    if (wordCount2 >= 2) { // Phrases 2+ mots pour ByT5 Expert
+      try {
+        console.log(`🔄 Niveau 3.55: ByT5 Expert (${wordCount2} mots)`);
+        
+        const byT5Result = await byT5TranslationService.translate(
+          text,
+          sourceLang,
+          targetLang,
+          'quality',
+          true
+        );
+        
+        if (byT5Result && byT5Result.confidence >= 80) {
+          console.log(`✅ Niveau 3.55: ByT5 Expert (${byT5Result.confidence}%)`);
+          console.log(`   📝 Traduction: "${byT5Result.translation}"`);
+          if (byT5Result.suggestions) {
+            console.log(`   💡 Suggestions: "${byT5Result.suggestions}"`);
+          }
+          
+          // Sauvegarder dans le cache et le contexte
+          await this.saveToCache(text, byT5Result.translation, sourceLang, targetLang, byT5Result.confidence);
+          await translationContextService.addToContext(
+            text,
+            byT5Result.translation,
+            sourceLang,
+            targetLang,
+            byT5Result.confidence
+          );
+          
+          const result: HybridTranslationResult = {
+            translation: byT5Result.translation,
+            confidence: byT5Result.confidence,
+            detectedLanguage: sourceLang,
+            method: 'byt5-expert',
+            cost: 0,
+            duration: Date.now() - startTime
+          };
+          
+          translationMonitoring.logTranslation({
+            inputText: text,
+            outputText: result.translation,
+            sourceLang,
+            targetLang,
+            method: result.method,
+            confidence: result.confidence,
+            duration: result.duration,
+            cost: result.cost
+          });
+          
+          return result;
+        } else {
+          console.log(`⚠️ ByT5 confiance insuffisante: ${byT5Result?.confidence || 0}%`);
+        }
+      } catch (error) {
+        console.warn("⚠️ ByT5 Expert indisponible:", error);
+      }
+    }
 
     // NIVEAU 3.6: Lovable AI pour phrases complexes (confiance 85-95%, quasi-GRATUIT)
     const wordCount = text.split(/\s+/).length;
