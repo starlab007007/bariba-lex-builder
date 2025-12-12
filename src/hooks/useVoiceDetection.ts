@@ -27,6 +27,9 @@ export const useVoiceDetection = (): UseVoiceDetectionReturn => {
   const speechStartTimeRef = useRef<number | null>(null);
   const silenceTimeoutRef = useRef<number | null>(null);
   
+  // Flag to prevent multiple speech start callbacks per speech session
+  const hasTriggeredSpeechStartRef = useRef(false);
+  
   // VAD parameters
   const SILENCE_DURATION = 1500; // 1.5 seconds of silence to end speech
   const MIN_SPEECH_DURATION = 300; // Minimum 300ms of speech to be valid
@@ -67,10 +70,15 @@ export const useVoiceDetection = (): UseVoiceDetectionReturn => {
     if (isCurrentlySpeaking) {
       // Speech detected
       if (!isSpeaking) {
-        console.log('[VAD] Speech started, avg:', average.toFixed(1), 'threshold:', threshold.toFixed(1));
         setIsSpeaking(true);
         speechStartTimeRef.current = Date.now();
-        speechStartCallbackRef.current?.();
+        
+        // Only trigger callback ONCE per speech session
+        if (!hasTriggeredSpeechStartRef.current) {
+          hasTriggeredSpeechStartRef.current = true;
+          console.log('[VAD] Speech started (once), avg:', average.toFixed(1), 'threshold:', threshold.toFixed(1));
+          speechStartCallbackRef.current?.();
+        }
       }
 
       // Clear silence timeout
@@ -96,6 +104,8 @@ export const useVoiceDetection = (): UseVoiceDetectionReturn => {
           setIsSpeaking(false);
           speechStartTimeRef.current = null;
           silenceTimeoutRef.current = null;
+          // Reset the flag for next speech session
+          hasTriggeredSpeechStartRef.current = false;
         }, SILENCE_DURATION);
       }
     }

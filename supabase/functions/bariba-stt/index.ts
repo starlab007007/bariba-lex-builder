@@ -201,7 +201,21 @@ serve(async (req) => {
 
     if (!audio) {
       return new Response(
-        JSON.stringify({ error: 'Audio data required' }),
+        JSON.stringify({ error: 'Audio data required', details: 'Aucune donnée audio reçue' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check minimum audio length (avoid sending too short recordings)
+    const minAudioLength = 1000; // ~1KB minimum
+    if (audio.length < minAudioLength) {
+      console.log(`⚠️ Audio too short: ${audio.length} chars (min: ${minAudioLength})`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Audio too short', 
+          details: 'L\'enregistrement est trop court. Parlez plus longtemps (au moins 1-2 secondes).',
+          audioLength: audio.length
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -209,12 +223,12 @@ serve(async (req) => {
     const HF_TOKEN = Deno.env.get('HUGGING_FACE_API_TOKEN');
     if (!HF_TOKEN) {
       return new Response(
-        JSON.stringify({ error: 'HuggingFace token not configured' }),
+        JSON.stringify({ error: 'HuggingFace token not configured', details: 'Configuration serveur manquante' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`🎤 Bariba STT: audio=${audio.length} chars, robust=${robustMode}`);
+    console.log(`🎤 Bariba STT: audio=${audio.length} chars, robust=${robustMode}, speaker=${speakerType}`);
     const startTime = Date.now();
 
     // Get API prefix from config
