@@ -122,24 +122,36 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       timerRef.current = null;
     }
 
-    if (mediaRecorderRef.current && state.isRecording) {
-      mediaRecorderRef.current.stop();
-    }
+    return new Promise((resolve) => {
+      if (mediaRecorderRef.current && state.isRecording) {
+        // Set up handler to get audio when recording stops
+        mediaRecorderRef.current.onstop = async () => {
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+          }
 
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
+          if (chunksRef.current.length > 0) {
+            const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+            console.log('[useAudioRecorder] Created blob:', blob.size, 'bytes from', chunksRef.current.length, 'chunks');
+            const base64 = await blobToBase64(blob);
+            console.log('[useAudioRecorder] Base64 length:', base64.length);
+            resolve(base64);
+          } else {
+            console.warn('[useAudioRecorder] No chunks available');
+            resolve(null);
+          }
+        };
 
-    // Wait for the blob to be created
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    if (chunksRef.current.length > 0) {
-      const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-      return await blobToBase64(blob);
-    }
-
-    return null;
+        mediaRecorderRef.current.stop();
+      } else {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        resolve(null);
+      }
+    });
   }, [state.isRecording]);
 
   const pauseRecording = useCallback(() => {
