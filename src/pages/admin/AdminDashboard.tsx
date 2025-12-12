@@ -24,10 +24,6 @@ import BulkEditPanel from '@/components/admin/BulkEditPanel';
 import { IdiomManager } from '@/components/admin/IdiomManager';
 import UnifiedDataManager from '@/components/admin/UnifiedDataManager';
 import AdvancedDictionaryManager from '@/components/admin/AdvancedDictionaryManager';
-import { SMTSystemDashboard } from '@/components/admin/SMTSystemDashboard';
-import { SMTABTestingPanel } from '@/components/admin/SMTABTestingPanel';
-import { SMTRealTimeMonitor } from '@/components/admin/SMTRealTimeMonitor';
-import { SMTQualityDashboard } from '@/components/admin/SMTQualityDashboard';
 import { TranslationMonitoringDashboard } from '@/components/admin/TranslationMonitoringDashboard';
 import SystemAuditReport from '@/components/admin/SystemAuditReport';
 import { ModelHealthDashboard } from '@/components/admin/ModelHealthDashboard';
@@ -59,17 +55,6 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{user?.email}</span>
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={() => {
-                localStorage.removeItem('smt_initialization_status');
-                window.location.reload();
-              }}
-              title="Force la réinitialisation complète du moteur SMT"
-            >
-              🔄 Reset SMT
-            </Button>
             <Button variant="outline" size="sm" onClick={signOut}>
               Déconnexion
             </Button>
@@ -95,10 +80,6 @@ export default function AdminDashboard() {
                 <Activity className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Santé Modèles
               </TabsTrigger>
-              <TabsTrigger value="smt-monitoring" className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Monitoring SMT
-              </TabsTrigger>
               <TabsTrigger value="translation-monitoring" className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Monitoring Traductions
@@ -106,14 +87,6 @@ export default function AdminDashboard() {
               <TabsTrigger value="audio-services" className="flex items-center gap-2">
                 <Volume2 className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Services Audio
-              </TabsTrigger>
-              <TabsTrigger value="smt-realtime" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Performance Temps Réel
-              </TabsTrigger>
-              <TabsTrigger value="smt-quality" className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Analyse Qualité SMT
               </TabsTrigger>
               <TabsTrigger value="dictionary" className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-[hsl(var(--section-data))]" />
@@ -134,11 +107,7 @@ export default function AdminDashboard() {
                 <span className="text-xs font-semibold text-[hsl(var(--section-tests))] px-2 whitespace-nowrap">🧪 TESTS & QUALITÉ</span>
                 <Separator className="flex-1" />
               </div>
-              <TabsTrigger value="smt-ab-test" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-tests))]">
-                <TestTube2 className="h-4 w-4 text-[hsl(var(--section-tests))]" />
-                Test A/B SMT
-              </TabsTrigger>
-              <TabsTrigger value="model-testing" className="flex items-center gap-2">
+              <TabsTrigger value="model-testing" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-tests))]">
                 <TestTube2 className="h-4 w-4 text-[hsl(var(--section-tests))]" />
                 Test Modèle
               </TabsTrigger>
@@ -258,16 +227,12 @@ export default function AdminDashboard() {
               <ByT5SpaceConfig />
             </div>
           </TabsContent>
-          <TabsContent value="smt-monitoring"><SMTSystemDashboard /></TabsContent>
           <TabsContent value="translation-monitoring"><TranslationMonitoringDashboard /></TabsContent>
           <TabsContent value="audio-services"><AudioServicesMonitor /></TabsContent>
-          <TabsContent value="smt-realtime"><SMTRealTimeMonitor /></TabsContent>
-          <TabsContent value="smt-quality"><SMTQualityDashboard /></TabsContent>
           <TabsContent value="dictionary"><DictionaryManager /></TabsContent>
           <TabsContent value="dictionary-advanced"><AdvancedDictionaryManager /></TabsContent>
           <TabsContent value="idioms"><IdiomManager /></TabsContent>
           
-          <TabsContent value="smt-ab-test"><SMTABTestingPanel /></TabsContent>
           <TabsContent value="model-testing"><ModelTestingPanel /></TabsContent>
           <TabsContent value="hybrid-test"><HybridTranslationTester /></TabsContent>
           <TabsContent value="quality"><QualityMetricsDashboard /></TabsContent>
