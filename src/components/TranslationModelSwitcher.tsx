@@ -32,24 +32,42 @@ export const TranslationModelSwitcher = ({
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const checkHealth = async () => {
+    const checkByT5 = async () => {
       setChecking(true);
       try {
+        // Quick check without actual API call first
         const status = byT5TranslationService.getHealthStatus();
-        if (status.lastCheck > 0) {
+        if (status.lastCheck > 0 && Date.now() - status.lastCheck < 60000) {
           setByt5Available(status.isHealthy);
-        } else {
-          const healthy = await byT5TranslationService.checkHealth();
-          setByt5Available(healthy);
+          setChecking(false);
+          
+          // If was unavailable, auto-select SimplifiedAI
+          if (!status.isHealthy && selectedModel === 'byt5-expert') {
+            onModelChange('simplified');
+          }
+          return;
+        }
+        
+        // Only do full health check if no recent data
+        const isHealthy = await byT5TranslationService.checkHealth();
+        setByt5Available(isHealthy);
+        
+        // Auto-select SimplifiedAI if ByT5 unavailable
+        if (!isHealthy && selectedModel === 'byt5-expert') {
+          onModelChange('simplified');
         }
       } catch {
         setByt5Available(false);
+        if (selectedModel === 'byt5-expert') {
+          onModelChange('simplified');
+        }
       } finally {
         setChecking(false);
       }
     };
-    checkHealth();
-  }, []);
+
+    checkByT5();
+  }, [selectedModel, onModelChange]);
 
   const models: ModelOption[] = [
     {

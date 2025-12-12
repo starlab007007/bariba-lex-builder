@@ -244,14 +244,35 @@ export const PhraseTranslator = () => {
         setUsedCache(false);
         
         let result;
-        if (direction === "french-to-bariba") {
-          result = await translateFrenchToBariba(sourceText, { preferredModel: selectedModel });
-        } else {
-          result = await translateBaribaToFrench(sourceText, { preferredModel: selectedModel });
+        try {
+          if (direction === "french-to-bariba") {
+            result = await translateFrenchToBariba(sourceText, { preferredModel: selectedModel });
+          } else {
+            result = await translateBaribaToFrench(sourceText, { preferredModel: selectedModel });
+          }
+        } catch (translationError) {
+          // If ByT5 was selected and failed, fallback to SimplifiedAI
+          if (selectedModel === 'byt5-expert') {
+            console.warn('ByT5 failed, falling back to SimplifiedAI...');
+            toast({
+              title: "⚠️ ByT5 Expert indisponible",
+              description: "Basculement vers SimplifiedAI...",
+            });
+            
+            if (direction === "french-to-bariba") {
+              result = await translateFrenchToBariba(sourceText, { preferredModel: 'simplified' });
+            } else {
+              result = await translateBaribaToFrench(sourceText, { preferredModel: 'simplified' });
+            }
+            
+            // Auto-switch selected model for future translations
+            setSelectedModel('simplified');
+          } else {
+            throw translationError;
+          }
         }
         
         translation = result.translation;
-        const duration = Math.round(performance.now() - startTime);
         
         // Enregistrer les métriques pour affichage
         setUsedMethod(result.method);
@@ -261,10 +282,23 @@ export const PhraseTranslator = () => {
         // Sauvegarder dans le cache
         await cacheTranslation(sourceText, translation, sourceLang, targetLang, result.confidence);
         
-        toast({
-          title: `🧠 Traduction ${result.method.toUpperCase()}`,
-          description: `Traduction effectuée en ${result.duration}ms avec ${result.confidence}% de confiance.`
-        });
+        // Display appropriate toast based on method used
+        if (result.method === 'byt5-expert') {
+          toast({
+            title: `🤖 ByT5 Expert`,
+            description: `Traduction en ${result.duration}ms (${result.confidence}% confiance)`
+          });
+        } else if (result.method === 'simplified-ai' && selectedModel === 'byt5-expert') {
+          toast({
+            title: `⚡ SimplifiedAI (fallback)`,
+            description: `ByT5 indisponible. Traduction en ${result.duration}ms.`
+          });
+        } else {
+          toast({
+            title: `🧠 Traduction ${result.method.toUpperCase()}`,
+            description: `En ${result.duration}ms avec ${result.confidence}% de confiance.`
+          });
+        }
       } else {
         // Fallback: traduction de démonstration
         await new Promise(resolve => setTimeout(resolve, 1000));
