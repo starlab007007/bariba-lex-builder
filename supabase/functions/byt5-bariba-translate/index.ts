@@ -108,6 +108,10 @@ async function callGradioTranslate(
   const sessionHash = Math.random().toString(36).substring(7);
   const data = [text, direction, mode, advanced];
   
+  // Log exact parameters being sent
+  console.log(`📤 Sending to Space: text="${text}", direction="${direction}", mode="${mode}", advanced=${advanced}`);
+  console.log(`📤 Data array: ${JSON.stringify(data)}`);
+  
   // Method 1: Queue-based API with named endpoint
   console.log(`🔄 Method 1: Queue/join with endpoint /traduire_byt5`);
   try {
