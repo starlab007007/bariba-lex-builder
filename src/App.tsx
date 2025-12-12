@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Gamification from "./pages/Gamification";
+import YovoGallery from "./pages/YovoGallery";
 import NotFound from "./pages/NotFound";
 
 // Optimize QueryClient with aggressive caching
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/gamification" element={<Gamification />} />
+            <Route path="/yovo-gallery" element={<YovoGallery />} />
             <Route
               path="/admin/*"
               element={
