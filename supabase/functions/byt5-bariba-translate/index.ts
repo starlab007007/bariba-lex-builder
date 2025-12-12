@@ -148,38 +148,44 @@ async function callGradioTranslate(
     console.log(`   Method 1 error: ${e.message}`);
   }
 
-  // Method 2: Queue-based with fn_index=0
-  console.log(`🔄 Method 2: Queue/join with fn_index=0`);
-  const sessionHash2 = Math.random().toString(36).substring(7);
-  try {
-    const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        data, 
-        fn_index: 0,
-        session_hash: sessionHash2 
-      }),
-      signal: abortSignal,
-    });
-    
-    console.log(`   Join status: ${joinResponse.status}`);
-    
-    if (joinResponse.ok) {
-      const result = await pollForResult(spaceUrl, apiPrefix, sessionHash2, hfToken, 30, abortSignal);
-      if (result.success) return result;
-      if (result.error && result.error !== 'Polling timeout - no response received') {
-        return result;
+  // Method 2: Try multiple fn_index values (0, 1, 2) as Spaces can have different function indices
+  for (const fnIndex of [0, 1, 2]) {
+    console.log(`🔄 Method 2: Queue/join with fn_index=${fnIndex}`);
+    const sessionHash2 = Math.random().toString(36).substring(7);
+    try {
+      const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${hfToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          data, 
+          fn_index: fnIndex,
+          session_hash: sessionHash2 
+        }),
+        signal: abortSignal,
+      });
+      
+      console.log(`   fn_index=${fnIndex} Join status: ${joinResponse.status}`);
+      
+      if (joinResponse.ok) {
+        const result = await pollForResult(spaceUrl, apiPrefix, sessionHash2, hfToken, 30, abortSignal);
+        if (result.success) {
+          console.log(`✅ fn_index=${fnIndex} worked!`);
+          return result;
+        }
+        if (result.error && result.error !== 'Polling timeout - no response received') {
+          console.log(`   fn_index=${fnIndex} failed: ${result.error}`);
+          // Continue to next fn_index instead of returning error immediately
+        }
       }
+    } catch (e) {
+      if (abortSignal?.aborted) {
+        return { success: false, error: 'Request timeout' };
+      }
+      console.log(`   fn_index=${fnIndex} error: ${e.message}`);
     }
-  } catch (e) {
-    if (abortSignal?.aborted) {
-      return { success: false, error: 'Request timeout' };
-    }
-    console.log(`   Method 2 error: ${e.message}`);
   }
 
   // Method 3: Direct /call/traduire_byt5
