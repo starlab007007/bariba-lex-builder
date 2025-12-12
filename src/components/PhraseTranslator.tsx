@@ -288,11 +288,14 @@ export const PhraseTranslator = () => {
             title: `🤖 ByT5 Expert`,
             description: `Traduction en ${result.duration}ms (${result.confidence}% confiance)`
           });
-        } else if (result.method === 'simplified-ai' && selectedModel === 'byt5-expert') {
+        } else if ((result.method === 'simplified' || result.method === 'simplified-ai') && selectedModel === 'byt5-expert') {
+          // ByT5 was requested but SimplifiedAI was used (cascade fallback)
           toast({
-            title: `⚡ SimplifiedAI (fallback)`,
-            description: `ByT5 indisponible. Traduction en ${result.duration}ms.`
+            title: `⚡ SimplifiedAI (cascade)`,
+            description: `ByT5 indisponible, cascade vers SimplifiedAI. ${result.duration}ms.`
           });
+          // Auto-switch to SimplifiedAI for future translations
+          setSelectedModel('simplified');
         } else {
           toast({
             title: `🧠 Traduction ${result.method.toUpperCase()}`,
