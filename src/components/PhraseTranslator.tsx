@@ -523,19 +523,28 @@ export const PhraseTranslator = () => {
             <h3 className="font-semibold text-foreground">
               {direction === "french-to-bariba" ? "Bààtɔ̀nú" : "Français"}
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {usedMethod && (
-                <Badge variant="secondary" className="text-xs">
-                  {usedMethod}
+                <Badge 
+                  variant={usedMethod === 'byt5-expert' ? 'default' : 'secondary'} 
+                  className={`text-xs ${usedMethod === 'byt5-expert' ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
+                >
+                  {usedMethod === 'byt5-expert' ? '🤖 ByT5 Expert' : 
+                   usedMethod === 'simplified' ? '⚡ SimplifiedAI' :
+                   usedMethod === 'idiom' ? '💡 Idiome' :
+                   usedMethod === 'context' ? '🔄 Cache' :
+                   usedMethod === 'advanced' ? '🚀 Advanced' :
+                   usedMethod === 'ai' ? '☁️ Lovable AI' :
+                   usedMethod}
                 </Badge>
               )}
               {translationConfidence > 0 && (
-                <Badge variant={translationConfidence >= 70 ? "default" : "outline"} className="text-xs">
+                <Badge variant={translationConfidence >= 80 ? "default" : translationConfidence >= 60 ? "secondary" : "outline"} className="text-xs">
                   {translationConfidence}%
                 </Badge>
               )}
               {translationDuration > 0 && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs text-muted-foreground">
                   {translationDuration}ms
                 </Badge>
               )}
