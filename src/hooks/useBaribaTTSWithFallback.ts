@@ -60,9 +60,12 @@ export const useBaribaTTSWithFallback = (): UseBaribaTTSWithFallbackReturn => {
           audioRef.current = null;
         }
 
-        // Handle base64 audio
+        // Handle base64 audio - ensure proper Data URL format
         let audioSrc = data.audio;
-        if (!audioSrc.startsWith('data:')) {
+        if (audioSrc.startsWith('data:')) {
+          // Already a Data URL, use as-is
+        } else {
+          // Pure base64, convert to Data URL
           audioSrc = `data:audio/wav;base64,${audioSrc}`;
         }
 

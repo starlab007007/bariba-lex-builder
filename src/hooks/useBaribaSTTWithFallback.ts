@@ -81,11 +81,33 @@ export const useBaribaSTTWithFallback = (): UseBaribaSTTWithFallbackReturn => {
       const errorMessage = err.message || 'Erreur de transcription Bariba';
       setError(errorMessage);
 
-      // Show helpful error message
-      if (errorMessage.includes('503') || errorMessage.includes('indisponible') || errorMessage.includes('sleeping')) {
+      // Categorize error type for appropriate message
+      const isSpaceUnavailable = errorMessage.includes('503') || 
+                                  errorMessage.includes('indisponible') || 
+                                  errorMessage.includes('sleeping') ||
+                                  errorMessage.includes('unavailable');
+      const isAudioError = errorMessage.includes('audio') || 
+                           errorMessage.includes('format') ||
+                           errorMessage.includes('Invalid');
+      const isHuggingFaceError = errorMessage.includes('HuggingFace');
+
+      // Show appropriate error message
+      if (isSpaceUnavailable) {
         toast({
           title: "⚠️ STT Bariba indisponible",
           description: "Le service HuggingFace est en veille. Réessayez dans 30 secondes ou utilisez le français.",
+          variant: "destructive"
+        });
+      } else if (isAudioError) {
+        toast({
+          title: "⚠️ Problème audio",
+          description: "Format audio non supporté. Essayez d'enregistrer à nouveau.",
+          variant: "destructive"
+        });
+      } else if (isHuggingFaceError) {
+        toast({
+          title: "⚠️ Erreur du modèle",
+          description: "Le modèle Bariba a retourné une erreur. Réessayez dans quelques secondes.",
           variant: "destructive"
         });
       } else {

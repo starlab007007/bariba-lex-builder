@@ -119,9 +119,19 @@ export const useBaribaTTS = (): UseBaribaTTSReturn => {
   };
 };
 
-// Helper function to convert base64 to Blob
+// Helper function to convert base64 to Blob - handles Data URLs properly
 function base64ToBlob(base64: string, mimeType: string): Blob {
-  const byteCharacters = atob(base64);
+  // Remove Data URL prefix if present (e.g., "data:audio/wav;base64,XXXXX")
+  let base64Data = base64;
+  if (base64.includes(',')) {
+    base64Data = base64.split(',')[1];
+  }
+  // Also handle if it starts with "data:" but no comma (malformed)
+  if (base64Data.startsWith('data:')) {
+    base64Data = base64Data.replace(/^data:[^;]+;base64,?/, '');
+  }
+  
+  const byteCharacters = atob(base64Data);
   const byteNumbers = new Array(byteCharacters.length);
   
   for (let i = 0; i < byteCharacters.length; i++) {

@@ -43,7 +43,13 @@ async function pollForResult(
             try {
               const data = JSON.parse(line.substring(6));
               
-              // Check for complete event
+              // Check for process_completed with error
+              if (data.msg === 'process_completed' && data.output?.error) {
+                console.error(`❌ HuggingFace error: ${data.output.error}`);
+                throw new Error(`HuggingFace Space error: ${data.output.error}`);
+              }
+              
+              // Check for complete event with data
               if (data.msg === 'process_completed' && data.output?.data) {
                 console.log(`✅ Got result: ${JSON.stringify(data.output).substring(0, 200)}`);
                 return data.output;
@@ -54,7 +60,8 @@ async function pollForResult(
                 return data;
               }
             } catch (e) {
-              // Continue parsing
+              if (e.message?.includes('HuggingFace')) throw e;
+              // Continue parsing for other errors
             }
           }
         }
