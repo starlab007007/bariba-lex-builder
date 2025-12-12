@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap, Languages, Mic, MicOff, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap, Languages, Mic, MicOff, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -9,13 +9,14 @@ import { useHybridTranslation } from "@/hooks/useHybridTranslation";
 import { useTranslationCache } from "@/hooks/useTranslationCache";
 import { useGamification } from "@/hooks/useGamification";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
-import { useBaribaSTT } from "@/hooks/useBaribaSTT";
+import { useBaribaSTTWithFallback } from "@/hooks/useBaribaSTTWithFallback";
 import { useFrenchSTT } from "@/hooks/useFrenchSTT";
-import { useBaribaTTS } from "@/hooks/useBaribaTTS";
+import { useBaribaTTSWithFallback } from "@/hooks/useBaribaTTSWithFallback";
 import { useFrenchTTS } from "@/hooks/useFrenchTTS";
 import TranslationFeedback from "./TranslationFeedback";
 import { TranslationSuggestions } from "./TranslationSuggestions";
 import { ModelHealthBadge } from "./ModelHealthBadge";
+import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
@@ -40,11 +41,11 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
   
-  // Hooks audio
+  // Hooks audio avec fallback
   const { startRecording, stopRecording, isRecording, audioBlob } = useAudioRecorder();
-  const { transcribe: transcribeBariba, isTranscribing: isTranscribingBariba } = useBaribaSTT();
+  const { transcribe: transcribeBariba, isTranscribing: isTranscribingBariba, serviceAvailable: baribaSTTAvailable } = useBaribaSTTWithFallback();
   const { startListening, stopListening, isListening, transcript: frenchTranscript } = useFrenchSTT();
-  const { speak: speakBariba, isSpeaking: isSpeakingBariba } = useBaribaTTS();
+  const { speak: speakBariba, isSpeaking: isSpeakingBariba, serviceAvailable: baribaTTSAvailable, usedFallback: baribaTTSUsedFallback } = useBaribaTTSWithFallback();
   const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
   
   // Hook pour le traducteur hybride
@@ -368,6 +369,22 @@ export const PhraseTranslator = ({ selectedModel = 'auto' }: PhraseTranslatorPro
         <p className="text-muted-foreground">
           Traduction de phrases complètes basée sur le dictionnaire
         </p>
+        
+        {/* Service Status Indicator */}
+        <div className="flex justify-center">
+          <ServiceStatusIndicator compact />
+        </div>
+        
+        {/* Warning for unavailable Bariba audio services */}
+        {(!baribaTTSAvailable || !baribaSTTAvailable) && (
+          <div className="text-sm text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400 px-3 py-2 rounded-md flex items-center justify-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            <span>
+              Services audio Bariba indisponibles (HuggingFace Spaces en veille).
+              {baribaTTSUsedFallback && " Fallback français utilisé."}
+            </span>
+          </div>
+        )}
         
         {/* Message d'erreur seulement */}
         {aiError && (

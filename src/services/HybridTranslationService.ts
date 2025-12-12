@@ -42,14 +42,14 @@ export class HybridTranslationService {
   private isInitialized = false;
   private dictionaryEntries: DictionaryEntry[] = [];
 
-  // Seuils de confiance pour la cascade (OPTIMISÉS pour performance)
+  // Seuils de confiance pour la cascade (OPTIMISÉS pour performance - PHASE FINALE)
   private readonly IDIOM_THRESHOLD = 98;  // Idiomes = 100% de confiance
   private readonly FUZZY_JSD_THRESHOLD = 85; // Fuzzy match avec JSD
-  private readonly SIMPLIFIED_PLUS_THRESHOLD = 65; // PHASE 5: Réduit de 70% à 65%
-  private readonly SMT_THRESHOLD = 65;     // Statistical MT Engine (simplifié)
-  private readonly CONTEXT_THRESHOLD = 60; // Contexte pour information uniquement
-  private readonly ADVANCED_THRESHOLD = 70; // BaatonuTranslationAI avec embeddings
-  private readonly SIMPLIFIED_THRESHOLD = 50; // SimplifiedTranslationAI de base
+  private readonly SIMPLIFIED_PLUS_THRESHOLD = 60; // OPTIMISÉ: Réduit de 65% à 60%
+  private readonly SMT_THRESHOLD = 55;     // OPTIMISÉ: Réduit de 65% à 55% pour plus d'utilisation SMT
+  private readonly CONTEXT_THRESHOLD = 55; // OPTIMISÉ: Réduit de 60% à 55%
+  private readonly ADVANCED_THRESHOLD = 65; // OPTIMISÉ: Réduit de 70% à 65%
+  private readonly SIMPLIFIED_THRESHOLD = 45; // OPTIMISÉ: Réduit de 50% à 45%
 
   /**
    * Initialise tous les modèles
