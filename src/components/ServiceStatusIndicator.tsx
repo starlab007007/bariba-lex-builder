@@ -21,7 +21,8 @@ export const ServiceStatusIndicator = ({ compact = false }: ServiceStatusIndicat
   const [services, setServices] = useState<Record<string, ServiceInfo>>({
     baribaTTS: { name: 'TTS Bariba', status: 'checking', lastCheck: null },
     baribaSTT: { name: 'STT Bariba', status: 'checking', lastCheck: null },
-    frenchTTS: { name: 'TTS Français', status: 'available', lastCheck: new Date(), message: 'Web Speech API' },
+    byt5Expert: { name: 'ByT5 Expert', status: 'checking', lastCheck: null },
+    frenchTTS: { name: 'TTS Français', status: 'available', lastCheck: new Date(), message: 'Lovable AI' },
     frenchSTT: { name: 'STT Français', status: 'available', lastCheck: new Date(), message: 'Web Speech API' },
     simplifiedAI: { name: 'SimplifiedAI', status: 'available', lastCheck: new Date() },
     lovableAI: { name: 'Lovable AI', status: 'available', lastCheck: new Date() }
@@ -37,17 +38,18 @@ export const ServiceStatusIndicator = ({ compact = false }: ServiceStatusIndicat
   const checkBaribaServices = async () => {
     // Check TTS
     try {
-      const { error } = await supabase.functions.invoke('bariba-tts', {
+      const { data, error } = await supabase.functions.invoke('bariba-tts', {
         body: { text: 'test', speakingRate: 1.0 }
       });
       
+      const hasError = error || data?.error;
       setServices(prev => ({
         ...prev,
         baribaTTS: {
           ...prev.baribaTTS,
-          status: error ? 'unavailable' : 'available',
+          status: hasError ? 'unavailable' : 'available',
           lastCheck: new Date(),
-          message: error ? 'HuggingFace Space indisponible' : 'Opérationnel'
+          message: hasError ? 'HuggingFace Space indisponible' : 'Opérationnel'
         }
       }));
     } catch {
@@ -64,17 +66,18 @@ export const ServiceStatusIndicator = ({ compact = false }: ServiceStatusIndicat
 
     // Check STT
     try {
-      const { error } = await supabase.functions.invoke('bariba-stt', {
+      const { data, error } = await supabase.functions.invoke('bariba-stt', {
         body: { audio: 'test', robustMode: true }
       });
       
+      const hasError = error || data?.error;
       setServices(prev => ({
         ...prev,
         baribaSTT: {
           ...prev.baribaSTT,
-          status: error ? 'unavailable' : 'available',
+          status: hasError ? 'unavailable' : 'available',
           lastCheck: new Date(),
-          message: error ? 'HuggingFace Space indisponible' : 'Opérationnel'
+          message: hasError ? 'HuggingFace Space indisponible' : 'Opérationnel'
         }
       }));
     } catch {
@@ -82,6 +85,34 @@ export const ServiceStatusIndicator = ({ compact = false }: ServiceStatusIndicat
         ...prev,
         baribaSTT: {
           ...prev.baribaSTT,
+          status: 'unavailable',
+          lastCheck: new Date(),
+          message: 'Service non accessible'
+        }
+      }));
+    }
+
+    // Check ByT5 Expert
+    try {
+      const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
+        body: { text: 'bonjour', sourceLang: 'french', targetLang: 'bariba' }
+      });
+      
+      const hasError = error || data?.error;
+      setServices(prev => ({
+        ...prev,
+        byt5Expert: {
+          ...prev.byt5Expert,
+          status: hasError ? 'unavailable' : 'available',
+          lastCheck: new Date(),
+          message: hasError ? 'HuggingFace Space indisponible' : 'Opérationnel'
+        }
+      }));
+    } catch {
+      setServices(prev => ({
+        ...prev,
+        byt5Expert: {
+          ...prev.byt5Expert,
           status: 'unavailable',
           lastCheck: new Date(),
           message: 'Service non accessible'
