@@ -46,7 +46,7 @@ export default function AdvancedDictionarySearch() {
 
   // Compter les filtres actifs
   useEffect(() => {
-    const count = Object.values(filters).filter(v => v !== '').length;
+    const count = Object.values(filters).filter(v => v !== '' && v !== 'all').length;
     setActiveFiltersCount(count);
   }, [filters]);
 
@@ -65,30 +65,32 @@ export default function AdvancedDictionarySearch() {
       }
 
       // Filtre par classe nominale
-      if (filters.nominalClass) {
+      if (filters.nominalClass && filters.nominalClass !== 'all') {
         query = query.eq('nominal_class', filters.nominalClass);
       }
 
       // Filtre par groupe verbal
-      if (filters.verbalGroup) {
+      if (filters.verbalGroup && filters.verbalGroup !== 'all') {
         query = query.eq('verbal_group', parseInt(filters.verbalGroup));
       }
 
       // Filtre par type de verbe
-      if (filters.verbType) {
+      if (filters.verbType && filters.verbType !== 'all') {
         query = query.ilike('verb_type', `%${filters.verbType}%`);
       }
 
       // Filtre par nature grammaticale
-      if (filters.partOfSpeech) {
+      if (filters.partOfSpeech && filters.partOfSpeech !== 'all') {
         query = query.ilike('part_of_speech', `%${filters.partOfSpeech}%`);
       }
 
       // Filtre par présence de tons
-      if (filters.hasTones === 'yes') {
-        query = query.not('tone_pattern', 'is', null);
-      } else if (filters.hasTones === 'no') {
-        query = query.is('tone_pattern', null);
+      if (filters.hasTones && filters.hasTones !== 'all') {
+        if (filters.hasTones === 'yes') {
+          query = query.not('tone_pattern', 'is', null);
+        } else if (filters.hasTones === 'no') {
+          query = query.is('tone_pattern', null);
+        }
       }
 
       const { data, error } = await query.limit(100);
@@ -210,7 +212,7 @@ export default function AdvancedDictionarySearch() {
                     <SelectValue placeholder="Toutes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Toutes</SelectItem>
+                    <SelectItem value="all">Toutes</SelectItem>
                     {partsOfSpeech.map(pos => (
                       <SelectItem key={pos} value={pos}>{pos}</SelectItem>
                     ))}
@@ -228,7 +230,7 @@ export default function AdvancedDictionarySearch() {
                     <SelectValue placeholder="Tous" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tous</SelectItem>
+                    <SelectItem value="all">Tous</SelectItem>
                     <SelectItem value="yes">Avec tons</SelectItem>
                     <SelectItem value="no">Sans tons</SelectItem>
                   </SelectContent>
@@ -248,7 +250,7 @@ export default function AdvancedDictionarySearch() {
                     <SelectValue placeholder="Toutes les classes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Toutes</SelectItem>
+                    <SelectItem value="all">Toutes</SelectItem>
                     {nominalClasses.map(cls => (
                       <SelectItem key={cls} value={cls}>
                         Classe {cls}
@@ -285,7 +287,7 @@ export default function AdvancedDictionarySearch() {
                     <SelectValue placeholder="Tous les groupes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tous</SelectItem>
+                    <SelectItem value="all">Tous</SelectItem>
                     {verbalGroups.map(group => (
                       <SelectItem key={group} value={group}>
                         Groupe {group}
@@ -305,7 +307,7 @@ export default function AdvancedDictionarySearch() {
                     <SelectValue placeholder="Tous les types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tous</SelectItem>
+                    <SelectItem value="all">Tous</SelectItem>
                     {verbTypes.map(type => (
                       <SelectItem key={type} value={type}>{type}</SelectItem>
                     ))}
