@@ -141,67 +141,119 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   };
 
   const handleSubmit = async () => {
+    console.log('[TamTamCreatePost.handleSubmit] Starting submission...');
+    
     if (!audioBase64) {
-      toast({ title: "Audio requis", variant: "destructive" });
+      console.error('[TamTamCreatePost.handleSubmit] No audio data');
+      toast({ title: "Audio requis", description: "Veuillez enregistrer un audio", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
+    
     try {
-      // Upload audio to Supabase Storage
+      // Step 1: Upload audio to Supabase Storage
+      console.log('[TamTamCreatePost.handleSubmit] Step 1: Uploading audio...');
       const audioBlob = base64ToBlob(audioBase64, 'audio/webm');
-      const audioFileName = `post_${Date.now()}.webm`;
+      const audioFileName = `post_${Date.now()}_${Math.random().toString(36).substring(7)}.webm`;
+      
+      console.log('[TamTamCreatePost.handleSubmit] Audio blob size:', audioBlob.size, 'bytes');
       
       const { data: audioData, error: audioError } = await supabase.storage
         .from('tamtam-audio')
         .upload(audioFileName, audioBlob, { contentType: 'audio/webm' });
 
-      if (audioError) throw audioError;
+      if (audioError) {
+        console.error('[TamTamCreatePost.handleSubmit] Audio upload error:', {
+          message: audioError.message,
+          name: audioError.name
+        });
+        toast({ 
+          title: "Erreur upload audio", 
+          description: `${audioError.message}. Vérifiez votre connexion.`, 
+          variant: "destructive" 
+        });
+        throw audioError;
+      }
 
-      const { data: audioUrl } = supabase.storage
+      console.log('[TamTamCreatePost.handleSubmit] Audio uploaded successfully:', audioData?.path);
+
+      const { data: audioUrlData } = supabase.storage
         .from('tamtam-audio')
         .getPublicUrl(audioFileName);
 
-      // Upload media if exists
+      console.log('[TamTamCreatePost.handleSubmit] Audio public URL:', audioUrlData.publicUrl);
+
+      // Step 2: Upload media if exists (optional - don't block on failure)
       let mediaUrl: string | undefined;
       if (mediaFile && mediaPreview) {
-        const mediaFileName = `media_${Date.now()}.${mediaFile.name.split('.').pop()}`;
-        const { data: mediaData, error: mediaError } = await supabase.storage
-          .from('tamtam-audio')
-          .upload(mediaFileName, mediaFile);
-
-        if (!mediaError && mediaData) {
-          const { data: url } = supabase.storage
+        console.log('[TamTamCreatePost.handleSubmit] Step 2: Uploading media file...', mediaFile.name);
+        try {
+          const mediaFileName = `media_${Date.now()}_${Math.random().toString(36).substring(7)}.${mediaFile.name.split('.').pop()}`;
+          const { data: mediaData, error: mediaError } = await supabase.storage
             .from('tamtam-audio')
-            .getPublicUrl(mediaFileName);
-          mediaUrl = url.publicUrl;
+            .upload(mediaFileName, mediaFile);
+
+          if (mediaError) {
+            console.warn('[TamTamCreatePost.handleSubmit] Media upload failed (non-blocking):', mediaError.message);
+            toast({ 
+              title: "⚠️ Média non uploadé", 
+              description: "L'audio sera publié sans le média" 
+            });
+          } else if (mediaData) {
+            const { data: url } = supabase.storage
+              .from('tamtam-audio')
+              .getPublicUrl(mediaFileName);
+            mediaUrl = url.publicUrl;
+            console.log('[TamTamCreatePost.handleSubmit] Media uploaded:', mediaUrl);
+          }
+        } catch (mediaErr: any) {
+          console.warn('[TamTamCreatePost.handleSubmit] Media upload exception (non-blocking):', mediaErr.message);
         }
       }
 
-      await onSubmit({
-        audio_url: audioUrl.publicUrl,
+      // Step 3: Create post record
+      console.log('[TamTamCreatePost.handleSubmit] Step 3: Creating post record...');
+      const postData = {
+        audio_url: audioUrlData.publicUrl,
         media_type: selectedType,
         media_url: mediaUrl,
         transcript_fr: currentLang === 'fr' ? transcript : undefined,
         transcript_ba: currentLang === 'ba' ? transcript : undefined,
         feeling_emoji: selectedEmoji || undefined,
-        duration_seconds: Math.round(audioBase64.length / 10000) // Rough estimate
-      });
+        duration_seconds: Math.round(audioBase64.length / 10000)
+      };
+      
+      console.log('[TamTamCreatePost.handleSubmit] Post data:', JSON.stringify(postData, null, 2));
+      
+      await onSubmit(postData);
 
+      console.log('[TamTamCreatePost.handleSubmit] Post created successfully!');
+      
       // Reset state
-      setAudioBase64(null);
-      setMediaFile(null);
-      setMediaPreview(null);
-      setTranscript('');
-      setSelectedEmoji(null);
-      setTranscriptionFailed(false);
-      setStep('type');
+      resetPostState();
       onClose();
+      
     } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      console.error('[TamTamCreatePost.handleSubmit] Final error:', err);
+      toast({ 
+        title: "Erreur de publication", 
+        description: err.message || 'Une erreur est survenue', 
+        variant: "destructive" 
+      });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetPostState = () => {
+    setAudioBase64(null);
+    setMediaFile(null);
+    setMediaPreview(null);
+    setTranscript('');
+    setSelectedEmoji(null);
+    setTranscriptionFailed(false);
+    setStep('type');
   };
 
   const base64ToBlob = (base64: string, mimeType: string): Blob => {

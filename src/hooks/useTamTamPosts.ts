@@ -156,34 +156,74 @@ export const useTamTamPosts = () => {
     feeling_emoji?: string;
     duration_seconds?: number;
   }) => {
+    console.log('[useTamTamPosts.createPost] Starting post creation...');
+    console.log('[useTamTamPosts.createPost] Post data:', JSON.stringify(postData, null, 2));
+    
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error('Not authenticated');
+      const { data: userData, error: authError } = await supabase.auth.getUser();
+      console.log('[useTamTamPosts.createPost] Auth check:', { 
+        hasUser: !!userData?.user, 
+        userId: userData?.user?.id,
+        authError: authError?.message 
+      });
+      
+      if (!userData?.user) {
+        const errorMsg = authError?.message || 'Non authentifié - veuillez vous connecter';
+        console.error('[useTamTamPosts.createPost] Auth failed:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      const insertData = {
+        user_id: userData.user.id,
+        audio_url: postData.audio_url,
+        media_type: postData.media_type || 'audio',
+        media_url: postData.media_url || null,
+        thumbnail_url: postData.thumbnail_url || null,
+        transcript_fr: postData.transcript_fr || null,
+        transcript_ba: postData.transcript_ba || null,
+        feeling_emoji: postData.feeling_emoji || null,
+        duration_seconds: postData.duration_seconds || null,
+        is_public: true
+      };
+      
+      console.log('[useTamTamPosts.createPost] Inserting into tamtam_posts:', JSON.stringify(insertData, null, 2));
 
       const { data, error } = await supabase
         .from('tamtam_posts')
-        .insert({
-          user_id: userData.user.id,
-          audio_url: postData.audio_url,
-          media_type: postData.media_type || 'audio',
-          media_url: postData.media_url,
-          thumbnail_url: postData.thumbnail_url,
-          transcript_fr: postData.transcript_fr,
-          transcript_ba: postData.transcript_ba,
-          feeling_emoji: postData.feeling_emoji,
-          duration_seconds: postData.duration_seconds,
-          is_public: true
-        })
+        .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      console.log('[useTamTamPosts.createPost] Insert result:', { 
+        success: !error, 
+        dataId: data?.id,
+        error: error?.message,
+        errorCode: error?.code,
+        errorDetails: error?.details,
+        errorHint: error?.hint
+      });
 
+      if (error) {
+        console.error('[useTamTamPosts.createPost] Supabase error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        throw new Error(`Erreur base de données: ${error.message} (${error.code})`);
+      }
+
+      console.log('[useTamTamPosts.createPost] Post created successfully:', data?.id);
       toast({ title: "✅ Publication créée !" });
       await fetchPosts();
       return data;
     } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      console.error('[useTamTamPosts.createPost] Final error:', err);
+      toast({ 
+        title: "Erreur de publication", 
+        description: err.message || 'Erreur inconnue', 
+        variant: "destructive" 
+      });
       throw err;
     }
   }, [fetchPosts, toast]);
