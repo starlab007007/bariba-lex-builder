@@ -10,6 +10,7 @@ import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamVocalPoll } from '@/components/tamtam/TamTamVocalPoll';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { TamTamStoryCreator } from '@/components/tamtam/TamTamStoryCreator';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +41,7 @@ export default function TamTamSocial() {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showStoryCreator, setShowStoryCreator] = useState(false);
   const [commentsModal, setCommentsModal] = useState<{
     isOpen: boolean;
     postId: string | null;
@@ -337,6 +339,12 @@ export default function TamTamSocial() {
         isOpen={showCreatePoll}
         onClose={() => setShowCreatePoll(false)}
         onSubmit={handleCreatePoll}
+      />
+
+      <TamTamStoryCreator
+        isOpen={showStoryCreator}
+        onClose={() => setShowStoryCreator(false)}
+        onStoryCreated={() => fetchPosts()}
       />
     </div>
   );
