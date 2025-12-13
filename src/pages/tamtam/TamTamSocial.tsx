@@ -11,6 +11,7 @@ import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamVocalPoll } from '@/components/tamtam/TamTamVocalPoll';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { TamTamStoryCreator } from '@/components/tamtam/TamTamStoryCreator';
+import { TamTamPrivateMessages } from '@/components/tamtam/TamTamPrivateMessages';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +43,7 @@ export default function TamTamSocial() {
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showStoryCreator, setShowStoryCreator] = useState(false);
+  const [showPrivateMessages, setShowPrivateMessages] = useState(false);
   const [commentsModal, setCommentsModal] = useState<{
     isOpen: boolean;
     postId: string | null;
@@ -251,7 +253,14 @@ export default function TamTamSocial() {
             <div className="text-center py-12">
               <MessageCircle className="w-16 h-16 mx-auto text-gray-300 mb-4" />
               <p className="text-gray-500">{t('messages')}</p>
-              <p className="text-sm text-gray-400 mt-1">Bientôt disponible</p>
+              <p className="text-sm text-gray-400 mt-1">Messages vocaux privés</p>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowPrivateMessages(true)}
+                className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium"
+              >
+                Ouvrir mes messages
+              </motion.button>
             </div>
           </motion.div>
         )}
@@ -345,6 +354,11 @@ export default function TamTamSocial() {
         isOpen={showStoryCreator}
         onClose={() => setShowStoryCreator(false)}
         onStoryCreated={() => fetchPosts()}
+      />
+
+      <TamTamPrivateMessages
+        isOpen={showPrivateMessages}
+        onClose={() => setShowPrivateMessages(false)}
       />
     </div>
   );
