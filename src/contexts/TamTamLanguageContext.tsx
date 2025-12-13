@@ -116,7 +116,7 @@ export const TamTamLanguageProvider: React.FC<{ children: ReactNode }> = ({ chil
     return (saved as TamTamLang) || 'fr';
   });
   
-  const { translate, isLoading: isTranslating } = useHybridTranslation();
+  const { translateFrenchToBariba, translateBaribaToFrench, isLoading: isTranslating } = useHybridTranslation();
 
   useEffect(() => {
     localStorage.setItem('tamtam-lang', currentLang);
@@ -140,16 +140,16 @@ export const TamTamLanguageProvider: React.FC<{ children: ReactNode }> = ({ chil
     
     try {
       if (from === 'fr') {
-        const result = await translate.translateFrenchToBariba(text);
+        const result = await translateFrenchToBariba(text);
         return result.translation;
       } else {
-        const result = await translate.translateBaribaToFrench(text);
+        const result = await translateBaribaToFrench(text);
         return result.translation;
       }
     } catch {
       return text;
     }
-  }, [translate]);
+  }, [translateFrenchToBariba, translateBaribaToFrench]);
 
   return (
     <TamTamLanguageContext.Provider value={{
