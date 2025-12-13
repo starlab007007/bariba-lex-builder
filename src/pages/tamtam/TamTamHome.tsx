@@ -6,7 +6,9 @@ import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
-import { Volume2 } from 'lucide-react';
+import { Volume2, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const services = [
   { icon: '💬', labelKey: 'social', path: '/tamtam/social', color: 'bg-emerald-500' },
@@ -19,19 +21,77 @@ const services = [
 
 export default function TamTamHome() {
   const navigate = useNavigate();
-  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [lastTranscript, setLastTranscript] = useState<string | null>(null);
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang, isSpeaking } = useBilingualAudio();
+  const { toast } = useToast();
 
-  // Announce screen on mount
   useEffect(() => {
     announceAction(t('screenHome'));
   }, [announceAction, t]);
 
-  const handleMicPress = () => {
-    tamtamFeedback.play('click');
-    setIsRecording(!isRecording);
+  const handleVoiceCommand = async (result: {
+    audioBase64: string;
+    transcription?: string;
+    translation?: string;
+    sourceLang: 'ba' | 'fr';
+  }) => {
+    setIsProcessingVoice(true);
+    tamtamFeedback.play('send');
+    
+    try {
+      // Show transcription feedback
+      if (result.transcription) {
+        setLastTranscript(result.transcription);
+      }
+      
+      // Send to Raconte-Moi for voice navigation
+      const { data, error } = await supabase.functions.invoke('raconte-moi', {
+        body: { 
+          command: result.transcription || result.translation || '',
+          language: currentLang 
+        }
+      });
+      
+      if (error) throw error;
+      
+      // Speak the response
+      const responseText = currentLang === 'ba' ? data.response_ba : data.response_fr;
+      await speakCurrentLang(responseText);
+      
+      // Handle navigation
+      if (data.type === 'navigate') {
+        tamtamFeedback.play('success');
+        setTimeout(() => {
+          switch (data.value) {
+            case 'home': navigate('/tamtam/home'); break;
+            case 'social': navigate('/tamtam/social'); break;
+            case 'market': navigate('/tamtam/market'); break;
+            case 'sos': navigate('/tamtam/sos'); break;
+            case 'profile': navigate('/tamtam/profile'); break;
+            case 'services': navigate('/tamtam/services'); break;
+          }
+        }, 1500);
+      }
+      
+      toast({
+        title: "🎤 Commande vocale",
+        description: result.transcription || "Audio traité"
+      });
+      
+    } catch (err: any) {
+      console.error('[TamTamHome] Voice command error:', err);
+      toast({
+        title: "Erreur",
+        description: err.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessingVoice(false);
+      setTimeout(() => setLastTranscript(null), 5000);
+    }
   };
 
   const handleServiceClick = (path: string, labelKey: string) => {
@@ -63,18 +123,44 @@ export default function TamTamHome() {
         </p>
       </motion.div>
 
-      {/* Giant central mic */}
+      {/* Giant central mic with full voice pipeline */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", delay: 0.2 }}
-        className="flex justify-center mb-10"
+        className="flex flex-col items-center mb-6"
       >
         <TamTamMicButton
           size="xl"
-          isRecording={isRecording}
-          onPress={handleMicPress}
+          onRecordingComplete={handleVoiceCommand}
+          autoTranscribe={true}
+          autoTranslate={true}
+          sourceLang={currentLang}
+          disabled={isProcessingVoice}
         />
+        
+        {/* Processing indicator */}
+        {isProcessingVoice && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 flex items-center gap-2 text-tamtam-primary"
+          >
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">{t('processing')}</span>
+          </motion.div>
+        )}
+        
+        {/* Transcription feedback */}
+        {lastTranscript && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 bg-tamtam-surface rounded-2xl px-4 py-2 shadow-tamtam-soft max-w-xs"
+          >
+            <p className="text-sm text-tamtam-text text-center">"{lastTranscript}"</p>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Services grid - 2x3 with translated labels */}

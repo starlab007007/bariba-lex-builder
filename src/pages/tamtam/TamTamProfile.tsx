@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
-import { Volume2 } from 'lucide-react';
+import { Volume2, Play, Loader2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const badges = [
   { icon: '⭐', color: 'bg-yellow-100' },
@@ -27,31 +29,94 @@ const stats = [
 ];
 
 export default function TamTamProfile() {
-  const [isRecording, setIsRecording] = useState(false);
-  const [hasBio, setHasBio] = useState(false);
+  const [bioAudioUrl, setBioAudioUrl] = useState<string | null>(null);
+  const [bioTranscript, setBioTranscript] = useState<string | null>(null);
+  const [isPlayingBio, setIsPlayingBio] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
+  const { toast } = useToast();
 
   useEffect(() => {
     announceAction(t('screenProfile'));
   }, [announceAction, t]);
 
-  const handleRecordBio = () => {
-    tamtamFeedback.play('click');
+  const handleRecordBio = async (result: {
+    audioBase64: string;
+    transcription?: string;
+    translation?: string;
+    sourceLang: 'ba' | 'fr';
+  }) => {
+    setIsProcessing(true);
+    tamtamFeedback.play('send');
     
-    if (!isRecording) {
-      setIsRecording(true);
-      speakCurrentLang(t('recordBio'));
+    try {
+      // Convert base64 to blob and upload
+      const base64Data = result.audioBase64.includes(',') 
+        ? result.audioBase64.split(',')[1] 
+        : result.audioBase64;
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'audio/webm' });
       
-      setTimeout(() => {
-        setIsRecording(false);
-        setHasBio(true);
-        tamtamFeedback.play('success');
-      }, 3000);
-    } else {
-      setIsRecording(false);
-      setHasBio(true);
+      const fileName = `bio_${Date.now()}.webm`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('yovo-audio')
+        .upload(fileName, blob, { contentType: 'audio/webm' });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('yovo-audio')
+        .getPublicUrl(fileName);
+      
+      setBioAudioUrl(urlData.publicUrl);
+      setBioTranscript(result.transcription || null);
+      
+      toast({
+        title: "✅ Bio enregistrée",
+        description: result.transcription || "Votre bio audio a été sauvegardée"
+      });
+      
+      await speakCurrentLang(
+        currentLang === 'ba'
+          ? "Ó dára! Bio rẹ ti jẹ́ títẹ̀jáde"
+          : "Parfait ! Votre bio a été enregistrée"
+      );
+      
+      tamtamFeedback.play('success');
+    } catch (err: any) {
+      console.error('[TamTamProfile] Bio recording error:', err);
+      toast({
+        title: "Erreur",
+        description: err.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePlayBio = async () => {
+    if (!bioAudioUrl) return;
+    
+    tamtamFeedback.play('click');
+    setIsPlayingBio(true);
+    
+    try {
+      const audio = new Audio(bioAudioUrl);
+      audio.onended = () => setIsPlayingBio(false);
+      audio.onerror = () => setIsPlayingBio(false);
+      await audio.play();
+    } catch (err) {
+      console.error('[TamTamProfile] Play bio error:', err);
+      setIsPlayingBio(false);
     }
   };
 
@@ -112,7 +177,7 @@ export default function TamTamProfile() {
               {t('audioBio')}
             </span>
           </div>
-          {hasBio && (
+          {bioAudioUrl && (
             <div className="flex items-center gap-2">
               <span className="text-xl text-green-500">✓</span>
             </div>
@@ -120,26 +185,81 @@ export default function TamTamProfile() {
         </div>
 
         {/* Audio wave or record button */}
-        {hasBio ? (
-          <div className="h-16 bg-tamtam-bg rounded-2xl flex items-center justify-center px-4 gap-1">
-            {[...Array(30)].map((_, i) => (
-              <div
-                key={i}
-                className="w-1 bg-tamtam-primary rounded-full"
-                style={{ height: 8 + Math.random() * 24 }}
+        {bioAudioUrl ? (
+          <div className="space-y-3">
+            {/* Playback button */}
+            <button
+              onClick={handlePlayBio}
+              disabled={isPlayingBio}
+              className="w-full h-16 bg-tamtam-bg rounded-2xl flex items-center justify-center px-4 gap-3"
+            >
+              {isPlayingBio ? (
+                <>
+                  <div className="flex gap-1">
+                    {[...Array(30)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{ height: [8, 24, 8] }}
+                        transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.05 }}
+                        className="w-1 bg-tamtam-primary rounded-full"
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Play className="w-6 h-6 text-tamtam-primary" />
+                  <div className="flex gap-1">
+                    {[...Array(30)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-1 bg-tamtam-primary rounded-full"
+                        style={{ height: 8 + Math.random() * 24 }}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </button>
+            
+            {/* Transcript */}
+            {bioTranscript && (
+              <p className="text-sm text-tamtam-text-muted text-center italic">
+                "{bioTranscript}"
+              </p>
+            )}
+            
+            {/* Re-record button */}
+            <div className="flex justify-center">
+              <TamTamMicButton
+                size="sm"
+                onRecordingComplete={handleRecordBio}
+                autoTranscribe={true}
+                autoTranslate={false}
+                sourceLang={currentLang}
+                disabled={isProcessing}
               />
-            ))}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
             <TamTamMicButton
               size="md"
-              isRecording={isRecording}
-              onPress={handleRecordBio}
+              onRecordingComplete={handleRecordBio}
+              autoTranscribe={true}
+              autoTranslate={false}
+              sourceLang={currentLang}
+              disabled={isProcessing}
             />
             <span className="text-xs text-tamtam-text-muted">
               {t('recordBio')}
             </span>
+            {isProcessing && (
+              <div className="flex items-center gap-2 text-tamtam-primary">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">{t('processing')}</span>
+              </div>
+            )}
           </div>
         )}
       </motion.div>

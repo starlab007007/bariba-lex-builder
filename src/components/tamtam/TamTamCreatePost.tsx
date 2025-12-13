@@ -66,16 +66,45 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   const handleRecordingComplete = async (base64: string) => {
     setAudioBase64(base64);
     
-    // Auto-transcribe
+    // Auto-transcribe using Bariba STT
     try {
-      if (currentLang === 'ba') {
-        const result = await baribaSTT.transcribe(base64);
-        if (result) setTranscript(result.transcription);
+      const result = await baribaSTT.transcribe(base64);
+      if (result?.transcription) {
+        setTranscript(result.transcription);
+        
+        // Auto-translate to get bilingual transcription using ByT5
+        try {
+          const { byT5TranslationService } = await import('@/services/ByT5TranslationService');
+          
+          if (currentLang === 'ba') {
+            // Translate Bariba to French
+            const transResult = await byT5TranslationService.translate(
+              result.transcription,
+              'bariba',
+              'french'
+            );
+            // Store both transcriptions - we'll save them properly in handleSubmit
+            console.log('[TamTamCreatePost] ByT5 Translation:', transResult.translation);
+          } else {
+            // Translate French to Bariba
+            const transResult = await byT5TranslationService.translate(
+              result.transcription,
+              'french',
+              'bariba'
+            );
+            console.log('[TamTamCreatePost] ByT5 Translation:', transResult.translation);
+          }
+        } catch (transErr) {
+          console.error('[TamTamCreatePost] ByT5 translation error:', transErr);
+        }
       }
-      // For French, we'd use the Web Speech API in real-time, 
-      // but for simplicity we'll skip here
     } catch (err) {
-      console.error('Transcription error:', err);
+      console.error('[TamTamCreatePost] Transcription error:', err);
+      toast({
+        title: "Transcription",
+        description: "Transcription automatique non disponible",
+        variant: "destructive"
+      });
     }
     
     setStep('preview');

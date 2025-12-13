@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const emergencyContacts = [
   { id: 1, avatar: '👨🏾', type: '👨‍👩‍👧', labelKey: 'family' },
@@ -14,9 +17,12 @@ const emergencyContacts = [
 export default function TamTamSOS() {
   const [isActivated, setIsActivated] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const { t } = useTamTamLanguage();
+  const [voiceMessage, setVoiceMessage] = useState<string | null>(null);
+  const [isRecordingMessage, setIsRecordingMessage] = useState(false);
+  const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
+  const { toast } = useToast();
 
   useEffect(() => {
     announceAction(t('screenSOS'));
@@ -28,6 +34,7 @@ export default function TamTamSOS() {
     if (isActivated) {
       setIsActivated(false);
       setCountdown(null);
+      setVoiceMessage(null);
       speakCurrentLang(t('cancelAlert'));
       return;
     }
@@ -42,11 +49,68 @@ export default function TamTamSOS() {
         if (prev === null || prev <= 1) {
           clearInterval(interval);
           speakCurrentLang(t('callEmergency'));
+          
+          // Send emergency alert with voice context
+          sendEmergencyAlert();
           return null;
         }
         return prev - 1;
       });
     }, 1000);
+  };
+
+  const sendEmergencyAlert = async () => {
+    try {
+      // Get location
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 5000
+        });
+      });
+      
+      toast({
+        title: "🆘 Alerte envoyée",
+        description: `Position: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
+      });
+      
+      await speakCurrentLang(
+        currentLang === 'ba'
+          ? "Ìkìlọ̀ ti jẹ́ fíránṣẹ́. Ìrànlọ́wọ́ ń bọ̀"
+          : "Alerte envoyée. L'aide est en route"
+      );
+      
+    } catch (err) {
+      console.error('[TamTamSOS] Location error:', err);
+      toast({
+        title: "🆘 Alerte envoyée",
+        description: "Position non disponible"
+      });
+    }
+  };
+
+  const handleVoiceMessage = async (result: {
+    audioBase64: string;
+    transcription?: string;
+    translation?: string;
+    sourceLang: 'ba' | 'fr';
+  }) => {
+    setIsRecordingMessage(false);
+    
+    if (result.transcription) {
+      setVoiceMessage(result.transcription);
+      
+      toast({
+        title: "🎤 Message d'urgence enregistré",
+        description: result.transcription
+      });
+      
+      await speakCurrentLang(
+        currentLang === 'ba'
+          ? "Ó dára, mo gbọ́ ọ. Ìsọfúnni yìí yóò jẹ́ fíránṣẹ́ pẹ̀lú ìkìlọ̀"
+          : "Compris. Ce message sera envoyé avec l'alerte"
+      );
+    }
   };
 
   const handleContactPress = (labelKey: string) => {
@@ -60,7 +124,7 @@ export default function TamTamSOS() {
   };
 
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4 flex flex-col items-center pt-8">
+    <div className="min-h-screen bg-tamtam-bg px-4 flex flex-col items-center pt-8 pb-32">
       {/* Title */}
       <motion.div
         initial={{ scale: 0 }}
@@ -79,7 +143,7 @@ export default function TamTamSOS() {
         animate={{ scale: 1 }}
         transition={{ type: "spring", delay: 0.2 }}
         onClick={handleSOSPress}
-        className="relative mb-8"
+        className="relative mb-6"
       >
         {/* Pulsing rings when activated */}
         {isActivated && (
@@ -127,6 +191,43 @@ export default function TamTamSOS() {
           )}
         </div>
       </motion.button>
+
+      {/* Voice message for emergency context */}
+      {!isActivated && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-sm mb-6"
+        >
+          <div className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🎤</span>
+                <span className="text-sm font-medium text-tamtam-text">
+                  {currentLang === 'ba' ? 'Ṣàlàyé kíní ó ṣẹlẹ̀' : 'Décrivez la situation'}
+                </span>
+              </div>
+            </div>
+            
+            {voiceMessage ? (
+              <div className="bg-tamtam-bg rounded-2xl p-3 mb-3">
+                <p className="text-sm text-tamtam-text italic">"{voiceMessage}"</p>
+              </div>
+            ) : null}
+            
+            <div className="flex justify-center">
+              <TamTamMicButton
+                size="md"
+                onRecordingComplete={handleVoiceMessage}
+                autoTranscribe={true}
+                autoTranslate={true}
+                sourceLang={currentLang}
+                disabled={isRecordingMessage}
+              />
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Cancel hint when activated */}
       {isActivated && (

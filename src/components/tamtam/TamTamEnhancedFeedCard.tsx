@@ -92,15 +92,52 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
   };
 
   const handleTranslate = async () => {
-    if (!altTranscript) return;
+    // Use ByT5 Expert for translation
+    const textToTranslate = altTranscript || transcript;
+    if (!textToTranslate) return;
     
     setIsTranslating(true);
     try {
-      const from = currentLang === 'fr' ? 'ba' : 'fr';
-      const to = currentLang;
-      const result = await translateText(altTranscript, from, to);
-      setTranslatedText(result);
+      const { byT5TranslationService } = await import('@/services/ByT5TranslationService');
+      
+      // Determine translation direction
+      const hasBariba = !!post.transcript_ba;
+      const hasFrench = !!post.transcript_fr;
+      
+      if (hasBariba && !hasFrench) {
+        // Translate Bariba to French
+        const result = await byT5TranslationService.translate(
+          post.transcript_ba!,
+          'bariba',
+          'french'
+        );
+        setTranslatedText(result.translation);
+      } else if (hasFrench && !hasBariba) {
+        // Translate French to Bariba
+        const result = await byT5TranslationService.translate(
+          post.transcript_fr!,
+          'french',
+          'bariba'
+        );
+        setTranslatedText(result.translation);
+      } else if (altTranscript) {
+        // Fallback to context translation
+        const from = currentLang === 'fr' ? 'ba' : 'fr';
+        const to = currentLang;
+        const result = await translateText(altTranscript, from, to);
+        setTranslatedText(result);
+      }
+      
       triggerFeedback('success', { haptic: true, sound: false });
+    } catch (err) {
+      console.error('[TamTamEnhancedFeedCard] ByT5 translation error:', err);
+      // Fallback to context translation
+      if (altTranscript) {
+        const from = currentLang === 'fr' ? 'ba' : 'fr';
+        const to = currentLang;
+        const result = await translateText(altTranscript, from, to);
+        setTranslatedText(result);
+      }
     } finally {
       setIsTranslating(false);
     }

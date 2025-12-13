@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
-import { ArrowLeft, Volume2 } from 'lucide-react';
+import { ArrowLeft, Volume2, Loader2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { VoiceMessage } from '@/components/tamtam/VoiceMessage';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { byT5TranslationService } from '@/services/ByT5TranslationService';
 
 const services = [
   { id: 'translator', icon: '🌐', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelKey: 'translator' },
@@ -26,11 +29,12 @@ interface Message {
 
 export default function TamTamServices() {
   const [activeService, setActiveService] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const { t } = useTamTamLanguage();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
+  const { toast } = useToast();
 
   useEffect(() => {
     announceAction(t('screenServices'));
@@ -55,32 +59,86 @@ export default function TamTamServices() {
     await speakCurrentLang(t(labelKey));
   };
 
-  const handleMicPress = () => {
-    tamtamFeedback.play('click');
-    if (!isRecording) {
-      setIsRecording(true);
-      setTimeout(() => {
-        setIsRecording(false);
-        // Simulate user message with bilingual transcription
-        setMessages(prev => [...prev, { 
-          type: 'user', 
-          textFr: 'Message vocal de l\'utilisateur...',
-          textBa: 'Ohùn ìránṣẹ́ olùmúlò...'
-        }]);
-        
-        tamtamFeedback.play('success');
-        
-        // Simulate AI response
-        setTimeout(() => {
-          setMessages(prev => [...prev, { 
-            type: 'ai', 
-            textFr: 'Voici ma réponse à votre question...',
-            textBa: 'Èyí ni ìdáhùn mi sí ìbéèrè rẹ...'
-          }]);
-        }, 1000);
-      }, 2000);
-    } else {
-      setIsRecording(false);
+  const handleVoiceMessage = async (result: {
+    audioBase64: string;
+    transcription?: string;
+    translation?: string;
+    sourceLang: 'ba' | 'fr';
+  }) => {
+    if (!result.transcription) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de transcrire l'audio",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsProcessing(true);
+    tamtamFeedback.play('send');
+    
+    try {
+      // Get bilingual transcription
+      let textFr = result.sourceLang === 'fr' ? result.transcription : '';
+      let textBa = result.sourceLang === 'ba' ? result.transcription : '';
+      
+      // Translate to get both versions
+      if (result.sourceLang === 'ba' && !textFr) {
+        const transResult = await byT5TranslationService.translate(result.transcription, 'bariba', 'french');
+        textFr = transResult.translation;
+      } else if (result.sourceLang === 'fr' && !textBa) {
+        const transResult = await byT5TranslationService.translate(result.transcription, 'french', 'bariba');
+        textBa = transResult.translation;
+      }
+      
+      // Add user message
+      setMessages(prev => [...prev, { 
+        type: 'user', 
+        textFr,
+        textBa
+      }]);
+      
+      // Get AI response based on service context
+      const { data, error } = await supabase.functions.invoke('raconte-moi', {
+        body: { 
+          command: textFr,
+          language: currentLang,
+          context: activeService
+        }
+      });
+      
+      if (error) throw error;
+      
+      // Add AI response
+      const aiMessage: Message = {
+        type: 'ai',
+        textFr: data.response_fr || data.response,
+        textBa: data.response_ba || ''
+      };
+      
+      // Translate AI response if needed
+      if (!aiMessage.textBa && aiMessage.textFr) {
+        const transResult = await byT5TranslationService.translate(aiMessage.textFr, 'french', 'bariba');
+        aiMessage.textBa = transResult.translation;
+      }
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+      // Speak the AI response
+      const responseText = currentLang === 'ba' ? aiMessage.textBa : aiMessage.textFr;
+      await speakCurrentLang(responseText);
+      
+      tamtamFeedback.play('success');
+      
+    } catch (err: any) {
+      console.error('[TamTamServices] Voice message error:', err);
+      toast({
+        title: "Erreur",
+        description: err.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -158,7 +216,7 @@ export default function TamTamServices() {
             </div>
 
             {/* Chat messages with bilingual transcription */}
-            <div className="flex-1 space-y-4 mb-4 min-h-[300px]">
+            <div className="flex-1 space-y-4 mb-4 min-h-[300px] overflow-y-auto">
               {messages.length === 0 && (
                 <div className="text-center py-12">
                   <motion.div
@@ -189,14 +247,28 @@ export default function TamTamServices() {
                   />
                 </motion.div>
               ))}
+              
+              {isProcessing && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center justify-center gap-2 py-4"
+                >
+                  <Loader2 className="w-5 h-5 animate-spin text-tamtam-primary" />
+                  <span className="text-tamtam-text-muted">{t('processing')}</span>
+                </motion.div>
+              )}
             </div>
 
-            {/* Central mic for conversation */}
+            {/* Central mic for conversation with full pipeline */}
             <div className="flex justify-center pb-4">
               <TamTamMicButton
                 size="lg"
-                isRecording={isRecording}
-                onPress={handleMicPress}
+                onRecordingComplete={handleVoiceMessage}
+                autoTranscribe={true}
+                autoTranslate={true}
+                sourceLang={currentLang}
+                disabled={isProcessing}
               />
             </div>
           </motion.div>

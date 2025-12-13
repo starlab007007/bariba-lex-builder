@@ -30,9 +30,10 @@ export function TamTamNavigation() {
     }
   };
 
-  const handleNavPress = (path: string, labelKey: string) => {
+  const handleNavPress = async (path: string, labelKey: string) => {
     tamtamFeedback.play('click');
-    speakCurrentLang(t(labelKey));
+    // Speak the screen name via TTS before navigating
+    await speakCurrentLang(t(labelKey));
     navigate(path);
   };
 

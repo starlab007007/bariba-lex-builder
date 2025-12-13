@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
-import { Volume2 } from 'lucide-react';
+import { Volume2, Loader2, Plus } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { BilingualText } from '@/components/tamtam/BilingualText';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
+import { useToast } from '@/hooks/use-toast';
 
 const tabs = [
   { icon: '🛒', id: 'shop', labelKey: 'shop' },
@@ -31,11 +32,13 @@ const mockJobs = [
 
 export default function TamTamMarket() {
   const [activeTab, setActiveTab] = useState('shop');
-  const [isRecording, setIsRecording] = useState(false);
+  const [isCreatingListing, setIsCreatingListing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [playingId, setPlayingId] = useState<number | null>(null);
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
+  const { toast } = useToast();
 
   useEffect(() => {
     announceAction(t('screenMarket'));
@@ -59,13 +62,94 @@ export default function TamTamMarket() {
     }
   };
 
-  const handleApply = () => {
+  const handleApply = async (jobTitle: string) => {
     tamtamFeedback.play('click');
-    speakCurrentLang(t('apply'));
+    await speakCurrentLang(t('apply') + ': ' + jobTitle);
+    toast({
+      title: "🎤 Candidature vocale",
+      description: "Enregistrez votre candidature vocale"
+    });
+  };
+
+  const handleVoiceSearch = async (result: {
+    audioBase64: string;
+    transcription?: string;
+    translation?: string;
+    sourceLang: 'ba' | 'fr';
+  }) => {
+    if (!result.transcription) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de transcrire l'audio",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsProcessing(true);
+    tamtamFeedback.play('send');
+    
+    try {
+      // Announce what was heard
+      await speakCurrentLang(
+        currentLang === 'ba' 
+          ? `Mo gbọ́: ${result.transcription}. Mo ń wá...`
+          : `J'ai entendu: ${result.transcription}. Je recherche...`
+      );
+      
+      toast({
+        title: "🔍 Recherche vocale",
+        description: result.transcription
+      });
+      
+      tamtamFeedback.play('success');
+    } catch (err: any) {
+      console.error('[TamTamMarket] Voice search error:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCreateListing = async (result: {
+    audioBase64: string;
+    transcription?: string;
+    translation?: string;
+    sourceLang: 'ba' | 'fr';
+  }) => {
+    if (!result.transcription) {
+      toast({
+        title: "Erreur",
+        description: "Décrivez votre produit vocalement",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      toast({
+        title: "✅ Annonce créée",
+        description: result.transcription
+      });
+      
+      await speakCurrentLang(
+        currentLang === 'ba'
+          ? "Ó dára! Ìpolówó rẹ ti jẹ́ títẹ̀jáde"
+          : "Parfait ! Votre annonce a été publiée"
+      );
+      
+      setIsCreatingListing(false);
+      tamtamFeedback.play('success');
+    } catch (err: any) {
+      console.error('[TamTamMarket] Create listing error:', err);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4">
+    <div className="min-h-screen bg-tamtam-bg px-4 pb-32">
       {/* Title */}
       <div className="text-center mb-4">
         <h1 className="text-xl font-bold text-tamtam-text">{t('market')}</h1>
@@ -88,6 +172,50 @@ export default function TamTamMarket() {
           </button>
         ))}
       </div>
+
+      {/* Create Listing Modal */}
+      <AnimatePresence>
+        {isCreatingListing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setIsCreatingListing(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-tamtam-surface rounded-3xl p-6 w-full max-w-sm"
+            >
+              <h3 className="text-lg font-bold text-tamtam-text text-center mb-4">
+                {activeTab === 'shop' ? '📦 Nouvelle annonce' : '💼 Offre d\'emploi'}
+              </h3>
+              <p className="text-tamtam-text-muted text-center mb-6">
+                {t('describeVocally')}
+              </p>
+              <div className="flex justify-center">
+                <TamTamMicButton
+                  size="lg"
+                  onRecordingComplete={handleCreateListing}
+                  autoTranscribe={true}
+                  autoTranslate={true}
+                  sourceLang={currentLang}
+                  disabled={isProcessing}
+                />
+              </div>
+              {isProcessing && (
+                <div className="flex items-center justify-center mt-4 gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-tamtam-primary" />
+                  <span className="text-sm text-tamtam-text-muted">{t('processing')}</span>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence mode="wait">
         {activeTab === 'shop' && (
@@ -213,7 +341,7 @@ export default function TamTamMarket() {
 
                 {/* Apply with voice */}
                 <button 
-                  onClick={handleApply}
+                  onClick={() => handleApply(job.titleFr)}
                   className="w-full mt-4 py-4 bg-orange-500 text-white rounded-2xl flex items-center justify-center gap-2"
                 >
                   <span className="text-2xl">🎙️</span>
@@ -225,15 +353,28 @@ export default function TamTamMarket() {
         )}
       </AnimatePresence>
 
-      {/* Floating mic for creating listing */}
-      <div className="fixed bottom-28 right-4">
+      {/* Floating mic for voice search or creating listing */}
+      <div className="fixed bottom-28 right-4 flex flex-col items-center gap-3">
+        {/* Create button */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            tamtamFeedback.play('click');
+            setIsCreatingListing(true);
+          }}
+          className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-lg"
+        >
+          <Plus className="w-6 h-6 text-white" />
+        </motion.button>
+        
+        {/* Voice search mic */}
         <TamTamMicButton
           size="md"
-          isRecording={isRecording}
-          onPress={() => {
-            tamtamFeedback.play('click');
-            setIsRecording(!isRecording);
-          }}
+          onRecordingComplete={handleVoiceSearch}
+          autoTranscribe={true}
+          autoTranslate={true}
+          sourceLang={currentLang}
+          disabled={isProcessing}
         />
       </div>
     </div>
