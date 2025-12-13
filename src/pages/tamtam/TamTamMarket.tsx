@@ -34,12 +34,12 @@ export default function TamTamMarket() {
   const [isRecording, setIsRecording] = useState(false);
   const [playingId, setPlayingId] = useState<number | null>(null);
   const { t, currentLang } = useTamTamLanguage();
-  const { announce } = useAudioDescription();
+  const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
 
   useEffect(() => {
-    announce(t('screenMarket'));
-  }, [announce, t]);
+    announceAction(t('screenMarket'));
+  }, [announceAction, t]);
 
   const handleTabChange = (tabId: string, labelKey: string) => {
     tamtamFeedback.play('click');

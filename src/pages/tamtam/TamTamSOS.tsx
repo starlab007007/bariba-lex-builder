@@ -15,12 +15,12 @@ export default function TamTamSOS() {
   const [isActivated, setIsActivated] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const { t } = useTamTamLanguage();
-  const { announce } = useAudioDescription();
+  const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
 
   useEffect(() => {
-    announce(t('screenSOS'));
-  }, [announce, t]);
+    announceAction(t('screenSOS'));
+  }, [announceAction, t]);
 
   const handleSOSPress = () => {
     tamtamFeedback.play('click');

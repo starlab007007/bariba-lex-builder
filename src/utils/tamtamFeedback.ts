@@ -1,7 +1,7 @@
 // Audio feedback utilities for TAM-TAM
 // Provides sounds and haptic feedback for user interactions
 
-export type FeedbackType = 'like' | 'love' | 'laugh' | 'wow' | 'pray' | 'success' | 'error' | 'record' | 'send' | 'notification';
+export type FeedbackType = 'like' | 'love' | 'laugh' | 'wow' | 'pray' | 'success' | 'error' | 'record' | 'send' | 'notification' | 'click' | 'sos';
 
 // Simple audio context for generating feedback sounds
 let audioContext: AudioContext | null = null;
@@ -25,6 +25,8 @@ const feedbackFrequencies: Record<FeedbackType, { freq: number; duration: number
   record: { freq: 440, duration: 0.1, type: 'sine' },
   send: { freq: 660, duration: 0.12, type: 'sine' },
   notification: { freq: 520, duration: 0.18, type: 'triangle' },
+  click: { freq: 700, duration: 0.05, type: 'sine' },
+  sos: { freq: 350, duration: 0.4, type: 'sawtooth' },
 };
 
 export const playFeedbackSound = (type: FeedbackType, volume: number = 0.3): void => {
@@ -74,6 +76,8 @@ const hapticPatterns: Record<FeedbackType, number[]> = {
   record: [30],
   send: [40, 40],
   notification: [50, 30, 50],
+  click: [20],
+  sos: [200, 100, 200, 100, 200],
 };
 
 export const triggerHaptic = (type: FeedbackType): void => {
@@ -112,4 +116,12 @@ export const reactionFeedback: Record<string, FeedbackType> = {
 export const triggerReactionFeedback = (reaction: string): void => {
   const feedbackType = reactionFeedback[reaction] || 'like';
   triggerFeedback(feedbackType);
+};
+
+// Utility object for easy import
+export const tamtamFeedback = {
+  play: (type: FeedbackType) => playFeedbackSound(type),
+  vibrate: (type: FeedbackType) => triggerHaptic(type),
+  trigger: (type: FeedbackType, options?: { sound?: boolean; haptic?: boolean; volume?: number }) => triggerFeedback(type, options),
+  reaction: (reaction: string) => triggerReactionFeedback(reaction)
 };

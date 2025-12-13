@@ -19,7 +19,7 @@ export const useBilingualAudio = () => {
 
   // TTS Hooks
   const { speak: speakBaribaRaw, isLoading: isBaribaLoading } = useBaribaTTS();
-  const { speak: speakFrenchRaw, isLoading: isFrenchLoading } = useFrenchTTS();
+  const { speak: speakFrenchRaw, isSpeaking: isFrenchSpeaking } = useFrenchTTS();
 
   // STT Hooks
   const { transcribe: transcribeBaribaRaw, isTranscribing: isBaribaTranscribing } = useBaribaSTT();
@@ -73,15 +73,15 @@ export const useBilingualAudio = () => {
   }, [speakBariba, speakFrench]);
 
   // Transcribe audio and return both languages
-  const transcribeAudio = useCallback(async (audioBlob: Blob, sourceLang: TamTamLang = 'ba'): Promise<TranscriptionResult> => {
+  const transcribeAudio = useCallback(async (audioBase64: string, sourceLang: TamTamLang = 'ba'): Promise<TranscriptionResult> => {
     setIsTranscribing(true);
     try {
       let originalText = '';
       
       if (sourceLang === 'ba') {
         // Transcribe Bariba audio
-        const result = await transcribeBaribaRaw(audioBlob);
-        originalText = result || '';
+        const result = await transcribeBaribaRaw(audioBase64);
+        originalText = result?.transcription || '';
         
         // Translate to French
         if (originalText) {
@@ -168,7 +168,7 @@ export const useBilingualAudio = () => {
     translateBetween,
     
     // States
-    isSpeaking: isSpeaking || isBaribaLoading || isFrenchLoading,
+    isSpeaking: isSpeaking || isBaribaLoading || isFrenchSpeaking,
     isTranscribing: isTranscribing || isBaribaTranscribing || isFrenchListening,
     isTranslating,
     currentLang,

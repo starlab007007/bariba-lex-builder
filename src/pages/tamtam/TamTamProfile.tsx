@@ -30,12 +30,12 @@ export default function TamTamProfile() {
   const [isRecording, setIsRecording] = useState(false);
   const [hasBio, setHasBio] = useState(false);
   const { t, currentLang } = useTamTamLanguage();
-  const { announce } = useAudioDescription();
+  const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
 
   useEffect(() => {
-    announce(t('screenProfile'));
-  }, [announce, t]);
+    announceAction(t('screenProfile'));
+  }, [announceAction, t]);
 
   const handleRecordBio = () => {
     tamtamFeedback.play('click');

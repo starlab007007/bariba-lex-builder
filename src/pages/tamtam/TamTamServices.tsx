@@ -29,12 +29,12 @@ export default function TamTamServices() {
   const [isRecording, setIsRecording] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const { t } = useTamTamLanguage();
-  const { announce } = useAudioDescription();
+  const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
 
   useEffect(() => {
-    announce(t('screenServices'));
-  }, [announce, t]);
+    announceAction(t('screenServices'));
+  }, [announceAction, t]);
 
   const handleServiceSelect = (serviceId: string, labelKey: string) => {
     tamtamFeedback.play('click');
