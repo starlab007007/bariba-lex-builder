@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
-import { Volume2, Play, Loader2 } from 'lucide-react';
+import { TamTamFollowersList } from '@/components/tamtam/TamTamFollowersList';
+import { TamTamFriendsList } from '@/components/tamtam/TamTamFriendsList';
+import { Volume2, Play, Loader2, LogOut } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import { useTamTamProfile } from '@/hooks/useTamTamProfile';
+import { useTamTamFollows } from '@/hooks/useTamTamFollows';
+import { useTamTamFriends } from '@/hooks/useTamTamFriends';
+import { useAuth } from '@/contexts/AuthContext';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,21 +29,29 @@ const settingsItems = [
   { icon: '❓', id: 'help', labelKey: 'help' },
 ];
 
-const stats = [
-  { icon: '📢', value: '42', labelKey: 'posts' },
-  { icon: '👥', value: '128', labelKey: 'followers' },
-  { icon: '❤️', value: '1.2K', labelKey: 'likes' },
-];
-
 export default function TamTamProfile() {
-  const [bioAudioUrl, setBioAudioUrl] = useState<string | null>(null);
-  const [bioTranscript, setBioTranscript] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { profile, loading: profileLoading, updateProfile } = useTamTamProfile();
+  const { followersCount, followingCount } = useTamTamFollows();
+  const { friendsCount } = useTamTamFriends();
+  
   const [isPlayingBio, setIsPlayingBio] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
+  
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/tamtam/auth');
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     announceAction(t('screenProfile'));
@@ -52,7 +67,6 @@ export default function TamTamProfile() {
     tamtamFeedback.play('send');
     
     try {
-      // Convert base64 to blob and upload
       const base64Data = result.audioBase64.includes(',') 
         ? result.audioBase64.split(',')[1] 
         : result.audioBase64;
@@ -64,20 +78,23 @@ export default function TamTamProfile() {
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: 'audio/webm' });
       
-      const fileName = `bio_${Date.now()}.webm`;
+      const fileName = `bio_${user?.id}_${Date.now()}.webm`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('yovo-audio')
+      const { error: uploadError } = await supabase.storage
+        .from('tamtam-audio')
         .upload(fileName, blob, { contentType: 'audio/webm' });
       
       if (uploadError) throw uploadError;
       
       const { data: urlData } = supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .getPublicUrl(fileName);
       
-      setBioAudioUrl(urlData.publicUrl);
-      setBioTranscript(result.transcription || null);
+      await updateProfile({
+        bio_audio_url: urlData.publicUrl,
+        bio_transcript_fr: result.sourceLang === 'fr' ? result.transcription : result.translation,
+        bio_transcript_ba: result.sourceLang === 'ba' ? result.transcription : result.translation
+      });
       
       toast({
         title: "✅ Bio enregistrée",
@@ -104,13 +121,13 @@ export default function TamTamProfile() {
   };
 
   const handlePlayBio = async () => {
-    if (!bioAudioUrl) return;
+    if (!profile?.bio_audio_url) return;
     
     tamtamFeedback.play('click');
     setIsPlayingBio(true);
     
     try {
-      const audio = new Audio(bioAudioUrl);
+      const audio = new Audio(profile.bio_audio_url);
       audio.onended = () => setIsPlayingBio(false);
       audio.onerror = () => setIsPlayingBio(false);
       await audio.play();
@@ -125,10 +142,25 @@ export default function TamTamProfile() {
     speakCurrentLang(t(labelKey));
   };
 
-  const handleSpeakStat = (labelKey: string) => {
+  const handleLogout = async () => {
     tamtamFeedback.play('click');
-    speakCurrentLang(t(labelKey));
+    await signOut();
+    navigate('/tamtam/auth');
   };
+
+  const stats = [
+    { icon: '📢', value: profile?.posts_count || 0, labelKey: 'posts', onClick: () => {} },
+    { icon: '👥', value: followersCount, labelKey: 'followers', onClick: () => setShowFollowers(true) },
+    { icon: '🤝', value: friendsCount, labelKey: 'friends', onClick: () => setShowFriends(true) },
+  ];
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-tamtam-bg flex items-center justify-center">
+        <div className="animate-spin text-4xl">⏳</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-tamtam-bg px-4 pt-8 pb-32">
@@ -139,8 +171,12 @@ export default function TamTamProfile() {
         className="flex justify-center mb-4"
       >
         <button className="relative">
-          <div className="w-32 h-32 bg-tamtam-surface rounded-full shadow-tamtam-soft flex items-center justify-center">
-            <span className="text-6xl">👤</span>
+          <div className="w-32 h-32 bg-tamtam-surface rounded-full shadow-tamtam-soft flex items-center justify-center overflow-hidden">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-6xl">👤</span>
+            )}
           </div>
           <div className="absolute bottom-0 right-0 w-10 h-10 bg-tamtam-primary rounded-full flex items-center justify-center">
             <span className="text-xl">📷</span>
@@ -148,14 +184,19 @@ export default function TamTamProfile() {
         </button>
       </motion.div>
 
-      {/* Title */}
+      {/* Name and username */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="text-center mb-6"
       >
-        <h1 className="text-xl font-bold text-tamtam-text">{t('profile')}</h1>
-        <span className="inline-flex items-center gap-1 mt-1 px-3 py-1 bg-tamtam-secondary/10 rounded-full">
+        <h1 className="text-xl font-bold text-tamtam-text">
+          {profile?.display_name || profile?.username || t('profile')}
+        </h1>
+        {profile?.username && (
+          <p className="text-sm text-tamtam-text-muted">@{profile.username}</p>
+        )}
+        <span className="inline-flex items-center gap-1 mt-2 px-3 py-1 bg-tamtam-secondary/10 rounded-full">
           <span className="text-sm">🌐</span>
           <span className="text-xs font-medium text-tamtam-secondary">
             {currentLang === 'ba' ? 'Bàátɔ̀nú' : 'Français'}
@@ -177,35 +218,31 @@ export default function TamTamProfile() {
               {t('audioBio')}
             </span>
           </div>
-          {bioAudioUrl && (
+          {profile?.bio_audio_url && (
             <div className="flex items-center gap-2">
               <span className="text-xl text-green-500">✓</span>
             </div>
           )}
         </div>
 
-        {/* Audio wave or record button */}
-        {bioAudioUrl ? (
+        {profile?.bio_audio_url ? (
           <div className="space-y-3">
-            {/* Playback button */}
             <button
               onClick={handlePlayBio}
               disabled={isPlayingBio}
               className="w-full h-16 bg-tamtam-bg rounded-2xl flex items-center justify-center px-4 gap-3"
             >
               {isPlayingBio ? (
-                <>
-                  <div className="flex gap-1">
-                    {[...Array(30)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        animate={{ height: [8, 24, 8] }}
-                        transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.05 }}
-                        className="w-1 bg-tamtam-primary rounded-full"
-                      />
-                    ))}
-                  </div>
-                </>
+                <div className="flex gap-1">
+                  {[...Array(30)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{ height: [8, 24, 8] }}
+                      transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.05 }}
+                      className="w-1 bg-tamtam-primary rounded-full"
+                    />
+                  ))}
+                </div>
               ) : (
                 <>
                   <Play className="w-6 h-6 text-tamtam-primary" />
@@ -222,20 +259,18 @@ export default function TamTamProfile() {
               )}
             </button>
             
-            {/* Transcript */}
-            {bioTranscript && (
+            {(profile.bio_transcript_fr || profile.bio_transcript_ba) && (
               <p className="text-sm text-tamtam-text-muted text-center italic">
-                "{bioTranscript}"
+                "{currentLang === 'ba' ? profile.bio_transcript_ba : profile.bio_transcript_fr}"
               </p>
             )}
             
-            {/* Re-record button */}
             <div className="flex justify-center">
               <TamTamMicButton
                 size="sm"
                 onRecordingComplete={handleRecordBio}
                 autoTranscribe={true}
-                autoTranslate={false}
+                autoTranslate={true}
                 sourceLang={currentLang}
                 disabled={isProcessing}
               />
@@ -247,7 +282,7 @@ export default function TamTamProfile() {
               size="md"
               onRecordingComplete={handleRecordBio}
               autoTranscribe={true}
-              autoTranslate={false}
+              autoTranslate={true}
               sourceLang={currentLang}
               disabled={isProcessing}
             />
@@ -297,10 +332,10 @@ export default function TamTamProfile() {
         transition={{ delay: 0.5 }}
         className="grid grid-cols-3 gap-4 mb-6"
       >
-        {stats.map((stat, index) => (
+        {stats.map((stat) => (
           <button
             key={stat.labelKey}
-            onClick={() => handleSpeakStat(stat.labelKey)}
+            onClick={stat.onClick}
             className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft text-center active:scale-95 transition-transform"
           >
             <span className="text-2xl">{stat.icon}</span>
@@ -331,7 +366,40 @@ export default function TamTamProfile() {
             <span className="text-xl text-tamtam-text-muted">→</span>
           </button>
         ))}
+
+        {/* Logout button */}
+        <button
+          onClick={handleLogout}
+          className="w-full bg-red-50 rounded-2xl p-4 shadow-tamtam-soft flex items-center gap-4 active:scale-[0.98] transition-transform"
+        >
+          <LogOut className="w-6 h-6 text-red-500" />
+          <span className="flex-1 text-left font-medium text-red-500">
+            {t('logout')}
+          </span>
+        </button>
       </motion.div>
+
+      {/* Modals */}
+      {user && (
+        <>
+          <TamTamFollowersList
+            userId={user.id}
+            type="followers"
+            isOpen={showFollowers}
+            onClose={() => setShowFollowers(false)}
+          />
+          <TamTamFollowersList
+            userId={user.id}
+            type="following"
+            isOpen={showFollowing}
+            onClose={() => setShowFollowing(false)}
+          />
+          <TamTamFriendsList
+            isOpen={showFriends}
+            onClose={() => setShowFriends(false)}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import TamTamServices from "./pages/tamtam/TamTamServices";
 import TamTamMarket from "./pages/tamtam/TamTamMarket";
 import TamTamSOS from "./pages/tamtam/TamTamSOS";
 import TamTamProfile from "./pages/tamtam/TamTamProfile";
+import TamTamPhoneAuth from "./pages/tamtam/TamTamPhoneAuth";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,7 @@ const App = () => (
             {/* TAM-TAM Platform Routes - 7 optimized screens */}
             <Route path="/tamtam" element={<TamTamApp />}>
               <Route index element={<TamTamSplash />} />
+              <Route path="auth" element={<TamTamPhoneAuth />} />
               <Route path="home" element={<TamTamHome />} />
               <Route path="social" element={<TamTamSocial />} />
               <Route path="services" element={<TamTamServices />} />
