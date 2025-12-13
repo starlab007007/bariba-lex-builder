@@ -25,6 +25,13 @@ export default {
         foreground: "hsl(var(--foreground))",
         'bariba': "hsl(var(--bariba-text))",
         'phonetic': "hsl(var(--phonetic-text))",
+        // TAM-TAM Design System
+        'tamtam-bg': "hsl(var(--tamtam-bg))",
+        'tamtam-surface': "hsl(var(--tamtam-surface))",
+        'tamtam-primary': "hsl(var(--tamtam-primary))",
+        'tamtam-secondary': "hsl(var(--tamtam-secondary))",
+        'tamtam-text': "hsl(var(--tamtam-text))",
+        'tamtam-text-muted': "hsl(var(--tamtam-text-muted))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -68,6 +75,10 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        '3xl': "1.5rem",
+      },
+      boxShadow: {
+        'tamtam-soft': "0 8px 32px hsla(220, 20%, 85%, 0.2)",
       },
       keyframes: {
         "accordion-down": {
