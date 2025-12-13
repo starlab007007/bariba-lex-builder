@@ -18,7 +18,7 @@ async function pollForResult(
   apiPrefix: string,
   sessionHash: string,
   hfToken: string,
-  maxAttempts = 30
+  maxAttempts = 15 // Reduced from 30 to fail faster
 ): Promise<any> {
   const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
   console.log(`📡 Polling: ${pollUrl}`);
@@ -232,14 +232,27 @@ serve(async (req) => {
     }
 
     // Check minimum audio length (avoid sending too short recordings)
-    // Base64 audio of ~0.5 second is approximately 500+ chars
-    const minAudioLength = 100;
+    const minAudioLength = 500;
     if (audio.length < minAudioLength) {
       console.log(`⚠️ Audio too short: ${audio.length} chars (min: ${minAudioLength})`);
       return new Response(
         JSON.stringify({ 
           error: 'Audio too short', 
           details: 'L\'enregistrement est trop court. Parlez plus longtemps (au moins 1-2 secondes).',
+          audioLength: audio.length
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check maximum audio length to avoid timeouts (limit to ~200KB base64 = ~150KB audio)
+    const maxAudioLength = 300000;
+    if (audio.length > maxAudioLength) {
+      console.log(`⚠️ Audio too large: ${audio.length} chars (max: ${maxAudioLength})`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Audio too large', 
+          details: 'L\'enregistrement est trop long. Limitez à 30 secondes maximum.',
           audioLength: audio.length
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
