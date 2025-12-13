@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Mic, Languages, Copy, ArrowRight, Volume2, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Mic, Languages, Copy, ArrowRight, Volume2, Loader2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,17 +10,22 @@ import { AudioPlayer } from './AudioPlayer';
 import { useBaribaSTT, SpeakerType } from '@/hooks/useBaribaSTT';
 import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VoiceDictationProps {
   onTranslate?: (text: string, language: 'bariba' | 'french') => void;
 }
 
+type ServiceStatus = 'checking' | 'available' | 'unavailable' | 'error';
+
 export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
   const [language, setLanguage] = useState<'bariba' | 'french'>('bariba');
   const [transcription, setTranscription] = useState('');
   const [lastAudioBase64, setLastAudioBase64] = useState<string | null>(null);
+  const [baribaSTTStatus, setBaribaSTTStatus] = useState<ServiceStatus>('checking');
+  const [lastError, setLastError] = useState<string | null>(null);
   
-  const { transcribe: transcribeBariba, isTranscribing: isTranscribingBariba } = useBaribaSTT();
+  const { transcribe: transcribeBariba, isTranscribing: isTranscribingBariba, error: baribaError } = useBaribaSTT();
   const { 
     startListening, 
     stopListening, 
@@ -31,12 +36,70 @@ export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
   } = useFrenchSTT();
   const { toast } = useToast();
 
+  // Check Bariba STT service status on mount
+  useEffect(() => {
+    const checkBaribaSTTStatus = async () => {
+      try {
+        setBaribaSTTStatus('checking');
+        const { data, error } = await supabase.functions.invoke('bariba-stt', {
+          body: { audio: 'test' }
+        });
+        
+        if (error) {
+          console.error('Bariba STT health check error:', error);
+          setBaribaSTTStatus('error');
+          return;
+        }
+        
+        if (data?.isHealthCheck && data?.status === 'ok') {
+          setBaribaSTTStatus('available');
+        } else {
+          setBaribaSTTStatus('unavailable');
+        }
+      } catch (e) {
+        console.error('Bariba STT health check failed:', e);
+        setBaribaSTTStatus('error');
+      }
+    };
+
+    checkBaribaSTTStatus();
+  }, []);
+
   const handleBaribaRecordingComplete = async (audioBase64: string) => {
     setLastAudioBase64(audioBase64);
+    setLastError(null);
+    
+    // Attempt Bariba STT
     const result = await transcribeBariba(audioBase64);
-    if (result) {
+    
+    if (result?.transcription) {
       setTranscription(result.transcription);
+      setBaribaSTTStatus('available');
+      toast({
+        title: "✅ Transcription réussie",
+        description: `Confiance: ${result.confidence}% | Durée: ${result.duration}ms`,
+      });
+      return;
     }
+    
+    // Handle failure with detailed error
+    const errorMessage = baribaError || "Le service de transcription Bariba n'a pas pu traiter l'audio.";
+    setLastError(errorMessage);
+    setBaribaSTTStatus('error');
+    
+    toast({
+      title: "⚠️ Transcription Bariba échouée",
+      description: (
+        <div className="space-y-1">
+          <p>{errorMessage}</p>
+          <p className="text-xs text-muted-foreground">
+            Conseil: Essayez l'onglet Français ou réenregistrez avec un son plus clair.
+          </p>
+        </div>
+      ),
+      variant: "destructive",
+      duration: 8000,
+    });
   };
 
   const handleFrenchListening = () => {
@@ -82,6 +145,59 @@ export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
         </TabsList>
 
         <TabsContent value="bariba" className="space-y-6 pt-4">
+          {/* Service Status Indicator */}
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-2">
+              {baribaSTTStatus === 'checking' && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Vérification...
+                </Badge>
+              )}
+              {baribaSTTStatus === 'available' && (
+                <Badge variant="default" className="flex items-center gap-1 bg-green-500/20 text-green-700 border-green-500/30">
+                  <CheckCircle2 className="h-3 w-3" />
+                  STT Bariba disponible
+                </Badge>
+              )}
+              {baribaSTTStatus === 'unavailable' && (
+                <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-500/20 text-yellow-700 border-yellow-500/30">
+                  <AlertTriangle className="h-3 w-3" />
+                  STT en veille
+                </Badge>
+              )}
+              {baribaSTTStatus === 'error' && (
+                <Badge variant="destructive" className="flex items-center gap-1">
+                  <XCircle className="h-3 w-3" />
+                  STT indisponible
+                </Badge>
+              )}
+            </div>
+            {baribaSTTStatus === 'error' && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setLanguage('french')}
+                className="text-xs"
+              >
+                Utiliser Français →
+              </Button>
+            )}
+          </div>
+
+          {/* Last Error Display */}
+          {lastError && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-sm text-destructive">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium">Erreur de transcription</p>
+                  <p className="text-xs mt-1 opacity-80">{lastError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <Card className="p-6">
             <SmartVoiceRecorder
               language="bariba"
