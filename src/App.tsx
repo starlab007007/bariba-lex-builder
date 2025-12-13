@@ -33,6 +33,7 @@ import YovoSOS from "./pages/yovo/YovoSOS";
 import YovoDocuments from "./pages/yovo/YovoDocuments";
 import YovoRecord from "./pages/yovo/YovoRecord";
 import YovoSettings from "./pages/yovo/YovoSettings";
+import YovoAuth from "./pages/yovo/YovoAuth";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -79,6 +80,7 @@ const App = () => (
               <Route path="documents" element={<YovoDocuments />} />
               <Route path="record" element={<YovoRecord />} />
               <Route path="settings" element={<YovoSettings />} />
+              <Route path="auth" element={<YovoAuth />} />
             </Route>
 
             <Route
