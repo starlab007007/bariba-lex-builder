@@ -21,13 +21,13 @@ export default function TamTamHome() {
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
   const { t, currentLang } = useTamTamLanguage();
-  const { announce } = useAudioDescription();
+  const { announceAction } = useAudioDescription();
   const { speakCurrentLang, isSpeaking } = useBilingualAudio();
 
   // Announce screen on mount
   useEffect(() => {
-    announce(t('screenHome'));
-  }, [announce, t]);
+    announceAction(t('screenHome'));
+  }, [announceAction, t]);
 
   const handleMicPress = () => {
     tamtamFeedback.play('click');
