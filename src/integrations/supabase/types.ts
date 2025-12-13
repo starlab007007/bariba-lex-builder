@@ -531,6 +531,118 @@ export type Database = {
         }
         Relationships: []
       }
+      tamtam_comments: {
+        Row: {
+          audio_url: string
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          post_id: string | null
+          transcript_ba: string | null
+          transcript_fr: string | null
+          user_id: string | null
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          post_id?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          post_id?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "yovo_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tamtam_reactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string | null
+          reaction_type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id?: string | null
+          reaction_type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string | null
+          reaction_type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "yovo_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tamtam_stories: {
+        Row: {
+          audio_url: string
+          created_at: string | null
+          duration_seconds: number | null
+          expires_at: string | null
+          id: string
+          photo_url: string | null
+          transcript_ba: string | null
+          transcript_fr: string | null
+          user_id: string | null
+          views_count: number | null
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          expires_at?: string | null
+          id?: string
+          photo_url?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id?: string | null
+          views_count?: number | null
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          expires_at?: string | null
+          id?: string
+          photo_url?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id?: string | null
+          views_count?: number | null
+        }
+        Relationships: []
+      }
       training_phrases: {
         Row: {
           bariba_text: string
@@ -1006,11 +1118,18 @@ export type Database = {
           comments_count: number | null
           created_at: string | null
           duration_seconds: number | null
+          feeling_emoji: string | null
+          hashtags: string[] | null
           id: string
           is_public: boolean | null
           likes_count: number | null
+          media_type: string | null
+          media_url: string | null
           shares_count: number | null
+          thumbnail_url: string | null
           transcript: string | null
+          transcript_ba: string | null
+          transcript_fr: string | null
           user_id: string | null
         }
         Insert: {
@@ -1018,11 +1137,18 @@ export type Database = {
           comments_count?: number | null
           created_at?: string | null
           duration_seconds?: number | null
+          feeling_emoji?: string | null
+          hashtags?: string[] | null
           id?: string
           is_public?: boolean | null
           likes_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
           shares_count?: number | null
+          thumbnail_url?: string | null
           transcript?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
           user_id?: string | null
         }
         Update: {
@@ -1030,11 +1156,18 @@ export type Database = {
           comments_count?: number | null
           created_at?: string | null
           duration_seconds?: number | null
+          feeling_emoji?: string | null
+          hashtags?: string[] | null
           id?: string
           is_public?: boolean | null
           likes_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
           shares_count?: number | null
+          thumbnail_url?: string | null
           transcript?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
           user_id?: string | null
         }
         Relationships: []
