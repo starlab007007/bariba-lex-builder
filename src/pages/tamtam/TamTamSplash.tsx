@@ -1,17 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import { tamtamFeedback } from '@/utils/tamtamFeedback';
 
 export default function TamTamSplash() {
   const navigate = useNavigate();
   const [isListening, setIsListening] = useState(false);
+  const { t, currentLang } = useTamTamLanguage();
+  const { speakCurrentLang } = useBilingualAudio();
+
+  // Auto-announce welcome in Bariba on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      speakCurrentLang(t('welcomeHome'));
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [speakCurrentLang, t]);
 
   const handleMicPress = () => {
+    tamtamFeedback.play('click');
     setIsListening(true);
-    // Simulate voice recognition then navigate
+    speakCurrentLang(t('nowListening'));
+    
     setTimeout(() => {
       setIsListening(false);
+      tamtamFeedback.play('success');
       navigate('/tamtam/home');
     }, 2000);
   };
@@ -23,7 +39,7 @@ export default function TamTamSplash() {
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.8, type: "spring" }}
-        className="mb-12"
+        className="mb-10"
       >
         <div className="relative">
           {/* Animated sound waves behind logo */}
@@ -50,12 +66,22 @@ export default function TamTamSplash() {
         TAM-TAM
       </motion.h1>
 
-      {/* Slogan with icons instead of text */}
+      {/* Slogan - translated */}
+      <motion.p
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.6 }}
+        className="text-lg text-tamtam-text-muted mb-2"
+      >
+        {t('slogan')}
+      </motion.p>
+
+      {/* Slogan with icons */}
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.5, duration: 0.6 }}
-        className="flex items-center gap-4 mb-16"
+        className="flex items-center gap-4 mb-12"
       >
         <span className="text-3xl">🎙️</span>
         <span className="text-3xl">→</span>
@@ -82,15 +108,33 @@ export default function TamTamSplash() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.2, duration: 0.6 }}
-        className="mt-8 flex items-center gap-2"
+        className="mt-6 text-center"
       >
         <motion.span
           animate={{ y: [0, -5, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className="text-2xl"
+          className="text-2xl inline-block"
         >
           👆
         </motion.span>
+        <p className="text-sm text-tamtam-text-muted mt-2">
+          {t('tapMicToStart')}
+        </p>
+      </motion.div>
+
+      {/* Language indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.5 }}
+        className="absolute bottom-8"
+      >
+        <span className="inline-flex items-center gap-2 px-4 py-2 bg-tamtam-surface rounded-full shadow-tamtam-soft">
+          <span className="text-lg">🌐</span>
+          <span className="text-sm font-medium text-tamtam-text">
+            {currentLang === 'ba' ? 'Bàátɔ̀nú' : 'Français'}
+          </span>
+        </span>
       </motion.div>
     </div>
   );
