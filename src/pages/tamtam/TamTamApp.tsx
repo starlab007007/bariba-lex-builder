@@ -28,7 +28,13 @@ export default function TamTamApp() {
   };
 
   if (isSplash) {
-    return <Outlet />;
+    return (
+      <TamTamLanguageProvider>
+        <AudioDescriptionProvider>
+          <Outlet />
+        </AudioDescriptionProvider>
+      </TamTamLanguageProvider>
+    );
   }
 
   return (
