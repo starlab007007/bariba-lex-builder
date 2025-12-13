@@ -13,7 +13,6 @@ import NotFound from "./pages/NotFound";
 
 // TAM-TAM Platform
 import TamTamApp from "./pages/tamtam/TamTamApp";
-import TamTamSplash from "./pages/tamtam/TamTamSplash";
 import TamTamHome from "./pages/tamtam/TamTamHome";
 import TamTamSocial from "./pages/tamtam/TamTamSocial";
 import TamTamServices from "./pages/tamtam/TamTamServices";
@@ -47,7 +46,7 @@ const App = () => (
             
             {/* TAM-TAM Platform Routes - 7 optimized screens */}
             <Route path="/tamtam" element={<TamTamApp />}>
-              <Route index element={<TamTamSplash />} />
+              <Route index element={<TamTamHome />} />
               <Route path="auth" element={<TamTamPhoneAuth />} />
               <Route path="home" element={<TamTamHome />} />
               <Route path="social" element={<TamTamSocial />} />
