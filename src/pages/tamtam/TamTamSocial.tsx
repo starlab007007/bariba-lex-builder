@@ -89,13 +89,13 @@ export default function TamTamSocial() {
       const fileName = `comment_${Date.now()}.webm`;
       
       const { error } = await supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .upload(fileName, audioBlob, { contentType: 'audio/webm' });
 
       if (error) throw error;
 
       const { data: urlData } = supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .getPublicUrl(fileName);
 
       await addComment(commentsModal.postId, {
