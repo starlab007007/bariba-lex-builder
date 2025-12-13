@@ -44,7 +44,7 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
     const fetchMessages = async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from('yovo_messages')
+        .from('tamtam_messages')
         .select('*')
         .or(
           `and(sender_id.eq.${user.id},receiver_id.eq.${conversationPartnerId}),` +
@@ -68,7 +68,7 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'yovo_messages'
+          table: 'tamtam_messages'
         },
         (payload) => {
           const newMsg = payload.new as VoiceMessage;
@@ -92,7 +92,7 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from('yovo_messages')
+      .from('tamtam_messages')
       .select('*')
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
@@ -120,7 +120,7 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
     }
 
     const { data: profiles } = await supabase
-      .from('yovo_profiles')
+      .from('tamtam_profiles')
       .select('user_id, display_name, avatar_url')
       .in('user_id', partnerIds);
 
@@ -169,13 +169,13 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
       const fileName = `msg_${user.id}_${Date.now()}.webm`;
 
       const { error: uploadError } = await supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .upload(fileName, audioBlob, { contentType: 'audio/webm' });
 
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .getPublicUrl(fileName);
 
       // 2. Transcribe audio
@@ -213,7 +213,7 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
 
       // 4. Save message to database
       const { data, error } = await supabase
-        .from('yovo_messages')
+        .from('tamtam_messages')
         .insert({
           sender_id: user.id,
           receiver_id: receiverId,
@@ -257,7 +257,7 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
     if (!user || messageIds.length === 0) return;
 
     await supabase
-      .from('yovo_messages')
+      .from('tamtam_messages')
       .update({ is_read: true })
       .in('id', messageIds)
       .eq('receiver_id', user.id);
