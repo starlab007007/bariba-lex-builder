@@ -396,9 +396,9 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
                     exit={{ scale: 0.9, opacity: 0 }}
                   >
                     <SmartVoiceRecorder
-                      mode="automatic"
                       onRecordingComplete={(audioBase64) => handleSendMessage(audioBase64, 0)}
-                      onCancel={() => setShowRecorder(false)}
+                      language="bariba"
+                      showSpeakerType={false}
                     />
                     {(isSending || isTranscribing) && (
                       <div className="flex items-center justify-center gap-2 mt-2 text-sm text-gray-500">
