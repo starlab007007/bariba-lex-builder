@@ -123,13 +123,13 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       const audioFileName = `post_${Date.now()}.webm`;
       
       const { data: audioData, error: audioError } = await supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .upload(audioFileName, audioBlob, { contentType: 'audio/webm' });
 
       if (audioError) throw audioError;
 
       const { data: audioUrl } = supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .getPublicUrl(audioFileName);
 
       // Upload media if exists
@@ -137,12 +137,12 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       if (mediaFile && mediaPreview) {
         const mediaFileName = `media_${Date.now()}.${mediaFile.name.split('.').pop()}`;
         const { data: mediaData, error: mediaError } = await supabase.storage
-          .from('yovo-audio')
+          .from('tamtam-audio')
           .upload(mediaFileName, mediaFile);
 
         if (!mediaError && mediaData) {
           const { data: url } = supabase.storage
-            .from('yovo-audio')
+            .from('tamtam-audio')
             .getPublicUrl(mediaFileName);
           mediaUrl = url.publicUrl;
         }

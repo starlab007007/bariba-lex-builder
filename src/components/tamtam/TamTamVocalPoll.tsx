@@ -97,13 +97,13 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
       const questionFileName = `poll_question_${Date.now()}.webm`;
       
       const { error: qError } = await supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .upload(questionFileName, questionBlob, { contentType: 'audio/webm' });
       
       if (qError) throw qError;
 
       const { data: questionUrl } = supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .getPublicUrl(questionFileName);
 
       // Upload options
@@ -115,11 +115,11 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
           const fileName = `poll_option_${Date.now()}_${idx}.webm`;
           
           await supabase.storage
-            .from('yovo-audio')
+            .from('tamtam-audio')
             .upload(fileName, blob, { contentType: 'audio/webm' });
           
           const { data: url } = supabase.storage
-            .from('yovo-audio')
+            .from('tamtam-audio')
             .getPublicUrl(fileName);
           
           return { audio_url: url.publicUrl, transcript: opt.transcript };

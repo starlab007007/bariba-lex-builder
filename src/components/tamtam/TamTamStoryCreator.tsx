@@ -122,13 +122,13 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
       // Upload audio
       const audioFileName = `stories/audio_${timestamp}.webm`;
       const { error: audioError } = await supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .upload(audioFileName, audioBlob);
       
       if (audioError) throw audioError;
       
       const { data: audioUrlData } = supabase.storage
-        .from('yovo-audio')
+        .from('tamtam-audio')
         .getPublicUrl(audioFileName);
       
       // Upload photo if exists
@@ -136,12 +136,12 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
       if (photoFile) {
         const photoFileName = `stories/photo_${timestamp}.${photoFile.name.split('.').pop()}`;
         const { error: photoError } = await supabase.storage
-          .from('yovo-audio')
+          .from('tamtam-audio')
           .upload(photoFileName, photoFile);
         
         if (!photoError) {
           const { data: photoUrlData } = supabase.storage
-            .from('yovo-audio')
+            .from('tamtam-audio')
             .getPublicUrl(photoFileName);
           photoUrl = photoUrlData.publicUrl;
         }
