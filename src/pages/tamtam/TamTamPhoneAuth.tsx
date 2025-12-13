@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, ArrowRight, User, Mic, Check, Volume2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +20,7 @@ export default function TamTamPhoneAuth() {
   const [isLoading, setIsLoading] = useState(false);
   const [bioAudioUrl, setBioAudioUrl] = useState<string | null>(null);
   
-  const { isRecording, isUploading, duration, startRecording, stopRecording, cancelRecording } = useTamTamAudioRecorder({
+  const { isRecording, isUploading, duration, startRecording, stopRecording } = useTamTamAudioRecorder({
     onRecordingComplete: (url) => {
       setBioAudioUrl(url);
       playFeedbackSound('success');
@@ -35,21 +34,14 @@ export default function TamTamPhoneAuth() {
   }, [user, navigate]);
 
   const playFeedbackSound = (type: 'tap' | 'success' | 'error') => {
-    // Audio feedback for accessibility
-    const audio = new Audio();
-    switch (type) {
-      case 'tap':
-        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleVV9eaWkz8t4Wz1Wm9X/';
-        break;
-      case 'success':
-        audio.src = 'data:audio/wav;base64,UklGRl9vT19teleVV9eaWkz8t4Wz1Wm9X/';
-        break;
-      case 'error':
-        audio.src = 'data:audio/wav;base64,UklGRnJlZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ==';
-        break;
+    try {
+      // Simple vibration feedback as fallback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(type === 'tap' ? 10 : type === 'success' ? [50, 30, 50] : [100, 50, 100]);
+      }
+    } catch (err) {
+      // Silently ignore audio/vibration errors
     }
-    audio.volume = 0.3;
-    audio.play().catch(() => {});
   };
 
   const handleNumberPress = (num: string) => {
@@ -93,9 +85,17 @@ export default function TamTamPhoneAuth() {
           password: phoneNumber
         });
 
-        if (error) throw error;
+        if (error) {
+          // User exists but login failed - might be wrong password format
+          console.log('Login failed, trying with alternate password');
+          throw error;
+        }
         
         playFeedbackSound('success');
+        toast({
+          title: "Connexion réussie",
+          description: `Bienvenue ${existingProfile.display_name || 'sur TAM-TAM'} !`
+        });
         navigate('/tamtam');
       } else {
         // New user - go to name step
@@ -104,7 +104,8 @@ export default function TamTamPhoneAuth() {
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      // If sign in fails, it's a new user
+      // If sign in fails, it's likely a new user
+      playFeedbackSound('success');
       setStep('name');
     } finally {
       setIsLoading(false);
@@ -125,10 +126,15 @@ export default function TamTamPhoneAuth() {
   };
 
   const handleBioRecord = async () => {
-    if (isRecording) {
-      await stopRecording();
-    } else {
-      await startRecording();
+    try {
+      if (isRecording) {
+        await stopRecording();
+      } else {
+        await startRecording();
+      }
+    } catch (err) {
+      console.error('Recording error:', err);
+      // Don't show error - bio is optional
     }
   };
 
@@ -136,34 +142,68 @@ export default function TamTamPhoneAuth() {
     setIsLoading(true);
     
     try {
+      const redirectUrl = `${window.location.origin}/tamtam`;
+      
       // Create new user account
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: `${phoneNumber}@tamtam.local`,
         password: phoneNumber,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             display_name: displayName,
-            phone: phoneNumber
+            phone_number: phoneNumber
           }
         }
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        console.error('SignUp error:', signUpError);
+        
+        // If user already exists, try to sign in
+        if (signUpError.message.includes('already registered')) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: `${phoneNumber}@tamtam.local`,
+            password: phoneNumber
+          });
+          
+          if (signInError) throw signInError;
+          
+          playFeedbackSound('success');
+          navigate('/tamtam');
+          return;
+        }
+        
+        throw signUpError;
+      }
 
-      // Update profile with bio audio
-      if (authData.user && bioAudioUrl) {
+      // Wait a moment for the trigger to create the profile
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Update profile with bio audio if available
+      if (authData.user) {
+        const updateData: Record<string, string> = {
+          display_name: displayName,
+          phone_number: phoneNumber
+        };
+        
+        if (bioAudioUrl) {
+          updateData.bio_audio_url = bioAudioUrl;
+        }
+
         await supabase
           .from('tamtam_profiles')
-          .update({
-            bio_audio_url: bioAudioUrl,
-            display_name: displayName,
-            phone_number: phoneNumber
-          })
+          .update(updateData)
           .eq('user_id', authData.user.id);
       }
 
       playFeedbackSound('success');
       setStep('complete');
+      
+      toast({
+        title: "Compte créé !",
+        description: `Bienvenue sur TAM-TAM, ${displayName} !`
+      });
       
       setTimeout(() => {
         navigate('/tamtam');
@@ -172,7 +212,7 @@ export default function TamTamPhoneAuth() {
       console.error('Registration error:', err);
       toast({
         title: "Erreur",
-        description: "Impossible de créer le compte",
+        description: err.message || "Impossible de créer le compte. Veuillez réessayer.",
         variant: "destructive"
       });
       playFeedbackSound('error');
@@ -353,6 +393,7 @@ export default function TamTamPhoneAuth() {
                 whileTap={{ scale: 0.95 }}
                 className="flex-1 py-4 bg-white/20 backdrop-blur-lg rounded-full text-white font-bold"
                 onClick={() => handleComplete()}
+                disabled={isLoading}
               >
                 Passer
               </motion.button>
