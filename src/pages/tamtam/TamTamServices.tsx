@@ -1,42 +1,82 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Volume2 } from 'lucide-react';
+import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
+import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import { VoiceMessage } from '@/components/tamtam/VoiceMessage';
+import { tamtamFeedback } from '@/utils/tamtamFeedback';
 
 const services = [
-  { id: 'translator', icon: '🌐', color: 'bg-blue-500', bgLight: 'bg-blue-50' },
-  { id: 'health', icon: '🏥', color: 'bg-green-500', bgLight: 'bg-green-50' },
-  { id: 'finance', icon: '💰', color: 'bg-yellow-500', bgLight: 'bg-yellow-50' },
-  { id: 'agri', icon: '🌾', color: 'bg-emerald-500', bgLight: 'bg-emerald-50' },
-  { id: 'education', icon: '📚', color: 'bg-purple-500', bgLight: 'bg-purple-50' },
-  { id: 'documents', icon: '📋', color: 'bg-gray-500', bgLight: 'bg-gray-50' },
+  { id: 'translator', icon: '🌐', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelKey: 'translator' },
+  { id: 'health', icon: '🏥', color: 'bg-green-500', bgLight: 'bg-green-50', labelKey: 'health' },
+  { id: 'finance', icon: '💰', color: 'bg-yellow-500', bgLight: 'bg-yellow-50', labelKey: 'finance' },
+  { id: 'agri', icon: '🌾', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', labelKey: 'agriculture' },
+  { id: 'education', icon: '📚', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelKey: 'education' },
+  { id: 'documents', icon: '📋', color: 'bg-gray-500', bgLight: 'bg-gray-50', labelKey: 'documents' },
 ];
+
+interface Message {
+  type: 'user' | 'ai';
+  textFr: string;
+  textBa: string;
+  audioUrl?: string;
+}
 
 export default function TamTamServices() {
   const [activeService, setActiveService] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [messages, setMessages] = useState<{type: 'user' | 'ai', text: string}[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const { t } = useTamTamLanguage();
+  const { announce } = useAudioDescription();
+  const { speakCurrentLang } = useBilingualAudio();
 
-  const handleServiceSelect = (serviceId: string) => {
+  useEffect(() => {
+    announce(t('screenServices'));
+  }, [announce, t]);
+
+  const handleServiceSelect = (serviceId: string, labelKey: string) => {
+    tamtamFeedback.play('click');
+    speakCurrentLang(t(labelKey));
     setActiveService(serviceId);
     setMessages([]);
   };
 
   const handleBack = () => {
+    tamtamFeedback.play('click');
     setActiveService(null);
     setMessages([]);
   };
 
+  const handleSpeakLabel = async (labelKey: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    tamtamFeedback.play('click');
+    await speakCurrentLang(t(labelKey));
+  };
+
   const handleMicPress = () => {
+    tamtamFeedback.play('click');
     if (!isRecording) {
       setIsRecording(true);
-      // Simulate recording
       setTimeout(() => {
         setIsRecording(false);
-        setMessages(prev => [...prev, { type: 'user', text: '🎙️ Message vocal...' }]);
+        // Simulate user message with bilingual transcription
+        setMessages(prev => [...prev, { 
+          type: 'user', 
+          textFr: 'Message vocal de l\'utilisateur...',
+          textBa: 'Ohùn ìránṣẹ́ olùmúlò...'
+        }]);
+        
+        tamtamFeedback.play('success');
+        
         // Simulate AI response
         setTimeout(() => {
-          setMessages(prev => [...prev, { type: 'ai', text: '🤖 Réponse IA...' }]);
+          setMessages(prev => [...prev, { 
+            type: 'ai', 
+            textFr: 'Voici ma réponse à votre question...',
+            textBa: 'Èyí ni ìdáhùn mi sí ìbéèrè rẹ...'
+          }]);
         }, 1000);
       }, 2000);
     } else {
@@ -57,8 +97,11 @@ export default function TamTamServices() {
             exit={{ opacity: 0 }}
           >
             {/* Title icon */}
-            <div className="text-center mb-8">
+            <div className="text-center mb-6">
               <span className="text-5xl">🤖</span>
+              <h1 className="text-xl font-bold text-tamtam-text mt-2">
+                {t('services')}
+              </h1>
             </div>
 
             {/* Services grid 2x3 */}
@@ -69,12 +112,23 @@ export default function TamTamServices() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.1 }}
-                  onClick={() => handleServiceSelect(service.id)}
-                  className={`aspect-square ${service.bgLight} rounded-3xl shadow-tamtam-soft flex items-center justify-center active:scale-95 transition-transform`}
+                  onClick={() => handleServiceSelect(service.id, service.labelKey)}
+                  className={`aspect-square ${service.bgLight} rounded-3xl shadow-tamtam-soft flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform relative`}
                 >
                   <div className={`w-20 h-20 ${service.color} rounded-2xl flex items-center justify-center`}>
                     <span className="text-4xl">{service.icon}</span>
                   </div>
+                  <span className="text-sm font-medium text-tamtam-text">
+                    {t(service.labelKey)}
+                  </span>
+                  
+                  {/* Audio button */}
+                  <button
+                    onClick={(e) => handleSpeakLabel(service.labelKey, e)}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 flex items-center justify-center"
+                  >
+                    <Volume2 className="w-3 h-3 text-tamtam-primary" />
+                  </button>
                 </motion.button>
               ))}
             </div>
@@ -98,9 +152,12 @@ export default function TamTamServices() {
               <div className={`w-14 h-14 ${activeServiceData?.color} rounded-2xl flex items-center justify-center`}>
                 <span className="text-3xl">{activeServiceData?.icon}</span>
               </div>
+              <span className="text-lg font-bold text-tamtam-text">
+                {activeServiceData && t(activeServiceData.labelKey)}
+              </span>
             </div>
 
-            {/* Chat messages */}
+            {/* Chat messages with bilingual transcription */}
             <div className="flex-1 space-y-4 mb-4 min-h-[300px]">
               {messages.length === 0 && (
                 <div className="text-center py-12">
@@ -111,7 +168,8 @@ export default function TamTamServices() {
                   >
                     {activeServiceData?.icon}
                   </motion.div>
-                  <div className="text-4xl">👇</div>
+                  <p className="text-tamtam-text-muted">{t('tapToSpeak')}</p>
+                  <div className="text-4xl mt-4">👇</div>
                 </div>
               )}
               
@@ -120,30 +178,15 @@ export default function TamTamServices() {
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div
-                    className={`max-w-[80%] p-4 rounded-3xl ${
-                      msg.type === 'user'
-                        ? 'bg-tamtam-primary text-white'
-                        : 'bg-tamtam-surface shadow-tamtam-soft'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{msg.type === 'user' ? '🎙️' : '🤖'}</span>
-                      <div className="flex gap-1">
-                        {[...Array(8)].map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-1 h-4 rounded-full ${
-                              msg.type === 'user' ? 'bg-white/60' : 'bg-tamtam-primary/60'
-                            }`}
-                            style={{ height: 8 + Math.random() * 16 }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <VoiceMessage
+                    transcriptFr={msg.textFr}
+                    transcriptBa={msg.textBa}
+                    audioUrl={msg.audioUrl}
+                    duration={5}
+                    isOwn={msg.type === 'user'}
+                    showTranscription={true}
+                  />
                 </motion.div>
               ))}
             </div>

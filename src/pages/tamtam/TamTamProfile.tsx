@@ -1,6 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { Volume2 } from 'lucide-react';
+import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
+import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import { tamtamFeedback } from '@/utils/tamtamFeedback';
 
 const badges = [
   { icon: '⭐', color: 'bg-yellow-100' },
@@ -10,22 +15,39 @@ const badges = [
 ];
 
 const settingsItems = [
-  { icon: '🔔', id: 'notifications' },
-  { icon: '🌐', id: 'language' },
-  { icon: '❓', id: 'help' },
+  { icon: '🔔', id: 'notifications', labelKey: 'notifications' },
+  { icon: '🌐', id: 'language', labelKey: 'language' },
+  { icon: '❓', id: 'help', labelKey: 'help' },
+];
+
+const stats = [
+  { icon: '📢', value: '42', labelKey: 'posts' },
+  { icon: '👥', value: '128', labelKey: 'followers' },
+  { icon: '❤️', value: '1.2K', labelKey: 'likes' },
 ];
 
 export default function TamTamProfile() {
   const [isRecording, setIsRecording] = useState(false);
   const [hasBio, setHasBio] = useState(false);
+  const { t, currentLang } = useTamTamLanguage();
+  const { announce } = useAudioDescription();
+  const { speakCurrentLang } = useBilingualAudio();
+
+  useEffect(() => {
+    announce(t('screenProfile'));
+  }, [announce, t]);
 
   const handleRecordBio = () => {
+    tamtamFeedback.play('click');
+    
     if (!isRecording) {
       setIsRecording(true);
-      // Simulate recording
+      speakCurrentLang(t('recordBio'));
+      
       setTimeout(() => {
         setIsRecording(false);
         setHasBio(true);
+        tamtamFeedback.play('success');
       }, 3000);
     } else {
       setIsRecording(false);
@@ -33,13 +55,23 @@ export default function TamTamProfile() {
     }
   };
 
+  const handleSettingPress = (labelKey: string) => {
+    tamtamFeedback.play('click');
+    speakCurrentLang(t(labelKey));
+  };
+
+  const handleSpeakStat = (labelKey: string) => {
+    tamtamFeedback.play('click');
+    speakCurrentLang(t(labelKey));
+  };
+
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4 pt-8">
+    <div className="min-h-screen bg-tamtam-bg px-4 pt-8 pb-32">
       {/* Profile photo */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        className="flex justify-center mb-6"
+        className="flex justify-center mb-4"
       >
         <button className="relative">
           <div className="w-32 h-32 bg-tamtam-surface rounded-full shadow-tamtam-soft flex items-center justify-center">
@@ -51,6 +83,21 @@ export default function TamTamProfile() {
         </button>
       </motion.div>
 
+      {/* Title */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="text-center mb-6"
+      >
+        <h1 className="text-xl font-bold text-tamtam-text">{t('profile')}</h1>
+        <span className="inline-flex items-center gap-1 mt-1 px-3 py-1 bg-tamtam-secondary/10 rounded-full">
+          <span className="text-sm">🌐</span>
+          <span className="text-xs font-medium text-tamtam-secondary">
+            {currentLang === 'ba' ? 'Bàátɔ̀nú' : 'Français'}
+          </span>
+        </span>
+      </motion.div>
+
       {/* Voice bio section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -59,10 +106,15 @@ export default function TamTamProfile() {
         className="bg-tamtam-surface rounded-3xl p-6 shadow-tamtam-soft mb-6"
       >
         <div className="flex items-center justify-between mb-4">
-          <span className="text-3xl">🎙️</span>
+          <div className="flex items-center gap-2">
+            <span className="text-3xl">🎙️</span>
+            <span className="text-sm font-medium text-tamtam-text">
+              {t('audioBio')}
+            </span>
+          </div>
           {hasBio && (
             <div className="flex items-center gap-2">
-              <span className="text-xl">✓</span>
+              <span className="text-xl text-green-500">✓</span>
             </div>
           )}
         </div>
@@ -79,12 +131,15 @@ export default function TamTamProfile() {
             ))}
           </div>
         ) : (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-2">
             <TamTamMicButton
               size="md"
               isRecording={isRecording}
               onPress={handleRecordBio}
             />
+            <span className="text-xs text-tamtam-text-muted">
+              {t('recordBio')}
+            </span>
           </div>
         )}
       </motion.div>
@@ -96,6 +151,10 @@ export default function TamTamProfile() {
         transition={{ delay: 0.3 }}
         className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft mb-6"
       >
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-lg">🏅</span>
+          <span className="text-sm font-medium text-tamtam-text">{t('badges')}</span>
+        </div>
         <div className="flex justify-center gap-4">
           {badges.map((badge, index) => (
             <motion.div
@@ -118,18 +177,17 @@ export default function TamTamProfile() {
         transition={{ delay: 0.5 }}
         className="grid grid-cols-3 gap-4 mb-6"
       >
-        <div className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft text-center">
-          <span className="text-2xl">📢</span>
-          <div className="text-2xl font-bold text-tamtam-text mt-1">42</div>
-        </div>
-        <div className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft text-center">
-          <span className="text-2xl">👥</span>
-          <div className="text-2xl font-bold text-tamtam-text mt-1">128</div>
-        </div>
-        <div className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft text-center">
-          <span className="text-2xl">❤️</span>
-          <div className="text-2xl font-bold text-tamtam-text mt-1">1.2K</div>
-        </div>
+        {stats.map((stat, index) => (
+          <button
+            key={stat.labelKey}
+            onClick={() => handleSpeakStat(stat.labelKey)}
+            className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft text-center active:scale-95 transition-transform"
+          >
+            <span className="text-2xl">{stat.icon}</span>
+            <div className="text-2xl font-bold text-tamtam-text mt-1">{stat.value}</div>
+            <div className="text-xs text-tamtam-text-muted">{t(stat.labelKey)}</div>
+          </button>
+        ))}
       </motion.div>
 
       {/* Settings items */}
@@ -139,13 +197,17 @@ export default function TamTamProfile() {
         transition={{ delay: 0.6 }}
         className="space-y-3"
       >
-        {settingsItems.map((item, index) => (
+        {settingsItems.map((item) => (
           <button
             key={item.id}
-            className="w-full bg-tamtam-surface rounded-2xl p-4 shadow-tamtam-soft flex items-center gap-4"
+            onClick={() => handleSettingPress(item.labelKey)}
+            className="w-full bg-tamtam-surface rounded-2xl p-4 shadow-tamtam-soft flex items-center gap-4 active:scale-[0.98] transition-transform"
           >
             <span className="text-2xl">{item.icon}</span>
-            <div className="flex-1" />
+            <span className="flex-1 text-left font-medium text-tamtam-text">
+              {t(item.labelKey)}
+            </span>
+            <Volume2 className="w-5 h-5 text-tamtam-text-muted" />
             <span className="text-xl text-tamtam-text-muted">→</span>
           </button>
         ))}

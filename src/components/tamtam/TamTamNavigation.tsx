@@ -2,23 +2,38 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TamTamMicButton } from './TamTamMicButton';
 import { useState } from 'react';
+import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import { tamtamFeedback } from '@/utils/tamtamFeedback';
 
 const navItems = [
-  { icon: '🏠', path: '/tamtam/home', id: 'home' },
-  { icon: '💬', path: '/tamtam/social', id: 'social' },
-  { icon: '🛒', path: '/tamtam/market', id: 'market' },
-  { icon: '👤', path: '/tamtam/profile', id: 'profile' },
+  { icon: '🏠', path: '/tamtam/home', id: 'home', labelKey: 'home' },
+  { icon: '💬', path: '/tamtam/social', id: 'social', labelKey: 'social' },
+  { icon: '🛒', path: '/tamtam/market', id: 'market', labelKey: 'market' },
+  { icon: '👤', path: '/tamtam/profile', id: 'profile', labelKey: 'profile' },
 ];
 
 export function TamTamNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
+  const { t } = useTamTamLanguage();
+  const { speakCurrentLang } = useBilingualAudio();
 
   const isActive = (path: string) => location.pathname === path;
 
   const handleMicPress = () => {
+    tamtamFeedback.play('click');
     setIsRecording(!isRecording);
+    if (!isRecording) {
+      speakCurrentLang(t('nowListening'));
+    }
+  };
+
+  const handleNavPress = (path: string, labelKey: string) => {
+    tamtamFeedback.play('click');
+    speakCurrentLang(t(labelKey));
+    navigate(path);
   };
 
   return (
@@ -46,15 +61,18 @@ export function TamTamNavigation() {
           {navItems.slice(0, 2).map((item) => (
             <button
               key={item.id}
-              onClick={() => navigate(item.path)}
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all ${
+              onClick={() => handleNavPress(item.path, item.labelKey)}
+              className={`flex flex-col items-center gap-1 w-16 py-1 rounded-2xl transition-all ${
                 isActive(item.path)
                   ? 'bg-tamtam-primary/10'
                   : ''
               }`}
             >
-              <span className={isActive(item.path) ? 'scale-110' : ''}>
+              <span className={`text-2xl ${isActive(item.path) ? 'scale-110' : ''}`}>
                 {item.icon}
+              </span>
+              <span className={`text-xs ${isActive(item.path) ? 'text-tamtam-primary font-medium' : 'text-tamtam-text-muted'}`}>
+                {t(item.labelKey)}
               </span>
             </button>
           ))}
@@ -65,15 +83,18 @@ export function TamTamNavigation() {
           {navItems.slice(2).map((item) => (
             <button
               key={item.id}
-              onClick={() => navigate(item.path)}
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all ${
+              onClick={() => handleNavPress(item.path, item.labelKey)}
+              className={`flex flex-col items-center gap-1 w-16 py-1 rounded-2xl transition-all ${
                 isActive(item.path)
                   ? 'bg-tamtam-primary/10'
                   : ''
               }`}
             >
-              <span className={isActive(item.path) ? 'scale-110' : ''}>
+              <span className={`text-2xl ${isActive(item.path) ? 'scale-110' : ''}`}>
                 {item.icon}
+              </span>
+              <span className={`text-xs ${isActive(item.path) ? 'text-tamtam-primary font-medium' : 'text-tamtam-text-muted'}`}>
+                {t(item.labelKey)}
               </span>
             </button>
           ))}
