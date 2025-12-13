@@ -1,9 +1,20 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Languages, Mic, Volume2, ArrowLeftRight, Sparkles } from 'lucide-react';
+import { Languages, ArrowLeftRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
+import { PhraseTranslator } from '@/components/PhraseTranslator';
+import AdvancedDictionarySearch from '@/components/AdvancedDictionarySearch';
+import { VoiceTab } from '@/components/voice/VoiceTab';
 
 export default function YovoTranslator() {
+  const [direction, setDirection] = useState<'fr-bba' | 'bba-fr'>('fr-bba');
+
+  const toggleDirection = () => {
+    setDirection(prev => prev === 'fr-bba' ? 'bba-fr' : 'fr-bba');
+  };
+
   return (
     <div className="px-4 py-6 space-y-6">
       <motion.div
@@ -28,48 +39,73 @@ export default function YovoTranslator() {
         <div className="flex items-center justify-between">
           <div className="text-center flex-1">
             <p className="text-sm text-slate-500 mb-1">De</p>
-            <p className="text-lg font-semibold text-white">Français</p>
+            <p className="text-lg font-semibold text-white">
+              {direction === 'fr-bba' ? 'Français' : 'Bàátɔ̀nú'}
+            </p>
           </div>
-          <Button size="icon" variant="ghost" className="text-orange-400">
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="text-orange-400"
+            onClick={toggleDirection}
+          >
             <ArrowLeftRight className="w-5 h-5" />
           </Button>
           <div className="text-center flex-1">
             <p className="text-sm text-slate-500 mb-1">Vers</p>
-            <p className="text-lg font-semibold text-white">Bàátɔ̀nú</p>
+            <p className="text-lg font-semibold text-white">
+              {direction === 'fr-bba' ? 'Bàátɔ̀nú' : 'Français'}
+            </p>
           </div>
         </div>
       </motion.div>
 
-      {/* Main translation area */}
+      {/* Tabs for different modes */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="space-y-4"
       >
-        {/* Input */}
-        <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/5 min-h-[150px] flex flex-col">
-          <p className="text-slate-400 text-sm mb-2">Parlez ou tapez votre texte...</p>
-          <div className="flex-1 flex items-center justify-center">
-            <Button
-              size="lg"
-              className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 shadow-lg shadow-orange-500/30"
+        <Tabs defaultValue="translator" className="w-full">
+          <TabsList className="w-full bg-slate-900/50 border border-white/10">
+            <TabsTrigger 
+              value="translator" 
+              className="flex-1 data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-400"
             >
-              <Mic className="w-8 h-8 text-white" />
-            </Button>
-          </div>
-        </div>
+              💬 Texte
+            </TabsTrigger>
+            <TabsTrigger 
+              value="voice" 
+              className="flex-1 data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400"
+            >
+              🎤 Voix
+            </TabsTrigger>
+            <TabsTrigger 
+              value="dictionary" 
+              className="flex-1 data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400"
+            >
+              📚 Dico
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Output */}
-        <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl p-6 border border-blue-500/20 min-h-[150px]">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-blue-400 text-sm">Traduction</p>
-            <Button size="icon" variant="ghost" className="text-blue-400">
-              <Volume2 className="w-5 h-5" />
-            </Button>
-          </div>
-          <p className="text-slate-400 italic">La traduction apparaîtra ici...</p>
-        </div>
+          <TabsContent value="translator" className="mt-4">
+            <div className="bg-slate-900/30 rounded-2xl border border-white/5 p-4">
+              <PhraseTranslator />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="voice" className="mt-4">
+            <div className="bg-slate-900/30 rounded-2xl border border-white/5 p-4">
+              <VoiceTab />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="dictionary" className="mt-4">
+            <div className="bg-slate-900/30 rounded-2xl border border-white/5 p-4 max-h-[500px] overflow-y-auto">
+              <AdvancedDictionarySearch />
+            </div>
+          </TabsContent>
+        </Tabs>
       </motion.div>
 
       {/* Link to full translator */}
@@ -101,7 +137,7 @@ export default function YovoTranslator() {
           { icon: '🔊', title: 'Texte vers Voix', desc: 'Écoutez la prononciation' },
           { icon: '⚡', title: 'Temps Réel', desc: 'Traduction instantanée' },
           { icon: '📚', title: '80K+ Phrases', desc: 'Base de données riche' },
-        ].map((feature, i) => (
+        ].map((feature) => (
           <div
             key={feature.title}
             className="bg-slate-900/30 rounded-xl p-4 border border-white/5"
