@@ -1,62 +1,188 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, Radio, Newspaper, Plus, BarChart3 } from 'lucide-react';
+import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
+import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
+import { TamTamEnhancedFeedCard, EnhancedPost } from '@/components/tamtam/TamTamEnhancedFeedCard';
+import { TamTamStories } from '@/components/tamtam/TamTamStories';
+import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
+import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
+import { TamTamVocalPoll } from '@/components/tamtam/TamTamVocalPoll';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
-import { Play, Pause } from 'lucide-react';
+import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const tabs = [
-  { icon: '📢', id: 'feed' },
-  { icon: '💬', id: 'messages' },
-  { icon: '📻', id: 'live' },
-];
-
-const mockPosts = [
-  { id: 1, avatar: '👨🏾', duration: '0:45', likes: 24, isPlaying: false },
-  { id: 2, avatar: '👩🏾', duration: '1:20', likes: 89, isPlaying: false },
-  { id: 3, avatar: '👴🏾', duration: '0:30', likes: 156, isPlaying: false },
-  { id: 4, avatar: '👧🏾', duration: '2:05', likes: 42, isPlaying: false },
-];
-
-const mockMessages = [
-  { id: 1, avatar: '👨🏾', unread: 3, lastTime: '2m' },
-  { id: 2, avatar: '👩🏾', unread: 0, lastTime: '1h' },
-  { id: 3, avatar: '👴🏾', unread: 1, lastTime: '3h' },
-];
-
-const mockLiveRooms = [
-  { id: 1, host: '👨🏾', listeners: 45, title: '🎵' },
-  { id: 2, host: '👩🏾', listeners: 128, title: '💬' },
-  { id: 3, host: '👴🏾', listeners: 23, title: '📖' },
+  { id: 'feed', icon: Newspaper, label: 'feed' },
+  { id: 'messages', icon: MessageCircle, label: 'messages' },
+  { id: 'live', icon: Radio, label: 'live' },
 ];
 
 export default function TamTamSocial() {
-  const [activeTab, setActiveTab] = useState('feed');
-  const [playingId, setPlayingId] = useState<number | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
+  const { t } = useTamTamLanguage();
+  const { announceScreen } = useAudioDescription();
+  const { toast } = useToast();
+  const { 
+    posts, 
+    stories, 
+    isLoading, 
+    createPost, 
+    addReaction, 
+    fetchComments, 
+    addComment,
+    createStory,
+    fetchPosts
+  } = useTamTamPosts();
 
-  const handlePlay = (id: number) => {
-    setPlayingId(playingId === id ? null : id);
+  const [activeTab, setActiveTab] = useState('feed');
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [showCreatePoll, setShowCreatePoll] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [commentsModal, setCommentsModal] = useState<{
+    isOpen: boolean;
+    postId: string | null;
+    comments: TamTamComment[];
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    postId: null,
+    comments: [],
+    isLoading: false
+  });
+
+  // Announce screen on mount
+  useEffect(() => {
+    announceScreen('social');
+  }, [announceScreen]);
+
+  // Announce tab changes
+  useEffect(() => {
+    if (activeTab === 'messages') {
+      announceScreen('messages');
+    } else if (activeTab === 'live') {
+      announceScreen('live');
+    }
+  }, [activeTab, announceScreen]);
+
+  const handleTabChange = (tabId: string) => {
+    triggerFeedback('notification', { haptic: true, sound: false });
+    setActiveTab(tabId);
   };
 
+  const handleOpenComments = async (postId: string) => {
+    setCommentsModal({ isOpen: true, postId, comments: [], isLoading: true });
+    const comments = await fetchComments(postId);
+    setCommentsModal(prev => ({ ...prev, comments, isLoading: false }));
+  };
+
+  const handleAddComment = async (audioBase64: string, duration: number) => {
+    if (!commentsModal.postId) return;
+
+    try {
+      const audioBlob = base64ToBlob(audioBase64, 'audio/webm');
+      const fileName = `comment_${Date.now()}.webm`;
+      
+      const { error } = await supabase.storage
+        .from('yovo-audio')
+        .upload(fileName, audioBlob, { contentType: 'audio/webm' });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('yovo-audio')
+        .getPublicUrl(fileName);
+
+      await addComment(commentsModal.postId, {
+        audio_url: urlData.publicUrl,
+        duration_seconds: duration
+      });
+
+      triggerFeedback('success');
+      const comments = await fetchComments(commentsModal.postId);
+      setCommentsModal(prev => ({ ...prev, comments }));
+    } catch (err: any) {
+      triggerFeedback('error');
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleShare = (postId: string) => {
+    triggerFeedback('send');
+    if (navigator.share) {
+      navigator.share({
+        title: 'TAM-TAM',
+        text: 'Découvrez ce post sur TAM-TAM !',
+        url: window.location.href
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast({ title: "🔗 Lien copié !" });
+    }
+  };
+
+  const handleReaction = (postId: string, reaction: string) => {
+    addReaction(postId, reaction);
+  };
+
+  const handleCreatePoll = async (pollData: { question_audio_url: string; options: { audio_url: string }[] }) => {
+    // For now, create as a special post with poll data
+    await createPost({
+      audio_url: pollData.question_audio_url,
+      media_type: 'poll',
+    });
+    setShowCreatePoll(false);
+  };
+
+  const base64ToBlob = (base64: string, mimeType: string): Blob => {
+    const byteCharacters = atob(base64.split(',')[1] || base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+  };
+
+  // Convert posts to enhanced format
+  const enhancedPosts: EnhancedPost[] = posts.map(post => ({
+    ...post,
+    media_type: (post as any).media_type || 'audio',
+    media_url: (post as any).media_url || null,
+    thumbnail_url: (post as any).thumbnail_url || null,
+    transcript_fr: (post as any).transcript_fr || (post as any).transcript || null,
+    transcript_ba: (post as any).transcript_ba || null,
+    feeling_emoji: (post as any).feeling_emoji || null,
+  }));
+
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4">
-      {/* Tab bar - icons only */}
-      <div className="flex justify-center gap-4 mb-6">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl transition-all ${
-              activeTab === tab.id
-                ? 'bg-tamtam-primary text-white shadow-tamtam-soft'
-                : 'bg-tamtam-surface text-tamtam-text-muted'
-            }`}
-          >
-            {tab.icon}
-          </button>
-        ))}
+    <div className="min-h-screen bg-[#FAFAFA] pb-24">
+      {/* Tab Bar */}
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100">
+        <div className="flex justify-center gap-2 p-3">
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <motion.button
+                key={tab.id}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleTabChange(tab.id)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
+                  isActive 
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-500'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="hidden sm:inline">{t(tab.label)}</span>
+              </motion.button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Content */}
       <AnimatePresence mode="wait">
         {activeTab === 'feed' && (
           <motion.div
@@ -64,53 +190,51 @@ export default function TamTamSocial() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="space-y-4"
           >
-            {mockPosts.map((post) => (
-              <div
-                key={post.id}
-                className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft flex items-center gap-4"
-              >
-                <div className="text-4xl">{post.avatar}</div>
-                
-                {/* Audio wave visualization */}
-                <div className="flex-1 h-12 bg-tamtam-bg rounded-2xl flex items-center px-4 gap-1">
-                  {[...Array(20)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={playingId === post.id ? {
-                        height: [8, 20 + Math.random() * 20, 8],
-                      } : { height: 8 }}
-                      transition={{
-                        duration: 0.5,
-                        repeat: playingId === post.id ? Infinity : 0,
-                        delay: i * 0.05,
-                      }}
-                      className="w-1 bg-tamtam-primary rounded-full"
-                      style={{ height: 8 }}
-                    />
-                  ))}
-                </div>
+            {/* Stories */}
+            <div className="bg-white border-b border-gray-100">
+              <TamTamStories 
+                stories={stories} 
+                onCreateStory={() => setShowCreatePost(true)}
+              />
+            </div>
 
-                {/* Play button */}
-                <button
-                  onClick={() => handlePlay(post.id)}
-                  className="w-14 h-14 bg-tamtam-primary rounded-full flex items-center justify-center text-white"
-                >
-                  {playingId === post.id ? (
-                    <Pause className="w-6 h-6" />
-                  ) : (
-                    <Play className="w-6 h-6 ml-1" />
-                  )}
-                </button>
-
-                {/* Likes */}
-                <div className="flex flex-col items-center">
-                  <span className="text-xl">❤️</span>
-                  <span className="text-sm text-tamtam-text-muted">{post.likes}</span>
+            {/* Feed */}
+            <div className="p-4 space-y-4">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                    className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full"
+                  />
+                  <p className="mt-4 text-gray-400">{t('loading')}</p>
                 </div>
-              </div>
-            ))}
+              ) : enhancedPosts.length === 0 ? (
+                <div className="text-center py-12">
+                  <Newspaper className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500">{t('noData')}</p>
+                  <p className="text-sm text-gray-400 mt-1">Soyez le premier à publier !</p>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowCreatePost(true)}
+                    className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium"
+                  >
+                    Créer ma première publication
+                  </motion.button>
+                </div>
+              ) : (
+                enhancedPosts.map(post => (
+                  <TamTamEnhancedFeedCard
+                    key={post.id}
+                    post={post}
+                    onReaction={handleReaction}
+                    onComment={handleOpenComments}
+                    onShare={handleShare}
+                  />
+                ))
+              )}
+            </div>
           </motion.div>
         )}
 
@@ -120,29 +244,13 @@ export default function TamTamSocial() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="space-y-4"
+            className="p-4"
           >
-            {mockMessages.map((msg) => (
-              <div
-                key={msg.id}
-                className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft flex items-center gap-4"
-              >
-                <div className="text-4xl relative">
-                  {msg.avatar}
-                  {msg.unread > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
-                      {msg.unread}
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex-1 h-10 bg-tamtam-bg rounded-2xl flex items-center px-4">
-                  <span className="text-xl">🔊</span>
-                </div>
-
-                <span className="text-tamtam-text-muted text-sm">{msg.lastTime}</span>
-              </div>
-            ))}
+            <div className="text-center py-12">
+              <MessageCircle className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-500">{t('messages')}</p>
+              <p className="text-sm text-gray-400 mt-1">Bientôt disponible</p>
+            </div>
           </motion.div>
         )}
 
@@ -152,47 +260,84 @@ export default function TamTamSocial() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="space-y-4"
+            className="p-4"
           >
-            {mockLiveRooms.map((room) => (
-              <div
-                key={room.id}
-                className="bg-tamtam-surface rounded-3xl p-6 shadow-tamtam-soft"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="text-4xl">{room.host}</div>
-                    <span className="text-2xl">{room.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-red-500 text-white px-3 py-1 rounded-full">
-                    <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                    <span className="text-sm font-medium">LIVE</span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">👥</span>
-                    <span className="text-tamtam-text-muted">{room.listeners}</span>
-                  </div>
-                  <button className="bg-tamtam-primary text-white px-6 py-3 rounded-2xl flex items-center gap-2">
-                    <span className="text-xl">🎧</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+            <div className="text-center py-12">
+              <Radio className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-500">{t('live')}</p>
+              <p className="text-sm text-gray-400 mt-1">Salles audio en direct - Bientôt</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Floating mic for creating content */}
-      <div className="fixed bottom-28 right-4">
-        <TamTamMicButton
-          size="md"
-          isRecording={isRecording}
-          onPress={() => setIsRecording(!isRecording)}
+      {/* Floating Create Button with Menu */}
+      <div className="fixed bottom-24 right-4 z-30">
+        <AnimatePresence>
+          {showCreateMenu && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              className="absolute bottom-20 right-0 bg-white rounded-2xl shadow-xl p-2 space-y-1"
+            >
+              <button
+                onClick={() => {
+                  setShowCreatePost(true);
+                  setShowCreateMenu(false);
+                }}
+                className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 rounded-xl"
+              >
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-blue-600" />
+                </div>
+                <span className="font-medium text-gray-700">Publication</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowCreatePoll(true);
+                  setShowCreateMenu(false);
+                }}
+                className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 rounded-xl"
+              >
+                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-orange-600" />
+                </div>
+                <span className="font-medium text-gray-700">Sondage Vocal</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <TamTamMicButton 
+          onPress={() => setShowCreateMenu(!showCreateMenu)}
         />
       </div>
+
+      {/* Modals */}
+      <TamTamCommentsModal
+        isOpen={commentsModal.isOpen}
+        onClose={() => setCommentsModal(prev => ({ ...prev, isOpen: false }))}
+        comments={commentsModal.comments}
+        onAddComment={handleAddComment}
+        isLoading={commentsModal.isLoading}
+      />
+
+      <TamTamCreatePost
+        isOpen={showCreatePost}
+        onClose={() => setShowCreatePost(false)}
+        onSubmit={async (data) => {
+          await createPost(data);
+          triggerFeedback('success');
+        }}
+      />
+
+      <TamTamVocalPoll
+        isOpen={showCreatePoll}
+        onClose={() => setShowCreatePoll(false)}
+        onSubmit={handleCreatePoll}
+      />
     </div>
   );
 }
