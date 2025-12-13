@@ -1,9 +1,11 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, X, Loader2, Volume2, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import { useBaribaSTT } from '@/hooks/useBaribaSTT';
+import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { supabase } from '@/integrations/supabase/client';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +24,9 @@ interface RaconteMoiAssistantProps {
 export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onAction }) => {
   const navigate = useNavigate();
   const { t, currentLang } = useTamTamLanguage();
-  const { speakCurrentLang } = useBilingualAudio();
+  const { speakCurrentLang, speakBariba, speakFrench } = useBilingualAudio();
+  const baribaSTT = useBaribaSTT();
+  const audioRecorder = useAudioRecorder();
   const { toast } = useToast();
   
   const [isOpen, setIsOpen] = useState(false);
@@ -30,43 +34,61 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState<AssistantResponse | null>(null);
-  
-  // Speech recognition
-  const [recognition, setRecognition] = useState<any>(null);
 
-  useEffect(() => {
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognitionAPI) {
-      const recognitionInstance = new SpeechRecognitionAPI();
-      recognitionInstance.continuous = false;
-      recognitionInstance.interimResults = true;
-      recognitionInstance.lang = 'fr-FR'; // Fallback to French for STT
+  const startListening = useCallback(async () => {
+    setTranscript('');
+    setResponse(null);
+    setIsListening(true);
+    tamtamFeedback.play('record');
+    
+    // Welcome message in current language
+    await speakCurrentLang(currentLang === 'ba' 
+      ? 'Mo ń gbọ́ ọ. Sọ ohun tí o fẹ́.'
+      : 'Je vous écoute. Dites ce que vous voulez faire.'
+    );
+    
+    // Start recording for Bariba STT
+    await audioRecorder.startRecording();
+  }, [currentLang, speakCurrentLang, audioRecorder]);
+
+  const stopListening = useCallback(async () => {
+    setIsListening(false);
+    setIsProcessing(true);
+    
+    try {
+      // Stop recording and get audio
+      const audioBase64 = await audioRecorder.stopRecording();
       
-      recognitionInstance.onresult = (event: any) => {
-        const current = event.resultIndex;
-        const result = event.results[current];
-        setTranscript(result[0].transcript);
-        
-        if (result.isFinal) {
-          processCommand(result[0].transcript);
-        }
-      };
+      if (!audioBase64) {
+        setIsProcessing(false);
+        return;
+      }
       
-      recognitionInstance.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-      };
+      // Transcribe using Bariba STT (works for both Bariba and French with accent)
+      const sttResult = await baribaSTT.transcribe(audioBase64);
       
-      recognitionInstance.onend = () => {
-        setIsListening(false);
-      };
+      if (!sttResult?.transcription) {
+        toast({
+          title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
+          description: currentLang === 'ba' ? 'Kò lè gbọ́ ohun' : 'Impossible de comprendre',
+          variant: 'destructive'
+        });
+        setIsProcessing(false);
+        return;
+      }
       
-      setRecognition(recognitionInstance);
+      setTranscript(sttResult.transcription);
+      
+      // Process the command
+      await processCommand(sttResult.transcription);
+      
+    } catch (err) {
+      console.error('[RaconteMoiAssistant] Error:', err);
+      setIsProcessing(false);
     }
-  }, [currentLang]);
+  }, [audioRecorder, baribaSTT, currentLang, toast]);
 
   const processCommand = useCallback(async (command: string) => {
-    setIsProcessing(true);
     tamtamFeedback.play('send');
     
     try {
@@ -79,7 +101,7 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
       const result = data as AssistantResponse;
       setResponse(result);
       
-      // Speak the response
+      // Speak the response in current language
       const responseText = currentLang === 'ba' ? result.response_ba : result.response_fr;
       await speakCurrentLang(responseText);
       
@@ -117,39 +139,27 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
     }
   }, [currentLang, navigate, onAction, speakCurrentLang, toast]);
 
-  const startListening = useCallback(() => {
-    if (recognition) {
-      setTranscript('');
-      setResponse(null);
-      setIsListening(true);
-      tamtamFeedback.play('record');
-      recognition.start();
-      
-      // Welcome message
-      speakCurrentLang(currentLang === 'ba' 
-        ? 'Mo ń gbọ́ ọ. Sọ ohun tí o fẹ́.'
-        : 'Je vous écoute. Dites ce que vous voulez faire.'
-      );
-    }
-  }, [recognition, currentLang, speakCurrentLang]);
-
-  const stopListening = useCallback(() => {
-    if (recognition) {
-      recognition.stop();
-      setIsListening(false);
-    }
-  }, [recognition]);
-
   const toggleOpen = useCallback(() => {
     tamtamFeedback.play('click');
     if (isOpen) {
-      stopListening();
+      if (isListening) {
+        audioRecorder.cancelRecording();
+      }
+      setIsListening(false);
       setIsOpen(false);
     } else {
       setIsOpen(true);
       setTimeout(() => startListening(), 500);
     }
-  }, [isOpen, startListening, stopListening]);
+  }, [isOpen, isListening, startListening, audioRecorder]);
+
+  const handleMicToggle = useCallback(() => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  }, [isListening, startListening, stopListening]);
 
   return (
     <>
@@ -192,7 +202,7 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
                   <div>
                     <h3 className="text-white font-bold text-lg">Raconte-Moi</h3>
                     <p className="text-white/70 text-sm">
-                      {currentLang === 'ba' ? 'Olùrànlọ́wọ́ ohùn' : 'Assistant vocal'}
+                      {currentLang === 'ba' ? 'Olùrànlọ́wọ́ ohùn Bàátɔ̀nú' : 'Assistant vocal Bariba'}
                     </p>
                   </div>
                 </div>
@@ -223,12 +233,30 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
                   {isProcessing ? (
                     <Loader2 className="w-12 h-12 text-white animate-spin" />
                   ) : isListening ? (
-                    <Mic className="w-12 h-12 text-white animate-pulse" />
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          animate={{ height: [10, 30, 10] }}
+                          transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1 }}
+                          className="w-2 bg-white rounded-full"
+                        />
+                      ))}
+                    </div>
                   ) : (
                     <Volume2 className="w-12 h-12 text-white/60" />
                   )}
                 </motion.div>
               </div>
+
+              {/* Recording duration */}
+              {isListening && audioRecorder.duration > 0 && (
+                <div className="text-center mb-4">
+                  <span className="text-white/70 text-sm">
+                    {Math.floor(audioRecorder.duration / 60)}:{(audioRecorder.duration % 60).toString().padStart(2, '0')}
+                  </span>
+                </div>
+              )}
 
               {/* Transcript */}
               {transcript && (
@@ -260,7 +288,7 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
 
               {/* Action Button */}
               <button
-                onClick={isListening ? stopListening : startListening}
+                onClick={handleMicToggle}
                 disabled={isProcessing}
                 className={`w-full py-4 rounded-2xl font-bold text-white transition-all ${
                   isListening 
@@ -269,18 +297,22 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
                 }`}
               >
                 {isListening 
-                  ? (currentLang === 'ba' ? 'Dúró' : 'Arrêter')
-                  : (currentLang === 'ba' ? 'Bẹ̀rẹ̀ sísọ' : 'Commencer à parler')
+                  ? (currentLang === 'ba' ? '⏹️ Dúró' : '⏹️ Arrêter')
+                  : (currentLang === 'ba' ? '🎤 Bẹ̀rẹ̀ sísọ' : '🎤 Commencer à parler')
                 }
               </button>
 
               {/* Quick Commands */}
               <div className="mt-4 flex flex-wrap gap-2">
-                {['Accueil', 'Social', 'Marché', 'Profil'].map((cmd) => (
+                {['Accueil', 'Social', 'Marché', 'Profil', 'Urgence'].map((cmd) => (
                   <button
                     key={cmd}
-                    onClick={() => processCommand(cmd)}
-                    className="px-3 py-1.5 rounded-full bg-white/10 text-white text-sm hover:bg-white/20 transition-colors"
+                    onClick={() => {
+                      setTranscript(cmd);
+                      processCommand(cmd);
+                    }}
+                    disabled={isProcessing || isListening}
+                    className="px-3 py-1.5 rounded-full bg-white/10 text-white text-sm hover:bg-white/20 transition-colors disabled:opacity-50"
                   >
                     {cmd}
                   </button>

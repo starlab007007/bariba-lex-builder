@@ -1,10 +1,25 @@
 import { motion } from 'framer-motion';
-import { Mic } from 'lucide-react';
+import { Mic, Square, Loader2 } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { useAudioRecorder } from '@/hooks/useAudioRecorder';
+import { useBaribaSTT } from '@/hooks/useBaribaSTT';
+import { byT5TranslationService } from '@/services/ByT5TranslationService';
 
 interface TamTamMicButtonProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   isRecording?: boolean;
   onPress?: () => void;
+  // New props for full voice pipeline
+  onRecordingComplete?: (result: {
+    audioBase64: string;
+    transcription?: string;
+    translation?: string;
+    sourceLang: 'ba' | 'fr';
+  }) => void;
+  autoTranscribe?: boolean;
+  autoTranslate?: boolean;
+  sourceLang?: 'ba' | 'fr';
+  disabled?: boolean;
 }
 
 const sizeClasses = {
@@ -23,17 +38,100 @@ const iconSizes = {
 
 export function TamTamMicButton({ 
   size = 'md', 
-  isRecording = false, 
-  onPress 
+  isRecording: externalIsRecording, 
+  onPress,
+  onRecordingComplete,
+  autoTranscribe = false,
+  autoTranslate = false,
+  sourceLang = 'ba',
+  disabled = false
 }: TamTamMicButtonProps) {
+  const [internalRecording, setInternalRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  const audioRecorder = useAudioRecorder();
+  const baribaSTT = useBaribaSTT();
+  
+  // Use external control if provided, otherwise internal
+  const isRecording = externalIsRecording !== undefined ? externalIsRecording : internalRecording;
+
+  const handlePress = useCallback(async () => {
+    if (disabled) return;
+    
+    // If we have a callback for complete pipeline
+    if (onRecordingComplete) {
+      if (!isRecording && !audioRecorder.isRecording) {
+        // Start recording
+        setInternalRecording(true);
+        await audioRecorder.startRecording();
+      } else {
+        // Stop recording and process
+        setInternalRecording(false);
+        setIsProcessing(true);
+        
+        try {
+          const audioBase64 = await audioRecorder.stopRecording();
+          
+          if (!audioBase64) {
+            setIsProcessing(false);
+            return;
+          }
+          
+          let transcription: string | undefined;
+          let translation: string | undefined;
+          
+          // Auto-transcribe if enabled
+          if (autoTranscribe && sourceLang === 'ba') {
+            const sttResult = await baribaSTT.transcribe(audioBase64);
+            transcription = sttResult?.transcription;
+            
+            // Auto-translate if enabled
+            if (autoTranslate && transcription) {
+              try {
+                const result = await byT5TranslationService.translate(
+                  transcription,
+                  'bariba',
+                  'french'
+                );
+                translation = result.translation;
+              } catch (err) {
+                console.error('[TamTamMicButton] Translation error:', err);
+              }
+            }
+          }
+          
+          onRecordingComplete({
+            audioBase64,
+            transcription,
+            translation,
+            sourceLang
+          });
+        } catch (err) {
+          console.error('[TamTamMicButton] Recording error:', err);
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    } else {
+      // Simple toggle mode for backward compatibility
+      onPress?.();
+    }
+  }, [
+    disabled, isRecording, audioRecorder, onRecordingComplete, 
+    autoTranscribe, autoTranslate, sourceLang, baribaSTT, onPress
+  ]);
+
+  const showRecordingState = isRecording || audioRecorder.isRecording;
+  
   return (
     <motion.button
-      onClick={onPress}
+      onClick={handlePress}
       whileTap={{ scale: 0.95 }}
       className="relative"
+      disabled={disabled || isProcessing}
     >
       {/* Animated rings when recording */}
-      {isRecording && (
+      {showRecordingState && (
         <>
           <motion.div
             animate={{ scale: [1, 1.4], opacity: [0.4, 0] }}
@@ -56,31 +154,50 @@ export function TamTamMicButton({
       {/* Main button */}
       <div
         className={`${sizeClasses[size]} rounded-full flex items-center justify-center transition-all ${
-          isRecording
-            ? 'bg-red-500 shadow-lg shadow-red-500/40'
-            : 'bg-tamtam-primary shadow-tamtam-soft'
-        }`}
+          isProcessing
+            ? 'bg-amber-500 shadow-lg shadow-amber-500/40'
+            : showRecordingState
+              ? 'bg-red-500 shadow-lg shadow-red-500/40'
+              : 'bg-tamtam-primary shadow-tamtam-soft'
+        } ${disabled ? 'opacity-50' : ''}`}
       >
-        {isRecording ? (
+        {isProcessing ? (
+          <Loader2 className={`${iconSizes[size]} text-white animate-spin`} />
+        ) : showRecordingState ? (
           <motion.div
             animate={{ scale: [1, 1.2, 1] }}
             transition={{ duration: 0.5, repeat: Infinity }}
             className="flex items-center justify-center gap-1"
           >
-            {[...Array(3)].map((_, i) => (
-              <motion.div
-                key={i}
-                animate={{ height: [8, 20, 8] }}
-                transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.1 }}
-                className="w-1 bg-white rounded-full"
-                style={{ height: 8 }}
-              />
-            ))}
+            {size === 'xl' ? (
+              <Square className={`${iconSizes[size]} text-white`} />
+            ) : (
+              [...Array(3)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ height: [8, 20, 8] }}
+                  transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.1 }}
+                  className="w-1 bg-white rounded-full"
+                  style={{ height: 8 }}
+                />
+              ))
+            )}
           </motion.div>
         ) : (
           <Mic className={`${iconSizes[size]} text-white`} />
         )}
       </div>
+      
+      {/* Duration indicator */}
+      {showRecordingState && audioRecorder.duration > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-medium text-red-500"
+        >
+          {Math.floor(audioRecorder.duration / 60)}:{(audioRecorder.duration % 60).toString().padStart(2, '0')}
+        </motion.div>
+      )}
     </motion.button>
   );
 }
