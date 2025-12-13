@@ -63,50 +63,80 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     }
   };
 
+  const [transcriptionFailed, setTranscriptionFailed] = useState(false);
+
   const handleRecordingComplete = async (base64: string) => {
+    console.log('[TamTamCreatePost] Recording complete, audio length:', base64.length);
     setAudioBase64(base64);
+    setTranscriptionFailed(false);
     
-    // Auto-transcribe using Bariba STT
+    // Auto-transcribe - NON-BLOCKING (continue even if it fails)
+    let transcriptionResult: string | null = null;
+    
+    // Try Bariba STT first
     try {
+      console.log('[TamTamCreatePost] Trying Bariba STT...');
       const result = await baribaSTT.transcribe(base64);
       if (result?.transcription) {
-        setTranscript(result.transcription);
-        
-        // Auto-translate to get bilingual transcription using ByT5
-        try {
-          const { byT5TranslationService } = await import('@/services/ByT5TranslationService');
-          
-          if (currentLang === 'ba') {
-            // Translate Bariba to French
-            const transResult = await byT5TranslationService.translate(
-              result.transcription,
-              'bariba',
-              'french'
-            );
-            // Store both transcriptions - we'll save them properly in handleSubmit
-            console.log('[TamTamCreatePost] ByT5 Translation:', transResult.translation);
-          } else {
-            // Translate French to Bariba
-            const transResult = await byT5TranslationService.translate(
-              result.transcription,
-              'french',
-              'bariba'
-            );
-            console.log('[TamTamCreatePost] ByT5 Translation:', transResult.translation);
-          }
-        } catch (transErr) {
-          console.error('[TamTamCreatePost] ByT5 translation error:', transErr);
-        }
+        transcriptionResult = result.transcription;
+        console.log('[TamTamCreatePost] Bariba STT success:', transcriptionResult);
       }
-    } catch (err) {
-      console.error('[TamTamCreatePost] Transcription error:', err);
+    } catch (err: any) {
+      console.warn('[TamTamCreatePost] Bariba STT failed:', err.message);
+    }
+
+    // Fallback to French STT if Bariba failed
+    if (!transcriptionResult) {
+      try {
+        console.log('[TamTamCreatePost] Trying French STT fallback...');
+        // French STT uses Web Speech API which needs a different approach
+        // For now, just mark as failed and continue
+        console.log('[TamTamCreatePost] French STT not available for base64 audio');
+      } catch (err: any) {
+        console.warn('[TamTamCreatePost] French STT fallback failed:', err.message);
+      }
+    }
+
+    // Set transcript if we got one
+    if (transcriptionResult) {
+      setTranscript(transcriptionResult);
       toast({
-        title: "Transcription",
-        description: "Transcription automatique non disponible",
-        variant: "destructive"
+        title: "✅ Transcription réussie",
+        description: "Votre audio a été transcrit automatiquement"
+      });
+      
+      // Try translation (also non-blocking)
+      try {
+        const { byT5TranslationService } = await import('@/services/ByT5TranslationService');
+        
+        if (currentLang === 'ba') {
+          const transResult = await byT5TranslationService.translate(
+            transcriptionResult,
+            'bariba',
+            'french'
+          );
+          console.log('[TamTamCreatePost] ByT5 Translation:', transResult.translation);
+        } else {
+          const transResult = await byT5TranslationService.translate(
+            transcriptionResult,
+            'french',
+            'bariba'
+          );
+          console.log('[TamTamCreatePost] ByT5 Translation:', transResult.translation);
+        }
+      } catch (transErr) {
+        console.warn('[TamTamCreatePost] ByT5 translation error (non-blocking):', transErr);
+      }
+    } else {
+      // Transcription failed - but we can still publish!
+      setTranscriptionFailed(true);
+      toast({
+        title: "⚠️ Transcription non disponible",
+        description: "Vous pouvez quand même publier votre audio"
       });
     }
     
+    // Always proceed to preview - transcription is optional!
     setStep('preview');
   };
 
@@ -164,6 +194,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       setMediaPreview(null);
       setTranscript('');
       setSelectedEmoji(null);
+      setTranscriptionFailed(false);
       setStep('type');
       onClose();
     } catch (err: any) {
@@ -314,24 +345,43 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 )}
 
                 {/* Audio indicator */}
-                <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-emerald-50 rounded-2xl p-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                <div className={`flex items-center gap-3 rounded-2xl p-4 ${
+                  transcriptionFailed 
+                    ? 'bg-gradient-to-r from-amber-50 to-orange-50' 
+                    : 'bg-gradient-to-r from-blue-50 to-emerald-50'
+                }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    transcriptionFailed
+                      ? 'bg-gradient-to-br from-amber-500 to-amber-600'
+                      : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                  }`}>
                     <Mic className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-800">Audio enregistré</p>
-                    <p className="text-sm text-gray-500">Prêt à publier</p>
+                    <p className="text-sm text-gray-500">
+                      {transcriptionFailed 
+                        ? '⚠️ Sans transcription automatique' 
+                        : 'Prêt à publier'}
+                    </p>
                   </div>
-                  <Check className="w-6 h-6 text-emerald-500" />
+                  <Check className={`w-6 h-6 ${transcriptionFailed ? 'text-amber-500' : 'text-emerald-500'}`} />
                 </div>
 
                 {/* Transcript */}
-                {transcript && (
+                {transcript ? (
                   <div className="bg-gray-50 rounded-2xl p-4">
                     <p className="text-sm text-gray-400 mb-1">Transcription</p>
                     <p className="text-gray-700">{transcript}</p>
                   </div>
-                )}
+                ) : transcriptionFailed ? (
+                  <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+                    <p className="text-sm text-amber-600">
+                      La transcription automatique n'est pas disponible. 
+                      Votre audio sera publié sans texte.
+                    </p>
+                  </div>
+                ) : null}
 
                 {/* Emoji Selector */}
                 <div>
