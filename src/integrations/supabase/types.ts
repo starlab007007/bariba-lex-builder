@@ -531,6 +531,27 @@ export type Database = {
         }
         Relationships: []
       }
+      tamtam_bookmarks: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tamtam_comments: {
         Row: {
           audio_url: string
@@ -567,10 +588,481 @@ export type Database = {
             foreignKeyName: "tamtam_comments_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
-            referencedRelation: "yovo_posts"
+            referencedRelation: "tamtam_posts"
             referencedColumns: ["id"]
           },
         ]
+      }
+      tamtam_emergency_contacts: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_primary: boolean | null
+          name: string
+          phone: string
+          relationship: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          name: string
+          phone: string
+          relationship?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_primary?: boolean | null
+          name?: string
+          phone?: string
+          relationship?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      tamtam_follows: {
+        Row: {
+          created_at: string | null
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      tamtam_friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string | null
+          id: string
+          requester_id: string
+          responded_at: string | null
+          status: string | null
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string | null
+          id?: string
+          requester_id: string
+          responded_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string | null
+          id?: string
+          requester_id?: string
+          responded_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      tamtam_group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tamtam_group_posts: {
+        Row: {
+          audio_url: string
+          comments_count: number | null
+          created_at: string | null
+          duration_seconds: number | null
+          feeling_emoji: string | null
+          group_id: string
+          id: string
+          likes_count: number | null
+          media_type: string | null
+          media_url: string | null
+          transcript_ba: string | null
+          transcript_fr: string | null
+          user_id: string
+        }
+        Insert: {
+          audio_url: string
+          comments_count?: number | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          feeling_emoji?: string | null
+          group_id: string
+          id?: string
+          likes_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id: string
+        }
+        Update: {
+          audio_url?: string
+          comments_count?: number | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          feeling_emoji?: string | null
+          group_id?: string
+          id?: string
+          likes_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tamtam_groups: {
+        Row: {
+          category: string | null
+          cover_url: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_public: boolean | null
+          members_count: number | null
+          name: string
+          owner_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          members_count?: number | null
+          name: string
+          owner_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          members_count?: number | null
+          name?: string
+          owner_id?: string | null
+        }
+        Relationships: []
+      }
+      tamtam_jobs: {
+        Row: {
+          applications_count: number | null
+          category: string | null
+          created_at: string | null
+          description_audio_url: string | null
+          description_text: string | null
+          employer_id: string | null
+          id: string
+          is_active: boolean | null
+          job_type: string | null
+          location: string | null
+          salary_range: string | null
+          title: string
+        }
+        Insert: {
+          applications_count?: number | null
+          category?: string | null
+          created_at?: string | null
+          description_audio_url?: string | null
+          description_text?: string | null
+          employer_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          job_type?: string | null
+          location?: string | null
+          salary_range?: string | null
+          title: string
+        }
+        Update: {
+          applications_count?: number | null
+          category?: string | null
+          created_at?: string | null
+          description_audio_url?: string | null
+          description_text?: string | null
+          employer_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          job_type?: string | null
+          location?: string | null
+          salary_range?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      tamtam_messages: {
+        Row: {
+          audio_url: string
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          is_read: boolean | null
+          receiver_id: string | null
+          sender_id: string | null
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_read?: boolean | null
+          receiver_id?: string | null
+          sender_id?: string | null
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_read?: boolean | null
+          receiver_id?: string | null
+          sender_id?: string | null
+        }
+        Relationships: []
+      }
+      tamtam_notifications: {
+        Row: {
+          actor_id: string | null
+          audio_description_url: string | null
+          created_at: string | null
+          group_id: string | null
+          id: string
+          is_read: boolean | null
+          post_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          audio_description_url?: string | null
+          created_at?: string | null
+          group_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          post_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          audio_description_url?: string | null
+          created_at?: string | null
+          group_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          post_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tamtam_posts: {
+        Row: {
+          audio_url: string
+          comments_count: number | null
+          created_at: string | null
+          duration_seconds: number | null
+          feeling_emoji: string | null
+          hashtags: string[] | null
+          id: string
+          is_public: boolean | null
+          likes_count: number | null
+          media_type: string | null
+          media_url: string | null
+          shares_count: number | null
+          thumbnail_url: string | null
+          transcript: string | null
+          transcript_ba: string | null
+          transcript_fr: string | null
+          user_id: string | null
+        }
+        Insert: {
+          audio_url: string
+          comments_count?: number | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          feeling_emoji?: string | null
+          hashtags?: string[] | null
+          id?: string
+          is_public?: boolean | null
+          likes_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          shares_count?: number | null
+          thumbnail_url?: string | null
+          transcript?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          audio_url?: string
+          comments_count?: number | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          feeling_emoji?: string | null
+          hashtags?: string[] | null
+          id?: string
+          is_public?: boolean | null
+          likes_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          shares_count?: number | null
+          thumbnail_url?: string | null
+          transcript?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      tamtam_products: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          description_audio_url: string | null
+          description_text: string | null
+          id: string
+          images: string[] | null
+          is_available: boolean | null
+          location: string | null
+          price: number | null
+          seller_id: string | null
+          title: string
+          views_count: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description_audio_url?: string | null
+          description_text?: string | null
+          id?: string
+          images?: string[] | null
+          is_available?: boolean | null
+          location?: string | null
+          price?: number | null
+          seller_id?: string | null
+          title: string
+          views_count?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description_audio_url?: string | null
+          description_text?: string | null
+          id?: string
+          images?: string[] | null
+          is_available?: boolean | null
+          location?: string | null
+          price?: number | null
+          seller_id?: string | null
+          title?: string
+          views_count?: number | null
+        }
+        Relationships: []
+      }
+      tamtam_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio_audio_url: string | null
+          bio_transcript_ba: string | null
+          bio_transcript_fr: string | null
+          cover_url: string | null
+          created_at: string | null
+          display_name: string | null
+          followers_count: number | null
+          following_count: number | null
+          friends_count: number | null
+          id: string
+          is_verified: boolean | null
+          last_seen_at: string | null
+          location: string | null
+          phone_number: string | null
+          posts_count: number | null
+          updated_at: string | null
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio_audio_url?: string | null
+          bio_transcript_ba?: string | null
+          bio_transcript_fr?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          followers_count?: number | null
+          following_count?: number | null
+          friends_count?: number | null
+          id?: string
+          is_verified?: boolean | null
+          last_seen_at?: string | null
+          location?: string | null
+          phone_number?: string | null
+          posts_count?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio_audio_url?: string | null
+          bio_transcript_ba?: string | null
+          bio_transcript_fr?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          followers_count?: number | null
+          following_count?: number | null
+          friends_count?: number | null
+          id?: string
+          is_verified?: boolean | null
+          last_seen_at?: string | null
+          location?: string | null
+          phone_number?: string | null
+          posts_count?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: []
       }
       tamtam_reactions: {
         Row: {
@@ -599,10 +1091,82 @@ export type Database = {
             foreignKeyName: "tamtam_reactions_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
-            referencedRelation: "yovo_posts"
+            referencedRelation: "tamtam_posts"
             referencedColumns: ["id"]
           },
         ]
+      }
+      tamtam_rooms: {
+        Row: {
+          category: string | null
+          cover_url: string | null
+          created_at: string | null
+          description: string | null
+          ended_at: string | null
+          host_id: string | null
+          id: string
+          is_live: boolean | null
+          max_participants: number | null
+          participants_count: number | null
+          started_at: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          ended_at?: string | null
+          host_id?: string | null
+          id?: string
+          is_live?: boolean | null
+          max_participants?: number | null
+          participants_count?: number | null
+          started_at?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          ended_at?: string | null
+          host_id?: string | null
+          id?: string
+          is_live?: boolean | null
+          max_participants?: number | null
+          participants_count?: number | null
+          started_at?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      tamtam_shares: {
+        Row: {
+          created_at: string | null
+          id: string
+          message_audio_url: string | null
+          post_id: string
+          shared_to: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message_audio_url?: string | null
+          post_id: string
+          shared_to?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message_audio_url?: string | null
+          post_id?: string
+          shared_to?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       tamtam_stories: {
         Row: {
@@ -968,351 +1532,6 @@ export type Database = {
           suffix?: string | null
           tense_aspect?: string
           verb_group?: number
-        }
-        Relationships: []
-      }
-      yovo_emergency_contacts: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_primary: boolean | null
-          name: string
-          phone: string
-          relationship: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_primary?: boolean | null
-          name: string
-          phone: string
-          relationship?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_primary?: boolean | null
-          name?: string
-          phone?: string
-          relationship?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      yovo_groups: {
-        Row: {
-          category: string | null
-          cover_url: string | null
-          created_at: string | null
-          description: string | null
-          id: string
-          is_public: boolean | null
-          members_count: number | null
-          name: string
-          owner_id: string | null
-        }
-        Insert: {
-          category?: string | null
-          cover_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_public?: boolean | null
-          members_count?: number | null
-          name: string
-          owner_id?: string | null
-        }
-        Update: {
-          category?: string | null
-          cover_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_public?: boolean | null
-          members_count?: number | null
-          name?: string
-          owner_id?: string | null
-        }
-        Relationships: []
-      }
-      yovo_jobs: {
-        Row: {
-          applications_count: number | null
-          category: string | null
-          created_at: string | null
-          description_audio_url: string | null
-          description_text: string | null
-          employer_id: string | null
-          id: string
-          is_active: boolean | null
-          job_type: string | null
-          location: string | null
-          salary_range: string | null
-          title: string
-        }
-        Insert: {
-          applications_count?: number | null
-          category?: string | null
-          created_at?: string | null
-          description_audio_url?: string | null
-          description_text?: string | null
-          employer_id?: string | null
-          id?: string
-          is_active?: boolean | null
-          job_type?: string | null
-          location?: string | null
-          salary_range?: string | null
-          title: string
-        }
-        Update: {
-          applications_count?: number | null
-          category?: string | null
-          created_at?: string | null
-          description_audio_url?: string | null
-          description_text?: string | null
-          employer_id?: string | null
-          id?: string
-          is_active?: boolean | null
-          job_type?: string | null
-          location?: string | null
-          salary_range?: string | null
-          title?: string
-        }
-        Relationships: []
-      }
-      yovo_messages: {
-        Row: {
-          audio_url: string
-          created_at: string | null
-          duration_seconds: number | null
-          id: string
-          is_read: boolean | null
-          receiver_id: string | null
-          sender_id: string | null
-        }
-        Insert: {
-          audio_url: string
-          created_at?: string | null
-          duration_seconds?: number | null
-          id?: string
-          is_read?: boolean | null
-          receiver_id?: string | null
-          sender_id?: string | null
-        }
-        Update: {
-          audio_url?: string
-          created_at?: string | null
-          duration_seconds?: number | null
-          id?: string
-          is_read?: boolean | null
-          receiver_id?: string | null
-          sender_id?: string | null
-        }
-        Relationships: []
-      }
-      yovo_posts: {
-        Row: {
-          audio_url: string
-          comments_count: number | null
-          created_at: string | null
-          duration_seconds: number | null
-          feeling_emoji: string | null
-          hashtags: string[] | null
-          id: string
-          is_public: boolean | null
-          likes_count: number | null
-          media_type: string | null
-          media_url: string | null
-          shares_count: number | null
-          thumbnail_url: string | null
-          transcript: string | null
-          transcript_ba: string | null
-          transcript_fr: string | null
-          user_id: string | null
-        }
-        Insert: {
-          audio_url: string
-          comments_count?: number | null
-          created_at?: string | null
-          duration_seconds?: number | null
-          feeling_emoji?: string | null
-          hashtags?: string[] | null
-          id?: string
-          is_public?: boolean | null
-          likes_count?: number | null
-          media_type?: string | null
-          media_url?: string | null
-          shares_count?: number | null
-          thumbnail_url?: string | null
-          transcript?: string | null
-          transcript_ba?: string | null
-          transcript_fr?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          audio_url?: string
-          comments_count?: number | null
-          created_at?: string | null
-          duration_seconds?: number | null
-          feeling_emoji?: string | null
-          hashtags?: string[] | null
-          id?: string
-          is_public?: boolean | null
-          likes_count?: number | null
-          media_type?: string | null
-          media_url?: string | null
-          shares_count?: number | null
-          thumbnail_url?: string | null
-          transcript?: string | null
-          transcript_ba?: string | null
-          transcript_fr?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      yovo_products: {
-        Row: {
-          category: string | null
-          created_at: string | null
-          currency: string | null
-          description_audio_url: string | null
-          description_text: string | null
-          id: string
-          images: string[] | null
-          is_available: boolean | null
-          location: string | null
-          price: number | null
-          seller_id: string | null
-          title: string
-          views_count: number | null
-        }
-        Insert: {
-          category?: string | null
-          created_at?: string | null
-          currency?: string | null
-          description_audio_url?: string | null
-          description_text?: string | null
-          id?: string
-          images?: string[] | null
-          is_available?: boolean | null
-          location?: string | null
-          price?: number | null
-          seller_id?: string | null
-          title: string
-          views_count?: number | null
-        }
-        Update: {
-          category?: string | null
-          created_at?: string | null
-          currency?: string | null
-          description_audio_url?: string | null
-          description_text?: string | null
-          id?: string
-          images?: string[] | null
-          is_available?: boolean | null
-          location?: string | null
-          price?: number | null
-          seller_id?: string | null
-          title?: string
-          views_count?: number | null
-        }
-        Relationships: []
-      }
-      yovo_profiles: {
-        Row: {
-          avatar_url: string | null
-          bio_audio_url: string | null
-          cover_url: string | null
-          created_at: string | null
-          display_name: string | null
-          followers_count: number | null
-          following_count: number | null
-          id: string
-          is_verified: boolean | null
-          location: string | null
-          posts_count: number | null
-          updated_at: string | null
-          user_id: string | null
-          username: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          bio_audio_url?: string | null
-          cover_url?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          followers_count?: number | null
-          following_count?: number | null
-          id?: string
-          is_verified?: boolean | null
-          location?: string | null
-          posts_count?: number | null
-          updated_at?: string | null
-          user_id?: string | null
-          username: string
-        }
-        Update: {
-          avatar_url?: string | null
-          bio_audio_url?: string | null
-          cover_url?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          followers_count?: number | null
-          following_count?: number | null
-          id?: string
-          is_verified?: boolean | null
-          location?: string | null
-          posts_count?: number | null
-          updated_at?: string | null
-          user_id?: string | null
-          username?: string
-        }
-        Relationships: []
-      }
-      yovo_rooms: {
-        Row: {
-          category: string | null
-          cover_url: string | null
-          created_at: string | null
-          description: string | null
-          ended_at: string | null
-          host_id: string | null
-          id: string
-          is_live: boolean | null
-          max_participants: number | null
-          participants_count: number | null
-          started_at: string | null
-          title: string
-        }
-        Insert: {
-          category?: string | null
-          cover_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          ended_at?: string | null
-          host_id?: string | null
-          id?: string
-          is_live?: boolean | null
-          max_participants?: number | null
-          participants_count?: number | null
-          started_at?: string | null
-          title: string
-        }
-        Update: {
-          category?: string | null
-          cover_url?: string | null
-          created_at?: string | null
-          description?: string | null
-          ended_at?: string | null
-          host_id?: string | null
-          id?: string
-          is_live?: boolean | null
-          max_participants?: number | null
-          participants_count?: number | null
-          started_at?: string | null
-          title?: string
         }
         Relationships: []
       }

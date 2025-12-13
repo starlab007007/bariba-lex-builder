@@ -78,10 +78,10 @@ export const useTamTamPosts = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('yovo_posts')
+        .from('tamtam_posts')
         .select(`
           *,
-          profile:yovo_profiles!yovo_posts_user_id_fkey(username, display_name, avatar_url)
+          profile:tamtam_profiles!tamtam_posts_user_id_fkey(username, display_name, avatar_url)
         `)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
@@ -130,7 +130,7 @@ export const useTamTamPosts = () => {
         .from('tamtam_stories')
         .select(`
           *,
-          profile:yovo_profiles!tamtam_stories_user_id_fkey(username, display_name, avatar_url)
+          profile:tamtam_profiles!tamtam_stories_user_id_fkey(username, display_name, avatar_url)
         `)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
@@ -161,7 +161,7 @@ export const useTamTamPosts = () => {
       if (!userData.user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase
-        .from('yovo_posts')
+        .from('tamtam_posts')
         .insert({
           user_id: userData.user.id,
           audio_url: postData.audio_url,
@@ -237,7 +237,7 @@ export const useTamTamPosts = () => {
         .from('tamtam_comments')
         .select(`
           *,
-          profile:yovo_profiles!tamtam_comments_user_id_fkey(username, display_name, avatar_url)
+          profile:tamtam_profiles!tamtam_comments_user_id_fkey(username, display_name, avatar_url)
         `)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
