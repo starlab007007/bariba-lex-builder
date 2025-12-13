@@ -3,10 +3,28 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Users, 
-  Briefcase, 
+  Building2, 
   Heart, 
-  Lightbulb,
-  ArrowLeft
+  Search,
+  LayoutGrid,
+  Brain,
+  BookOpen,
+  Settings,
+  Smartphone,
+  ArrowLeft,
+  Mic,
+  MessageSquare,
+  Radio,
+  User,
+  Compass,
+  AlertTriangle,
+  CreditCard,
+  FileText,
+  Accessibility,
+  ShoppingBag,
+  Wheat,
+  Library,
+  Phone
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -16,150 +34,316 @@ interface Screen {
   title: string;
   category: string;
   description: string;
-  imageUrl: string;
+  gradient: string;
+  icon: any;
   screenNumber: number;
 }
 
-// Categories data
-const categories = [
-  { 
-    id: "social", 
-    name: "Social", 
-    icon: Users, 
-    color: "from-blue-500 to-blue-600",
-    bgColor: "bg-blue-500/20",
-    textColor: "text-blue-400",
-    count: 5
+// Données des 20 écrans YOVO exactement comme dans les captures
+const screens: Screen[] = [
+  {
+    id: 1,
+    title: "Splash Screen",
+    category: "Social",
+    description: "BOT.BJ - Votre voix, votre langue. Connexion et création de compte",
+    gradient: "from-indigo-900 via-purple-900 to-slate-950",
+    icon: Users,
+    screenNumber: 1
   },
-  { 
-    id: "business", 
-    name: "Business", 
-    icon: Briefcase, 
-    color: "from-orange-500 to-orange-600",
-    bgColor: "bg-orange-500/20",
-    textColor: "text-orange-400",
-    count: 5
+  {
+    id: 2,
+    title: "Fil d'actualité",
+    category: "Social",
+    description: "Feed avec posts vocaux, vidéos et partages en langues locales",
+    gradient: "from-slate-800 via-gray-900 to-slate-950",
+    icon: Radio,
+    screenNumber: 2
   },
-  { 
-    id: "sante", 
-    name: "Santé", 
-    icon: Heart, 
-    color: "from-green-500 to-green-600",
-    bgColor: "bg-green-500/20",
-    textColor: "text-green-400",
-    count: 5
+  {
+    id: 3,
+    title: "Traducteur Vocal",
+    category: "IA",
+    description: "Traduction vocale temps réel Français ↔ Bariba avec micro",
+    gradient: "from-amber-800 via-orange-900 to-slate-950",
+    icon: Mic,
+    screenNumber: 3
   },
-  { 
-    id: "opportunites", 
-    name: "Opportunités", 
-    icon: Lightbulb, 
-    color: "from-purple-500 to-purple-600",
-    bgColor: "bg-purple-500/20",
-    textColor: "text-purple-400",
-    count: 5
+  {
+    id: 4,
+    title: "IA Santé Locale",
+    category: "IA Santé",
+    description: "Assistant santé vocal - Trouvez un centre de santé près de vous",
+    gradient: "from-teal-800 via-emerald-900 to-slate-950",
+    icon: Heart,
+    screenNumber: 4
+  },
+  {
+    id: 5,
+    title: "Emploi Audio Jobs",
+    category: "Opportunités",
+    description: "Offres d'emploi avec candidature vocale - Aide-Jardinier, Commerce...",
+    gradient: "from-slate-800 via-slate-900 to-slate-950",
+    icon: Search,
+    screenNumber: 5
+  },
+  {
+    id: 6,
+    title: "Marketplace Locale",
+    category: "Business",
+    description: "BOT.BJ Marketplace - Artisanat, Agriculture, Services, Troc",
+    gradient: "from-slate-800 via-gray-900 to-slate-950",
+    icon: ShoppingBag,
+    screenNumber: 6
+  },
+  {
+    id: 7,
+    title: "Conseil Agritech",
+    category: "Business",
+    description: "Conseils agricoles vocaux avec météo 32°C et recommandations",
+    gradient: "from-amber-700 via-yellow-800 to-green-900",
+    icon: Wheat,
+    screenNumber: 7
+  },
+  {
+    id: 8,
+    title: "Bibliothèque Locale",
+    category: "Culture",
+    description: "Contenus culturels, histoires et traditions orales en Bariba",
+    gradient: "from-amber-900 via-orange-900 to-slate-950",
+    icon: Library,
+    screenNumber: 8
+  },
+  {
+    id: 9,
+    title: "IA Business Locale",
+    category: "Business",
+    description: "Assistant IA pour rédiger offres et conseils commerce vocal",
+    gradient: "from-emerald-800 via-teal-900 to-slate-950",
+    icon: Building2,
+    screenNumber: 9
+  },
+  {
+    id: 10,
+    title: "Conversations Vocales",
+    category: "Social",
+    description: "Messages vocaux - Afi Kossou, Non lus, Groupe Marché Cotonou",
+    gradient: "from-slate-800 via-gray-900 to-slate-950",
+    icon: MessageSquare,
+    screenNumber: 10
+  },
+  {
+    id: 11,
+    title: "Enregistrement Vocal",
+    category: "Social",
+    description: "Interface d'enregistrement audio avec contrôles play/pause",
+    gradient: "from-gray-800 via-slate-900 to-slate-950",
+    icon: Mic,
+    screenNumber: 11
+  },
+  {
+    id: 12,
+    title: "Live Audio",
+    category: "Social",
+    description: "Discussion Commerce au Marché Dantokpa - Salles audio en direct",
+    gradient: "from-gray-800 via-slate-900 to-slate-950",
+    icon: Radio,
+    screenNumber: 12
+  },
+  {
+    id: 13,
+    title: "Profil Utilisateur",
+    category: "Social",
+    description: "Profil Assé Éponaé avec statistiques, abonnés et publications",
+    gradient: "from-slate-700 via-gray-900 to-slate-950",
+    icon: User,
+    screenNumber: 13
+  },
+  {
+    id: 14,
+    title: "Découvrir",
+    category: "Social",
+    description: "Explorer catégories: Agriculture, Culture, Artisanat...",
+    gradient: "from-orange-800 via-amber-900 to-slate-950",
+    icon: Compass,
+    screenNumber: 14
+  },
+  {
+    id: 15,
+    title: "Groupe Vocal",
+    category: "IA",
+    description: "Groupes vocaux avec 46 membres - Discussions en langues locales",
+    gradient: "from-gray-800 via-slate-900 to-slate-950",
+    icon: Users,
+    screenNumber: 15
+  },
+  {
+    id: 16,
+    title: "SOS Urgences",
+    category: "Services",
+    description: "Bouton SOS rouge - GPS, Alertes contacts, Centre de soins",
+    gradient: "from-red-900 via-red-950 to-slate-950",
+    icon: AlertTriangle,
+    screenNumber: 16
+  },
+  {
+    id: 17,
+    title: "IA Finance Mobile",
+    category: "Business",
+    description: "Services bancaires - BHM 1,1M FCFA, transferts, historique",
+    gradient: "from-slate-800 via-gray-900 to-slate-950",
+    icon: CreditCard,
+    screenNumber: 17
+  },
+  {
+    id: 18,
+    title: "Documents Officiels",
+    category: "Services",
+    description: "Aide administrative vocale - CNI, Certificats, Permis",
+    gradient: "from-amber-900 via-orange-900 to-slate-950",
+    icon: FileText,
+    screenNumber: 18
+  },
+  {
+    id: 19,
+    title: "Paramètres",
+    category: "Settings",
+    description: "Configuration compte, langue, mode hors-ligne, accessibilité",
+    gradient: "from-gray-800 via-slate-900 to-slate-950",
+    icon: Settings,
+    screenNumber: 19
+  },
+  {
+    id: 20,
+    title: "Accessibilité",
+    category: "Settings",
+    description: "Mode gros boutons, contraste, vitesse lecture, vibration",
+    gradient: "from-slate-800 via-slate-900 to-slate-950",
+    icon: Accessibility,
+    screenNumber: 20
   }
 ];
 
-// Screens data - 20 prototype screens
-const screens: Screen[] = [
-  // Social screens
-  { id: 1, title: "Fil d'actualité", category: "social", description: "Écran principal du fil d'actualité avec publications et interactions", imageUrl: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&h=600&fit=crop", screenNumber: 1 },
-  { id: 2, title: "Profil utilisateur", category: "social", description: "Page de profil avec statistiques et informations personnelles", imageUrl: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400&h=600&fit=crop", screenNumber: 2 },
-  { id: 3, title: "Messagerie", category: "social", description: "Interface de chat et conversations privées", imageUrl: "https://images.unsplash.com/photo-1577563908411-5077b6dc7624?w=400&h=600&fit=crop", screenNumber: 3 },
-  { id: 4, title: "Notifications", category: "social", description: "Centre de notifications et alertes personnalisées", imageUrl: "https://images.unsplash.com/photo-1614680376739-414d95ff43df?w=400&h=600&fit=crop", screenNumber: 4 },
-  { id: 5, title: "Communauté", category: "social", description: "Groupes et communautés thématiques", imageUrl: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=600&fit=crop", screenNumber: 5 },
-  
-  // Business screens
-  { id: 6, title: "Dashboard", category: "business", description: "Tableau de bord analytique avec KPIs et graphiques", imageUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=600&fit=crop", screenNumber: 6 },
-  { id: 7, title: "Gestion de projets", category: "business", description: "Interface de suivi et gestion des projets", imageUrl: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&h=600&fit=crop", screenNumber: 7 },
-  { id: 8, title: "Facturation", category: "business", description: "Système de facturation et paiements", imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=600&fit=crop", screenNumber: 8 },
-  { id: 9, title: "Équipe", category: "business", description: "Gestion d'équipe et collaboration", imageUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=600&fit=crop", screenNumber: 9 },
-  { id: 10, title: "Rapports", category: "business", description: "Génération de rapports et exports", imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=600&fit=crop", screenNumber: 10 },
-  
-  // Health screens
-  { id: 11, title: "Suivi santé", category: "sante", description: "Dashboard de suivi des indicateurs de santé", imageUrl: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=400&h=600&fit=crop", screenNumber: 11 },
-  { id: 12, title: "Activité physique", category: "sante", description: "Tracking d'activités sportives et exercices", imageUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=600&fit=crop", screenNumber: 12 },
-  { id: 13, title: "Nutrition", category: "sante", description: "Suivi alimentaire et recommandations", imageUrl: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=400&h=600&fit=crop", screenNumber: 13 },
-  { id: 14, title: "Sommeil", category: "sante", description: "Analyse du sommeil et conseils", imageUrl: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=400&h=600&fit=crop", screenNumber: 14 },
-  { id: 15, title: "Méditation", category: "sante", description: "Séances de méditation guidées", imageUrl: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=600&fit=crop", screenNumber: 15 },
-  
-  // Opportunities screens
-  { id: 16, title: "Emplois", category: "opportunites", description: "Recherche et offres d'emploi personnalisées", imageUrl: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=600&fit=crop", screenNumber: 16 },
-  { id: 17, title: "Formation", category: "opportunites", description: "Cours et formations en ligne", imageUrl: "https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=400&h=600&fit=crop", screenNumber: 17 },
-  { id: 18, title: "Mentorat", category: "opportunites", description: "Connexion avec des mentors experts", imageUrl: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400&h=600&fit=crop", screenNumber: 18 },
-  { id: 19, title: "Événements", category: "opportunites", description: "Calendrier d'événements et networking", imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=600&fit=crop", screenNumber: 19 },
-  { id: 20, title: "Ressources", category: "opportunites", description: "Bibliothèque de ressources et outils", imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop", screenNumber: 20 }
+// Catégories principales (header cards) - exactement comme dans les captures
+const mainCategories = [
+  { 
+    id: "Social", 
+    name: "Vocal", 
+    subtitle: "Réseau Social", 
+    icon: Users, 
+    gradient: "from-blue-600/40 to-blue-900/30",
+    borderColor: "border-blue-500/40",
+    textColor: "text-blue-400",
+    subtitleColor: "text-blue-300/70"
+  },
+  { 
+    id: "Business", 
+    name: "Commerce", 
+    subtitle: "IA Business", 
+    icon: Building2, 
+    gradient: "from-orange-600/40 to-orange-900/30",
+    borderColor: "border-orange-500/40",
+    textColor: "text-orange-400",
+    subtitleColor: "text-orange-300/70"
+  },
+  { 
+    id: "IA Santé", 
+    name: "Conseil", 
+    subtitle: "IA Santé", 
+    icon: Heart, 
+    gradient: "from-green-600/40 to-green-900/30",
+    borderColor: "border-green-500/40",
+    textColor: "text-green-400",
+    subtitleColor: "text-green-300/70"
+  },
+  { 
+    id: "Opportunités", 
+    name: "Emploi", 
+    subtitle: "Opportunités", 
+    icon: Search, 
+    gradient: "from-teal-600/40 to-teal-900/30",
+    borderColor: "border-teal-500/40",
+    textColor: "text-teal-400",
+    subtitleColor: "text-teal-300/70"
+  }
 ];
 
-// Filter tabs
-const filterTabs = [
-  { id: "all", name: "Tous", count: 20 },
-  { id: "social", name: "Social", count: 5 },
-  { id: "business", name: "Business", count: 5 },
-  { id: "sante", name: "Santé", count: 5 },
-  { id: "opportunites", name: "Opportunités", count: 5 }
+// Filtres avec compteurs exacts - comme dans les captures
+const filters = [
+  { id: "Tous", name: "Tous", icon: LayoutGrid, count: 20 },
+  { id: "Social", name: "Social", icon: Users, count: 7 },
+  { id: "IA", name: "IA", icon: Brain, count: 2 },
+  { id: "IA Santé", name: "IA Santé", icon: Heart, count: 1 },
+  { id: "Business", name: "Business", icon: Building2, count: 4 },
+  { id: "Opportunités", name: "Opportunités", icon: Search, count: 1 },
+  { id: "Culture", name: "Culture", icon: BookOpen, count: 1 },
+  { id: "Services", name: "Services", icon: Smartphone, count: 2 },
+  { id: "Settings", name: "Settings", icon: Settings, count: 2 }
 ];
+
+// Category colors
+const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
+  "Social": { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30" },
+  "IA": { bg: "bg-purple-500/20", text: "text-purple-400", border: "border-purple-500/30" },
+  "IA Santé": { bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/30" },
+  "Business": { bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/30" },
+  "Opportunités": { bg: "bg-teal-500/20", text: "text-teal-400", border: "border-teal-500/30" },
+  "Culture": { bg: "bg-amber-500/20", text: "text-amber-400", border: "border-amber-500/30" },
+  "Services": { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/30" },
+  "Settings": { bg: "bg-slate-500/20", text: "text-slate-400", border: "border-slate-500/30" }
+};
 
 const YovoGallery = () => {
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [activeFilter, setActiveFilter] = useState("Tous");
 
-  const filteredScreens = activeFilter === "all" 
+  const filteredScreens = activeFilter === "Tous" 
     ? screens 
     : screens.filter(s => s.category === activeFilter);
 
-  const getCategoryStyle = (category: string) => {
-    const cat = categories.find(c => c.id === category);
-    return cat || categories[0];
+  const getCategoryColors = (category: string) => {
+    return categoryColors[category] || categoryColors["Social"];
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-white/10">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-950/80 border-b border-white/5">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link 
                 to="/" 
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
               >
                 <ArrowLeft className="w-5 h-5 text-white" />
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-white">Yovo Gallery</h1>
-                <p className="text-sm text-slate-400">Prototypes d'écrans d'applications mobiles</p>
+                <p className="text-sm text-slate-400">20 écrans prototypes YOVO</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="border-white/20 text-white">
-                {screens.length} écrans
-              </Badge>
-            </div>
+            <Badge variant="outline" className="border-white/20 text-white bg-white/5">
+              {screens.length} écrans
+            </Badge>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {/* Category Cards */}
-        <section className="mb-10">
-          <h2 className="text-lg font-semibold text-white mb-4">Catégories</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {categories.map((cat) => {
+        {/* Category Header Cards - 4 glassmorphism cards */}
+        <section className="mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {mainCategories.map((cat) => {
               const Icon = cat.icon;
               return (
                 <Card 
                   key={cat.id}
-                  className="bg-white/5 border-white/10 backdrop-blur-xl cursor-pointer hover:bg-white/10 transition-all hover:scale-105"
                   onClick={() => setActiveFilter(cat.id)}
+                  className={`bg-gradient-to-br ${cat.gradient} backdrop-blur-xl border ${cat.borderColor} cursor-pointer hover:scale-105 transition-all duration-300 group`}
                 >
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className={`p-3 rounded-xl bg-gradient-to-br ${cat.color}`}>
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">{cat.name}</p>
-                      <p className="text-sm text-slate-400">{cat.count} écrans</p>
-                    </div>
+                  <CardContent className="p-5">
+                    <Icon className={`w-7 h-7 ${cat.textColor} mb-3`} />
+                    <p className={`font-bold text-lg ${cat.textColor}`}>{cat.name}</p>
+                    <p className={`text-sm ${cat.subtitleColor}`}>{cat.subtitle}</p>
                   </CardContent>
                 </Card>
               );
@@ -167,71 +351,80 @@ const YovoGallery = () => {
           </div>
         </section>
 
-        {/* Filter Tabs */}
-        <section className="mb-6">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {filterTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveFilter(tab.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                  activeFilter === tab.id
-                    ? "bg-white text-slate-900"
-                    : "bg-white/10 text-white hover:bg-white/20"
-                }`}
-              >
-                {tab.name}
-                <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${
-                  activeFilter === tab.id
-                    ? "bg-slate-900 text-white"
-                    : "bg-white/20"
-                }`}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
+        {/* Filter Tabs - Horizontal scrollable */}
+        <section className="mb-8">
+          <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
+            {filters.map((filter) => {
+              const Icon = filter.icon;
+              const isActive = activeFilter === filter.id;
+              return (
+                <button
+                  key={filter.id}
+                  onClick={() => setActiveFilter(filter.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                    isActive
+                      ? "bg-white text-slate-900 shadow-lg"
+                      : "bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {filter.name}
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                    isActive
+                      ? "bg-slate-900 text-white"
+                      : "bg-white/10 text-slate-400"
+                  }`}>
+                    {filter.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </section>
 
-        {/* Masonry Grid */}
+        {/* Masonry Grid - 5 columns on large screens */}
         <section>
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {filteredScreens.map((screen) => {
-              const catStyle = getCategoryStyle(screen.category);
+              const catColors = getCategoryColors(screen.category);
+              const ScreenIcon = screen.icon;
               return (
                 <Card 
                   key={screen.id}
-                  className="break-inside-avoid bg-white/5 border-white/10 backdrop-blur-xl overflow-hidden group hover:bg-white/10 transition-all hover:scale-[1.02] hover:shadow-2xl"
+                  className="bg-slate-900/50 border-white/5 backdrop-blur-xl overflow-hidden group hover:border-white/20 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
                 >
-                  <div className="relative">
-                    <img 
-                      src={screen.imageUrl} 
-                      alt={screen.title}
-                      className="w-full h-auto object-cover aspect-[3/4]"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {/* Screen Preview - Phone mockup style */}
+                  <div className={`relative aspect-[9/16] bg-gradient-to-br ${screen.gradient} overflow-hidden`}>
+                    {/* Phone frame effect */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-full h-full p-4 flex flex-col items-center justify-center text-center">
+                        <div className={`p-4 rounded-2xl ${catColors.bg} mb-4`}>
+                          <ScreenIcon className={`w-10 h-10 ${catColors.text}`} />
+                        </div>
+                        <h4 className="text-white font-semibold text-sm mb-2">{screen.title}</h4>
+                        <p className="text-white/60 text-xs px-2 line-clamp-2">{screen.description}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Screen number badge */}
                     <div className="absolute top-3 left-3">
-                      <Badge className={`${catStyle.bgColor} ${catStyle.textColor} border-0`}>
+                      <Badge className={`${catColors.bg} ${catColors.text} border-0 text-xs font-bold`}>
                         #{screen.screenNumber}
                       </Badge>
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform">
-                      <p className="text-sm text-white/80">{screen.description}</p>
-                    </div>
-                  </div>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-semibold text-white">{screen.title}</h3>
-                        <Badge 
-                          variant="outline" 
-                          className={`mt-2 border-0 ${catStyle.bgColor} ${catStyle.textColor}`}
-                        >
-                          {catStyle.name}
-                        </Badge>
+                    
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="text-center px-4">
+                        <p className="text-white text-sm">{screen.description}</p>
                       </div>
                     </div>
+                  </div>
+                  
+                  {/* Card Footer */}
+                  <CardContent className="p-3 bg-slate-900/80">
+                    <h3 className={`font-semibold text-sm ${catColors.text}`}>{screen.title}</h3>
+                    <p className="text-slate-500 text-xs mt-1">Écran {screen.screenNumber}/20</p>
                   </CardContent>
                 </Card>
               );
@@ -242,16 +435,17 @@ const YovoGallery = () => {
         {/* Empty State */}
         {filteredScreens.length === 0 && (
           <div className="text-center py-20">
+            <Phone className="w-16 h-16 text-slate-600 mx-auto mb-4" />
             <p className="text-slate-400">Aucun écran trouvé pour cette catégorie</p>
           </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-8 mt-12">
+      <footer className="border-t border-white/5 py-8 mt-12">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-slate-400 text-sm">
-            Yovo Gallery • Collection de prototypes UI/UX
+          <p className="text-slate-500 text-sm">
+            YOVO Gallery • 20 Prototypes d'application mobile vocale
           </p>
         </div>
       </footer>
