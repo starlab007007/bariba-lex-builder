@@ -14,6 +14,7 @@ import { useAudioServices } from '@/hooks/useAudioServices';
 import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { VoiceOnlyTranslator } from '@/components/voice/VoiceOnlyTranslator';
+import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -53,9 +54,22 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
     }
   }, [isOpen, fetchConversations]);
 
+  // Scroll to bottom and trigger notification for new messages
+  const prevMessagesCountRef = useRef(messages.length);
+  
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    
+    // Trigger notification for new incoming messages
+    if (messages.length > prevMessagesCountRef.current && selectedConversation) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.sender_id === selectedConversation && !lastMessage.is_read) {
+        // New message received - sound + haptic
+        triggerFeedback('notification', { sound: true, haptic: true, volume: 0.4 });
+      }
+    }
+    prevMessagesCountRef.current = messages.length;
+  }, [messages, selectedConversation]);
 
   useEffect(() => {
     if (selectedConversation && messages.length > 0) {
