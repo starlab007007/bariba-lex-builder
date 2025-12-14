@@ -591,6 +591,13 @@ export type Database = {
             referencedRelation: "tamtam_posts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tamtam_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       tamtam_emergency_contacts: {
@@ -948,7 +955,15 @@ export type Database = {
           transcript_fr?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       tamtam_products: {
         Row: {
@@ -1205,7 +1220,15 @@ export type Database = {
           user_id?: string | null
           views_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_stories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       training_phrases: {
         Row: {
