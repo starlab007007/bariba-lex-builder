@@ -4,13 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { TamTamFollowersList } from '@/components/tamtam/TamTamFollowersList';
 import { TamTamFriendsList } from '@/components/tamtam/TamTamFriendsList';
-import { Volume2, Play, Loader2, LogOut } from 'lucide-react';
+import { TamTamStories } from '@/components/tamtam/TamTamStories';
+import { Volume2, Play, Loader2, LogOut, Mic, Clock, Eye, Heart } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { useTamTamProfile } from '@/hooks/useTamTamProfile';
 import { useTamTamFollows } from '@/hooks/useTamTamFollows';
 import { useTamTamFriends } from '@/hooks/useTamTamFriends';
+import { useTamTamPosts } from '@/hooks/useTamTamPosts';
 import { useAuth } from '@/contexts/AuthContext';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
@@ -35,17 +37,30 @@ export default function TamTamProfile() {
   const { profile, loading: profileLoading, updateProfile } = useTamTamProfile();
   const { followersCount, followingCount } = useTamTamFollows();
   const { friendsCount } = useTamTamFriends();
+  const { stories } = useTamTamPosts();
   
   const [isPlayingBio, setIsPlayingBio] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [showStories, setShowStories] = useState(false);
   
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
   const { toast } = useToast();
+
+  // Filter stories for current user
+  const myStories = stories.filter(s => s.user_id === user?.id);
+
+  // Calculate vocal stats
+  const vocalStats = {
+    totalRecordings: (profile?.posts_count || 0) + myStories.length,
+    totalDuration: myStories.reduce((acc, s) => acc + (s.duration_seconds || 0), 0),
+    storyViews: myStories.reduce((acc, s) => acc + (s.views_count || 0), 0),
+    totalReactions: 0 // Would need to aggregate from reactions
+  };
 
   useEffect(() => {
     if (!user) {
@@ -202,6 +217,78 @@ export default function TamTamProfile() {
             {currentLang === 'ba' ? 'Bàátɔ̀nú' : 'Français'}
           </span>
         </span>
+      </motion.div>
+
+      {/* My Stories Section */}
+      {myStories.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft mb-6"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📖</span>
+              <span className="text-sm font-medium text-tamtam-text">{t('myStories') || 'Mes Stories'}</span>
+            </div>
+            <span className="text-xs text-tamtam-text-muted">{myStories.length} stories</span>
+          </div>
+          
+          <TamTamStories 
+            stories={myStories} 
+            onCreateStory={() => navigate('/tamtam/social')} 
+          />
+        </motion.div>
+      )}
+
+      {/* Vocal Stats */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="bg-gradient-to-br from-blue-500 to-emerald-400 rounded-3xl p-4 shadow-tamtam-soft mb-6 text-white"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <Mic className="w-5 h-5" />
+          <span className="text-sm font-medium">{t('vocalStats') || 'Statistiques Vocales'}</span>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white/20 rounded-2xl p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Mic className="w-4 h-4" />
+              <span className="text-2xl font-bold">{vocalStats.totalRecordings}</span>
+            </div>
+            <span className="text-xs opacity-80">{t('recordings') || 'Enregistrements'}</span>
+          </div>
+          
+          <div className="bg-white/20 rounded-2xl p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Clock className="w-4 h-4" />
+              <span className="text-2xl font-bold">
+                {Math.floor(vocalStats.totalDuration / 60)}m
+              </span>
+            </div>
+            <span className="text-xs opacity-80">{t('duration') || 'Durée totale'}</span>
+          </div>
+          
+          <div className="bg-white/20 rounded-2xl p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Eye className="w-4 h-4" />
+              <span className="text-2xl font-bold">{vocalStats.storyViews}</span>
+            </div>
+            <span className="text-xs opacity-80">{t('storyViews') || 'Vues stories'}</span>
+          </div>
+          
+          <div className="bg-white/20 rounded-2xl p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Heart className="w-4 h-4" />
+              <span className="text-2xl font-bold">{vocalStats.totalReactions}</span>
+            </div>
+            <span className="text-xs opacity-80">{t('reactions') || 'Réactions'}</span>
+          </div>
+        </div>
       </motion.div>
 
       {/* Voice bio section */}
