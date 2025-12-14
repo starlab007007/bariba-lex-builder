@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Volume2, Loader2, RefreshCw, ArrowRightLeft, Pause, Play, X } from 'lucide-react';
+import { Mic, MicOff, Volume2, Loader2, RefreshCw, ArrowRightLeft, Pause, Play, X, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
@@ -11,6 +11,7 @@ import { useFrenchTTS } from '@/hooks/useFrenchTTS';
 import { useHybridTranslation } from '@/hooks/useHybridTranslation';
 import { useVoiceDetection } from '@/hooks/useVoiceDetection';
 import { useToast } from '@/hooks/use-toast';
+import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { cn } from '@/lib/utils';
 
 type DetectedLanguage = 'bariba' | 'french' | 'unknown';
@@ -81,13 +82,16 @@ export function VoiceOnlyTranslator() {
         setLastResult(translationResult);
         setDetectedLanguage('french');
         
+        // Trigger language detection feedback
+        triggerFeedback('language_detected', { sound: true, haptic: true });
+        
         // Speak the translation
         setState('speaking');
         await speakBariba(result.translation);
         setState('complete');
         
-        // Haptic feedback
-        if (navigator.vibrate) navigator.vibrate(100);
+        // Success feedback
+        triggerFeedback('success', { sound: false, haptic: true });
       }
     } catch (error: any) {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -152,6 +156,9 @@ export function VoiceOnlyTranslator() {
         };
         setLastResult(result);
         setDetectedLanguage(sourceLang);
+        
+        // Trigger language detection feedback
+        triggerFeedback('language_detected', { sound: true, haptic: true });
 
         // Speak the translation
         setState('speaking');
@@ -161,8 +168,8 @@ export function VoiceOnlyTranslator() {
           speakFrench(translatedText);
         }
         
-        // Haptic feedback
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        // Success feedback
+        triggerFeedback('success', { sound: false, haptic: true });
         
         setState('complete');
       } else {
@@ -198,7 +205,7 @@ export function VoiceOnlyTranslator() {
       }
       
       // Haptic feedback on start
-      if (navigator.vibrate) navigator.vibrate(50);
+      triggerFeedback('record', { sound: true, haptic: true });
       
     } catch (error: any) {
       toast({ title: "Erreur micro", description: error.message, variant: "destructive" });
@@ -228,7 +235,7 @@ export function VoiceOnlyTranslator() {
   const swapLanguages = () => {
     setPreferredSourceLang(prev => prev === 'bariba' ? 'french' : 'bariba');
     // Haptic feedback
-    if (navigator.vibrate) navigator.vibrate(30);
+    triggerFeedback('click', { sound: true, haptic: true });
   };
 
   const replayTranslation = () => {
@@ -351,22 +358,42 @@ export function VoiceOnlyTranslator() {
         </motion.button>
       </div>
 
-      {/* Status Text - Minimal */}
-      <div className="text-center h-8">
+      {/* Status Text - Minimal with Language Detection Indicator */}
+      <div className="text-center h-12">
         <AnimatePresence mode="wait">
-          <motion.p
-            key={state}
+          <motion.div
+            key={state + detectedLanguage}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="text-muted-foreground text-lg"
+            className="flex flex-col items-center gap-1"
           >
-            {state === 'idle' && '🎤'}
-            {state === 'listening' && (isVADSpeaking ? '🗣️ ...' : '👂 ...')}
-            {state === 'processing' && '⏳ ...'}
-            {state === 'speaking' && '🔊 ...'}
-            {state === 'complete' && '✅'}
-          </motion.p>
+            <p className="text-muted-foreground text-lg">
+              {state === 'idle' && '🎤'}
+              {state === 'listening' && (isVADSpeaking ? '🗣️ ...' : '👂 ...')}
+              {state === 'processing' && '⏳ ...'}
+              {state === 'speaking' && '🔊 ...'}
+              {state === 'complete' && '✅'}
+            </p>
+            
+            {/* Language Detection Indicator - Visual Badge */}
+            {(state === 'processing' || state === 'speaking' || state === 'complete') && detectedLanguage !== 'unknown' && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium",
+                  detectedLanguage === 'bariba' 
+                    ? 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border border-orange-200' 
+                    : 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200'
+                )}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                <span>{detectedLanguage === 'bariba' ? '🇧🇯 Bariba détecté' : '🇫🇷 Français détecté'}</span>
+              </motion.div>
+            )}
+          </motion.div>
         </AnimatePresence>
       </div>
 
