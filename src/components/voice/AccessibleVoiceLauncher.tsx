@@ -9,6 +9,7 @@ import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
 import { useHybridTranslation } from '@/hooks/useHybridTranslation';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface AccessibleVoiceLauncherProps {
@@ -168,25 +169,61 @@ export function AccessibleVoiceLauncher({
   const isSpeaking = isSpeakingBariba || isSpeakingFrench;
   const isActive = isRecording || isListening;
 
-  // Collapsed state - just the floating button
+  // Collapsed state - floating button with pulse and tooltip
   if (state === 'idle') {
     return (
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={handleOpen}
-        className={cn(
-          "fixed z-50 w-14 h-14 rounded-full",
-          "bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg shadow-cyan-500/30",
-          "flex items-center justify-center",
-          "hover:shadow-xl hover:shadow-cyan-500/40 transition-shadow",
-          "bottom-32 left-4"
-        )}
-      >
-        <Mic className="h-7 w-7 text-white" />
-      </motion.button>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <motion.button
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleOpen}
+              className={cn(
+                "fixed z-50 w-14 h-14 rounded-full",
+                "bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg shadow-cyan-500/30",
+                "flex items-center justify-center",
+                "hover:shadow-xl hover:shadow-cyan-500/40 transition-shadow",
+                "bottom-32 left-4 group"
+              )}
+            >
+              {/* Pulse ring animation */}
+              <motion.div
+                className="absolute inset-0 rounded-full bg-cyan-400/30"
+                animate={{
+                  scale: [1, 1.5, 1.5],
+                  opacity: [0.5, 0, 0]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeOut"
+                }}
+              />
+              <motion.div
+                className="absolute inset-0 rounded-full bg-cyan-400/20"
+                animate={{
+                  scale: [1, 1.8, 1.8],
+                  opacity: [0.3, 0, 0]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeOut",
+                  delay: 0.5
+                }}
+              />
+              <Mic className="h-6 w-6 text-white relative z-10" />
+            </motion.button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="bg-gradient-to-r from-cyan-600 to-teal-600 text-white border-none">
+            <p className="font-medium">🎤 Traducteur Vocal</p>
+            <p className="text-xs opacity-80">Bariba ↔ Français</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   }
 
