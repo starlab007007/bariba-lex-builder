@@ -1,10 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TamTamMicButton } from './TamTamMicButton';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { icon: '🏠', path: '/tamtam/home', id: 'home', labelKey: 'home' },
@@ -17,8 +19,50 @@ export function TamTamNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const { t } = useTamTamLanguage();
   const { speakCurrentLang } = useBilingualAudio();
+  const { user } = useAuth();
+
+  // Fetch unread messages count
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchUnreadCount = async () => {
+      const { count, error } = await supabase
+        .from('tamtam_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+
+      if (!error && count !== null) {
+        setUnreadMessagesCount(count);
+      }
+    };
+
+    fetchUnreadCount();
+
+    // Subscribe to new messages
+    const channel = supabase
+      .channel('nav-unread-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tamtam_messages',
+          filter: `receiver_id=eq.${user.id}`
+        },
+        () => {
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -63,7 +107,7 @@ export function TamTamNavigation() {
             <button
               key={item.id}
               onClick={() => handleNavPress(item.path, item.labelKey)}
-              className={`flex flex-col items-center gap-1 w-16 py-1 rounded-2xl transition-all ${
+              className={`relative flex flex-col items-center gap-1 w-16 py-1 rounded-2xl transition-all ${
                 isActive(item.path)
                   ? 'bg-tamtam-primary/10'
                   : ''
@@ -72,6 +116,19 @@ export function TamTamNavigation() {
               <span className={`text-2xl ${isActive(item.path) ? 'scale-110' : ''}`}>
                 {item.icon}
               </span>
+              {/* Badge messages non lus pour l'onglet social */}
+              {item.id === 'social' && unreadMessagesCount > 0 && (
+                <AnimatePresence>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
+                  >
+                    {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                  </motion.div>
+                </AnimatePresence>
+              )}
               <span className={`text-xs ${isActive(item.path) ? 'text-tamtam-primary font-medium' : 'text-tamtam-text-muted'}`}>
                 {t(item.labelKey)}
               </span>

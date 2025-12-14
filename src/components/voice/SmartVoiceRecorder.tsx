@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useVoiceDetection } from '@/hooks/useVoiceDetection';
 import { cn } from '@/lib/utils';
+import { SoundWaveAnimation } from './SoundWaveAnimation';
 
 export type SpeakerType = 'Auto' | 'Enfant' | 'Femme' | 'Homme' | 'PersonneAgee';
 
@@ -221,6 +222,16 @@ export const SmartVoiceRecorder = ({
             disabled={isAutoListening || disabled}
           />
         </div>
+      )}
+
+      {/* Sound Wave Animation */}
+      {(isRecording || (isAutoListening && isSpeaking)) && (
+        <SoundWaveAnimation 
+          isActive={isRecording || (isAutoListening && isSpeaking)} 
+          color="hsl(var(--destructive))"
+          barCount={7}
+          className="mb-2"
+        />
       )}
 
       {/* Recording Button */}
