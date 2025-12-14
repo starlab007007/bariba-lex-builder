@@ -12,6 +12,7 @@ import { TamTamVocalPoll } from '@/components/tamtam/TamTamVocalPoll';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { TamTamStoryCreator } from '@/components/tamtam/TamTamStoryCreator';
 import { TamTamPrivateMessages } from '@/components/tamtam/TamTamPrivateMessages';
+import { TamTamVoiceRooms } from '@/components/tamtam/TamTamVoiceRooms';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +45,7 @@ export default function TamTamSocial() {
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showStoryCreator, setShowStoryCreator] = useState(false);
   const [showPrivateMessages, setShowPrivateMessages] = useState(false);
+  const [showVoiceRooms, setShowVoiceRooms] = useState(false);
   const [commentsModal, setCommentsModal] = useState<{
     isOpen: boolean;
     postId: string | null;
@@ -199,7 +201,7 @@ export default function TamTamSocial() {
             <div className="bg-white border-b border-gray-100">
               <TamTamStories 
                 stories={stories} 
-                onCreateStory={() => setShowCreatePost(true)}
+                onCreateStory={() => setShowStoryCreator(true)}
               />
             </div>
 
@@ -273,10 +275,24 @@ export default function TamTamSocial() {
             exit={{ opacity: 0, x: 20 }}
             className="p-4"
           >
-            <div className="text-center py-12">
-              <Radio className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500">{t('live')}</p>
-              <p className="text-sm text-gray-400 mt-1">Salles audio en direct - Bientôt</p>
+            <div className="text-center py-8">
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg"
+              >
+                <Radio className="w-10 h-10 text-white" />
+              </motion.div>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">{t('live')}</h2>
+              <p className="text-gray-500 mb-6">Rejoignez des salons audio en direct</p>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowVoiceRooms(true)}
+                className="px-8 py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-3 mx-auto"
+              >
+                <Radio className="w-5 h-5" />
+                Ouvrir les Salons Vocaux
+              </motion.button>
             </div>
           </motion.div>
         )}
@@ -359,6 +375,11 @@ export default function TamTamSocial() {
       <TamTamPrivateMessages
         isOpen={showPrivateMessages}
         onClose={() => setShowPrivateMessages(false)}
+      />
+
+      <TamTamVoiceRooms
+        isOpen={showVoiceRooms}
+        onClose={() => setShowVoiceRooms(false)}
       />
     </div>
   );
