@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Send, Volume2, Mic, User, Check, CheckCheck, 
-  Loader2, Languages, Play, Pause, X 
+  Loader2, Languages, Play, Pause, X, Globe, ArrowRightLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +13,7 @@ import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
 import { useAudioServices } from '@/hooks/useAudioServices';
 import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { VoiceOnlyTranslator } from '@/components/voice/VoiceOnlyTranslator';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,7 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
   
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showRecorder, setShowRecorder] = useState(false);
+  const [showTranslator, setShowTranslator] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState<{ [id: string]: 'ba' | 'fr' | null }>({});
   
@@ -138,6 +140,16 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
                 <h1 className="text-xl font-bold">Messages Vocaux</h1>
                 <AudioServicesStatusBar health={audioServices.health} />
               </div>
+              {/* Bouton Traducteur Vocal */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowTranslator(true)}
+                className="bg-gradient-to-br from-orange-100 to-blue-100 border-none hover:from-orange-200 hover:to-blue-200"
+                title="Traducteur vocal Bariba ↔ Français"
+              >
+                <ArrowRightLeft className="h-5 w-5 text-orange-600" />
+              </Button>
             </div>
 
             {/* Conversations */}
@@ -428,6 +440,45 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
                 )}
               </AnimatePresence>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Traducteur Vocal Bidirectionnel */}
+      <AnimatePresence>
+        {showTranslator && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4"
+            onClick={() => setShowTranslator(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl w-full max-w-md max-h-[80vh] overflow-hidden shadow-2xl"
+            >
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-blue-500 flex items-center justify-center">
+                    <ArrowRightLeft className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold">Traducteur Vocal</h2>
+                    <p className="text-xs text-gray-500">Bariba ↔ Français</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setShowTranslator(false)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="p-4">
+                <VoiceOnlyTranslator />
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
