@@ -38,11 +38,11 @@ export function AccessibleVoiceLauncher({
   const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
   const { translateFrenchToBariba, translateBaribaToFrench } = useHybridTranslation();
 
-  // Base position classes - can be overridden via className prop
+  // Fixed position on left side - never overlaps with RaconteMoi on right
   const positionClasses = {
-    'bottom-right': 'bottom-28 right-4',
-    'bottom-left': 'bottom-28 left-4',
-    'bottom-center': 'bottom-28 left-1/2 -translate-x-1/2'
+    'bottom-right': 'bottom-32 right-4',
+    'bottom-left': 'bottom-32 left-4',
+    'bottom-center': 'bottom-32 left-1/2 -translate-x-1/2'
   };
 
   const handleOpen = () => {
@@ -178,12 +178,11 @@ export function AccessibleVoiceLauncher({
         whileTap={{ scale: 0.9 }}
         onClick={handleOpen}
         className={cn(
-          "fixed z-50 w-16 h-16 rounded-full",
-          "bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/30",
+          "fixed z-50 w-14 h-14 rounded-full",
+          "bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg shadow-cyan-500/30",
           "flex items-center justify-center",
-          "hover:shadow-xl hover:shadow-primary/40 transition-shadow",
-          positionClasses[position],
-          className
+          "hover:shadow-xl hover:shadow-cyan-500/40 transition-shadow",
+          "bottom-32 left-4"
         )}
       >
         <Mic className="h-7 w-7 text-white" />
@@ -197,12 +196,7 @@ export function AccessibleVoiceLauncher({
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.8, opacity: 0 }}
-      className={cn(
-        "fixed z-50 w-72 rounded-3xl p-4",
-        "bg-background/95 backdrop-blur-xl border shadow-2xl",
-        positionClasses[position],
-        className
-      )}
+      className="fixed z-50 w-72 rounded-3xl p-4 bg-background/95 backdrop-blur-xl border shadow-2xl bottom-32 left-4"
     >
       {/* Header - Close + Mode */}
       <div className="flex items-center justify-between mb-4">
