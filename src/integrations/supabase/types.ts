@@ -1230,6 +1230,35 @@ export type Database = {
           },
         ]
       }
+      tamtam_story_views: {
+        Row: {
+          id: string
+          story_id: string
+          viewed_at: string
+          viewer_id: string | null
+        }
+        Insert: {
+          id?: string
+          story_id: string
+          viewed_at?: string
+          viewer_id?: string | null
+        }
+        Update: {
+          id?: string
+          story_id?: string
+          viewed_at?: string
+          viewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_story_views_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_phrases: {
         Row: {
           bariba_text: string
