@@ -15,8 +15,10 @@ import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { VoiceOnlyTranslator } from '@/components/voice/VoiceOnlyTranslator';
 import { PresenceIndicator } from '@/components/tamtam/PresenceIndicator';
+import { RecordingIndicator } from '@/components/tamtam/RecordingIndicator';
 import { usePresenceIndicator } from '@/hooks/usePresenceIndicator';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useRecordingIndicator } from '@/hooks/useRecordingIndicator';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -64,6 +66,9 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
   
   // Push notifications
   const { isEnabled: pushEnabled, requestPermission, permission } = usePushNotifications();
+  
+  // Recording indicator
+  const { partnerIsRecording, broadcastRecording } = useRecordingIndicator(selectedConversation || undefined);
 
   // Update own presence when opening messages
   useEffect(() => {
@@ -117,6 +122,7 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
 
   const handleSendMessage = async (audioBase64: string, duration: number) => {
     if (!selectedConversation) return;
+    broadcastRecording(false); // Stop broadcasting recording
     await sendVoiceMessage(selectedConversation, audioBase64, duration, 'bariba');
     setShowRecorder(false);
   };
@@ -337,6 +343,15 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
               </div>
             </div>
 
+            {/* Recording Indicator */}
+            <AnimatePresence>
+              {partnerIsRecording && (
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <RecordingIndicator userName={getSelectedPartner()?.partnerName} />
+                </div>
+              )}
+            </AnimatePresence>
+
             {/* Messages */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
@@ -524,7 +539,10 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
                     <Button
                       size="lg"
                       className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg"
-                      onClick={() => setShowRecorder(true)}
+                      onClick={() => {
+                        setShowRecorder(true);
+                        broadcastRecording(true);
+                      }}
                     >
                       <Mic className="h-7 w-7" />
                     </Button>
