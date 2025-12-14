@@ -163,17 +163,22 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
 
   return (
     <>
-      {/* Floating Assistant Button */}
+      {/* Floating Assistant Button - Right side, aligned with voice launcher */}
       <motion.button
         onClick={toggleOpen}
-        className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg flex items-center justify-center z-40"
+        className="fixed bottom-28 right-4 w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg shadow-purple-500/30 flex items-center justify-center z-40 hover:shadow-xl hover:shadow-purple-500/40 transition-shadow"
         whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.05 }}
         animate={isOpen ? { scale: 0 } : { scale: 1 }}
       >
-        <MessageCircle className="w-6 h-6 text-white" />
-        <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-          <Mic className="w-3 h-3 text-white" />
-        </span>
+        <MessageCircle className="w-7 h-7 text-white" />
+        <motion.span 
+          className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-md"
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ repeat: Infinity, duration: 2 }}
+        >
+          <Mic className="w-3.5 h-3.5 text-white" />
+        </motion.span>
       </motion.button>
 
       {/* Assistant Modal */}
