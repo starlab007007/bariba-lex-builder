@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Send, Volume2, Mic, User, Check, CheckCheck, 
-  Loader2, Languages, Play, Pause, X, Globe, ArrowRightLeft
+  Loader2, Languages, Play, Pause, X, Globe, ArrowRightLeft, Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,10 +14,14 @@ import { useAudioServices } from '@/hooks/useAudioServices';
 import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { VoiceOnlyTranslator } from '@/components/voice/VoiceOnlyTranslator';
+import { PresenceIndicator } from '@/components/tamtam/PresenceIndicator';
+import { usePresenceIndicator } from '@/hooks/usePresenceIndicator';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface TamTamPrivateMessagesProps {
   isOpen: boolean;
@@ -27,6 +31,7 @@ interface TamTamPrivateMessagesProps {
 export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessagesProps) {
   const { currentLang } = useTamTamLanguage();
   const audioServices = useAudioServices();
+  const { toast } = useToast();
   
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showRecorder, setShowRecorder] = useState(false);
@@ -48,11 +53,39 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
     markAsRead
   } = usePrivateVoiceMessages(selectedConversation || undefined);
 
+  // Get user IDs for presence tracking
+  const partnerUserIds = useMemo(() => 
+    conversations.map(c => c.partnerId), 
+    [conversations]
+  );
+  
+  // Presence indicator
+  const { getPresence, updateOwnPresence } = usePresenceIndicator(partnerUserIds);
+  
+  // Push notifications
+  const { isEnabled: pushEnabled, requestPermission, permission } = usePushNotifications();
+
+  // Update own presence when opening messages
   useEffect(() => {
     if (isOpen) {
+      updateOwnPresence();
       fetchConversations();
     }
-  }, [isOpen, fetchConversations]);
+  }, [isOpen, fetchConversations, updateOwnPresence]);
+
+  // Request notification permission on first open
+  useEffect(() => {
+    if (isOpen && permission === 'default') {
+      requestPermission().then(granted => {
+        if (granted) {
+          toast({
+            title: "🔔 Notifications activées",
+            description: "Vous recevrez des alertes pour les nouveaux messages"
+          });
+        }
+      });
+    }
+  }, [isOpen, permission, requestPermission, toast]);
 
   // Scroll to bottom and trigger notification for new messages
   const prevMessagesCountRef = useRef(messages.length);
@@ -182,47 +215,66 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {conversations.map(conv => (
-                    <motion.button
-                      key={conv.partnerId}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedConversation(conv.partnerId)}
-                      className="w-full p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors"
-                    >
-                      <Avatar className="h-14 w-14">
-                        <AvatarImage src={conv.partnerAvatar} />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white">
-                          {conv.partnerName.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 text-left">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold">{conv.partnerName}</span>
-                          {conv.lastMessage && (
-                            <span className="text-xs text-gray-400">
-                              {formatDistanceToNow(new Date(conv.lastMessage.created_at), {
-                                addSuffix: true,
-                                locale: fr
-                              })}
+                  {conversations.map(conv => {
+                    const presence = getPresence(conv.partnerId);
+                    return (
+                      <motion.button
+                        key={conv.partnerId}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setSelectedConversation(conv.partnerId)}
+                        className="w-full p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors"
+                      >
+                        {/* Avatar with presence indicator */}
+                        <div className="relative">
+                          <Avatar className="h-14 w-14">
+                            <AvatarImage src={conv.partnerAvatar} />
+                            <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white">
+                              {conv.partnerName.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {/* Presence dot */}
+                          <div className="absolute bottom-0 right-0">
+                            <PresenceIndicator 
+                              isOnline={presence.isOnline} 
+                              lastSeenAt={presence.lastSeenAt}
+                              size="md"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="flex-1 text-left">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">{conv.partnerName}</span>
+                              {presence.isOnline && (
+                                <span className="text-xs text-green-600 font-medium">En ligne</span>
+                              )}
+                            </div>
+                            {conv.lastMessage && (
+                              <span className="text-xs text-gray-400">
+                                {formatDistanceToNow(new Date(conv.lastMessage.created_at), {
+                                  addSuffix: true,
+                                  locale: fr
+                                })}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Volume2 className="h-3 w-3 text-gray-400" />
+                            <span className="text-sm text-gray-500 truncate">
+                              Message vocal • {conv.lastMessage?.duration_seconds}s
                             </span>
-                          )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Volume2 className="h-3 w-3 text-gray-400" />
-                          <span className="text-sm text-gray-500 truncate">
-                            Message vocal • {conv.lastMessage?.duration_seconds}s
-                          </span>
-                        </div>
-                      </div>
 
-                      {conv.unreadCount > 0 && (
-                        <Badge className="bg-blue-500 text-white">
-                          {conv.unreadCount}
-                        </Badge>
-                      )}
-                    </motion.button>
-                  ))}
+                        {conv.unreadCount > 0 && (
+                          <Badge className="bg-blue-500 text-white">
+                            {conv.unreadCount}
+                          </Badge>
+                        )}
+                      </motion.button>
+                    );
+                  })}
                 </div>
               )}
             </ScrollArea>
@@ -236,7 +288,7 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
             exit={{ x: 20, opacity: 0 }}
             className="h-full flex flex-col"
           >
-            {/* Header */}
+            {/* Header with presence indicator */}
             <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 p-4 flex items-center gap-4">
               <Button 
                 variant="ghost" 
@@ -246,16 +298,42 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={getSelectedPartner()?.partnerAvatar} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white">
-                  {getSelectedPartner()?.partnerName.slice(0, 2).toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
+              {/* Avatar with presence */}
+              <div className="relative">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={getSelectedPartner()?.partnerAvatar} />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white">
+                    {getSelectedPartner()?.partnerName.slice(0, 2).toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                {selectedConversation && (
+                  <div className="absolute bottom-0 right-0">
+                    <PresenceIndicator 
+                      isOnline={getPresence(selectedConversation).isOnline} 
+                      size="sm"
+                    />
+                  </div>
+                )}
+              </div>
               
-              <div>
+              <div className="flex-1">
                 <h2 className="font-semibold">{getSelectedPartner()?.partnerName}</h2>
-                <span className="text-xs text-gray-500">Messages vocaux</span>
+                {selectedConversation && (
+                  <PresenceIndicator 
+                    isOnline={getPresence(selectedConversation).isOnline}
+                    lastSeenAt={getPresence(selectedConversation).lastSeenAt}
+                    showText
+                    size="sm"
+                  />
+                )}
+              </div>
+              
+              {/* Notification status */}
+              <div className="flex items-center gap-1">
+                <Bell className={cn(
+                  "h-4 w-4",
+                  pushEnabled ? "text-green-500" : "text-gray-300"
+                )} />
               </div>
             </div>
 

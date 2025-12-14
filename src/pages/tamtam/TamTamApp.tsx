@@ -28,10 +28,11 @@ export default function TamTamApp() {
           </main>
           <TamTamNavigation />
           
-          {/* Accessible Voice Launcher - Floating button for instant translation */}
-          <AccessibleVoiceLauncher position="bottom-left" />
+          {/* Floating Buttons Container - Properly aligned on both sides */}
+          {/* Left: Voice Translator */}
+          <AccessibleVoiceLauncher position="bottom-left" className="bottom-28 left-4" />
           
-          {/* Raconte-Moi AI Voice Assistant */}
+          {/* Right: Raconte-Moi AI Assistant */}
           <RaconteMoiAssistant />
         </div>
       </AudioDescriptionProvider>

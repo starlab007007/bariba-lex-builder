@@ -38,10 +38,11 @@ export function AccessibleVoiceLauncher({
   const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
   const { translateFrenchToBariba, translateBaribaToFrench } = useHybridTranslation();
 
+  // Base position classes - can be overridden via className prop
   const positionClasses = {
-    'bottom-right': 'bottom-6 right-6',
-    'bottom-left': 'bottom-6 left-6',
-    'bottom-center': 'bottom-6 left-1/2 -translate-x-1/2'
+    'bottom-right': 'bottom-28 right-4',
+    'bottom-left': 'bottom-28 left-4',
+    'bottom-center': 'bottom-28 left-1/2 -translate-x-1/2'
   };
 
   const handleOpen = () => {
