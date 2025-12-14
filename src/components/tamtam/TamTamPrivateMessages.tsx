@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { usePrivateVoiceMessages, VoiceMessage, Conversation } from '@/hooks/usePrivateVoiceMessages';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
-import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import { useAudioServices } from '@/hooks/useAudioServices';
+import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -23,7 +24,7 @@ interface TamTamPrivateMessagesProps {
 
 export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessagesProps) {
   const { currentLang } = useTamTamLanguage();
-  const { speakBariba, speakFrench, isSpeaking } = useBilingualAudio();
+  const audioServices = useAudioServices();
   
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showRecorder, setShowRecorder] = useState(false);
@@ -97,11 +98,11 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
     }));
   };
 
-  const speakTranscript = (text: string, lang: 'ba' | 'fr') => {
+  const speakTranscript = async (text: string, lang: 'ba' | 'fr') => {
     if (lang === 'ba') {
-      speakBariba(text);
+      await audioServices.speakBariba(text);
     } else {
-      speakFrench(text);
+      await audioServices.speakFrench(text);
     }
   };
 
@@ -133,7 +134,10 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
               <Button variant="ghost" size="icon" onClick={onClose}>
                 <X className="h-5 w-5" />
               </Button>
-              <h1 className="text-xl font-bold">Messages Vocaux</h1>
+              <div className="flex-1">
+                <h1 className="text-xl font-bold">Messages Vocaux</h1>
+                <AudioServicesStatusBar health={audioServices.health} />
+              </div>
             </div>
 
             {/* Conversations */}
@@ -351,7 +355,7 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
                                       activeTranscript === 'ba' ? msg.transcript_ba || '' : msg.transcript_fr || '',
                                       activeTranscript
                                     )}
-                                    disabled={isSpeaking}
+                                    disabled={audioServices.isSpeaking}
                                   >
                                     <Volume2 className="h-3 w-3" />
                                   </Button>

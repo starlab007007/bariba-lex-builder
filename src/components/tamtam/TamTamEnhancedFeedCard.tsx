@@ -2,13 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Heart, MessageCircle, Share2, Volume2, VolumeX, Globe, Play, Pause, 
-  Image, Video, Mic, BarChart3, MoreHorizontal, Bookmark 
+  Image, Video, Mic, BarChart3, MoreHorizontal, Bookmark, Loader2 
 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { triggerFeedback, triggerReactionFeedback } from '@/utils/tamtamFeedback';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useAudioServices } from '@/hooks/useAudioServices';
 
 export interface EnhancedPost {
   id: string;
@@ -67,12 +68,15 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
   onVote
 }) => {
   const { currentLang, translateText, t } = useTamTamLanguage();
+  const audioServices = useAudioServices();
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [playingOptionId, setPlayingOptionId] = useState<string | null>(null);
+  const [isSpeakingPost, setIsSpeakingPost] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const optionAudioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
@@ -91,6 +95,28 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
     }
   };
 
+  // Read post aloud with TTS
+  const handleReadPost = async () => {
+    const textToRead = transcript || altTranscript;
+    if (!textToRead) return;
+    
+    setIsSpeakingPost(true);
+    triggerFeedback('record', { haptic: false });
+    
+    try {
+      // Determine language and use appropriate TTS
+      if (post.transcript_ba && (currentLang === 'ba' || !post.transcript_fr)) {
+        await audioServices.speakBariba(post.transcript_ba);
+      } else if (post.transcript_fr) {
+        await audioServices.speakFrench(post.transcript_fr);
+      }
+    } catch (err) {
+      console.error('[TamTamEnhancedFeedCard] TTS error:', err);
+    } finally {
+      setIsSpeakingPost(false);
+    }
+  };
+
   const handleTranslate = async () => {
     // Use ByT5 Expert for translation
     const textToTranslate = altTranscript || transcript;
@@ -98,28 +124,18 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
     
     setIsTranslating(true);
     try {
-      const { byT5TranslationService } = await import('@/services/ByT5TranslationService');
-      
       // Determine translation direction
       const hasBariba = !!post.transcript_ba;
       const hasFrench = !!post.transcript_fr;
       
       if (hasBariba && !hasFrench) {
         // Translate Bariba to French
-        const result = await byT5TranslationService.translate(
-          post.transcript_ba!,
-          'bariba',
-          'french'
-        );
-        setTranslatedText(result.translation);
+        const result = await audioServices.translate(post.transcript_ba!, 'ba', 'fr');
+        setTranslatedText(result);
       } else if (hasFrench && !hasBariba) {
         // Translate French to Bariba
-        const result = await byT5TranslationService.translate(
-          post.transcript_fr!,
-          'french',
-          'bariba'
-        );
-        setTranslatedText(result.translation);
+        const result = await audioServices.translate(post.transcript_fr!, 'fr', 'ba');
+        setTranslatedText(result);
       } else if (altTranscript) {
         // Fallback to context translation
         const from = currentLang === 'fr' ? 'ba' : 'fr';
@@ -130,7 +146,7 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
       
       triggerFeedback('success', { haptic: true, sound: false });
     } catch (err) {
-      console.error('[TamTamEnhancedFeedCard] ByT5 translation error:', err);
+      console.error('[TamTamEnhancedFeedCard] Translation error:', err);
       // Fallback to context translation
       if (altTranscript) {
         const from = currentLang === 'fr' ? 'ba' : 'fr';
@@ -372,13 +388,29 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
       {/* Transcript & Translation */}
       {(transcript || altTranscript) && (
         <div className="px-4 pb-2">
-          <button
-            onClick={() => setShowTranscript(!showTranscript)}
-            className="flex items-center gap-2 text-sm text-blue-500 font-medium"
-          >
-            {showTranscript ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            {showTranscript ? 'Masquer' : 'Voir transcription'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowTranscript(!showTranscript)}
+              className="flex items-center gap-2 text-sm text-blue-500 font-medium"
+            >
+              {showTranscript ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {showTranscript ? 'Masquer' : 'Voir transcription'}
+            </button>
+            
+            {/* TTS Read Button */}
+            <button
+              onClick={handleReadPost}
+              disabled={isSpeakingPost || audioServices.isSpeaking}
+              className="flex items-center gap-1 text-sm text-emerald-500 font-medium disabled:opacity-50"
+            >
+              {isSpeakingPost ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
+              Lire
+            </button>
+          </div>
           
           <AnimatePresence>
             {showTranscript && (
@@ -405,6 +437,21 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
                   {translatedText && (
                     <div className="mt-2 pt-2 border-t border-gray-200">
                       <p className="text-gray-600 italic">{translatedText}</p>
+                      {/* Read translation */}
+                      <button
+                        onClick={async () => {
+                          if (currentLang === 'ba') {
+                            await audioServices.speakFrench(translatedText);
+                          } else {
+                            await audioServices.speakBariba(translatedText);
+                          }
+                        }}
+                        disabled={audioServices.isSpeaking}
+                        className="mt-1 flex items-center gap-1 text-xs text-blue-500"
+                      >
+                        <Volume2 className="w-3 h-3" />
+                        Écouter
+                      </button>
                     </div>
                   )}
                 </div>
