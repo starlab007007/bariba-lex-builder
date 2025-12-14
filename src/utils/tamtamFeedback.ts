@@ -1,7 +1,7 @@
 // Audio feedback utilities for TAM-TAM
 // Provides sounds and haptic feedback for user interactions
 
-export type FeedbackType = 'like' | 'love' | 'laugh' | 'wow' | 'pray' | 'success' | 'error' | 'record' | 'send' | 'notification' | 'click' | 'sos' | 'message_received' | 'language_detected';
+export type FeedbackType = 'like' | 'love' | 'laugh' | 'wow' | 'pray' | 'success' | 'error' | 'record' | 'send' | 'notification' | 'click' | 'sos' | 'message_received' | 'language_detected' | 'fire' | 'applause';
 
 // Simple audio context for generating feedback sounds
 let audioContext: AudioContext | null = null;
@@ -27,8 +27,10 @@ const feedbackFrequencies: Record<FeedbackType, { freq: number; duration: number
   notification: { freq: 520, duration: 0.18, type: 'triangle' },
   click: { freq: 700, duration: 0.05, type: 'sine' },
   sos: { freq: 350, duration: 0.4, type: 'sawtooth' },
-  message_received: { freq: 587, duration: 0.2, type: 'triangle' }, // D5 - pleasant notification
-  language_detected: { freq: 784, duration: 0.15, type: 'sine' }, // G5 - confirmation tone
+  message_received: { freq: 587, duration: 0.2, type: 'triangle' },
+  language_detected: { freq: 784, duration: 0.15, type: 'sine' },
+  fire: { freq: 500, duration: 0.12, type: 'sawtooth' }, // Crackling fire effect
+  applause: { freq: 700, duration: 0.2, type: 'triangle' }, // Clapping sound
 };
 
 export const playFeedbackSound = (type: FeedbackType, volume: number = 0.3): void => {
@@ -80,8 +82,10 @@ const hapticPatterns: Record<FeedbackType, number[]> = {
   notification: [50, 30, 50],
   click: [20],
   sos: [200, 100, 200, 100, 200],
-  message_received: [80, 40, 80], // Distinctive triple tap for messages
-  language_detected: [30, 60], // Short-long for language detection
+  message_received: [80, 40, 80],
+  language_detected: [30, 60],
+  fire: [20, 20, 20, 20, 20], // Rapid fire crackle
+  applause: [30, 20, 30, 20, 30], // Triple clap pattern
 };
 
 export const triggerHaptic = (type: FeedbackType): void => {
@@ -110,11 +114,15 @@ export const reactionFeedback: Record<string, FeedbackType> = {
   'laugh': 'laugh',
   'wow': 'wow',
   'pray': 'pray',
+  'fire': 'fire',
+  'applause': 'applause',
   '👍': 'like',
   '❤️': 'love',
   '😂': 'laugh',
   '😮': 'wow',
   '🙏': 'pray',
+  '🔥': 'fire',
+  '👏': 'applause',
 };
 
 export const triggerReactionFeedback = (reaction: string): void => {

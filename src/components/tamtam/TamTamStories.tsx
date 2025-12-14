@@ -1,9 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Play, Pause, X, Volume2 } from 'lucide-react';
+import { Plus, Play, Pause, X, Volume2, Type } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TamTamStory } from '@/hooks/useTamTamPosts';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { useStoryViews } from '@/hooks/useStoryViews';
+import { AnimatedViewCounter } from './AnimatedViewCounter';
+import { CircularProgressRing } from './CircularProgressRing';
+import { KaraokeTranscript } from './KaraokeTranscript';
+import { StoryReactionBar } from './StoryReactionBar';
+import { tamtamFeedback } from '@/utils/tamtamFeedback';
 
 interface TamTamStoriesProps {
   stories: TamTamStory[];
@@ -14,7 +20,13 @@ export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateS
   const { currentLang, t } = useTamTamLanguage();
   const [activeStory, setActiveStory] = useState<TamTamStory | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showKaraoke, setShowKaraoke] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  
+  // Real-time views hook
+  const { viewCount, recordView } = useStoryViews(activeStory?.id || null);
 
   // Group stories by user
   const storiesByUser = stories.reduce((acc, story) => {
@@ -29,14 +41,46 @@ export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateS
   const handleStoryClick = (story: TamTamStory) => {
     setActiveStory(story);
     setIsPlaying(true);
+    setCurrentTime(0);
+    tamtamFeedback.play('click');
     setTimeout(() => {
       audioRef.current?.play();
     }, 100);
   };
 
+  // Record view when story opens
+  useEffect(() => {
+    if (activeStory) {
+      recordView();
+    }
+  }, [activeStory?.id, recordView]);
+
+  // Update current time for karaoke and progress
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+    
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+    
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+  }, [activeStory]);
+
   const handleClose = () => {
     setActiveStory(null);
     setIsPlaying(false);
+    setCurrentTime(0);
     audioRef.current?.pause();
   };
 
@@ -54,6 +98,18 @@ export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateS
     }
   };
 
+  const togglePlayPause = () => {
+    if (isPlaying) {
+      audioRef.current?.pause();
+    } else {
+      audioRef.current?.play();
+    }
+    setIsPlaying(!isPlaying);
+    tamtamFeedback.play('click');
+  };
+
+  const progress = duration > 0 ? currentTime / duration : 0;
+
   return (
     <>
       {/* Stories Bar */}
@@ -70,7 +126,7 @@ export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateS
           <span className="text-xs text-gray-500 font-medium">{t('newPost')}</span>
         </motion.button>
 
-        {/* User Stories */}
+        {/* User Stories with Circular Progress */}
         {Object.entries(storiesByUser).map(([userId, userStories]) => {
           const firstStory = userStories[0];
           return (
@@ -81,14 +137,19 @@ export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateS
               className="flex flex-col items-center gap-1 min-w-[70px]"
             >
               <div className="relative">
-                <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-br from-blue-500 via-emerald-400 to-blue-600">
-                  <Avatar className="w-full h-full border-2 border-white">
+                <CircularProgressRing
+                  progress={1}
+                  size={68}
+                  strokeWidth={3}
+                  color="#10B981"
+                >
+                  <Avatar className="w-14 h-14 border-2 border-white">
                     <AvatarImage src={firstStory.photo_url || firstStory.profile?.avatar_url || ''} />
                     <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white text-lg">
                       {firstStory.profile?.display_name?.[0] || '?'}
                     </AvatarFallback>
                   </Avatar>
-                </div>
+                </CircularProgressRing>
                 {userStories.length > 1 && (
                   <span className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium">
                     {userStories.length}
@@ -114,34 +175,56 @@ export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateS
           >
             {/* Progress bars */}
             <div className="absolute top-0 left-0 right-0 flex gap-1 p-2 z-10">
-              {storiesByUser[activeStory.user_id || 'unknown']?.map((story, idx) => (
-                <div key={story.id} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-white"
-                    initial={{ width: story.id === activeStory.id ? '0%' : (idx < storiesByUser[activeStory.user_id || 'unknown'].findIndex(s => s.id === activeStory.id) ? '100%' : '0%') }}
-                    animate={{ 
-                      width: story.id === activeStory.id && isPlaying ? '100%' : undefined 
-                    }}
-                    transition={{ 
-                      duration: activeStory.duration_seconds || 10,
-                      ease: 'linear'
-                    }}
-                  />
-                </div>
-              ))}
+              {storiesByUser[activeStory.user_id || 'unknown']?.map((story, idx) => {
+                const isCurrentStory = story.id === activeStory.id;
+                const currentIdx = storiesByUser[activeStory.user_id || 'unknown'].findIndex(s => s.id === activeStory.id);
+                
+                return (
+                  <div key={story.id} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-white"
+                      initial={{ width: idx < currentIdx ? '100%' : '0%' }}
+                      animate={{ 
+                        width: isCurrentStory ? `${progress * 100}%` : (idx < currentIdx ? '100%' : '0%')
+                      }}
+                      transition={{ duration: 0.1 }}
+                    />
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Header */}
+            {/* Header with views counter */}
             <div className="flex items-center gap-3 p-4 pt-8 z-10">
-              <Avatar className="w-10 h-10 ring-2 ring-white">
-                <AvatarImage src={activeStory.profile?.avatar_url || ''} />
-                <AvatarFallback>{activeStory.profile?.display_name?.[0] || '?'}</AvatarFallback>
-              </Avatar>
+              <CircularProgressRing
+                progress={progress}
+                size={48}
+                strokeWidth={2}
+                color="#10B981"
+              >
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={activeStory.profile?.avatar_url || ''} />
+                  <AvatarFallback>{activeStory.profile?.display_name?.[0] || '?'}</AvatarFallback>
+                </Avatar>
+              </CircularProgressRing>
+              
               <div className="flex-1">
                 <p className="text-white font-medium">
                   {activeStory.profile?.display_name || activeStory.profile?.username}
                 </p>
+                <AnimatedViewCounter count={viewCount} size="sm" />
               </div>
+              
+              {/* Karaoke toggle */}
+              <button
+                onClick={() => setShowKaraoke(!showKaraoke)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                  showKaraoke ? 'bg-emerald-500' : 'bg-white/20'
+                }`}
+              >
+                <Type className="w-5 h-5 text-white" />
+              </button>
+              
               <button
                 onClick={handleClose}
                 className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
@@ -159,21 +242,18 @@ export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateS
                   className="max-w-full max-h-full object-contain"
                 />
               ) : (
-                <div className="w-48 h-48 rounded-full bg-gradient-to-br from-blue-500 to-emerald-400 flex items-center justify-center">
-                  <Volume2 className="w-20 h-20 text-white animate-pulse" />
-                </div>
+                <motion.div 
+                  animate={isPlaying ? { scale: [1, 1.05, 1] } : {}}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="w-48 h-48 rounded-full bg-gradient-to-br from-blue-500 to-emerald-400 flex items-center justify-center"
+                >
+                  <Volume2 className="w-20 h-20 text-white" />
+                </motion.div>
               )}
 
               {/* Play/Pause overlay */}
               <button
-                onClick={() => {
-                  if (isPlaying) {
-                    audioRef.current?.pause();
-                  } else {
-                    audioRef.current?.play();
-                  }
-                  setIsPlaying(!isPlaying);
-                }}
+                onClick={togglePlayPause}
                 className="absolute inset-0 flex items-center justify-center"
               >
                 {!isPlaying && (
@@ -184,14 +264,27 @@ export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateS
               </button>
             </div>
 
-            {/* Transcript */}
-            {(activeStory.transcript_fr || activeStory.transcript_ba) && (
+            {/* Karaoke Transcript */}
+            {showKaraoke && (
+              <KaraokeTranscript
+                transcript={currentLang === 'fr' ? activeStory.transcript_fr || '' : activeStory.transcript_ba || ''}
+                audioDuration={duration}
+                currentTime={currentTime}
+                isPlaying={isPlaying}
+              />
+            )}
+
+            {/* Regular Transcript (when karaoke is off) */}
+            {!showKaraoke && (activeStory.transcript_fr || activeStory.transcript_ba) && (
               <div className="p-4 bg-gradient-to-t from-black/80 to-transparent">
                 <p className="text-white text-center text-lg">
                   {currentLang === 'fr' ? activeStory.transcript_fr : activeStory.transcript_ba}
                 </p>
               </div>
             )}
+
+            {/* Reaction Bar */}
+            <StoryReactionBar storyId={activeStory.id} />
 
             <audio
               ref={audioRef}
