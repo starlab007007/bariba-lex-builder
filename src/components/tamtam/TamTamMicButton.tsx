@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
-import { Mic, Square, Loader2 } from 'lucide-react';
+import { Mic, Square, Loader2, Volume2 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { useBaribaSTT } from '@/hooks/useBaribaSTT';
-import { byT5TranslationService } from '@/services/ByT5TranslationService';
+import { useAudioServices } from '@/hooks/useAudioServices';
+import { useToast } from '@/hooks/use-toast';
 
 interface TamTamMicButtonProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -18,6 +18,7 @@ interface TamTamMicButtonProps {
   }) => void;
   autoTranscribe?: boolean;
   autoTranslate?: boolean;
+  autoSpeak?: boolean; // NEW: auto-speak translation
   sourceLang?: 'ba' | 'fr';
   disabled?: boolean;
 }
@@ -43,14 +44,16 @@ export function TamTamMicButton({
   onRecordingComplete,
   autoTranscribe = false,
   autoTranslate = false,
+  autoSpeak = false,
   sourceLang = 'ba',
   disabled = false
 }: TamTamMicButtonProps) {
+  const { toast } = useToast();
   const [internalRecording, setInternalRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
   const audioRecorder = useAudioRecorder();
-  const baribaSTT = useBaribaSTT();
+  const audioServices = useAudioServices();
   
   // Use external control if provided, otherwise internal
   const isRecording = externalIsRecording !== undefined ? externalIsRecording : internalRecording;
@@ -81,21 +84,28 @@ export function TamTamMicButton({
           let translation: string | undefined;
           
           // Auto-transcribe if enabled
-          if (autoTranscribe && sourceLang === 'ba') {
-            const sttResult = await baribaSTT.transcribe(audioBase64);
-            transcription = sttResult?.transcription;
+          if (autoTranscribe) {
+            const result = await audioServices.transcribeAndTranslate(
+              audioBase64, 
+              sourceLang
+            );
+            transcription = result.transcription || undefined;
+            translation = result.translation || undefined;
             
-            // Auto-translate if enabled
-            if (autoTranslate && transcription) {
-              try {
-                const result = await byT5TranslationService.translate(
-                  transcription,
-                  'bariba',
-                  'french'
-                );
-                translation = result.translation;
-              } catch (err) {
-                console.error('[TamTamMicButton] Translation error:', err);
+            if (transcription) {
+              toast({
+                title: "✅ Transcription",
+                description: transcription.substring(0, 50) + (transcription.length > 50 ? '...' : '')
+              });
+            }
+            
+            // Auto-speak translation if enabled
+            if (autoSpeak && translation) {
+              const targetLang = sourceLang === 'ba' ? 'fr' : 'ba';
+              if (targetLang === 'ba') {
+                await audioServices.speakBariba(translation);
+              } else {
+                await audioServices.speakFrench(translation);
               }
             }
           }
@@ -118,7 +128,7 @@ export function TamTamMicButton({
     }
   }, [
     disabled, isRecording, audioRecorder, onRecordingComplete, 
-    autoTranscribe, autoTranslate, sourceLang, baribaSTT, onPress
+    autoTranscribe, autoTranslate, autoSpeak, sourceLang, audioServices, onPress, toast
   ]);
 
   const showRecordingState = isRecording || audioRecorder.isRecording;

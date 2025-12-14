@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Image, Video, Mic, BarChart3, Camera, Check, Upload, Smile } from 'lucide-react';
+import { X, Image, Video, Mic, BarChart3, Camera, Check, Upload, Smile, Volume2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
-import { useBaribaSTT } from '@/hooks/useBaribaSTT';
-import { useFrenchSTT } from '@/hooks/useFrenchSTT';
+import { useAudioServices } from '@/hooks/useAudioServices';
+import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,8 +39,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
 }) => {
   const { t, currentLang } = useTamTamLanguage();
   const { toast } = useToast();
-  const baribaSTT = useBaribaSTT();
-  const frenchSTT = useFrenchSTT();
+  const audioServices = useAudioServices();
   
   const [selectedType, setSelectedType] = useState<string>('audio');
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
@@ -64,71 +63,27 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   };
 
   const [transcriptionFailed, setTranscriptionFailed] = useState(false);
+  const [translatedTranscript, setTranslatedTranscript] = useState<string>('');
 
   const handleRecordingComplete = async (base64: string) => {
     console.log('[TamTamCreatePost] Recording complete, audio length:', base64.length);
     setAudioBase64(base64);
     setTranscriptionFailed(false);
     
-    // Auto-transcribe - NON-BLOCKING (continue even if it fails)
-    let transcriptionResult: string | null = null;
+    // Use unified audio services for transcription and translation
+    const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
+    const { transcription, translation } = await audioServices.transcribeAndTranslate(base64, sourceLang);
     
-    // Try Bariba STT first
-    try {
-      console.log('[TamTamCreatePost] Trying Bariba STT...');
-      const result = await baribaSTT.transcribe(base64);
-      if (result?.transcription) {
-        transcriptionResult = result.transcription;
-        console.log('[TamTamCreatePost] Bariba STT success:', transcriptionResult);
+    if (transcription) {
+      setTranscript(transcription);
+      if (translation) {
+        setTranslatedTranscript(translation);
       }
-    } catch (err: any) {
-      console.warn('[TamTamCreatePost] Bariba STT failed:', err.message);
-    }
-
-    // Fallback to French STT if Bariba failed
-    if (!transcriptionResult) {
-      try {
-        console.log('[TamTamCreatePost] Trying French STT fallback...');
-        // French STT uses Web Speech API which needs a different approach
-        // For now, just mark as failed and continue
-        console.log('[TamTamCreatePost] French STT not available for base64 audio');
-      } catch (err: any) {
-        console.warn('[TamTamCreatePost] French STT fallback failed:', err.message);
-      }
-    }
-
-    // Set transcript if we got one
-    if (transcriptionResult) {
-      setTranscript(transcriptionResult);
       toast({
         title: "✅ Transcription réussie",
-        description: "Votre audio a été transcrit automatiquement"
+        description: translation ? "Audio transcrit et traduit" : "Votre audio a été transcrit"
       });
-      
-      // Try translation (also non-blocking)
-      try {
-        const { byT5TranslationService } = await import('@/services/ByT5TranslationService');
-        
-        if (currentLang === 'ba') {
-          const transResult = await byT5TranslationService.translate(
-            transcriptionResult,
-            'bariba',
-            'french'
-          );
-          console.log('[TamTamCreatePost] ByT5 Translation:', transResult.translation);
-        } else {
-          const transResult = await byT5TranslationService.translate(
-            transcriptionResult,
-            'french',
-            'bariba'
-          );
-          console.log('[TamTamCreatePost] ByT5 Translation:', transResult.translation);
-        }
-      } catch (transErr) {
-        console.warn('[TamTamCreatePost] ByT5 translation error (non-blocking):', transErr);
-      }
     } else {
-      // Transcription failed - but we can still publish!
       setTranscriptionFailed(true);
       toast({
         title: "⚠️ Transcription non disponible",
@@ -136,8 +91,19 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       });
     }
     
-    // Always proceed to preview - transcription is optional!
+    // Always proceed to preview
     setStep('preview');
+  };
+
+  // Play transcript with TTS
+  const handlePlayTranscript = async () => {
+    if (!transcript) return;
+    
+    if (currentLang === 'ba') {
+      await audioServices.speakBariba(transcript);
+    } else {
+      await audioServices.speakFrench(transcript);
+    }
   };
 
   const handleSubmit = async () => {
@@ -286,9 +252,12 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-800">
-            {t('newPost')}
-          </h3>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">
+              {t('newPost')}
+            </h3>
+            <AudioServicesStatusBar health={audioServices.health} />
+          </div>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"

@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BarChart3, Mic, Check, Send } from 'lucide-react';
+import { X, BarChart3, Mic, Check, Send, Volume2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAudioServices } from '@/hooks/useAudioServices';
+import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 
 interface PollOption {
   id: string;
@@ -29,18 +31,31 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
   onClose,
   onSubmit
 }) => {
-  const { t } = useTamTamLanguage();
+  const { t, currentLang } = useTamTamLanguage();
   const { toast } = useToast();
+  const audioServices = useAudioServices();
   
   const [step, setStep] = useState<'question' | 'options' | 'preview'>('question');
   const [questionAudio, setQuestionAudio] = useState<string | null>(null);
   const [options, setOptions] = useState<PollOption[]>([]);
   const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [questionTranscript, setQuestionTranscript] = useState<string>('');
 
-  const handleQuestionRecorded = (base64: string) => {
+  const handleQuestionRecorded = async (base64: string) => {
     setQuestionAudio(base64);
     triggerFeedback('success');
+    
+    // Auto-transcribe question
+    const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
+    const transcription = sourceLang === 'ba' 
+      ? await audioServices.transcribeBariba(base64)
+      : await audioServices.transcribeFrench(base64);
+    
+    if (transcription) {
+      setQuestionTranscript(transcription);
+    }
+    
     setStep('options');
     setOptions([
       { id: '1', votes: 0 },
@@ -48,11 +63,18 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
     ]);
   };
 
-  const handleOptionRecorded = (base64: string) => {
+  const handleOptionRecorded = async (base64: string) => {
     triggerFeedback('record');
+    
+    // Auto-transcribe option
+    const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
+    const transcription = sourceLang === 'ba' 
+      ? await audioServices.transcribeBariba(base64)
+      : await audioServices.transcribeFrench(base64);
+    
     setOptions(prev => prev.map((opt, idx) => 
       idx === currentOptionIndex 
-        ? { ...opt, audioBase64: base64 } 
+        ? { ...opt, audioBase64: base64, transcript: transcription || undefined } 
         : opt
     ));
     
@@ -176,6 +198,11 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
           >
             <X className="w-4 h-4 text-gray-500" />
           </button>
+        </div>
+        
+        {/* Service Status */}
+        <div className="px-4 pb-2">
+          <AudioServicesStatusBar health={audioServices.health} />
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto">
