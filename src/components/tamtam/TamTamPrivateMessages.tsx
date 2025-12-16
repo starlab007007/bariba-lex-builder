@@ -28,14 +28,15 @@ import { useToast } from '@/hooks/use-toast';
 interface TamTamPrivateMessagesProps {
   isOpen: boolean;
   onClose: () => void;
+  initialConversationId?: string;
 }
 
-export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessagesProps) {
+export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }: TamTamPrivateMessagesProps) {
   const { currentLang } = useTamTamLanguage();
   const audioServices = useAudioServices();
   const { toast } = useToast();
   
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(initialConversationId || null);
   const [showRecorder, setShowRecorder] = useState(false);
   const [showTranslator, setShowTranslator] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
@@ -54,6 +55,13 @@ export function TamTamPrivateMessages({ isOpen, onClose }: TamTamPrivateMessages
     fetchConversations,
     markAsRead
   } = usePrivateVoiceMessages(selectedConversation || undefined);
+
+  // Update selected conversation if initialConversationId changes
+  useEffect(() => {
+    if (initialConversationId && isOpen) {
+      setSelectedConversation(initialConversationId);
+    }
+  }, [initialConversationId, isOpen]);
 
   // Get user IDs for presence tracking
   const partnerUserIds = useMemo(() => 
