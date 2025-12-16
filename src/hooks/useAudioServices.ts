@@ -7,6 +7,70 @@ import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { byT5TranslationService } from '@/services/ByT5TranslationService';
 import { useToast } from '@/hooks/use-toast';
 
+const AUDIO_SERVICES_HEALTH_TTL_MS = 60_000;
+
+const audioServicesHealthCache: {
+  health: AudioServiceHealth | null;
+  checkedAt: number;
+  inFlight: Promise<AudioServiceHealth> | null;
+} = {
+  health: null,
+  checkedAt: 0,
+  inFlight: null,
+};
+
+async function getAudioServicesHealth(): Promise<AudioServiceHealth> {
+  const now = Date.now();
+
+  if (audioServicesHealthCache.health && now - audioServicesHealthCache.checkedAt < AUDIO_SERVICES_HEALTH_TTL_MS) {
+    return audioServicesHealthCache.health;
+  }
+
+  if (audioServicesHealthCache.inFlight) {
+    return audioServicesHealthCache.inFlight;
+  }
+
+  audioServicesHealthCache.inFlight = (async () => {
+    const base: AudioServiceHealth = {
+      baribaSTT: 'checking',
+      baribaTTS: 'checking',
+      frenchSTT: 'available',
+      frenchTTS: 'available',
+      byT5: 'checking',
+    };
+
+    const [sttRes, ttsRes, byt5Res] = await Promise.allSettled([
+      supabase.functions.invoke('bariba-stt', { body: { audio: 'health-check' } }),
+      supabase.functions.invoke('bariba-tts', { body: { text: 'test' } }),
+      byT5TranslationService.checkHealth(),
+    ]);
+
+    const baribaSTT: ServiceStatus =
+      sttRes.status === 'fulfilled' ? (sttRes.value.error ? 'error' : 'available') : 'unavailable';
+
+    const baribaTTS: ServiceStatus =
+      ttsRes.status === 'fulfilled' ? (ttsRes.value.error ? 'error' : 'available') : 'unavailable';
+
+    const byT5: ServiceStatus =
+      byt5Res.status === 'fulfilled' ? (byt5Res.value ? 'available' : 'unavailable') : 'unavailable';
+
+    const result: AudioServiceHealth = {
+      ...base,
+      baribaSTT,
+      baribaTTS,
+      byT5,
+    };
+
+    audioServicesHealthCache.health = result;
+    audioServicesHealthCache.checkedAt = Date.now();
+    return result;
+  })().finally(() => {
+    audioServicesHealthCache.inFlight = null;
+  });
+
+  return audioServicesHealthCache.inFlight;
+}
+
 export type ServiceStatus = 'checking' | 'available' | 'unavailable' | 'error';
 
 interface AudioServiceHealth {
@@ -49,62 +113,40 @@ interface UseAudioServicesReturn {
 
 export function useAudioServices(): UseAudioServicesReturn {
   const { toast } = useToast();
-  
+
   const baribaTTS = useBaribaTTS();
   const baribaSTT = useBaribaSTT();
   const frenchTTS = useFrenchTTS();
   const frenchSTT = useFrenchSTT();
-  
-  const [health, setHealth] = useState<AudioServiceHealth>({
-    baribaSTT: 'checking',
-    baribaTTS: 'checking',
-    frenchSTT: 'available', // Web Speech API is usually available
-    frenchTTS: 'available', // Lovable AI is usually available
-    byT5: 'checking',
-  });
-  
+
+  const [health, setHealth] = useState<AudioServiceHealth>(() =>
+    audioServicesHealthCache.health ?? {
+      baribaSTT: 'checking',
+      baribaTTS: 'checking',
+      frenchSTT: 'available', // Web Speech API is usually available
+      frenchTTS: 'available', // Lovable AI is usually available
+      byT5: 'checking',
+    }
+  );
+
   const [isChecking, setIsChecking] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // Check all services health
+  // Check all services health (shared + de-duped across all hook instances)
   const checkHealth = useCallback(async () => {
     setIsChecking(true);
     setLastError(null);
-    
-    // Check Bariba STT
+
     try {
-      const { error } = await supabase.functions.invoke('bariba-stt', {
-        body: { audio: 'health-check' }
-      });
-      // If function responds (even with error about audio), it's available
-      setHealth(prev => ({ ...prev, baribaSTT: error ? 'error' : 'available' }));
-    } catch (err) {
-      setHealth(prev => ({ ...prev, baribaSTT: 'unavailable' }));
+      const result = await getAudioServicesHealth();
+      setHealth(result);
+    } finally {
+      setIsChecking(false);
     }
-    
-    // Check Bariba TTS
-    try {
-      const { error } = await supabase.functions.invoke('bariba-tts', {
-        body: { text: 'test' }
-      });
-      setHealth(prev => ({ ...prev, baribaTTS: error ? 'error' : 'available' }));
-    } catch (err) {
-      setHealth(prev => ({ ...prev, baribaTTS: 'unavailable' }));
-    }
-    
-    // Check ByT5
-    try {
-      const result = await byT5TranslationService.checkHealth();
-      setHealth(prev => ({ ...prev, byT5: result ? 'available' : 'unavailable' }));
-    } catch (err) {
-      setHealth(prev => ({ ...prev, byT5: 'unavailable' }));
-    }
-    
-    setIsChecking(false);
   }, []);
 
-  // Initial health check
+  // Initial health check (safe: shared cache prevents request stampede)
   useEffect(() => {
     checkHealth();
   }, [checkHealth]);

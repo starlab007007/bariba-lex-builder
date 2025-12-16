@@ -6,11 +6,12 @@ const corsHeaders = {
 };
 
 interface TranslationRequest {
-  text: string;
-  sourceLang: 'french' | 'bariba';
-  targetLang: 'french' | 'bariba';
+  text?: string;
+  sourceLang?: 'french' | 'bariba';
+  targetLang?: 'french' | 'bariba';
   mode?: 'quality' | 'fast';
   advanced?: boolean;
+  healthCheck?: boolean;
 }
 
 const SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space';
@@ -333,13 +334,73 @@ serve(async (req) => {
   }, GLOBAL_TIMEOUT_MS);
 
   try {
-    const { 
-      text, 
-      sourceLang, 
-      targetLang, 
+    const {
+      healthCheck = false,
+      text,
+      sourceLang,
+      targetLang,
       mode = 'quality',
-      advanced = true
+      advanced = true,
     }: TranslationRequest = await req.json();
+
+    // Fast health check mode (avoids running an actual translation)
+    if (healthCheck) {
+      clearTimeout(timeoutId);
+
+      const hfToken = Deno.env.get('HUGGING_FACE_API_TOKEN');
+      if (!hfToken) {
+        return new Response(
+          JSON.stringify({ error: 'HuggingFace token not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const hcStart = Date.now();
+      const hcController = new AbortController();
+      const hcTimeoutId = setTimeout(() => hcController.abort(), 4000);
+
+      try {
+        const configResponse = await fetch(`${SPACE_URL}/config`, {
+          headers: { 'Authorization': `Bearer ${hfToken}` },
+          signal: hcController.signal,
+        });
+
+        if (!configResponse.ok) {
+          return new Response(
+            JSON.stringify({
+              healthy: false,
+              error: 'ByT5 health check failed',
+              details: `Config status ${configResponse.status}`,
+              duration: Date.now() - hcStart,
+              spaceUrl: SPACE_URL,
+            }),
+            { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            healthy: true,
+            duration: Date.now() - hcStart,
+            spaceUrl: SPACE_URL,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      } catch (e) {
+        return new Response(
+          JSON.stringify({
+            healthy: false,
+            error: 'ByT5 health check failed',
+            details: e?.message || 'Unknown error',
+            duration: Date.now() - hcStart,
+            spaceUrl: SPACE_URL,
+          }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      } finally {
+        clearTimeout(hcTimeoutId);
+      }
+    }
 
     if (!text || !sourceLang || !targetLang) {
       clearTimeout(timeoutId);

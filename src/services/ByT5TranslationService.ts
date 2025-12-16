@@ -28,6 +28,7 @@ class ByT5TranslationService {
   private isHealthy: boolean = false;
   private lastHealthCheck: number = 0;
   private healthCheckInterval: number = 60000; // 1 minute
+  private healthCheckPromise: Promise<boolean> | null = null;
 
   private constructor() {}
 
@@ -114,19 +115,35 @@ class ByT5TranslationService {
       return this.isHealthy;
     }
 
-    try {
-      console.log('🏥 ByT5 health check...');
-      const result = await this.translate('bonjour', 'french', 'bariba', 'fast', false);
-      this.isHealthy = !!result.translation;
-      this.lastHealthCheck = Date.now();
-      console.log(`🏥 ByT5 health: ${this.isHealthy ? '✅ OK' : '❌ Failed'}`);
-      return this.isHealthy;
-    } catch (error) {
-      console.log('🏥 ByT5 health: ❌ Failed');
-      this.isHealthy = false;
-      this.lastHealthCheck = Date.now();
-      return false;
+    // De-dupe concurrent checks (feed can mount many cards at once)
+    if (this.healthCheckPromise) {
+      return this.healthCheckPromise;
     }
+
+    this.healthCheckPromise = (async () => {
+      try {
+        console.log('🏥 ByT5 health check...');
+
+        const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
+          body: { healthCheck: true },
+        });
+
+        const healthy = !error && !!data?.healthy;
+        this.isHealthy = healthy;
+        this.lastHealthCheck = Date.now();
+        console.log(`🏥 ByT5 health: ${healthy ? '✅ OK' : '❌ Failed'}`);
+        return healthy;
+      } catch {
+        console.log('🏥 ByT5 health: ❌ Failed');
+        this.isHealthy = false;
+        this.lastHealthCheck = Date.now();
+        return false;
+      } finally {
+        this.healthCheckPromise = null;
+      }
+    })();
+
+    return this.healthCheckPromise;
   }
 
   getHealthStatus(): { isHealthy: boolean; lastCheck: number } {
