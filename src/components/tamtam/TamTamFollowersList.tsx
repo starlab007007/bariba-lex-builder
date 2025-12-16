@@ -11,9 +11,10 @@ interface TamTamFollowersListProps {
   type: 'followers' | 'following';
   isOpen: boolean;
   onClose: () => void;
+  onMessage?: (userId: string) => void;
 }
 
-export function TamTamFollowersList({ userId, type, isOpen, onClose }: TamTamFollowersListProps) {
+export function TamTamFollowersList({ userId, type, isOpen, onClose, onMessage }: TamTamFollowersListProps) {
   const { t } = useTamTamLanguage();
   const { user } = useAuth();
   const { followers, following, followUser, unfollowUser, loading } = useTamTamFollows(userId);
@@ -26,6 +27,11 @@ export function TamTamFollowersList({ userId, type, isOpen, onClose }: TamTamFol
 
   const handleUnfollow = async (targetUserId: string) => {
     await unfollowUser(targetUserId);
+  };
+
+  const handleMessage = (targetUserId: string) => {
+    onMessage?.(targetUserId);
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -107,6 +113,7 @@ export function TamTamFollowersList({ userId, type, isOpen, onClose }: TamTamFol
                   isFollowing={currentUserFollows}
                   onFollow={!isCurrentUser ? () => handleFollow(targetId) : undefined}
                   onUnfollow={!isCurrentUser ? () => handleUnfollow(targetId) : undefined}
+                  onMessage={!isCurrentUser ? () => handleMessage(targetId) : undefined}
                 />
               );
             })

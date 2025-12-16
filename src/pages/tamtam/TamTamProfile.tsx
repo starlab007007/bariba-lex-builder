@@ -5,6 +5,8 @@ import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { TamTamFollowersList } from '@/components/tamtam/TamTamFollowersList';
 import { TamTamFriendsList } from '@/components/tamtam/TamTamFriendsList';
 import { TamTamStories } from '@/components/tamtam/TamTamStories';
+import { TamTamPrivateMessages } from '@/components/tamtam/TamTamPrivateMessages';
+import { ProfilePhotoUploader } from '@/components/tamtam/ProfilePhotoUploader';
 import { Volume2, Play, Loader2, LogOut, Mic, Clock, Eye, Heart } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
@@ -45,6 +47,8 @@ export default function TamTamProfile() {
   const [showFollowing, setShowFollowing] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
   const [showStories, setShowStories] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [messageTargetUserId, setMessageTargetUserId] = useState<string | undefined>(undefined);
   
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
@@ -71,6 +75,15 @@ export default function TamTamProfile() {
   useEffect(() => {
     announceAction(t('screenProfile'));
   }, [announceAction, t]);
+
+  const handlePhotoUploaded = async (url: string) => {
+    await updateProfile({ avatar_url: url });
+  };
+
+  const handleOpenMessages = (userId?: string) => {
+    setMessageTargetUserId(userId);
+    setShowMessages(true);
+  };
 
   const handleRecordBio = async (result: {
     audioBase64: string;
@@ -166,6 +179,7 @@ export default function TamTamProfile() {
   const stats = [
     { icon: '📢', value: profile?.posts_count || 0, labelKey: 'posts', onClick: () => {} },
     { icon: '👥', value: followersCount, labelKey: 'followers', onClick: () => setShowFollowers(true) },
+    { icon: '👣', value: followingCount, labelKey: 'following', onClick: () => setShowFollowing(true) },
     { icon: '🤝', value: friendsCount, labelKey: 'friends', onClick: () => setShowFriends(true) },
   ];
 
@@ -179,24 +193,16 @@ export default function TamTamProfile() {
 
   return (
     <div className="min-h-screen bg-tamtam-bg px-4 pt-8 pb-32">
-      {/* Profile photo */}
+      {/* Profile photo with upload */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         className="flex justify-center mb-4"
       >
-        <button className="relative">
-          <div className="w-32 h-32 bg-tamtam-surface rounded-full shadow-tamtam-soft flex items-center justify-center overflow-hidden">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-6xl">👤</span>
-            )}
-          </div>
-          <div className="absolute bottom-0 right-0 w-10 h-10 bg-tamtam-primary rounded-full flex items-center justify-center">
-            <span className="text-xl">📷</span>
-          </div>
-        </button>
+        <ProfilePhotoUploader 
+          currentAvatarUrl={profile?.avatar_url || null}
+          onPhotoUploaded={handlePhotoUploaded}
+        />
       </motion.div>
 
       {/* Name and username */}
@@ -417,17 +423,17 @@ export default function TamTamProfile() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="grid grid-cols-3 gap-4 mb-6"
+        className="grid grid-cols-4 gap-3 mb-6"
       >
         {stats.map((stat) => (
           <button
             key={stat.labelKey}
             onClick={stat.onClick}
-            className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft text-center active:scale-95 transition-transform"
+            className="bg-tamtam-surface rounded-3xl p-3 shadow-tamtam-soft text-center active:scale-95 transition-transform"
           >
-            <span className="text-2xl">{stat.icon}</span>
-            <div className="text-2xl font-bold text-tamtam-text mt-1">{stat.value}</div>
-            <div className="text-xs text-tamtam-text-muted">{t(stat.labelKey)}</div>
+            <span className="text-xl">{stat.icon}</span>
+            <div className="text-xl font-bold text-tamtam-text mt-1">{stat.value}</div>
+            <div className="text-[10px] text-tamtam-text-muted">{t(stat.labelKey)}</div>
           </button>
         ))}
       </motion.div>
@@ -474,16 +480,27 @@ export default function TamTamProfile() {
             type="followers"
             isOpen={showFollowers}
             onClose={() => setShowFollowers(false)}
+            onMessage={handleOpenMessages}
           />
           <TamTamFollowersList
             userId={user.id}
             type="following"
             isOpen={showFollowing}
             onClose={() => setShowFollowing(false)}
+            onMessage={handleOpenMessages}
           />
           <TamTamFriendsList
             isOpen={showFriends}
             onClose={() => setShowFriends(false)}
+            onMessage={handleOpenMessages}
+          />
+          <TamTamPrivateMessages
+            isOpen={showMessages}
+            onClose={() => {
+              setShowMessages(false);
+              setMessageTargetUserId(undefined);
+            }}
+            initialConversationId={messageTargetUserId}
           />
         </>
       )}

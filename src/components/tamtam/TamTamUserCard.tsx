@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Volume2, UserPlus, UserMinus, UserCheck } from 'lucide-react';
+import { Volume2, UserPlus, UserMinus, UserCheck, MessageCircle } from 'lucide-react';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 
@@ -19,6 +19,7 @@ interface TamTamUserCardProps {
   onUnfollow?: () => void;
   onSendFriendRequest?: () => void;
   onAcceptFriend?: () => void;
+  onMessage?: () => void;
   onPress?: () => void;
 }
 
@@ -31,6 +32,7 @@ export function TamTamUserCard({
   onUnfollow,
   onSendFriendRequest,
   onAcceptFriend,
+  onMessage,
   onPress
 }: TamTamUserCardProps) {
   const { speakFrench } = useBilingualAudio();
@@ -72,6 +74,12 @@ export function TamTamUserCard({
     }
   };
 
+  const handleMessageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    tamtamFeedback.play('click');
+    onMessage?.();
+  };
+
   return (
     <motion.button
       initial={{ opacity: 0, y: 10 }}
@@ -111,6 +119,16 @@ export function TamTamUserCard({
           className="w-10 h-10 bg-tamtam-bg rounded-full flex items-center justify-center"
         >
           <Volume2 className="w-5 h-5 text-tamtam-primary" />
+        </button>
+      )}
+
+      {/* Message button */}
+      {onMessage && (
+        <button
+          onClick={handleMessageClick}
+          className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center hover:bg-blue-200 transition-colors"
+        >
+          <MessageCircle className="w-5 h-5 text-blue-600" />
         </button>
       )}
 

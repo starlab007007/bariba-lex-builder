@@ -9,9 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 interface TamTamFriendsListProps {
   isOpen: boolean;
   onClose: () => void;
+  onMessage?: (userId: string) => void;
 }
 
-export function TamTamFriendsList({ isOpen, onClose }: TamTamFriendsListProps) {
+export function TamTamFriendsList({ isOpen, onClose, onMessage }: TamTamFriendsListProps) {
   const { t } = useTamTamLanguage();
   const { user } = useAuth();
   const { 
@@ -22,6 +23,11 @@ export function TamTamFriendsList({ isOpen, onClose }: TamTamFriendsListProps) {
     rejectFriendRequest,
     loading 
   } = useTamTamFriends();
+
+  const handleMessage = (targetUserId: string) => {
+    onMessage?.(targetUserId);
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -108,6 +114,7 @@ export function TamTamFriendsList({ isOpen, onClose }: TamTamFriendsListProps) {
                     }}
                     isFriend={true}
                     friendshipStatus="accepted"
+                    onMessage={() => handleMessage(friendId)}
                   />
                 );
               })
