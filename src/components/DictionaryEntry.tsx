@@ -75,7 +75,7 @@ export const DictionaryEntry = ({ entry, searchQuery = "", relevanceScore }: Dic
             <Badge variant={getPartOfSpeechVariant(entry.part_of_speech)}>
               {getPartOfSpeechLabel(entry.part_of_speech)}
             </Badge>
-            {entry.source_flags.length > 0 && (
+            {entry.source_flags?.length > 0 && (
               <div className="flex gap-1">
                 {entry.source_flags.slice(0, 3).map((flag, index) => (
                   <Badge key={index} variant="outline" className="text-xs">
@@ -96,11 +96,11 @@ export const DictionaryEntry = ({ entry, searchQuery = "", relevanceScore }: Dic
         </div>
 
         {/* Examples */}
-        {(entry.example_bariba.length > 0 || entry.example_francais.length > 0) && (
+        {((entry.example_bariba?.length ?? 0) > 0 || (entry.example_francais?.length ?? 0) > 0) && (
           <div className="space-y-3">
             <h3 className="font-semibold text-foreground font-sans">Exemples</h3>
             <div className="space-y-2">
-              {entry.example_bariba.map((example, index) => (
+              {(entry.example_bariba ?? []).map((example, index) => (
                 <div key={index} className="space-y-1">
                   <div className="example-text">
                     <p className="bariba-text font-medium">{highlightText(example, searchQuery)}</p>
@@ -117,13 +117,13 @@ export const DictionaryEntry = ({ entry, searchQuery = "", relevanceScore }: Dic
         )}
 
         {/* Variants and Keywords */}
-        {(entry.variants.length > 0 || entry.french_keywords.length > 0) && (
+        {((entry.variants?.length ?? 0) > 0 || (entry.french_keywords?.length ?? 0) > 0) && (
           <div className="space-y-2">
-            {entry.variants.length > 0 && (
+            {(entry.variants?.length ?? 0) > 0 && (
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-1 font-sans">Variantes</h4>
                 <div className="flex flex-wrap gap-1">
-                  {entry.variants.slice(0, 3).map((variant, index) => (
+                  {(entry.variants ?? []).slice(0, 3).map((variant, index) => (
                     <Badge key={index} variant="outline" className="text-xs bariba-text">
                       {variant}
                     </Badge>
@@ -132,11 +132,11 @@ export const DictionaryEntry = ({ entry, searchQuery = "", relevanceScore }: Dic
               </div>
             )}
             
-            {entry.french_keywords.length > 0 && (
+            {(entry.french_keywords?.length ?? 0) > 0 && (
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-1 font-sans">Mots-clés</h4>
                 <div className="flex flex-wrap gap-1">
-                  {entry.french_keywords.slice(0, 4).map((keyword, index) => (
+                  {(entry.french_keywords ?? []).slice(0, 4).map((keyword, index) => (
                     <Badge key={index} variant="secondary" className="text-xs">
                       {keyword}
                     </Badge>
