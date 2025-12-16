@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Radio, Newspaper, Plus, BarChart3 } from 'lucide-react';
+import { MessageCircle, Radio, Newspaper, Plus, BarChart3, Search } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
@@ -12,6 +12,7 @@ import { TamTamVocalPoll } from '@/components/tamtam/TamTamVocalPoll';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { TamTamStoryCreator } from '@/components/tamtam/TamTamStoryCreator';
 import { TamTamPrivateMessages } from '@/components/tamtam/TamTamPrivateMessages';
+import { TamTamUserSearch } from '@/components/tamtam/TamTamUserSearch';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +45,8 @@ export default function TamTamSocial() {
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showStoryCreator, setShowStoryCreator] = useState(false);
   const [showPrivateMessages, setShowPrivateMessages] = useState(false);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [messageUserId, setMessageUserId] = useState<string | null>(null);
   const [commentsModal, setCommentsModal] = useState<{
     isOpen: boolean;
     postId: string | null;
@@ -163,27 +166,36 @@ export default function TamTamSocial() {
     <div className="min-h-screen bg-[#FAFAFA] pb-24">
       {/* Tab Bar */}
       <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="flex justify-center gap-2 p-3">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            
-            return (
-              <motion.button
-                key={tab.id}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
-                  isActive 
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg' 
-                    : 'bg-gray-100 text-gray-500'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="hidden sm:inline">{t(tab.label)}</span>
-              </motion.button>
-            );
-          })}
+        <div className="flex justify-between items-center p-3">
+          <div className="flex justify-center gap-2 flex-1">
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <motion.button
+                  key={tab.id}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
+                    isActive 
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg' 
+                      : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="hidden sm:inline">{t(tab.label)}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowUserSearch(true)}
+            className="p-2.5 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+          >
+            <Search className="w-5 h-5 text-gray-600" />
+          </motion.button>
         </div>
       </div>
 
@@ -359,6 +371,16 @@ export default function TamTamSocial() {
       <TamTamPrivateMessages
         isOpen={showPrivateMessages}
         onClose={() => setShowPrivateMessages(false)}
+        initialConversationId={messageUserId || undefined}
+      />
+
+      <TamTamUserSearch
+        isOpen={showUserSearch}
+        onClose={() => setShowUserSearch(false)}
+        onMessage={(userId) => {
+          setMessageUserId(userId);
+          setShowPrivateMessages(true);
+        }}
       />
     </div>
   );
