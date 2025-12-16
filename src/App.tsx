@@ -20,7 +20,7 @@ import TamTamMarket from "./pages/tamtam/TamTamMarket";
 import TamTamSOS from "./pages/tamtam/TamTamSOS";
 import TamTamProfile from "./pages/tamtam/TamTamProfile";
 import TamTamPhoneAuth from "./pages/tamtam/TamTamPhoneAuth";
-
+import TamTamPublicProfile from "./pages/tamtam/TamTamPublicProfile";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -54,6 +54,7 @@ const App = () => (
               <Route path="market" element={<TamTamMarket />} />
               <Route path="sos" element={<TamTamSOS />} />
               <Route path="profile" element={<TamTamProfile />} />
+              <Route path="user/:userId" element={<TamTamPublicProfile />} />
             </Route>
 
             <Route

@@ -4,6 +4,7 @@ import { TamTamLanguageProvider } from '@/contexts/TamTamLanguageContext';
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { TamTamLanguageSelector } from '@/components/tamtam/TamTamLanguageSelector';
 import { TamTamAudioToggle } from '@/components/tamtam/TamTamAudioToggle';
+import { TamTamNotificationBell } from '@/components/tamtam/TamTamNotificationBell';
 import { RaconteMoiAssistant } from '@/components/tamtam/RaconteMoiAssistant';
 import { AccessibleVoiceLauncher } from '@/components/voice/AccessibleVoiceLauncher';
 
@@ -18,6 +19,7 @@ export default function TamTamApp() {
               TAM-TAM
             </h1>
             <div className="flex items-center gap-2">
+              <TamTamNotificationBell />
               <TamTamAudioToggle />
               <TamTamLanguageSelector />
             </div>
