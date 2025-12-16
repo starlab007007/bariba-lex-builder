@@ -7,6 +7,18 @@ import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { byT5TranslationService } from '@/services/ByT5TranslationService';
 import { useToast } from '@/hooks/use-toast';
 
+// Types must be defined before usage
+export type ServiceStatus = 'checking' | 'available' | 'unavailable' | 'error';
+
+interface AudioServiceHealth {
+  baribaSTT: ServiceStatus;
+  baribaTTS: ServiceStatus;
+  frenchSTT: ServiceStatus;
+  frenchTTS: ServiceStatus;
+  byT5: ServiceStatus;
+}
+
+// Shared cache to prevent request stampede across component instances
 const AUDIO_SERVICES_HEALTH_TTL_MS = 60_000;
 
 const audioServicesHealthCache: {
@@ -22,10 +34,12 @@ const audioServicesHealthCache: {
 async function getAudioServicesHealth(): Promise<AudioServiceHealth> {
   const now = Date.now();
 
+  // Return cached if fresh
   if (audioServicesHealthCache.health && now - audioServicesHealthCache.checkedAt < AUDIO_SERVICES_HEALTH_TTL_MS) {
     return audioServicesHealthCache.health;
   }
 
+  // De-dupe concurrent checks
   if (audioServicesHealthCache.inFlight) {
     return audioServicesHealthCache.inFlight;
   }
@@ -69,16 +83,6 @@ async function getAudioServicesHealth(): Promise<AudioServiceHealth> {
   });
 
   return audioServicesHealthCache.inFlight;
-}
-
-export type ServiceStatus = 'checking' | 'available' | 'unavailable' | 'error';
-
-interface AudioServiceHealth {
-  baribaSTT: ServiceStatus;
-  baribaTTS: ServiceStatus;
-  frenchSTT: ServiceStatus;
-  frenchTTS: ServiceStatus;
-  byT5: ServiceStatus;
 }
 
 interface UseAudioServicesReturn {

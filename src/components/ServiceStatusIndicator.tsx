@@ -93,20 +93,20 @@ export const ServiceStatusIndicator = ({ compact = false }: ServiceStatusIndicat
       }));
     }
 
-    // Check ByT5 Expert
+    // Check ByT5 Expert (use lightweight healthCheck mode)
     try {
       const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
-        body: { text: 'bonjour', sourceLang: 'french', targetLang: 'bariba' }
+        body: { healthCheck: true }
       });
       
-      const hasError = error || data?.error;
+      const isHealthy = !error && data?.healthy === true;
       setServices(prev => ({
         ...prev,
         byt5Expert: {
           ...prev.byt5Expert,
-          status: hasError ? 'unavailable' : 'available',
+          status: isHealthy ? 'available' : 'unavailable',
           lastCheck: new Date(),
-          message: hasError ? 'HuggingFace Space indisponible' : 'Opérationnel'
+          message: isHealthy ? 'Opérationnel' : (data?.details || 'HuggingFace Space indisponible')
         }
       }));
     } catch {
