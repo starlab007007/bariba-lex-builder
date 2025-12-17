@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { triggerFeedback, FeedbackType } from '@/utils/tamtamFeedback';
 
 export function usePushNotifications() {
   const { user } = useAuth();
@@ -50,8 +50,8 @@ export function usePushNotifications() {
         notification.close();
       };
 
-      // Also trigger sound/haptic
-      triggerFeedback('message_received', { sound: true, haptic: true, volume: 0.5 });
+      // Also trigger distinctive tam-tam sound for messages
+      triggerFeedback('tamtam_message', { sound: true, haptic: true, volume: 0.5 });
 
     } catch (error) {
       console.error('Error sending notification:', error);

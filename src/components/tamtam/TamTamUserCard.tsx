@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
-import { Volume2, UserPlus, UserMinus, UserCheck, MessageCircle } from 'lucide-react';
+import { Volume2, UserPlus, UserMinus, UserCheck, MessageCircle, MoreVertical } from 'lucide-react';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
+import BlockReportMenu from './BlockReportMenu';
 
 interface TamTamUserCardProps {
   user: {
@@ -167,6 +168,20 @@ export function TamTamUserCard({
             )}
           </button>
         )}
+
+        {/* Block/Report Menu */}
+        <BlockReportMenu
+          userId={user.user_id}
+          userName={user.display_name || user.username}
+          trigger={
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            >
+              <MoreVertical className="w-5 h-5 text-gray-500" />
+            </button>
+          }
+        />
       </div>
     </motion.button>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Radio, Newspaper, Plus, BarChart3, Search } from 'lucide-react';
+import { MessageCircle, Radio, Newspaper, Plus, BarChart3, Search, Users } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
@@ -13,6 +13,8 @@ import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { TamTamStoryCreator } from '@/components/tamtam/TamTamStoryCreator';
 import { TamTamPrivateMessages } from '@/components/tamtam/TamTamPrivateMessages';
 import { TamTamUserSearch } from '@/components/tamtam/TamTamUserSearch';
+import { TamTamVoiceRooms } from '@/components/tamtam/TamTamVoiceRooms';
+import TamTamGroups from '@/components/tamtam/TamTamGroups';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 const tabs = [
   { id: 'feed', icon: Newspaper, label: 'feed' },
   { id: 'messages', icon: MessageCircle, label: 'messages' },
+  { id: 'groups', icon: Users, label: 'Groupes' },
   { id: 'live', icon: Radio, label: 'live' },
 ];
 
@@ -46,6 +49,7 @@ export default function TamTamSocial() {
   const [showStoryCreator, setShowStoryCreator] = useState(false);
   const [showPrivateMessages, setShowPrivateMessages] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [showVoiceRooms, setShowVoiceRooms] = useState(false);
   const [messageUserId, setMessageUserId] = useState<string | null>(null);
   const [commentsModal, setCommentsModal] = useState<{
     isOpen: boolean;
@@ -277,6 +281,18 @@ export default function TamTamSocial() {
           </motion.div>
         )}
 
+        {activeTab === 'groups' && (
+          <motion.div
+            key="groups"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="h-[calc(100vh-180px)]"
+          >
+            <TamTamGroups />
+          </motion.div>
+        )}
+
         {activeTab === 'live' && (
           <motion.div
             key="live"
@@ -288,7 +304,14 @@ export default function TamTamSocial() {
             <div className="text-center py-12">
               <Radio className="w-16 h-16 mx-auto text-gray-300 mb-4" />
               <p className="text-gray-500">{t('live')}</p>
-              <p className="text-sm text-gray-400 mt-1">Salles audio en direct - Bientôt</p>
+              <p className="text-sm text-gray-400 mt-1">Salles audio en direct</p>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowVoiceRooms(true)}
+                className="mt-4 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium"
+              >
+                Ouvrir les salles audio
+              </motion.button>
             </div>
           </motion.div>
         )}
@@ -381,6 +404,11 @@ export default function TamTamSocial() {
           setMessageUserId(userId);
           setShowPrivateMessages(true);
         }}
+      />
+
+      <TamTamVoiceRooms
+        isOpen={showVoiceRooms}
+        onClose={() => setShowVoiceRooms(false)}
       />
     </div>
   );

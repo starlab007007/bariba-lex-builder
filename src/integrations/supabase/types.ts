@@ -600,6 +600,42 @@ export type Database = {
           },
         ]
       }
+      tamtam_content_reports: {
+        Row: {
+          created_at: string | null
+          details: string | null
+          id: string
+          reason: string
+          reported_comment_id: string | null
+          reported_post_id: string | null
+          reported_user_id: string | null
+          reporter_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          reason: string
+          reported_comment_id?: string | null
+          reported_post_id?: string | null
+          reported_user_id?: string | null
+          reporter_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          reason?: string
+          reported_comment_id?: string | null
+          reported_post_id?: string | null
+          reported_user_id?: string | null
+          reporter_id?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       tamtam_emergency_contacts: {
         Row: {
           created_at: string | null
@@ -1258,6 +1294,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tamtam_user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: []
       }
       training_phrases: {
         Row: {

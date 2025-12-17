@@ -10,11 +10,13 @@ import {
   Play, 
   Pause,
   BadgeCheck,
-  Loader2
+  Loader2,
+  MoreVertical
 } from 'lucide-react';
 import { usePublicProfile } from '@/hooks/usePublicProfile';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { TamTamPrivateMessages } from '@/components/tamtam/TamTamPrivateMessages';
+import BlockReportMenu from '@/components/tamtam/BlockReportMenu';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { format } from 'date-fns';
@@ -215,6 +217,20 @@ export default function TamTamPublicProfile() {
                 '🤝'
               )}
             </motion.button>
+
+            {/* Block/Report Menu */}
+            <BlockReportMenu
+              userId={userId!}
+              userName={profile.display_name || profile.username}
+              trigger={
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  className="p-3 bg-gray-100 rounded-xl hover:bg-gray-200"
+                >
+                  <MoreVertical className="w-5 h-5 text-gray-500" />
+                </motion.button>
+              }
+            />
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { triggerFeedback, FeedbackType } from '@/utils/tamtamFeedback';
 
 export interface TamTamNotification {
   id: string;
@@ -49,6 +50,23 @@ export function useTamTamNotifications() {
           const newNotification = payload.new as TamTamNotification;
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
+          
+          // Play distinctive sound based on notification type
+          const soundMap: Record<string, FeedbackType> = {
+            'message': 'tamtam_message',
+            'friend_request': 'friend_request',
+            'friend_accepted': 'friend_accepted',
+            'follow': 'new_follower',
+            'like': 'heart_like',
+            'love': 'love',
+            'comment': 'notification',
+            'group_invite': 'group_invite',
+            'mention': 'notification',
+            'share': 'success'
+          };
+          
+          const feedbackType = soundMap[newNotification.type] || 'notification';
+          triggerFeedback(feedbackType, { sound: true, haptic: true, volume: 0.4 });
         }
       )
       .subscribe();
