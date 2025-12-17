@@ -10,6 +10,7 @@ import { triggerFeedback, triggerReactionFeedback } from '@/utils/tamtamFeedback
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAudioServices } from '@/hooks/useAudioServices';
+import BlockReportMenu from './BlockReportMenu';
 
 export interface EnhancedPost {
   id: string;
@@ -233,9 +234,18 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
         {post.feeling_emoji && (
           <span className="text-2xl">{post.feeling_emoji}</span>
         )}
-        <button className="p-2 hover:bg-gray-100 rounded-full">
-          <MoreHorizontal className="w-5 h-5 text-gray-400" />
-        </button>
+        {post.user_id && (
+          <BlockReportMenu
+            userId={post.user_id}
+            postId={post.id}
+            userName={post.profile?.display_name || post.profile?.username}
+            trigger={
+              <button className="p-2 hover:bg-gray-100 rounded-full">
+                <MoreHorizontal className="w-5 h-5 text-gray-400" />
+              </button>
+            }
+          />
+        )}
       </div>
 
       {/* Media Content */}

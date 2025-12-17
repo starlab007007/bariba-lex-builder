@@ -1,7 +1,7 @@
 // Audio feedback utilities for TAM-TAM
 // Provides sounds and haptic feedback for user interactions
 
-export type FeedbackType = 'like' | 'love' | 'laugh' | 'wow' | 'pray' | 'success' | 'error' | 'record' | 'send' | 'notification' | 'click' | 'sos' | 'message_received' | 'language_detected' | 'fire' | 'applause';
+export type FeedbackType = 'like' | 'love' | 'laugh' | 'wow' | 'pray' | 'success' | 'error' | 'record' | 'send' | 'notification' | 'click' | 'sos' | 'message_received' | 'language_detected' | 'fire' | 'applause' | 'tamtam_message' | 'friend_request' | 'friend_accepted' | 'new_follower' | 'group_invite' | 'heart_like';
 
 // Simple audio context for generating feedback sounds
 let audioContext: AudioContext | null = null;
@@ -29,8 +29,15 @@ const feedbackFrequencies: Record<FeedbackType, { freq: number; duration: number
   sos: { freq: 350, duration: 0.4, type: 'sawtooth' },
   message_received: { freq: 587, duration: 0.2, type: 'triangle' },
   language_detected: { freq: 784, duration: 0.15, type: 'sine' },
-  fire: { freq: 500, duration: 0.12, type: 'sawtooth' }, // Crackling fire effect
-  applause: { freq: 700, duration: 0.2, type: 'triangle' }, // Clapping sound
+  fire: { freq: 500, duration: 0.12, type: 'sawtooth' },
+  applause: { freq: 700, duration: 0.2, type: 'triangle' },
+  // TAM-TAM distinctive sounds
+  tamtam_message: { freq: 220, duration: 0.35, type: 'triangle' }, // Deep tam-tam drum
+  friend_request: { freq: 880, duration: 0.1, type: 'sine' }, // High ping
+  friend_accepted: { freq: 523, duration: 0.2, type: 'sine' }, // Happy chime
+  new_follower: { freq: 698, duration: 0.15, type: 'sine' }, // Soft bell
+  group_invite: { freq: 440, duration: 0.25, type: 'triangle' }, // Group notification
+  heart_like: { freq: 350, duration: 0.18, type: 'sine' }, // Heartbeat effect
 };
 
 export const playFeedbackSound = (type: FeedbackType, volume: number = 0.3): void => {
@@ -84,8 +91,15 @@ const hapticPatterns: Record<FeedbackType, number[]> = {
   sos: [200, 100, 200, 100, 200],
   message_received: [80, 40, 80],
   language_detected: [30, 60],
-  fire: [20, 20, 20, 20, 20], // Rapid fire crackle
-  applause: [30, 20, 30, 20, 30], // Triple clap pattern
+  fire: [20, 20, 20, 20, 20],
+  applause: [30, 20, 30, 20, 30],
+  // TAM-TAM distinctive patterns
+  tamtam_message: [100, 50, 100, 50, 100], // Drum beat pattern
+  friend_request: [30, 30], // Double tap
+  friend_accepted: [50, 100, 50], // Celebration
+  new_follower: [40, 40, 40], // Triple light tap
+  group_invite: [80, 40, 80], // Group notification
+  heart_like: [60, 60], // Double heartbeat
 };
 
 export const triggerHaptic = (type: FeedbackType): void => {
