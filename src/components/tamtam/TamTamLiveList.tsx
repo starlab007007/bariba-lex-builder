@@ -14,11 +14,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface TamTamLiveListProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export function TamTamLiveList({ isOpen, onClose }: TamTamLiveListProps) {
+export function TamTamLiveList({ isOpen = true, onClose }: TamTamLiveListProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { lives, loading, startLive, joinLive, currentLive } = useTamTamLive();
@@ -102,20 +102,12 @@ export function TamTamLiveList({ isOpen, onClose }: TamTamLiveListProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-white z-50 flex flex-col"
+      className="flex flex-col h-full bg-white"
     >
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4">
         <div className="flex items-center justify-between mb-4">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={onClose}
-            className="p-2 bg-white/20 rounded-xl"
-          >
-            <X className="w-5 h-5" />
-          </motion.button>
-          
-          <h2 className="text-lg font-bold">Directs en cours</h2>
+          <h2 className="text-lg font-bold">🔴 Directs en cours</h2>
           
           <motion.button
             whileTap={{ scale: 0.95 }}

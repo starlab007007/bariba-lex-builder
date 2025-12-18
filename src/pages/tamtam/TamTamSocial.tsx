@@ -11,10 +11,11 @@ import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamVocalPoll } from '@/components/tamtam/TamTamVocalPoll';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { TamTamStoryCreator } from '@/components/tamtam/TamTamStoryCreator';
-import { TamTamPrivateMessages } from '@/components/tamtam/TamTamPrivateMessages';
 import { TamTamUserSearch } from '@/components/tamtam/TamTamUserSearch';
-import { TamTamVoiceRooms } from '@/components/tamtam/TamTamVoiceRooms';
-import TamTamGroups from '@/components/tamtam/TamTamGroups';
+import { TamTamFriendSuggestions } from '@/components/tamtam/TamTamFriendSuggestions';
+import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
+import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
+import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 const tabs = [
   { id: 'feed', icon: Newspaper, label: 'feed' },
   { id: 'messages', icon: MessageCircle, label: 'messages' },
-  { id: 'groups', icon: Users, label: 'Groupes' },
+  { id: 'communities', icon: Users, label: 'Communautés' },
   { id: 'live', icon: Radio, label: 'live' },
 ];
 
@@ -47,10 +48,8 @@ export default function TamTamSocial() {
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showStoryCreator, setShowStoryCreator] = useState(false);
-  const [showPrivateMessages, setShowPrivateMessages] = useState(false);
+  const [showMessagesHub, setShowMessagesHub] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
-  const [showVoiceRooms, setShowVoiceRooms] = useState(false);
-  const [messageUserId, setMessageUserId] = useState<string | null>(null);
   const [commentsModal, setCommentsModal] = useState<{
     isOpen: boolean;
     postId: string | null;
@@ -219,6 +218,16 @@ export default function TamTamSocial() {
               />
             </div>
 
+            {/* Friend Suggestions */}
+            <TamTamFriendSuggestions 
+              onMessage={(userId) => {
+                setShowMessagesHub(true);
+              }}
+              onViewProfile={(userId) => {
+                // Navigate to profile or open profile modal
+              }}
+            />
+
             {/* Feed */}
             <div className="p-4 space-y-4">
               {isLoading ? (
@@ -264,32 +273,24 @@ export default function TamTamSocial() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="p-4"
+            className="h-[calc(100vh-180px)]"
           >
-            <div className="text-center py-12">
-              <MessageCircle className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500">{t('messages')}</p>
-              <p className="text-sm text-gray-400 mt-1">Messages vocaux privés</p>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowPrivateMessages(true)}
-                className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium"
-              >
-                Ouvrir mes messages
-              </motion.button>
-            </div>
+            <TamTamMessagesHub 
+              isOpen={true}
+              onClose={() => setActiveTab('feed')}
+            />
           </motion.div>
         )}
 
-        {activeTab === 'groups' && (
+        {activeTab === 'communities' && (
           <motion.div
-            key="groups"
+            key="communities"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
             className="h-[calc(100vh-180px)]"
           >
-            <TamTamGroups />
+            <TamTamCommunities />
           </motion.div>
         )}
 
@@ -299,20 +300,9 @@ export default function TamTamSocial() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="p-4"
+            className="h-[calc(100vh-180px)]"
           >
-            <div className="text-center py-12">
-              <Radio className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500">{t('live')}</p>
-              <p className="text-sm text-gray-400 mt-1">Salles audio en direct</p>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowVoiceRooms(true)}
-                className="mt-4 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium"
-              >
-                Ouvrir les salles audio
-              </motion.button>
-            </div>
+            <TamTamLiveList />
           </motion.div>
         )}
       </AnimatePresence>
@@ -391,24 +381,12 @@ export default function TamTamSocial() {
         onStoryCreated={() => fetchPosts()}
       />
 
-      <TamTamPrivateMessages
-        isOpen={showPrivateMessages}
-        onClose={() => setShowPrivateMessages(false)}
-        initialConversationId={messageUserId || undefined}
-      />
-
       <TamTamUserSearch
         isOpen={showUserSearch}
         onClose={() => setShowUserSearch(false)}
         onMessage={(userId) => {
-          setMessageUserId(userId);
-          setShowPrivateMessages(true);
+          setShowMessagesHub(true);
         }}
-      />
-
-      <TamTamVoiceRooms
-        isOpen={showVoiceRooms}
-        onClose={() => setShowVoiceRooms(false)}
       />
     </div>
   );
