@@ -239,7 +239,6 @@ export function TamTamLiveList({ isOpen, onClose }: TamTamLiveListProps) {
                     onRecordingComplete={(audio) => {
                       handleStartLive(audio);
                     }}
-                    minRecordingTime={1}
                   />
                 </div>
               </div>
