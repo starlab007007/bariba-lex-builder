@@ -16,6 +16,10 @@ export interface VoiceMessage {
   created_at: string;
   transcript_ba?: string;
   transcript_fr?: string;
+  message_type?: 'audio' | 'photo' | 'video' | 'emoji';
+  media_url?: string;
+  thumbnail_url?: string;
+  emoji_code?: string;
 }
 
 export interface Conversation {
@@ -211,25 +215,24 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
         }
       }
 
-      // 4. Save message to database
+      // 4. Save message to database WITH transcriptions
       const { data, error } = await supabase
         .from('tamtam_messages')
         .insert({
           sender_id: user.id,
           receiver_id: receiverId,
           audio_url: urlData.publicUrl,
-          duration_seconds: duration
+          duration_seconds: duration,
+          message_type: 'audio',
+          transcript_ba: transcript_ba || null,
+          transcript_fr: transcript_fr || null
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      const message: VoiceMessage = {
-        ...data,
-        transcript_ba,
-        transcript_fr
-      };
+      const message: VoiceMessage = data as VoiceMessage;
 
       setMessages(prev => [...prev, message]);
       

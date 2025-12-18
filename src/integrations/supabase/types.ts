@@ -1076,7 +1076,7 @@ export type Database = {
       }
       tamtam_messages: {
         Row: {
-          audio_url: string
+          audio_url: string | null
           created_at: string | null
           duration_seconds: number | null
           emoji_code: string | null
@@ -1092,7 +1092,7 @@ export type Database = {
           transcript_fr: string | null
         }
         Insert: {
-          audio_url: string
+          audio_url?: string | null
           created_at?: string | null
           duration_seconds?: number | null
           emoji_code?: string | null
@@ -1108,7 +1108,7 @@ export type Database = {
           transcript_fr?: string | null
         }
         Update: {
-          audio_url?: string
+          audio_url?: string | null
           created_at?: string | null
           duration_seconds?: number | null
           emoji_code?: string | null
