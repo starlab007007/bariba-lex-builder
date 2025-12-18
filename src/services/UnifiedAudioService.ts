@@ -286,13 +286,13 @@ class UnifiedAudioServiceClass {
       return { translation: text, source: from, target: to, method: 'identity', confidence: 1 };
     }
 
-    const sourceLanguage = from === 'fr' ? 'french' : 'bariba';
-    const targetLanguage = to === 'fr' ? 'french' : 'bariba';
+    const sourceLang = from === 'fr' ? 'french' : 'bariba';
+    const targetLang = to === 'fr' ? 'french' : 'bariba';
 
     // Essayer ByT5 d'abord
     try {
       const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
-        body: { text, sourceLanguage, targetLanguage }
+        body: { text, sourceLang, targetLang }
       });
 
       if (!error && data?.translation) {
@@ -311,7 +311,7 @@ class UnifiedAudioServiceClass {
     // Fallback vers Lovable AI
     try {
       const { data, error } = await supabase.functions.invoke('ai-translate-lovable', {
-        body: { text, sourceLanguage, targetLanguage }
+        body: { text, sourceLang, targetLang }
       });
 
       if (!error && data?.translation) {
