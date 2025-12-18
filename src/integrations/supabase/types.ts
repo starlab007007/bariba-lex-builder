@@ -600,6 +600,56 @@ export type Database = {
           },
         ]
       }
+      tamtam_community_messages: {
+        Row: {
+          audio_url: string | null
+          community_id: string
+          created_at: string | null
+          duration_seconds: number | null
+          emoji_code: string | null
+          id: string
+          media_url: string | null
+          message_type: string | null
+          transcript_ba: string | null
+          transcript_fr: string | null
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          community_id: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          emoji_code?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          community_id?: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          emoji_code?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_community_messages_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tamtam_content_reports: {
         Row: {
           created_at: string | null
@@ -684,6 +734,39 @@ export type Database = {
           follower_id?: string
           following_id?: string
           id?: string
+        }
+        Relationships: []
+      }
+      tamtam_friend_suggestions: {
+        Row: {
+          created_at: string | null
+          dismissed: boolean | null
+          id: string
+          mutual_friends_count: number | null
+          reason: string | null
+          score: number | null
+          suggested_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dismissed?: boolean | null
+          id?: string
+          mutual_friends_count?: number | null
+          reason?: string | null
+          score?: number | null
+          suggested_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dismissed?: boolean | null
+          id?: string
+          mutual_friends_count?: number | null
+          reason?: string | null
+          score?: number | null
+          suggested_user_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -794,9 +877,13 @@ export type Database = {
           description: string | null
           id: string
           is_public: boolean | null
+          is_verified: boolean | null
+          last_activity_at: string | null
           members_count: number | null
           name: string
           owner_id: string | null
+          rules_audio_url: string | null
+          voice_description_url: string | null
         }
         Insert: {
           category?: string | null
@@ -805,9 +892,13 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean | null
+          is_verified?: boolean | null
+          last_activity_at?: string | null
           members_count?: number | null
           name: string
           owner_id?: string | null
+          rules_audio_url?: string | null
+          voice_description_url?: string | null
         }
         Update: {
           category?: string | null
@@ -816,9 +907,13 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean | null
+          is_verified?: boolean | null
+          last_activity_at?: string | null
           members_count?: number | null
           name?: string
           owner_id?: string | null
+          rules_audio_url?: string | null
+          voice_description_url?: string | null
         }
         Relationships: []
       }
@@ -867,33 +962,166 @@ export type Database = {
         }
         Relationships: []
       }
+      tamtam_live_reactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          live_id: string
+          reaction_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          live_id: string
+          reaction_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          live_id?: string
+          reaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_live_reactions_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tamtam_live_viewers: {
+        Row: {
+          id: string
+          joined_at: string | null
+          live_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string | null
+          live_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string | null
+          live_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_live_viewers_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tamtam_lives: {
+        Row: {
+          community_id: string | null
+          ended_at: string | null
+          host_id: string | null
+          id: string
+          started_at: string | null
+          status: string | null
+          title: string
+          title_audio_url: string | null
+          viewer_count: number | null
+        }
+        Insert: {
+          community_id?: string | null
+          ended_at?: string | null
+          host_id?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          title: string
+          title_audio_url?: string | null
+          viewer_count?: number | null
+        }
+        Update: {
+          community_id?: string | null
+          ended_at?: string | null
+          host_id?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          title?: string
+          title_audio_url?: string | null
+          viewer_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_lives_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tamtam_lives_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       tamtam_messages: {
         Row: {
           audio_url: string
           created_at: string | null
           duration_seconds: number | null
+          emoji_code: string | null
           id: string
           is_read: boolean | null
+          media_url: string | null
+          message_type: string | null
           receiver_id: string | null
           sender_id: string | null
+          text_content: string | null
+          thumbnail_url: string | null
+          transcript_ba: string | null
+          transcript_fr: string | null
         }
         Insert: {
           audio_url: string
           created_at?: string | null
           duration_seconds?: number | null
+          emoji_code?: string | null
           id?: string
           is_read?: boolean | null
+          media_url?: string | null
+          message_type?: string | null
           receiver_id?: string | null
           sender_id?: string | null
+          text_content?: string | null
+          thumbnail_url?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
         }
         Update: {
           audio_url?: string
           created_at?: string | null
           duration_seconds?: number | null
+          emoji_code?: string | null
           id?: string
           is_read?: boolean | null
+          media_url?: string | null
+          message_type?: string | null
           receiver_id?: string | null
           sender_id?: string | null
+          text_content?: string | null
+          thumbnail_url?: string | null
+          transcript_ba?: string | null
+          transcript_fr?: string | null
         }
         Relationships: []
       }
