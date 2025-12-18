@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, Check, BarChart3, Clock, Users } from 'lucide-react';
+import { Play, Pause, Check, BarChart3, Clock, Users, Volume2, Languages, Loader2 } from 'lucide-react';
 import { Poll, PollOption } from '@/hooks/useTamTamPolls';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
+import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 
 interface TamTamPollCardProps {
   poll: Poll;
@@ -14,7 +16,14 @@ interface TamTamPollCardProps {
 export const TamTamPollCard: React.FC<TamTamPollCardProps> = ({ poll, onVote }) => {
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [isVoting, setIsVoting] = useState(false);
+  const [translatedQuestion, setTranslatedQuestion] = useState<string | null>(null);
+  const [translatedOptions, setTranslatedOptions] = useState<Record<string, string>>({});
+  const [isTranslatingQuestion, setIsTranslatingQuestion] = useState(false);
+  const [isTranslatingOption, setIsTranslatingOption] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  const { speak, isSpeaking, translate, currentLang } = useUnifiedAudio();
+  const { t } = useTamTamLanguage();
 
   const totalVotes = poll.options.reduce((sum, opt) => sum + opt.vote_count, 0);
   const hasVoted = !!poll.user_vote;
@@ -57,6 +66,54 @@ export const TamTamPollCard: React.FC<TamTamPollCardProps> = ({ poll, onVote }) 
     return Math.round((option.vote_count / totalVotes) * 100);
   };
 
+  // TTS pour la question
+  const speakQuestion = async () => {
+    triggerFeedback('click');
+    const text = poll.question_transcript || 'Question vocale';
+    await speak(text, currentLang);
+  };
+
+  // TTS pour une option
+  const speakOption = async (option: PollOption, idx: number) => {
+    triggerFeedback('click');
+    const text = option.transcript || `Option ${idx + 1}`;
+    await speak(text, currentLang);
+  };
+
+  // Traduire la question
+  const translateQuestion = async () => {
+    if (!poll.question_transcript || isTranslatingQuestion) return;
+    
+    setIsTranslatingQuestion(true);
+    triggerFeedback('click');
+    
+    try {
+      const sourceLang = currentLang === 'fr' ? 'ba' : 'fr';
+      const targetLang = currentLang;
+      const result = await translate(poll.question_transcript, sourceLang as 'fr' | 'ba', targetLang);
+      setTranslatedQuestion(result.translation);
+    } finally {
+      setIsTranslatingQuestion(false);
+    }
+  };
+
+  // Traduire une option
+  const translateOption = async (option: PollOption) => {
+    if (!option.transcript || isTranslatingOption === option.id) return;
+    
+    setIsTranslatingOption(option.id);
+    triggerFeedback('click');
+    
+    try {
+      const sourceLang = currentLang === 'fr' ? 'ba' : 'fr';
+      const targetLang = currentLang;
+      const result = await translate(option.transcript, sourceLang as 'fr' | 'ba', targetLang);
+      setTranslatedOptions(prev => ({ ...prev, [option.id]: result.translation }));
+    } finally {
+      setIsTranslatingOption(null);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -86,7 +143,7 @@ export const TamTamPollCard: React.FC<TamTamPollCardProps> = ({ poll, onVote }) 
           </div>
         </div>
         <div className="px-3 py-1 bg-orange-100 rounded-full">
-          <span className="text-xs font-medium text-orange-600">Sondage</span>
+          <span className="text-xs font-medium text-orange-600">{t('poll')}</span>
         </div>
       </div>
 
@@ -112,7 +169,45 @@ export const TamTamPollCard: React.FC<TamTamPollCardProps> = ({ poll, onVote }) 
             <p className="font-medium text-gray-800 text-lg">
               {poll.question_transcript || '🎤 Question vocale'}
             </p>
-            <p className="text-sm text-gray-500">Appuyez pour écouter</p>
+            {translatedQuestion && (
+              <p className="text-sm text-orange-600 mt-1 italic">
+                → {translatedQuestion}
+              </p>
+            )}
+            <p className="text-sm text-gray-500">{t('tapToListen')}</p>
+          </div>
+          
+          {/* Action buttons */}
+          <div className="flex flex-col gap-2">
+            {/* TTS Button */}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={speakQuestion}
+              disabled={isSpeaking}
+              className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-orange-500 disabled:opacity-50"
+            >
+              {isSpeaking ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
+            </motion.button>
+            
+            {/* Translate Button */}
+            {poll.question_transcript && (
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={translateQuestion}
+                disabled={isTranslatingQuestion}
+                className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-blue-500 disabled:opacity-50"
+              >
+                {isTranslatingQuestion ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Languages className="w-4 h-4" />
+                )}
+              </motion.button>
+            )}
           </div>
         </div>
       </div>
@@ -180,10 +275,49 @@ export const TamTamPollCard: React.FC<TamTamPollCardProps> = ({ poll, onVote }) 
                   <p className={`font-medium ${isSelected ? 'text-orange-700' : 'text-gray-700'}`}>
                     {option.transcript || `Option ${idx + 1}`}
                   </p>
+                  {translatedOptions[option.id] && (
+                    <p className="text-sm text-orange-600 italic">
+                      → {translatedOptions[option.id]}
+                    </p>
+                  )}
                   {hasVoted && (
                     <p className="text-sm text-gray-500">
                       {option.vote_count} vote{option.vote_count !== 1 ? 's' : ''}
                     </p>
+                  )}
+                </div>
+
+                {/* Action buttons for option */}
+                <div className="flex gap-1">
+                  {/* TTS for option */}
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      speakOption(option, idx);
+                    }}
+                    className="w-8 h-8 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-orange-500"
+                  >
+                    <Volume2 className="w-3 h-3" />
+                  </motion.button>
+                  
+                  {/* Translate option */}
+                  {option.transcript && (
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        translateOption(option);
+                      }}
+                      disabled={isTranslatingOption === option.id}
+                      className="w-8 h-8 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-blue-500 disabled:opacity-50"
+                    >
+                      {isTranslatingOption === option.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Languages className="w-3 h-3" />
+                      )}
+                    </motion.button>
                   )}
                 </div>
 
@@ -209,7 +343,7 @@ export const TamTamPollCard: React.FC<TamTamPollCardProps> = ({ poll, onVote }) 
         </div>
         {!hasVoted && (
           <span className="text-orange-500 font-medium">
-            Appuyez pour voter
+            {t('tapToVote')}
           </span>
         )}
       </div>

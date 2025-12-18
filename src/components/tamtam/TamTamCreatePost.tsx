@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Image, Video, Mic, BarChart3, Check, Smile, ImageOff, Volume2 } from 'lucide-react';
+import { X, Image, Video, Mic, BarChart3, Check, Smile, ImageOff, Volume2, Languages, Loader2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
-import { useAudioServices } from '@/hooks/useAudioServices';
+import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -48,7 +48,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
 }) => {
   const { t, currentLang } = useTamTamLanguage();
   const { toast } = useToast();
-  const audioServices = useAudioServices();
+  const { transcribeWithTranslation, health, isTranscribing } = useUnifiedAudio();
   const { speakLabel, getLabel } = useVoiceMenu();
   
   const [selectedType, setSelectedType] = useState<string>('audio');
@@ -100,18 +100,23 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     setTranscriptionFailed(false);
     triggerFeedback('success');
     
-    // Transcribe and translate
+    // Transcribe and translate using unified service
     const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
-    const { transcription, translation } = await audioServices.transcribeAndTranslate(base64, sourceLang);
+    const result = await transcribeWithTranslation(base64, sourceLang);
     
-    if (transcription) {
-      setTranscript(transcription);
-      if (translation) {
-        setTranslatedTranscript(translation);
+    if (result.transcription) {
+      setTranscript(result.transcription);
+      // Set translated transcript based on source language
+      if (sourceLang === 'fr') {
+        setTranslatedTranscript(result.transcription_ba);
+      } else {
+        setTranslatedTranscript(result.transcription_fr);
       }
       toast({
         title: "✅ Transcription réussie",
-        description: translation ? "Audio transcrit et traduit" : "Votre audio a été transcrit"
+        description: result.translation_method !== 'none' 
+          ? `Audio transcrit et traduit (${result.translation_method})` 
+          : "Votre audio a été transcrit"
       });
     } else {
       setTranscriptionFailed(true);
@@ -279,11 +284,19 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-800">
-              {t('newPost')}
-            </h3>
-            <AudioServicesStatusBar health={audioServices.health} />
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-800">
+                {t('newPost')}
+              </h3>
+              {isTranscribing && (
+                <div className="flex items-center gap-1 text-blue-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-xs">Transcription...</span>
+                </div>
+              )}
+            </div>
+            <AudioServicesStatusBar health={health} />
           </div>
           <button
             onClick={onClose}
