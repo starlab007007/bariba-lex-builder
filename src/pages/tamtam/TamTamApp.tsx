@@ -7,11 +7,18 @@ import { TamTamAudioToggle } from '@/components/tamtam/TamTamAudioToggle';
 import { TamTamNotificationBell } from '@/components/tamtam/TamTamNotificationBell';
 import { RaconteMoiAssistant } from '@/components/tamtam/RaconteMoiAssistant';
 import { AccessibleVoiceLauncher } from '@/components/voice/AccessibleVoiceLauncher';
+import { useExtendedNotifications } from '@/hooks/useExtendedNotifications';
+
+function NotificationProvider({ children }: { children: React.ReactNode }) {
+  useExtendedNotifications();
+  return <>{children}</>;
+}
 
 export default function TamTamApp() {
   return (
     <TamTamLanguageProvider>
       <AudioDescriptionProvider>
+        <NotificationProvider>
         <div className="min-h-screen bg-tamtam-bg">
           {/* Header with Language Selector & Audio Toggle */}
           <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
@@ -34,6 +41,7 @@ export default function TamTamApp() {
           <AccessibleVoiceLauncher />
           <RaconteMoiAssistant />
         </div>
+        </NotificationProvider>
       </AudioDescriptionProvider>
     </TamTamLanguageProvider>
   );
