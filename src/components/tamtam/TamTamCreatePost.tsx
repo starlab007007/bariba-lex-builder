@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Image, Video, Mic, BarChart3, Camera, Check, Upload, Smile, Volume2 } from 'lucide-react';
+import { X, Image, Video, Mic, BarChart3, Check, Smile, ImageOff } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
 import { useAudioServices } from '@/hooks/useAudioServices';
 import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { triggerFeedback } from '@/utils/tamtamFeedback';
 
 interface TamTamCreatePostProps {
   isOpen: boolean;
@@ -21,7 +22,12 @@ interface TamTamCreatePostProps {
     feeling_emoji?: string;
     duration_seconds?: number;
   }) => Promise<void>;
+  onOpenPoll?: () => void;
 }
+
+// Extended file formats
+const PHOTO_FORMATS = "image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/bmp,image/svg+xml";
+const VIDEO_FORMATS = "video/mp4,video/quicktime,video/x-m4v,video/webm,video/x-msvideo,video/3gpp,video/mpeg,video/ogg";
 
 const mediaTypes = [
   { type: 'audio', icon: Mic, label: 'audio', color: 'from-blue-500 to-blue-600' },
@@ -35,7 +41,8 @@ const emojis = ['😊', '😂', '❤️', '🎉', '🤔', '😢', '🙏', '💪'
 export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   isOpen,
   onClose,
-  onSubmit
+  onSubmit,
+  onOpenPoll
 }) => {
   const { t, currentLang } = useTamTamLanguage();
   const { toast } = useToast();
@@ -43,14 +50,35 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   
   const [selectedType, setSelectedType] = useState<string>('audio');
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
+  const [audioDuration, setAudioDuration] = useState<number>(0);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string>('');
+  const [translatedTranscript, setTranslatedTranscript] = useState<string>('');
   const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState<'type' | 'record' | 'media' | 'preview'>('type');
+  const [transcriptionFailed, setTranscriptionFailed] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleTypeSelect = (type: string) => {
+    setSelectedType(type);
+    triggerFeedback('notification');
+    
+    if (type === 'poll') {
+      // Close this modal and open poll creator
+      onClose();
+      onOpenPoll?.();
+      return;
+    }
+    
+    if (type === 'photo' || type === 'video') {
+      fileInputRef.current?.click();
+    } else {
+      setStep('record');
+    }
+  };
 
   const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,19 +86,18 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       setMediaFile(file);
       const url = URL.createObjectURL(file);
       setMediaPreview(url);
-      setStep('record');
+      setStep('record'); // Go to record step (audio is optional)
     }
   };
 
-  const [transcriptionFailed, setTranscriptionFailed] = useState(false);
-  const [translatedTranscript, setTranslatedTranscript] = useState<string>('');
-
-  const handleRecordingComplete = async (base64: string) => {
-    console.log('[TamTamCreatePost] Recording complete, audio length:', base64.length);
+  const handleRecordingComplete = async (base64: string, duration?: number) => {
+    console.log('[TamTamCreatePost] Recording complete, duration:', duration);
     setAudioBase64(base64);
+    setAudioDuration(duration || 0);
     setTranscriptionFailed(false);
+    triggerFeedback('success');
     
-    // Use unified audio services for transcription and translation
+    // Transcribe and translate
     const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
     const { transcription, translation } = await audioServices.transcribeAndTranslate(base64, sourceLang);
     
@@ -91,117 +118,111 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       });
     }
     
-    // Always proceed to preview
     setStep('preview');
   };
 
-  // Play transcript with TTS
-  const handlePlayTranscript = async () => {
-    if (!transcript) return;
-    
-    if (currentLang === 'ba') {
-      await audioServices.speakBariba(transcript);
-    } else {
-      await audioServices.speakFrench(transcript);
+  // Skip audio and go directly to preview (for photo/video only posts)
+  const handleSkipAudio = () => {
+    if (!mediaFile) {
+      toast({ title: "Média requis", description: "Sélectionnez d'abord un média", variant: "destructive" });
+      return;
     }
+    triggerFeedback('notification');
+    setStep('preview');
   };
 
   const handleSubmit = async () => {
     console.log('[TamTamCreatePost.handleSubmit] Starting submission...');
     
-    if (!audioBase64) {
-      console.error('[TamTamCreatePost.handleSubmit] No audio data');
+    // For photo/video posts, audio is optional
+    if (!audioBase64 && selectedType === 'audio') {
       toast({ title: "Audio requis", description: "Veuillez enregistrer un audio", variant: "destructive" });
+      return;
+    }
+
+    // For media posts without audio, we still need either audio or media
+    if (!audioBase64 && !mediaFile) {
+      toast({ title: "Contenu requis", description: "Ajoutez un audio ou un média", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
     
     try {
-      // Step 1: Upload audio to Supabase Storage
-      console.log('[TamTamCreatePost.handleSubmit] Step 1: Uploading audio...');
-      const audioBlob = base64ToBlob(audioBase64, 'audio/webm');
-      const audioFileName = `post_${Date.now()}_${Math.random().toString(36).substring(7)}.webm`;
-      
-      console.log('[TamTamCreatePost.handleSubmit] Audio blob size:', audioBlob.size, 'bytes');
-      
-      const { data: audioData, error: audioError } = await supabase.storage
-        .from('tamtam-audio')
-        .upload(audioFileName, audioBlob, { contentType: 'audio/webm' });
+      let audioUrl = '';
+      let mediaUrl: string | undefined;
 
-      if (audioError) {
-        console.error('[TamTamCreatePost.handleSubmit] Audio upload error:', {
-          message: audioError.message,
-          name: audioError.name
-        });
-        toast({ 
-          title: "Erreur upload audio", 
-          description: `${audioError.message}. Vérifiez votre connexion.`, 
-          variant: "destructive" 
-        });
-        throw audioError;
+      // Upload audio if exists
+      if (audioBase64) {
+        console.log('[TamTamCreatePost.handleSubmit] Uploading audio...');
+        const audioBlob = base64ToBlob(audioBase64, 'audio/webm');
+        const audioFileName = `post_${Date.now()}_${Math.random().toString(36).substring(7)}.webm`;
+        
+        const { data: audioData, error: audioError } = await supabase.storage
+          .from('tamtam-audio')
+          .upload(audioFileName, audioBlob, { contentType: 'audio/webm' });
+
+        if (audioError) {
+          console.error('[TamTamCreatePost.handleSubmit] Audio upload error:', audioError);
+          throw audioError;
+        }
+
+        const { data: audioUrlData } = supabase.storage
+          .from('tamtam-audio')
+          .getPublicUrl(audioFileName);
+
+        audioUrl = audioUrlData.publicUrl;
+        console.log('[TamTamCreatePost.handleSubmit] Audio URL:', audioUrl);
       }
 
-      console.log('[TamTamCreatePost.handleSubmit] Audio uploaded successfully:', audioData?.path);
+      // Upload media if exists
+      if (mediaFile) {
+        console.log('[TamTamCreatePost.handleSubmit] Uploading media...', mediaFile.name);
+        const mediaFileName = `media_${Date.now()}_${Math.random().toString(36).substring(7)}.${mediaFile.name.split('.').pop()}`;
+        
+        const { error: mediaError } = await supabase.storage
+          .from('tamtam-audio')
+          .upload(mediaFileName, mediaFile);
 
-      const { data: audioUrlData } = supabase.storage
-        .from('tamtam-audio')
-        .getPublicUrl(audioFileName);
-
-      console.log('[TamTamCreatePost.handleSubmit] Audio public URL:', audioUrlData.publicUrl);
-
-      // Step 2: Upload media if exists (optional - don't block on failure)
-      let mediaUrl: string | undefined;
-      if (mediaFile && mediaPreview) {
-        console.log('[TamTamCreatePost.handleSubmit] Step 2: Uploading media file...', mediaFile.name);
-        try {
-          const mediaFileName = `media_${Date.now()}_${Math.random().toString(36).substring(7)}.${mediaFile.name.split('.').pop()}`;
-          const { data: mediaData, error: mediaError } = await supabase.storage
+        if (mediaError) {
+          console.warn('[TamTamCreatePost.handleSubmit] Media upload warning:', mediaError.message);
+          // Non-blocking - continue without media
+        } else {
+          const { data: url } = supabase.storage
             .from('tamtam-audio')
-            .upload(mediaFileName, mediaFile);
-
-          if (mediaError) {
-            console.warn('[TamTamCreatePost.handleSubmit] Media upload failed (non-blocking):', mediaError.message);
-            toast({ 
-              title: "⚠️ Média non uploadé", 
-              description: "L'audio sera publié sans le média" 
-            });
-          } else if (mediaData) {
-            const { data: url } = supabase.storage
-              .from('tamtam-audio')
-              .getPublicUrl(mediaFileName);
-            mediaUrl = url.publicUrl;
-            console.log('[TamTamCreatePost.handleSubmit] Media uploaded:', mediaUrl);
-          }
-        } catch (mediaErr: any) {
-          console.warn('[TamTamCreatePost.handleSubmit] Media upload exception (non-blocking):', mediaErr.message);
+            .getPublicUrl(mediaFileName);
+          mediaUrl = url.publicUrl;
+          console.log('[TamTamCreatePost.handleSubmit] Media URL:', mediaUrl);
         }
       }
 
-      // Step 3: Create post record
-      console.log('[TamTamCreatePost.handleSubmit] Step 3: Creating post record...');
+      // For media-only posts, we need to generate a placeholder audio
+      if (!audioUrl && mediaUrl) {
+        // Create a silent audio placeholder or use a generated one
+        audioUrl = mediaUrl; // Temporary: use media URL as audio URL
+      }
+
       const postData = {
-        audio_url: audioUrlData.publicUrl,
+        audio_url: audioUrl,
         media_type: selectedType,
         media_url: mediaUrl,
-        transcript_fr: currentLang === 'fr' ? transcript : undefined,
-        transcript_ba: currentLang === 'ba' ? transcript : undefined,
+        transcript_fr: currentLang === 'fr' ? transcript : translatedTranscript || undefined,
+        transcript_ba: currentLang === 'ba' ? transcript : translatedTranscript || undefined,
         feeling_emoji: selectedEmoji || undefined,
-        duration_seconds: Math.round(audioBase64.length / 10000)
+        duration_seconds: audioDuration || 0
       };
       
-      console.log('[TamTamCreatePost.handleSubmit] Post data:', JSON.stringify(postData, null, 2));
+      console.log('[TamTamCreatePost.handleSubmit] Post data:', postData);
       
       await onSubmit(postData);
-
-      console.log('[TamTamCreatePost.handleSubmit] Post created successfully!');
       
-      // Reset state
+      triggerFeedback('success');
       resetPostState();
       onClose();
       
     } catch (err: any) {
-      console.error('[TamTamCreatePost.handleSubmit] Final error:', err);
+      console.error('[TamTamCreatePost.handleSubmit] Error:', err);
+      triggerFeedback('error');
       toast({ 
         title: "Erreur de publication", 
         description: err.message || 'Une erreur est survenue', 
@@ -214,12 +235,15 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
 
   const resetPostState = () => {
     setAudioBase64(null);
+    setAudioDuration(0);
     setMediaFile(null);
     setMediaPreview(null);
     setTranscript('');
+    setTranslatedTranscript('');
     setSelectedEmoji(null);
     setTranscriptionFailed(false);
     setStep('type');
+    setSelectedType('audio');
   };
 
   const base64ToBlob = (base64: string, mimeType: string): Blob => {
@@ -284,14 +308,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                     <motion.button
                       key={type}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        setSelectedType(type);
-                        if (type === 'photo' || type === 'video') {
-                          fileInputRef.current?.click();
-                        } else {
-                          setStep('record');
-                        }
-                      }}
+                      onClick={() => handleTypeSelect(type)}
                       className={`p-6 rounded-3xl flex flex-col items-center gap-3 ${
                         selectedType === type 
                           ? `bg-gradient-to-br ${color} text-white shadow-lg` 
@@ -307,7 +324,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept={selectedType === 'photo' ? 'image/*' : 'video/*'}
+                  accept={selectedType === 'photo' ? PHOTO_FORMATS : VIDEO_FORMATS}
                   capture={selectedType === 'photo' ? 'environment' : undefined}
                   onChange={handleMediaSelect}
                   className="hidden"
@@ -315,7 +332,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
               </motion.div>
             )}
 
-            {/* Step 2: Record Audio */}
+            {/* Step 2: Record Audio (optional for photo/video) */}
             {step === 'record' && (
               <motion.div
                 key="record"
@@ -336,12 +353,28 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 )}
 
                 <div className="text-center">
-                  <p className="text-gray-500 mb-4">{t('recordAudio')}</p>
-                <SmartVoiceRecorder
-                  onRecordingComplete={handleRecordingComplete}
-                  language={currentLang === 'ba' ? 'bariba' : 'french'}
-                />
+                  <p className="text-gray-500 mb-4">
+                    {mediaFile 
+                      ? "Ajoutez un message vocal (optionnel)" 
+                      : t('recordAudio')}
+                  </p>
+                  <SmartVoiceRecorder
+                    onRecordingComplete={handleRecordingComplete}
+                    language={currentLang === 'ba' ? 'bariba' : 'french'}
+                  />
                 </div>
+
+                {/* Skip audio button for photo/video */}
+                {mediaFile && (
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleSkipAudio}
+                    className="w-full py-3 rounded-2xl bg-gray-100 text-gray-600 font-medium flex items-center justify-center gap-2"
+                  >
+                    <ImageOff className="w-5 h-5" />
+                    Publier sans audio
+                  </motion.button>
+                )}
               </motion.div>
             )}
 
@@ -366,43 +399,58 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 )}
 
                 {/* Audio indicator */}
-                <div className={`flex items-center gap-3 rounded-2xl p-4 ${
-                  transcriptionFailed 
-                    ? 'bg-gradient-to-r from-amber-50 to-orange-50' 
-                    : 'bg-gradient-to-r from-blue-50 to-emerald-50'
-                }`}>
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    transcriptionFailed
-                      ? 'bg-gradient-to-br from-amber-500 to-amber-600'
-                      : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                {audioBase64 && (
+                  <div className={`flex items-center gap-3 rounded-2xl p-4 ${
+                    transcriptionFailed 
+                      ? 'bg-gradient-to-r from-amber-50 to-orange-50' 
+                      : 'bg-gradient-to-r from-blue-50 to-emerald-50'
                   }`}>
-                    <Mic className="w-6 h-6 text-white" />
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      transcriptionFailed
+                        ? 'bg-gradient-to-br from-amber-500 to-amber-600'
+                        : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                    }`}>
+                      <Mic className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800">Audio enregistré</p>
+                      <p className="text-sm text-gray-500">
+                        {transcriptionFailed 
+                          ? '⚠️ Sans transcription' 
+                          : `${audioDuration}s - Prêt à publier`}
+                      </p>
+                    </div>
+                    <Check className={`w-6 h-6 ${transcriptionFailed ? 'text-amber-500' : 'text-emerald-500'}`} />
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-800">Audio enregistré</p>
-                    <p className="text-sm text-gray-500">
-                      {transcriptionFailed 
-                        ? '⚠️ Sans transcription automatique' 
-                        : 'Prêt à publier'}
-                    </p>
+                )}
+
+                {/* No audio indicator for media-only */}
+                {!audioBase64 && mediaFile && (
+                  <div className="flex items-center gap-3 rounded-2xl p-4 bg-gray-50">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-200">
+                      {selectedType === 'photo' ? (
+                        <Image className="w-6 h-6 text-gray-500" />
+                      ) : (
+                        <Video className="w-6 h-6 text-gray-500" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800">
+                        {selectedType === 'photo' ? 'Photo' : 'Vidéo'} sans audio
+                      </p>
+                      <p className="text-sm text-gray-500">Publication visuelle uniquement</p>
+                    </div>
+                    <Check className="w-6 h-6 text-emerald-500" />
                   </div>
-                  <Check className={`w-6 h-6 ${transcriptionFailed ? 'text-amber-500' : 'text-emerald-500'}`} />
-                </div>
+                )}
 
                 {/* Transcript */}
-                {transcript ? (
+                {transcript && (
                   <div className="bg-gray-50 rounded-2xl p-4">
                     <p className="text-sm text-gray-400 mb-1">Transcription</p>
                     <p className="text-gray-700">{transcript}</p>
                   </div>
-                ) : transcriptionFailed ? (
-                  <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
-                    <p className="text-sm text-amber-600">
-                      La transcription automatique n'est pas disponible. 
-                      Votre audio sera publié sans texte.
-                    </p>
-                  </div>
-                ) : null}
+                )}
 
                 {/* Emoji Selector */}
                 <div>
@@ -415,7 +463,10 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                       <motion.button
                         key={emoji}
                         whileTap={{ scale: 0.9 }}
-                        onClick={() => setSelectedEmoji(emoji === selectedEmoji ? null : emoji)}
+                        onClick={() => {
+                          setSelectedEmoji(emoji === selectedEmoji ? null : emoji);
+                          triggerFeedback('notification');
+                        }}
                         className={`text-2xl p-2 rounded-xl ${
                           selectedEmoji === emoji ? 'bg-blue-100 ring-2 ring-blue-500' : 'bg-gray-50'
                         }`}
@@ -446,18 +497,15 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
               className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                  />
-                  {t('loading')}
-                </>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                />
               ) : (
                 <>
-                  <Upload className="w-5 h-5" />
-                  {t('send')}
+                  <Check className="w-5 h-5" />
+                  Publier
                 </>
               )}
             </motion.button>
