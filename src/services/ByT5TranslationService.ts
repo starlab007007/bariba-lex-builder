@@ -21,7 +21,7 @@ export interface ByT5TranslationResult {
   };
 }
 
-const TIMEOUT_MS = 12000; // 12 seconds client-side timeout
+const TIMEOUT_MS = 8000; // 8 seconds client-side timeout (reduced for better UX)
 
 class ByT5TranslationService {
   private static instance: ByT5TranslationService;
@@ -47,6 +47,12 @@ class ByT5TranslationService {
     advanced: boolean = true
   ): Promise<ByT5TranslationResult> {
     const startTime = Date.now();
+    
+    // Skip if service is known to be unhealthy (avoid waiting for timeout)
+    if (!this.isHealthy && Date.now() - this.lastHealthCheck < this.healthCheckInterval) {
+      console.log('⚠️ ByT5 service known to be unavailable, skipping...');
+      throw new Error('Service temporairement indisponible');
+    }
     
     // Create abort controller for timeout
     const controller = new AbortController();

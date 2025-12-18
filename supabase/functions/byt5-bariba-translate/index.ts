@@ -15,7 +15,7 @@ interface TranslationRequest {
 }
 
 const SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space';
-const GLOBAL_TIMEOUT_MS = 15000; // 15 seconds max
+const GLOBAL_TIMEOUT_MS = 10000; // 10 seconds max (reduced for better UX)
 
 async function pollForResult(
   spaceUrl: string,
