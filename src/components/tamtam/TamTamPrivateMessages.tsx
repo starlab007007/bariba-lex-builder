@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { usePrivateVoiceMessages, VoiceMessage, Conversation } from '@/hooks/usePrivateVoiceMessages';
 import { useRichMediaMessages, MediaAttachment } from '@/hooks/useRichMediaMessages';
-import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
+import { SimpleVoiceRecorder } from '@/components/voice/SimpleVoiceRecorder';
 import { TamTamMediaPicker } from '@/components/tamtam/TamTamMediaPicker';
 import { ContentModerationModal } from '@/components/tamtam/ContentModerationModal';
 import { useAudioServices } from '@/hooks/useAudioServices';
@@ -141,7 +141,24 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
   const handleSendMessage = async (audioBase64: string, duration: number) => {
     if (!selectedConversation) return;
     broadcastRecording(false); // Stop broadcasting recording
-    await sendVoiceMessage(selectedConversation, audioBase64, duration, 'bariba');
+    
+    // Feedback sonore immédiat
+    triggerFeedback('send', { sound: true, haptic: true });
+    
+    if (pendingMedia) {
+      // Send with media attachment
+      await sendMediaMessage(
+        selectedConversation,
+        '', // No audio when sending media with voice
+        0,
+        pendingMedia
+      );
+      setPendingMedia(null);
+    } else {
+      // Send voice message with transcription
+      await sendVoiceMessage(selectedConversation, audioBase64, duration, 'bariba');
+    }
+    
     setShowRecorder(false);
   };
 
@@ -395,47 +412,75 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
                             : "bg-white shadow-sm border border-gray-100"
                         )}
                       >
-                        {/* Audio Player */}
-                        <div className="flex items-center gap-3">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className={cn(
-                              "h-10 w-10 rounded-full",
-                              isOwnMessage 
-                                ? "bg-white/20 hover:bg-white/30" 
-                                : "bg-blue-100 hover:bg-blue-200"
-                            )}
-                            onClick={() => playAudio(msg)}
-                          >
-                            {playingMessageId === msg.id ? (
-                              <Pause className={cn("h-5 w-5", isOwnMessage ? "text-white" : "text-blue-600")} />
-                            ) : (
-                              <Play className={cn("h-5 w-5", isOwnMessage ? "text-white" : "text-blue-600")} />
-                            )}
-                          </Button>
-                          
-                          {/* Waveform placeholder */}
-                          <div className="flex-1 flex items-center gap-0.5">
-                            {Array.from({ length: 20 }).map((_, i) => (
-                              <div
-                                key={i}
-                                className={cn(
-                                  "w-1 rounded-full",
-                                  isOwnMessage ? "bg-white/50" : "bg-gray-300"
-                                )}
-                                style={{ height: `${Math.random() * 16 + 8}px` }}
-                              />
-                            ))}
+                        {/* Message Content by Type */}
+                        {msg.message_type === 'emoji' ? (
+                          /* Emoji Message */
+                          <div className="flex items-center justify-center py-2">
+                            <span className="text-6xl">{msg.emoji_code}</span>
                           </div>
-                          
-                          <span className={cn(
-                            "text-xs",
-                            isOwnMessage ? "text-white/70" : "text-gray-400"
-                          )}>
-                            {msg.duration_seconds}s
-                          </span>
-                        </div>
+                        ) : msg.message_type === 'photo' ? (
+                          /* Photo Message */
+                          <div className="space-y-2">
+                            <img 
+                              src={msg.media_url} 
+                              alt="Photo" 
+                              className="rounded-xl max-w-full max-h-64 object-cover"
+                              onClick={() => window.open(msg.media_url, '_blank')}
+                            />
+                          </div>
+                        ) : msg.message_type === 'video' ? (
+                          /* Video Message */
+                          <div className="space-y-2">
+                            <video 
+                              src={msg.media_url} 
+                              controls 
+                              className="rounded-xl max-w-full max-h-64"
+                              poster={msg.thumbnail_url}
+                            />
+                          </div>
+                        ) : (
+                          /* Audio Message (default) */
+                          <div className="flex items-center gap-3">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className={cn(
+                                "h-12 w-12 rounded-full",
+                                isOwnMessage 
+                                  ? "bg-white/20 hover:bg-white/30" 
+                                  : "bg-blue-100 hover:bg-blue-200"
+                              )}
+                              onClick={() => playAudio(msg)}
+                            >
+                              {playingMessageId === msg.id ? (
+                                <Pause className={cn("h-6 w-6", isOwnMessage ? "text-white" : "text-blue-600")} />
+                              ) : (
+                                <Play className={cn("h-6 w-6", isOwnMessage ? "text-white" : "text-blue-600")} />
+                              )}
+                            </Button>
+                            
+                            {/* Waveform placeholder */}
+                            <div className="flex-1 flex items-center gap-0.5">
+                              {Array.from({ length: 16 }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "w-1 rounded-full",
+                                    isOwnMessage ? "bg-white/50" : "bg-gray-300"
+                                  )}
+                                  style={{ height: `${Math.random() * 16 + 8}px` }}
+                                />
+                              ))}
+                            </div>
+                            
+                            <span className={cn(
+                              "text-sm font-medium",
+                              isOwnMessage ? "text-white/70" : "text-gray-500"
+                            )}>
+                              {msg.duration_seconds}s
+                            </span>
+                          </div>
+                        )}
 
                         {/* Transcript Toggle */}
                         <div className="flex items-center gap-2">
@@ -563,15 +608,18 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                   >
-                    <SmartVoiceRecorder
-                      onRecordingComplete={(audioBase64) => handleSendMessage(audioBase64, 0)}
-                      language="bariba"
-                      showSpeakerType={false}
+                    <SimpleVoiceRecorder
+                      onRecordingComplete={(audioBase64, duration) => handleSendMessage(audioBase64, duration)}
+                      onCancel={() => {
+                        setShowRecorder(false);
+                        broadcastRecording(false);
+                      }}
+                      autoMode={true}
                     />
                     {(isSending || isTranscribing) && (
                       <div className="flex items-center justify-center gap-2 mt-2 text-sm text-gray-500">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        {isTranscribing ? 'Transcription...' : 'Envoi...'}
+                        {isTranscribing ? '🎯' : '📤'}
                       </div>
                     )}
                   </motion.div>
