@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Radio, Newspaper, Plus, BarChart3, Search, Users } from 'lucide-react';
+import { MessageCircle, Radio, Newspaper, Plus, BarChart3, Search, Users, Volume2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
@@ -21,11 +21,13 @@ import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useVoiceMenu, VoiceMenuLabels } from '@/hooks/useVoiceMenu';
+import { SpeakerButton } from '@/components/tamtam/VoiceMenuItem';
 
-const tabs = [
+const tabs: { id: string; icon: typeof Newspaper; label: keyof VoiceMenuLabels }[] = [
   { id: 'feed', icon: Newspaper, label: 'feed' },
   { id: 'messages', icon: MessageCircle, label: 'messages' },
-  { id: 'communities', icon: Users, label: 'Communautés' },
+  { id: 'communities', icon: Users, label: 'communities' },
   { id: 'live', icon: Radio, label: 'live' },
 ];
 
@@ -38,6 +40,7 @@ export default function TamTamSocial() {
   const { t } = useTamTamLanguage();
   const { announceScreen } = useAudioDescription();
   const { toast } = useToast();
+  const { speakLabel, getLabel, isSpeaking } = useVoiceMenu();
   const { 
     posts, 
     stories, 
@@ -183,7 +186,7 @@ export default function TamTamSocial() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] pb-24">
-      {/* Tab Bar */}
+      {/* Tab Bar with Voice Support */}
       <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="flex justify-between items-center p-3">
           <div className="flex justify-center gap-2 flex-1">
@@ -192,29 +195,42 @@ export default function TamTamSocial() {
               const isActive = activeTab === tab.id;
               
               return (
-                <motion.button
-                  key={tab.id}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
-                    isActive 
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg' 
-                      : 'bg-gray-100 text-gray-500'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="hidden sm:inline">{t(tab.label)}</span>
-                </motion.button>
+                <div key={tab.id} className="flex items-center">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
+                      isActive 
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg' 
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </motion.button>
+                  {/* Speaker button for voice accessibility */}
+                  <SpeakerButton 
+                    labelKey={tab.label}
+                    size="sm"
+                    className={`ml-1 ${isActive ? 'bg-blue-100' : ''}`}
+                  />
+                </div>
               );
             })}
           </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowUserSearch(true)}
-            className="p-2.5 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
-          >
-            <Search className="w-5 h-5 text-gray-600" />
-          </motion.button>
+          {/* Search button with voice support */}
+          <div className="flex items-center gap-1">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowUserSearch(true)}
+              className="p-2.5 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              <Search className="w-5 h-5 text-gray-600" />
+            </motion.button>
+            <SpeakerButton 
+              labelKey="search"
+              size="sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -334,7 +350,7 @@ export default function TamTamSocial() {
         )}
       </AnimatePresence>
 
-      {/* Floating Create Button with Menu */}
+      {/* Floating Create Button with Voice-Accessible Menu */}
       <div className="fixed bottom-24 right-4 z-30">
         <AnimatePresence>
           {showCreateMenu && (
@@ -344,31 +360,39 @@ export default function TamTamSocial() {
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
               className="absolute bottom-20 right-0 bg-white rounded-2xl shadow-xl p-2 space-y-1"
             >
-              <button
-                onClick={() => {
-                  setShowCreatePost(true);
-                  setShowCreateMenu(false);
-                }}
-                className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 rounded-xl"
-              >
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Plus className="w-5 h-5 text-blue-600" />
-                </div>
-                <span className="font-medium text-gray-700">Publication</span>
-              </button>
+              {/* New Post option with speaker */}
+              <div className="flex items-center">
+                <button
+                  onClick={() => {
+                    setShowCreatePost(true);
+                    setShowCreateMenu(false);
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-xl"
+                >
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Plus className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="font-medium text-gray-700">{getLabel('newPost')}</span>
+                </button>
+                <SpeakerButton labelKey="newPost" size="sm" />
+              </div>
               
-              <button
-                onClick={() => {
-                  setShowCreatePoll(true);
-                  setShowCreateMenu(false);
-                }}
-                className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 rounded-xl"
-              >
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-orange-600" />
-                </div>
-                <span className="font-medium text-gray-700">Sondage Vocal</span>
-              </button>
+              {/* Vocal Poll option with speaker */}
+              <div className="flex items-center">
+                <button
+                  onClick={() => {
+                    setShowCreatePoll(true);
+                    setShowCreateMenu(false);
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-xl"
+                >
+                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <span className="font-medium text-gray-700">{getLabel('vocalPoll')}</span>
+                </button>
+                <SpeakerButton labelKey="vocalPoll" size="sm" />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
