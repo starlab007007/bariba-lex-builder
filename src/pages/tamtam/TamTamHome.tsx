@@ -4,8 +4,9 @@ import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { useState, useEffect } from 'react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
-import { useBilingualAudio } from '@/hooks/useBilingualAudio';
-import { tamtamFeedback } from '@/utils/tamtamFeedback';
+import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
+import { useVoiceMenu } from '@/hooks/useVoiceMenu';
+import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { Volume2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -25,7 +26,8 @@ export default function TamTamHome() {
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
-  const { speakCurrentLang, isSpeaking } = useBilingualAudio();
+  const { speakCurrentLang, isSpeaking, health } = useUnifiedAudio();
+  const { speakLabel, handleLongPress } = useVoiceMenu();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function TamTamHome() {
     sourceLang: 'ba' | 'fr';
   }) => {
     setIsProcessingVoice(true);
-    tamtamFeedback.play('send');
+    triggerFeedback('send');
     
     try {
       // Show transcription feedback
@@ -63,7 +65,7 @@ export default function TamTamHome() {
       
       // Handle navigation
       if (data.type === 'navigate') {
-        tamtamFeedback.play('success');
+        triggerFeedback('success');
         setTimeout(() => {
           switch (data.value) {
             case 'home': navigate('/tamtam/home'); break;
@@ -94,20 +96,29 @@ export default function TamTamHome() {
     }
   };
 
-  const handleServiceClick = (path: string, labelKey: string) => {
-    tamtamFeedback.play('click');
-    speakCurrentLang(t(labelKey));
+  const handleServiceClick = async (path: string, labelKey: string) => {
+    triggerFeedback('click');
+    await speakCurrentLang(t(labelKey));
     navigate(path);
   };
 
   const handleSpeakLabel = async (labelKey: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    tamtamFeedback.play('click');
-    await speakCurrentLang(t(labelKey));
+    triggerFeedback('click');
+    await speakLabel(labelKey);
   };
 
   return (
     <div className="min-h-screen bg-tamtam-bg px-4 pt-8 pb-32">
+      {/* Health status indicator */}
+      {health && (
+        <div className="absolute top-4 right-4 flex gap-1">
+          <div className={`w-2 h-2 rounded-full ${health.baribaTTS.status === 'healthy' ? 'bg-green-500' : health.baribaTTS.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'}`} title="TTS Bariba" />
+          <div className={`w-2 h-2 rounded-full ${health.frenchTTS.status === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`} title="TTS Français" />
+          <div className={`w-2 h-2 rounded-full ${health.translation.status === 'healthy' ? 'bg-green-500' : health.translation.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'}`} title="Traduction" />
+        </div>
+      )}
+
       {/* Welcome visual with translated greeting */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -170,34 +181,43 @@ export default function TamTamHome() {
         transition={{ delay: 0.4 }}
         className="grid grid-cols-3 gap-4 max-w-md mx-auto"
       >
-        {services.map((service, index) => (
-          <motion.button
-            key={service.labelKey}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5 + index * 0.1 }}
-            onClick={() => handleServiceClick(service.path, service.labelKey)}
-            className="aspect-square bg-tamtam-surface rounded-3xl shadow-tamtam-soft flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform relative"
-          >
-            {/* Icon badge */}
-            <div className={`w-14 h-14 ${service.color} rounded-2xl flex items-center justify-center`}>
-              <span className="text-2xl">{service.icon}</span>
-            </div>
-            
-            {/* Label in current language */}
-            <span className="text-xs font-medium text-tamtam-text truncate px-2">
-              {t(service.labelKey)}
-            </span>
-
-            {/* Audio button */}
-            <button
-              onClick={(e) => handleSpeakLabel(service.labelKey, e)}
-              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 flex items-center justify-center"
+        {services.map((service, index) => {
+          const longPressHandlers = handleLongPress(service.labelKey as any);
+          
+          return (
+            <motion.button
+              key={service.labelKey}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 + index * 0.1 }}
+              onClick={() => handleServiceClick(service.path, service.labelKey)}
+              {...longPressHandlers}
+              className="aspect-square bg-tamtam-surface rounded-3xl shadow-tamtam-soft flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform relative"
             >
-              <Volume2 className="w-3 h-3 text-tamtam-primary" />
-            </button>
-          </motion.button>
-        ))}
+              {/* Icon badge */}
+              <div className={`w-14 h-14 ${service.color} rounded-2xl flex items-center justify-center`}>
+                <span className="text-2xl">{service.icon}</span>
+              </div>
+              
+              {/* Label in current language */}
+              <span className="text-xs font-medium text-tamtam-text truncate px-2">
+                {t(service.labelKey)}
+              </span>
+
+              {/* Audio button */}
+              <button
+                onClick={(e) => handleSpeakLabel(service.labelKey, e)}
+                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 flex items-center justify-center"
+              >
+                {isSpeaking ? (
+                  <Loader2 className="w-3 h-3 text-tamtam-primary animate-spin" />
+                ) : (
+                  <Volume2 className="w-3 h-3 text-tamtam-primary" />
+                )}
+              </button>
+            </motion.button>
+          );
+        })}
       </motion.div>
 
       {/* Language indicator */}

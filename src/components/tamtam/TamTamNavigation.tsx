@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TamTamMicButton } from './TamTamMicButton';
 import { useState, useEffect } from 'react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
-import { useBilingualAudio } from '@/hooks/useBilingualAudio';
-import { tamtamFeedback } from '@/utils/tamtamFeedback';
+import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
+import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Volume2, Loader2 } from 'lucide-react';
+import { useVoiceMenu } from '@/hooks/useVoiceMenu';
 
 const navItems = [
   { icon: '🏠', path: '/tamtam/home', id: 'home', labelKey: 'home' },
@@ -21,8 +23,9 @@ export function TamTamNavigation() {
   const [isRecording, setIsRecording] = useState(false);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const { t } = useTamTamLanguage();
-  const { speakCurrentLang } = useBilingualAudio();
+  const { speakCurrentLang, isSpeaking } = useUnifiedAudio();
   const { user } = useAuth();
+  const { speakLabel, handleLongPress } = useVoiceMenu();
 
   // Fetch unread messages count
   useEffect(() => {
@@ -67,7 +70,7 @@ export function TamTamNavigation() {
   const isActive = (path: string) => location.pathname === path;
 
   const handleMicPress = () => {
-    tamtamFeedback.play('click');
+    triggerFeedback('click');
     setIsRecording(!isRecording);
     if (!isRecording) {
       speakCurrentLang(t('nowListening'));
@@ -75,10 +78,17 @@ export function TamTamNavigation() {
   };
 
   const handleNavPress = async (path: string, labelKey: string) => {
-    tamtamFeedback.play('click');
+    triggerFeedback('click');
     // Speak the screen name via TTS before navigating
     await speakCurrentLang(t(labelKey));
     navigate(path);
+  };
+
+  // Speak label for accessibility
+  const handleSpeakNav = async (labelKey: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    triggerFeedback('click');
+    await speakLabel(labelKey);
   };
 
   return (
@@ -103,59 +113,95 @@ export function TamTamNavigation() {
         className="fixed bottom-0 left-0 right-0 bg-tamtam-surface border-t border-gray-100 px-6 py-3 z-40"
       >
         <div className="max-w-md mx-auto flex items-center justify-between">
-          {navItems.slice(0, 2).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavPress(item.path, item.labelKey)}
-              className={`relative flex flex-col items-center gap-1 w-16 py-1 rounded-2xl transition-all ${
-                isActive(item.path)
-                  ? 'bg-tamtam-primary/10'
-                  : ''
-              }`}
-            >
-              <span className={`text-2xl ${isActive(item.path) ? 'scale-110' : ''}`}>
-                {item.icon}
-              </span>
-              {/* Badge messages non lus pour l'onglet social */}
-              {item.id === 'social' && unreadMessagesCount > 0 && (
-                <AnimatePresence>
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
-                  >
-                    {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
-                  </motion.div>
-                </AnimatePresence>
-              )}
-              <span className={`text-xs ${isActive(item.path) ? 'text-tamtam-primary font-medium' : 'text-tamtam-text-muted'}`}>
-                {t(item.labelKey)}
-              </span>
-            </button>
-          ))}
+          {navItems.slice(0, 2).map((item) => {
+            const longPressHandlers = handleLongPress(item.labelKey as any);
+            
+            return (
+              <div key={item.id} className="relative">
+                <button
+                  onClick={() => handleNavPress(item.path, item.labelKey)}
+                  {...longPressHandlers}
+                  className={`relative flex flex-col items-center gap-1 w-16 py-1 rounded-2xl transition-all ${
+                    isActive(item.path)
+                      ? 'bg-tamtam-primary/10'
+                      : ''
+                  }`}
+                >
+                  <span className={`text-2xl ${isActive(item.path) ? 'scale-110' : ''}`}>
+                    {item.icon}
+                  </span>
+                  {/* Badge messages non lus pour l'onglet social */}
+                  {item.id === 'social' && unreadMessagesCount > 0 && (
+                    <AnimatePresence>
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
+                      >
+                        {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                      </motion.div>
+                    </AnimatePresence>
+                  )}
+                  <span className={`text-xs ${isActive(item.path) ? 'text-tamtam-primary font-medium' : 'text-tamtam-text-muted'}`}>
+                    {t(item.labelKey)}
+                  </span>
+                </button>
+                
+                {/* Speaker button */}
+                <button
+                  onClick={(e) => handleSpeakNav(item.labelKey, e)}
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-tamtam-primary/20 flex items-center justify-center"
+                >
+                  {isSpeaking ? (
+                    <Loader2 className="w-3 h-3 text-tamtam-primary animate-spin" />
+                  ) : (
+                    <Volume2 className="w-3 h-3 text-tamtam-primary" />
+                  )}
+                </button>
+              </div>
+            );
+          })}
 
           {/* Spacer for central mic */}
           <div className="w-20" />
 
-          {navItems.slice(2).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavPress(item.path, item.labelKey)}
-              className={`flex flex-col items-center gap-1 w-16 py-1 rounded-2xl transition-all ${
-                isActive(item.path)
-                  ? 'bg-tamtam-primary/10'
-                  : ''
-              }`}
-            >
-              <span className={`text-2xl ${isActive(item.path) ? 'scale-110' : ''}`}>
-                {item.icon}
-              </span>
-              <span className={`text-xs ${isActive(item.path) ? 'text-tamtam-primary font-medium' : 'text-tamtam-text-muted'}`}>
-                {t(item.labelKey)}
-              </span>
-            </button>
-          ))}
+          {navItems.slice(2).map((item) => {
+            const longPressHandlers = handleLongPress(item.labelKey as any);
+            
+            return (
+              <div key={item.id} className="relative">
+                <button
+                  onClick={() => handleNavPress(item.path, item.labelKey)}
+                  {...longPressHandlers}
+                  className={`flex flex-col items-center gap-1 w-16 py-1 rounded-2xl transition-all ${
+                    isActive(item.path)
+                      ? 'bg-tamtam-primary/10'
+                      : ''
+                  }`}
+                >
+                  <span className={`text-2xl ${isActive(item.path) ? 'scale-110' : ''}`}>
+                    {item.icon}
+                  </span>
+                  <span className={`text-xs ${isActive(item.path) ? 'text-tamtam-primary font-medium' : 'text-tamtam-text-muted'}`}>
+                    {t(item.labelKey)}
+                  </span>
+                </button>
+                
+                {/* Speaker button */}
+                <button
+                  onClick={(e) => handleSpeakNav(item.labelKey, e)}
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-tamtam-primary/20 flex items-center justify-center"
+                >
+                  {isSpeaking ? (
+                    <Loader2 className="w-3 h-3 text-tamtam-primary animate-spin" />
+                  ) : (
+                    <Volume2 className="w-3 h-3 text-tamtam-primary" />
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </motion.nav>
     </>

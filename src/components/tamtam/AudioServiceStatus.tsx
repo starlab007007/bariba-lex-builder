@@ -1,7 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Loader2, AlertCircle } from 'lucide-react';
-import { ServiceStatus } from '@/hooks/useAudioServices';
+import { ServiceStatus as LegacyServiceStatus } from '@/hooks/useAudioServices';
+import { AudioServicesHealth, ServiceStatus as UnifiedServiceStatus } from '@/services/UnifiedAudioService';
+
+// Legacy type for backward compatibility
+type ServiceStatus = LegacyServiceStatus;
 
 interface AudioServiceStatusProps {
   status: ServiceStatus;
@@ -34,10 +38,29 @@ const statusConfig = {
     bg: 'bg-orange-50',
     text: 'Erreur',
   },
+  // Unified service statuses
+  healthy: {
+    icon: CheckCircle2,
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-50',
+    text: 'Disponible',
+  },
+  degraded: {
+    icon: AlertCircle,
+    color: 'text-amber-500',
+    bg: 'bg-amber-50',
+    text: 'Dégradé',
+  },
+  unknown: {
+    icon: Loader2,
+    color: 'text-gray-500',
+    bg: 'bg-gray-50',
+    text: 'Inconnu',
+  },
 };
 
 export function AudioServiceStatus({ status, label, compact = false }: AudioServiceStatusProps) {
-  const config = statusConfig[status];
+  const config = statusConfig[status] || statusConfig.unknown;
   const Icon = config.icon;
   
   if (compact) {
@@ -64,7 +87,8 @@ export function AudioServiceStatus({ status, label, compact = false }: AudioServ
   );
 }
 
-interface AudioServicesStatusBarProps {
+// Legacy interface for backward compatibility
+interface LegacyAudioServicesStatusBarProps {
   health: {
     baribaSTT: ServiceStatus;
     baribaTTS: ServiceStatus;
@@ -75,9 +99,48 @@ interface AudioServicesStatusBarProps {
   showAll?: boolean;
 }
 
-export function AudioServicesStatusBar({ health, showAll = false }: AudioServicesStatusBarProps) {
+// New unified interface
+interface UnifiedAudioServicesStatusBarProps {
+  health: AudioServicesHealth | null;
+  showAll?: boolean;
+}
+
+// Helper to convert unified status to display status
+function convertStatus(status: UnifiedServiceStatus): ServiceStatus {
+  switch (status) {
+    case 'healthy': return 'available';
+    case 'degraded': return 'error';
+    case 'unavailable': return 'unavailable';
+    default: return 'checking';
+  }
+}
+
+export function AudioServicesStatusBar({ health, showAll = false }: UnifiedAudioServicesStatusBarProps | LegacyAudioServicesStatusBarProps) {
+  if (!health) return null;
+  
+  // Check if using unified health type
+  const isUnifiedHealth = 'baribaTTS' in health && 'status' in (health as any).baribaTTS;
+  
+  let displayHealth: { stt: ServiceStatus; tts: ServiceStatus; translate: ServiceStatus };
+  
+  if (isUnifiedHealth) {
+    const unified = health as AudioServicesHealth;
+    displayHealth = {
+      stt: convertStatus(unified.baribaSTT.status),
+      tts: convertStatus(unified.baribaTTS.status),
+      translate: convertStatus(unified.translation.status),
+    };
+  } else {
+    const legacy = health as LegacyAudioServicesStatusBarProps['health'];
+    displayHealth = {
+      stt: legacy.baribaSTT,
+      tts: legacy.baribaTTS,
+      translate: legacy.byT5,
+    };
+  }
+  
   // Only show if any service is unavailable or error
-  const hasIssues = Object.values(health).some(s => s === 'unavailable' || s === 'error');
+  const hasIssues = Object.values(displayHealth).some(s => s === 'unavailable' || s === 'error');
   
   if (!showAll && !hasIssues) {
     return null;
@@ -85,9 +148,9 @@ export function AudioServicesStatusBar({ health, showAll = false }: AudioService
   
   return (
     <div className="flex flex-wrap gap-1">
-      <AudioServiceStatus status={health.baribaSTT} label="STT" compact />
-      <AudioServiceStatus status={health.baribaTTS} label="TTS" compact />
-      <AudioServiceStatus status={health.byT5} label="ByT5" compact />
+      <AudioServiceStatus status={displayHealth.stt} label="STT" compact />
+      <AudioServiceStatus status={displayHealth.tts} label="TTS" compact />
+      <AudioServiceStatus status={displayHealth.translate} label="Trad" compact />
     </div>
   );
 }
