@@ -2,14 +2,18 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Send, Volume2, Mic, User, Check, CheckCheck, 
-  Loader2, Languages, Play, Pause, X, Globe, ArrowRightLeft, Bell
+  Loader2, Languages, Play, Pause, X, Globe, ArrowRightLeft, Bell,
+  Plus, Image as ImageIcon, Smile, MoreVertical, Flag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { usePrivateVoiceMessages, VoiceMessage, Conversation } from '@/hooks/usePrivateVoiceMessages';
+import { useRichMediaMessages, MediaAttachment } from '@/hooks/useRichMediaMessages';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
+import { TamTamMediaPicker } from '@/components/tamtam/TamTamMediaPicker';
+import { ContentModerationModal } from '@/components/tamtam/ContentModerationModal';
 import { useAudioServices } from '@/hooks/useAudioServices';
 import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
@@ -39,8 +43,11 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
   const [selectedConversation, setSelectedConversation] = useState<string | null>(initialConversationId || null);
   const [showRecorder, setShowRecorder] = useState(false);
   const [showTranslator, setShowTranslator] = useState(false);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [showModerationModal, setShowModerationModal] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState<{ [id: string]: 'ba' | 'fr' | null }>({});
+  const [pendingMedia, setPendingMedia] = useState<MediaAttachment | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -55,6 +62,9 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
     fetchConversations,
     markAsRead
   } = usePrivateVoiceMessages(selectedConversation || undefined);
+
+  // Rich media support
+  const { uploadMedia, sendMediaMessage, sendEmojiMessage, isUploading } = useRichMediaMessages();
 
   // Update selected conversation if initialConversationId changes
   useEffect(() => {
@@ -519,6 +529,33 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
 
             {/* Input Area */}
             <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4">
+              {/* Pending Media Preview */}
+              {pendingMedia && (
+                <div className="mb-3 p-2 bg-gray-50 rounded-xl flex items-center gap-3">
+                  {pendingMedia.type === 'photo' && (
+                    <img src={pendingMedia.url} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
+                  )}
+                  {pendingMedia.type === 'video' && (
+                    <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                      <Play className="h-6 w-6 text-gray-500" />
+                    </div>
+                  )}
+                  {pendingMedia.type === 'emoji' && (
+                    <span className="text-4xl">{pendingMedia.emojiCode}</span>
+                  )}
+                  <span className="flex-1 text-sm text-gray-600">
+                    {pendingMedia.type === 'photo' ? 'Photo' : pendingMedia.type === 'video' ? 'Vidéo' : 'Emoji'}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPendingMedia(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
               <AnimatePresence mode="wait">
                 {showRecorder ? (
                   <motion.div
@@ -538,12 +575,52 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
                       </div>
                     )}
                   </motion.div>
+                ) : showMediaPicker ? (
+                  <TamTamMediaPicker
+                    onSelectPhoto={async (file) => {
+                      const result = await uploadMedia(file, 'photo');
+                      if (result) {
+                        setPendingMedia({ type: 'photo', url: result.url });
+                      }
+                      setShowMediaPicker(false);
+                    }}
+                    onSelectVideo={async (file) => {
+                      const result = await uploadMedia(file, 'video');
+                      if (result) {
+                        setPendingMedia({ type: 'video', url: result.url, thumbnailUrl: result.thumbnailUrl });
+                      }
+                      setShowMediaPicker(false);
+                    }}
+                    onSelectEmoji={(emoji) => {
+                      if (selectedConversation) {
+                        sendEmojiMessage(selectedConversation, emoji);
+                      }
+                      setShowMediaPicker(false);
+                    }}
+                    onRecordAudio={() => {
+                      setShowMediaPicker(false);
+                      setShowRecorder(true);
+                      broadcastRecording(true);
+                    }}
+                    onClose={() => setShowMediaPicker(false)}
+                  />
                 ) : (
                   <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="flex justify-center"
+                    className="flex justify-center items-center gap-4"
                   >
+                    {/* Media Picker Button */}
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="w-12 h-12 rounded-full"
+                      onClick={() => setShowMediaPicker(true)}
+                    >
+                      <Plus className="h-5 w-5" />
+                    </Button>
+
+                    {/* Main Record Button */}
                     <Button
                       size="lg"
                       className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg"
@@ -551,8 +628,23 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
                         setShowRecorder(true);
                         broadcastRecording(true);
                       }}
+                      disabled={isUploading}
                     >
-                      <Mic className="h-7 w-7" />
+                      {isUploading ? (
+                        <Loader2 className="h-7 w-7 animate-spin" />
+                      ) : (
+                        <Mic className="h-7 w-7" />
+                      )}
+                    </Button>
+
+                    {/* More Options Button */}
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="w-12 h-12 rounded-full"
+                      onClick={() => setShowModerationModal(true)}
+                    >
+                      <MoreVertical className="h-5 w-5" />
                     </Button>
                   </motion.div>
                 )}
@@ -600,6 +692,17 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Moderation Modal */}
+      <ContentModerationModal
+        isOpen={showModerationModal}
+        onClose={() => setShowModerationModal(false)}
+        targetUser={selectedConversation ? {
+          id: selectedConversation,
+          name: getSelectedPartner()?.partnerName || 'Utilisateur',
+          avatar: getSelectedPartner()?.partnerAvatar
+        } : undefined}
+      />
     </motion.div>
   );
 }
