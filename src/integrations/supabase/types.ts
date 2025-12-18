@@ -1161,6 +1161,116 @@ export type Database = {
         }
         Relationships: []
       }
+      tamtam_poll_options: {
+        Row: {
+          audio_url: string
+          created_at: string | null
+          id: string
+          poll_id: string
+          position: number
+          transcript: string | null
+          vote_count: number | null
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string | null
+          id?: string
+          poll_id: string
+          position: number
+          transcript?: string | null
+          vote_count?: number | null
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string | null
+          id?: string
+          poll_id?: string
+          position?: number
+          transcript?: string | null
+          vote_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tamtam_poll_votes: {
+        Row: {
+          created_at: string | null
+          id: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          option_id?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tamtam_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tamtam_polls: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_anonymous: boolean | null
+          question_audio_url: string
+          question_transcript: string | null
+          user_id: string
+          votes_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_anonymous?: boolean | null
+          question_audio_url: string
+          question_transcript?: string | null
+          user_id: string
+          votes_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_anonymous?: boolean | null
+          question_audio_url?: string
+          question_transcript?: string | null
+          user_id?: string
+          votes_count?: number | null
+        }
+        Relationships: []
+      }
       tamtam_posts: {
         Row: {
           audio_url: string

@@ -4,7 +4,9 @@ import { MessageCircle, Radio, Newspaper, Plus, BarChart3, Search, Users } from 
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
+import { useTamTamPolls } from '@/hooks/useTamTamPolls';
 import { TamTamEnhancedFeedCard, EnhancedPost } from '@/components/tamtam/TamTamEnhancedFeedCard';
+import { TamTamPollCard } from '@/components/tamtam/TamTamPollCard';
 import { TamTamStories } from '@/components/tamtam/TamTamStories';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
@@ -27,6 +29,11 @@ const tabs = [
   { id: 'live', icon: Radio, label: 'live' },
 ];
 
+// Combined feed item type
+type FeedItem = 
+  | { type: 'post'; data: EnhancedPost; createdAt: Date }
+  | { type: 'poll'; data: ReturnType<typeof useTamTamPolls>['polls'][0]; createdAt: Date };
+
 export default function TamTamSocial() {
   const { t } = useTamTamLanguage();
   const { announceScreen } = useAudioDescription();
@@ -34,7 +41,7 @@ export default function TamTamSocial() {
   const { 
     posts, 
     stories, 
-    isLoading, 
+    isLoading: postsLoading, 
     createPost, 
     addReaction, 
     fetchComments, 
@@ -42,6 +49,8 @@ export default function TamTamSocial() {
     createStory,
     fetchPosts
   } = useTamTamPosts();
+
+  const { polls, isLoading: pollsLoading, votePoll } = useTamTamPolls();
 
   const [activeTab, setActiveTab] = useState('feed');
   const [showCreatePost, setShowCreatePost] = useState(false);
@@ -136,15 +145,6 @@ export default function TamTamSocial() {
     addReaction(postId, reaction);
   };
 
-  const handleCreatePoll = async (pollData: { question_audio_url: string; options: { audio_url: string }[] }) => {
-    // For now, create as a special post with poll data
-    await createPost({
-      audio_url: pollData.question_audio_url,
-      media_type: 'poll',
-    });
-    setShowCreatePoll(false);
-  };
-
   const base64ToBlob = (base64: string, mimeType: string): Blob => {
     const byteCharacters = atob(base64.split(',')[1] || base64);
     const byteNumbers = new Array(byteCharacters.length);
@@ -154,7 +154,7 @@ export default function TamTamSocial() {
     return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
   };
 
-  // Convert posts to enhanced format
+  // Convert posts to enhanced format and combine with polls
   const enhancedPosts: EnhancedPost[] = posts.map(post => ({
     ...post,
     media_type: (post as any).media_type || 'audio',
@@ -164,6 +164,22 @@ export default function TamTamSocial() {
     transcript_ba: (post as any).transcript_ba || null,
     feeling_emoji: (post as any).feeling_emoji || null,
   }));
+
+  // Combine posts and polls into a unified feed, sorted by date
+  const feedItems: FeedItem[] = [
+    ...enhancedPosts.map(post => ({
+      type: 'post' as const,
+      data: post,
+      createdAt: new Date(post.created_at)
+    })),
+    ...polls.map(poll => ({
+      type: 'poll' as const,
+      data: poll,
+      createdAt: new Date(poll.created_at)
+    }))
+  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  const isLoading = postsLoading || pollsLoading;
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] pb-24">
@@ -214,7 +230,7 @@ export default function TamTamSocial() {
             <div className="bg-white border-b border-gray-100">
               <TamTamStories 
                 stories={stories} 
-                onCreateStory={() => setShowCreatePost(true)}
+                onCreateStory={() => setShowStoryCreator(true)}
               />
             </div>
 
@@ -228,7 +244,7 @@ export default function TamTamSocial() {
               }}
             />
 
-            {/* Feed */}
+            {/* Feed - Combined posts and polls */}
             <div className="p-4 space-y-4">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-12">
@@ -239,7 +255,7 @@ export default function TamTamSocial() {
                   />
                   <p className="mt-4 text-gray-400">{t('loading')}</p>
                 </div>
-              ) : enhancedPosts.length === 0 ? (
+              ) : feedItems.length === 0 ? (
                 <div className="text-center py-12">
                   <Newspaper className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                   <p className="text-gray-500">{t('noData')}</p>
@@ -253,15 +269,26 @@ export default function TamTamSocial() {
                   </motion.button>
                 </div>
               ) : (
-                enhancedPosts.map(post => (
-                  <TamTamEnhancedFeedCard
-                    key={post.id}
-                    post={post}
-                    onReaction={handleReaction}
-                    onComment={handleOpenComments}
-                    onShare={handleShare}
-                  />
-                ))
+                feedItems.map(item => {
+                  if (item.type === 'poll') {
+                    return (
+                      <TamTamPollCard
+                        key={`poll-${item.data.id}`}
+                        poll={item.data}
+                        onVote={votePoll}
+                      />
+                    );
+                  }
+                  return (
+                    <TamTamEnhancedFeedCard
+                      key={`post-${item.data.id}`}
+                      post={item.data}
+                      onReaction={handleReaction}
+                      onComment={handleOpenComments}
+                      onShare={handleShare}
+                    />
+                  );
+                })
               )}
             </div>
           </motion.div>
@@ -367,12 +394,12 @@ export default function TamTamSocial() {
           await createPost(data);
           triggerFeedback('success');
         }}
+        onOpenPoll={() => setShowCreatePoll(true)}
       />
 
       <TamTamVocalPoll
         isOpen={showCreatePoll}
         onClose={() => setShowCreatePoll(false)}
-        onSubmit={handleCreatePoll}
       />
 
       <TamTamStoryCreator

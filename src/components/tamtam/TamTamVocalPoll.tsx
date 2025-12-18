@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BarChart3, Mic, Check, Send, Volume2 } from 'lucide-react';
+import { X, BarChart3, Check, Send, Plus, Trash2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
@@ -8,22 +8,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAudioServices } from '@/hooks/useAudioServices';
 import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
+import { useTamTamPolls, CreatePollData } from '@/hooks/useTamTamPolls';
 
 interface PollOption {
   id: string;
-  audioUrl?: string;
   audioBase64?: string;
   transcript?: string;
-  votes: number;
 }
 
 interface TamTamVocalPollProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (pollData: {
-    question_audio_url: string;
-    options: { audio_url: string; transcript?: string }[];
-  }) => Promise<void>;
+  onSubmit?: (pollData: CreatePollData) => Promise<void>;
 }
 
 export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
@@ -31,22 +27,26 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
   onClose,
   onSubmit
 }) => {
-  const { t, currentLang } = useTamTamLanguage();
+  const { currentLang } = useTamTamLanguage();
   const { toast } = useToast();
   const audioServices = useAudioServices();
+  const { createPoll } = useTamTamPolls();
   
   const [step, setStep] = useState<'question' | 'options' | 'preview'>('question');
   const [questionAudio, setQuestionAudio] = useState<string | null>(null);
-  const [options, setOptions] = useState<PollOption[]>([]);
+  const [questionTranscript, setQuestionTranscript] = useState<string>('');
+  const [options, setOptions] = useState<PollOption[]>([
+    { id: '1' },
+    { id: '2' },
+  ]);
   const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [questionTranscript, setQuestionTranscript] = useState<string>('');
 
   const handleQuestionRecorded = async (base64: string) => {
     setQuestionAudio(base64);
     triggerFeedback('success');
     
-    // Auto-transcribe question
+    // Auto-transcribe
     const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
     const transcription = sourceLang === 'ba' 
       ? await audioServices.transcribeBariba(base64)
@@ -57,16 +57,12 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
     }
     
     setStep('options');
-    setOptions([
-      { id: '1', votes: 0 },
-      { id: '2', votes: 0 },
-    ]);
   };
 
   const handleOptionRecorded = async (base64: string) => {
     triggerFeedback('record');
     
-    // Auto-transcribe option
+    // Auto-transcribe
     const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
     const transcription = sourceLang === 'ba' 
       ? await audioServices.transcribeBariba(base64)
@@ -78,22 +74,28 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
         : opt
     ));
     
+    // Auto advance to next option or preview
     if (currentOptionIndex < options.length - 1) {
       setCurrentOptionIndex(prev => prev + 1);
-    } else {
+    } else if (options.every((o, i) => i === currentOptionIndex || o.audioBase64)) {
       setStep('preview');
     }
   };
 
   const addOption = () => {
     if (options.length < 5) {
-      setOptions(prev => [...prev, { id: String(prev.length + 1), votes: 0 }]);
+      triggerFeedback('notification');
+      setOptions(prev => [...prev, { id: String(prev.length + 1) }]);
     }
   };
 
   const removeOption = (index: number) => {
     if (options.length > 2) {
+      triggerFeedback('notification');
       setOptions(prev => prev.filter((_, i) => i !== index));
+      if (currentOptionIndex >= options.length - 1) {
+        setCurrentOptionIndex(Math.max(0, currentOptionIndex - 1));
+      }
     }
   };
 
@@ -128,7 +130,7 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
         .from('tamtam-audio')
         .getPublicUrl(questionFileName);
 
-      // Upload options
+      // Upload all options
       const uploadedOptions = await Promise.all(
         options.map(async (opt, idx) => {
           if (!opt.audioBase64) throw new Error('Missing audio');
@@ -148,13 +150,21 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
         })
       );
 
-      await onSubmit({
+      // Create poll using hook
+      const pollData: CreatePollData = {
         question_audio_url: questionUrl.publicUrl,
+        question_transcript: questionTranscript || undefined,
         options: uploadedOptions
-      });
+      };
 
-      triggerFeedback('success');
-      toast({ title: "🗳️ Sondage créé !" });
+      await createPoll(pollData);
+
+      // Also call external onSubmit if provided (for backwards compatibility)
+      if (onSubmit) {
+        await onSubmit(pollData);
+      }
+
+      resetState();
       onClose();
     } catch (err: any) {
       triggerFeedback('error');
@@ -162,6 +172,14 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetState = () => {
+    setStep('question');
+    setQuestionAudio(null);
+    setQuestionTranscript('');
+    setOptions([{ id: '1' }, { id: '2' }]);
+    setCurrentOptionIndex(0);
   };
 
   if (!isOpen) return null;
@@ -227,7 +245,7 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
                 <div className="py-8">
                   <SmartVoiceRecorder
                     onRecordingComplete={handleQuestionRecorded}
-                    language="french"
+                    language={currentLang === 'ba' ? 'bariba' : 'french'}
                   />
                 </div>
 
@@ -261,23 +279,49 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
                 {/* Progress */}
                 <div className="flex gap-2">
                   {options.map((opt, idx) => (
-                    <div
+                    <motion.div
                       key={opt.id}
-                      className={`flex-1 h-2 rounded-full ${
+                      className={`flex-1 h-2 rounded-full cursor-pointer ${
                         opt.audioBase64 
                           ? 'bg-emerald-500' 
                           : idx === currentOptionIndex 
                             ? 'bg-orange-400' 
                             : 'bg-gray-200'
                       }`}
+                      onClick={() => setCurrentOptionIndex(idx)}
+                      whileTap={{ scale: 0.95 }}
                     />
                   ))}
                 </div>
 
-                <div className="py-6">
+                {/* Current option indicator */}
+                <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                      options[currentOptionIndex]?.audioBase64 
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-orange-100 text-orange-600'
+                    }`}>
+                      {currentOptionIndex + 1}
+                    </div>
+                    <span className="font-medium text-gray-700">
+                      {options[currentOptionIndex]?.transcript || `Option ${currentOptionIndex + 1}`}
+                    </span>
+                  </div>
+                  {options.length > 2 && (
+                    <button
+                      onClick={() => removeOption(currentOptionIndex)}
+                      className="p-2 text-red-400 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="py-4">
                   <SmartVoiceRecorder
                     onRecordingComplete={handleOptionRecorded}
-                    language="french"
+                    language={currentLang === 'ba' ? 'bariba' : 'french'}
                   />
                 </div>
 
@@ -285,18 +329,20 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
                   <button
                     onClick={addOption}
                     disabled={options.length >= 5}
-                    className="px-4 py-2 text-blue-500 font-medium disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 text-blue-500 font-medium disabled:opacity-50"
                   >
-                    + Ajouter option
+                    <Plus className="w-4 h-4" />
+                    Ajouter option
                   </button>
                   
                   {options.every(o => o.audioBase64) && (
-                    <button
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => setStep('preview')}
                       className="px-6 py-2 bg-blue-500 text-white rounded-xl font-medium"
                     >
                       Suivant
-                    </button>
+                    </motion.button>
                   )}
                 </div>
               </motion.div>
@@ -322,7 +368,9 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
                       <span className="text-2xl">❓</span>
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-gray-800">Votre question</p>
+                      <p className="font-medium text-gray-800">
+                        {questionTranscript || 'Votre question'}
+                      </p>
                       <p className="text-sm text-gray-500">Audio enregistré</p>
                     </div>
                     <Check className="w-6 h-6 text-emerald-500" />
@@ -340,7 +388,9 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
                         {idx + 1}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-gray-700">Option {idx + 1}</p>
+                        <p className="font-medium text-gray-700">
+                          {opt.transcript || `Option ${idx + 1}`}
+                        </p>
                       </div>
                       {opt.audioBase64 && <Check className="w-5 h-5 text-emerald-500" />}
                     </div>
@@ -353,12 +403,18 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
 
         {/* Footer */}
         {step === 'preview' && (
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-100 flex gap-3">
+            <button
+              onClick={() => setStep('options')}
+              className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-600 font-medium"
+            >
+              Modifier
+            </button>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium flex items-center justify-center gap-2"
+              className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <motion.div
@@ -369,7 +425,7 @@ export const TamTamVocalPoll: React.FC<TamTamVocalPollProps> = ({
               ) : (
                 <>
                   <Send className="w-5 h-5" />
-                  Publier le sondage
+                  Publier
                 </>
               )}
             </motion.button>
