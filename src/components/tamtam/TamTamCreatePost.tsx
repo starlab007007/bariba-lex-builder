@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Image, Video, Mic, BarChart3, Check, Smile, ImageOff } from 'lucide-react';
+import { X, Image, Video, Mic, BarChart3, Check, Smile, ImageOff, Volume2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
 import { useAudioServices } from '@/hooks/useAudioServices';
@@ -8,6 +8,8 @@ import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { useVoiceMenu, VoiceMenuLabels } from '@/hooks/useVoiceMenu';
+import { SpeakerButton } from '@/components/tamtam/VoiceMenuItem';
 
 interface TamTamCreatePostProps {
   isOpen: boolean;
@@ -29,11 +31,11 @@ interface TamTamCreatePostProps {
 const PHOTO_FORMATS = "image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/bmp,image/svg+xml";
 const VIDEO_FORMATS = "video/mp4,video/quicktime,video/x-m4v,video/webm,video/x-msvideo,video/3gpp,video/mpeg,video/ogg";
 
-const mediaTypes = [
-  { type: 'audio', icon: Mic, label: 'audio', color: 'from-blue-500 to-blue-600' },
-  { type: 'photo', icon: Image, label: 'photo', color: 'from-emerald-500 to-emerald-600' },
-  { type: 'video', icon: Video, label: 'video', color: 'from-purple-500 to-purple-600' },
-  { type: 'poll', icon: BarChart3, label: 'poll', color: 'from-orange-500 to-orange-600' },
+const mediaTypes: { type: string; icon: typeof Mic; label: string; labelKey: keyof VoiceMenuLabels; color: string }[] = [
+  { type: 'audio', icon: Mic, label: 'audio', labelKey: 'audio', color: 'from-blue-500 to-blue-600' },
+  { type: 'photo', icon: Image, label: 'photo', labelKey: 'photo', color: 'from-emerald-500 to-emerald-600' },
+  { type: 'video', icon: Video, label: 'video', labelKey: 'video', color: 'from-purple-500 to-purple-600' },
+  { type: 'poll', icon: BarChart3, label: 'poll', labelKey: 'poll', color: 'from-orange-500 to-orange-600' },
 ];
 
 const emojis = ['😊', '😂', '❤️', '🎉', '🤔', '😢', '🙏', '💪', '🔥', '✨'];
@@ -47,6 +49,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   const { t, currentLang } = useTamTamLanguage();
   const { toast } = useToast();
   const audioServices = useAudioServices();
+  const { speakLabel, getLabel } = useVoiceMenu();
   
   const [selectedType, setSelectedType] = useState<string>('audio');
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
@@ -304,20 +307,27 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 <p className="text-center text-gray-500 mb-6">{t('whatToShare')}</p>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  {mediaTypes.map(({ type, icon: Icon, label, color }) => (
-                    <motion.button
-                      key={type}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleTypeSelect(type)}
-                      className={`p-6 rounded-3xl flex flex-col items-center gap-3 ${
-                        selectedType === type 
-                          ? `bg-gradient-to-br ${color} text-white shadow-lg` 
-                          : 'bg-gray-50 text-gray-600'
-                      }`}
-                    >
-                      <Icon className="w-10 h-10" />
-                      <span className="font-medium">{t(label)}</span>
-                    </motion.button>
+                  {mediaTypes.map(({ type, icon: Icon, label, labelKey, color }) => (
+                    <div key={type} className="relative">
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleTypeSelect(type)}
+                        className={`w-full p-6 rounded-3xl flex flex-col items-center gap-3 ${
+                          selectedType === type 
+                            ? `bg-gradient-to-br ${color} text-white shadow-lg` 
+                            : 'bg-gray-50 text-gray-600'
+                        }`}
+                      >
+                        <Icon className="w-10 h-10" />
+                        <span className="font-medium">{t(label)}</span>
+                      </motion.button>
+                      {/* Speaker button for voice accessibility */}
+                      <SpeakerButton 
+                        labelKey={labelKey}
+                        size="sm"
+                        className="absolute top-2 right-2"
+                      />
+                    </div>
                   ))}
                 </div>
 
@@ -364,16 +374,19 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                   />
                 </div>
 
-                {/* Skip audio button for photo/video */}
+                {/* Skip audio button for photo/video with voice support */}
                 {mediaFile && (
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleSkipAudio}
-                    className="w-full py-3 rounded-2xl bg-gray-100 text-gray-600 font-medium flex items-center justify-center gap-2"
-                  >
-                    <ImageOff className="w-5 h-5" />
-                    Publier sans audio
-                  </motion.button>
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleSkipAudio}
+                      className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-600 font-medium flex items-center justify-center gap-2"
+                    >
+                      <ImageOff className="w-5 h-5" />
+                      {getLabel('skipAudio')}
+                    </motion.button>
+                    <SpeakerButton labelKey="skipAudio" size="md" />
+                  </div>
                 )}
               </motion.div>
             )}
@@ -481,34 +494,40 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
+        {/* Footer with voice-accessible buttons */}
         {step === 'preview' && (
-          <div className="p-4 border-t border-gray-100 flex gap-3">
-            <button
-              onClick={() => setStep('record')}
-              className="flex-1 py-3 rounded-2xl bg-gray-100 text-gray-600 font-medium"
-            >
-              Refaire
-            </button>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium flex items-center justify-center gap-2"
-            >
-              {isSubmitting ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                />
-              ) : (
-                <>
-                  <Check className="w-5 h-5" />
-                  Publier
-                </>
-              )}
-            </motion.button>
+          <div className="p-4 border-t border-gray-100 flex gap-3 items-center">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setStep('record')}
+                className="py-3 px-4 rounded-2xl bg-gray-100 text-gray-600 font-medium"
+              >
+                {getLabel('cancel')}
+              </button>
+              <SpeakerButton labelKey="cancel" size="sm" />
+            </div>
+            <div className="flex items-center gap-1 flex-1">
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                  />
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    {getLabel('publish')}
+                  </>
+                )}
+              </motion.button>
+              <SpeakerButton labelKey="publish" size="md" />
+            </div>
           </div>
         )}
       </motion.div>
