@@ -147,7 +147,7 @@ class UnifiedAudioServiceClass {
     const start = Date.now();
     try {
       const { error } = await supabase.functions.invoke('byt5-bariba-translate', {
-        body: { text: 'bonjour', sourceLanguage: 'french', targetLanguage: 'bariba' }
+        body: { text: 'bonjour', sourceLang: 'french', targetLang: 'bariba' }
       });
       const latency = Date.now() - start;
       return error 
