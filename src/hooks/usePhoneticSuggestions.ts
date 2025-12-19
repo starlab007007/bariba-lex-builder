@@ -227,19 +227,54 @@ export function usePhoneticSuggestions() {
 
   // Recherche dans les définitions (français -> bariba)
   const searchInDefinitions = useCallback((query: string, maxResults: number = 10): PhoneticEntry[] => {
-    if (!query || query.length < 2) return [];
+    if (!query || query.length < 1) return [];
     
-    const normalizedQuery = query.toLowerCase().trim();
-    
-    const results = phoneticIndex.entries
-      .filter(entry => {
-        const definition = (entry.definition || '').toLowerCase();
-        const exampleFr = (entry.example_francais || '').toLowerCase();
-        return definition.includes(normalizedQuery) || exampleFr.includes(normalizedQuery);
-      })
-      .slice(0, maxResults);
-    
-    return results;
+    try {
+      const normalizedQuery = query.toLowerCase().trim();
+      
+      if (!normalizedQuery || !phoneticIndex || !phoneticIndex.entries) {
+        return [];
+      }
+      
+      const results: PhoneticEntry[] = [];
+      
+      for (const entry of phoneticIndex.entries) {
+        if (results.length >= maxResults) break;
+        
+        try {
+          const definition = (entry.definition || '').toLowerCase();
+          const exampleFr = (entry.example_francais || '').toLowerCase();
+          const word = (entry.word || '').toLowerCase();
+          
+          // Chercher dans la définition, les exemples français, ou si le mot français correspond
+          if (definition.includes(normalizedQuery) || 
+              exampleFr.includes(normalizedQuery) ||
+              word.includes(normalizedQuery)) {
+            results.push(entry);
+          }
+        } catch (innerError) {
+          console.warn('[usePhoneticSuggestions] Error processing entry:', entry?.word, innerError);
+          continue;
+        }
+      }
+      
+      // Trier par pertinence : définitions exactes en premier
+      results.sort((a, b) => {
+        const aDef = (a.definition || '').toLowerCase();
+        const bDef = (b.definition || '').toLowerCase();
+        const aExact = aDef.startsWith(normalizedQuery);
+        const bExact = bDef.startsWith(normalizedQuery);
+        
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        return aDef.length - bDef.length;
+      });
+      
+      return results;
+    } catch (error) {
+      console.error('[usePhoneticSuggestions] searchInDefinitions error:', error);
+      return [];
+    }
   }, [phoneticIndex]);
 
   return {
