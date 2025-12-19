@@ -5,9 +5,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface STTRequest {
-  audio: string; // Base64 encoded audio
-}
+/**
+ * French STT Edge Function
+ * 
+ * Cette fonction retourne des instructions pour utiliser Web Speech API côté client.
+ * Le Web Speech API est gratuit et fonctionne directement dans le navigateur.
+ * 
+ * Raison: Gemini ne supporte pas correctement l'audio en base64 webm,
+ * et les alternatives payantes (Whisper, ElevenLabs) nécessitent des API keys.
+ */
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -15,100 +21,42 @@ serve(async (req) => {
   }
 
   try {
-    const { audio }: STTRequest = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { audio } = body;
 
-    if (!audio) {
-      return new Response(
-        JSON.stringify({ error: 'Audio data required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log(`🎤 French STT: Request received, audio length: ${audio?.length || 0}`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'Lovable API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`🎤 French STT: Processing audio via Lovable AI`);
-    const startTime = Date.now();
-
-    // Use Lovable AI with Gemini for audio transcription
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: `Tu es un système de transcription audio français. Tu reçois de l'audio encodé en base64 et tu dois le transcrire fidèlement en texte français. Réponds UNIQUEMENT avec la transcription, sans commentaires ni explications.`
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Transcris cet audio en français:'
-              },
-              {
-                type: 'input_audio',
-                input_audio: {
-                  data: audio,
-                  format: 'webm'
-                }
-              }
-            ]
-          }
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Lovable AI error: ${response.status} - ${errorText}`);
-      
-      // Fallback: Use Web Speech API info
-      return new Response(
-        JSON.stringify({
-          error: 'French STT via Lovable AI unavailable',
-          fallback: 'web-speech-api',
-          details: 'Use browser Web Speech API as fallback'
-        }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const result = await response.json();
-    const transcription = result.choices?.[0]?.message?.content || '';
-
-    const duration = Date.now() - startTime;
-    console.log(`✅ French STT Success in ${duration}ms: "${transcription.substring(0, 50)}..."`);
-
+    // Toujours retourner instructions pour utiliser Web Speech API côté client
+    // C'est la solution gratuite et fiable pour le STT français
     return new Response(
       JSON.stringify({
-        transcription,
-        confidence: 95,
-        duration,
-        language: 'french',
-        method: 'lovable-ai'
+        useClientSide: true,
+        method: 'web-speech-api',
+        message: 'Utilisez Web Speech API dans le navigateur pour la transcription française',
+        instructions: {
+          api: 'SpeechRecognition',
+          lang: 'fr-FR',
+          continuous: true,
+          interimResults: true,
+        },
+        // Si on a reçu de l'audio, on indique qu'on ne peut pas le traiter côté serveur
+        note: audio 
+          ? 'L\'audio base64 ne peut pas être transcrit côté serveur. Utilisez Web Speech API côté client.'
+          : 'Aucun audio reçu.'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Fatal error:', error);
+    console.error('French STT error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'STT failed',
-        fallback: 'web-speech-api'
+        useClientSide: true,
+        error: error.message || 'STT processing failed',
+        fallback: 'web-speech-api',
+        message: 'Utilisez Web Speech API comme fallback'
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

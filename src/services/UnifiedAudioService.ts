@@ -305,12 +305,14 @@ class UnifiedAudioServiceClass {
 
   /**
    * Speech-to-Text avec fallback automatique et retry
+   * Pour le français: utilise Web Speech API en priorité (gratuit, client-side)
+   * Pour le bariba: utilise HuggingFace Space
    */
   async transcribe(audioBase64: string, preferredLang: 'fr' | 'ba'): Promise<TranscriptionResult> {
     console.log(`[UnifiedAudioService] 🎤 transcribe() called - audio: ${audioBase64.length} chars, lang: ${preferredLang}`);
     
     if (preferredLang === 'ba') {
-      // Essayer Bariba STT avec retry
+      // Essayer Bariba STT avec retry (HuggingFace Space)
       console.log('[UnifiedAudioService] 📡 Calling bariba-stt edge function...');
       const baribaResult = await this.withRetry(async () => {
         const { data, error } = await supabase.functions.invoke('bariba-stt', {
@@ -332,20 +334,50 @@ class UnifiedAudioServiceClass {
           retryCount: baribaResult.retryCount,
         };
       }
-      console.log('[UnifiedAudioService] ⚠️ Bariba STT failed, trying French STT fallback...');
+      console.log('[UnifiedAudioService] ⚠️ Bariba STT failed, returning error...');
+      
+      // Pour Bariba, on ne fait pas de fallback vers français
+      const errorInfo = this.getErrorWithAction(baribaResult.error || 'Transcription échouée', 'Bariba STT');
+      return {
+        text: '',
+        confidence: 0,
+        language: 'ba',
+        usedFallback: false,
+        error: `${errorInfo.message}. ${errorInfo.action}`,
+        retryCount: baribaResult.retryCount,
+      };
     }
 
-    // Fallback vers French STT avec retry
-    console.log('[UnifiedAudioService] 📡 Calling french-stt edge function...');
+    // Pour le français: utiliser Web Speech API côté client
+    console.log('[UnifiedAudioService] 🌐 French STT - Web Speech API should be used client-side');
+    
+    // Essayer l'edge function qui retournera les instructions pour client-side
     const frenchResult = await this.withRetry(async () => {
       const { data, error } = await supabase.functions.invoke('french-stt', {
         body: { audio: audioBase64 }
       });
       console.log('[UnifiedAudioService] french-stt response:', { data, error });
       if (error) throw new Error(error.message);
+      
+      // Si l'edge function retourne useClientSide: true, on signale que le client doit utiliser Web Speech
+      if (data?.useClientSide) {
+        return { transcription: '', useClientSide: true };
+      }
+      
       if (!data?.transcription) throw new Error('Pas de transcription');
       return data;
     }, 'French STT');
+
+    if (frenchResult.result?.useClientSide) {
+      // Signaler au client d'utiliser Web Speech API
+      return {
+        text: '',
+        confidence: 0,
+        language: 'fr',
+        usedFallback: false,
+        error: 'USE_WEB_SPEECH_API', // Signal spécial pour le client
+      };
+    }
 
     if (frenchResult.result?.transcription) {
       console.log(`[UnifiedAudioService] ✅ French STT success: "${frenchResult.result.transcription.substring(0, 50)}"`);
@@ -353,21 +385,19 @@ class UnifiedAudioServiceClass {
         text: frenchResult.result.transcription,
         confidence: frenchResult.result.confidence || 0.85,
         language: 'fr',
-        usedFallback: preferredLang === 'ba',
+        usedFallback: false,
         retryCount: frenchResult.retryCount,
       };
     }
 
-    // Échec total
-    console.error('[UnifiedAudioService] ❌ All STT services failed');
-    const errorInfo = this.getErrorWithAction(frenchResult.error || 'Transcription échouée', 'STT');
+    // Échec - signaler d'utiliser Web Speech API côté client
+    console.log('[UnifiedAudioService] ⚠️ French STT failed, suggesting Web Speech API');
     return {
       text: '',
       confidence: 0,
-      language: preferredLang,
-      usedFallback: true,
-      error: `${errorInfo.message}. ${errorInfo.action}`,
-      retryCount: frenchResult.retryCount,
+      language: 'fr',
+      usedFallback: false,
+      error: 'USE_WEB_SPEECH_API',
     };
   }
 
