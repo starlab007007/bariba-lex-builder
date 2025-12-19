@@ -14,7 +14,7 @@ import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { useFrenchSTTBase64 } from '@/hooks/useFrenchSTTBase64';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-import { useHybridTranslation } from '@/hooks/useHybridTranslation';
+import { useSimpleTranslation } from '@/hooks/useSimpleTranslation';
 import { useAudioServices } from '@/hooks/useAudioServices';
 import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { useToast } from '@/hooks/use-toast';
@@ -48,7 +48,7 @@ export const ConversationMode = () => {
   const { transcribe: transcribeFrenchBase64, isTranscribing: isTranscribingFrench, serviceAvailable: frenchSTTAvailable } = useFrenchSTTBase64();
   const { speak: speakBariba, isLoading: isLoadingBariba, isSpeaking: isSpeakingBariba } = useBaribaTTS();
   const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
-  const { translateFrenchToBariba, translateBaribaToFrench, isInitialized } = useHybridTranslation();
+  const { translateFrenchToBariba, translateBaribaToFrench, isInitialized } = useSimpleTranslation();
   const { health, checkHealth } = useAudioServices();
   const { toast } = useToast();
 

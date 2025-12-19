@@ -8,7 +8,7 @@ import { useFrenchSTTBase64 } from '@/hooks/useFrenchSTTBase64';
 import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-import { useHybridTranslation } from '@/hooks/useHybridTranslation';
+import { useSimpleTranslation } from '@/hooks/useSimpleTranslation';
 import { useVoiceDetection } from '@/hooks/useVoiceDetection';
 import { useToast } from '@/hooks/use-toast';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
@@ -40,7 +40,7 @@ export function VoiceOnlyTranslator() {
   const { startListening, stopListening, isListening, transcript: webSpeechTranscript } = useFrenchSTT();
   const { speak: speakBariba, isLoading: isLoadingBariba, isSpeaking: isSpeakingBariba } = useBaribaTTS();
   const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
-  const { translateFrenchToBariba, translateBaribaToFrench } = useHybridTranslation();
+  const { translateFrenchToBariba, translateBaribaToFrench } = useSimpleTranslation();
   const { startDetection, stopDetection, onSpeechEnd, isSpeaking: isVADSpeaking } = useVoiceDetection();
 
   // Process web speech transcript when it changes

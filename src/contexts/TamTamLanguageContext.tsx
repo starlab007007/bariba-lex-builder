@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useHybridTranslation } from '@/hooks/useHybridTranslation';
+import { useSimpleTranslation } from '@/hooks/useSimpleTranslation';
 
 export type TamTamLang = 'fr' | 'ba';
 
@@ -219,7 +219,7 @@ export const TamTamLanguageProvider: React.FC<{ children: ReactNode }> = ({ chil
     return (saved as TamTamLang) || 'ba'; // Bariba par défaut
   });
   
-  const { translateFrenchToBariba, translateBaribaToFrench, isLoading: isTranslating } = useHybridTranslation();
+  const { translateFrenchToBariba, translateBaribaToFrench, isTranslating } = useSimpleTranslation();
 
   useEffect(() => {
     localStorage.setItem('tamtam-lang', currentLang);
