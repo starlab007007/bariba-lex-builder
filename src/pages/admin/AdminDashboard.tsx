@@ -2,20 +2,12 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminOverview from '@/components/admin/AdminOverview';
 import DictionaryManager from '@/components/admin/DictionaryManager';
-import TrainingManager from '@/components/admin/TrainingManager';
 import AnalyticsDashboard from '@/components/admin/AnalyticsDashboard';
 import UserRoleManager from '@/components/admin/UserRoleManager';
 import AdminSettings from '@/components/admin/AdminSettings';
 import { TranslationDiagnosticDashboard } from '@/components/admin/TranslationDiagnosticDashboard';
 import GrammaticalStatsDashboard from '@/components/admin/GrammaticalStatsDashboard';
-import ModelTrainingPanel from '@/components/admin/ModelTrainingPanel';
-import { ModelTrainingDashboard } from '@/components/admin/ModelTrainingDashboard';
 import DictionaryExporter from '@/components/admin/DictionaryExporter';
-import { NLLB200FineTuningPanel } from '@/components/admin/NLLB200FineTuningPanel';
-import { FreeFineTuningGuide } from '@/components/admin/FreeFineTuningGuide';
-import ModelPerformanceDashboard from '@/components/admin/ModelPerformanceDashboard';
-import TrainingAnalytics from '@/components/admin/TrainingAnalytics';
-import AutoEnrichPanel from '@/components/admin/AutoEnrichPanel';
 import QualityMetricsDashboard from '@/components/admin/QualityMetricsDashboard';
 import BulkEditPanel from '@/components/admin/BulkEditPanel';
 import { IdiomManager } from '@/components/admin/IdiomManager';
@@ -24,10 +16,10 @@ import { ModelHealthDashboard } from '@/components/admin/ModelHealthDashboard';
 import { ByT5SpaceConfig } from '@/components/admin/ByT5SpaceConfig';
 import { AudioServicesMonitor } from '@/components/admin/AudioServicesMonitor';
 import { 
-  Settings, Users, BarChart3, Database, 
-  FileText, Brain, Globe, 
-  BookOpen, TrendingUp, 
-  Sparkles, Zap, Shield, 
+  Settings, Users, BarChart3, 
+  FileText, Globe, 
+  BookOpen, 
+  Sparkles, Shield, 
   Activity, Download, Edit3, Volume2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -102,34 +94,7 @@ export default function AdminDashboard() {
                 Diagnostic
               </TabsTrigger>
 
-              {/* 🤖 SECTION IA & ENTRAÎNEMENT */}
-              <div className="flex items-center gap-1 w-full mt-2">
-                <Separator className="flex-1" />
-                <span className="text-xs font-semibold text-[hsl(var(--section-ai))] px-2 whitespace-nowrap">🤖 IA & ENTRAÎNEMENT</span>
-                <Separator className="flex-1" />
-              </div>
-              <TabsTrigger value="training" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-ai))]">
-                <Brain className="h-4 w-4 text-[hsl(var(--section-ai))]" />
-                Entraînement
-              </TabsTrigger>
-              <TabsTrigger value="fine-tuning" className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[hsl(var(--section-ai))]" />
-                Fine-Tuning
-              </TabsTrigger>
-              <TabsTrigger value="nllb" className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-[hsl(var(--section-ai))]" />
-                NLLB-200
-              </TabsTrigger>
-              <TabsTrigger value="free-tuning" className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[hsl(var(--section-ai))]" />
-                Fine-Tuning GRATUIT
-              </TabsTrigger>
-              <TabsTrigger value="auto-enrich" className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[hsl(var(--section-ai))]" />
-                Auto-Enrichissement
-              </TabsTrigger>
-
-              {/* 📈 SECTION ANALYTICS & PERFORMANCE */}
+              {/* 📈 SECTION ANALYTICS */}
               <div className="flex items-center gap-1 w-full mt-2">
                 <Separator className="flex-1" />
                 <span className="text-xs font-semibold text-[hsl(var(--section-analytics))] px-2 whitespace-nowrap">📈 ANALYTICS</span>
@@ -138,14 +103,6 @@ export default function AdminDashboard() {
               <TabsTrigger value="analytics" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-analytics))]">
                 <BarChart3 className="h-4 w-4 text-[hsl(var(--section-analytics))]" />
                 Analytics
-              </TabsTrigger>
-              <TabsTrigger value="model-performance" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-[hsl(var(--section-analytics))]" />
-                Performance Modèle
-              </TabsTrigger>
-              <TabsTrigger value="training-analytics" className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-[hsl(var(--section-analytics))]" />
-                Analytics Training
               </TabsTrigger>
 
               {/* 🛠️ SECTION OUTILS */}
@@ -204,20 +161,7 @@ export default function AdminDashboard() {
           <TabsContent value="quality"><QualityMetricsDashboard /></TabsContent>
           <TabsContent value="diagnostic"><TranslationDiagnosticDashboard /></TabsContent>
           
-          <TabsContent value="training">
-            <div className="space-y-4">
-              <TrainingManager />
-              <ModelTrainingPanel />
-            </div>
-          </TabsContent>
-          <TabsContent value="fine-tuning"><ModelTrainingDashboard /></TabsContent>
-          <TabsContent value="nllb"><NLLB200FineTuningPanel /></TabsContent>
-          <TabsContent value="free-tuning"><FreeFineTuningGuide /></TabsContent>
-          <TabsContent value="auto-enrich"><AutoEnrichPanel /></TabsContent>
-          
           <TabsContent value="analytics"><AnalyticsDashboard /></TabsContent>
-          <TabsContent value="model-performance"><ModelPerformanceDashboard /></TabsContent>
-          <TabsContent value="training-analytics"><TrainingAnalytics /></TabsContent>
           
           <TabsContent value="grammar-stats"><GrammaticalStatsDashboard /></TabsContent>
           <TabsContent value="bulk-edit"><BulkEditPanel /></TabsContent>
