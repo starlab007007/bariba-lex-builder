@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
-import { useHybridTranslation } from '@/hooks/useHybridTranslation';
+import { useSimpleTranslation } from '@/hooks/useSimpleTranslation';
 import { useToast } from '@/hooks/use-toast';
 import { audioServicesMonitoring } from '@/services/AudioServicesMonitoringService';
 
@@ -33,7 +33,7 @@ export interface Conversation {
 export function usePrivateVoiceMessages(conversationPartnerId?: string) {
   const { user } = useAuth();
   const { transcribe, isTranscribing } = useBaribaSTT();
-  const { translateBaribaToFrench, translateFrenchToBariba } = useHybridTranslation();
+  const { translateBaribaToFrench, translateFrenchToBariba } = useSimpleTranslation();
   const { toast } = useToast();
   
   const [messages, setMessages] = useState<VoiceMessage[]>([]);

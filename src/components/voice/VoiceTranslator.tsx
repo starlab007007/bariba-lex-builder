@@ -8,7 +8,7 @@ import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-import { useHybridTranslation } from '@/hooks/useHybridTranslation';
+import { useSimpleTranslation } from '@/hooks/useSimpleTranslation';
 import { useToast } from '@/hooks/use-toast';
 
 type Direction = 'bariba-to-french' | 'french-to-bariba';
@@ -23,7 +23,7 @@ export const VoiceTranslator = () => {
   const { startListening, stopListening, isListening, transcript: frenchTranscript } = useFrenchSTT();
   const { speak: speakBariba, isSpeaking: isSpeakingBariba, isLoading: isLoadingBariba } = useBaribaTTS();
   const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
-  const { translateFrenchToBariba, translateBaribaToFrench, isInitialized } = useHybridTranslation();
+  const { translateFrenchToBariba, translateBaribaToFrench, isInitialized } = useSimpleTranslation();
   const { toast } = useToast();
 
   const isSourceBariba = direction === 'bariba-to-french';

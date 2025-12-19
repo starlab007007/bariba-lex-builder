@@ -7,7 +7,7 @@ import { useFrenchSTTBase64 } from '@/hooks/useFrenchSTTBase64';
 import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-import { useHybridTranslation } from '@/hooks/useHybridTranslation';
+import { useSimpleTranslation } from '@/hooks/useSimpleTranslation';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -37,7 +37,7 @@ export function AccessibleVoiceLauncher({
   const { startListening, stopListening, isListening, transcript: webSpeechTranscript } = useFrenchSTT();
   const { speak: speakBariba, isLoading: isLoadingBariba, isSpeaking: isSpeakingBariba } = useBaribaTTS();
   const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
-  const { translateFrenchToBariba, translateBaribaToFrench } = useHybridTranslation();
+  const { translateFrenchToBariba, translateBaribaToFrench } = useSimpleTranslation();
 
   // Fixed position on left side - never overlaps with RaconteMoi on right
   const positionClasses = {

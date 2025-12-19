@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, RotateCcw, Copy, Volume2, Brain, Zap, Languages, Mic, MicOff, Loader2, AlertCircle } from "lucide-react";
+import { RotateCcw, Copy, Volume2, Languages, Mic, MicOff, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useHybridTranslation } from "@/hooks/useHybridTranslation";
+import { useSimpleTranslation } from "@/hooks/useSimpleTranslation";
 import { useTranslationCache } from "@/hooks/useTranslationCache";
 import { useGamification } from "@/hooks/useGamification";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
@@ -14,10 +14,7 @@ import { useFrenchSTT } from "@/hooks/useFrenchSTT";
 import { useBaribaTTSWithFallback } from "@/hooks/useBaribaTTSWithFallback";
 import { useFrenchTTS } from "@/hooks/useFrenchTTS";
 import TranslationFeedback from "./TranslationFeedback";
-import { TranslationSuggestions } from "./TranslationSuggestions";
-import { ModelHealthBadge } from "./ModelHealthBadge";
 import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
-import { TranslationModelSwitcher, type TranslationModel } from "./TranslationModelSwitcher";
 
 type TranslationDirection = "french-to-bariba" | "bariba-to-french";
 
@@ -26,16 +23,12 @@ export const PhraseTranslator = () => {
   const [translatedText, setTranslatedText] = useState("");
   const [translationLogId, setTranslationLogId] = useState<string | undefined>(undefined);
   const [direction, setDirection] = useState<TranslationDirection>("french-to-bariba");
-  const [isTranslating, setIsTranslating] = useState(false);
-  const [useAI, setUseAI] = useState(true);
-  const [autoTranslate, setAutoTranslate] = useState(false);
+  const [isTranslatingLocal, setIsTranslatingLocal] = useState(false);
   const [usedCache, setUsedCache] = useState(false);
-  const [phraseSuggestions, setPhraseSuggestions] = useState<string[]>([]);
   const [detectedLang, setDetectedLang] = useState<'french' | 'bariba' | 'mixed'>('mixed');
   const [usedMethod, setUsedMethod] = useState<string>('');
   const [translationConfidence, setTranslationConfidence] = useState<number>(0);
   const [translationDuration, setTranslationDuration] = useState<number>(0);
-  const [selectedModel, setSelectedModel] = useState<TranslationModel>('byt5-expert');
   const { toast } = useToast();
   const { updateAchievement } = useGamification();
   
@@ -46,21 +39,15 @@ export const PhraseTranslator = () => {
   const { speak: speakBariba, isSpeaking: isSpeakingBariba, serviceAvailable: baribaTTSAvailable, usedFallback: baribaTTSUsedFallback } = useBaribaTTSWithFallback();
   const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
   
-  // Hook pour le traducteur hybride
+  // Hook pour le traducteur simple (ByT5 + fallback)
   const {
     translateFrenchToBariba,
     translateBaribaToFrench,
-    translateIntelligent,
-    getSuggestions,
     detectLanguage,
-    isLoading: aiLoading,
-    isInitialized: aiReady,
-    error: aiError,
-    getStats
-  } = useHybridTranslation();
-
-  // Stats du modèle
-  const modelStats = aiReady ? getStats() : null;
+    isTranslating,
+    isInitialized,
+    error: translationError
+  } = useSimpleTranslation();
 
   // Hook pour le cache de traductions
   const { 
@@ -151,7 +138,7 @@ export const PhraseTranslator = () => {
 
   // Détecter automatiquement la langue et ajuster la direction
   useEffect(() => {
-    if (!sourceText.trim() || !aiReady) {
+    if (!sourceText.trim() || !isInitialized) {
       setDetectedLang('mixed');
       return;
     }
@@ -164,41 +151,7 @@ export const PhraseTranslator = () => {
     } else if (lang === 'bariba' && direction !== 'bariba-to-french') {
       setDirection('bariba-to-french');
     }
-  }, [sourceText, aiReady, detectLanguage]);
-
-  // Traduction automatique en temps réel
-  useEffect(() => {
-    if (!autoTranslate || !sourceText.trim() || !aiReady || isTranslating) {
-      return;
-    }
-
-    const timeoutId = setTimeout(async () => {
-      try {
-        setIsTranslating(true);
-        let result;
-        
-        if (direction === "french-to-bariba") {
-          result = await translateFrenchToBariba(sourceText);
-        } else {
-          result = await translateBaribaToFrench(sourceText);
-        }
-        
-        setTranslatedText(result.translation);
-        await updateAchievement('translations_made');
-      } catch (error) {
-        console.error("Erreur de traduction automatique:", error);
-        toast({
-          title: "Erreur de traduction",
-          description: "Impossible de traduire automatiquement. Essayez manuellement.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsTranslating(false);
-      }
-    }, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, [sourceText, direction, autoTranslate, aiReady, translateFrenchToBariba, translateBaribaToFrench, isTranslating]);
+  }, [sourceText, isInitialized, detectLanguage]);
 
   const translatePhrase = async () => {
     if (!sourceText.trim()) {
@@ -210,16 +163,7 @@ export const PhraseTranslator = () => {
       return;
     }
 
-    if (useAI && !aiReady) {
-      toast({
-        title: "Modèle en cours d'initialisation",
-        description: "Veuillez patienter pendant l'initialisation du modèle IA...",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsTranslating(true);
+    setIsTranslatingLocal(true);
     const startTime = performance.now();
     
     try {
@@ -238,45 +182,15 @@ export const PhraseTranslator = () => {
           title: "⚡ Traduction instantanée (Cache)",
           description: `Traduction trouvée dans le cache (${duration}ms). Utilisée ${cached.usage_count} fois.`
         });
-      }
-      // 2. Sinon, utiliser le modèle local AI (gratuit)
-      else if (useAI && aiReady) {
+      } else {
+        // 2. Utiliser le traducteur simple (ByT5 + fallback)
         setUsedCache(false);
         
-        // Check if ByT5 is available before trying it - use SimplifiedAI directly if not
-        let effectiveModel = selectedModel;
-        if (selectedModel === 'byt5-expert') {
-          const { byT5TranslationService } = await import('@/services/ByT5TranslationService');
-          const healthStatus = byT5TranslationService.getHealthStatus();
-          if (!healthStatus.isHealthy) {
-            console.log('ByT5 is unhealthy, using SimplifiedAI directly');
-            effectiveModel = 'simplified';
-          }
-        }
-        
         let result;
-        try {
-          if (direction === "french-to-bariba") {
-            result = await translateFrenchToBariba(sourceText, { preferredModel: effectiveModel });
-          } else {
-            result = await translateBaribaToFrench(sourceText, { preferredModel: effectiveModel });
-          }
-        } catch (translationError) {
-          // If ByT5 was selected and failed, fallback to SimplifiedAI silently
-          if (effectiveModel === 'byt5-expert') {
-            console.warn('ByT5 failed, falling back to SimplifiedAI...');
-            
-            if (direction === "french-to-bariba") {
-              result = await translateFrenchToBariba(sourceText, { preferredModel: 'simplified' });
-            } else {
-              result = await translateBaribaToFrench(sourceText, { preferredModel: 'simplified' });
-            }
-            
-            // Auto-switch selected model for future translations
-            setSelectedModel('simplified');
-          } else {
-            throw translationError;
-          }
+        if (direction === "french-to-bariba") {
+          result = await translateFrenchToBariba(sourceText);
+        } else {
+          result = await translateBaribaToFrench(sourceText);
         }
         
         translation = result.translation;
@@ -289,58 +203,17 @@ export const PhraseTranslator = () => {
         // Sauvegarder dans le cache
         await cacheTranslation(sourceText, translation, sourceLang, targetLang, result.confidence);
         
-        // Display appropriate toast based on method used
+        // Display toast based on method used
         if (result.method === 'byt5-expert') {
           toast({
             title: `🤖 ByT5 Expert`,
             description: `Traduction en ${result.duration}ms (${result.confidence}% confiance)`
           });
-        } else if ((result.method === 'simplified' || result.method === 'simplified-ai') && selectedModel === 'byt5-expert') {
-          // ByT5 was requested but SimplifiedAI was used (cascade fallback)
-          toast({
-            title: `⚡ SimplifiedAI (cascade)`,
-            description: `ByT5 indisponible, cascade vers SimplifiedAI. ${result.duration}ms.`
-          });
-          // Auto-switch to SimplifiedAI for future translations
-          setSelectedModel('simplified');
         } else {
           toast({
-            title: `🧠 Traduction ${result.method.toUpperCase()}`,
+            title: `🧠 Lovable AI`,
             description: `En ${result.duration}ms avec ${result.confidence}% de confiance.`
           });
-        }
-      } else {
-        // Fallback: traduction de démonstration
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        if (direction === "french-to-bariba") {
-          const demoTranslations: Record<string, string> = {
-            "bonjour": "aagu",
-            "comment allez-vous": "foo ka bani",
-            "merci": "gando",
-            "au revoir": "ka su gbenma",
-            "je vais bien": "n de bani gandi",
-            "comment vous appelez-vous": "sunbu ka be",
-            "je m'appelle": "n sunbu bee"
-          };
-          
-          const lowerText = sourceText.toLowerCase();
-          translation = demoTranslations[lowerText] || 
-            `[Traduction en Bààtɔ̀nú pour: "${sourceText}"]`;
-        } else {
-          const demoTranslations: Record<string, string> = {
-            "aagu": "bonjour / salut",
-            "foo ka bani": "comment allez-vous",
-            "gando": "merci",
-            "ka su gbenma": "au revoir",
-            "n de bani gandi": "je vais bien",
-            "sunbu ka be": "comment vous appelez-vous",
-            "n sunbu bee": "je m'appelle"
-          };
-          
-          const lowerText = sourceText.toLowerCase();
-          translation = demoTranslations[lowerText] || 
-            `[Traduction en français pour: "${sourceText}"]`;
         }
       }
       
@@ -354,7 +227,7 @@ export const PhraseTranslator = () => {
         variant: "destructive"
       });
     } finally {
-      setIsTranslating(false);
+      setIsTranslatingLocal(false);
     }
   };
 
@@ -387,6 +260,8 @@ export const PhraseTranslator = () => {
     setTranslatedText("");
   };
 
+  const isCurrentlyTranslating = isTranslatingLocal || isTranslating;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -395,7 +270,7 @@ export const PhraseTranslator = () => {
           Traducteur <span className="bariba-text">Bààtɔ̀nú</span>
         </h2>
         <p className="text-muted-foreground">
-          Traduction de phrases complètes basée sur le dictionnaire
+          Traduction de phrases avec ByT5 Expert
         </p>
         
         {/* Service Status Indicator */}
@@ -415,27 +290,11 @@ export const PhraseTranslator = () => {
         )}
         
         {/* Message d'erreur seulement */}
-        {aiError && (
+        {translationError && (
           <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
-            {aiError}
+            {translationError}
           </div>
         )}
-        
-        {/* Chargement */}
-        {aiLoading && (
-          <div className="text-sm text-muted-foreground">
-            Initialisation en cours...
-          </div>
-        )}
-      </div>
-
-      {/* Model Selector */}
-      <div className="flex justify-center">
-        <TranslationModelSwitcher
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
-          disabled={isTranslating || aiLoading}
-        />
       </div>
 
       {/* Direction Controls - Responsive */}
@@ -444,7 +303,7 @@ export const PhraseTranslator = () => {
           variant={direction === "french-to-bariba" ? "default" : "outline"}
           size="sm"
           onClick={() => setDirection("french-to-bariba")}
-          disabled={isTranslating}
+          disabled={isCurrentlyTranslating}
           className="text-xs sm:text-sm"
         >
           Français → <span className="bariba-text ml-1">Bààtɔ̀nú</span>
@@ -455,7 +314,7 @@ export const PhraseTranslator = () => {
           size="sm"
           onClick={swapLanguages}
           className="p-2"
-          disabled={isTranslating}
+          disabled={isCurrentlyTranslating}
           title="Inverser les langues"
         >
           <RotateCcw className="h-4 w-4" />
@@ -465,7 +324,7 @@ export const PhraseTranslator = () => {
           variant={direction === "bariba-to-french" ? "default" : "outline"}
           size="sm"
           onClick={() => setDirection("bariba-to-french")}
-          disabled={isTranslating}
+          disabled={isCurrentlyTranslating}
         >
           <span className="bariba-text mr-1">Bààtɔ̀nú</span> → Français
         </Button>
@@ -477,214 +336,116 @@ export const PhraseTranslator = () => {
             Détecté: {detectedLang === 'french' ? 'Français' : 'Bààtɔ̀nú'}
           </Badge>
         )}
-        
-        {/* Toggle Traduction Automatique */}
-        <Button
-          variant={autoTranslate ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAutoTranslate(!autoTranslate)}
-          disabled={isTranslating || aiLoading || !aiReady}
-          className="flex items-center gap-2"
-          title="Activer/désactiver la traduction automatique"
-        >
-          <ArrowRight className="h-3 w-3" />
-          {autoTranslate ? "Auto" : "Manuel"}
-        </Button>
       </div>
 
-      {/* Suggestions de phrases */}
-      {phraseSuggestions.length > 0 && (
-        <Card className="p-4 bg-accent/5">
-          <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" />
-              Suggestions de phrases
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {phraseSuggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setSourceText(suggestion);
-                  }}
-                  className="text-xs px-3 py-2 bg-background hover:bg-primary/10 border border-border rounded-lg transition-colors text-foreground hover:text-primary"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Translation Interface */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      {/* Translation Cards */}
+      <div className="grid md:grid-cols-2 gap-4">
         {/* Source Text */}
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-foreground">
-              {direction === "french-to-bariba" ? "Français" : "Bààtɔ̀nú"}
-            </h3>
-            <Badge variant="outline" className="text-xs">
-              Source
+            <Badge variant="outline">
+              {direction === "french-to-bariba" ? "Français" : <span className="bariba-text">Bààtɔ̀nú</span>}
             </Badge>
-          </div>
-          <div className="relative">
-            <Textarea
-              value={sourceText}
-              onChange={(e) => setSourceText(e.target.value)}
-              placeholder={
-                direction === "french-to-bariba"
-                  ? "Entrez votre texte en français..."
-                  : "Saisissez votre texte en bariba..."
-              }
-              className="min-h-[120px] resize-none"
-              disabled={isTranslating}
-            />
-            {/* Voice Input Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleRecording}
-              disabled={isTranslating || isTranscribingBariba}
-              className={`absolute bottom-2 right-2 ${isVoiceActive ? 'text-red-500 animate-pulse' : ''}`}
-              title={isVoiceActive ? "Arrêter l'enregistrement" : "Dicter"}
-            >
-              {isVoiceActive ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Mic className="h-4 w-4" />
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleRecording}
+                disabled={isCurrentlyTranslating}
+                className={isVoiceActive ? "text-destructive" : ""}
+              >
+                {isVoiceActive ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+              {sourceText && (
+                <Button variant="ghost" size="sm" onClick={clearAll}>
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
               )}
-            </Button>
+            </div>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">
-              {sourceText.length} caractères
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearAll}
-              disabled={!sourceText && !translatedText}
-            >
-              Effacer
-            </Button>
-          </div>
+          <Textarea
+            value={sourceText}
+            onChange={(e) => setSourceText(e.target.value)}
+            placeholder={direction === "french-to-bariba" ? "Entrez le texte en français..." : "Entrez le texte en Bààtɔ̀nú..."}
+            className={`min-h-32 ${direction === "bariba-to-french" ? "bariba-text" : ""}`}
+            disabled={isCurrentlyTranslating}
+          />
+          <Button 
+            onClick={translatePhrase} 
+            disabled={!sourceText.trim() || isCurrentlyTranslating}
+            className="w-full"
+          >
+            {isCurrentlyTranslating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Traduction...
+              </>
+            ) : (
+              "Traduire"
+            )}
+          </Button>
         </Card>
 
         {/* Translated Text */}
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-foreground">
-              {direction === "french-to-bariba" ? "Bààtɔ̀nú" : "Français"}
-            </h3>
-            <div className="flex items-center gap-2 flex-wrap">
-              {usedMethod && (
-                <Badge 
-                  variant={usedMethod === 'byt5-expert' ? 'default' : 'secondary'} 
-                  className={`text-xs ${usedMethod === 'byt5-expert' ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
-                >
-                  {usedMethod === 'byt5-expert' ? '🤖 ByT5 Expert' : 
-                   usedMethod === 'simplified' ? '⚡ SimplifiedAI' :
-                   usedMethod === 'idiom' ? '💡 Idiome' :
-                   usedMethod === 'context' ? '🔄 Cache' :
-                   usedMethod === 'advanced' ? '🚀 Advanced' :
-                   usedMethod === 'ai' ? '☁️ Lovable AI' :
-                   usedMethod}
-                </Badge>
-              )}
-              {translationConfidence > 0 && (
-                <Badge variant={translationConfidence >= 80 ? "default" : translationConfidence >= 60 ? "secondary" : "outline"} className="text-xs">
-                  {translationConfidence}%
-                </Badge>
-              )}
-              {translationDuration > 0 && (
-                <Badge variant="outline" className="text-xs text-muted-foreground">
-                  {translationDuration}ms
-                </Badge>
+            <Badge variant="secondary">
+              {direction === "french-to-bariba" ? <span className="bariba-text">Bààtɔ̀nú</span> : "Français"}
+            </Badge>
+            <div className="flex gap-1">
+              {translatedText && (
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(translatedText)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={speakTranslation}
+                    disabled={isSpeakingBariba || isSpeakingFrench}
+                  >
+                    <Volume2 className="h-4 w-4" />
+                  </Button>
+                </>
               )}
             </div>
           </div>
-          <div className="relative">
-            <Textarea
-              value={translatedText}
-              readOnly
-              placeholder="La traduction apparaîtra ici..."
-              className="min-h-[120px] resize-none bg-muted/50"
-            />
-            {translatedText && (
-              <div className="absolute bottom-2 right-2 flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={speakTranslation}
-                  disabled={isSpeakingBariba || isSpeakingFrench}
-                  title="Écouter"
-                >
-                  {(isSpeakingBariba || isSpeakingFrench) ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Volume2 className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(translatedText)}
-                  title="Copier"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+          <div className={`min-h-32 p-3 bg-muted/30 rounded-md ${direction === "french-to-bariba" ? "bariba-text" : ""}`}>
+            {isCurrentlyTranslating ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Traduction en cours...</span>
               </div>
+            ) : translatedText ? (
+              translatedText
+            ) : (
+              <span className="text-muted-foreground">La traduction apparaîtra ici...</span>
             )}
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">
-              {translatedText.length} caractères
-              {usedCache && " • Cache"}
-            </span>
-            {usedMethod && (
-              <ModelHealthBadge modelId={usedMethod as any} confidence={translationConfidence} duration={translationDuration} />
-            )}
-          </div>
+          
+          {/* Translation info */}
+          {translatedText && !usedCache && usedMethod && (
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Badge variant="outline">{usedMethod}</Badge>
+              <Badge variant="outline">{translationConfidence}% confiance</Badge>
+              <Badge variant="outline">{translationDuration}ms</Badge>
+            </div>
+          )}
+          
+          {translatedText && usedCache && (
+            <Badge variant="outline" className="text-xs">⚡ Cache</Badge>
+          )}
         </Card>
       </div>
 
-      {/* Translate Button */}
-      <div className="flex justify-center">
-        <Button
-          onClick={translatePhrase}
-          disabled={isTranslating || !sourceText.trim() || (useAI && !aiReady)}
-          size="lg"
-          className="min-w-[200px]"
-        >
-          {isTranslating ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Traduction...
-            </>
-          ) : (
-            <>
-              <Brain className="mr-2 h-4 w-4" />
-              Traduire
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Translation Suggestions */}
-      {translatedText && translationLogId && (
-        <TranslationSuggestions
-          sourceText={sourceText}
-          translatedText={translatedText}
-          translationLogId={translationLogId}
-        />
-      )}
-
-      {/* Feedback Section */}
+      {/* Feedback */}
       {translatedText && translationLogId && (
         <TranslationFeedback
           translationLogId={translationLogId}
+          sourceText={sourceText}
+          translatedText={translatedText}
+          sourceLang={direction === "french-to-bariba" ? "french" : "bariba"}
+          targetLang={direction === "french-to-bariba" ? "bariba" : "french"}
         />
       )}
     </div>

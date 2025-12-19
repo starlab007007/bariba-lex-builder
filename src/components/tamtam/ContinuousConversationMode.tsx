@@ -15,7 +15,7 @@ import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-import { useHybridTranslation } from '@/hooks/useHybridTranslation';
+import { useSimpleTranslation } from '@/hooks/useSimpleTranslation';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -66,7 +66,7 @@ export function ContinuousConversationMode({ isOpen, onClose }: ContinuousConver
   const { transcribe, isTranscribing } = useBaribaSTT();
   const { speak: speakBariba, isLoading: isLoadingBariba } = useBaribaTTS();
   const { speak: speakFrench } = useFrenchTTS();
-  const { translateBaribaToFrench, translateFrenchToBariba, isInitialized } = useHybridTranslation();
+  const { translateBaribaToFrench, translateFrenchToBariba, isInitialized } = useSimpleTranslation();
 
   // Scroll to bottom
   useEffect(() => {
