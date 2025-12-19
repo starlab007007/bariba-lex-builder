@@ -238,13 +238,18 @@ export type Database = {
       dictionary_feedback: {
         Row: {
           applied: boolean | null
+          audio_transcription: string | null
+          audio_transcription_confidence: number | null
+          audio_url: string | null
           created_at: string | null
           entry_id: string
+          feedback_source: string | null
           feedback_type: string
           field_name: string | null
           id: string
           is_validated: boolean | null
           notes: string | null
+          source_language: string | null
           suggested_value: string | null
           user_id: string | null
           validated_at: string | null
@@ -252,13 +257,18 @@ export type Database = {
         }
         Insert: {
           applied?: boolean | null
+          audio_transcription?: string | null
+          audio_transcription_confidence?: number | null
+          audio_url?: string | null
           created_at?: string | null
           entry_id: string
+          feedback_source?: string | null
           feedback_type: string
           field_name?: string | null
           id?: string
           is_validated?: boolean | null
           notes?: string | null
+          source_language?: string | null
           suggested_value?: string | null
           user_id?: string | null
           validated_at?: string | null
@@ -266,13 +276,18 @@ export type Database = {
         }
         Update: {
           applied?: boolean | null
+          audio_transcription?: string | null
+          audio_transcription_confidence?: number | null
+          audio_url?: string | null
           created_at?: string | null
           entry_id?: string
+          feedback_source?: string | null
           feedback_type?: string
           field_name?: string | null
           id?: string
           is_validated?: boolean | null
           notes?: string | null
+          source_language?: string | null
           suggested_value?: string | null
           user_id?: string | null
           validated_at?: string | null
@@ -1979,6 +1994,66 @@ export type Database = {
           suffix?: string | null
           tense_aspect?: string
           verb_group?: number
+        }
+        Relationships: []
+      }
+      word_submissions: {
+        Row: {
+          audio_definition_url: string | null
+          audio_example_url: string | null
+          audio_word_url: string | null
+          created_at: string | null
+          definition: string
+          example_bariba: string | null
+          example_francais: string | null
+          id: string
+          part_of_speech: string | null
+          phonetic: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          status: string | null
+          transcription_confidence: number | null
+          updated_at: string | null
+          user_id: string | null
+          word: string
+        }
+        Insert: {
+          audio_definition_url?: string | null
+          audio_example_url?: string | null
+          audio_word_url?: string | null
+          created_at?: string | null
+          definition: string
+          example_bariba?: string | null
+          example_francais?: string | null
+          id?: string
+          part_of_speech?: string | null
+          phonetic?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string | null
+          transcription_confidence?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          word: string
+        }
+        Update: {
+          audio_definition_url?: string | null
+          audio_example_url?: string | null
+          audio_word_url?: string | null
+          created_at?: string | null
+          definition?: string
+          example_bariba?: string | null
+          example_francais?: string | null
+          id?: string
+          part_of_speech?: string | null
+          phonetic?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string | null
+          transcription_confidence?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          word?: string
         }
         Relationships: []
       }

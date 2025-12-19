@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Keyboard, Volume2, ArrowLeft, Loader2, Search, BookOpen } from 'lucide-react';
+import { Mic, Keyboard, Volume2, ArrowLeft, Loader2, Search, BookOpen, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSuggestions';
-import { BaribaKeyboardInput } from '@/components/tamtam/BaribaKeyboardInput';
+import { BaribaKeyboardInput, SearchLanguage } from '@/components/tamtam/BaribaKeyboardInput';
 import { VocalDictionaryResult } from '@/components/tamtam/VocalDictionaryResult';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { NewWordSubmission } from '@/components/tamtam/NewWordSubmission';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 
 type InputMode = 'voice' | 'keyboard';
@@ -21,10 +22,12 @@ export default function TamTamDictionary() {
   
   const [inputMode, setInputMode] = useState<InputMode>('voice');
   const [searchDirection, setSearchDirection] = useState<SearchDirection>('ba-fr');
+  const [keyboardLang, setKeyboardLang] = useState<SearchLanguage>('ba');
   const [selectedEntry, setSelectedEntry] = useState<PhoneticEntry | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastQuery, setLastQuery] = useState<string>('');
   const [searchHistory, setSearchHistory] = useState<PhoneticEntry[]>([]);
+  const [notFoundWord, setNotFoundWord] = useState<string>('');
 
   // Annoncer la page au chargement
   useEffect(() => {
@@ -86,6 +89,7 @@ export default function TamTamDictionary() {
           : `${foundEntry.word}. Définition: ${foundEntry.definition}`;
         await speakCurrentLang(announcement);
       } else {
+        setNotFoundWord(query);
         const notFoundMsg = currentLang === 'ba' 
           ? `Kò rí ɔ̀rɔ̀ "${query}"` 
           : `Mot "${query}" non trouvé`;
@@ -102,11 +106,18 @@ export default function TamTamDictionary() {
   // Sélection d'un mot depuis le clavier
   const handleSelectWord = async (entry: PhoneticEntry) => {
     setSelectedEntry(entry);
+    setNotFoundWord('');
     addToHistory(entry);
     triggerFeedback('success');
     
     // Lecture automatique
     await speakCurrentLang(entry.word);
+  };
+  
+  // Sync keyboard language with search direction
+  const handleKeyboardLangChange = (lang: SearchLanguage) => {
+    setKeyboardLang(lang);
+    setSearchDirection(lang === 'ba' ? 'ba-fr' : 'fr-ba');
   };
 
   // Ajouter à l'historique
@@ -133,12 +144,19 @@ export default function TamTamDictionary() {
   const toggleDirection = () => {
     const newDir = searchDirection === 'ba-fr' ? 'fr-ba' : 'ba-fr';
     setSearchDirection(newDir);
+    setKeyboardLang(newDir === 'ba-fr' ? 'ba' : 'fr');
     triggerFeedback('click');
     
     const dirAnnounce = newDir === 'ba-fr'
       ? (currentLang === 'ba' ? "Bàátɔ̀nú sí Fàránsé" : "Bariba vers Français")
       : (currentLang === 'ba' ? "Fàránsé sí Bàátɔ̀nú" : "Français vers Bariba");
     speakCurrentLang(dirAnnounce);
+  };
+  
+  // Clear selected entry
+  const handleCloseResult = () => {
+    setSelectedEntry(null);
+    setNotFoundWord('');
   };
 
   return (
@@ -258,10 +276,17 @@ export default function TamTamDictionary() {
                 placeholder={searchDirection === 'ba-fr' 
                   ? "Tapez un mot bariba..." 
                   : "Tapez un mot français..."}
+                language={keyboardLang}
+                onLanguageChange={handleKeyboardLangChange}
               />
             </div>
           )}
         </motion.div>
+
+        {/* Bouton proposer un nouveau mot */}
+        <div className="mb-4">
+          <NewWordSubmission initialWord={notFoundWord} />
+        </div>
 
         {/* Résultat sélectionné */}
         <AnimatePresence mode="wait">
@@ -273,7 +298,11 @@ export default function TamTamDictionary() {
               exit={{ opacity: 0, y: -20 }}
               className="mb-4"
             >
-              <VocalDictionaryResult entry={selectedEntry} />
+              <VocalDictionaryResult 
+                entry={selectedEntry} 
+                onClose={handleCloseResult}
+                showFeedback={true}
+              />
             </motion.div>
           )}
         </AnimatePresence>
