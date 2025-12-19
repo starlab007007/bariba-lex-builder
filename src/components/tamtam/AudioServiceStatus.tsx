@@ -118,8 +118,9 @@ function convertStatus(status: UnifiedServiceStatus): ServiceStatus {
 export function AudioServicesStatusBar({ health, showAll = false }: UnifiedAudioServicesStatusBarProps | LegacyAudioServicesStatusBarProps) {
   if (!health) return null;
   
-  // Check if using unified health type
-  const isUnifiedHealth = 'baribaTTS' in health && 'status' in (health as any).baribaTTS;
+  // Check if using unified health type (has objects with status property vs direct string status)
+  const baribaTTSValue = (health as any).baribaTTS;
+  const isUnifiedHealth = baribaTTSValue && typeof baribaTTSValue === 'object' && 'status' in baribaTTSValue;
   
   let displayHealth: { stt: ServiceStatus; tts: ServiceStatus; translate: ServiceStatus };
   
