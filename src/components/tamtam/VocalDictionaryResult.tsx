@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Volume2, Loader2, BookOpen, MessageCircle, ArrowRightLeft } from 'lucide-react';
+import { Volume2, Loader2, BookOpen, MessageCircle, ArrowRightLeft, X } from 'lucide-react';
 import { PhoneticEntry } from '@/hooks/usePhoneticSuggestions';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
+import { VocalDictionaryFeedback } from '@/components/tamtam/VocalDictionaryFeedback';
 
 interface VocalDictionaryResultProps {
   entry: PhoneticEntry;
   showFrenchFirst?: boolean;
+  showFeedback?: boolean;
   onClose?: () => void;
 }
 
 export function VocalDictionaryResult({ 
   entry, 
   showFrenchFirst = false,
+  showFeedback = false,
   onClose 
 }: VocalDictionaryResultProps) {
   const { speakCurrentLang, isSpeaking } = useUnifiedAudio();
@@ -93,6 +96,16 @@ export function VocalDictionaryResult({
                entry.part_of_speech}
             </span>
           </div>
+          
+          {/* Close button */}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -192,6 +205,13 @@ export function VocalDictionaryResult({
             </>
           )}
         </button>
+        
+        {/* Feedback button */}
+        {showFeedback && (
+          <div className="flex justify-center pt-2">
+            <VocalDictionaryFeedback entry={entry} />
+          </div>
+        )}
       </div>
     </motion.div>
   );

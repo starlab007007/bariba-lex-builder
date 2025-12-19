@@ -1,33 +1,64 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Keyboard, ChevronDown } from 'lucide-react';
+import { Search, X, Keyboard, Globe } from 'lucide-react';
 import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSuggestions';
+
+export type SearchLanguage = 'ba' | 'fr';
 
 interface BaribaKeyboardInputProps {
   onSelectWord: (entry: PhoneticEntry) => void;
   placeholder?: string;
   className?: string;
+  language?: SearchLanguage;
+  onLanguageChange?: (lang: SearchLanguage) => void;
 }
 
 // Caractères spéciaux bariba
-const SPECIAL_CHARS = ['ɔ', 'ɛ', 'ã', 'ŋ', 'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́', 'à', 'á', 'è', 'é', 'ì', 'í', 'ò', 'ó', 'ù', 'ú'];
+const BARIBA_CHARS = ['ɔ', 'ɛ', 'ã', 'ŋ', 'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́', 'à', 'á', 'è', 'é', 'ì', 'í', 'ò', 'ó', 'ù', 'ú'];
+
+// Caractères spéciaux français
+const FRENCH_CHARS = ['é', 'è', 'ê', 'ë', 'à', 'â', 'ù', 'û', 'ô', 'î', 'ï', 'ç', 'œ', 'æ'];
 
 export function BaribaKeyboardInput({ 
   onSelectWord, 
-  placeholder = "Tapez un mot bariba...",
-  className = ""
+  placeholder,
+  className = "",
+  language = 'ba',
+  onLanguageChange
 }: BaribaKeyboardInputProps) {
   const [query, setQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showSpecialChars, setShowSpecialChars] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [currentLang, setCurrentLang] = useState<SearchLanguage>(language);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   
-  const { getSuggestions, isLoading, totalEntries } = usePhoneticSuggestions();
+  const { getSuggestions, searchInDefinitions, isLoading, totalEntries } = usePhoneticSuggestions();
   
-  // Obtenir les suggestions basées sur la requête
-  const suggestions = query.length >= 1 ? getSuggestions(query, 8) : [];
+  // Characters based on language
+  const SPECIAL_CHARS = currentLang === 'ba' ? BARIBA_CHARS : FRENCH_CHARS;
+  
+  // Default placeholder based on language
+  const defaultPlaceholder = currentLang === 'ba' 
+    ? "Tapez un mot bariba..." 
+    : "Tapez un mot français...";
+  
+  // Obtenir les suggestions basées sur la requête et la langue
+  const suggestions = query.length >= 1 
+    ? (currentLang === 'ba' 
+        ? getSuggestions(query, 8) 
+        : searchInDefinitions(query, 8))
+    : [];
+    
+  // Toggle language
+  const toggleLanguage = () => {
+    const newLang = currentLang === 'ba' ? 'fr' : 'ba';
+    setCurrentLang(newLang);
+    setQuery('');
+    setShowSuggestions(false);
+    onLanguageChange?.(newLang);
+  };
   
   // Réinitialiser l'index sélectionné quand les suggestions changent
   useEffect(() => {
@@ -94,6 +125,20 @@ export function BaribaKeyboardInput({
 
   return (
     <div className={`relative ${className}`}>
+      {/* Language toggle */}
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center gap-2 px-3 py-2 bg-tamtam-bg rounded-xl text-sm font-medium text-tamtam-text hover:bg-tamtam-primary/10 transition-colors"
+        >
+          <Globe className="w-4 h-4 text-tamtam-primary" />
+          <span>{currentLang === 'ba' ? '🇧🇯 Bariba' : '🇫🇷 Français'}</span>
+        </button>
+        <span className="text-xs text-tamtam-text-muted">
+          {currentLang === 'ba' ? '→ Français' : '→ Bariba'}
+        </span>
+      </div>
+
       {/* Champ de saisie */}
       <div className="relative">
         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-tamtam-text-muted">
@@ -110,8 +155,8 @@ export function BaribaKeyboardInput({
           }}
           onFocus={() => query.length >= 1 && setShowSuggestions(true)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="w-full pl-12 pr-24 py-4 bg-tamtam-surface rounded-2xl border-2 border-transparent focus:border-tamtam-primary text-tamtam-text text-lg font-medium placeholder:text-tamtam-text-muted/50 outline-none transition-all"
+          placeholder={placeholder || defaultPlaceholder}
+          className="w-full pl-12 pr-28 py-4 bg-tamtam-surface rounded-2xl border-2 border-transparent focus:border-tamtam-primary text-tamtam-text text-lg font-medium placeholder:text-tamtam-text-muted/50 outline-none transition-all"
         />
         
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -119,6 +164,7 @@ export function BaribaKeyboardInput({
           <button
             onClick={() => setShowSpecialChars(!showSpecialChars)}
             className={`p-2 rounded-xl transition-colors ${showSpecialChars ? 'bg-tamtam-primary text-white' : 'bg-tamtam-bg text-tamtam-text-muted hover:bg-tamtam-primary/20'}`}
+            title={currentLang === 'ba' ? 'Caractères bariba' : 'Caractères français'}
           >
             <Keyboard className="w-5 h-5" />
           </button>
@@ -144,7 +190,9 @@ export function BaribaKeyboardInput({
             exit={{ opacity: 0, height: 0 }}
             className="mt-2 p-3 bg-tamtam-surface rounded-2xl shadow-tamtam-soft overflow-hidden"
           >
-            <p className="text-xs text-tamtam-text-muted mb-2">Caractères spéciaux bariba :</p>
+            <p className="text-xs text-tamtam-text-muted mb-2">
+              {currentLang === 'ba' ? 'Caractères spéciaux bariba :' : 'Caractères spéciaux français :'}
+            </p>
             <div className="flex flex-wrap gap-1">
               {SPECIAL_CHARS.map((char) => (
                 <button
