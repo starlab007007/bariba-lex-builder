@@ -184,17 +184,31 @@ export function useAudioServices(): UseAudioServicesReturn {
     }
   }, [health.baribaSTT, baribaSTT, toast]);
 
-  // Transcribe French
+  // Transcribe French - Utilise Web Speech API via useFrenchSTT
+  // L'edge function retourne useClientSide: true, donc on utilise Web Speech API
   const transcribeFrench = useCallback(async (audioBase64: string): Promise<string | null> => {
-    // French STT uses Web Speech API which requires different handling
-    // For base64 audio, we need to use the Edge Function
     try {
+      // L'edge function french-stt retourne toujours useClientSide: true
+      // Donc on doit utiliser Web Speech API côté client
+      // Mais avec un audio base64, on ne peut pas utiliser Web Speech API directement
+      // On retourne null et le composant doit utiliser useFrenchSTT en mode live
+      
+      console.log('[useAudioServices] French STT: Audio base64 cannot be transcribed server-side');
+      console.log('[useAudioServices] Use useFrenchSTT hook for live French transcription');
+      
+      // Essayer quand même l'edge function au cas où
       const { data, error } = await supabase.functions.invoke('french-stt', {
         body: { audio: audioBase64 }
       });
       
       if (error) {
-        throw new Error(error.message);
+        console.warn('[useAudioServices] French STT edge function error:', error);
+      }
+      
+      // Si l'edge function indique d'utiliser le client-side
+      if (data?.useClientSide) {
+        console.log('[useAudioServices] French STT: Server suggests using Web Speech API client-side');
+        return null; // Le composant doit utiliser useFrenchSTT en mode live
       }
       
       return data?.transcription || null;

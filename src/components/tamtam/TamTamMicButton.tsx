@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
-import { Mic, Square, Loader2, Volume2 } from 'lucide-react';
+import { Mic, Square, Loader2 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { useAudioServices } from '@/hooks/useAudioServices';
+import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { useToast } from '@/hooks/use-toast';
 
 interface TamTamMicButtonProps {
@@ -53,7 +53,7 @@ export function TamTamMicButton({
   const [isProcessing, setIsProcessing] = useState(false);
   
   const audioRecorder = useAudioRecorder();
-  const audioServices = useAudioServices();
+  const unifiedAudio = useUnifiedAudio();
   
   // Use external control if provided, otherwise internal
   const isRecording = externalIsRecording !== undefined ? externalIsRecording : internalRecording;
@@ -85,12 +85,20 @@ export function TamTamMicButton({
           
           // Auto-transcribe if enabled
           if (autoTranscribe) {
-            const result = await audioServices.transcribeAndTranslate(
+            // Utiliser useUnifiedAudio pour transcrire
+            const result = await unifiedAudio.transcribeWithTranslation(
               audioBase64, 
               sourceLang
             );
+            
             transcription = result.transcription || undefined;
-            translation = result.translation || undefined;
+            
+            // Si on veut aussi la traduction
+            if (autoTranslate && result.transcription) {
+              translation = sourceLang === 'ba' 
+                ? result.transcription_fr 
+                : result.transcription_ba;
+            }
             
             if (transcription) {
               toast({
@@ -102,11 +110,7 @@ export function TamTamMicButton({
             // Auto-speak translation if enabled
             if (autoSpeak && translation) {
               const targetLang = sourceLang === 'ba' ? 'fr' : 'ba';
-              if (targetLang === 'ba') {
-                await audioServices.speakBariba(translation);
-              } else {
-                await audioServices.speakFrench(translation);
-              }
+              await unifiedAudio.speak(translation, targetLang);
             }
           }
           
@@ -118,6 +122,11 @@ export function TamTamMicButton({
           });
         } catch (err) {
           console.error('[TamTamMicButton] Recording error:', err);
+          toast({
+            title: "❌ Erreur",
+            description: "Impossible de traiter l'enregistrement",
+            variant: "destructive"
+          });
         } finally {
           setIsProcessing(false);
         }
@@ -128,7 +137,7 @@ export function TamTamMicButton({
     }
   }, [
     disabled, isRecording, audioRecorder, onRecordingComplete, 
-    autoTranscribe, autoTranslate, autoSpeak, sourceLang, audioServices, onPress, toast
+    autoTranscribe, autoTranslate, autoSpeak, sourceLang, unifiedAudio, onPress, toast
   ]);
 
   const showRecordingState = isRecording || audioRecorder.isRecording;
