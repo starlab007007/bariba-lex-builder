@@ -1,6 +1,6 @@
 /**
  * UnifiedAudioService - Service central pour TTS, STT et Traduction
- * Gère les fallbacks automatiques, le cache santé et la file d'attente
+ * Gère les fallbacks automatiques, le cache santé, retry et la file d'attente
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +27,8 @@ export interface TranscriptionResult {
   confidence: number;
   language: 'fr' | 'ba';
   usedFallback: boolean;
+  error?: string;
+  retryCount?: number;
 }
 
 export interface TranslationResult {
@@ -35,6 +37,8 @@ export interface TranslationResult {
   target: 'fr' | 'ba';
   method: string;
   confidence: number;
+  error?: string;
+  retryCount?: number;
 }
 
 export interface FullTranscriptionResult {
@@ -44,7 +48,15 @@ export interface FullTranscriptionResult {
   source_lang: 'fr' | 'ba';
   translation_method: string;
   confidence: number;
+  error?: string;
 }
+
+// Configuration du retry
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelayMs: 1000,
+  maxDelayMs: 10000,
+};
 
 // Cache pour l'état de santé des services
 let healthCache: AudioServicesHealth | null = null;
@@ -55,6 +67,68 @@ class UnifiedAudioServiceClass {
   private audioElement: HTMLAudioElement | null = null;
   private isProcessing: boolean = false;
   private queue: Array<() => Promise<void>> = [];
+
+  /**
+   * Utilitaire de retry avec backoff exponentiel
+   */
+  private async withRetry<T>(
+    operation: () => Promise<T>,
+    operationName: string
+  ): Promise<{ result: T | null; error: string | null; retryCount: number }> {
+    let lastError: string | null = null;
+    let retryCount = 0;
+
+    for (let attempt = 0; attempt < RETRY_CONFIG.maxRetries; attempt++) {
+      try {
+        const result = await operation();
+        return { result, error: null, retryCount };
+      } catch (error: any) {
+        lastError = error.message || `${operationName} failed`;
+        retryCount = attempt + 1;
+        
+        console.warn(`[UnifiedAudioService] ${operationName} attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries} failed:`, error);
+        
+        if (attempt < RETRY_CONFIG.maxRetries - 1) {
+          // Calcul du délai avec backoff exponentiel + jitter
+          const delay = Math.min(
+            RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt) + Math.random() * 500,
+            RETRY_CONFIG.maxDelayMs
+          );
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    return { result: null, error: lastError, retryCount };
+  }
+
+  /**
+   * Génère un message d'erreur avec action suggérée
+   */
+  private getErrorWithAction(error: string, service: string): { message: string; action: string } {
+    if (error.includes('timeout') || error.includes('network')) {
+      return {
+        message: `Service ${service} temporairement indisponible`,
+        action: 'Vérifiez votre connexion internet et réessayez',
+      };
+    }
+    if (error.includes('audio') || error.includes('format')) {
+      return {
+        message: 'Format audio non supporté',
+        action: 'Essayez de ré-enregistrer avec un volume plus élevé',
+      };
+    }
+    if (error.includes('permission')) {
+      return {
+        message: 'Accès au microphone refusé',
+        action: 'Autorisez l\'accès au microphone dans les paramètres',
+      };
+    }
+    return {
+      message: `Erreur ${service}`,
+      action: 'Réessayez ou changez de langue source',
+    };
+  }
 
   /**
    * Vérifie la santé de tous les services audio
@@ -230,56 +304,65 @@ class UnifiedAudioServiceClass {
   }
 
   /**
-   * Speech-to-Text avec fallback automatique
+   * Speech-to-Text avec fallback automatique et retry
    */
   async transcribe(audioBase64: string, preferredLang: 'fr' | 'ba'): Promise<TranscriptionResult> {
     if (preferredLang === 'ba') {
-      try {
+      // Essayer Bariba STT avec retry
+      const baribaResult = await this.withRetry(async () => {
         const { data, error } = await supabase.functions.invoke('bariba-stt', {
           body: { audio: audioBase64 }
         });
+        if (error) throw new Error(error.message);
+        if (!data?.transcription) throw new Error('Pas de transcription');
+        return data;
+      }, 'Bariba STT');
 
-        if (!error && data?.transcription) {
-          return {
-            text: data.transcription,
-            confidence: data.confidence || 0.8,
-            language: 'ba',
-            usedFallback: false
-          };
-        }
-      } catch (e) {
-        console.warn('[UnifiedAudioService] Bariba STT failed:', e);
+      if (baribaResult.result?.transcription) {
+        return {
+          text: baribaResult.result.transcription,
+          confidence: baribaResult.result.confidence || 0.8,
+          language: 'ba',
+          usedFallback: false,
+          retryCount: baribaResult.retryCount,
+        };
       }
     }
 
-    // Fallback vers French STT
-    try {
+    // Fallback vers French STT avec retry
+    const frenchResult = await this.withRetry(async () => {
       const { data, error } = await supabase.functions.invoke('french-stt', {
         body: { audio: audioBase64 }
       });
+      if (error) throw new Error(error.message);
+      if (!data?.transcription) throw new Error('Pas de transcription');
+      return data;
+    }, 'French STT');
 
-      if (!error && data?.transcription) {
-        return {
-          text: data.transcription,
-          confidence: data.confidence || 0.85,
-          language: 'fr',
-          usedFallback: preferredLang === 'ba'
-        };
-      }
-    } catch (e) {
-      console.error('[UnifiedAudioService] French STT failed:', e);
+    if (frenchResult.result?.transcription) {
+      return {
+        text: frenchResult.result.transcription,
+        confidence: frenchResult.result.confidence || 0.85,
+        language: 'fr',
+        usedFallback: preferredLang === 'ba',
+        retryCount: frenchResult.retryCount,
+      };
     }
 
+    // Échec total
+    const errorInfo = this.getErrorWithAction(frenchResult.error || 'Transcription échouée', 'STT');
     return {
       text: '',
       confidence: 0,
       language: preferredLang,
-      usedFallback: true
+      usedFallback: true,
+      error: `${errorInfo.message}. ${errorInfo.action}`,
+      retryCount: frenchResult.retryCount,
     };
   }
 
   /**
-   * Traduction avec cascade de fallbacks
+   * Traduction avec cascade de fallbacks et retry
    */
   async translate(text: string, from: 'fr' | 'ba', to: 'fr' | 'ba'): Promise<TranslationResult> {
     if (from === to || !text) {
@@ -289,50 +372,58 @@ class UnifiedAudioServiceClass {
     const sourceLang = from === 'fr' ? 'french' : 'bariba';
     const targetLang = to === 'fr' ? 'french' : 'bariba';
 
-    // Essayer ByT5 d'abord
-    try {
+    // Essayer ByT5 d'abord avec retry
+    const byt5Result = await this.withRetry(async () => {
       const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
         body: { text, sourceLang, targetLang }
       });
+      if (error) throw new Error(error.message);
+      if (!data?.translation) throw new Error('Pas de traduction');
+      return data;
+    }, 'ByT5');
 
-      if (!error && data?.translation) {
-        return {
-          translation: data.translation,
-          source: from,
-          target: to,
-          method: 'byt5-expert',
-          confidence: data.confidence || 0.85
-        };
-      }
-    } catch (e) {
-      console.warn('[UnifiedAudioService] ByT5 translation failed:', e);
+    if (byt5Result.result?.translation) {
+      return {
+        translation: byt5Result.result.translation,
+        source: from,
+        target: to,
+        method: 'byt5-expert',
+        confidence: byt5Result.result.confidence || 0.85,
+        retryCount: byt5Result.retryCount,
+      };
     }
 
-    // Fallback vers Lovable AI
-    try {
+    // Fallback vers Lovable AI avec retry
+    const aiResult = await this.withRetry(async () => {
       const { data, error } = await supabase.functions.invoke('ai-translate-lovable', {
         body: { text, sourceLang, targetLang }
       });
+      if (error) throw new Error(error.message);
+      if (!data?.translation) throw new Error('Pas de traduction');
+      return data;
+    }, 'Lovable AI');
 
-      if (!error && data?.translation) {
-        return {
-          translation: data.translation,
-          source: from,
-          target: to,
-          method: 'lovable-ai',
-          confidence: data.confidence || 0.75
-        };
-      }
-    } catch (e) {
-      console.warn('[UnifiedAudioService] Lovable AI translation failed:', e);
+    if (aiResult.result?.translation) {
+      return {
+        translation: aiResult.result.translation,
+        source: from,
+        target: to,
+        method: 'lovable-ai',
+        confidence: aiResult.result.confidence || 0.75,
+        retryCount: aiResult.retryCount,
+      };
     }
 
+    // Échec total
+    const errorInfo = this.getErrorWithAction(aiResult.error || 'Traduction échouée', 'Traduction');
     return {
       translation: text,
       source: from,
       target: to,
       method: 'fallback',
-      confidence: 0
+      confidence: 0,
+      error: `${errorInfo.message}. ${errorInfo.action}`,
+      retryCount: aiResult.retryCount,
     };
   }
 
