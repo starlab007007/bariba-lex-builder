@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 
 export interface PhoneticEntry {
+  id?: string; // UUID from database if available
   word: string;
   phonetic: string;
   normalizedPhonetic: string;
