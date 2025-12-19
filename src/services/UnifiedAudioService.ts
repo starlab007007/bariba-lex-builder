@@ -307,18 +307,23 @@ class UnifiedAudioServiceClass {
    * Speech-to-Text avec fallback automatique et retry
    */
   async transcribe(audioBase64: string, preferredLang: 'fr' | 'ba'): Promise<TranscriptionResult> {
+    console.log(`[UnifiedAudioService] 🎤 transcribe() called - audio: ${audioBase64.length} chars, lang: ${preferredLang}`);
+    
     if (preferredLang === 'ba') {
       // Essayer Bariba STT avec retry
+      console.log('[UnifiedAudioService] 📡 Calling bariba-stt edge function...');
       const baribaResult = await this.withRetry(async () => {
         const { data, error } = await supabase.functions.invoke('bariba-stt', {
           body: { audio: audioBase64 }
         });
+        console.log('[UnifiedAudioService] bariba-stt response:', { data, error });
         if (error) throw new Error(error.message);
         if (!data?.transcription) throw new Error('Pas de transcription');
         return data;
       }, 'Bariba STT');
 
       if (baribaResult.result?.transcription) {
+        console.log(`[UnifiedAudioService] ✅ Bariba STT success: "${baribaResult.result.transcription.substring(0, 50)}"`);
         return {
           text: baribaResult.result.transcription,
           confidence: baribaResult.result.confidence || 0.8,
@@ -327,19 +332,23 @@ class UnifiedAudioServiceClass {
           retryCount: baribaResult.retryCount,
         };
       }
+      console.log('[UnifiedAudioService] ⚠️ Bariba STT failed, trying French STT fallback...');
     }
 
     // Fallback vers French STT avec retry
+    console.log('[UnifiedAudioService] 📡 Calling french-stt edge function...');
     const frenchResult = await this.withRetry(async () => {
       const { data, error } = await supabase.functions.invoke('french-stt', {
         body: { audio: audioBase64 }
       });
+      console.log('[UnifiedAudioService] french-stt response:', { data, error });
       if (error) throw new Error(error.message);
       if (!data?.transcription) throw new Error('Pas de transcription');
       return data;
     }, 'French STT');
 
     if (frenchResult.result?.transcription) {
+      console.log(`[UnifiedAudioService] ✅ French STT success: "${frenchResult.result.transcription.substring(0, 50)}"`);
       return {
         text: frenchResult.result.transcription,
         confidence: frenchResult.result.confidence || 0.85,
@@ -350,6 +359,7 @@ class UnifiedAudioServiceClass {
     }
 
     // Échec total
+    console.error('[UnifiedAudioService] ❌ All STT services failed');
     const errorInfo = this.getErrorWithAction(frenchResult.error || 'Transcription échouée', 'STT');
     return {
       text: '',

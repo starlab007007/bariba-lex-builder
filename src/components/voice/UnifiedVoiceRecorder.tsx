@@ -47,6 +47,9 @@ export function UnifiedVoiceRecorder({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   
+  // Ref pour éviter la race condition sur l'état recording
+  const isRecordingRef = useRef<boolean>(false);
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -101,6 +104,11 @@ export function UnifiedVoiceRecorder({
   }, [state.status]);
 
   const handleStartRecording = useCallback(async () => {
+    console.log('[UnifiedVoiceRecorder] 🎤 Starting recording...');
+    
+    // Mettre à jour la ref AVANT le state pour éviter la race condition
+    isRecordingRef.current = true;
+    
     try {
       setState(prev => ({ ...prev, error: null, status: 'recording' }));
       
@@ -114,6 +122,8 @@ export function UnifiedVoiceRecorder({
         }
       });
 
+      console.log('[UnifiedVoiceRecorder] ✅ Microphone access granted');
+      
       streamRef.current = stream;
       chunksRef.current = [];
 
@@ -133,11 +143,13 @@ export function UnifiedVoiceRecorder({
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunksRef.current.push(e.data);
+          console.log(`[UnifiedVoiceRecorder] 📦 Data chunk: ${e.data.size} bytes (total chunks: ${chunksRef.current.length})`);
         }
       };
 
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start(100);
+      console.log('[UnifiedVoiceRecorder] 🔴 MediaRecorder started');
 
       // Start duration timer
       const startTime = Date.now();
@@ -152,7 +164,8 @@ export function UnifiedVoiceRecorder({
       updateAudioLevel();
 
     } catch (error: any) {
-      console.error('[UnifiedVoiceRecorder] Start error:', error);
+      console.error('[UnifiedVoiceRecorder] ❌ Start error:', error);
+      isRecordingRef.current = false;
       setState(prev => ({
         ...prev,
         status: 'error',
@@ -163,12 +176,24 @@ export function UnifiedVoiceRecorder({
   }, [updateAudioLevel]);
 
   const handleStopRecording = useCallback(async () => {
+    console.log('[UnifiedVoiceRecorder] ⏹️ Stopping recording...', { isRecording: isRecordingRef.current });
+    
+    // Utiliser la ref au lieu de state pour éviter la race condition
+    if (!isRecordingRef.current) {
+      console.log('[UnifiedVoiceRecorder] ⚠️ Not recording, ignoring stop');
+      return;
+    }
+    
+    isRecordingRef.current = false;
+    
     if (timerRef.current) clearInterval(timerRef.current);
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
 
     return new Promise<void>((resolve) => {
-      if (mediaRecorderRef.current && state.status === 'recording') {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.onstop = async () => {
+          console.log(`[UnifiedVoiceRecorder] 📝 Recording stopped. Chunks: ${chunksRef.current.length}`);
+          
           if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
           }
@@ -178,9 +203,11 @@ export function UnifiedVoiceRecorder({
 
           if (chunksRef.current.length > 0) {
             const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+            console.log(`[UnifiedVoiceRecorder] 📦 Created blob: ${blob.size} bytes`);
             
             // Convert to base64
             const base64 = await blobToBase64(blob);
+            console.log(`[UnifiedVoiceRecorder] 🔄 Converted to base64: ${base64.length} chars`);
             audioBase64Ref.current = base64;
             
             if (showPreview) {
@@ -189,10 +216,12 @@ export function UnifiedVoiceRecorder({
               setState(prev => ({ ...prev, status: 'preview', audioLevel: 0 }));
             } else {
               // Direct send
+              console.log(`[UnifiedVoiceRecorder] 📤 Calling onComplete with ${base64.length} chars`);
               onComplete(base64);
               setState({ status: 'idle', duration: 0, audioLevel: 0, error: null });
             }
           } else {
+            console.warn('[UnifiedVoiceRecorder] ⚠️ No audio chunks recorded');
             setState(prev => ({
               ...prev,
               status: 'error',
@@ -205,10 +234,11 @@ export function UnifiedVoiceRecorder({
 
         mediaRecorderRef.current.stop();
       } else {
+        console.log('[UnifiedVoiceRecorder] ⚠️ MediaRecorder not active');
         resolve();
       }
     });
-  }, [state.status, showPreview, onComplete]);
+  }, [showPreview, onComplete]);
 
   const handleCancel = useCallback(() => {
     cleanup();
