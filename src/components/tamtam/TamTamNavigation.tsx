@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TamTamMicButton } from './TamTamMicButton';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
@@ -22,10 +22,11 @@ export function TamTamNavigation() {
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [speakingItemId, setSpeakingItemId] = useState<string | null>(null);
   const { t } = useTamTamLanguage();
-  const { speakCurrentLang, isSpeaking } = useUnifiedAudio();
+  const { speakCurrentLang } = useUnifiedAudio();
   const { user } = useAuth();
-  const { speakLabel, handleLongPress } = useVoiceMenu();
+  const { speakLabel, handleLongPress, stopSpeaking } = useVoiceMenu();
 
   // Fetch unread messages count
   useEffect(() => {
@@ -84,12 +85,29 @@ export function TamTamNavigation() {
     navigate(path);
   };
 
-  // Speak label for accessibility
-  const handleSpeakNav = async (labelKey: string, e: React.MouseEvent) => {
+  // Speak label for accessibility - only for the clicked item
+  const handleSpeakNav = useCallback(async (itemId: string, labelKey: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
+    
+    // If already speaking this item, stop it
+    if (speakingItemId === itemId) {
+      stopSpeaking();
+      setSpeakingItemId(null);
+      return;
+    }
+    
+    // Stop any previous speech and start new one
+    stopSpeaking();
+    setSpeakingItemId(itemId);
     triggerFeedback('click');
-    await speakLabel(labelKey);
-  };
+    
+    try {
+      await speakLabel(labelKey);
+    } finally {
+      setSpeakingItemId(null);
+    }
+  }, [speakingItemId, speakLabel, stopSpeaking]);
 
   return (
     <>
@@ -148,12 +166,12 @@ export function TamTamNavigation() {
                   </span>
                 </button>
                 
-                {/* Speaker button */}
+                {/* Speaker button - only shows spinner for THIS item */}
                 <button
-                  onClick={(e) => handleSpeakNav(item.labelKey, e)}
+                  onClick={(e) => handleSpeakNav(item.id, item.labelKey, e)}
                   className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-tamtam-primary/20 flex items-center justify-center"
                 >
-                  {isSpeaking ? (
+                  {speakingItemId === item.id ? (
                     <Loader2 className="w-3 h-3 text-tamtam-primary animate-spin" />
                   ) : (
                     <Volume2 className="w-3 h-3 text-tamtam-primary" />
@@ -188,12 +206,12 @@ export function TamTamNavigation() {
                   </span>
                 </button>
                 
-                {/* Speaker button */}
+                {/* Speaker button - only shows spinner for THIS item */}
                 <button
-                  onClick={(e) => handleSpeakNav(item.labelKey, e)}
+                  onClick={(e) => handleSpeakNav(item.id, item.labelKey, e)}
                   className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-tamtam-primary/20 flex items-center justify-center"
                 >
-                  {isSpeaking ? (
+                  {speakingItemId === item.id ? (
                     <Loader2 className="w-3 h-3 text-tamtam-primary animate-spin" />
                   ) : (
                     <Volume2 className="w-3 h-3 text-tamtam-primary" />

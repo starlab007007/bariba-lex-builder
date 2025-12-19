@@ -49,13 +49,17 @@ export const VoiceMenuItem: React.FC<VoiceMenuItemProps> = ({
 
   const handleSpeakerClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     
-    if (isLocalSpeaking || isSpeaking) {
+    // Only check local state, not global isSpeaking
+    if (isLocalSpeaking) {
       stopSpeaking();
       setIsLocalSpeaking(false);
       return;
     }
 
+    // Stop any other speech first
+    stopSpeaking();
     setIsLocalSpeaking(true);
     triggerFeedback('notification', { haptic: true, sound: true });
     
@@ -77,13 +81,13 @@ export const VoiceMenuItem: React.FC<VoiceMenuItemProps> = ({
       whileTap={{ scale: 0.9 }}
       onClick={handleSpeakerClick}
       className={`p-1.5 rounded-full transition-all ${
-        isLocalSpeaking || isSpeaking
+        isLocalSpeaking
           ? 'bg-blue-500 text-white'
           : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
       } ${speakerClassName}`}
       aria-label={`Écouter: ${getLabel(labelKey)}`}
     >
-      {isLocalSpeaking || isSpeaking ? (
+      {isLocalSpeaking ? (
         <motion.div
           animate={{ scale: [1, 1.2, 1] }}
           transition={{ repeat: Infinity, duration: 0.8 }}
@@ -146,13 +150,17 @@ export const SpeakerButton: React.FC<SpeakerButtonProps> = ({
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     
-    if (isLocalSpeaking || isSpeaking) {
+    // Only check local state, not global isSpeaking
+    if (isLocalSpeaking) {
       stopSpeaking();
       setIsLocalSpeaking(false);
       return;
     }
 
+    // Stop any other speech first
+    stopSpeaking();
     setIsLocalSpeaking(true);
     triggerFeedback('notification', { haptic: true, sound: true });
     
@@ -168,13 +176,13 @@ export const SpeakerButton: React.FC<SpeakerButtonProps> = ({
       whileTap={{ scale: 0.9 }}
       onClick={handleClick}
       className={`rounded-full transition-all ${sizeClasses[size]} ${
-        isLocalSpeaking || isSpeaking
+        isLocalSpeaking
           ? 'bg-blue-500 text-white'
           : 'bg-white/80 text-gray-600 hover:bg-white'
       } ${className}`}
       aria-label={`Écouter: ${getLabel(labelKey)}`}
     >
-      {isLocalSpeaking || isSpeaking ? (
+      {isLocalSpeaking ? (
         <motion.div
           animate={{ scale: [1, 1.2, 1] }}
           transition={{ repeat: Infinity, duration: 0.8 }}
