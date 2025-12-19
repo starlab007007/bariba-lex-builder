@@ -232,13 +232,15 @@ serve(async (req) => {
     }
 
     // Check minimum audio length (avoid sending too short recordings)
-    const minAudioLength = 500;
+    // Réduit de 500 à 200 pour accepter les enregistrements courts
+    const minAudioLength = 200;
+    console.log(`📏 Audio received: ${audio.length} chars (min: ${minAudioLength})`);
     if (audio.length < minAudioLength) {
       console.log(`⚠️ Audio too short: ${audio.length} chars (min: ${minAudioLength})`);
       return new Response(
         JSON.stringify({ 
           error: 'Audio too short', 
-          details: 'L\'enregistrement est trop court. Parlez plus longtemps (au moins 1-2 secondes).',
+          details: 'L\'enregistrement est trop court. Parlez plus longtemps.',
           audioLength: audio.length
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
