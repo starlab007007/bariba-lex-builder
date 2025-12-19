@@ -85,11 +85,38 @@ export function useVocalFeedback() {
         setUploadProgress(60);
       }
 
+      // Resolve entry_id: if it looks like a UUID, use it directly; otherwise, lookup by word
+      let entryId = feedback.entryId;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      if (!uuidRegex.test(entryId)) {
+        // entryId is a word, need to lookup the actual UUID
+        console.log('[useVocalFeedback] Looking up entry_id for word:', entryId);
+        const { data: entries, error: lookupError } = await supabase
+          .from('dictionary_entries')
+          .select('id')
+          .ilike('word', entryId)
+          .limit(1);
+        
+        if (lookupError) {
+          console.error('[useVocalFeedback] Lookup error:', lookupError);
+          throw new Error('Impossible de trouver l\'entrée du dictionnaire');
+        }
+        
+        if (!entries || entries.length === 0) {
+          console.error('[useVocalFeedback] Entry not found for word:', entryId);
+          throw new Error(`Entrée "${entryId}" non trouvée dans le dictionnaire`);
+        }
+        
+        entryId = entries[0].id;
+        console.log('[useVocalFeedback] Found entry_id:', entryId);
+      }
+
       // Insert feedback into database
       const { error } = await supabase
         .from('dictionary_feedback')
         .insert({
-          entry_id: feedback.entryId,
+          entry_id: entryId,
           user_id: user.id,
           feedback_type: feedback.feedbackType,
           field_name: feedback.fieldName,
@@ -108,9 +135,9 @@ export function useVocalFeedback() {
       setUploadProgress(100);
       toast.success('Merci pour votre feedback !');
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('[useVocalFeedback] Submit failed:', err);
-      toast.error('Erreur lors de l\'envoi du feedback');
+      toast.error(err.message || 'Erreur lors de l\'envoi du feedback');
       return false;
     } finally {
       setIsSubmitting(false);

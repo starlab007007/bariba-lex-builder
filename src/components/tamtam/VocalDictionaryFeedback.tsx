@@ -115,10 +115,11 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
 
   // Submit feedback
   const handleSubmit = async () => {
-    // Need entry ID - since we're using a local dictionary entry, we'll use the word as ID
-    // In a real scenario, entry would have an id from the database
+    // Use entry.id if available, otherwise use the word (hook will lookup the ID)
+    const entryId = entry.id || entry.word;
+    
     const success = await submitFeedback({
-      entryId: entry.word, // Using word as identifier
+      entryId,
       feedbackType,
       fieldName: selectedField,
       textFeedback: textFeedback || audioTranscription,
