@@ -440,13 +440,7 @@ export const PhraseTranslator = () => {
 
       {/* Feedback */}
       {translatedText && translationLogId && (
-        <TranslationFeedback
-          translationLogId={translationLogId}
-          sourceText={sourceText}
-          translatedText={translatedText}
-          sourceLang={direction === "french-to-bariba" ? "french" : "bariba"}
-          targetLang={direction === "french-to-bariba" ? "bariba" : "french"}
-        />
+        <TranslationFeedback translationLogId={translationLogId} />
       )}
     </div>
   );
