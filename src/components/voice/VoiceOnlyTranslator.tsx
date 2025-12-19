@@ -1,21 +1,17 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Volume2, Loader2, RefreshCw, ArrowRightLeft, Pause, Play, X, CheckCircle2 } from 'lucide-react';
+import { Volume2, RefreshCw, ArrowRightLeft, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { useBaribaSTT } from '@/hooks/useBaribaSTT';
-import { useFrenchSTTBase64 } from '@/hooks/useFrenchSTTBase64';
-import { useFrenchSTT } from '@/hooks/useFrenchSTT';
+import { UnifiedVoiceRecorder } from '@/components/voice/UnifiedVoiceRecorder';
+import { UnifiedAudioService } from '@/services/UnifiedAudioService';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-import { useSimpleTranslation } from '@/hooks/useSimpleTranslation';
-import { useVoiceDetection } from '@/hooks/useVoiceDetection';
 import { useToast } from '@/hooks/use-toast';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { cn } from '@/lib/utils';
 
 type DetectedLanguage = 'bariba' | 'french' | 'unknown';
-type TranslationState = 'idle' | 'listening' | 'processing' | 'speaking' | 'complete';
+type TranslationState = 'idle' | 'recording' | 'processing' | 'speaking' | 'complete' | 'error';
 
 interface TranslationResult {
   sourceText: string;
@@ -24,221 +20,115 @@ interface TranslationResult {
   targetLanguage: DetectedLanguage;
 }
 
+interface ErrorInfo {
+  message: string;
+  action: string;
+}
+
 export function VoiceOnlyTranslator() {
   const [state, setState] = useState<TranslationState>('idle');
   const [detectedLanguage, setDetectedLanguage] = useState<DetectedLanguage>('unknown');
   const [lastResult, setLastResult] = useState<TranslationResult | null>(null);
   const [preferredSourceLang, setPreferredSourceLang] = useState<'bariba' | 'french'>('bariba');
-  const [isAutoMode, setIsAutoMode] = useState(true);
+  const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
   
   const { toast } = useToast();
   
-  // Hooks audio
-  const { startRecording, stopRecording, isRecording, cancelRecording } = useAudioRecorder();
-  const { transcribe: transcribeBariba, isTranscribing: isTranscribingBariba } = useBaribaSTT();
-  const { transcribe: transcribeFrench, isTranscribing: isTranscribingFrench, serviceAvailable: frenchSTTAvailable } = useFrenchSTTBase64();
-  const { startListening, stopListening, isListening, transcript: webSpeechTranscript } = useFrenchSTT();
+  // Seulement les hooks TTS nécessaires
   const { speak: speakBariba, isLoading: isLoadingBariba, isSpeaking: isSpeakingBariba } = useBaribaTTS();
   const { speak: speakFrench, isSpeaking: isSpeakingFrench } = useFrenchTTS();
-  const { translateFrenchToBariba, translateBaribaToFrench } = useSimpleTranslation();
-  const { startDetection, stopDetection, onSpeechEnd, isSpeaking: isVADSpeaking } = useVoiceDetection();
 
-  // Process web speech transcript when it changes
-  useEffect(() => {
-    if (webSpeechTranscript && state === 'listening' && preferredSourceLang === 'french') {
-      handleFrenchWebSpeechComplete(webSpeechTranscript);
-    }
-  }, [webSpeechTranscript]);
-
-  // VAD speech end handler
-  useEffect(() => {
-    if (!isAutoMode || state !== 'listening') return;
-
-    const unsubscribe = onSpeechEnd(async (duration) => {
-      if (duration > 300) {
-        await handleRecordingComplete();
-      }
-    });
-
-    return unsubscribe;
-  }, [isAutoMode, state, preferredSourceLang]);
-
-  const handleFrenchWebSpeechComplete = async (text: string) => {
-    if (!text.trim()) return;
-    
+  // Handler principal quand l'enregistrement est complet
+  const handleRecordingComplete = useCallback(async (audioBase64: string) => {
     setState('processing');
-    stopListening();
+    setErrorInfo(null);
     
     try {
-      // Translate French to Bariba
-      const result = await translateFrenchToBariba(text);
-      if (result?.translation) {
-        const translationResult: TranslationResult = {
-          sourceText: text,
-          translatedText: result.translation,
-          sourceLanguage: 'french',
-          targetLanguage: 'bariba'
-        };
-        setLastResult(translationResult);
-        setDetectedLanguage('french');
-        
-        // Trigger language detection feedback
-        triggerFeedback('language_detected', { sound: true, haptic: true });
-        
-        // Speak the translation
-        setState('speaking');
-        await speakBariba(result.translation);
-        setState('complete');
-        
-        // Success feedback
-        triggerFeedback('success', { sound: false, haptic: true });
-      }
-    } catch (error: any) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
-      setState('idle');
-    }
-  };
-
-  const handleRecordingComplete = async () => {
-    setState('processing');
-    
-    try {
-      const audioBase64 = await stopRecording();
-      if (!audioBase64 || audioBase64.length < 1000) {
-        toast({ title: "Audio trop court", variant: "destructive" });
-        setState('idle');
+      const sourceLang = preferredSourceLang === 'bariba' ? 'ba' : 'fr';
+      const targetLang = preferredSourceLang === 'bariba' ? 'fr' : 'ba';
+      
+      // 1. Transcription avec retry automatique
+      const transcriptionResult = await UnifiedAudioService.transcribe(audioBase64, sourceLang);
+      
+      if (!transcriptionResult.text) {
+        // Erreur de transcription
+        setState('error');
+        setErrorInfo({
+          message: transcriptionResult.error || 'Impossible de transcrire l\'audio',
+          action: 'Essayez de parler plus fort et plus clairement',
+        });
         return;
       }
 
-      stopDetection();
+      const sourceText = transcriptionResult.text;
+      setDetectedLanguage(preferredSourceLang);
       
-      let sourceText = '';
-      let translatedText = '';
-      let sourceLang: DetectedLanguage = preferredSourceLang;
-      let targetLang: DetectedLanguage = preferredSourceLang === 'bariba' ? 'french' : 'bariba';
+      // Feedback de détection de langue
+      triggerFeedback('language_detected', { sound: true, haptic: true });
 
-      if (preferredSourceLang === 'bariba') {
-        // Transcribe Bariba
-        const sttResult = await transcribeBariba(audioBase64);
-        if (sttResult?.transcription) {
-          sourceText = sttResult.transcription;
-          
-          // Translate to French
-          const transResult = await translateBaribaToFrench(sourceText);
-          translatedText = transResult?.translation || '';
-        }
-      } else {
-        // Try French STT via Edge Function first
-        const sttResult = await transcribeFrench(audioBase64);
-        if (sttResult?.transcription && sttResult.method !== 'fallback') {
-          sourceText = sttResult.transcription;
-          
-          // Translate to Bariba
-          const transResult = await translateFrenchToBariba(sourceText);
-          translatedText = transResult?.translation || '';
-        } else {
-          // Fallback message - Web Speech API should be used
-          toast({ 
-            title: "Utiliser le micro web", 
-            description: "Appuyez et parlez directement pour le français" 
-          });
-          setState('idle');
-          return;
-        }
+      // 2. Traduction avec retry automatique
+      const translationResult = await UnifiedAudioService.translate(
+        sourceText,
+        sourceLang,
+        targetLang
+      );
+      
+      if (translationResult.confidence === 0 && translationResult.error) {
+        setState('error');
+        setErrorInfo({
+          message: translationResult.error,
+          action: 'La traduction a échoué après plusieurs tentatives',
+        });
+        return;
       }
 
-      if (sourceText && translatedText) {
-        const result: TranslationResult = {
-          sourceText,
-          translatedText,
-          sourceLanguage: sourceLang,
-          targetLanguage: targetLang
-        };
-        setLastResult(result);
-        setDetectedLanguage(sourceLang);
-        
-        // Trigger language detection feedback
-        triggerFeedback('language_detected', { sound: true, haptic: true });
+      const translatedText = translationResult.translation;
 
-        // Speak the translation
-        setState('speaking');
-        if (targetLang === 'bariba') {
-          await speakBariba(translatedText);
-        } else {
-          speakFrench(translatedText);
-        }
-        
-        // Success feedback
-        triggerFeedback('success', { sound: false, haptic: true });
-        
-        setState('complete');
-      } else {
-        toast({ title: "Pas de parole détectée", variant: "destructive" });
-        setState('idle');
-      }
-    } catch (error: any) {
-      console.error('Translation error:', error);
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
-      setState('idle');
-    }
-  };
+      // Stocker le résultat
+      const result: TranslationResult = {
+        sourceText,
+        translatedText,
+        sourceLanguage: preferredSourceLang,
+        targetLanguage: preferredSourceLang === 'bariba' ? 'french' : 'bariba',
+      };
+      setLastResult(result);
 
-  const startTranslation = async () => {
-    setState('listening');
-    
-    try {
-      if (preferredSourceLang === 'bariba') {
-        await startRecording();
-        if (isAutoMode) {
-          await startDetection();
-        }
+      // 3. Synthèse vocale
+      setState('speaking');
+      
+      if (targetLang === 'ba') {
+        await speakBariba(translatedText);
       } else {
-        // For French, try recording + Edge Function, fallback to Web Speech API
-        if (frenchSTTAvailable) {
-          await startRecording();
-          if (isAutoMode) {
-            await startDetection();
-          }
-        } else {
-          startListening();
-        }
+        speakFrench(translatedText);
       }
       
-      // Haptic feedback on start
-      triggerFeedback('record', { sound: true, haptic: true });
+      // Succès
+      triggerFeedback('success', { sound: false, haptic: true });
+      setState('complete');
       
     } catch (error: any) {
-      toast({ title: "Erreur micro", description: error.message, variant: "destructive" });
-      setState('idle');
+      console.error('[VoiceOnlyTranslator] Error:', error);
+      setState('error');
+      setErrorInfo({
+        message: 'Une erreur inattendue s\'est produite',
+        action: error.message || 'Veuillez réessayer',
+      });
     }
-  };
+  }, [preferredSourceLang, speakBariba, speakFrench]);
 
-  const stopTranslation = async () => {
-    if (state === 'listening') {
-      await handleRecordingComplete();
-    }
-  };
+  const swapLanguages = useCallback(() => {
+    setPreferredSourceLang(prev => prev === 'bariba' ? 'french' : 'bariba');
+    triggerFeedback('click', { sound: true, haptic: true });
+  }, []);
 
-  const cancelTranslation = () => {
-    cancelRecording();
-    stopListening();
-    stopDetection();
-    setState('idle');
-  };
-
-  const resetTranslation = () => {
+  const resetTranslation = useCallback(() => {
     setLastResult(null);
     setDetectedLanguage('unknown');
+    setErrorInfo(null);
     setState('idle');
-  };
+  }, []);
 
-  const swapLanguages = () => {
-    setPreferredSourceLang(prev => prev === 'bariba' ? 'french' : 'bariba');
-    // Haptic feedback
-    triggerFeedback('click', { sound: true, haptic: true });
-  };
-
-  const replayTranslation = () => {
+  const replayTranslation = useCallback(() => {
     if (!lastResult) return;
     
     setState('speaking');
@@ -248,11 +138,15 @@ export function VoiceOnlyTranslator() {
       speakFrench(lastResult.translatedText);
       setState('complete');
     }
-  };
+  }, [lastResult, speakBariba, speakFrench]);
 
-  const isProcessing = state === 'processing' || isTranscribingBariba || isTranscribingFrench || isLoadingBariba;
+  const handleRetry = useCallback(() => {
+    setErrorInfo(null);
+    setState('idle');
+  }, []);
+
   const isSpeakingAny = isSpeakingBariba || isSpeakingFrench;
-  const isActive = state === 'listening' || isRecording || isListening;
+  const isProcessing = state === 'processing' || isLoadingBariba;
 
   // Color scheme based on language
   const getLanguageColors = (lang: DetectedLanguage) => {
@@ -263,13 +157,10 @@ export function VoiceOnlyTranslator() {
     }
   };
 
-  const sourceColors = getLanguageColors(preferredSourceLang);
-  const targetColors = getLanguageColors(preferredSourceLang === 'bariba' ? 'french' : 'bariba');
-
   return (
     <div className="flex flex-col items-center justify-center min-h-[500px] p-4 space-y-8">
       
-      {/* Language Direction Indicator - ICONIC */}
+      {/* Language Direction Indicator */}
       <div className="flex items-center gap-4">
         <motion.button
           whileTap={{ scale: 0.95 }}
@@ -306,110 +197,94 @@ export function VoiceOnlyTranslator() {
         </motion.button>
       </div>
 
-      {/* Main Microphone Button - GIANT CENTRAL */}
-      <div className="relative">
-        {/* Pulsing ring when active */}
-        <AnimatePresence>
-          {isActive && (
-            <motion.div
-              initial={{ scale: 1, opacity: 0.5 }}
-              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.2, 0.5] }}
-              exit={{ scale: 1, opacity: 0 }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-              className={cn(
-                "absolute inset-0 -m-6 rounded-full bg-gradient-to-br",
-                sourceColors.bg
-              )}
-            />
-          )}
-        </AnimatePresence>
-        
-        {/* VAD indicator ring */}
-        {isVADSpeaking && (
+      {/* Main Content Area */}
+      <AnimatePresence mode="wait">
+        {state === 'error' && errorInfo ? (
+          // Error state
           <motion.div
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ repeat: Infinity, duration: 0.3 }}
-            className="absolute inset-0 -m-2 rounded-full border-4 border-green-400"
-          />
-        )}
-
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={isActive ? stopTranslation : startTranslation}
-          disabled={isProcessing || isSpeakingAny}
-          className={cn(
-            "relative w-32 h-32 rounded-full flex items-center justify-center transition-all shadow-2xl",
-            isActive 
-              ? `bg-gradient-to-br ${sourceColors.bg} ring-4 ${sourceColors.ring}` 
-              : isProcessing 
-                ? 'bg-muted animate-pulse'
-                : 'bg-gradient-to-br from-primary to-primary/80 hover:shadow-primary/30'
-          )}
-        >
-          {isProcessing ? (
-            <Loader2 className="h-16 w-16 text-white animate-spin" />
-          ) : isSpeakingAny ? (
-            <Volume2 className="h-16 w-16 text-white animate-pulse" />
-          ) : isActive ? (
-            <MicOff className="h-16 w-16 text-white" />
-          ) : (
-            <Mic className="h-16 w-16 text-white" />
-          )}
-        </motion.button>
-      </div>
-
-      {/* Status Text - Minimal with Language Detection Indicator */}
-      <div className="text-center h-12">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={state + detectedLanguage}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex flex-col items-center gap-1"
-          >
-            <p className="text-muted-foreground text-lg">
-              {state === 'idle' && '🎤'}
-              {state === 'listening' && (isVADSpeaking ? '🗣️ ...' : '👂 ...')}
-              {state === 'processing' && '⏳ ...'}
-              {state === 'speaking' && '🔊 ...'}
-              {state === 'complete' && '✅'}
-            </p>
-            
-            {/* Language Detection Indicator - Visual Badge */}
-            {(state === 'processing' || state === 'speaking' || state === 'complete') && detectedLanguage !== 'unknown' && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium",
-                  detectedLanguage === 'bariba' 
-                    ? 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border border-orange-200' 
-                    : 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200'
-                )}
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                <span>{detectedLanguage === 'bariba' ? '🇧🇯 Bariba détecté' : '🇫🇷 Français détecté'}</span>
-              </motion.div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Translation Result - Visual Cards */}
-      <AnimatePresence>
-        {lastResult && state === 'complete' && (
-          <motion.div
+            key="error"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="w-full max-w-md space-y-3"
+            className="flex flex-col items-center gap-4 p-6 bg-destructive/10 rounded-2xl border border-destructive/20"
           >
-            {/* Source */}
+            <AlertCircle className="h-16 w-16 text-destructive" />
+            <div className="text-center">
+              <p className="font-medium text-destructive">{errorInfo.message}</p>
+              <p className="text-sm text-muted-foreground mt-1">{errorInfo.action}</p>
+            </div>
+            <Button onClick={handleRetry} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Réessayer
+            </Button>
+          </motion.div>
+        ) : state === 'processing' ? (
+          // Processing state
+          <motion.div
+            key="processing"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="flex flex-col items-center gap-4"
+          >
+            <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center">
+              <Loader2 className="h-16 w-16 animate-spin text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground">Traitement en cours...</p>
+          </motion.div>
+        ) : state === 'speaking' ? (
+          // Speaking state
+          <motion.div
+            key="speaking"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="flex flex-col items-center gap-4"
+          >
+            <motion.div 
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ repeat: Infinity, duration: 0.8 }}
+              className={cn(
+                "w-32 h-32 rounded-full flex items-center justify-center bg-gradient-to-br",
+                getLanguageColors(lastResult?.targetLanguage || 'unknown').bg
+              )}
+            >
+              <Volume2 className="h-16 w-16 text-white" />
+            </motion.div>
+            <p className="text-muted-foreground">Lecture en cours...</p>
+          </motion.div>
+        ) : state === 'complete' && lastResult ? (
+          // Complete state with results
+          <motion.div
+            key="complete"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="w-full max-w-md space-y-4"
+          >
+            {/* Language Detection Badge */}
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="flex justify-center"
+            >
+              <div className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
+                detectedLanguage === 'bariba' 
+                  ? 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border border-orange-200' 
+                  : 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200'
+              )}>
+                <CheckCircle2 className="h-4 w-4" />
+                <span>{detectedLanguage === 'bariba' ? '🇧🇯 Bariba détecté' : '🇫🇷 Français détecté'}</span>
+              </div>
+            </motion.div>
+
+            {/* Source Text */}
             <div className={cn(
               "p-4 rounded-2xl border-2",
-              lastResult.sourceLanguage === 'bariba' ? 'border-orange-400/30 bg-orange-50 dark:bg-orange-950/20' : 'border-blue-400/30 bg-blue-50 dark:bg-blue-950/20'
+              lastResult.sourceLanguage === 'bariba' 
+                ? 'border-orange-400/30 bg-orange-50 dark:bg-orange-950/20' 
+                : 'border-blue-400/30 bg-blue-50 dark:bg-blue-950/20'
             )}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-2xl">{lastResult.sourceLanguage === 'bariba' ? '🇧🇯' : '🇫🇷'}</span>
@@ -422,10 +297,12 @@ export function VoiceOnlyTranslator() {
               </p>
             </div>
 
-            {/* Target */}
+            {/* Translated Text */}
             <div className={cn(
               "p-4 rounded-2xl border-2",
-              lastResult.targetLanguage === 'bariba' ? 'border-orange-400/50 bg-orange-100 dark:bg-orange-950/40' : 'border-blue-400/50 bg-blue-100 dark:bg-blue-950/40'
+              lastResult.targetLanguage === 'bariba' 
+                ? 'border-orange-400/50 bg-orange-100 dark:bg-orange-950/40' 
+                : 'border-blue-400/50 bg-blue-100 dark:bg-blue-950/40'
             )}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-2xl">{lastResult.targetLanguage === 'bariba' ? '🇧🇯' : '🇫🇷'}</span>
@@ -447,7 +324,7 @@ export function VoiceOnlyTranslator() {
               </p>
             </div>
 
-            {/* Action Buttons - ICONIC */}
+            {/* Action Buttons */}
             <div className="flex justify-center gap-4 pt-4">
               <motion.button
                 whileTap={{ scale: 0.9 }}
@@ -461,27 +338,36 @@ export function VoiceOnlyTranslator() {
                 whileTap={{ scale: 0.9 }}
                 onClick={replayTranslation}
                 disabled={isSpeakingAny}
-                className="w-14 h-14 rounded-full bg-primary hover:bg-primary/80 flex items-center justify-center text-white"
+                className={cn(
+                  "w-14 h-14 rounded-full flex items-center justify-center text-white bg-gradient-to-br",
+                  getLanguageColors(lastResult.targetLanguage).bg
+                )}
               >
                 <Volume2 className="h-6 w-6" />
               </motion.button>
             </div>
           </motion.div>
+        ) : (
+          // Idle state - show recorder
+          <motion.div
+            key="idle"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+          >
+            <UnifiedVoiceRecorder
+              language={preferredSourceLang}
+              onComplete={handleRecordingComplete}
+              onCancel={() => setState('idle')}
+              showPreview={false}
+              maxDuration={30}
+              size="lg"
+            />
+          </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Cancel Button - When active */}
-      {isActive && (
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={cancelTranslation}
-          className="w-12 h-12 rounded-full bg-destructive/20 hover:bg-destructive/30 flex items-center justify-center text-destructive"
-        >
-          <X className="h-5 w-5" />
-        </motion.button>
-      )}
     </div>
   );
 }
+
+export default VoiceOnlyTranslator;
