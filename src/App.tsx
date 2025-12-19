@@ -21,6 +21,7 @@ import TamTamSOS from "./pages/tamtam/TamTamSOS";
 import TamTamProfile from "./pages/tamtam/TamTamProfile";
 import TamTamPhoneAuth from "./pages/tamtam/TamTamPhoneAuth";
 import TamTamPublicProfile from "./pages/tamtam/TamTamPublicProfile";
+import TamTamDictionary from "./pages/tamtam/TamTamDictionary";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -44,7 +45,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/gamification" element={<Gamification />} />
             
-            {/* TAM-TAM Platform Routes - 7 optimized screens */}
+            {/* TAM-TAM Platform Routes - 8 optimized screens */}
             <Route path="/tamtam" element={<TamTamApp />}>
               <Route index element={<TamTamHome />} />
               <Route path="auth" element={<TamTamPhoneAuth />} />
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="market" element={<TamTamMarket />} />
               <Route path="sos" element={<TamTamSOS />} />
               <Route path="profile" element={<TamTamProfile />} />
+              <Route path="dictionary" element={<TamTamDictionary />} />
               <Route path="user/:userId" element={<TamTamPublicProfile />} />
             </Route>
 

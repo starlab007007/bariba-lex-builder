@@ -17,7 +17,7 @@ const services = [
   { icon: '🛒', labelKey: 'market', path: '/tamtam/market', color: 'bg-orange-500' },
   { icon: '🆘', labelKey: 'sos', path: '/tamtam/sos', color: 'bg-red-500' },
   { icon: '👤', labelKey: 'profile', path: '/tamtam/profile', color: 'bg-gray-500' },
-  { icon: '❓', labelKey: 'help', path: '/tamtam/home', color: 'bg-purple-500' },
+  { icon: '📖', labelKey: 'dictionary', path: '/tamtam/dictionary', color: 'bg-purple-500' },
 ];
 
 export default function TamTamHome() {

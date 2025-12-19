@@ -18,6 +18,7 @@ const translations: TranslationDict = {
   sos: { fr: "SOS", ba: "Kpákpá" },
   help: { fr: "Aide", ba: "Ìràn" },
   ia: { fr: "IA", ba: "ÌA" },
+  dictionary: { fr: "Dictionnaire", ba: "Gbɛ́-sɔ́ɔ̀rù" },
   
   // Actions principales
   share: { fr: "Partager", ba: "Pín" },
@@ -200,6 +201,23 @@ const translations: TranslationDict = {
   screenMarket: { fr: "Page marché. Boutique et emplois.", ba: "Ojú ewé ọjà. Ṣọ́ọ̀pù àti iṣẹ́." },
   screenSOS: { fr: "Page urgence. Appuyez sur le bouton rouge pour alerter.", ba: "Ojú ewé kpákpá. Tẹ̀ bọ́tìn pupa láti kìlọ̀." },
   screenProfile: { fr: "Votre profil. Gérez vos paramètres.", ba: "Mɛ̀ rẹ. Ṣàkóso ètò rẹ." },
+  
+  // Dictionnaire
+  screenDictionary: { fr: "Dictionnaire vocal. Parlez ou tapez un mot pour obtenir sa traduction.", ba: "Gbɛ́-sɔ́ɔ̀rù ohùn. Sọ tàbí kọ ɔ̀rɔ̀ láti rí ìtúmọ̀." },
+  speakWord: { fr: "Dites un mot", ba: "Sọ ɔ̀rɔ̀ kan" },
+  typeWord: { fr: "Tapez un mot", ba: "Kọ ɔ̀rɔ̀" },
+  suggestions: { fr: "Suggestions", ba: "Àbá" },
+  phonetic: { fr: "Phonétique", ba: "Ìró" },
+  definition: { fr: "Définition", ba: "Ìtúmọ̀" },
+  example: { fr: "Exemple", ba: "Àpẹẹrẹ" },
+  listenBariba: { fr: "Écouter en bariba", ba: "Gbọ́ ní Bàátɔ̀nú" },
+  listenFrench: { fr: "Écouter en français", ba: "Gbọ́ ní Fàránsé" },
+  keyboardMode: { fr: "Mode clavier", ba: "Ètò ìkọ̀wé" },
+  voiceMode: { fr: "Mode vocal", ba: "Ètò ohùn" },
+  wordFound: { fr: "Mot trouvé", ba: "Ɔ̀rɔ̀ rí" },
+  noWordFound: { fr: "Mot non trouvé", ba: "Kò rí ɔ̀rɔ̀" },
+  recentSearches: { fr: "Recherches récentes", ba: "Àwọn ìwádìí tó ṣẹ̀ṣẹ̀" },
+  listenAll: { fr: "Écouter tout", ba: "Gbọ́ gbogbo" },
 };
 
 interface TamTamLanguageContextType {
