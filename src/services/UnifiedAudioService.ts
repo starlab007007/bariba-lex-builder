@@ -261,17 +261,34 @@ class UnifiedAudioServiceClass {
   }
 
   private async speakWithWebAPI(text: string, lang: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!('speechSynthesis' in window)) {
-        reject(new Error('Web Speech API not available'));
+        console.warn('[TTS] Web Speech API not available');
+        resolve(); // Resolve instead of reject for Safari compatibility
         return;
       }
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
       utterance.rate = 0.9;
-      utterance.onend = () => resolve();
-      utterance.onerror = (e) => reject(e);
+      
+      // Safety timeout for Safari (10 seconds max)
+      const timeout = setTimeout(() => {
+        console.warn('[TTS] Safari timeout - cancelling speech');
+        window.speechSynthesis.cancel();
+        resolve(); // Resolve even on timeout
+      }, 10000);
+      
+      utterance.onend = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+      
+      utterance.onerror = (e) => {
+        clearTimeout(timeout);
+        console.warn('[TTS] Safari speech error:', e);
+        resolve(); // Resolve instead of reject for Safari compatibility
+      };
 
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utterance);

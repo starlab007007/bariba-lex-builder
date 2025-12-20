@@ -78,11 +78,14 @@ export function TamTamNavigation() {
     }
   };
 
-  const handleNavPress = async (path: string, labelKey: string) => {
+  const handleNavPress = (path: string, labelKey: string) => {
     triggerFeedback('click');
-    // Speak the screen name via TTS before navigating
-    await speakCurrentLang(t(labelKey));
+    // Navigate immediately, TTS in background (non-blocking for Safari)
     navigate(path);
+    // Fire and forget - don't await
+    speakCurrentLang(t(labelKey)).catch(e => {
+      console.warn('[TamTamNavigation] TTS failed silently:', e);
+    });
   };
 
   // Speak label for accessibility - only for the clicked item
