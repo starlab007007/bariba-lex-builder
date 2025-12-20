@@ -93,12 +93,14 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     }
   };
 
-  const handleRecordingComplete = async (base64: string, duration?: number) => {
-    console.log('[TamTamCreatePost] Recording complete, duration:', duration);
+  const handleRecordingComplete = async (base64: string, duration?: number, liveTranscript?: string) => {
+    console.log('[TamTamCreatePost] Recording complete, duration:', duration, 'liveTranscript:', liveTranscript);
     setAudioBase64(base64);
     setAudioDuration(duration || 0);
     setTranscriptionFailed(false);
     triggerFeedback('success');
+    
+    toast({ title: "🎤 Traitement audio...", description: "Transcription en cours" });
     
     // Transcribe and translate using unified service
     const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
@@ -117,6 +119,15 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
         description: result.translation_method !== 'none' 
           ? `Audio transcrit et traduit (${result.translation_method})` 
           : "Votre audio a été transcrit"
+      });
+    } else if (liveTranscript && liveTranscript.trim()) {
+      // Fallback: utiliser le liveTranscript du Web Speech API (français)
+      console.log('[TamTamCreatePost] Using liveTranscript fallback:', liveTranscript);
+      setTranscript(liveTranscript);
+      setTranscriptionFailed(false);
+      toast({
+        title: "✅ Transcription (Web Speech)",
+        description: "Audio transcrit via le navigateur"
       });
     } else {
       setTranscriptionFailed(true);
