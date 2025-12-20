@@ -24,9 +24,10 @@ export default function TamTamHome() {
   const navigate = useNavigate();
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
+  const [speakingItemId, setSpeakingItemId] = useState<string | null>(null);
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
-  const { speakCurrentLang, isSpeaking, health } = useUnifiedAudio();
+  const { speakCurrentLang, stop, health } = useUnifiedAudio();
   const { speakLabel, handleLongPress } = useVoiceMenu();
   const { toast } = useToast();
 
@@ -96,16 +97,37 @@ export default function TamTamHome() {
     }
   };
 
-  const handleServiceClick = async (path: string, labelKey: string) => {
+  const handleServiceClick = (path: string, labelKey: string) => {
     triggerFeedback('click');
-    await speakCurrentLang(t(labelKey));
+    // Navigate immediately, TTS in background (non-blocking for Safari)
     navigate(path);
+    // Fire and forget - don't await
+    speakCurrentLang(t(labelKey)).catch(e => {
+      console.warn('[TamTamHome] TTS failed silently:', e);
+    });
   };
 
   const handleSpeakLabel = async (labelKey: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
+    
+    // If already speaking this item, stop it
+    if (speakingItemId === labelKey) {
+      stop();
+      setSpeakingItemId(null);
+      return;
+    }
+    
+    // Stop any previous speech and start new one
+    stop();
+    setSpeakingItemId(labelKey);
     triggerFeedback('click');
-    await speakLabel(labelKey);
+    
+    try {
+      await speakLabel(labelKey);
+    } finally {
+      setSpeakingItemId(null);
+    }
   };
 
   return (
@@ -204,12 +226,12 @@ export default function TamTamHome() {
                 {t(service.labelKey)}
               </span>
 
-              {/* Audio button */}
+              {/* Audio button - only shows spinner for THIS item */}
               <button
                 onClick={(e) => handleSpeakLabel(service.labelKey, e)}
                 className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 flex items-center justify-center"
               >
-                {isSpeaking ? (
+                {speakingItemId === service.labelKey ? (
                   <Loader2 className="w-3 h-3 text-tamtam-primary animate-spin" />
                 ) : (
                   <Volume2 className="w-3 h-3 text-tamtam-primary" />
