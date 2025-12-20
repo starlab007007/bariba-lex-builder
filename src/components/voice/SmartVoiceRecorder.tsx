@@ -73,7 +73,11 @@ export const SmartVoiceRecorder = ({
   // Mettre à jour la transcription live pour le français
   useEffect(() => {
     if (language === 'french') {
-      liveTranscriptRef.current = frenchTranscript + frenchInterim;
+      const fullTranscript = (frenchTranscript || '') + (frenchInterim || '');
+      if (fullTranscript) {
+        liveTranscriptRef.current = fullTranscript;
+        console.log('[SmartVoiceRecorder] French transcript updated:', fullTranscript);
+      }
     }
   }, [language, frenchTranscript, frenchInterim]);
 
@@ -81,12 +85,17 @@ export const SmartVoiceRecorder = ({
   useEffect(() => {
     if (language === 'french' && isFrenchSTTSupported) {
       if (isRecording && !isFrenchSTTListening) {
+        console.log('[SmartVoiceRecorder] Starting French STT for recording');
         startFrenchSTT();
       } else if (!isRecording && isFrenchSTTListening) {
+        console.log('[SmartVoiceRecorder] Stopping French STT');
         stopFrenchSTT();
       }
     }
   }, [language, isRecording, isFrenchSTTSupported, isFrenchSTTListening, startFrenchSTT, stopFrenchSTT]);
+
+  // Display live transcript during recording (French)
+  const displayTranscript = language === 'french' ? (frenchTranscript || '') + (frenchInterim || '') : '';
 
   // Auto mode: Start recording when speech is detected
   const handleAutoSpeechStart = useCallback(async () => {
@@ -397,6 +406,14 @@ export const SmartVoiceRecorder = ({
             <Send className="h-4 w-4 mr-1" />
             Envoyer
           </Button>
+        </div>
+      )}
+
+      {/* Live Transcript Display (French) */}
+      {language === 'french' && isRecording && displayTranscript && (
+        <div className="w-full max-w-xs bg-muted/50 rounded-lg p-3 text-center">
+          <p className="text-xs text-muted-foreground mb-1">Transcription live</p>
+          <p className="text-sm text-foreground">{displayTranscript}</p>
         </div>
       )}
 
