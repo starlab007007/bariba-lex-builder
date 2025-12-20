@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mic, MicOff, Square, Pause, Play, Loader2, Zap, Hand, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useVoiceDetection } from '@/hooks/useVoiceDetection';
+import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { cn } from '@/lib/utils';
 import { SoundWaveAnimation } from './SoundWaveAnimation';
 
 export type SpeakerType = 'Auto' | 'Enfant' | 'Femme' | 'Homme' | 'PersonneAgee';
 
 interface SmartVoiceRecorderProps {
-  onRecordingComplete: (audioBase64: string) => void;
+  onRecordingComplete: (audioBase64: string, duration?: number, liveTranscript?: string) => void;
   onRecordingStart?: () => void;
   language?: 'bariba' | 'french';
   showSpeakerType?: boolean;
@@ -34,6 +35,7 @@ export const SmartVoiceRecorder = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoMode, setAutoMode] = useState(true);
   const [isAutoListening, setIsAutoListening] = useState(false);
+  const liveTranscriptRef = useRef<string>('');
   
   const {
     isRecording,
@@ -46,6 +48,16 @@ export const SmartVoiceRecorder = ({
     resumeRecording,
     cancelRecording
   } = useAudioRecorder();
+  
+  // Web Speech API pour le français - transcription live
+  const {
+    startListening: startFrenchSTT,
+    stopListening: stopFrenchSTT,
+    transcript: frenchTranscript,
+    interimTranscript: frenchInterim,
+    isListening: isFrenchSTTListening,
+    isSupported: isFrenchSTTSupported
+  } = useFrenchSTT();
 
   const {
     isDetecting,
@@ -57,6 +69,24 @@ export const SmartVoiceRecorder = ({
     onSpeechStart,
     onSpeechEnd
   } = useVoiceDetection();
+
+  // Mettre à jour la transcription live pour le français
+  useEffect(() => {
+    if (language === 'french') {
+      liveTranscriptRef.current = frenchTranscript + frenchInterim;
+    }
+  }, [language, frenchTranscript, frenchInterim]);
+
+  // Démarrer le STT français lors de l'enregistrement
+  useEffect(() => {
+    if (language === 'french' && isFrenchSTTSupported) {
+      if (isRecording && !isFrenchSTTListening) {
+        startFrenchSTT();
+      } else if (!isRecording && isFrenchSTTListening) {
+        stopFrenchSTT();
+      }
+    }
+  }, [language, isRecording, isFrenchSTTSupported, isFrenchSTTListening, startFrenchSTT, stopFrenchSTT]);
 
   // Auto mode: Start recording when speech is detected
   const handleAutoSpeechStart = useCallback(async () => {
@@ -76,11 +106,12 @@ export const SmartVoiceRecorder = ({
       setIsProcessing(false);
       
       if (audioBase64) {
-        console.log('[SmartVoiceRecorder] Auto-sending audio');
-        onRecordingComplete(audioBase64);
+        console.log('[SmartVoiceRecorder] Auto-sending audio with live transcript:', liveTranscriptRef.current);
+        onRecordingComplete(audioBase64, duration, liveTranscriptRef.current);
+        liveTranscriptRef.current = ''; // Reset
       }
     }
-  }, [isRecording, isAutoListening, stopRecording, onRecordingComplete]);
+  }, [isRecording, isAutoListening, stopRecording, onRecordingComplete, duration]);
 
   // Register VAD callbacks
   useEffect(() => {
@@ -110,6 +141,7 @@ export const SmartVoiceRecorder = ({
 
   // Manual mode handlers
   const handleManualStart = async () => {
+    liveTranscriptRef.current = ''; // Reset
     await startRecording();
     onRecordingStart?.();
   };
@@ -120,7 +152,9 @@ export const SmartVoiceRecorder = ({
     setIsProcessing(false);
     
     if (audioBase64) {
-      onRecordingComplete(audioBase64);
+      console.log('[SmartVoiceRecorder] Manual stop with live transcript:', liveTranscriptRef.current);
+      onRecordingComplete(audioBase64, duration, liveTranscriptRef.current);
+      liveTranscriptRef.current = ''; // Reset
     }
   };
 
@@ -132,8 +166,9 @@ export const SmartVoiceRecorder = ({
       setIsProcessing(false);
       
       if (audioBase64) {
-        console.log('[SmartVoiceRecorder] Manual send in auto mode');
-        onRecordingComplete(audioBase64);
+        console.log('[SmartVoiceRecorder] Manual send in auto mode with transcript:', liveTranscriptRef.current);
+        onRecordingComplete(audioBase64, duration, liveTranscriptRef.current);
+        liveTranscriptRef.current = ''; // Reset
       }
     }
   };
@@ -141,6 +176,7 @@ export const SmartVoiceRecorder = ({
   // Auto mode: Cancel recording AND stop listening
   const handleAutoCancel = () => {
     console.log('[SmartVoiceRecorder] Cancel in auto mode');
+    liveTranscriptRef.current = ''; // Reset
     if (isRecording) {
       cancelRecording();
     }

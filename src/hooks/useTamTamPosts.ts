@@ -160,6 +160,7 @@ export const useTamTamPosts = () => {
     console.log('[useTamTamPosts.createPost] Post data:', JSON.stringify(postData, null, 2));
     
     try {
+      // Vérification préalable de l'authentification
       const { data: userData, error: authError } = await supabase.auth.getUser();
       console.log('[useTamTamPosts.createPost] Auth check:', { 
         hasUser: !!userData?.user, 
@@ -168,9 +169,13 @@ export const useTamTamPosts = () => {
       });
       
       if (!userData?.user) {
-        const errorMsg = authError?.message || 'Non authentifié - veuillez vous connecter';
-        console.error('[useTamTamPosts.createPost] Auth failed:', errorMsg);
-        throw new Error(errorMsg);
+        console.error('[useTamTamPosts.createPost] Auth failed - user not authenticated');
+        toast({ 
+          title: "🔐 Connexion requise", 
+          description: "Connectez-vous pour publier", 
+          variant: "destructive" 
+        });
+        throw new Error('Veuillez vous connecter pour publier');
       }
 
       const insertData = {

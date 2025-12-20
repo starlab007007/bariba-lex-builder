@@ -160,9 +160,18 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
     receiverId: string,
     audioBase64: string,
     duration: number,
-    sourceLang: 'bariba' | 'french' = 'bariba'
+    sourceLang: 'bariba' | 'french' = 'bariba',
+    liveTranscript?: string // Transcription live du Web Speech API
   ): Promise<{ success: boolean; message?: VoiceMessage; error?: string }> => {
-    if (!user) return { success: false, error: 'Non authentifié' };
+    // Vérification préalable de l'authentification
+    if (!user) {
+      toast({
+        title: "🔐 Connexion requise",
+        description: "Connectez-vous pour envoyer un message",
+        variant: "destructive"
+      });
+      return { success: false, error: 'Non authentifié' };
+    }
 
     setIsSending(true);
     const startTime = Date.now();
@@ -172,11 +181,16 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
       const audioBlob = base64ToBlob(audioBase64, 'audio/webm');
       const fileName = `msg_${user.id}_${Date.now()}.webm`;
 
+      toast({ title: "📤 Upload audio...", description: "Envoi en cours" });
+
       const { error: uploadError } = await supabase.storage
         .from('tamtam-audio')
         .upload(fileName, audioBlob, { contentType: 'audio/webm' });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('[usePrivateVoiceMessages] Upload error:', uploadError);
+        throw new Error(`Erreur upload: ${uploadError.message}`);
+      }
 
       const { data: urlData } = supabase.storage
         .from('tamtam-audio')
@@ -207,11 +221,15 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
           }
         }
       } else {
-        // For French, we'd use French STT and translate to Bariba
-        transcript_fr = ''; // Would be from French STT
-        const transResult = await translateFrenchToBariba(transcript_fr);
-        if (transResult?.translation) {
-          transcript_ba = transResult.translation;
+        // Pour le français, utiliser le liveTranscript du Web Speech API comme fallback
+        transcript_fr = liveTranscript || '';
+        
+        if (transcript_fr) {
+          // Traduire vers le Bariba
+          const transResult = await translateFrenchToBariba(transcript_fr);
+          if (transResult?.translation) {
+            transcript_ba = transResult.translation;
+          }
         }
       }
 

@@ -3,17 +3,19 @@ import { Mic, Square, Send, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useVoiceDetection } from '@/hooks/useVoiceDetection';
+import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SimpleVoiceRecorderProps {
-  onRecordingComplete: (audioBase64: string, duration: number) => void;
+  onRecordingComplete: (audioBase64: string, duration: number, liveTranscript?: string) => void;
   onRecordingStart?: () => void;
   onCancel?: () => void;
   disabled?: boolean;
   className?: string;
   autoMode?: boolean;
+  language?: 'bariba' | 'french';
 }
 
 export const SimpleVoiceRecorder = ({
@@ -22,11 +24,13 @@ export const SimpleVoiceRecorder = ({
   onCancel,
   disabled = false,
   className,
-  autoMode = true
+  autoMode = true,
+  language = 'french'
 }: SimpleVoiceRecorderProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const liveTranscriptRef = useRef<string>('');
   
   const {
     isRecording,
@@ -44,6 +48,34 @@ export const SimpleVoiceRecorder = ({
     onSpeechStart,
     onSpeechEnd
   } = useVoiceDetection();
+  
+  // Web Speech API pour le français
+  const {
+    startListening: startFrenchSTT,
+    stopListening: stopFrenchSTT,
+    transcript: frenchTranscript,
+    interimTranscript: frenchInterim,
+    isListening: isFrenchSTTListening,
+    isSupported: isFrenchSTTSupported
+  } = useFrenchSTT();
+  
+  // Mettre à jour la transcription live pour le français
+  useEffect(() => {
+    if (language === 'french') {
+      liveTranscriptRef.current = frenchTranscript + frenchInterim;
+    }
+  }, [language, frenchTranscript, frenchInterim]);
+  
+  // Démarrer le STT français lors de l'enregistrement
+  useEffect(() => {
+    if (language === 'french' && isFrenchSTTSupported) {
+      if (isRecording && !isFrenchSTTListening) {
+        startFrenchSTT();
+      } else if (!isRecording && isFrenchSTTListening) {
+        stopFrenchSTT();
+      }
+    }
+  }, [language, isRecording, isFrenchSTTSupported, isFrenchSTTListening, startFrenchSTT, stopFrenchSTT]);
 
   // Feedback sonore au démarrage de l'enregistrement
   useEffect(() => {
@@ -76,7 +108,8 @@ export const SimpleVoiceRecorder = ({
         
         if (audioBase64) {
           triggerFeedback('send', { sound: true, haptic: true, volume: 0.4 });
-          onRecordingComplete(audioBase64, duration);
+          onRecordingComplete(audioBase64, duration, liveTranscriptRef.current);
+          liveTranscriptRef.current = ''; // Reset
           stopDetection();
           setIsListening(false);
         }
@@ -93,6 +126,7 @@ export const SimpleVoiceRecorder = ({
   // Start listening
   const startListening = async () => {
     try {
+      liveTranscriptRef.current = ''; // Reset
       triggerFeedback('click', { sound: true, haptic: true });
       if (autoMode) {
         await startDetection();
@@ -119,7 +153,8 @@ export const SimpleVoiceRecorder = ({
     
     if (audioBase64) {
       triggerFeedback('send', { sound: true, haptic: true, volume: 0.4 });
-      onRecordingComplete(audioBase64, duration);
+      onRecordingComplete(audioBase64, duration, liveTranscriptRef.current);
+      liveTranscriptRef.current = ''; // Reset
     }
     
     if (isListening) {
