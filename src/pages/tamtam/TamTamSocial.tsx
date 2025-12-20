@@ -247,6 +247,7 @@ export default function TamTamSocial() {
               <TamTamStories 
                 stories={stories} 
                 onCreateStory={() => setShowStoryCreator(true)}
+                onCreatePost={() => setShowCreatePost(true)}
               />
             </div>
 

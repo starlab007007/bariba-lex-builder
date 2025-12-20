@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Play, Pause, X, Volume2, Type } from 'lucide-react';
+import { Plus, Play, Pause, X, Volume2, Type, Mic } from 'lucide-react';
+import { useVoiceMenu } from '@/hooks/useVoiceMenu';
+import { SpeakerButton } from '@/components/tamtam/VoiceMenuItem';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TamTamStory } from '@/hooks/useTamTamPosts';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
@@ -14,10 +16,12 @@ import { tamtamFeedback } from '@/utils/tamtamFeedback';
 interface TamTamStoriesProps {
   stories: TamTamStory[];
   onCreateStory: () => void;
+  onCreatePost?: () => void;
 }
 
-export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateStory }) => {
+export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateStory, onCreatePost }) => {
   const { currentLang, t } = useTamTamLanguage();
+  const { getLabel } = useVoiceMenu();
   const [activeStory, setActiveStory] = useState<TamTamStory | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -114,19 +118,20 @@ export const TamTamStories: React.FC<TamTamStoriesProps> = ({ stories, onCreateS
     <>
       {/* Stories Bar */}
       <div className="flex gap-3 px-4 py-3 overflow-x-auto scrollbar-hide">
-        {/* Create Story Button */}
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={onCreateStory}
-          className="flex flex-col items-center gap-1 min-w-[70px]"
-        >
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-emerald-100 flex items-center justify-center border-2 border-dashed border-blue-300">
-            <Plus className="w-6 h-6 text-blue-500" />
+        {/* Create Post Button - Nouvelle publication */}
+        <div className="flex flex-col items-center gap-1 min-w-[80px]">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={onCreatePost || onCreateStory}
+            className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center border-2 border-blue-300 shadow-sm"
+          >
+            <Plus className="w-6 h-6 text-blue-600" />
+          </motion.button>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-600 font-medium text-center">{getLabel('newPost')}</span>
+            <SpeakerButton labelKey="newPost" size="sm" />
           </div>
-          <span className="text-xs text-gray-500 font-medium">{t('newPost')}</span>
-        </motion.button>
-
-        {/* User Stories with Circular Progress */}
+        </div>
         {Object.entries(storiesByUser).map(([userId, userStories]) => {
           const firstStory = userStories[0];
           return (
