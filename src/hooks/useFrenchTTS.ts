@@ -63,7 +63,10 @@ export const useFrenchTTS = (): UseFrenchTTSReturn => {
   }, [selectedVoice]);
 
   const speak = useCallback((text: string, options?: FrenchTTSOptions) => {
-    if (!isSupported || !text.trim()) return;
+    if (!isSupported || !text.trim()) {
+      console.warn('[FrenchTTS] Not supported or empty text');
+      return;
+    }
 
     // Cancel any ongoing speech
     speechSynthesis.cancel();
@@ -79,31 +82,47 @@ export const useFrenchTTS = (): UseFrenchTTSReturn => {
     }
 
     utterance.onstart = () => {
+      console.log('[FrenchTTS] Started speaking');
       setIsSpeaking(true);
       setIsPaused(false);
     };
 
     utterance.onend = () => {
+      console.log('[FrenchTTS] Finished speaking');
       setIsSpeaking(false);
       setIsPaused(false);
     };
 
     utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event);
+      console.error('[FrenchTTS] Error:', event.error);
       setIsSpeaking(false);
       setIsPaused(false);
       
-      if (event.error !== 'canceled') {
-        toast({
-          title: "Erreur de synthèse vocale",
-          description: "Impossible de lire le texte",
-          variant: "destructive"
-        });
+      // Only show toast for real errors, not canceled speech
+      if (event.error !== 'canceled' && event.error !== 'interrupted') {
+        // Safari sometimes throws errors that can be ignored
+        if (event.error === 'synthesis-failed' || event.error === 'not-allowed') {
+          toast({
+            title: "Lecture vocale",
+            description: "Impossible de lire le texte. Essayez de réactiver le son.",
+            variant: "destructive"
+          });
+        }
       }
     };
 
     utteranceRef.current = utterance;
-    speechSynthesis.speak(utterance);
+    
+    // Safari workaround: use setTimeout to allow speech synthesis to initialize
+    setTimeout(() => {
+      try {
+        speechSynthesis.speak(utterance);
+        console.log('[FrenchTTS] Speech request sent');
+      } catch (e) {
+        console.error('[FrenchTTS] Failed to speak:', e);
+        setIsSpeaking(false);
+      }
+    }, 50);
 
   }, [isSupported, selectedVoice, toast]);
 

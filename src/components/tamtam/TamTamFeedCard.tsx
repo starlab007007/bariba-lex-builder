@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, Globe, Play, Pause, Image, Video, Mic } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, Globe, Play, Pause, Image, Video, Mic, Loader2, StopCircle } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { TamTamPost } from '@/hooks/useTamTamPosts';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useFrenchTTS } from '@/hooks/useFrenchTTS';
 
 interface TamTamFeedCardProps {
   post: TamTamPost;
@@ -36,6 +37,9 @@ export const TamTamFeedCard: React.FC<TamTamFeedCardProps> = ({
   const [isTranslating, setIsTranslating] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  
+  // TTS for reading transcript
+  const { speak: speakFrench, stop: stopFrench, isSpeaking: isFrenchSpeaking, isSupported: isTTSSupported } = useFrenchTTS();
 
   const transcript = currentLang === 'fr' ? post.transcript_fr : post.transcript_ba;
   const altTranscript = currentLang === 'fr' ? post.transcript_ba : post.transcript_fr;
@@ -64,6 +68,26 @@ export const TamTamFeedCard: React.FC<TamTamFeedCardProps> = ({
       setIsTranslating(false);
     }
   };
+
+  // Handle reading transcript aloud (TTS)
+  const handleReadTranscript = useCallback(() => {
+    const textToRead = transcript || altTranscript;
+    if (!textToRead) return;
+
+    if (isFrenchSpeaking) {
+      stopFrench();
+    } else {
+      // Only French TTS is supported currently
+      if (currentLang === 'fr' && isTTSSupported) {
+        speakFrench(textToRead);
+      } else if (post.transcript_fr && isTTSSupported) {
+        // Try to read the French version if available
+        speakFrench(post.transcript_fr);
+      } else {
+        console.warn('[TamTamFeedCard] TTS not supported or no French transcript');
+      }
+    }
+  }, [transcript, altTranscript, isFrenchSpeaking, stopFrench, speakFrench, currentLang, isTTSSupported, post.transcript_fr]);
 
   const handleReaction = (type: string) => {
     // Haptic feedback
@@ -177,16 +201,40 @@ export const TamTamFeedCard: React.FC<TamTamFeedCardProps> = ({
         />
       </div>
 
-      {/* Transcript Toggle */}
+      {/* Transcript Toggle + Read Button */}
       {(transcript || altTranscript) && (
         <div className="px-4 pb-2">
-          <button
-            onClick={() => setShowTranscript(!showTranscript)}
-            className="flex items-center gap-2 text-sm text-blue-500 font-medium"
-          >
-            {showTranscript ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            {showTranscript ? t('hideTranscription') : t('showTranscription')}
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowTranscript(!showTranscript)}
+              className="flex items-center gap-2 text-sm text-blue-500 font-medium"
+            >
+              {showTranscript ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {showTranscript ? t('hideTranscription') : t('showTranscription')}
+            </button>
+            
+            {/* Read aloud button (TTS) */}
+            {isTTSSupported && (transcript || post.transcript_fr) && (
+              <button
+                onClick={handleReadTranscript}
+                className={`flex items-center gap-2 text-sm font-medium ${
+                  isFrenchSpeaking ? 'text-red-500' : 'text-emerald-500'
+                }`}
+              >
+                {isFrenchSpeaking ? (
+                  <>
+                    <StopCircle className="w-4 h-4" />
+                    Arrêter
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-4 h-4" />
+                    Lire
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           
           <AnimatePresence>
             {showTranscript && (

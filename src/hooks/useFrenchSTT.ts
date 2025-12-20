@@ -94,24 +94,42 @@ export const useFrenchSTT = (): UseFrenchSTTReturn => {
   const startListening = useCallback(() => {
     if (!isSupported) {
       setError('La reconnaissance vocale n\'est pas supportée par ce navigateur');
-      toast({
-        title: "Non supporté",
-        description: "La reconnaissance vocale n'est pas supportée par ce navigateur",
-        variant: "destructive"
-      });
+      console.warn('[FrenchSTT] Web Speech API not supported');
       return;
     }
 
+    // Reset state
     setTranscript('');
     setInterimTranscript('');
     setError(null);
 
     try {
-      recognitionRef.current?.start();
-    } catch (err) {
-      console.error('Error starting recognition:', err);
+      // Stop any existing recognition first
+      try {
+        recognitionRef.current?.stop();
+      } catch (e) {
+        // Ignore errors from stopping non-running recognition
+      }
+      
+      // Start fresh
+      setTimeout(() => {
+        try {
+          recognitionRef.current?.start();
+          console.log('[FrenchSTT] Started listening');
+        } catch (err: any) {
+          if (err.name === 'InvalidStateError') {
+            console.warn('[FrenchSTT] Already listening');
+          } else {
+            console.error('[FrenchSTT] Start error:', err);
+            setError(err.message);
+          }
+        }
+      }, 100);
+    } catch (err: any) {
+      console.error('[FrenchSTT] Error starting recognition:', err);
+      setError(err.message);
     }
-  }, [isSupported, toast]);
+  }, [isSupported]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
