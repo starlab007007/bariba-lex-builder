@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Image, Video, Mic, BarChart3, Check, Smile, ImageOff, Volume2, Languages, Loader2 } from 'lucide-react';
+import { X, Image, Video, Mic, BarChart3, Check, Smile, ImageOff, Volume2, Languages, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
@@ -30,6 +30,7 @@ interface TamTamCreatePostProps {
 // Extended file formats
 const PHOTO_FORMATS = "image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/bmp,image/svg+xml";
 const VIDEO_FORMATS = "video/mp4,video/quicktime,video/x-m4v,video/webm,video/x-msvideo,video/3gpp,video/mpeg,video/ogg";
+const MAX_PHOTOS = 3;
 
 const mediaTypes: { type: string; icon: typeof Mic; label: string; labelKey: keyof VoiceMenuLabels; color: string }[] = [
   { type: 'audio', icon: Mic, label: 'audio', labelKey: 'audio', color: 'from-blue-500 to-blue-600' },
@@ -48,29 +49,37 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
 }) => {
   const { t, currentLang } = useTamTamLanguage();
   const { toast } = useToast();
-  const { transcribeWithTranslation, health, isTranscribing } = useUnifiedAudio();
+  const { transcribeWithTranslation, health, isTranscribing, startListening, stopListening, liveTranscript, isListening, interimTranscript } = useUnifiedAudio();
   const { speakLabel, getLabel } = useVoiceMenu();
   
   const [selectedType, setSelectedType] = useState<string>('audio');
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number>(0);
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  // Support multiple photos (up to 3)
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
   const [transcript, setTranscript] = useState<string>('');
   const [translatedTranscript, setTranslatedTranscript] = useState<string>('');
   const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState<'type' | 'record' | 'media' | 'preview'>('type');
   const [transcriptionFailed, setTranscriptionFailed] = useState(false);
+  const [capturedLiveTranscript, setCapturedLiveTranscript] = useState<string>('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Capture liveTranscript during recording (for French)
+  useEffect(() => {
+    if (liveTranscript && currentLang === 'fr') {
+      setCapturedLiveTranscript(liveTranscript);
+    }
+  }, [liveTranscript, currentLang]);
 
   const handleTypeSelect = (type: string) => {
     setSelectedType(type);
     triggerFeedback('notification');
     
     if (type === 'poll') {
-      // Close this modal and open poll creator
       onClose();
       onOpenPoll?.();
       return;
@@ -83,18 +92,58 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     }
   };
 
+  // Handle multiple photo selection
   const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setMediaFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (selectedType === 'photo') {
+      // Allow up to MAX_PHOTOS photos
+      const newFiles = [...mediaFiles, ...files].slice(0, MAX_PHOTOS);
+      setMediaFiles(newFiles);
+      
+      // Generate previews for new files
+      const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+      // Clean up old previews
+      mediaPreviews.forEach(url => URL.revokeObjectURL(url));
+      setMediaPreviews(newPreviews);
+      
+      if (newFiles.length >= MAX_PHOTOS) {
+        toast({ title: `📷 Maximum ${MAX_PHOTOS} photos`, description: "Limite de photos atteinte" });
+      }
+    } else {
+      // For video, only one file
+      const file = files[0];
+      setMediaFiles([file]);
       const url = URL.createObjectURL(file);
-      setMediaPreview(url);
-      setStep('record'); // Go to record step (audio is optional)
+      mediaPreviews.forEach(url => URL.revokeObjectURL(url));
+      setMediaPreviews([url]);
+    }
+    
+    setStep('record');
+  };
+
+  // Remove a specific photo
+  const removePhoto = (index: number) => {
+    const newFiles = mediaFiles.filter((_, i) => i !== index);
+    setMediaFiles(newFiles);
+    
+    URL.revokeObjectURL(mediaPreviews[index]);
+    const newPreviews = mediaPreviews.filter((_, i) => i !== index);
+    setMediaPreviews(newPreviews);
+    
+    triggerFeedback('notification');
+  };
+
+  // Add more photos
+  const addMorePhotos = () => {
+    if (mediaFiles.length < MAX_PHOTOS) {
+      fileInputRef.current?.click();
     }
   };
 
-  const handleRecordingComplete = async (base64: string, duration?: number, liveTranscript?: string) => {
-    console.log('[TamTamCreatePost] Recording complete, duration:', duration, 'liveTranscript:', liveTranscript);
+  const handleRecordingComplete = async (base64: string, duration?: number, recorderLiveTranscript?: string) => {
+    console.log('[TamTamCreatePost] Recording complete, duration:', duration, 'liveTranscript:', recorderLiveTranscript);
     setAudioBase64(base64);
     setAudioDuration(duration || 0);
     setTranscriptionFailed(false);
@@ -102,13 +151,15 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     
     toast({ title: "🎤 Traitement audio...", description: "Transcription en cours" });
     
+    // Use the best available live transcript
+    const bestLiveTranscript = recorderLiveTranscript?.trim() || capturedLiveTranscript?.trim() || liveTranscript?.trim();
+    
     // Transcribe and translate using unified service
     const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
     const result = await transcribeWithTranslation(base64, sourceLang);
     
     if (result.transcription) {
       setTranscript(result.transcription);
-      // Set translated transcript based on source language
       if (sourceLang === 'fr') {
         setTranslatedTranscript(result.transcription_ba);
       } else {
@@ -120,10 +171,10 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
           ? `Audio transcrit et traduit (${result.translation_method})` 
           : "Votre audio a été transcrit"
       });
-    } else if (liveTranscript && liveTranscript.trim()) {
+    } else if (bestLiveTranscript) {
       // Fallback: utiliser le liveTranscript du Web Speech API (français)
-      console.log('[TamTamCreatePost] Using liveTranscript fallback:', liveTranscript);
-      setTranscript(liveTranscript);
+      console.log('[TamTamCreatePost] Using liveTranscript fallback:', bestLiveTranscript);
+      setTranscript(bestLiveTranscript);
       setTranscriptionFailed(false);
       toast({
         title: "✅ Transcription (Web Speech)",
@@ -142,7 +193,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
 
   // Skip audio and go directly to preview (for photo/video only posts)
   const handleSkipAudio = () => {
-    if (!mediaFile) {
+    if (mediaFiles.length === 0) {
       toast({ title: "Média requis", description: "Sélectionnez d'abord un média", variant: "destructive" });
       return;
     }
@@ -160,7 +211,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     }
 
     // For media posts without audio, we still need either audio or media
-    if (!audioBase64 && !mediaFile) {
+    if (!audioBase64 && mediaFiles.length === 0) {
       toast({ title: "Contenu requis", description: "Ajoutez un audio ou un média", variant: "destructive" });
       return;
     }
@@ -170,6 +221,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     try {
       let audioUrl = '';
       let mediaUrl: string | undefined;
+      const uploadedMediaUrls: string[] = [];
 
       // Upload audio if exists
       if (audioBase64) {
@@ -194,31 +246,35 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
         console.log('[TamTamCreatePost.handleSubmit] Audio URL:', audioUrl);
       }
 
-      // Upload media if exists
-      if (mediaFile) {
-        console.log('[TamTamCreatePost.handleSubmit] Uploading media...', mediaFile.name);
-        const mediaFileName = `media_${Date.now()}_${Math.random().toString(36).substring(7)}.${mediaFile.name.split('.').pop()}`;
+      // Upload all media files (up to 3 photos or 1 video)
+      for (let i = 0; i < mediaFiles.length; i++) {
+        const file = mediaFiles[i];
+        console.log(`[TamTamCreatePost.handleSubmit] Uploading media ${i + 1}/${mediaFiles.length}:`, file.name);
+        const mediaFileName = `media_${Date.now()}_${i}_${Math.random().toString(36).substring(7)}.${file.name.split('.').pop()}`;
         
         const { error: mediaError } = await supabase.storage
           .from('tamtam-audio')
-          .upload(mediaFileName, mediaFile);
+          .upload(mediaFileName, file);
 
         if (mediaError) {
           console.warn('[TamTamCreatePost.handleSubmit] Media upload warning:', mediaError.message);
-          // Non-blocking - continue without media
         } else {
           const { data: url } = supabase.storage
             .from('tamtam-audio')
             .getPublicUrl(mediaFileName);
-          mediaUrl = url.publicUrl;
-          console.log('[TamTamCreatePost.handleSubmit] Media URL:', mediaUrl);
+          uploadedMediaUrls.push(url.publicUrl);
+          console.log(`[TamTamCreatePost.handleSubmit] Media ${i + 1} URL:`, url.publicUrl);
         }
       }
 
-      // For media-only posts, we need to generate a placeholder audio
+      // Use first media URL or join multiple URLs with comma
+      if (uploadedMediaUrls.length > 0) {
+        mediaUrl = uploadedMediaUrls.join(',');
+      }
+
+      // For media-only posts, we need a placeholder audio URL
       if (!audioUrl && mediaUrl) {
-        // Create a silent audio placeholder or use a generated one
-        audioUrl = mediaUrl; // Temporary: use media URL as audio URL
+        audioUrl = uploadedMediaUrls[0]; // Use first media URL as placeholder
       }
 
       const postData = {
@@ -255,12 +311,15 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   const resetPostState = () => {
     setAudioBase64(null);
     setAudioDuration(0);
-    setMediaFile(null);
-    setMediaPreview(null);
+    // Clean up media previews
+    mediaPreviews.forEach(url => URL.revokeObjectURL(url));
+    setMediaFiles([]);
+    setMediaPreviews([]);
     setTranscript('');
     setTranslatedTranscript('');
     setSelectedEmoji(null);
     setTranscriptionFailed(false);
+    setCapturedLiveTranscript('');
     setStep('type');
     setSelectedType('audio');
   };
@@ -360,6 +419,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                   type="file"
                   accept={selectedType === 'photo' ? PHOTO_FORMATS : VIDEO_FORMATS}
                   capture={selectedType === 'photo' ? 'environment' : undefined}
+                  multiple={selectedType === 'photo'}
                   onChange={handleMediaSelect}
                   className="hidden"
                 />
@@ -375,20 +435,42 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                {/* Media Preview */}
-                {mediaPreview && (
-                  <div className="relative rounded-2xl overflow-hidden bg-gray-100">
-                    {selectedType === 'photo' ? (
-                      <img src={mediaPreview} alt="Preview" className="w-full max-h-48 object-cover" />
-                    ) : selectedType === 'video' ? (
-                      <video src={mediaPreview} controls className="w-full max-h-48" />
-                    ) : null}
+                {/* Media Preview - Multiple photos support */}
+                {mediaPreviews.length > 0 && (
+                  <div className="space-y-2">
+                    <div className={`grid gap-2 ${mediaPreviews.length === 1 ? 'grid-cols-1' : mediaPreviews.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                      {mediaPreviews.map((preview, index) => (
+                        <div key={index} className="relative rounded-xl overflow-hidden bg-gray-100">
+                          {selectedType === 'photo' ? (
+                            <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-24 object-cover" />
+                          ) : selectedType === 'video' ? (
+                            <video src={preview} controls className="w-full h-24" />
+                          ) : null}
+                          <button
+                            onClick={() => removePhoto(index)}
+                            className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Add more photos button */}
+                    {selectedType === 'photo' && mediaFiles.length < MAX_PHOTOS && (
+                      <button
+                        onClick={addMorePhotos}
+                        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 flex items-center justify-center gap-2 hover:bg-gray-50"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Ajouter une photo ({mediaFiles.length}/{MAX_PHOTOS})
+                      </button>
+                    )}
                   </div>
                 )}
 
                 <div className="text-center">
                   <p className="text-gray-500 mb-4">
-                    {mediaFile 
+                    {mediaFiles.length > 0 
                       ? "Ajoutez un message vocal (optionnel)" 
                       : t('recordAudio')}
                   </p>
@@ -399,7 +481,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 </div>
 
                 {/* Skip audio button for photo/video with voice support */}
-                {mediaFile && (
+                {mediaFiles.length > 0 && (
                   <div className="flex items-center gap-2">
                     <motion.button
                       whileTap={{ scale: 0.95 }}
@@ -424,14 +506,18 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-4"
               >
-                {/* Media Preview */}
-                {mediaPreview && (
-                  <div className="rounded-2xl overflow-hidden bg-gray-100">
-                    {selectedType === 'photo' ? (
-                      <img src={mediaPreview} alt="Preview" className="w-full max-h-48 object-cover" />
-                    ) : selectedType === 'video' ? (
-                      <video src={mediaPreview} controls className="w-full max-h-48" />
-                    ) : null}
+                {/* Media Preview - Multiple photos in preview */}
+                {mediaPreviews.length > 0 && (
+                  <div className={`grid gap-2 ${mediaPreviews.length === 1 ? 'grid-cols-1' : mediaPreviews.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                    {mediaPreviews.map((preview, index) => (
+                      <div key={index} className="rounded-xl overflow-hidden bg-gray-100">
+                        {selectedType === 'photo' ? (
+                          <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-24 object-cover" />
+                        ) : selectedType === 'video' ? (
+                          <video src={preview} controls className="w-full h-24" />
+                        ) : null}
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -462,7 +548,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 )}
 
                 {/* No audio indicator for media-only */}
-                {!audioBase64 && mediaFile && (
+                {!audioBase64 && mediaFiles.length > 0 && (
                   <div className="flex items-center gap-3 rounded-2xl p-4 bg-gray-50">
                     <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-200">
                       {selectedType === 'photo' ? (
@@ -473,7 +559,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">
-                        {selectedType === 'photo' ? 'Photo' : 'Vidéo'} sans audio
+                        {selectedType === 'photo' ? `${mediaFiles.length} Photo${mediaFiles.length > 1 ? 's' : ''}` : 'Vidéo'} sans audio
                       </p>
                       <p className="text-sm text-gray-500">Publication visuelle uniquement</p>
                     </div>
