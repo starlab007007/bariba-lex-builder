@@ -10,7 +10,6 @@ interface TamTamMicButtonProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   isRecording?: boolean;
   onPress?: () => void;
-  // New props for full voice pipeline
   onRecordingComplete?: (result: {
     audioBase64: string;
     transcription?: string;
@@ -19,7 +18,7 @@ interface TamTamMicButtonProps {
   }) => void;
   autoTranscribe?: boolean;
   autoTranslate?: boolean;
-  autoSpeak?: boolean; // NEW: auto-speak translation
+  autoSpeak?: boolean;
   sourceLang?: 'ba' | 'fr';
   disabled?: boolean;
 }
@@ -52,59 +51,72 @@ export function TamTamMicButton({
   const { toast } = useToast();
   const [internalRecording, setInternalRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [statusText, setStatusText] = useState<string>('');
   
   const audioRecorder = useAudioRecorder();
   const unifiedAudio = useUnifiedAudio();
-  const webSpeechSTT = useWebSpeechSTT(); // For French live transcription
+  const webSpeechSTT = useWebSpeechSTT();
   
-  // Use external control if provided, otherwise internal
   const isRecording = externalIsRecording !== undefined ? externalIsRecording : internalRecording;
 
-  // Track Web Speech transcript for French
-  const [frenchTranscript, setFrenchTranscript] = useState('');
+  // Track collected transcript for French via ref to avoid stale closure
+  const collectedTranscriptRef = useRef('');
   
-  // Update French transcript from Web Speech API
+  // Update collected transcript when Web Speech API provides results
   useEffect(() => {
     if (sourceLang === 'fr' && webSpeechSTT.transcript) {
-      setFrenchTranscript(webSpeechSTT.transcript);
+      collectedTranscriptRef.current = webSpeechSTT.transcript;
+      console.log('[TamTamMicButton] 🇫🇷 Collected French transcript:', webSpeechSTT.transcript);
     }
   }, [sourceLang, webSpeechSTT.transcript]);
+
+  // Show interim results
+  useEffect(() => {
+    if (isRecording && webSpeechSTT.interimTranscript) {
+      setStatusText(`"${webSpeechSTT.interimTranscript.substring(0, 30)}..."`);
+    }
+  }, [isRecording, webSpeechSTT.interimTranscript]);
 
   const handlePress = useCallback(async () => {
     if (disabled) return;
     
-    // If we have a callback for complete pipeline
     if (onRecordingComplete) {
       if (!isRecording && !audioRecorder.isRecording) {
-        // Start recording
+        // === START RECORDING ===
         console.log('[TamTamMicButton] 🎙️ Starting recording, sourceLang:', sourceLang);
         setInternalRecording(true);
-        setFrenchTranscript('');
+        collectedTranscriptRef.current = '';
+        setStatusText(sourceLang === 'fr' ? '🎤 Parlez en français...' : '🎤 Parlez en bariba...');
         
         if (sourceLang === 'fr') {
-          // For French: use Web Speech API for live transcription
-          console.log('[TamTamMicButton] 🇫🇷 Starting French Web Speech API');
+          // FRENCH: Use Web Speech API ONLY (no audio recording needed)
+          console.log('[TamTamMicButton] 🇫🇷 French mode - Starting Web Speech API only');
           webSpeechSTT.resetTranscript();
           webSpeechSTT.startListening();
+          // Also start audio recorder as backup
+          await audioRecorder.startRecording();
+        } else {
+          // BARIBA: Use audio recording ONLY (no Web Speech API)
+          console.log('[TamTamMicButton] 🔊 Bariba mode - Audio recording only');
+          await audioRecorder.startRecording();
         }
-        
-        // Also record audio (for Bariba or as backup)
-        await audioRecorder.startRecording();
         
         toast({
           title: sourceLang === 'fr' ? "🎤 Parlez en français..." : "🎤 Parlez en bariba...",
-          description: "Appuyez à nouveau pour arrêter"
+          description: "Appuyez à nouveau pour arrêter (min 1s)"
         });
+        
       } else {
-        // Stop recording and process
+        // === STOP RECORDING ===
         console.log('[TamTamMicButton] ⏹️ Stopping recording...');
         setInternalRecording(false);
+        setStatusText('⏳ Traitement...');
         setIsProcessing(true);
         
-        // Check minimum recording duration
         const recordingDuration = audioRecorder.duration;
         console.log('[TamTamMicButton] Recording duration:', recordingDuration, 'seconds');
         
+        // Check minimum duration
         if (recordingDuration < 1) {
           toast({
             title: "⚠️ Enregistrement trop court",
@@ -112,6 +124,7 @@ export function TamTamMicButton({
             variant: "destructive"
           });
           setIsProcessing(false);
+          setStatusText('');
           audioRecorder.cancelRecording();
           if (sourceLang === 'fr') {
             webSpeechSTT.stopListening();
@@ -122,94 +135,112 @@ export function TamTamMicButton({
         try {
           // Stop audio recording
           const audioBase64 = await audioRecorder.stopRecording();
-          console.log('[TamTamMicButton] Audio base64 length:', audioBase64?.length || 0);
+          console.log('[TamTamMicButton] ✅ Audio base64 length:', audioBase64?.length || 0);
           
-          // Stop Web Speech if it was running (for French)
+          // Stop Web Speech if running (for French)
           if (sourceLang === 'fr') {
             webSpeechSTT.stopListening();
+            // Small delay to let Web Speech finish processing
+            await new Promise(r => setTimeout(r, 300));
           }
           
           let transcription: string | undefined;
           let translation: string | undefined;
           
           if (autoTranscribe) {
+            setStatusText('📝 Transcription...');
+            
             if (sourceLang === 'fr') {
-              // For French: use the Web Speech API transcript (already collected)
-              transcription = webSpeechSTT.transcript || frenchTranscript || undefined;
+              // === FRENCH STT ===
+              // Get transcript from Web Speech API (use ref to avoid stale value)
+              transcription = webSpeechSTT.transcript || collectedTranscriptRef.current || undefined;
+              
+              console.log('[TamTamMicButton] 🇫🇷 French transcription result:', {
+                fromState: webSpeechSTT.transcript,
+                fromRef: collectedTranscriptRef.current,
+                final: transcription
+              });
               
               if (!transcription) {
-                console.log('[TamTamMicButton] ⚠️ No French transcription from Web Speech API');
+                console.warn('[TamTamMicButton] ⚠️ No French transcription from Web Speech API');
                 toast({
-                  title: "⚠️ Pas de transcription",
-                  description: "Aucune parole détectée. Parlez plus fort ou plus longtemps.",
+                  title: "⚠️ Aucune parole détectée",
+                  description: "Parlez plus fort ou plus longtemps (2-3 secondes)",
                   variant: "destructive"
                 });
               } else {
-                console.log('[TamTamMicButton] ✅ French transcription from Web Speech:', transcription);
+                console.log('[TamTamMicButton] ✅ French transcription:', transcription);
+                toast({
+                  title: "✅ Transcription réussie",
+                  description: transcription.substring(0, 50) + (transcription.length > 50 ? '...' : '')
+                });
               }
               
-              // If we want translation, translate to Bariba
+              // Translate to Bariba if requested
               if (autoTranslate && transcription) {
+                setStatusText('🔄 Traduction vers Bariba...');
                 const result = await unifiedAudio.translate(transcription, 'fr', 'ba');
                 translation = result.translation;
+                console.log('[TamTamMicButton] Translation fr→ba:', translation);
               }
+              
             } else {
-              // For Bariba: use server-side HuggingFace STT
-              if (!audioBase64) {
-                console.error('[TamTamMicButton] ❌ No audio data for Bariba STT');
+              // === BARIBA STT ===
+              if (!audioBase64 || audioBase64.length < 100) {
+                console.error('[TamTamMicButton] ❌ No/insufficient audio data for Bariba STT');
                 toast({
                   title: "❌ Erreur audio",
-                  description: "Aucune donnée audio enregistrée",
+                  description: "Aucune donnée audio enregistrée. Réessayez.",
                   variant: "destructive"
                 });
                 setIsProcessing(false);
+                setStatusText('');
                 return;
               }
               
               console.log('[TamTamMicButton] 🔄 Sending to Bariba STT, audio length:', audioBase64.length);
+              setStatusText('🔄 Transcription Bariba...');
               
-              const result = await unifiedAudio.transcribeWithTranslation(
-                audioBase64, 
-                sourceLang
-              );
-              
-              console.log('[TamTamMicButton] Bariba STT result:', result);
+              const result = await unifiedAudio.transcribeWithTranslation(audioBase64, sourceLang);
+              console.log('[TamTamMicButton] 🔊 Bariba STT result:', result);
               
               transcription = result.transcription || undefined;
               
               if (!transcription) {
                 toast({
                   title: "⚠️ Transcription échouée",
-                  description: "Le service Bariba n'a pas pu transcrire. Réessayez avec un audio plus clair.",
+                  description: "Le service Bariba n'a pas pu transcrire. Essayez avec un audio plus clair.",
                   variant: "destructive"
+                });
+              } else {
+                toast({
+                  title: "✅ Transcription Bariba",
+                  description: transcription.substring(0, 50) + (transcription.length > 50 ? '...' : '')
                 });
               }
               
               if (autoTranslate && result.transcription) {
                 translation = result.transcription_fr;
+                console.log('[TamTamMicButton] Translation ba→fr:', translation);
               }
-            }
-            
-            if (transcription) {
-              toast({
-                title: "✅ Transcription réussie",
-                description: transcription.substring(0, 50) + (transcription.length > 50 ? '...' : '')
-              });
             }
             
             // Auto-speak translation if enabled
             if (autoSpeak && translation) {
+              setStatusText('🔊 Lecture...');
               const targetLang = sourceLang === 'ba' ? 'fr' : 'ba';
               await unifiedAudio.speak(translation, targetLang);
             }
           }
           
+          // Callback with results
           onRecordingComplete({
             audioBase64: audioBase64 || '',
             transcription,
             translation,
             sourceLang
           });
+          
         } catch (err) {
           console.error('[TamTamMicButton] ❌ Recording error:', err);
           toast({
@@ -219,6 +250,7 @@ export function TamTamMicButton({
           });
         } finally {
           setIsProcessing(false);
+          setStatusText('');
         }
       }
     } else {
@@ -228,86 +260,99 @@ export function TamTamMicButton({
   }, [
     disabled, isRecording, audioRecorder, onRecordingComplete, 
     autoTranscribe, autoTranslate, autoSpeak, sourceLang, unifiedAudio, 
-    webSpeechSTT, frenchTranscript, onPress, toast
+    webSpeechSTT, onPress, toast
   ]);
 
   const showRecordingState = isRecording || audioRecorder.isRecording;
   
   return (
-    <motion.button
-      onClick={handlePress}
-      whileTap={{ scale: 0.95 }}
-      className="relative"
-      disabled={disabled || isProcessing}
-    >
-      {/* Animated rings when recording */}
-      {showRecordingState && (
-        <>
-          <motion.div
-            animate={{ scale: [1, 1.4], opacity: [0.4, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className={`absolute inset-0 bg-tamtam-primary rounded-full`}
-          />
-          <motion.div
-            animate={{ scale: [1, 1.6], opacity: [0.3, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
-            className={`absolute inset-0 bg-tamtam-primary rounded-full`}
-          />
-          <motion.div
-            animate={{ scale: [1, 1.8], opacity: [0.2, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity, delay: 0.6 }}
-            className={`absolute inset-0 bg-tamtam-primary rounded-full`}
-          />
-        </>
-      )}
-
-      {/* Main button */}
-      <div
-        className={`${sizeClasses[size]} rounded-full flex items-center justify-center transition-all ${
-          isProcessing
-            ? 'bg-amber-500 shadow-lg shadow-amber-500/40'
-            : showRecordingState
-              ? 'bg-red-500 shadow-lg shadow-red-500/40'
-              : 'bg-tamtam-primary shadow-tamtam-soft'
-        } ${disabled ? 'opacity-50' : ''}`}
+    <div className="flex flex-col items-center gap-2">
+      <motion.button
+        onClick={handlePress}
+        whileTap={{ scale: 0.95 }}
+        className="relative"
+        disabled={disabled || isProcessing}
       >
-        {isProcessing ? (
-          <Loader2 className={`${iconSizes[size]} text-white animate-spin`} />
-        ) : showRecordingState ? (
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 0.5, repeat: Infinity }}
-            className="flex items-center justify-center gap-1"
-          >
-            {size === 'xl' ? (
-              <Square className={`${iconSizes[size]} text-white`} />
-            ) : (
-              [...Array(3)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  animate={{ height: [8, 20, 8] }}
-                  transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.1 }}
-                  className="w-1 bg-white rounded-full"
-                  style={{ height: 8 }}
-                />
-              ))
-            )}
-          </motion.div>
-        ) : (
-          <Mic className={`${iconSizes[size]} text-white`} />
+        {/* Animated rings when recording */}
+        {showRecordingState && (
+          <>
+            <motion.div
+              animate={{ scale: [1, 1.4], opacity: [0.4, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className={`absolute inset-0 bg-tamtam-primary rounded-full`}
+            />
+            <motion.div
+              animate={{ scale: [1, 1.6], opacity: [0.3, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
+              className={`absolute inset-0 bg-tamtam-primary rounded-full`}
+            />
+            <motion.div
+              animate={{ scale: [1, 1.8], opacity: [0.2, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, delay: 0.6 }}
+              className={`absolute inset-0 bg-tamtam-primary rounded-full`}
+            />
+          </>
         )}
-      </div>
-      
-      {/* Duration indicator */}
-      {showRecordingState && audioRecorder.duration > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-medium text-red-500"
+
+        {/* Main button */}
+        <div
+          className={`${sizeClasses[size]} rounded-full flex items-center justify-center transition-all ${
+            isProcessing
+              ? 'bg-amber-500 shadow-lg shadow-amber-500/40'
+              : showRecordingState
+                ? 'bg-red-500 shadow-lg shadow-red-500/40'
+                : 'bg-tamtam-primary shadow-tamtam-soft'
+          } ${disabled ? 'opacity-50' : ''}`}
         >
-          {Math.floor(audioRecorder.duration / 60)}:{(audioRecorder.duration % 60).toString().padStart(2, '0')}
-        </motion.div>
+          {isProcessing ? (
+            <Loader2 className={`${iconSizes[size]} text-white animate-spin`} />
+          ) : showRecordingState ? (
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 0.5, repeat: Infinity }}
+              className="flex items-center justify-center gap-1"
+            >
+              {size === 'xl' ? (
+                <Square className={`${iconSizes[size]} text-white`} />
+              ) : (
+                [...Array(3)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ height: [8, 20, 8] }}
+                    transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.1 }}
+                    className="w-1 bg-white rounded-full"
+                    style={{ height: 8 }}
+                  />
+                ))
+              )}
+            </motion.div>
+          ) : (
+            <Mic className={`${iconSizes[size]} text-white`} />
+          )}
+        </div>
+        
+        {/* Duration indicator */}
+        {showRecordingState && audioRecorder.duration > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-medium text-red-500"
+          >
+            {Math.floor(audioRecorder.duration / 60)}:{(audioRecorder.duration % 60).toString().padStart(2, '0')}
+          </motion.div>
+        )}
+      </motion.button>
+      
+      {/* Status text */}
+      {statusText && (
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-xs text-center text-muted-foreground max-w-[150px] truncate"
+        >
+          {statusText}
+        </motion.p>
       )}
-    </motion.button>
+    </div>
   );
 }

@@ -148,18 +148,28 @@ export default function TamTamTranslator() {
     translation?: string;
     sourceLang: 'ba' | 'fr';
   }) => {
+    console.log('[TamTamTranslator] 📥 Voice result received:', {
+      sourceLang: result.sourceLang,
+      hasAudio: !!result.audioBase64,
+      audioLength: result.audioBase64?.length || 0,
+      transcription: result.transcription,
+      translation: result.translation
+    });
+
     // For Bariba: use audio base64 → server-side HuggingFace STT
-    // For French: use Web Speech API (live transcription) → no need for base64
     if (result.sourceLang === 'ba' && result.audioBase64) {
+      console.log('[TamTamTranslator] 🔊 Processing Bariba audio...');
       await translator.translateFromAudio(result.audioBase64);
-    } else if (result.sourceLang === 'fr') {
-      // French uses Web Speech API which works during recording
-      // The transcription should already be available from TamTamMicButton
+    } 
+    // For French: use transcription from Web Speech API
+    else if (result.sourceLang === 'fr') {
       if (result.transcription) {
+        console.log('[TamTamTranslator] 🇫🇷 Processing French transcription:', result.transcription);
         await translator.translateFromText(result.transcription);
       } else {
-        // Fallback to live audio if no transcription provided
-        await translator.translateFromLiveAudio();
+        // FIX: Don't restart listening, show error instead
+        console.warn('[TamTamTranslator] ⚠️ No French transcription provided');
+        // Error toast is already shown by TamTamMicButton, no need to duplicate
       }
     }
   };
