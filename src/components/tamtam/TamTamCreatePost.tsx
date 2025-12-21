@@ -151,11 +151,35 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     
     toast({ title: "🎤 Traitement audio...", description: "Transcription en cours" });
     
-    // Use the best available live transcript
-    const bestLiveTranscript = recorderLiveTranscript?.trim() || capturedLiveTranscript?.trim() || liveTranscript?.trim();
-    
-    // Transcribe and translate using unified service
+    // Use the best available live transcript (prioritize the one from recorder)
+    const bestLiveTranscript = recorderLiveTranscript?.trim() || capturedLiveTranscript?.trim() || liveTranscript?.trim() || interimTranscript?.trim();
     const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
+    
+    // If we already have a French live transcript, use it directly
+    if (sourceLang === 'fr' && bestLiveTranscript) {
+      console.log('[TamTamCreatePost] French: Using Web Speech live transcript directly:', bestLiveTranscript);
+      setTranscript(bestLiveTranscript);
+      setTranscriptionFailed(false);
+      
+      // Try to translate to Bariba
+      try {
+        const translateResult = await transcribeWithTranslation(base64, 'fr');
+        if (translateResult.transcription_ba) {
+          setTranslatedTranscript(translateResult.transcription_ba);
+        }
+      } catch (e) {
+        console.warn('[TamTamCreatePost] Translation to Bariba failed:', e);
+      }
+      
+      toast({
+        title: "✅ Transcription réussie",
+        description: "Audio transcrit via Web Speech"
+      });
+      setStep('preview');
+      return;
+    }
+    
+    // For Bariba or when no live transcript, use the full transcription service
     const result = await transcribeWithTranslation(base64, sourceLang);
     
     if (result.transcription) {
