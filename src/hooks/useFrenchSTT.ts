@@ -38,26 +38,53 @@ export const useFrenchSTT = (): UseFrenchSTTReturn => {
       recognition.interimResults = true;
 
       recognition.onstart = () => {
+        console.log('[useFrenchSTT] Recognition started');
         setIsListening(true);
         setError(null);
       };
 
       recognition.onend = () => {
+        console.log('[useFrenchSTT] Recognition ended');
         setIsListening(false);
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setError(event.error);
-        setIsListening(false);
+        console.error('[useFrenchSTT] Recognition error:', event.error);
         
-        if (event.error !== 'no-speech') {
-          toast({
-            title: "Erreur de reconnaissance vocale",
-            description: event.error,
-            variant: "destructive"
-          });
+        // Handle different error types
+        switch (event.error) {
+          case 'no-speech':
+            // Normal - no speech detected, don't show error
+            console.log('[useFrenchSTT] No speech detected');
+            break;
+          case 'aborted':
+            // User aborted, don't show error
+            console.log('[useFrenchSTT] Recognition aborted');
+            break;
+          case 'audio-capture':
+            setError('Microphone non accessible');
+            toast({
+              title: "Erreur microphone",
+              description: "Impossible d'accéder au microphone",
+              variant: "destructive"
+            });
+            break;
+          case 'network':
+            setError('Erreur réseau');
+            console.warn('[useFrenchSTT] Network error - continuing without live transcription');
+            break;
+          case 'not-allowed':
+            setError('Permission refusée');
+            toast({
+              title: "Permission microphone",
+              description: "Autorisez l'accès au microphone pour la transcription",
+              variant: "destructive"
+            });
+            break;
+          default:
+            setError(event.error);
         }
+        setIsListening(false);
       };
 
       recognition.onresult = (event: any) => {

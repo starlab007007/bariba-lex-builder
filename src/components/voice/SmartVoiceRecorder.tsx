@@ -83,19 +83,34 @@ export const SmartVoiceRecorder = ({
 
   // Démarrer le STT français lors de l'enregistrement
   useEffect(() => {
-    if (language === 'french' && isFrenchSTTSupported) {
-      if (isRecording && !isFrenchSTTListening) {
-        console.log('[SmartVoiceRecorder] Starting French STT for recording');
-        startFrenchSTT();
-      } else if (!isRecording && isFrenchSTTListening) {
-        console.log('[SmartVoiceRecorder] Stopping French STT');
-        stopFrenchSTT();
+    if (language === 'french') {
+      if (isRecording) {
+        if (isFrenchSTTSupported && !isFrenchSTTListening) {
+          console.log('[SmartVoiceRecorder] Starting French STT for recording');
+          // Small delay to ensure microphone is ready
+          const timer = setTimeout(() => {
+            startFrenchSTT();
+          }, 200);
+          return () => clearTimeout(timer);
+        }
+      } else {
+        if (isFrenchSTTListening) {
+          console.log('[SmartVoiceRecorder] Stopping French STT');
+          stopFrenchSTT();
+        }
       }
     }
   }, [language, isRecording, isFrenchSTTSupported, isFrenchSTTListening, startFrenchSTT, stopFrenchSTT]);
 
   // Display live transcript during recording (French)
   const displayTranscript = language === 'french' ? (frenchTranscript || '') + (frenchInterim || '') : '';
+  
+  // Also log display transcript for debugging
+  useEffect(() => {
+    if (language === 'french' && isRecording && displayTranscript) {
+      console.log('[SmartVoiceRecorder] Display transcript:', displayTranscript);
+    }
+  }, [language, isRecording, displayTranscript]);
 
   // Auto mode: Start recording when speech is detected
   const handleAutoSpeechStart = useCallback(async () => {
