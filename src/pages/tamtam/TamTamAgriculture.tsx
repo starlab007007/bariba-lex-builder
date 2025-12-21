@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Volume2, Loader2, Cloud, Droplets, Sun, Thermometer, Phone } from 'lucide-react';
-import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { SmartChatbot } from '@/components/tamtam/SmartChatbot';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { byT5TranslationService } from '@/services/ByT5TranslationService';
-
 const sections = [
   { id: 'weather', icon: '🌧️', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelFr: 'Météo', labelBa: 'Ọjọ́ ojú ọ̀run' },
   { id: 'crops', icon: '🌱', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Conseils cultures', labelBa: 'Ìmọ̀ràn àgbẹ̀' },
@@ -42,16 +39,8 @@ const mockPrices = [
   { product: '🫘', nameFr: 'Haricot (sac)', nameBa: 'Ẹ̀wà', price: 25000 },
 ];
 
-interface Message {
-  type: 'user' | 'ai';
-  textFr: string;
-  textBa: string;
-}
-
 export default function TamTamAgriculture() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
@@ -66,13 +55,11 @@ export default function TamTamAgriculture() {
     const label = currentLang === 'fr' ? section.labelFr : section.labelBa;
     await speakCurrentLang(label);
     setActiveSection(section.id);
-    setMessages([]);
   };
 
   const handleBack = () => {
     tamtamFeedback.play('click');
     setActiveSection(null);
-    setMessages([]);
   };
 
   const handleSpeakLabel = async (labelFr: string, labelBa: string, e: React.MouseEvent) => {
@@ -80,70 +67,6 @@ export default function TamTamAgriculture() {
     tamtamFeedback.play('click');
     const text = currentLang === 'fr' ? labelFr : labelBa;
     await speakCurrentLang(text);
-  };
-
-  const handleVoiceQuestion = async (result: {
-    audioBase64: string;
-    transcription?: string;
-    translation?: string;
-    sourceLang: 'ba' | 'fr';
-  }) => {
-    if (!result.transcription) {
-      toast({ title: "Erreur", description: "Impossible de transcrire", variant: "destructive" });
-      return;
-    }
-
-    setIsProcessing(true);
-    tamtamFeedback.play('send');
-
-    try {
-      let textFr = result.sourceLang === 'fr' ? result.transcription : '';
-      let textBa = result.sourceLang === 'ba' ? result.transcription : '';
-
-      if (result.sourceLang === 'ba' && !textFr) {
-        const transResult = await byT5TranslationService.translate(result.transcription, 'bariba', 'french');
-        textFr = transResult.translation;
-      } else if (result.sourceLang === 'fr' && !textBa) {
-        const transResult = await byT5TranslationService.translate(result.transcription, 'french', 'bariba');
-        textBa = transResult.translation;
-      }
-
-      setMessages(prev => [...prev, { type: 'user', textFr, textBa }]);
-
-      // Call AI advisor
-      const { data, error } = await supabase.functions.invoke('agri-advisor', {
-        body: { 
-          question: textFr,
-          context: activeSection,
-          language: currentLang
-        }
-      });
-
-      if (error) throw error;
-
-      const aiMessage: Message = {
-        type: 'ai',
-        textFr: data.response_fr || data.response || "Voici mes conseils...",
-        textBa: data.response_ba || ''
-      };
-
-      if (!aiMessage.textBa && aiMessage.textFr) {
-        const transResult = await byT5TranslationService.translate(aiMessage.textFr, 'french', 'bariba');
-        aiMessage.textBa = transResult.translation;
-      }
-
-      setMessages(prev => [...prev, aiMessage]);
-      
-      const responseText = currentLang === 'ba' ? aiMessage.textBa : aiMessage.textFr;
-      await speakCurrentLang(responseText);
-      
-      tamtamFeedback.play('success');
-    } catch (err: any) {
-      console.error('[TamTamAgriculture] Error:', err);
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setIsProcessing(false);
-    }
   };
 
   const speakWeather = async () => {
@@ -326,67 +249,16 @@ export default function TamTamAgriculture() {
               </div>
             )}
 
-            {/* Chat/Q&A for crops, livestock, water sections */}
+            {/* Smart Chatbot for crops, livestock, water, weather sections */}
             {['crops', 'livestock', 'water', 'weather'].includes(activeSection) && (
-              <>
-                <div className="flex-1 space-y-4 mb-4 min-h-[200px] overflow-y-auto">
-                  {messages.length === 0 && (
-                    <div className="text-center py-8">
-                      <motion.div
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="text-6xl mb-4"
-                      >
-                        {activeSectionData?.icon}
-                      </motion.div>
-                      <p className="text-tamtam-text-muted">
-                        {currentLang === 'fr' ? 'Posez votre question' : 'Bi ìbéèrè rẹ'}
-                      </p>
-                      <p className="text-3xl mt-3">👇🎤</p>
-                    </div>
-                  )}
-
-                  {messages.map((msg, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`p-4 rounded-2xl ${
-                        msg.type === 'user' 
-                          ? 'bg-tamtam-primary text-white ml-8' 
-                          : 'bg-tamtam-surface mr-8'
-                      }`}
-                    >
-                      <p className="font-medium">
-                        {currentLang === 'fr' ? msg.textFr : msg.textBa}
-                      </p>
-                      {msg.type === 'ai' && (
-                        <p className="text-xs mt-2 opacity-60">
-                          {currentLang === 'fr' ? msg.textBa : msg.textFr}
-                        </p>
-                      )}
-                    </motion.div>
-                  ))}
-
-                  {isProcessing && (
-                    <div className="flex items-center justify-center gap-2 py-4">
-                      <Loader2 className="w-5 h-5 animate-spin text-tamtam-primary" />
-                      <span className="text-tamtam-text-muted">{t('processing')}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-center pb-4">
-                  <TamTamMicButton
-                    size="lg"
-                    onRecordingComplete={handleVoiceQuestion}
-                    autoTranscribe={true}
-                    autoTranslate={true}
-                    sourceLang={currentLang}
-                    disabled={isProcessing}
-                  />
-                </div>
-              </>
+              <SmartChatbot
+                context="agriculture"
+                welcomeMessageFr={`Posez votre question sur ${activeSectionData?.labelFr.toLowerCase()}`}
+                welcomeMessageBa={`Bi ìbéèrè rẹ nípa ${activeSectionData?.labelBa}`}
+                icon={activeSectionData?.icon || '🌾'}
+                color={activeSectionData?.color || 'bg-green-500'}
+                className="flex-1"
+              />
             )}
           </motion.div>
         )}

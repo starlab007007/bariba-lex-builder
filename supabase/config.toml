@@ -56,3 +56,9 @@ verify_jwt = false
 
 [functions.raconte-moi]
 verify_jwt = false
+
+[functions.agri-advisor]
+verify_jwt = false
+
+[functions.smart-assistant]
+verify_jwt = false
