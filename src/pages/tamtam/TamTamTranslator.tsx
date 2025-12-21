@@ -13,13 +13,22 @@ import {
   Loader2,
   Send,
   Bot,
-  User
+  Star,
+  History,
+  Search,
+  X,
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import { useSmartTranslator, InputMode } from '@/hooks/useSmartTranslator';
+import { useLanguageDetection } from '@/hooks/useLanguageDetection';
+import { useTranslationHistory, TranslationHistoryItem } from '@/hooks/useTranslationHistory';
 import { PhotoTranslator } from '@/components/tamtam/PhotoTranslator';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 
 interface ChatMessage {
@@ -33,19 +42,30 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-const inputModes: { id: InputMode; icon: React.ReactNode; label: string; labelBa: string; color: string }[] = [
-  { id: 'audio', icon: <Mic className="w-5 h-5" />, label: 'Voix', labelBa: 'Ohùn', color: 'from-orange-500 to-red-500' },
-  { id: 'text', icon: <Keyboard className="w-5 h-5" />, label: 'Texte', labelBa: 'Ọ̀rọ̀', color: 'from-blue-500 to-indigo-500' },
-  { id: 'photo', icon: <Camera className="w-5 h-5" />, label: 'Photo', labelBa: 'Àwòrán', color: 'from-purple-500 to-pink-500' },
-  { id: 'paste', icon: <ClipboardPaste className="w-5 h-5" />, label: 'Coller', labelBa: 'Lẹ́', color: 'from-green-500 to-teal-500' },
-  { id: 'scan', icon: <FileText className="w-5 h-5" />, label: 'Doc', labelBa: 'Ìwé', color: 'from-amber-500 to-orange-500' },
+const inputModes: { id: InputMode; icon: React.ReactNode; label: string; color: string }[] = [
+  { id: 'audio', icon: <Mic className="w-5 h-5" />, label: 'Voix', color: 'from-orange-500 to-red-500' },
+  { id: 'text', icon: <Keyboard className="w-5 h-5" />, label: 'Texte', color: 'from-blue-500 to-indigo-500' },
+  { id: 'photo', icon: <Camera className="w-5 h-5" />, label: 'Photo', color: 'from-purple-500 to-pink-500' },
+  { id: 'paste', icon: <ClipboardPaste className="w-5 h-5" />, label: 'Coller', color: 'from-green-500 to-teal-500' },
+  { id: 'scan', icon: <FileText className="w-5 h-5" />, label: 'Doc', color: 'from-amber-500 to-orange-500' },
 ];
 
 export default function TamTamTranslator() {
   const translator = useSmartTranslator();
+  const { detectLanguage } = useLanguageDetection();
+  const historyManager = useTranslationHistory();
+  
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [textInput, setTextInput] = useState('');
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyTab, setHistoryTab] = useState<'recent' | 'favorites'>('recent');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<TranslationHistoryItem[]>([]);
+  const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
+  const [conversationMode, setConversationMode] = useState(true);
+  const [detectedLang, setDetectedLang] = useState<'bariba' | 'french' | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -55,7 +75,21 @@ export default function TamTamTranslator() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Add message to chat when translation completes
+  // Auto-detect language as user types
+  useEffect(() => {
+    if (autoDetectEnabled && textInput.length >= 3) {
+      const result = detectLanguage(textInput);
+      if (result.confidence > 0.6 && result.language !== 'unknown') {
+        setDetectedLang(result.language);
+        // Auto-set source language if different
+        if (result.language !== translator.sourceLanguage) {
+          translator.swapLanguages();
+        }
+      }
+    }
+  }, [textInput, autoDetectEnabled, detectLanguage]);
+
+  // Add message to chat and history when translation completes
   useEffect(() => {
     if (translator.lastResult && translator.translatedText) {
       const newMessage: ChatMessage = {
@@ -70,15 +104,32 @@ export default function TamTamTranslator() {
       };
       
       setMessages(prev => {
-        // Avoid duplicates
         const lastMsg = prev[prev.length - 1];
         if (lastMsg?.sourceText === newMessage.sourceText && lastMsg?.translatedText === newMessage.translatedText) {
           return prev;
         }
         return [...prev, newMessage];
       });
+
+      // Save to persistent history with context
+      const contextData = conversationMode ? {
+        recentContext: historyManager.getRecentContext(3).map(h => ({
+          source: h.source_text,
+          translation: h.translated_text
+        }))
+      } : undefined;
+
+      historyManager.addToHistory({
+        source_text: translator.sourceText,
+        translated_text: translator.translatedText,
+        source_language: translator.sourceLanguage,
+        target_language: translator.targetLanguage,
+        input_mode: translator.currentMode,
+        confidence_score: translator.lastResult.confidence,
+        context_data: contextData
+      });
     }
-  }, [translator.lastResult, translator.translatedText, translator.sourceText, translator.sourceLanguage, translator.targetLanguage, translator.currentMode]);
+  }, [translator.lastResult, translator.translatedText]);
 
   const handleModeChange = (mode: InputMode) => {
     tamtamFeedback.play('click');
@@ -103,8 +154,19 @@ export default function TamTamTranslator() {
 
   const handleTextSubmit = async () => {
     if (textInput.trim()) {
+      // Auto-detect before submitting
+      if (autoDetectEnabled) {
+        const result = detectLanguage(textInput);
+        if (result.confidence > 0.6 && result.language !== 'unknown') {
+          if (result.language !== translator.sourceLanguage) {
+            translator.swapLanguages();
+          }
+        }
+      }
+      
       await translator.translateFromText(textInput);
       setTextInput('');
+      setDetectedLang(null);
     }
   };
 
@@ -140,7 +202,24 @@ export default function TamTamTranslator() {
     translator.reset();
   };
 
-  const speakMessage = async (text: string, lang: 'bariba' | 'french') => {
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      const results = await historyManager.searchHistory(query);
+      setSearchResults(results);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  const handleHistoryItemClick = (item: TranslationHistoryItem) => {
+    // Re-use translation from history
+    setTextInput(item.source_text);
+    setShowHistory(false);
+    tamtamFeedback.play('click');
+  };
+
+  const speakText = async (text: string, lang: 'bariba' | 'french') => {
     tamtamFeedback.play('click');
     if (lang === 'bariba') {
       translator.speakSource();
@@ -149,7 +228,7 @@ export default function TamTamTranslator() {
     }
   };
 
-  const copyMessage = async (text: string) => {
+  const copyText = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       tamtamFeedback.play('success');
@@ -159,29 +238,139 @@ export default function TamTamTranslator() {
   };
 
   // Language badge component
-  const LanguageBadge = ({ lang, size = 'sm' }: { lang: 'bariba' | 'french'; size?: 'sm' | 'lg' }) => (
+  const LanguageBadge = ({ lang, size = 'sm', detected = false }: { lang: 'bariba' | 'french'; size?: 'sm' | 'lg'; detected?: boolean }) => (
     <span className={`inline-flex items-center gap-1 ${
       size === 'lg' ? 'px-3 py-1.5 text-sm' : 'px-2 py-0.5 text-xs'
     } rounded-full font-medium ${
       lang === 'bariba' 
         ? 'bg-orange-100 text-orange-700' 
         : 'bg-blue-100 text-blue-700'
-    }`}>
+    } ${detected ? 'ring-2 ring-green-400 ring-offset-1' : ''}`}>
       <span>{lang === 'bariba' ? '🇧🇯' : '🇫🇷'}</span>
       <span>{lang === 'bariba' ? 'Bariba' : 'Français'}</span>
+      {detected && <Sparkles className="w-3 h-3 text-green-500" />}
     </span>
   );
 
-  // Mode icon component
-  const ModeIcon = ({ mode }: { mode: InputMode }) => {
-    const modeConfig = inputModes.find(m => m.id === mode);
-    if (!modeConfig) return null;
-    return (
-      <span className={`w-5 h-5 rounded-full bg-gradient-to-br ${modeConfig.color} flex items-center justify-center`}>
-        <span className="text-white scale-75">{modeConfig.icon}</span>
-      </span>
-    );
-  };
+  // History panel
+  const HistoryPanel = () => (
+    <motion.div
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-xl z-50 flex flex-col"
+    >
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          <History className="w-5 h-5" />
+          Historique
+        </h2>
+        <button onClick={() => setShowHistory(false)} className="p-2 rounded-full hover:bg-gray-100">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="p-4 border-b">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Rechercher..."
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={historyTab} onValueChange={(v) => setHistoryTab(v as 'recent' | 'favorites')} className="flex-1 flex flex-col">
+        <TabsList className="mx-4 mt-2">
+          <TabsTrigger value="recent" className="flex-1">
+            <History className="w-4 h-4 mr-1" />
+            Récent
+          </TabsTrigger>
+          <TabsTrigger value="favorites" className="flex-1">
+            <Star className="w-4 h-4 mr-1" />
+            Favoris
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="recent" className="flex-1 overflow-y-auto p-4 space-y-2">
+          {(searchQuery ? searchResults : historyManager.history).map(item => (
+            <HistoryCard key={item.id} item={item} />
+          ))}
+          {historyManager.history.length === 0 && (
+            <p className="text-center text-gray-400 py-8">Aucun historique</p>
+          )}
+        </TabsContent>
+
+        <TabsContent value="favorites" className="flex-1 overflow-y-auto p-4 space-y-2">
+          {historyManager.favorites.map(item => (
+            <HistoryCard key={item.id} item={item} />
+          ))}
+          {historyManager.favorites.length === 0 && (
+            <p className="text-center text-gray-400 py-8">Aucun favori</p>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Clear button */}
+      {historyManager.history.length > 0 && (
+        <div className="p-4 border-t">
+          <Button 
+            variant="outline" 
+            className="w-full text-red-500 hover:text-red-600"
+            onClick={historyManager.clearHistory}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Effacer tout l'historique
+          </Button>
+        </div>
+      )}
+    </motion.div>
+  );
+
+  // History card component
+  const HistoryCard = ({ item }: { item: TranslationHistoryItem }) => (
+    <motion.div
+      whileTap={{ scale: 0.98 }}
+      onClick={() => handleHistoryItemClick(item)}
+      className="p-3 rounded-xl border border-gray-200 hover:border-tamtam-primary/50 cursor-pointer transition-colors"
+    >
+      <div className="flex items-start justify-between mb-2">
+        <LanguageBadge lang={item.source_language as 'bariba' | 'french'} />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              historyManager.toggleFavorite(item.id, !item.is_favorite);
+            }}
+            className={`p-1 rounded-full ${item.is_favorite ? 'text-yellow-500' : 'text-gray-300'}`}
+          >
+            <Star className="w-4 h-4" fill={item.is_favorite ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              historyManager.deleteFromHistory(item.id);
+            }}
+            className="p-1 rounded-full text-gray-300 hover:text-red-500"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+      <p className="text-sm text-gray-600 truncate">{item.source_text}</p>
+      <div className="flex items-center gap-1 my-1">
+        <ArrowLeftRight className="w-3 h-3 text-gray-400" />
+      </div>
+      <p className="text-sm font-medium text-gray-800 truncate">{item.translated_text}</p>
+      <p className="text-xs text-gray-400 mt-1">
+        {new Date(item.created_at).toLocaleDateString()}
+      </p>
+    </motion.div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-tamtam-bg to-white flex flex-col">
@@ -198,22 +387,76 @@ export default function TamTamTranslator() {
             </motion.div>
             <div>
               <h1 className="text-lg font-bold text-tamtam-text">Traducteur IA</h1>
-              <p className="text-xs text-tamtam-text-muted">Bariba ⟷ Français</p>
+              <div className="flex items-center gap-2 text-xs">
+                {autoDetectEnabled && (
+                  <span className="flex items-center gap-1 text-green-600">
+                    <Sparkles className="w-3 h-3" />
+                    Auto-détection
+                  </span>
+                )}
+                {conversationMode && (
+                  <span className="flex items-center gap-1 text-purple-600">
+                    <MessageSquare className="w-3 h-3" />
+                    Contexte
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           
-          {/* Language swap button */}
           <div className="flex items-center gap-2">
-            <LanguageBadge lang={translator.sourceLanguage} size="sm" />
-            <motion.button
-              whileTap={{ scale: 0.9, rotate: 180 }}
-              onClick={translator.swapLanguages}
-              className="w-8 h-8 bg-tamtam-primary rounded-full flex items-center justify-center shadow-md"
+            {/* History button */}
+            <button
+              onClick={() => setShowHistory(true)}
+              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200"
             >
-              <ArrowLeftRight className="w-4 h-4 text-white" />
-            </motion.button>
-            <LanguageBadge lang={translator.targetLanguage} size="sm" />
+              <History className="w-5 h-5 text-gray-600" />
+            </button>
+            
+            {/* Language indicator with swap */}
+            <div className="flex items-center gap-1">
+              <LanguageBadge 
+                lang={translator.sourceLanguage} 
+                size="sm" 
+                detected={detectedLang === translator.sourceLanguage}
+              />
+              <motion.button
+                whileTap={{ scale: 0.9, rotate: 180 }}
+                onClick={() => {
+                  translator.swapLanguages();
+                  setDetectedLang(null);
+                }}
+                className="w-7 h-7 bg-tamtam-primary rounded-full flex items-center justify-center shadow-md"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5 text-white" />
+              </motion.button>
+              <LanguageBadge lang={translator.targetLanguage} size="sm" />
+            </div>
           </div>
+        </div>
+
+        {/* Settings toggles */}
+        <div className="flex items-center gap-4 mt-2 text-xs">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoDetectEnabled}
+              onChange={(e) => setAutoDetectEnabled(e.target.checked)}
+              className="w-3.5 h-3.5 rounded accent-tamtam-primary"
+            />
+            <Sparkles className="w-3 h-3 text-green-500" />
+            <span className="text-gray-600">Détection auto</span>
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={conversationMode}
+              onChange={(e) => setConversationMode(e.target.checked)}
+              className="w-3.5 h-3.5 rounded accent-tamtam-primary"
+            />
+            <MessageSquare className="w-3 h-3 text-purple-500" />
+            <span className="text-gray-600">Mode conversation</span>
+          </label>
         </div>
       </div>
 
@@ -224,29 +467,39 @@ export default function TamTamTranslator() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center py-12"
+            className="text-center py-8"
           >
             <motion.div
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="text-6xl mb-4"
+              className="text-5xl mb-4"
             >
               🌐
             </motion.div>
             <h2 className="text-xl font-bold text-tamtam-text mb-2">
               Bienvenue! 👋
             </h2>
-            <p className="text-tamtam-text-muted mb-4">
+            <p className="text-tamtam-text-muted mb-2">
               Je traduis entre Français et Bariba
             </p>
-            <div className="flex flex-wrap justify-center gap-2 mb-6">
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
+              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Détection automatique
+              </span>
+              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs flex items-center gap-1">
+                <MessageSquare className="w-3 h-3" />
+                Mode conversation
+              </span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
               {inputModes.map(mode => (
                 <span key={mode.id} className={`px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r ${mode.color} text-white`}>
                   {mode.label}
                 </span>
               ))}
             </div>
-            <p className="text-3xl animate-bounce">👇🎤</p>
+            <p className="text-2xl animate-bounce">👇🎤</p>
           </motion.div>
         )}
 
@@ -268,19 +521,18 @@ export default function TamTamTranslator() {
                     : 'bg-blue-50 border border-blue-200'
                 }`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <ModeIcon mode={msg.inputMode} />
                     <LanguageBadge lang={msg.sourceLanguage} size="sm" />
                   </div>
                   <p className="text-gray-800">{msg.sourceText}</p>
                   <div className="flex items-center gap-1 mt-2 justify-end">
                     <button
-                      onClick={() => speakMessage(msg.sourceText, msg.sourceLanguage)}
+                      onClick={() => speakText(msg.sourceText, msg.sourceLanguage)}
                       className="p-1 rounded-full hover:bg-white/50"
                     >
                       <Volume2 className="w-3.5 h-3.5 text-gray-500" />
                     </button>
                     <button
-                      onClick={() => copyMessage(msg.sourceText)}
+                      onClick={() => copyText(msg.sourceText)}
                       className="p-1 rounded-full hover:bg-white/50"
                     >
                       <Copy className="w-3.5 h-3.5 text-gray-500" />
@@ -304,7 +556,7 @@ export default function TamTamTranslator() {
                     <p className="text-lg font-medium text-gray-800">{msg.translatedText}</p>
                     <div className="flex items-center gap-1 mt-2">
                       <button
-                        onClick={() => speakMessage(msg.translatedText!, msg.targetLanguage)}
+                        onClick={() => speakText(msg.translatedText!, msg.targetLanguage)}
                         className={`p-1.5 rounded-full ${
                           msg.targetLanguage === 'bariba' ? 'bg-orange-200 text-orange-700' : 'bg-blue-200 text-blue-700'
                         }`}
@@ -312,7 +564,7 @@ export default function TamTamTranslator() {
                         <Volume2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => copyMessage(msg.translatedText!)}
+                        onClick={() => copyText(msg.translatedText!)}
                         className="p-1.5 rounded-full bg-gray-100 text-gray-600"
                       >
                         <Copy className="w-4 h-4" />
@@ -370,6 +622,11 @@ export default function TamTamTranslator() {
         )}
       </AnimatePresence>
 
+      {/* History panel */}
+      <AnimatePresence>
+        {showHistory && <HistoryPanel />}
+      </AnimatePresence>
+
       {/* Input Area */}
       <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3 safe-area-inset-bottom">
         {/* Clear button */}
@@ -417,7 +674,7 @@ export default function TamTamTranslator() {
               className="flex flex-col items-center"
             >
               <p className="text-xs text-tamtam-text-muted mb-2">
-                Parlez en {translator.sourceLanguage === 'bariba' ? 'Bariba 🇧🇯' : 'Français 🇫🇷'}
+                Parlez - la langue sera détectée automatiquement
               </p>
               <TamTamMicButton
                 size="lg"
@@ -435,24 +692,34 @@ export default function TamTamTranslator() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="flex gap-2"
             >
-              <Textarea
-                ref={textareaRef}
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={`Tapez en ${translator.sourceLanguage === 'bariba' ? 'Bariba' : 'Français'}...`}
-                className="flex-1 min-h-[50px] max-h-[100px] text-base rounded-xl border-2 focus:border-tamtam-primary resize-none"
-                rows={1}
-              />
-              <Button
-                onClick={handleTextSubmit}
-                disabled={!textInput.trim() || translator.isProcessing}
-                className="h-auto px-4 bg-tamtam-primary hover:bg-tamtam-primary/90 rounded-xl"
-              >
-                <Send className="w-5 h-5" />
-              </Button>
+              {/* Auto-detect indicator */}
+              {detectedLang && (
+                <div className="flex justify-center mb-2">
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    Détecté: {detectedLang === 'bariba' ? '🇧🇯 Bariba' : '🇫🇷 Français'}
+                  </span>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Textarea
+                  ref={textareaRef}
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Tapez dans n'importe quelle langue..."
+                  className="flex-1 min-h-[50px] max-h-[100px] text-base rounded-xl border-2 focus:border-tamtam-primary resize-none"
+                  rows={1}
+                />
+                <Button
+                  onClick={handleTextSubmit}
+                  disabled={!textInput.trim() || translator.isProcessing}
+                  className="h-auto px-4 bg-tamtam-primary hover:bg-tamtam-primary/90 rounded-xl"
+                >
+                  <Send className="w-5 h-5" />
+                </Button>
+              </div>
             </motion.div>
           )}
 
