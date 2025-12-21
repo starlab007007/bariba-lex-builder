@@ -20,9 +20,11 @@ interface AssistantResponse {
 
 interface RaconteMoiAssistantProps {
   onAction?: (action: string) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onAction }) => {
+export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onAction, isOpen, onOpenChange }) => {
   const navigate = useNavigate();
   const { t, currentLang } = useTamTamLanguage();
   const { speakCurrentLang, speakBariba, speakFrench } = useBilingualAudio();
@@ -30,7 +32,6 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
   const audioRecorder = useAudioRecorder();
   const { toast } = useToast();
   
-  const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -118,7 +119,7 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
             case 'profile': navigate('/tamtam/profile'); break;
             case 'services': navigate('/tamtam/services'); break;
           }
-          setIsOpen(false);
+          onOpenChange(false);
         }, 1500);
       }
       
@@ -147,12 +148,12 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
         audioRecorder.cancelRecording();
       }
       setIsListening(false);
-      setIsOpen(false);
+      onOpenChange(false);
     } else {
-      setIsOpen(true);
+      onOpenChange(true);
       setTimeout(() => startListening(), 500);
     }
-  }, [isOpen, isListening, startListening, audioRecorder]);
+  }, [isOpen, isListening, startListening, audioRecorder, onOpenChange]);
 
   const handleMicToggle = useCallback(() => {
     if (isListening) {
@@ -164,60 +165,6 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
 
   return (
     <>
-      {/* Floating Assistant Button with pulse and tooltip */}
-      <TooltipProvider delayDuration={300}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <motion.button
-              onClick={toggleOpen}
-              className="fixed bottom-32 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg shadow-purple-500/30 flex items-center justify-center z-40 hover:shadow-xl hover:shadow-purple-500/40 transition-shadow"
-              whileTap={{ scale: 0.9 }}
-              whileHover={{ scale: 1.05 }}
-              animate={isOpen ? { scale: 0 } : { scale: 1 }}
-            >
-              {/* Pulse ring animation */}
-              <motion.div
-                className="absolute inset-0 rounded-full bg-purple-400/30"
-                animate={{
-                  scale: [1, 1.5, 1.5],
-                  opacity: [0.5, 0, 0]
-                }}
-                transition={{
-                  duration: 2.5,
-                  repeat: Infinity,
-                  ease: "easeOut"
-                }}
-              />
-              <motion.div
-                className="absolute inset-0 rounded-full bg-purple-400/20"
-                animate={{
-                  scale: [1, 1.8, 1.8],
-                  opacity: [0.3, 0, 0]
-                }}
-                transition={{
-                  duration: 2.5,
-                  repeat: Infinity,
-                  ease: "easeOut",
-                  delay: 0.6
-                }}
-              />
-              <MessageCircle className="w-6 h-6 text-white relative z-10" />
-              <motion.span 
-                className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center shadow-md z-20"
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-              >
-                <Mic className="w-3 h-3 text-white" />
-              </motion.span>
-            </motion.button>
-          </TooltipTrigger>
-          <TooltipContent side="left" className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-none">
-            <p className="font-medium">🎭 Raconte-Moi</p>
-            <p className="text-xs opacity-80">Assistant vocal IA</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-
       {/* Assistant Modal */}
       <AnimatePresence>
         {isOpen && (
