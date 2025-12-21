@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { byT5TranslationService } from '@/services/ByT5TranslationService';
 
 const services = [
-  { id: 'translator', icon: '🌐', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelKey: 'translator', route: null },
+  { id: 'translator', icon: '🌐', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelKey: 'translator', route: '/tamtam/translator' },
   { id: 'health', icon: '🏥', color: 'bg-green-500', bgLight: 'bg-green-50', labelKey: 'health', route: null },
   { id: 'finance', icon: '💰', color: 'bg-yellow-500', bgLight: 'bg-yellow-50', labelKey: 'finance', route: '/tamtam/finance' },
   { id: 'agri', icon: '🌾', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', labelKey: 'agriculture', route: '/tamtam/agriculture' },

@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.smart-assistant]
 verify_jwt = false
+
+[functions.ocr-translate]
+verify_jwt = false
