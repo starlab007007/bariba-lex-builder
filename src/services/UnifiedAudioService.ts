@@ -176,9 +176,10 @@ class UnifiedAudioServiceClass {
         body: { text: 'a', speakingRate: 1.0 }
       });
       const latency = Date.now() - start;
+      // HuggingFace Spaces peuvent prendre 2-4s - seuil augmenté à 6000ms
       return error 
         ? { status: 'unavailable', latency, error: error.message, lastCheck: new Date() }
-        : { status: latency < 3000 ? 'healthy' : 'degraded', latency, lastCheck: new Date() };
+        : { status: latency < 6000 ? 'healthy' : 'degraded', latency, lastCheck: new Date() };
     } catch (e: any) {
       return { status: 'unavailable', error: e.message, lastCheck: new Date() };
     }
@@ -220,13 +221,28 @@ class UnifiedAudioServiceClass {
   private async checkTranslation(): Promise<ServiceHealth> {
     const start = Date.now();
     try {
-      const { error } = await supabase.functions.invoke('byt5-bariba-translate', {
+      const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
         body: { text: 'bonjour', sourceLang: 'french', targetLang: 'bariba' }
       });
       const latency = Date.now() - start;
-      return error 
-        ? { status: 'degraded', latency, error: error.message, lastCheck: new Date() }
-        : { status: latency < 5000 ? 'healthy' : 'degraded', latency, lastCheck: new Date() };
+      
+      // Vérifier que la traduction est valide (pas un texte UI comme "Share via Link")
+      const isValidTranslation = data?.translation && 
+        typeof data.translation === 'string' && 
+        data.translation.length > 0 &&
+        !data.translation.includes('Share via') &&
+        !data.translation.includes('Error');
+      
+      if (error) {
+        return { status: 'degraded', latency, error: error.message, lastCheck: new Date() };
+      }
+      
+      if (!isValidTranslation) {
+        return { status: 'degraded', latency, error: 'Invalid translation response', lastCheck: new Date() };
+      }
+      
+      // HuggingFace Spaces peuvent prendre 4-8s - seuil augmenté à 10000ms
+      return { status: latency < 10000 ? 'healthy' : 'degraded', latency, lastCheck: new Date() };
     } catch (e: any) {
       return { status: 'degraded', error: e.message, lastCheck: new Date() };
     }

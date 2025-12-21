@@ -143,7 +143,13 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   };
 
   const handleRecordingComplete = async (base64: string, duration?: number, recorderLiveTranscript?: string) => {
-    console.log('[TamTamCreatePost] Recording complete, duration:', duration, 'liveTranscript:', recorderLiveTranscript);
+    console.log('[TamTamCreatePost] Recording complete');
+    console.log('  - duration:', duration);
+    console.log('  - recorderLiveTranscript:', recorderLiveTranscript);
+    console.log('  - capturedLiveTranscript:', capturedLiveTranscript);
+    console.log('  - liveTranscript:', liveTranscript);
+    console.log('  - interimTranscript:', interimTranscript);
+    
     setAudioBase64(base64);
     setAudioDuration(duration || 0);
     setTranscriptionFailed(false);
@@ -151,21 +157,34 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     
     toast({ title: "🎤 Traitement audio...", description: "Transcription en cours" });
     
-    // Use the best available live transcript (prioritize the one from recorder)
-    const bestLiveTranscript = recorderLiveTranscript?.trim() || capturedLiveTranscript?.trim() || liveTranscript?.trim() || interimTranscript?.trim();
+    // Collect all available transcripts (prioritize recorder's transcript)
+    const allTranscripts = [
+      recorderLiveTranscript,
+      capturedLiveTranscript,
+      liveTranscript,
+      interimTranscript
+    ].filter(t => t && t.trim().length > 0);
+    
+    const bestLiveTranscript = allTranscripts.length > 0 
+      ? allTranscripts.reduce((a, b) => (a && a.length > (b?.length || 0) ? a : b)) 
+      : '';
+    
+    console.log('[TamTamCreatePost] Best live transcript:', bestLiveTranscript);
+    
     const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
     
-    // If we already have a French live transcript, use it directly
-    if (sourceLang === 'fr' && bestLiveTranscript) {
-      console.log('[TamTamCreatePost] French: Using Web Speech live transcript directly:', bestLiveTranscript);
+    // If we have a French live transcript from Web Speech, use it directly
+    if (sourceLang === 'fr' && bestLiveTranscript && bestLiveTranscript.length > 0) {
+      console.log('[TamTamCreatePost] French: Using Web Speech live transcript directly');
       setTranscript(bestLiveTranscript);
       setTranscriptionFailed(false);
       
       // Try to translate to Bariba
       try {
         const translateResult = await transcribeWithTranslation(base64, 'fr');
-        if (translateResult.transcription_ba) {
+        if (translateResult.transcription_ba && translateResult.transcription_ba.length > 0) {
           setTranslatedTranscript(translateResult.transcription_ba);
+          console.log('[TamTamCreatePost] Bariba translation:', translateResult.transcription_ba);
         }
       } catch (e) {
         console.warn('[TamTamCreatePost] Translation to Bariba failed:', e);
@@ -173,16 +192,18 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       
       toast({
         title: "✅ Transcription réussie",
-        description: "Audio transcrit via Web Speech"
+        description: `"${bestLiveTranscript.substring(0, 30)}${bestLiveTranscript.length > 30 ? '...' : ''}"`
       });
       setStep('preview');
       return;
     }
     
     // For Bariba or when no live transcript, use the full transcription service
+    console.log('[TamTamCreatePost] Using full transcription service for', sourceLang);
     const result = await transcribeWithTranslation(base64, sourceLang);
+    console.log('[TamTamCreatePost] Transcription result:', result);
     
-    if (result.transcription) {
+    if (result.transcription && result.transcription.length > 0) {
       setTranscript(result.transcription);
       if (sourceLang === 'fr') {
         setTranslatedTranscript(result.transcription_ba);
@@ -195,8 +216,8 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
           ? `Audio transcrit et traduit (${result.translation_method})` 
           : "Votre audio a été transcrit"
       });
-    } else if (bestLiveTranscript) {
-      // Fallback: utiliser le liveTranscript du Web Speech API (français)
+    } else if (bestLiveTranscript && bestLiveTranscript.length > 0) {
+      // Fallback: use liveTranscript from Web Speech API (French)
       console.log('[TamTamCreatePost] Using liveTranscript fallback:', bestLiveTranscript);
       setTranscript(bestLiveTranscript);
       setTranscriptionFailed(false);
@@ -205,10 +226,13 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
         description: "Audio transcrit via le navigateur"
       });
     } else {
+      // No transcription available
+      console.log('[TamTamCreatePost] No transcription available');
       setTranscriptionFailed(true);
+      setTranscript(''); // Clear any previous transcript
       toast({
-        title: "⚠️ Transcription non disponible",
-        description: "Vous pouvez quand même publier votre audio"
+        title: "⚠️ Sans transcription",
+        description: "Publication audio sans texte"
       });
     }
     
