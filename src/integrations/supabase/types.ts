@@ -1791,6 +1791,51 @@ export type Database = {
           },
         ]
       }
+      translation_history: {
+        Row: {
+          confidence_score: number | null
+          context_data: Json | null
+          created_at: string
+          id: string
+          input_mode: string
+          is_favorite: boolean
+          session_id: string
+          source_language: string
+          source_text: string
+          target_language: string
+          translated_text: string
+          user_id: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          input_mode?: string
+          is_favorite?: boolean
+          session_id?: string
+          source_language: string
+          source_text: string
+          target_language: string
+          translated_text: string
+          user_id?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          input_mode?: string
+          is_favorite?: boolean
+          session_id?: string
+          source_language?: string
+          source_text?: string
+          target_language?: string
+          translated_text?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       translation_logs: {
         Row: {
           confidence_score: number | null
