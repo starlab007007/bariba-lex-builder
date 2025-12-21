@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { useWebSpeechSTT } from '@/hooks/useWebSpeechSTT';
+import { useAudioLevel } from '@/hooks/useAudioLevel';
 import { useToast } from '@/hooks/use-toast';
 
 interface TamTamMicButtonProps {
@@ -21,6 +22,7 @@ interface TamTamMicButtonProps {
   autoSpeak?: boolean;
   sourceLang?: 'ba' | 'fr';
   disabled?: boolean;
+  showAudioLevel?: boolean;
 }
 
 const sizeClasses = {
@@ -37,6 +39,41 @@ const iconSizes = {
   xl: 'w-14 h-14',
 };
 
+// Audio level indicator component
+function AudioLevelIndicator({ level, isSpeaking }: { level: number; isSpeaking: boolean }) {
+  const bars = 5;
+  const barHeights = [20, 35, 50, 35, 20]; // Base heights for visual appeal
+  
+  return (
+    <div className="flex items-end justify-center gap-1 h-8">
+      {Array.from({ length: bars }).map((_, i) => {
+        const baseHeight = barHeights[i];
+        const activeHeight = Math.min(100, baseHeight + (level * 0.6));
+        const isBarActive = level > (i * 15);
+        
+        return (
+          <motion.div
+            key={i}
+            animate={{ 
+              height: isBarActive ? `${activeHeight}%` : `${baseHeight * 0.3}%`,
+              opacity: isBarActive ? 1 : 0.3
+            }}
+            transition={{ duration: 0.1 }}
+            className={`w-1.5 rounded-full ${
+              isSpeaking 
+                ? 'bg-green-500' 
+                : level > 5 
+                  ? 'bg-amber-500' 
+                  : 'bg-gray-300'
+            }`}
+            style={{ minHeight: 4 }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export function TamTamMicButton({ 
   size = 'md', 
   isRecording: externalIsRecording, 
@@ -46,7 +83,8 @@ export function TamTamMicButton({
   autoTranslate = false,
   autoSpeak = false,
   sourceLang = 'ba',
-  disabled = false
+  disabled = false,
+  showAudioLevel = true
 }: TamTamMicButtonProps) {
   const { toast } = useToast();
   const [internalRecording, setInternalRecording] = useState(false);
@@ -56,6 +94,7 @@ export function TamTamMicButton({
   const audioRecorder = useAudioRecorder();
   const unifiedAudio = useUnifiedAudio();
   const webSpeechSTT = useWebSpeechSTT();
+  const audioLevel = useAudioLevel(15); // Threshold de 15% pour considérer comme "speaking"
   
   const isRecording = externalIsRecording !== undefined ? externalIsRecording : internalRecording;
 
@@ -70,12 +109,18 @@ export function TamTamMicButton({
     }
   }, [sourceLang, webSpeechSTT.transcript]);
 
-  // Show interim results
+  // Show interim results or audio level feedback
   useEffect(() => {
-    if (isRecording && webSpeechSTT.interimTranscript) {
-      setStatusText(`"${webSpeechSTT.interimTranscript.substring(0, 30)}..."`);
+    if (isRecording) {
+      if (webSpeechSTT.interimTranscript) {
+        setStatusText(`"${webSpeechSTT.interimTranscript.substring(0, 30)}..."`);
+      } else if (audioLevel.isSpeaking) {
+        setStatusText('🎤 Bonne intensité!');
+      } else if (audioLevel.level > 0 && audioLevel.level < 15) {
+        setStatusText('🔇 Parlez plus fort...');
+      }
     }
-  }, [isRecording, webSpeechSTT.interimTranscript]);
+  }, [isRecording, webSpeechSTT.interimTranscript, audioLevel.isSpeaking, audioLevel.level]);
 
   const handlePress = useCallback(async () => {
     if (disabled) return;
@@ -87,6 +132,11 @@ export function TamTamMicButton({
         setInternalRecording(true);
         collectedTranscriptRef.current = '';
         setStatusText(sourceLang === 'fr' ? '🎤 Parlez en français...' : '🎤 Parlez en bariba...');
+        
+        // Start audio level monitoring
+        if (showAudioLevel) {
+          audioLevel.startMonitoring();
+        }
         
         if (sourceLang === 'fr') {
           // FRENCH: Use Web Speech API ONLY (no audio recording needed)
@@ -112,6 +162,9 @@ export function TamTamMicButton({
         setInternalRecording(false);
         setStatusText('⏳ Traitement...');
         setIsProcessing(true);
+        
+        // Stop audio level monitoring
+        audioLevel.stopMonitoring();
         
         const recordingDuration = audioRecorder.duration;
         console.log('[TamTamMicButton] Recording duration:', recordingDuration, 'seconds');
@@ -260,13 +313,25 @@ export function TamTamMicButton({
   }, [
     disabled, isRecording, audioRecorder, onRecordingComplete, 
     autoTranscribe, autoTranslate, autoSpeak, sourceLang, unifiedAudio, 
-    webSpeechSTT, onPress, toast
+    webSpeechSTT, onPress, toast, showAudioLevel, audioLevel
   ]);
 
   const showRecordingState = isRecording || audioRecorder.isRecording;
   
   return (
     <div className="flex flex-col items-center gap-2">
+      {/* Audio Level Indicator - above button when recording */}
+      {showAudioLevel && showRecordingState && !isProcessing && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="mb-1"
+        >
+          <AudioLevelIndicator level={audioLevel.level} isSpeaking={audioLevel.isSpeaking} />
+        </motion.div>
+      )}
+      
       <motion.button
         onClick={handlePress}
         whileTap={{ scale: 0.95 }}
@@ -279,17 +344,17 @@ export function TamTamMicButton({
             <motion.div
               animate={{ scale: [1, 1.4], opacity: [0.4, 0] }}
               transition={{ duration: 1.5, repeat: Infinity }}
-              className={`absolute inset-0 bg-tamtam-primary rounded-full`}
+              className={`absolute inset-0 ${audioLevel.isSpeaking ? 'bg-green-500' : 'bg-tamtam-primary'} rounded-full`}
             />
             <motion.div
               animate={{ scale: [1, 1.6], opacity: [0.3, 0] }}
               transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
-              className={`absolute inset-0 bg-tamtam-primary rounded-full`}
+              className={`absolute inset-0 ${audioLevel.isSpeaking ? 'bg-green-500' : 'bg-tamtam-primary'} rounded-full`}
             />
             <motion.div
               animate={{ scale: [1, 1.8], opacity: [0.2, 0] }}
               transition={{ duration: 1.5, repeat: Infinity, delay: 0.6 }}
-              className={`absolute inset-0 bg-tamtam-primary rounded-full`}
+              className={`absolute inset-0 ${audioLevel.isSpeaking ? 'bg-green-500' : 'bg-tamtam-primary'} rounded-full`}
             />
           </>
         )}
@@ -300,7 +365,9 @@ export function TamTamMicButton({
             isProcessing
               ? 'bg-amber-500 shadow-lg shadow-amber-500/40'
               : showRecordingState
-                ? 'bg-red-500 shadow-lg shadow-red-500/40'
+                ? audioLevel.isSpeaking 
+                  ? 'bg-green-500 shadow-lg shadow-green-500/40'
+                  : 'bg-red-500 shadow-lg shadow-red-500/40'
                 : 'bg-tamtam-primary shadow-tamtam-soft'
           } ${disabled ? 'opacity-50' : ''}`}
         >
@@ -318,8 +385,8 @@ export function TamTamMicButton({
                 [...Array(3)].map((_, i) => (
                   <motion.div
                     key={i}
-                    animate={{ height: [8, 20, 8] }}
-                    transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.1 }}
+                    animate={{ height: [8, 8 + (audioLevel.level * 0.2), 8] }}
+                    transition={{ duration: 0.3, repeat: Infinity, delay: i * 0.1 }}
                     className="w-1 bg-white rounded-full"
                     style={{ height: 8 }}
                   />
@@ -348,7 +415,9 @@ export function TamTamMicButton({
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-xs text-center text-muted-foreground max-w-[150px] truncate"
+          className={`text-xs text-center max-w-[150px] truncate ${
+            audioLevel.isSpeaking ? 'text-green-600 font-medium' : 'text-muted-foreground'
+          }`}
         >
           {statusText}
         </motion.p>
