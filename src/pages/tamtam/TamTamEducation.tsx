@@ -1,14 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Volume2, Loader2, Play, Pause, SkipBack, SkipForward, CheckCircle } from 'lucide-react';
-import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { SmartChatbot } from '@/components/tamtam/SmartChatbot';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { byT5TranslationService } from '@/services/ByT5TranslationService';
 
 const categories = [
   { id: 'crops', icon: '🌱', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Cultures', labelBa: 'Àwọn ohun ọ̀gbìn' },
@@ -78,19 +76,11 @@ const mockStories = [
   },
 ];
 
-interface Message {
-  type: 'user' | 'ai';
-  textFr: string;
-  textBa: string;
-}
-
 export default function TamTamEducation() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeCourse, setActiveCourse] = useState<AudioCourse | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
@@ -101,7 +91,6 @@ export default function TamTamEducation() {
     announceAction(currentLang === 'fr' ? 'Éducation' : 'Ẹ̀kọ́');
   }, [announceAction, currentLang]);
 
-  // Simulate audio playback progress
   useEffect(() => {
     if (isPlaying && activeCourse) {
       progressInterval.current = setInterval(() => {
@@ -128,7 +117,7 @@ export default function TamTamEducation() {
     const label = currentLang === 'fr' ? category.labelFr : category.labelBa;
     await speakCurrentLang(label);
     setActiveCategory(category.id);
-    setMessages([]);
+  };
   };
 
   const handleBack = () => {
