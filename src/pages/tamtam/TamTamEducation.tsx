@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, Loader2, Play, Pause, SkipBack, SkipForward, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Volume2, Play, Pause, SkipBack, SkipForward, CheckCircle } from 'lucide-react';
 import { SmartChatbot } from '@/components/tamtam/SmartChatbot';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
-import { useToast } from '@/hooks/use-toast';
 
 const categories = [
   { id: 'crops', icon: '🌱', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Cultures', labelBa: 'Àwọn ohun ọ̀gbìn' },
@@ -81,10 +80,9 @@ export default function TamTamEducation() {
   const [activeCourse, setActiveCourse] = useState<AudioCourse | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const { t, currentLang } = useTamTamLanguage();
+  const { currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
-  const { toast } = useToast();
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -118,7 +116,6 @@ export default function TamTamEducation() {
     await speakCurrentLang(label);
     setActiveCategory(category.id);
   };
-  };
 
   const handleBack = () => {
     tamtamFeedback.play('click');
@@ -150,75 +147,10 @@ export default function TamTamEducation() {
     tamtamFeedback.play('click');
     setIsPlaying(!isPlaying);
     if (!isPlaying && activeCourse) {
-      // Simulate course content being spoken
       const intro = currentLang === 'fr' 
         ? `Cours: ${activeCourse.titleFr}. Durée: ${activeCourse.duration}.`
         : `Ẹ̀kọ́: ${activeCourse.titleBa}. Àkókò: ${activeCourse.duration}.`;
       await speakCurrentLang(intro);
-    }
-  };
-
-  const handleVoiceQuestion = async (result: {
-    audioBase64: string;
-    transcription?: string;
-    translation?: string;
-    sourceLang: 'ba' | 'fr';
-  }) => {
-    if (!result.transcription) {
-      toast({ title: "Erreur", description: "Impossible de transcrire", variant: "destructive" });
-      return;
-    }
-
-    setIsProcessing(true);
-    tamtamFeedback.play('send');
-
-    try {
-      let textFr = result.sourceLang === 'fr' ? result.transcription : '';
-      let textBa = result.sourceLang === 'ba' ? result.transcription : '';
-
-      if (result.sourceLang === 'ba' && !textFr) {
-        const transResult = await byT5TranslationService.translate(result.transcription, 'bariba', 'french');
-        textFr = transResult.translation;
-      } else if (result.sourceLang === 'fr' && !textBa) {
-        const transResult = await byT5TranslationService.translate(result.transcription, 'french', 'bariba');
-        textBa = transResult.translation;
-      }
-
-      setMessages(prev => [...prev, { type: 'user', textFr, textBa }]);
-
-      // Call education AI
-      const { data, error } = await supabase.functions.invoke('agri-advisor', {
-        body: { 
-          question: textFr,
-          context: 'education',
-          language: currentLang
-        }
-      });
-
-      if (error) throw error;
-
-      const aiMessage: Message = {
-        type: 'ai',
-        textFr: data.response_fr || data.response || "Voici la réponse à votre question...",
-        textBa: data.response_ba || ''
-      };
-
-      if (!aiMessage.textBa && aiMessage.textFr) {
-        const transResult = await byT5TranslationService.translate(aiMessage.textFr, 'french', 'bariba');
-        aiMessage.textBa = transResult.translation;
-      }
-
-      setMessages(prev => [...prev, aiMessage]);
-      
-      const responseText = currentLang === 'ba' ? aiMessage.textBa : aiMessage.textFr;
-      await speakCurrentLang(responseText);
-      
-      tamtamFeedback.play('success');
-    } catch (err: any) {
-      console.error('[TamTamEducation] Error:', err);
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -391,53 +323,13 @@ export default function TamTamEducation() {
               </span>
             </div>
 
-            {/* Q&A Section */}
+            {/* Q&A Section with SmartChatbot */}
             {activeCategory === 'qa' && (
-              <>
-                <div className="flex-1 space-y-4 mb-4 min-h-[200px] overflow-y-auto">
-                  {messages.length === 0 && (
-                    <div className="text-center py-8">
-                      <span className="text-6xl">🤔</span>
-                      <p className="text-tamtam-text-muted mt-4">
-                        {currentLang === 'fr' ? 'Posez votre question sur l\'agriculture' : 'Bi ìbéèrè rẹ nípa àgbẹ̀'}
-                      </p>
-                      <p className="text-3xl mt-3">👇🎤</p>
-                    </div>
-                  )}
-
-                  {messages.map((msg, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`p-4 rounded-2xl ${
-                        msg.type === 'user' 
-                          ? 'bg-tamtam-primary text-white ml-8' 
-                          : 'bg-tamtam-surface mr-8'
-                      }`}
-                    >
-                      <p>{currentLang === 'fr' ? msg.textFr : msg.textBa}</p>
-                    </motion.div>
-                  ))}
-
-                  {isProcessing && (
-                    <div className="flex items-center justify-center gap-2 py-4">
-                      <Loader2 className="w-5 h-5 animate-spin text-tamtam-primary" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-center pb-4">
-                  <TamTamMicButton
-                    size="lg"
-                    onRecordingComplete={handleVoiceQuestion}
-                    autoTranscribe={true}
-                    autoTranslate={true}
-                    sourceLang={currentLang}
-                    disabled={isProcessing}
-                  />
-                </div>
-              </>
+              <SmartChatbot 
+                context="education"
+                welcomeMessageFr="Posez vos questions sur l'éducation, la santé, le commerce..."
+                welcomeMessageBa="Bi àwọn ìbéèrè rẹ nípa ẹ̀kọ́, ìlera, òwò..."
+              />
             )}
 
             {/* Stories section */}
@@ -450,37 +342,31 @@ export default function TamTamEducation() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                     onClick={() => speakCurrentLang(currentLang === 'fr' ? story.titleFr : story.titleBa)}
-                    className="w-full bg-tamtam-surface rounded-2xl p-4 flex items-center gap-4 shadow-tamtam-soft text-left"
+                    className="w-full bg-tamtam-surface rounded-2xl p-4 flex items-center gap-4 shadow-tamtam-soft"
                   >
-                    <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center">
-                      <span className="text-3xl">{story.farmer.split(' ')[0]}</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-tamtam-text">
+                    <span className="text-4xl">{story.farmer.split(' ')[0]}</span>
+                    <div className="flex-1 text-left">
+                      <p className="text-xs text-tamtam-text-muted">{story.farmer} • {story.location}</p>
+                      <p className="font-medium text-tamtam-text mt-1">
                         {currentLang === 'fr' ? story.titleFr : story.titleBa}
                       </p>
-                      <p className="text-sm text-tamtam-text-muted">
-                        {story.farmer} • {story.location}
-                      </p>
+                      <p className="text-xs text-tamtam-text-muted mt-1">{story.duration}</p>
                     </div>
-                    <div className="flex items-center gap-1 text-tamtam-text-muted">
-                      <Play className="w-4 h-4" />
-                      <span className="text-sm">{story.duration}</span>
-                    </div>
+                    <Volume2 className="w-5 h-5 text-tamtam-text-muted" />
                   </motion.button>
                 ))}
               </div>
             )}
 
             {/* Course list */}
-            {!['qa', 'stories'].includes(activeCategory) && courses.length > 0 && (
+            {courses.length > 0 && !['qa', 'stories'].includes(activeCategory || '') && (
               <div className="space-y-3">
                 {courses.map((course, i) => (
                   <motion.button
                     key={course.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
+                    transition={{ delay: i * 0.05 }}
                     onClick={() => handleCourseSelect(course)}
                     className="w-full bg-tamtam-surface rounded-2xl p-4 flex items-center gap-4 shadow-tamtam-soft"
                   >
