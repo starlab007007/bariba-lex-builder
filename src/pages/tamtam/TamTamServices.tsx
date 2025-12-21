@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { ArrowLeft, Volume2, Loader2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
@@ -12,12 +13,12 @@ import { useToast } from '@/hooks/use-toast';
 import { byT5TranslationService } from '@/services/ByT5TranslationService';
 
 const services = [
-  { id: 'translator', icon: '🌐', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelKey: 'translator' },
-  { id: 'health', icon: '🏥', color: 'bg-green-500', bgLight: 'bg-green-50', labelKey: 'health' },
-  { id: 'finance', icon: '💰', color: 'bg-yellow-500', bgLight: 'bg-yellow-50', labelKey: 'finance' },
-  { id: 'agri', icon: '🌾', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', labelKey: 'agriculture' },
-  { id: 'education', icon: '📚', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelKey: 'education' },
-  { id: 'documents', icon: '📋', color: 'bg-gray-500', bgLight: 'bg-gray-50', labelKey: 'documents' },
+  { id: 'translator', icon: '🌐', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelKey: 'translator', route: null },
+  { id: 'health', icon: '🏥', color: 'bg-green-500', bgLight: 'bg-green-50', labelKey: 'health', route: null },
+  { id: 'finance', icon: '💰', color: 'bg-yellow-500', bgLight: 'bg-yellow-50', labelKey: 'finance', route: '/tamtam/finance' },
+  { id: 'agri', icon: '🌾', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', labelKey: 'agriculture', route: '/tamtam/agriculture' },
+  { id: 'education', icon: '📚', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelKey: 'education', route: '/tamtam/education' },
+  { id: 'documents', icon: '📋', color: 'bg-gray-500', bgLight: 'bg-gray-50', labelKey: 'documents', route: null },
 ];
 
 interface Message {
@@ -35,15 +36,23 @@ export default function TamTamServices() {
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     announceAction(t('screenServices'));
   }, [announceAction, t]);
 
-  const handleServiceSelect = (serviceId: string, labelKey: string) => {
+  const handleServiceSelect = (service: typeof services[0]) => {
     tamtamFeedback.play('click');
-    speakCurrentLang(t(labelKey));
-    setActiveService(serviceId);
+    speakCurrentLang(t(service.labelKey));
+    
+    // Navigate to dedicated page if route exists
+    if (service.route) {
+      navigate(service.route);
+      return;
+    }
+    
+    setActiveService(service.id);
     setMessages([]);
   };
 
@@ -170,7 +179,7 @@ export default function TamTamServices() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.1 }}
-                  onClick={() => handleServiceSelect(service.id, service.labelKey)}
+                  onClick={() => handleServiceSelect(service)}
                   className={`aspect-square ${service.bgLight} rounded-3xl shadow-tamtam-soft flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform relative`}
                 >
                   <div className={`w-20 h-20 ${service.color} rounded-2xl flex items-center justify-center`}>

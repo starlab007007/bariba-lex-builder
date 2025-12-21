@@ -22,6 +22,9 @@ import TamTamProfile from "./pages/tamtam/TamTamProfile";
 import TamTamPhoneAuth from "./pages/tamtam/TamTamPhoneAuth";
 import TamTamPublicProfile from "./pages/tamtam/TamTamPublicProfile";
 import TamTamDictionary from "./pages/tamtam/TamTamDictionary";
+import TamTamAgriculture from "./pages/tamtam/TamTamAgriculture";
+import TamTamFinance from "./pages/tamtam/TamTamFinance";
+import TamTamEducation from "./pages/tamtam/TamTamEducation";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -53,6 +56,9 @@ const App = () => (
               <Route path="social" element={<TamTamSocial />} />
               <Route path="services" element={<TamTamServices />} />
               <Route path="market" element={<TamTamMarket />} />
+              <Route path="agriculture" element={<TamTamAgriculture />} />
+              <Route path="finance" element={<TamTamFinance />} />
+              <Route path="education" element={<TamTamEducation />} />
               <Route path="sos" element={<TamTamSOS />} />
               <Route path="profile" element={<TamTamProfile />} />
               <Route path="dictionary" element={<TamTamDictionary />} />
