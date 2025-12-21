@@ -2,6 +2,8 @@
  * useWebSpeechSTT - Hook pour le Speech-to-Text natif du navigateur
  * Utilise Web Speech API (gratuit, fonctionne offline)
  * Support pour français uniquement
+ * 
+ * FIX: Utilise useRef pour éviter le problème de stale closure dans onend
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -42,6 +44,15 @@ export const useWebSpeechSTT = (): UseWebSpeechSTTReturn => {
   
   const recognitionRef = useRef<any>(null);
   const resolveRef = useRef<((value: string) => void) | null>(null);
+  
+  // FIX: Utiliser une ref pour tracker le transcript et éviter stale closure
+  const transcriptRef = useRef('');
+  const collectedFinalRef = useRef(''); // Collecte les résultats finaux pendant une session
+
+  // Sync transcript ref with state
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
 
   useEffect(() => {
     // Vérifier le support du Web Speech API
@@ -52,37 +63,48 @@ export const useWebSpeechSTT = (): UseWebSpeechSTTReturn => {
     if (supported) {
       const recognition = new SpeechRecognition();
       recognition.lang = 'fr-FR';
-      recognition.continuous = true; // Mode continu pour meilleure détection
+      recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.maxAlternatives = 3; // Plus d'alternatives pour meilleure précision
+      recognition.maxAlternatives = 3;
 
       recognition.onstart = () => {
-        console.log('[useWebSpeechSTT] Recognition started - parlez maintenant...');
+        console.log('[useWebSpeechSTT] ✅ Recognition started - parlez maintenant...');
         setIsListening(true);
         setError(null);
+        collectedFinalRef.current = ''; // Reset collected finals for new session
       };
 
       recognition.onend = () => {
-        console.log('[useWebSpeechSTT] Recognition ended, transcript:', transcript);
+        // FIX: Utiliser la ref au lieu de state pour capturer la valeur correcte
+        const finalTranscript = collectedFinalRef.current || transcriptRef.current;
+        console.log('[useWebSpeechSTT] 🛑 Recognition ended, final transcript:', finalTranscript);
+        
         setIsListening(false);
         setIsProcessing(false);
         
         // Résoudre la promesse si en attente
         if (resolveRef.current) {
-          resolveRef.current(transcript);
+          console.log('[useWebSpeechSTT] 📤 Resolving promise with:', finalTranscript);
+          resolveRef.current(finalTranscript);
           resolveRef.current = null;
         }
       };
 
       recognition.onerror = (event: any) => {
-        console.error('[useWebSpeechSTT] Recognition error:', event.error);
+        console.error('[useWebSpeechSTT] ❌ Recognition error:', event.error);
         
         let errorMessage = '';
         switch (event.error) {
           case 'no-speech':
-            // Ne pas traiter comme erreur fatale, juste un avertissement
-            console.warn('[useWebSpeechSTT] No speech detected - continuez à parler ou rapprochez-vous du micro');
+            console.warn('[useWebSpeechSTT] ⚠️ No speech detected - essayez de parler plus fort');
             errorMessage = 'Aucune parole détectée. Parlez plus fort et plus longtemps.';
+            // Pour no-speech, résoudre avec ce qu'on a collecté
+            if (resolveRef.current) {
+              const collected = collectedFinalRef.current || transcriptRef.current;
+              console.log('[useWebSpeechSTT] Resolving no-speech with collected:', collected);
+              resolveRef.current(collected);
+              resolveRef.current = null;
+            }
             break;
           case 'aborted':
             errorMessage = 'Reconnaissance annulée';
@@ -103,17 +125,16 @@ export const useWebSpeechSTT = (): UseWebSpeechSTTReturn => {
             errorMessage = `Erreur de reconnaissance: ${event.error}`;
         }
         
-        // Pour no-speech, ne pas arrêter complètement
+        // Pour les erreurs fatales (pas no-speech)
         if (event.error !== 'no-speech') {
           setError(errorMessage);
           setIsListening(false);
           setIsProcessing(false);
-        }
-        
-        // Résoudre avec ce qu'on a seulement si erreur fatale
-        if (resolveRef.current && event.error !== 'no-speech') {
-          resolveRef.current(transcript || '');
-          resolveRef.current = null;
+          
+          if (resolveRef.current) {
+            resolveRef.current(collectedFinalRef.current || transcriptRef.current || '');
+            resolveRef.current = null;
+          }
         }
       };
 
@@ -127,13 +148,16 @@ export const useWebSpeechSTT = (): UseWebSpeechSTTReturn => {
           
           if (result.isFinal) {
             finalText += text;
-            console.log('[useWebSpeechSTT] Final result:', text, 'confidence:', result[0].confidence);
+            console.log('[useWebSpeechSTT] 📝 Final result:', text, 'confidence:', result[0].confidence?.toFixed(2));
           } else {
             interimText += text;
+            console.log('[useWebSpeechSTT] 💬 Interim:', text);
           }
         }
 
         if (finalText) {
+          // FIX: Accumuler dans la ref ET dans le state
+          collectedFinalRef.current += finalText;
           setTranscript(prev => prev + finalText);
           setInterimTranscript('');
         } else {
@@ -161,13 +185,16 @@ export const useWebSpeechSTT = (): UseWebSpeechSTTReturn => {
       return;
     }
 
+    console.log('[useWebSpeechSTT] 🎙️ Starting listening...');
     setTranscript('');
     setInterimTranscript('');
     setError(null);
+    transcriptRef.current = '';
+    collectedFinalRef.current = '';
 
     try {
       if (recognitionRef.current) {
-        recognitionRef.current.continuous = true; // Mode continu pour startListening
+        recognitionRef.current.continuous = true;
         recognitionRef.current.start();
       }
     } catch (err) {
@@ -177,6 +204,7 @@ export const useWebSpeechSTT = (): UseWebSpeechSTTReturn => {
   }, [isSupported]);
 
   const stopListening = useCallback(() => {
+    console.log('[useWebSpeechSTT] 🛑 Stopping listening...');
     if (recognitionRef.current && isListening) {
       try {
         recognitionRef.current.stop();
@@ -191,22 +219,28 @@ export const useWebSpeechSTT = (): UseWebSpeechSTTReturn => {
       throw new Error('Web Speech API non supporté');
     }
 
+    console.log('[useWebSpeechSTT] 🎤 transcribeFromMicrophone called');
+
     return new Promise((resolve) => {
       setTranscript('');
       setInterimTranscript('');
       setError(null);
       setIsProcessing(true);
+      transcriptRef.current = '';
+      collectedFinalRef.current = '';
       
       resolveRef.current = resolve;
 
       try {
         if (recognitionRef.current) {
-          recognitionRef.current.continuous = true; // Mode continu pour capturer plus de paroles
+          recognitionRef.current.continuous = true;
           recognitionRef.current.start();
+          console.log('[useWebSpeechSTT] Recognition started for transcribeFromMicrophone');
           
-          // Timeout après 15 secondes (augmenté de 10 à 15)
+          // Timeout après 15 secondes
           setTimeout(() => {
-            if (recognitionRef.current) {
+            if (recognitionRef.current && isListening) {
+              console.log('[useWebSpeechSTT] ⏱️ Timeout reached, stopping...');
               try {
                 recognitionRef.current.stop();
               } catch (e) {
@@ -221,12 +255,15 @@ export const useWebSpeechSTT = (): UseWebSpeechSTTReturn => {
         resolve('');
       }
     });
-  }, [isSupported]);
+  }, [isSupported, isListening]);
 
   const resetTranscript = useCallback(() => {
+    console.log('[useWebSpeechSTT] 🗑️ Reset transcript');
     setTranscript('');
     setInterimTranscript('');
     setError(null);
+    transcriptRef.current = '';
+    collectedFinalRef.current = '';
   }, []);
 
   return {
