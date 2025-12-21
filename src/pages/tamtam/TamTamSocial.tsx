@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Radio, Newspaper, Plus, BarChart3, Search, Users, Volume2 } from 'lucide-react';
+import { MessageCircle, Radio, Newspaper, Search, Users } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
@@ -11,7 +11,6 @@ import { TamTamStories } from '@/components/tamtam/TamTamStories';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamVocalPoll } from '@/components/tamtam/TamTamVocalPoll';
-import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { TamTamStoryCreator } from '@/components/tamtam/TamTamStoryCreator';
 import { TamTamUserSearch } from '@/components/tamtam/TamTamUserSearch';
 import { TamTamFriendSuggestions } from '@/components/tamtam/TamTamFriendSuggestions';
@@ -58,7 +57,6 @@ export default function TamTamSocial() {
   const [activeTab, setActiveTab] = useState('feed');
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
-  const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showStoryCreator, setShowStoryCreator] = useState(false);
   const [showMessagesHub, setShowMessagesHub] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
@@ -351,57 +349,6 @@ export default function TamTamSocial() {
         )}
       </AnimatePresence>
 
-      {/* Floating Create Button with Voice-Accessible Menu */}
-      <div className="fixed bottom-24 right-4 z-30">
-        <AnimatePresence>
-          {showCreateMenu && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              className="absolute bottom-20 right-0 bg-white rounded-2xl shadow-xl p-2 space-y-1"
-            >
-              {/* New Post option with speaker */}
-              <div className="flex items-center">
-                <button
-                  onClick={() => {
-                    setShowCreatePost(true);
-                    setShowCreateMenu(false);
-                  }}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-xl"
-                >
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Plus className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <span className="font-medium text-gray-700">{getLabel('newPost')}</span>
-                </button>
-                <SpeakerButton labelKey="newPost" size="sm" />
-              </div>
-              
-              {/* Vocal Poll option with speaker */}
-              <div className="flex items-center">
-                <button
-                  onClick={() => {
-                    setShowCreatePoll(true);
-                    setShowCreateMenu(false);
-                  }}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-xl"
-                >
-                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                    <BarChart3 className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <span className="font-medium text-gray-700">{getLabel('vocalPoll')}</span>
-                </button>
-                <SpeakerButton labelKey="vocalPoll" size="sm" />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        <TamTamMicButton 
-          onPress={() => setShowCreateMenu(!showCreateMenu)}
-        />
-      </div>
 
       {/* Modals */}
       <TamTamCommentsModal
