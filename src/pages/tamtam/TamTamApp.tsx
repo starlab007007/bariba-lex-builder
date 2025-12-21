@@ -5,6 +5,8 @@ import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { TamTamLanguageSelector } from '@/components/tamtam/TamTamLanguageSelector';
 import { TamTamAudioToggle } from '@/components/tamtam/TamTamAudioToggle';
 import { TamTamNotificationBell } from '@/components/tamtam/TamTamNotificationBell';
+import { RaconteMoiAssistant } from '@/components/tamtam/RaconteMoiAssistant';
+import { AccessibleVoiceLauncher } from '@/components/voice/AccessibleVoiceLauncher';
 import { useExtendedNotifications } from '@/hooks/useExtendedNotifications';
 
 function NotificationProvider({ children }: { children: React.ReactNode }) {
@@ -34,6 +36,10 @@ export default function TamTamApp() {
             <Outlet />
           </main>
           <TamTamNavigation />
+          
+          {/* Floating Buttons - Clearly separated: Left (Translator) and Right (Assistant) */}
+          <AccessibleVoiceLauncher />
+          <RaconteMoiAssistant />
         </div>
         </NotificationProvider>
       </AudioDescriptionProvider>
