@@ -159,11 +159,6 @@ async function callGradioTranslate(
   abortSignal?: AbortSignal,
   autocorrect: boolean = true
 ): Promise<{ success: boolean; data?: any; error?: string }> {
-  // CRITICAL: HuggingFace Space expects exactly 5 parameters
-  // [text, direction, mode, advanced, autocorrect]
-  const data = [text, direction, mode, advanced, autocorrect];
-  
-  console.log(`📤 Sending: text="${text}", direction="${direction}", mode="${mode}", advanced=${advanced}, autocorrect=${autocorrect}`);
   
   // Helper to validate translation result
   const isValidTranslation = (result: string | undefined): boolean => {
@@ -175,53 +170,54 @@ async function callGradioTranslate(
     return !invalidPatterns.some(p => result.toLowerCase().includes(p.toLowerCase()));
   };
 
-  // Try different endpoints - Gradio Spaces can have various configurations
-  // The main function is usually at fn_index 0 or 2-3, not 1 (which is often Share button)
-  const endpointsToTry = [
-    // The correct endpoint from API config
-    { type: 'named', endpoint: '/translate_pipeline' },
-    // Fallbacks
-    { type: 'named', endpoint: '/traduire_byt5' },
-    { type: 'named', endpoint: '/predict' },
-    // Try fn_index 0, 2, 3 (skip 1 which is Share button)
-    { type: 'fn_index', index: 0 },
-    { type: 'fn_index', index: 2 },
-    { type: 'fn_index', index: 3 },
-  ];
+  // First, explore the API to understand what endpoints are available
+  console.log(`🔍 Exploring API at ${spaceUrl}${apiPrefix}/info`);
+  try {
+    const infoResp = await fetch(`${spaceUrl}${apiPrefix}/info`, {
+      headers: { 'Authorization': `Bearer ${hfToken}` },
+      signal: abortSignal,
+    });
+    if (infoResp.ok) {
+      const info = await infoResp.json();
+      console.log(`📋 API Info: ${JSON.stringify(info).substring(0, 500)}`);
+    }
+  } catch (e) {
+    console.log(`   Info fetch failed: ${e.message}`);
+  }
 
-  for (const endpoint of endpointsToTry) {
-    const sessionHash = Math.random().toString(36).substring(7);
-    
-    try {
-      let joinBody: any = { data, session_hash: sessionHash };
-      
-      if (endpoint.type === 'named') {
-        joinBody.endpoint = endpoint.endpoint;
-        console.log(`🔄 Trying named endpoint: ${endpoint.endpoint}`);
-      } else {
-        joinBody.fn_index = endpoint.index;
-        console.log(`🔄 Trying fn_index: ${endpoint.index}`);
-      }
+  // The correct endpoint from API exploration: /translate_pipeline is fn_index=2
+  // It expects exactly 5 params: text, direction, mode, advanced, autocorrect
+  const data = [text, direction, mode, advanced, autocorrect];
+  console.log(`📤 Sending to fn_index=2: ${JSON.stringify(data)}`);
 
-      const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${hfToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(joinBody),
-        signal: abortSignal,
-      });
+  const sessionHash = Math.random().toString(36).substring(7);
+  
+  try {
+    const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        data: data, 
+        fn_index: 2,  // CRITICAL: translate_pipeline is at fn_index 2!
+        session_hash: sessionHash 
+      }),
+      signal: abortSignal,
+    });
 
-      if (!joinResponse.ok) {
-        console.log(`   Join failed: ${joinResponse.status}`);
-        continue;
-      }
+    console.log(`   Join status: ${joinResponse.status}`);
+
+    if (joinResponse.ok) {
+      const joinText = await joinResponse.text();
+      console.log(`   Join response: ${joinText.substring(0, 300)}`);
 
       // Poll for result
       const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
+      console.log(`📡 Polling: ${pollUrl}`);
       
-      for (let attempt = 0; attempt < 20; attempt++) {
+      for (let attempt = 0; attempt < 40; attempt++) {
         if (abortSignal?.aborted) {
           return { success: false, error: 'Request timeout' };
         }
@@ -236,9 +232,10 @@ async function callGradioTranslate(
           });
 
           if (pollResponse.ok) {
-            const text = await pollResponse.text();
-            const lines = text.split('\n');
+            const responseText = await pollResponse.text();
+            console.log(`   Poll ${attempt + 1}: ${responseText.substring(0, 400)}`);
             
+            const lines = responseText.split('\n');
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
@@ -246,20 +243,27 @@ async function callGradioTranslate(
                   
                   if (parsed.msg === 'process_completed') {
                     if (parsed.success === false) {
-                      console.log(`   Endpoint error: ${parsed.title || 'Unknown'}`);
-                      break; // Try next endpoint
+                      console.log(`   Process failed: ${JSON.stringify(parsed.output)}`);
+                      return { success: false, error: parsed.output?.error || 'Translation failed' };
                     }
                     
                     const resultData = parsed.output?.data || parsed.data;
                     if (Array.isArray(resultData)) {
                       const translation = resultData[0];
+                      console.log(`   Got result: "${translation}"`);
                       if (isValidTranslation(translation)) {
-                        console.log(`✅ Valid translation from ${endpoint.type === 'named' ? endpoint.endpoint : `fn_index=${endpoint.index}`}: "${translation}"`);
+                        console.log(`✅ Valid translation: "${translation}"`);
                         return { success: true, data: { data: resultData } };
-                      } else {
-                        console.log(`   Invalid result: "${translation}" - trying next endpoint`);
-                        break; // Try next endpoint
                       }
+                    }
+                  }
+                  
+                  // Direct data response
+                  if (parsed.data && Array.isArray(parsed.data)) {
+                    const translation = parsed.data[0];
+                    if (isValidTranslation(translation)) {
+                      console.log(`✅ Direct data: "${translation}"`);
+                      return { success: true, data: parsed };
                     }
                   }
                 } catch (e) { /* continue parsing */ }
@@ -267,111 +271,23 @@ async function callGradioTranslate(
             }
           }
           
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 500));
         } catch (e) {
           if (abortSignal?.aborted) return { success: false, error: 'Request timeout' };
         }
       }
-    } catch (e) {
-      if (abortSignal?.aborted) return { success: false, error: 'Request timeout' };
-      console.log(`   Error: ${e.message}`);
+    } else {
+      const errorText = await joinResponse.text().catch(() => '');
+      console.log(`   Join error: ${errorText.substring(0, 300)}`);
     }
+  } catch (e) {
+    if (abortSignal?.aborted) return { success: false, error: 'Request timeout' };
+    console.log(`   Error: ${e.message}`);
   }
 
-  // Method: Direct /call/{endpoint} for newer Gradio versions
-  const callEndpoints = ['/traduire_byt5', '/predict', '/translate'];
-  for (const callEndpoint of callEndpoints) {
-    console.log(`🔄 Trying direct call: ${callEndpoint}`);
-    try {
-      const response = await fetch(`${spaceUrl}${apiPrefix}/call${callEndpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${hfToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ data }),
-        signal: abortSignal,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        
-        if (result.event_id) {
-          const eventUrl = `${spaceUrl}${apiPrefix}/call${callEndpoint}/${result.event_id}`;
-          
-          for (let attempt = 0; attempt < 15; attempt++) {
-            if (abortSignal?.aborted) return { success: false, error: 'Request timeout' };
-            
-            try {
-              const eventResponse = await fetch(eventUrl, {
-                headers: { 
-                  'Authorization': `Bearer ${hfToken}`,
-                  'Accept': 'text/event-stream'
-                },
-                signal: abortSignal,
-              });
-
-              if (eventResponse.ok) {
-                const eventText = await eventResponse.text();
-                const lines = eventText.split('\n');
-                
-                for (const line of lines) {
-                  if (line.startsWith('data: ')) {
-                    try {
-                      const parsed = JSON.parse(line.substring(6));
-                      const resultData = Array.isArray(parsed) ? parsed : parsed.data;
-                      if (Array.isArray(resultData) && isValidTranslation(resultData[0])) {
-                        console.log(`✅ Valid translation from call ${callEndpoint}: "${resultData[0]}"`);
-                        return { success: true, data: { data: resultData } };
-                      }
-                    } catch (e) { /* continue */ }
-                  }
-                }
-              }
-            } catch (e) { /* continue */ }
-            await new Promise(r => setTimeout(r, 400));
-          }
-        }
-        
-        if (result.data && Array.isArray(result.data) && isValidTranslation(result.data[0])) {
-          return { success: true, data: result };
-        }
-      }
-    } catch (e) {
-      if (abortSignal?.aborted) return { success: false, error: 'Request timeout' };
-      console.log(`   Call error: ${e.message}`);
-    }
-  }
-
-  // Legacy methods for older Gradio versions
-  const legacyEndpoints = ['/api/predict', '/run/predict'];
-  for (const legacyEndpoint of legacyEndpoints) {
-    console.log(`🔄 Trying legacy: ${legacyEndpoint}`);
-    try {
-      const response = await fetch(`${spaceUrl}${legacyEndpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${hfToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ data, fn_index: 0 }),
-        signal: abortSignal,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.data && Array.isArray(result.data) && isValidTranslation(result.data[0])) {
-          console.log(`✅ Valid translation from ${legacyEndpoint}: "${result.data[0]}"`);
-          return { success: true, data: result };
-        }
-      }
-    } catch (e) {
-      console.log(`   Legacy error: ${e.message}`);
-    }
-  }
-
-  return { success: false, error: 'All Gradio API methods failed - no valid translation received' };
+  return { success: false, error: 'Translation failed - no valid response from HuggingFace Space' };
 }
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
