@@ -77,25 +77,52 @@ export function TamTamMicButton({
     if (onRecordingComplete) {
       if (!isRecording && !audioRecorder.isRecording) {
         // Start recording
+        console.log('[TamTamMicButton] 🎙️ Starting recording, sourceLang:', sourceLang);
         setInternalRecording(true);
         setFrenchTranscript('');
         
         if (sourceLang === 'fr') {
           // For French: use Web Speech API for live transcription
+          console.log('[TamTamMicButton] 🇫🇷 Starting French Web Speech API');
           webSpeechSTT.resetTranscript();
           webSpeechSTT.startListening();
         }
         
         // Also record audio (for Bariba or as backup)
         await audioRecorder.startRecording();
+        
+        toast({
+          title: sourceLang === 'fr' ? "🎤 Parlez en français..." : "🎤 Parlez en bariba...",
+          description: "Appuyez à nouveau pour arrêter"
+        });
       } else {
         // Stop recording and process
+        console.log('[TamTamMicButton] ⏹️ Stopping recording...');
         setInternalRecording(false);
         setIsProcessing(true);
+        
+        // Check minimum recording duration
+        const recordingDuration = audioRecorder.duration;
+        console.log('[TamTamMicButton] Recording duration:', recordingDuration, 'seconds');
+        
+        if (recordingDuration < 1) {
+          toast({
+            title: "⚠️ Enregistrement trop court",
+            description: "Parlez au moins 1 seconde",
+            variant: "destructive"
+          });
+          setIsProcessing(false);
+          audioRecorder.cancelRecording();
+          if (sourceLang === 'fr') {
+            webSpeechSTT.stopListening();
+          }
+          return;
+        }
         
         try {
           // Stop audio recording
           const audioBase64 = await audioRecorder.stopRecording();
+          console.log('[TamTamMicButton] Audio base64 length:', audioBase64?.length || 0);
           
           // Stop Web Speech if it was running (for French)
           if (sourceLang === 'fr') {
@@ -111,9 +138,14 @@ export function TamTamMicButton({
               transcription = webSpeechSTT.transcript || frenchTranscript || undefined;
               
               if (!transcription) {
-                console.log('[TamTamMicButton] No French transcription from Web Speech API');
+                console.log('[TamTamMicButton] ⚠️ No French transcription from Web Speech API');
+                toast({
+                  title: "⚠️ Pas de transcription",
+                  description: "Aucune parole détectée. Parlez plus fort ou plus longtemps.",
+                  variant: "destructive"
+                });
               } else {
-                console.log('[TamTamMicButton] French transcription from Web Speech:', transcription);
+                console.log('[TamTamMicButton] ✅ French transcription from Web Speech:', transcription);
               }
               
               // If we want translation, translate to Bariba
@@ -124,16 +156,34 @@ export function TamTamMicButton({
             } else {
               // For Bariba: use server-side HuggingFace STT
               if (!audioBase64) {
+                console.error('[TamTamMicButton] ❌ No audio data for Bariba STT');
+                toast({
+                  title: "❌ Erreur audio",
+                  description: "Aucune donnée audio enregistrée",
+                  variant: "destructive"
+                });
                 setIsProcessing(false);
                 return;
               }
+              
+              console.log('[TamTamMicButton] 🔄 Sending to Bariba STT, audio length:', audioBase64.length);
               
               const result = await unifiedAudio.transcribeWithTranslation(
                 audioBase64, 
                 sourceLang
               );
               
+              console.log('[TamTamMicButton] Bariba STT result:', result);
+              
               transcription = result.transcription || undefined;
+              
+              if (!transcription) {
+                toast({
+                  title: "⚠️ Transcription échouée",
+                  description: "Le service Bariba n'a pas pu transcrire. Réessayez avec un audio plus clair.",
+                  variant: "destructive"
+                });
+              }
               
               if (autoTranslate && result.transcription) {
                 translation = result.transcription_fr;
@@ -142,7 +192,7 @@ export function TamTamMicButton({
             
             if (transcription) {
               toast({
-                title: "✅ Transcription",
+                title: "✅ Transcription réussie",
                 description: transcription.substring(0, 50) + (transcription.length > 50 ? '...' : '')
               });
             }
@@ -161,10 +211,10 @@ export function TamTamMicButton({
             sourceLang
           });
         } catch (err) {
-          console.error('[TamTamMicButton] Recording error:', err);
+          console.error('[TamTamMicButton] ❌ Recording error:', err);
           toast({
             title: "❌ Erreur",
-            description: "Impossible de traiter l'enregistrement",
+            description: err instanceof Error ? err.message : "Impossible de traiter l'enregistrement",
             variant: "destructive"
           });
         } finally {

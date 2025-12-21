@@ -71,12 +71,14 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunksRef.current.push(e.data);
+          console.log('[useAudioRecorder] Chunk received:', e.data.size, 'bytes, total chunks:', chunksRef.current.length);
         }
       };
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
+        console.log('[useAudioRecorder] Recording stopped, blob size:', blob.size, 'bytes');
         setState(prev => ({
           ...prev,
           isRecording: false,
@@ -87,7 +89,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       };
 
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(100); // Collect data every 100ms
+      mediaRecorder.start(50); // Collect data every 50ms (more frequent for better capture)
 
       // Start duration timer
       const startTime = Date.now();
