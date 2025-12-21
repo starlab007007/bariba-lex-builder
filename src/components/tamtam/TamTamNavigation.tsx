@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TamTamMicButton } from './TamTamMicButton';
 import { useState, useEffect, useCallback } from 'react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
@@ -19,6 +20,7 @@ const navItems = [
 export function TamTamNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isRecording, setIsRecording] = useState(false);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [speakingItemId, setSpeakingItemId] = useState<string | null>(null);
   const { t } = useTamTamLanguage();
@@ -68,6 +70,14 @@ export function TamTamNavigation() {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const handleMicPress = () => {
+    triggerFeedback('click');
+    setIsRecording(!isRecording);
+    if (!isRecording) {
+      speakCurrentLang(t('nowListening'));
+    }
+  };
+
   const handleNavPress = (path: string, labelKey: string) => {
     triggerFeedback('click');
     // Navigate immediately, TTS in background (non-blocking for Safari)
@@ -104,6 +114,19 @@ export function TamTamNavigation() {
 
   return (
     <>
+      {/* Floating central mic */}
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50"
+      >
+        <TamTamMicButton
+          size="lg"
+          isRecording={isRecording}
+          onPress={handleMicPress}
+        />
+      </motion.div>
+
       {/* Bottom navigation bar */}
       <motion.nav
         initial={{ y: 100 }}
@@ -111,7 +134,7 @@ export function TamTamNavigation() {
         className="fixed bottom-0 left-0 right-0 bg-tamtam-surface border-t border-gray-100 px-6 py-3 z-40"
       >
         <div className="max-w-md mx-auto flex items-center justify-between">
-          {navItems.map((item) => {
+          {navItems.slice(0, 2).map((item) => {
             const longPressHandlers = handleLongPress(item.labelKey as any);
             
             return (
@@ -141,6 +164,46 @@ export function TamTamNavigation() {
                       </motion.div>
                     </AnimatePresence>
                   )}
+                  <span className={`text-xs ${isActive(item.path) ? 'text-tamtam-primary font-medium' : 'text-tamtam-text-muted'}`}>
+                    {t(item.labelKey)}
+                  </span>
+                </button>
+                
+                {/* Speaker button - only shows spinner for THIS item */}
+                <button
+                  onClick={(e) => handleSpeakNav(item.id, item.labelKey, e)}
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-tamtam-primary/20 flex items-center justify-center"
+                >
+                  {speakingItemId === item.id ? (
+                    <Loader2 className="w-3 h-3 text-tamtam-primary animate-spin" />
+                  ) : (
+                    <Volume2 className="w-3 h-3 text-tamtam-primary" />
+                  )}
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Spacer for central mic */}
+          <div className="w-20" />
+
+          {navItems.slice(2).map((item) => {
+            const longPressHandlers = handleLongPress(item.labelKey as any);
+            
+            return (
+              <div key={item.id} className="relative">
+                <button
+                  onClick={() => handleNavPress(item.path, item.labelKey)}
+                  {...longPressHandlers}
+                  className={`flex flex-col items-center gap-1 w-16 py-1 rounded-2xl transition-all ${
+                    isActive(item.path)
+                      ? 'bg-tamtam-primary/10'
+                      : ''
+                  }`}
+                >
+                  <span className={`text-2xl ${isActive(item.path) ? 'scale-110' : ''}`}>
+                    {item.icon}
+                  </span>
                   <span className={`text-xs ${isActive(item.path) ? 'text-tamtam-primary font-medium' : 'text-tamtam-text-muted'}`}>
                     {t(item.labelKey)}
                   </span>
