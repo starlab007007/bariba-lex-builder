@@ -17,6 +17,58 @@ interface TranslationRequest {
 const SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space';
 const GLOBAL_TIMEOUT_MS = 10000; // 10 seconds max (reduced for better UX)
 
+type LovableFallbackResult =
+  | { ok: true; translation: string; confidence: number; model: string }
+  | { ok: false; error: string; status?: number; details?: string };
+
+async function lovableFallbackTranslate(params: {
+  text: string;
+  sourceLang: 'french' | 'bariba';
+  targetLang: 'french' | 'bariba';
+  abortSignal?: AbortSignal;
+}): Promise<LovableFallbackResult> {
+  const key = Deno.env.get('LOVABLE_API_KEY');
+  if (!key) return { ok: false, error: 'LOVABLE_API_KEY not configured' };
+
+  const from = params.sourceLang === 'french' ? 'French' : 'Bariba (Baatonum)';
+  const to = params.targetLang === 'french' ? 'French' : 'Bariba (Baatonum)';
+
+  const system = `You are a strict translation engine. Translate from ${from} to ${to}. Return ONLY the translated text. No quotes, no explanations.`;
+
+  try {
+    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: params.text },
+        ],
+        max_tokens: 512,
+      }),
+      signal: params.abortSignal,
+    });
+
+    if (!resp.ok) {
+      const t = await resp.text();
+      return { ok: false, error: 'Lovable AI gateway error', status: resp.status, details: t };
+    }
+
+    const json = await resp.json();
+    const content = json?.choices?.[0]?.message?.content;
+    if (!content || typeof content !== 'string') {
+      return { ok: false, error: 'Lovable AI returned empty response' };
+    }
+
+    return { ok: true, translation: content.trim(), confidence: 75, model: 'google/gemini-2.5-flash' };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Lovable AI request failed' };
+  }
+}
 async function pollForResult(
   spaceUrl: string,
   apiPrefix: string,
@@ -459,14 +511,36 @@ serve(async (req) => {
 
     if (!result.success) {
       console.error(`❌ ByT5 failed after ${duration}ms: ${result.error}`);
+
+      const fallback = await lovableFallbackTranslate({
+        text,
+        sourceLang,
+        targetLang,
+        abortSignal: abortController.signal,
+      });
+
+      if (fallback.ok) {
+        console.log(`✅ Lovable AI fallback in ${duration}ms`);
+        return new Response(
+          JSON.stringify({
+            translation: fallback.translation,
+            confidence: fallback.confidence,
+            duration,
+            method: 'lovable-ai-fallback',
+            modelInfo: { name: 'Lovable AI', version: fallback.model, mode: 'fallback', advanced: false },
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
       return new Response(
         JSON.stringify({
           error: 'ByT5 translation service unavailable',
           details: result.error || 'HuggingFace Space API not responding',
           duration,
-          spaceUrl: SPACE_URL
+          spaceUrl: SPACE_URL,
         }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -494,14 +568,36 @@ serve(async (req) => {
       
       if (isInvalidResponse) {
         console.error(`❌ ByT5 returned invalid UI text: "${translation}"`);
+
+        const fallback = await lovableFallbackTranslate({
+          text,
+          sourceLang,
+          targetLang,
+          abortSignal: abortController.signal,
+        });
+
+        if (fallback.ok) {
+          console.log(`✅ Lovable AI fallback after invalid ByT5 output in ${duration}ms`);
+          return new Response(
+            JSON.stringify({
+              translation: fallback.translation,
+              confidence: fallback.confidence,
+              duration,
+              method: 'lovable-ai-fallback',
+              modelInfo: { name: 'Lovable AI', version: fallback.model, mode: 'fallback', advanced: false },
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+
         return new Response(
           JSON.stringify({
             error: 'ByT5 returned invalid response (UI text instead of translation)',
             details: `Received: "${translation.substring(0, 50)}"`,
             duration,
-            spaceUrl: SPACE_URL
+            spaceUrl: SPACE_URL,
           }),
-          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
       

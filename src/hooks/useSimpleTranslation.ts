@@ -37,7 +37,10 @@ export function useSimpleTranslation() {
         body: { text, sourceLang: 'french', targetLang: 'bariba' }
       });
 
-      if (!byT5Error && data?.translation) {
+      const invalidPatterns = ['Share via Link', 'share via', 'Loading', 'Submit', 'Clear', 'Button', 'Click', 'Select', 'Choose'];
+      const isValid = (t: unknown) => typeof t === 'string' && t.trim().length > 0 && !invalidPatterns.some(p => (t as string).toLowerCase().includes(p.toLowerCase()));
+
+      if (!byT5Error && isValid(data?.translation)) {
         const duration = Math.round(performance.now() - startTime);
         return {
           translation: data.translation,
@@ -92,7 +95,10 @@ export function useSimpleTranslation() {
         body: { text, sourceLang: 'bariba', targetLang: 'french' }
       });
 
-      if (!byT5Error && data?.translation) {
+      const invalidPatterns = ['Share via Link', 'share via', 'Loading', 'Submit', 'Clear', 'Button', 'Click', 'Select', 'Choose'];
+      const isValid = (t: unknown) => typeof t === 'string' && t.trim().length > 0 && !invalidPatterns.some(p => (t as string).toLowerCase().includes(p.toLowerCase()));
+
+      if (!byT5Error && isValid(data?.translation)) {
         const duration = Math.round(performance.now() - startTime);
         return {
           translation: data.translation,
