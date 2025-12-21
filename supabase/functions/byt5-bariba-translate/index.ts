@@ -15,7 +15,7 @@ interface TranslationRequest {
 }
 
 const SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space';
-const GLOBAL_TIMEOUT_MS = 10000; // 10 seconds max (reduced for better UX)
+const GLOBAL_TIMEOUT_MS = 25000; // 25 seconds for cold start
 
 type LovableFallbackResult =
   | { ok: true; translation: string; confidence: number; model: string }
@@ -156,11 +156,14 @@ async function callGradioTranslate(
   mode: string,
   advanced: boolean,
   hfToken: string,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  autocorrect: boolean = true
 ): Promise<{ success: boolean; data?: any; error?: string }> {
-  const data = [text, direction, mode, advanced];
+  // CRITICAL: HuggingFace Space expects exactly 5 parameters
+  // [text, direction, mode, advanced, autocorrect]
+  const data = [text, direction, mode, advanced, autocorrect];
   
-  console.log(`📤 Sending: text="${text}", direction="${direction}", mode="${mode}", advanced=${advanced}`);
+  console.log(`📤 Sending: text="${text}", direction="${direction}", mode="${mode}", advanced=${advanced}, autocorrect=${autocorrect}`);
   
   // Helper to validate translation result
   const isValidTranslation = (result: string | undefined): boolean => {
@@ -549,7 +552,8 @@ serve(async (req) => {
       gradioMode,
       advanced,
       HF_TOKEN,
-      abortController.signal
+      abortController.signal,
+      true // autocorrect = true (5th required parameter)
     );
 
     clearTimeout(timeoutId);
