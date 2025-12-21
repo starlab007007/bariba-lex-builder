@@ -25,6 +25,7 @@ import { useLanguageDetection } from '@/hooks/useLanguageDetection';
 import { useTranslationHistory, TranslationHistoryItem } from '@/hooks/useTranslationHistory';
 import { PhotoTranslator } from '@/components/tamtam/PhotoTranslator';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { OfflineIndicator } from '@/components/tamtam/OfflineIndicator';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -416,6 +417,9 @@ export default function TamTamTranslator() {
           </div>
           
           <div className="flex items-center gap-2">
+            {/* Offline indicator */}
+            <OfflineIndicator />
+            
             {/* History button */}
             <button
               onClick={() => setShowHistory(true)}

@@ -1,10 +1,13 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 import { useWebSpeechSTT } from '@/hooks/useWebSpeechSTT';
 import { byT5TranslationService } from '@/services/ByT5TranslationService';
 import { translationCache } from '@/services/TranslationCache';
+import { offlineTranslationService } from '@/services/OfflineTranslationService';
+import { audioCacheService } from '@/services/AudioCacheService';
+import { offlineService } from '@/services/OfflineService';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
@@ -57,6 +60,10 @@ interface UseSmartTranslatorReturn {
   frenchInterimTranscript: string;
   startFrenchListening: () => void;
   stopFrenchListening: () => void;
+  
+  // Offline mode
+  isOnline: boolean;
+  isOfflineReady: boolean;
 }
 
 export const useSmartTranslator = (): UseSmartTranslatorReturn => {
@@ -68,6 +75,8 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
   const [currentMode, setCurrentMode] = useState<InputMode>('audio');
   const [lastResult, setLastResult] = useState<TranslationResult | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOfflineReady, setIsOfflineReady] = useState(false);
   
   const { toast } = useToast();
   
@@ -78,8 +87,32 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
   // STT hooks
   const baribaSTT = useBaribaSTT();
   const webSpeechSTT = useWebSpeechSTT(); // For French - uses Web Speech API directly
+  
+  // Initialize offline services and connectivity detection
+  useEffect(() => {
+    offlineService.init();
+    
+    const unsubscribe = offlineService.subscribe((online) => {
+      setIsOnline(online);
+      if (!online) {
+        toast({
+          title: "Mode hors-ligne",
+          description: "Traduction via dictionnaire local activée",
+        });
+      }
+    });
+    
+    // Check if offline translation is ready
+    const checkOfflineReady = async () => {
+      const stats = await offlineTranslationService.getStats();
+      setIsOfflineReady(stats.isLoaded);
+    };
+    checkOfflineReady();
+    
+    return () => unsubscribe();
+  }, []);
 
-  // Core translation function
+  // Core translation function with offline fallback
   const performTranslation = useCallback(async (
     text: string,
     from: SourceLanguage,
@@ -94,14 +127,41 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
       return cached;
     }
     
-    // Translate using ByT5 with Lovable AI fallback
+    // If offline, use dictionary-based translation
+    if (!isOnline) {
+      console.log('[SmartTranslator] Offline mode - using dictionary');
+      try {
+        const offlineResult = await offlineTranslationService.translate(
+          text,
+          from,
+          to
+        );
+        
+        if (offlineResult.confidence > 0) {
+          translationCache.set(text, from, to, offlineResult.translation);
+          return offlineResult.translation;
+        } else {
+          // If no match found, return original text with warning
+          toast({
+            title: "Traduction partielle",
+            description: "Certains mots n'ont pas pu être traduits hors-ligne",
+          });
+          return offlineResult.translation;
+        }
+      } catch (error) {
+        console.error('[SmartTranslator] Offline translation failed:', error);
+        throw new Error('Traduction hors-ligne indisponible');
+      }
+    }
+    
+    // Online: use ByT5 with Lovable AI fallback
     const result = await byT5TranslationService.translate(text, from, to);
     
     // Cache the result
     translationCache.set(text, from, to, result.translation);
     
     return result.translation;
-  }, []);
+  }, [isOnline, toast]);
 
   // Translate from audio recording (used for Bariba STT which requires server-side processing)
   const translateFromAudio = useCallback(async (audioBase64: string) => {
@@ -505,6 +565,9 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     frenchTranscript: webSpeechSTT.transcript,
     frenchInterimTranscript: webSpeechSTT.interimTranscript,
     startFrenchListening: webSpeechSTT.startListening,
-    stopFrenchListening: webSpeechSTT.stopListening
+    stopFrenchListening: webSpeechSTT.stopListening,
+    // Offline mode
+    isOnline,
+    isOfflineReady
   };
 };
