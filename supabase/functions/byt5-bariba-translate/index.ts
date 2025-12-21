@@ -483,6 +483,28 @@ serve(async (req) => {
     }
 
     if (translation && typeof translation === 'string' && translation.length > 0) {
+      // CRITICAL: Validate that this is a real translation, not UI text from the Space
+      const invalidPatterns = [
+        'Share via Link', 'share via', 'Partager', 'Error', 'Loading',
+        'Submit', 'Clear', 'Button', 'Click', 'Select', 'Choose'
+      ];
+      const isInvalidResponse = invalidPatterns.some(pattern => 
+        translation.toLowerCase().includes(pattern.toLowerCase())
+      );
+      
+      if (isInvalidResponse) {
+        console.error(`❌ ByT5 returned invalid UI text: "${translation}"`);
+        return new Response(
+          JSON.stringify({
+            error: 'ByT5 returned invalid response (UI text instead of translation)',
+            details: `Received: "${translation.substring(0, 50)}"`,
+            duration,
+            spaceUrl: SPACE_URL
+          }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       const hasSpecialChars = /[ɔɛɑɡãẽĩõũàèìòùâêîôûäëïöü]/.test(translation);
       const hasValidLength = translation.length >= text.length * 0.3;
       const baseConfidence = 85;

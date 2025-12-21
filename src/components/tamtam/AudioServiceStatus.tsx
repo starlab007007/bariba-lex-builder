@@ -109,7 +109,7 @@ interface UnifiedAudioServicesStatusBarProps {
 function convertStatus(status: UnifiedServiceStatus): ServiceStatus {
   switch (status) {
     case 'healthy': return 'available';
-    case 'degraded': return 'error';
+    case 'degraded': return 'available'; // Degraded still means it works, just slower
     case 'unavailable': return 'unavailable';
     default: return 'checking';
   }
