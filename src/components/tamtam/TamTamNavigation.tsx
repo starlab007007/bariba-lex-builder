@@ -1,6 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TamTamMicButton } from './TamTamMicButton';
 import { useState, useEffect, useCallback } from 'react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
@@ -20,7 +19,6 @@ const navItems = [
 export function TamTamNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isRecording, setIsRecording] = useState(false);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [speakingItemId, setSpeakingItemId] = useState<string | null>(null);
   const { t } = useTamTamLanguage();
@@ -70,14 +68,6 @@ export function TamTamNavigation() {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const handleMicPress = () => {
-    triggerFeedback('click');
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      speakCurrentLang(t('nowListening'));
-    }
-  };
-
   const handleNavPress = (path: string, labelKey: string) => {
     triggerFeedback('click');
     // Navigate immediately, TTS in background (non-blocking for Safari)
@@ -114,19 +104,6 @@ export function TamTamNavigation() {
 
   return (
     <>
-      {/* Floating central mic */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50"
-      >
-        <TamTamMicButton
-          size="lg"
-          isRecording={isRecording}
-          onPress={handleMicPress}
-        />
-      </motion.div>
-
       {/* Bottom navigation bar */}
       <motion.nav
         initial={{ y: 100 }}
@@ -184,8 +161,6 @@ export function TamTamNavigation() {
             );
           })}
 
-          {/* Spacer for central mic */}
-          <div className="w-20" />
 
           {navItems.slice(2).map((item) => {
             const longPressHandlers = handleLongPress(item.labelKey as any);
