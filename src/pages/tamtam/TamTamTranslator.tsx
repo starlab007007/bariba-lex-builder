@@ -147,8 +147,19 @@ export default function TamTamTranslator() {
     translation?: string;
     sourceLang: 'ba' | 'fr';
   }) => {
-    if (result.audioBase64) {
+    // For Bariba: use audio base64 → server-side HuggingFace STT
+    // For French: use Web Speech API (live transcription) → no need for base64
+    if (result.sourceLang === 'ba' && result.audioBase64) {
       await translator.translateFromAudio(result.audioBase64);
+    } else if (result.sourceLang === 'fr') {
+      // French uses Web Speech API which works during recording
+      // The transcription should already be available from TamTamMicButton
+      if (result.transcription) {
+        await translator.translateFromText(result.transcription);
+      } else {
+        // Fallback to live audio if no transcription provided
+        await translator.translateFromLiveAudio();
+      }
     }
   };
 

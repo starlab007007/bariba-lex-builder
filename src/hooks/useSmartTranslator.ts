@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
-import { useFrenchSTTBase64 } from '@/hooks/useFrenchSTTBase64';
+import { useWebSpeechSTT } from '@/hooks/useWebSpeechSTT';
 import { byT5TranslationService } from '@/services/ByT5TranslationService';
 import { translationCache } from '@/services/TranslationCache';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +34,7 @@ interface UseSmartTranslatorReturn {
   // Actions
   setCurrentMode: (mode: InputMode) => void;
   translateFromAudio: (audioBase64: string) => Promise<void>;
+  translateFromLiveAudio: () => Promise<void>;
   translateFromText: (text: string) => Promise<void>;
   translateFromImage: (imageBase64: string) => Promise<void>;
   translateFromClipboard: () => Promise<void>;
@@ -49,6 +50,13 @@ interface UseSmartTranslatorReturn {
   reset: () => void;
   copyToClipboard: () => Promise<void>;
   setSourceText: (text: string) => void;
+  
+  // Live STT for French
+  isListeningFrench: boolean;
+  frenchTranscript: string;
+  frenchInterimTranscript: string;
+  startFrenchListening: () => void;
+  stopFrenchListening: () => void;
 }
 
 export const useSmartTranslator = (): UseSmartTranslatorReturn => {
@@ -69,7 +77,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
   
   // STT hooks
   const baribaSTT = useBaribaSTT();
-  const frenchSTT = useFrenchSTTBase64();
+  const webSpeechSTT = useWebSpeechSTT(); // For French - uses Web Speech API directly
 
   // Core translation function
   const performTranslation = useCallback(async (
@@ -95,7 +103,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     return result.translation;
   }, []);
 
-  // Translate from audio recording
+  // Translate from audio recording (used for Bariba STT which requires server-side processing)
   const translateFromAudio = useCallback(async (audioBase64: string) => {
     setIsProcessing(true);
     tamtamFeedback.play('send');
@@ -103,17 +111,19 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     try {
       let transcription = '';
       
-      // Transcribe based on source language
+      // For Bariba: use server-side HuggingFace STT
       if (sourceLanguage === 'bariba') {
         const result = await baribaSTT.transcribe(audioBase64);
         transcription = result?.transcription || '';
       } else {
-        const result = await frenchSTT.transcribe(audioBase64);
-        transcription = result?.transcription || '';
+        // For French: Web Speech API cannot use pre-recorded audio base64
+        // This path should rarely be used - prefer translateFromLiveAudio for French
+        console.warn('[SmartTranslator] French audio base64 received but Web Speech API requires live audio. Falling back to empty transcription.');
+        transcription = '';
       }
       
       if (!transcription) {
-        throw new Error('Transcription échouée');
+        throw new Error('Transcription échouée - utilisez le mode vocal direct pour le français');
       }
       
       setSourceText(transcription);
@@ -151,7 +161,62 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     } finally {
       setIsProcessing(false);
     }
-  }, [sourceLanguage, targetLanguage, baribaSTT, frenchSTT, baribaTTS, frenchTTS, performTranslation, toast]);
+  }, [sourceLanguage, targetLanguage, baribaSTT, baribaTTS, frenchTTS, performTranslation, toast]);
+
+  // Translate from live audio using Web Speech API (for French)
+  const translateFromLiveAudio = useCallback(async () => {
+    if (sourceLanguage !== 'french') {
+      console.warn('[SmartTranslator] translateFromLiveAudio is for French only. Use translateFromAudio for Bariba.');
+      return;
+    }
+
+    setIsProcessing(true);
+    tamtamFeedback.play('send');
+    
+    try {
+      // Use Web Speech API for live French transcription
+      const transcription = await webSpeechSTT.transcribeFromMicrophone();
+      
+      if (!transcription) {
+        throw new Error('Aucune parole détectée');
+      }
+      
+      setSourceText(transcription);
+      
+      // Translate
+      const translation = await performTranslation(transcription, sourceLanguage, targetLanguage);
+      setTranslatedText(translation);
+      
+      setLastResult({
+        sourceText: transcription,
+        translatedText: translation,
+        sourceLanguage,
+        targetLanguage
+      });
+      
+      // Auto-speak the translation
+      if (translation) {
+        if (targetLanguage === 'bariba') {
+          await baribaTTS.speak(translation);
+        } else {
+          frenchTTS.speak(translation);
+        }
+      }
+      
+      tamtamFeedback.play('success');
+      
+    } catch (error: any) {
+      console.error('[SmartTranslator] Live audio translation error:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur de transcription vocale",
+        variant: "destructive"
+      });
+      tamtamFeedback.play('error');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [sourceLanguage, targetLanguage, webSpeechSTT, baribaTTS, frenchTTS, performTranslation, toast]);
 
   // Translate from text input
   const translateFromText = useCallback(async (text: string) => {
@@ -423,6 +488,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     lastResult,
     setCurrentMode,
     translateFromAudio,
+    translateFromLiveAudio,
     translateFromText,
     translateFromImage,
     translateFromClipboard,
@@ -433,6 +499,12 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     swapLanguages,
     reset,
     copyToClipboard,
-    setSourceText
+    setSourceText,
+    // Live STT for French
+    isListeningFrench: webSpeechSTT.isListening,
+    frenchTranscript: webSpeechSTT.transcript,
+    frenchInterimTranscript: webSpeechSTT.interimTranscript,
+    startFrenchListening: webSpeechSTT.startListening,
+    stopFrenchListening: webSpeechSTT.stopListening
   };
 };

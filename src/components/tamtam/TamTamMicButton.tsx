@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
 import { Mic, Square, Loader2 } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
+import { useWebSpeechSTT } from '@/hooks/useWebSpeechSTT';
 import { useToast } from '@/hooks/use-toast';
 
 interface TamTamMicButtonProps {
@@ -54,9 +55,20 @@ export function TamTamMicButton({
   
   const audioRecorder = useAudioRecorder();
   const unifiedAudio = useUnifiedAudio();
+  const webSpeechSTT = useWebSpeechSTT(); // For French live transcription
   
   // Use external control if provided, otherwise internal
   const isRecording = externalIsRecording !== undefined ? externalIsRecording : internalRecording;
+
+  // Track Web Speech transcript for French
+  const [frenchTranscript, setFrenchTranscript] = useState('');
+  
+  // Update French transcript from Web Speech API
+  useEffect(() => {
+    if (sourceLang === 'fr' && webSpeechSTT.transcript) {
+      setFrenchTranscript(webSpeechSTT.transcript);
+    }
+  }, [sourceLang, webSpeechSTT.transcript]);
 
   const handlePress = useCallback(async () => {
     if (disabled) return;
@@ -66,6 +78,15 @@ export function TamTamMicButton({
       if (!isRecording && !audioRecorder.isRecording) {
         // Start recording
         setInternalRecording(true);
+        setFrenchTranscript('');
+        
+        if (sourceLang === 'fr') {
+          // For French: use Web Speech API for live transcription
+          webSpeechSTT.resetTranscript();
+          webSpeechSTT.startListening();
+        }
+        
+        // Also record audio (for Bariba or as backup)
         await audioRecorder.startRecording();
       } else {
         // Stop recording and process
@@ -73,31 +94,50 @@ export function TamTamMicButton({
         setIsProcessing(true);
         
         try {
+          // Stop audio recording
           const audioBase64 = await audioRecorder.stopRecording();
           
-          if (!audioBase64) {
-            setIsProcessing(false);
-            return;
+          // Stop Web Speech if it was running (for French)
+          if (sourceLang === 'fr') {
+            webSpeechSTT.stopListening();
           }
           
           let transcription: string | undefined;
           let translation: string | undefined;
           
-          // Auto-transcribe if enabled
           if (autoTranscribe) {
-            // Utiliser useUnifiedAudio pour transcrire
-            const result = await unifiedAudio.transcribeWithTranslation(
-              audioBase64, 
-              sourceLang
-            );
-            
-            transcription = result.transcription || undefined;
-            
-            // Si on veut aussi la traduction
-            if (autoTranslate && result.transcription) {
-              translation = sourceLang === 'ba' 
-                ? result.transcription_fr 
-                : result.transcription_ba;
+            if (sourceLang === 'fr') {
+              // For French: use the Web Speech API transcript (already collected)
+              transcription = webSpeechSTT.transcript || frenchTranscript || undefined;
+              
+              if (!transcription) {
+                console.log('[TamTamMicButton] No French transcription from Web Speech API');
+              } else {
+                console.log('[TamTamMicButton] French transcription from Web Speech:', transcription);
+              }
+              
+              // If we want translation, translate to Bariba
+              if (autoTranslate && transcription) {
+                const result = await unifiedAudio.translate(transcription, 'fr', 'ba');
+                translation = result.translation;
+              }
+            } else {
+              // For Bariba: use server-side HuggingFace STT
+              if (!audioBase64) {
+                setIsProcessing(false);
+                return;
+              }
+              
+              const result = await unifiedAudio.transcribeWithTranslation(
+                audioBase64, 
+                sourceLang
+              );
+              
+              transcription = result.transcription || undefined;
+              
+              if (autoTranslate && result.transcription) {
+                translation = result.transcription_fr;
+              }
             }
             
             if (transcription) {
@@ -115,7 +155,7 @@ export function TamTamMicButton({
           }
           
           onRecordingComplete({
-            audioBase64,
+            audioBase64: audioBase64 || '',
             transcription,
             translation,
             sourceLang
@@ -137,7 +177,8 @@ export function TamTamMicButton({
     }
   }, [
     disabled, isRecording, audioRecorder, onRecordingComplete, 
-    autoTranscribe, autoTranslate, autoSpeak, sourceLang, unifiedAudio, onPress, toast
+    autoTranscribe, autoTranslate, autoSpeak, sourceLang, unifiedAudio, 
+    webSpeechSTT, frenchTranscript, onPress, toast
   ]);
 
   const showRecordingState = isRecording || audioRecorder.isRecording;
