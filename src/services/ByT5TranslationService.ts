@@ -47,28 +47,66 @@ class ByT5TranslationService {
     advanced: boolean = true
   ): Promise<ByT5TranslationResult> {
     const startTime = Date.now();
-    
-    // Skip if service is known to be unhealthy (avoid waiting for timeout)
+
+    const invalidPatterns = [
+      'Share via Link',
+      'share via',
+      'Loading',
+      'Submit',
+      'Clear',
+      'Button',
+      'Click',
+      'Select',
+      'Choose',
+    ];
+    const isValid = (t: unknown) =>
+      typeof t === 'string' &&
+      t.trim().length > 0 &&
+      !invalidPatterns.some((p) => t.toLowerCase().includes(p.toLowerCase()));
+
+    const lovableFallback = async (reason: string): Promise<ByT5TranslationResult> => {
+      console.warn(`⚠️ ByT5 fallback → Lovable AI (${reason})`);
+      const { data: lovableData, error: lovableError } = await supabase.functions.invoke('ai-translate-lovable', {
+        body: { text, sourceLang, targetLang },
+      });
+
+      if (lovableError) {
+        throw new Error(lovableError.message || 'Lovable AI unavailable');
+      }
+
+      if (!lovableData?.translation) {
+        throw new Error('No translation received from Lovable AI');
+      }
+
+      return {
+        translation: lovableData.translation,
+        confidence: lovableData.confidence || 75,
+        duration: lovableData.duration || (Date.now() - startTime),
+        method: 'lovable-ai-fallback',
+        suggestions: lovableData.suggestions,
+        modelInfo: lovableData.modelInfo,
+      };
+    };
+
+    // Skip ByT5 if known unhealthy → fallback directly
     if (!this.isHealthy && Date.now() - this.lastHealthCheck < this.healthCheckInterval) {
-      console.log('⚠️ ByT5 service known to be unavailable, skipping...');
-      throw new Error('Service temporairement indisponible');
+      return lovableFallback('service marked unhealthy');
     }
-    
-    // Create abort controller for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    // (Note) supabase.functions.invoke does not support AbortSignal; keep TIMEOUT_MS for future transport.
+    const timeoutId = setTimeout(() => {}, TIMEOUT_MS);
 
     try {
       console.log(`🤖 ByT5TranslationService: Calling Edge Function...`);
-      
+
       const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
         body: {
           text,
           sourceLang,
           targetLang,
           mode,
-          advanced
-        }
+          advanced,
+        },
       });
 
       clearTimeout(timeoutId);
@@ -76,24 +114,27 @@ class ByT5TranslationService {
       if (error) {
         console.error('❌ ByT5 Edge Function error:', error);
         this.isHealthy = false;
-        throw new Error(error.message || 'ByT5 service unavailable');
+        this.lastHealthCheck = Date.now();
+        return lovableFallback(error.message || 'edge function error');
       }
 
       if (data?.error) {
         console.error('❌ ByT5 returned error:', data.error, data.details);
         this.isHealthy = false;
-        throw new Error(data.details || data.error);
+        this.lastHealthCheck = Date.now();
+        return lovableFallback(data.details || data.error || 'ByT5 returned error');
       }
 
-      if (!data?.translation) {
-        console.error('❌ ByT5 no translation in response');
+      if (!isValid(data?.translation)) {
+        console.error('❌ ByT5 returned invalid translation:', data?.translation);
         this.isHealthy = false;
-        throw new Error('No translation received from ByT5');
+        this.lastHealthCheck = Date.now();
+        return lovableFallback('invalid translation payload');
       }
 
       this.isHealthy = true;
       this.lastHealthCheck = Date.now();
-      
+
       console.log(`✅ ByT5 translation received in ${data.duration || (Date.now() - startTime)}ms`);
 
       return {
@@ -102,16 +143,18 @@ class ByT5TranslationService {
         duration: data.duration || (Date.now() - startTime),
         method: 'byt5-expert',
         suggestions: data.suggestions,
-        modelInfo: data.modelInfo
+        modelInfo: data.modelInfo,
       };
     } catch (error) {
       clearTimeout(timeoutId);
       this.isHealthy = false;
-      
+      this.lastHealthCheck = Date.now();
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`❌ ByT5TranslationService error: ${errorMessage}`);
-      
-      throw new Error(`ByT5 indisponible: ${errorMessage}`);
+      console.error(`❌ ByT5TranslationService fatal error: ${errorMessage}`);
+
+      // Final attempt: Lovable fallback
+      return lovableFallback(`exception: ${errorMessage}`);
     }
   }
 
