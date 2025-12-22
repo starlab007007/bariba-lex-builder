@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  react-app-bariba:
+    build: .
+    container_name: react-app-bariba-js
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.react-app-baribat.rule=Host(`bot.bj`)"
+      - "traefik.http.routers.react-app-baribat.entrypoints=websecure"
+      - "traefik.http.routers.react-app-baribat.tls.certresolver=letsencrypt"
+      - "traefik.http.services.react-app-baribat.loadbalancer.server.port=80"
+      - "traefik.port=80"
+
+
+    ports:
+      - 8085:80
+    networks:
+      - web
+
+
+networks:
+  web:
+    external: true
