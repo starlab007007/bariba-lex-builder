@@ -219,51 +219,46 @@ export default function TamTamSocial() {
   const isLoading = postsLoading || pollsLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-24">
-      {/* Tab Bar with Voice Support - iOS Style */}
-      <div className="sticky top-0 z-20 ios-glass-light border-b border-border/50">
+    <div className="min-h-screen pb-28" style={{ background: 'linear-gradient(180deg, #F7F9FC 0%, #EEF3FF 50%, #F4F0FF 100%)' }}>
+      {/* Top Bar Glass - iOS 26.3 Style */}
+      <div className="sticky top-0 z-20 glass-card-solid border-b border-white/30">
         <div className="flex justify-between items-center p-3 safe-area-top">
-          <div className="flex justify-center gap-2 flex-1">
+          {/* Tabs Pills */}
+          <div className="topbar-tabs">
             {tabs.map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               
               return (
-                <div key={tab.id} className="flex items-center">
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleTabChange(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-medium transition-all ${
-                      isActive 
-                        ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/20' 
-                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                  </motion.button>
-                  {/* Speaker button for voice accessibility */}
-                  <SpeakerButton 
-                    labelKey={tab.label}
-                    size="sm"
-                    className={`ml-1 ${isActive ? 'bg-blue-100' : ''}`}
-                  />
-                </div>
+                <motion.button
+                  key={tab.id}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`topbar-tab flex items-center gap-2 ${isActive ? 'active' : ''}`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{getLabel(tab.label)}</span>
+                </motion.button>
               );
             })}
           </div>
-          {/* Search button with voice support */}
-          <div className="flex items-center gap-1">
+          
+          {/* Live Badge + Search */}
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              className="live-badge"
+            >
+              <span className="w-2 h-2 rounded-full bg-glass-rose animate-pulse" />
+              LIVE
+            </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowUserSearch(true)}
-              className="p-2.5 bg-muted/50 rounded-xl hover:bg-muted transition-colors"
+              className="glass-pill p-2.5"
             >
-              <Search className="w-5 h-5 text-muted-foreground" />
+              <Search className="w-5 h-5 text-foreground/70" />
             </motion.button>
-            <SpeakerButton 
-              labelKey="search"
-              size="sm"
-            />
           </div>
         </div>
       </div>
@@ -300,18 +295,14 @@ export default function TamTamSocial() {
               }}
             />
 
-            {/* Gradient FAB - Opens directly to template selection */}
+            {/* Gradient FAB - Light Glass Style */}
             <motion.button
               whileTap={{ scale: 0.9 }}
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.08 }}
               onClick={() => setShowGuidedCreator(true)}
-              className="fixed bottom-24 right-4 z-30 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, #A855F7 0%, #EC4899 50%, #F97316 100%)',
-                boxShadow: '0 8px 32px rgba(168, 85, 247, 0.4)'
-              }}
+              className="dock-item-create fixed bottom-24 right-4 z-30 w-16 h-16"
             >
-              <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
+              <Plus className="w-7 h-7 text-white" strokeWidth={2.5} />
             </motion.button>
 
             {/* Feed - Combined posts and polls */}
