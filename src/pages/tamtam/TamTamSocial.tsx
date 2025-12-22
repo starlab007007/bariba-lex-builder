@@ -220,11 +220,25 @@ export default function TamTamSocial() {
 
   return (
     <div className="min-h-screen pb-28" style={{ background: 'linear-gradient(180deg, #F7F9FC 0%, #EEF3FF 50%, #F4F0FF 100%)' }}>
-      {/* Top Bar Glass - iOS 26.3 Style */}
-      <div className="sticky top-0 z-20 glass-card-solid border-b border-white/30">
+      {/* Top Bar Glass - Light Glass iOS 26.3 */}
+      <div 
+        className="sticky top-0 z-20"
+        style={{ 
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(40px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+          borderBottom: '1px solid rgba(230, 235, 245, 0.8)'
+        }}
+      >
         <div className="flex justify-between items-center p-3 safe-area-top">
-          {/* Tabs Pills */}
-          <div className="topbar-tabs">
+          {/* Tabs Pills - Light Glass */}
+          <div 
+            className="inline-flex rounded-full p-1"
+            style={{ 
+              background: 'rgba(77, 163, 255, 0.08)',
+              border: '1px solid rgba(77, 163, 255, 0.15)'
+            }}
+          >
             {tabs.map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -234,7 +248,14 @@ export default function TamTamSocial() {
                   key={tab.id}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`topbar-tab flex items-center gap-2 ${isActive ? 'active' : ''}`}
+                  className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2"
+                  style={isActive ? {
+                    background: 'linear-gradient(135deg, #4DA3FF 0%, #5DEBFF 100%)',
+                    color: 'white',
+                    boxShadow: '0 4px 16px rgba(77, 163, 255, 0.3)'
+                  } : {
+                    color: '#6b7280'
+                  }}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="hidden sm:inline">{getLabel(tab.label)}</span>
@@ -243,21 +264,30 @@ export default function TamTamSocial() {
             })}
           </div>
           
-          {/* Live Badge + Search */}
+          {/* Live Badge + Search - Light Glass */}
           <div className="flex items-center gap-2">
             <motion.button
               whileTap={{ scale: 0.95 }}
-              className="live-badge"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255, 111, 174, 0.15) 0%, rgba(139, 124, 255, 0.15) 100%)',
+                border: '1px solid rgba(255, 111, 174, 0.25)',
+                color: '#FF6FAE'
+              }}
             >
-              <span className="w-2 h-2 rounded-full bg-glass-rose animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#FF6FAE] animate-pulse" />
               LIVE
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowUserSearch(true)}
-              className="glass-pill p-2.5"
+              className="p-2.5 rounded-full"
+              style={{
+                background: 'rgba(77, 163, 255, 0.1)',
+                border: '1px solid rgba(77, 163, 255, 0.2)'
+              }}
             >
-              <Search className="w-5 h-5 text-foreground/70" />
+              <Search className="w-5 h-5 text-[#4DA3FF]" />
             </motion.button>
           </div>
         </div>
@@ -272,12 +302,12 @@ export default function TamTamSocial() {
             exit={{ opacity: 0, x: 20 }}
           >
             {/* Feed Mode Selector */}
-            <div className="p-3 bg-card/50 border-b border-border/30 flex justify-center">
+            <div className="p-3 border-b flex justify-center" style={{ background: 'rgba(255, 255, 255, 0.6)', borderColor: 'rgba(230, 235, 245, 0.8)' }}>
               <FeedModeSelector currentMode={feedMode} onModeChange={setFeedMode} />
             </div>
 
             {/* Stories */}
-            <div className="bg-card border-b border-border/30">
+            <div className="border-b" style={{ background: 'rgba(255, 255, 255, 0.7)', borderColor: 'rgba(230, 235, 245, 0.8)' }}>
               <TamTamStories 
                 stories={stories} 
                 onCreateStory={() => setShowStoryCreator(true)}
@@ -300,7 +330,11 @@ export default function TamTamSocial() {
               whileTap={{ scale: 0.9 }}
               whileHover={{ scale: 1.08 }}
               onClick={() => setShowGuidedCreator(true)}
-              className="dock-item-create fixed bottom-24 right-4 z-30 w-16 h-16"
+              className="fixed bottom-24 right-4 z-30 w-16 h-16 rounded-full flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, #4DA3FF 0%, #5DEBFF 50%, #8B7CFF 100%)',
+                boxShadow: '0 8px 32px rgba(77, 163, 255, 0.4), 0 0 0 4px rgba(77, 163, 255, 0.15)'
+              }}
             >
               <Plus className="w-7 h-7 text-white" strokeWidth={2.5} />
             </motion.button>

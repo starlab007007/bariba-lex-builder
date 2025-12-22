@@ -384,7 +384,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const currentStepData = selectedTemplate?.steps[currentStep];
   const hasRecordedCurrentStep = capturedMedia.some(m => m.step === currentStep);
 
-  // TEMPLATE SELECTION PHASE
+  // TEMPLATE SELECTION PHASE - LIGHT GLASS
   if (phase === 'select') {
     return (
       <motion.div
@@ -392,54 +392,60 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50"
-        style={{ background: 'linear-gradient(180deg, rgba(15, 15, 20, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)' }}
+        style={{ background: 'linear-gradient(180deg, #F7F9FC 0%, #EEF3FF 50%, #F4F0FF 100%)' }}
       >
-        <AnimatedBackground theme={selectedBackground} intensity={0.3}>
-          {/* Header - More Transparent */}
-          <div className="absolute top-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between safe-area-top">
-            <motion.button 
-              whileTap={{ scale: 0.9 }}
-              onClick={handleClose} 
-              className="ios-float-button p-2.5 rounded-full"
-            >
-              <X className="w-5 h-5 text-white/90" />
-            </motion.button>
-            <h2 className="text-white/90 font-semibold text-lg tracking-tight">
-              {currentLang === 'ba' ? 'Yan àwòrán' : 'Créer'}
-            </h2>
-            <div className="w-10" />
-          </div>
+        {/* Header - Light Glass */}
+        <div className="absolute top-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between safe-area-top">
+          <motion.button 
+            whileTap={{ scale: 0.9 }}
+            onClick={handleClose} 
+            className="w-10 h-10 rounded-full flex items-center justify-center"
+            style={{ 
+              background: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(0, 0, 0, 0.05)',
+              boxShadow: '0 2px 12px rgba(30, 60, 120, 0.1)'
+            }}
+          >
+            <X className="w-5 h-5 text-gray-700" />
+          </motion.button>
+          <h2 className="text-gray-800 font-semibold text-lg tracking-tight">
+            {currentLang === 'ba' ? 'Yan àwòrán' : 'Créer'}
+          </h2>
+          <div className="w-10" />
+        </div>
 
-          {/* Template Grid - Enhanced */}
-          <div className="pt-20 pb-8 px-4 h-full overflow-y-auto">
-            <p className="text-white/50 text-center mb-6 text-sm">
-              {currentLang === 'ba' ? 'Yan iru àwòrán' : 'Choisis ton format de création'}
-            </p>
-            
-            <div className="grid grid-cols-2 gap-3">
-              {templates.map((template, idx) => (
-                <motion.button
-                  key={template.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ delay: idx * 0.05, type: 'spring', stiffness: 300 }}
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ scale: 1.02 }}
-                  onClick={() => selectTemplate(template)}
-                  className="ios-card p-4 flex flex-col items-center gap-3 active:bg-white/10"
-                >
-                  <span className="text-4xl drop-shadow-lg">{template.icon}</span>
-                  <span className="text-white/90 font-medium text-sm text-center leading-tight">
-                    {currentLang === 'ba' ? template.label_ba : template.label_fr}
-                  </span>
-                  <span className="ios-pill text-white/50 text-xs">
-                    {template.steps.length} {currentLang === 'ba' ? 'ìgbésẹ̀' : 'étapes'}
-                  </span>
-                </motion.button>
-              ))}
-            </div>
+        {/* Template Grid - Light Glass Enhanced */}
+        <div className="pt-20 pb-8 px-4 h-full overflow-y-auto">
+          <p className="text-gray-500 text-center mb-6 text-sm font-medium">
+            {currentLang === 'ba' ? 'Yan iru àwòrán' : 'Choisis ton format de création'}
+          </p>
+          
+          <div className="grid grid-cols-2 gap-3">
+            {templates.map((template, idx) => (
+              <motion.button
+                key={template.id}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: idx * 0.05, type: 'spring', stiffness: 300 }}
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => selectTemplate(template)}
+                className="template-card-light p-4 flex flex-col items-center gap-3"
+              >
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(77, 163, 255, 0.1) 0%, rgba(139, 124, 255, 0.1) 100%)' }}>
+                  <span className="text-3xl">{template.icon}</span>
+                </div>
+                <span className="text-gray-800 font-medium text-sm text-center leading-tight">
+                  {currentLang === 'ba' ? template.label_ba : template.label_fr}
+                </span>
+                <span className="light-glass-pill px-3 py-1 text-xs">
+                  {template.steps.length} {currentLang === 'ba' ? 'ìgbésẹ̀' : 'étapes'}
+                </span>
+              </motion.button>
+            ))}
           </div>
-        </AnimatedBackground>
+        </div>
       </motion.div>
     );
   }

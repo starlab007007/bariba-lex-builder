@@ -210,7 +210,7 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden"
+      className="feed-card-light overflow-hidden"
     >
       {/* Header */}
       <div className="flex items-center gap-3 p-4">
@@ -224,7 +224,7 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
           <p className="font-semibold text-gray-800">
             {post.profile?.display_name || post.profile?.username || 'Utilisateur'}
           </p>
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
             {getMediaIcon()}
             <span>
               {post.created_at && formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: fr })}
@@ -240,8 +240,8 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
             postId={post.id}
             userName={post.profile?.display_name || post.profile?.username}
             trigger={
-              <button className="p-2 hover:bg-gray-100 rounded-full">
-                <MoreHorizontal className="w-5 h-5 text-gray-400" />
+              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <MoreHorizontal className="w-5 h-5 text-gray-500" />
               </button>
             }
           />
@@ -379,24 +379,25 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
         </div>
       )}
 
-      {/* Audio Player - For non-poll posts */}
+      {/* Audio Player - Light Glass Style */}
       {post.media_type !== 'poll' && (
         <div className="px-4 py-3">
-          <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-emerald-50 rounded-2xl p-3">
+          <div className="audio-player-light flex items-center gap-3">
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={handlePlayPause}
-              className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white shadow-lg"
+              className="audio-play-button w-14 h-14 flex items-center justify-center"
             >
               {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
             </motion.button>
             
-            {/* Waveform */}
+            {/* Waveform - Light colors */}
             <div className="flex-1 flex items-center gap-1 h-10">
               {Array.from({ length: 30 }).map((_, i) => (
                 <motion.div
                   key={i}
-                  className="w-1 bg-blue-400 rounded-full"
+                  className="w-1 rounded-full"
+                  style={{ background: 'linear-gradient(180deg, #4DA3FF 0%, #5DEBFF 100%)' }}
                   animate={{
                     height: isPlaying ? [8, 20 + Math.random() * 20, 8] : 8
                   }}
@@ -409,7 +410,7 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
               ))}
             </div>
 
-            <span className="text-sm text-gray-500 font-medium">
+            <span className="text-sm text-gray-600 font-medium">
               {post.duration_seconds ? `${Math.floor(post.duration_seconds / 60)}:${(post.duration_seconds % 60).toString().padStart(2, '0')}` : '0:00'}
             </span>
           </div>
@@ -422,23 +423,25 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
         </div>
       )}
 
-      {/* Transcript & Translation */}
+      {/* Transcript & Translation - Light Glass */}
       {(transcript || altTranscript) && (
         <div className="px-4 pb-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setShowTranscript(!showTranscript)}
-              className="flex items-center gap-2 text-sm text-blue-500 font-medium"
+              className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-full transition-colors"
+              style={{ color: '#4DA3FF', background: 'rgba(77, 163, 255, 0.1)' }}
             >
               {showTranscript ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              {showTranscript ? 'Masquer' : 'Voir transcription'}
+              {showTranscript ? 'Masquer' : 'Transcription'}
             </button>
             
             {/* TTS Read Button */}
             <button
               onClick={handleReadPost}
               disabled={isSpeakingPost || audioServices.isSpeaking}
-              className="flex items-center gap-1 text-sm text-emerald-500 font-medium disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full disabled:opacity-50 transition-colors"
+              style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}
             >
               {isSpeakingPost ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -455,24 +458,25 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="mt-2 overflow-hidden"
+                className="mt-3 overflow-hidden"
               >
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-gray-700">{transcript || altTranscript}</p>
+                <div className="rounded-2xl p-4" style={{ background: 'linear-gradient(135deg, rgba(77, 163, 255, 0.06) 0%, rgba(139, 124, 255, 0.06) 100%)', border: '1px solid rgba(77, 163, 255, 0.1)' }}>
+                  <p className="text-gray-700 leading-relaxed">{transcript || altTranscript}</p>
                   
                   {altTranscript && (
                     <button
                       onClick={handleTranslate}
                       disabled={isTranslating}
-                      className="mt-2 flex items-center gap-2 text-sm text-emerald-500 font-medium"
+                      className="mt-3 flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-full transition-colors"
+                      style={{ color: '#8B7CFF', background: 'rgba(139, 124, 255, 0.1)' }}
                     >
                       <Globe className="w-4 h-4" />
-                      {isTranslating ? 'Traduction...' : 'Traduire'}
+                      {isTranslating ? 'Traduction...' : 'Traduire en ' + (currentLang === 'fr' ? 'Bariba' : 'Français')}
                     </button>
                   )}
                   
                   {translatedText && (
-                    <div className="mt-2 pt-2 border-t border-gray-200">
+                    <div className="mt-3 pt-3 border-t border-gray-200/50">
                       <p className="text-gray-600 italic">{translatedText}</p>
                       {/* Read translation */}
                       <button
