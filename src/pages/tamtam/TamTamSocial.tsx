@@ -498,20 +498,6 @@ export default function TamTamSocial() {
         }}
       />
 
-      {/* Radio Mini Player - Only show when actively playing in radio mode */}
-      {feedMode === 'radio' && radioFeed.isPlaying && radioFeed.currentPost && (
-        <RadioMiniPlayer
-          isVisible={true}
-          isPlaying={radioFeed.isPlaying}
-          currentPost={radioFeed.currentPost}
-          currentTime={radioFeed.currentTime}
-          onPlay={radioFeed.play}
-          onPause={radioFeed.pause}
-          onNext={radioFeed.next}
-          onPrevious={radioFeed.previous}
-          onClose={radioFeed.pause}
-        />
-      )}
     </div>
   );
 }
