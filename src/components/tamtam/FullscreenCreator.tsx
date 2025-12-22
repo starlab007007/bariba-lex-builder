@@ -391,42 +391,48 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black z-50"
+        className="fixed inset-0 z-50"
+        style={{ background: 'linear-gradient(180deg, rgba(15, 15, 20, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)' }}
       >
-        <AnimatedBackground theme={selectedBackground} intensity={0.4}>
-          {/* Header */}
-          <div className="ios-glass-dark absolute top-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between">
-            <button onClick={handleClose} className="ios-float-button p-2 rounded-full">
-              <X className="w-5 h-5 text-white" />
-            </button>
-            <h2 className="text-white font-semibold text-lg">
+        <AnimatedBackground theme={selectedBackground} intensity={0.3}>
+          {/* Header - More Transparent */}
+          <div className="absolute top-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between safe-area-top">
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
+              onClick={handleClose} 
+              className="ios-float-button p-2.5 rounded-full"
+            >
+              <X className="w-5 h-5 text-white/90" />
+            </motion.button>
+            <h2 className="text-white/90 font-semibold text-lg tracking-tight">
               {currentLang === 'ba' ? 'Yan àwòrán' : 'Créer'}
             </h2>
-            <div className="w-9" />
+            <div className="w-10" />
           </div>
 
-          {/* Template Grid */}
+          {/* Template Grid - Enhanced */}
           <div className="pt-20 pb-8 px-4 h-full overflow-y-auto">
-            <p className="text-white/70 text-center mb-6">
-              {currentLang === 'ba' ? 'Yan iru àwòrán' : 'Choisis un modèle'}
+            <p className="text-white/50 text-center mb-6 text-sm">
+              {currentLang === 'ba' ? 'Yan iru àwòrán' : 'Choisis ton format de création'}
             </p>
             
             <div className="grid grid-cols-2 gap-3">
               {templates.map((template, idx) => (
                 <motion.button
                   key={template.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: idx * 0.05, type: 'spring', stiffness: 300 }}
                   whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
                   onClick={() => selectTemplate(template)}
-                  className="ios-glass p-4 rounded-2xl flex flex-col items-center gap-2"
+                  className="ios-card p-4 flex flex-col items-center gap-3 active:bg-white/10"
                 >
-                  <span className="text-4xl">{template.icon}</span>
-                  <span className="text-white font-medium text-sm text-center">
+                  <span className="text-4xl drop-shadow-lg">{template.icon}</span>
+                  <span className="text-white/90 font-medium text-sm text-center leading-tight">
                     {currentLang === 'ba' ? template.label_ba : template.label_fr}
                   </span>
-                  <span className="text-white/50 text-xs">
+                  <span className="ios-pill text-white/50 text-xs">
                     {template.steps.length} {currentLang === 'ba' ? 'ìgbésẹ̀' : 'étapes'}
                   </span>
                 </motion.button>
@@ -513,33 +519,55 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
           </div>
         </div>
 
-        {/* CENTER - Instruction Card */}
+        {/* CENTER - Instruction Card - Ultra Transparent */}
         <div className="absolute top-1/3 left-4 right-4 z-20">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="ios-glass rounded-2xl p-4 text-center"
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300 }}
+            className="ios-glass rounded-3xl p-5 text-center"
           >
-            <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="flex items-center justify-center gap-2 mb-3">
               <motion.div
-                animate={isSpeaking ? { scale: [1, 1.2, 1] } : {}}
-                transition={{ repeat: Infinity, duration: 0.5 }}
+                animate={isSpeaking ? { scale: [1, 1.15, 1] } : {}}
+                transition={{ repeat: Infinity, duration: 0.6 }}
+                className={`p-2 rounded-full ${isSpeaking ? 'bg-primary/20' : 'bg-white/5'}`}
               >
-                <Volume2 className={`w-5 h-5 ${isSpeaking ? 'text-primary' : 'text-white/60'}`} />
+                <Volume2 className={`w-4 h-4 ${isSpeaking ? 'text-primary' : 'text-white/50'}`} />
               </motion.div>
-              <span className="text-white/60 text-sm">
-                Étape {currentStep + 1}/{selectedTemplate.steps.length}
+              <span className="ios-pill text-white/60 text-xs">
+                Étape {currentStep + 1} / {selectedTemplate.steps.length}
               </span>
             </div>
-            <p className="text-white text-lg font-medium">
+            <p className="text-white text-lg font-medium leading-relaxed">
               {currentLang === 'ba' ? currentStepData.instruction_ba : currentStepData.instruction_fr}
             </p>
-            <div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
+            
+            {/* Progress Bar - More Visible */}
+            <div className="mt-4 h-1.5 bg-white/10 rounded-full overflow-hidden">
               <motion.div 
-                className="h-full bg-white rounded-full"
-                style={{ width: `${recordingProgress}%` }}
+                className="h-full rounded-full"
+                style={{ 
+                  width: `${recordingProgress}%`,
+                  background: isRecording 
+                    ? 'linear-gradient(90deg, hsl(var(--destructive)), hsl(var(--accent)))'
+                    : 'linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))'
+                }}
+                animate={isRecording ? { opacity: [1, 0.7, 1] } : {}}
+                transition={{ repeat: Infinity, duration: 0.8 }}
               />
             </div>
+            
+            {/* Recording Timer */}
+            {isRecording && (
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-2 text-white/40 text-sm font-mono"
+              >
+                {Math.floor(recordingProgress / 100 * (currentStepData?.duration || 0))}s / {currentStepData?.duration}s
+              </motion.p>
+            )}
           </motion.div>
         </div>
 
@@ -784,7 +812,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     );
   }
 
-  // PREVIEW PHASE
+  // PREVIEW PHASE - Clean iOS Style
   if (phase === 'preview') {
     return (
       <motion.div
@@ -792,59 +820,129 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         animate={{ opacity: 1 }}
         className="fullscreen-creator"
       >
-        <AnimatedBackground theme={selectedBackground} intensity={0.5}>
+        <AnimatedBackground theme={selectedBackground} intensity={0.4}>
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+            {/* Success Animation */}
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="w-24 h-24 rounded-full bg-green-500/80 flex items-center justify-center mb-6"
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              className="w-28 h-28 rounded-full flex items-center justify-center mb-8"
+              style={{
+                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.8), rgba(16, 185, 129, 0.8))',
+                boxShadow: '0 0 60px rgba(34, 197, 94, 0.4)'
+              }}
             >
-              <Check className="w-12 h-12 text-white" />
+              <Check className="w-14 h-14 text-white" strokeWidth={2.5} />
             </motion.div>
             
-            <h2 className="text-white text-2xl font-bold mb-2">
-              {currentLang === 'ba' ? 'Ti parí!' : 'Terminé !'}
-            </h2>
-            <p className="text-white/60 mb-8">
-              {capturedMedia.length} segment(s) • {selectedTemplate?.label_fr}
-            </p>
+            <motion.h2 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-white text-2xl font-bold mb-2"
+            >
+              {currentLang === 'ba' ? 'Ti parí!' : 'Création terminée !'}
+            </motion.h2>
+            
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="text-white/50 mb-8 text-center"
+            >
+              {capturedMedia.length} segment{capturedMedia.length > 1 ? 's' : ''} • {selectedTemplate?.label_fr}
+            </motion.p>
 
-            <div className="w-full max-w-xs space-y-3">
+            {/* Captured Media Preview */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="w-full max-w-xs mb-8"
+            >
+              <div className="ios-glass rounded-2xl p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                    <span className="text-xl">{selectedTemplate?.icon}</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-medium text-sm">{selectedTemplate?.label_fr}</p>
+                    <p className="text-white/40 text-xs">Prêt à publier</p>
+                  </div>
+                </div>
+                
+                {/* Media Types Captured */}
+                <div className="flex gap-2 flex-wrap">
+                  {capturedMedia.map((media, idx) => (
+                    <span 
+                      key={idx} 
+                      className={`media-badge ${
+                        media.type === 'video' ? 'media-badge-video' :
+                        media.type === 'photo' ? 'media-badge-photo' :
+                        'media-badge-audio'
+                      }`}
+                    >
+                      {media.type === 'video' ? <Video className="w-3 h-3" /> :
+                       media.type === 'photo' ? <Camera className="w-3 h-3" /> :
+                       <Mic className="w-3 h-3" />}
+                      Étape {media.step + 1}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Actions */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="w-full max-w-xs space-y-3"
+            >
               <motion.button
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.02 }}
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="w-full py-4 bg-gradient-to-r from-primary to-primary/80 text-white rounded-2xl font-semibold flex items-center justify-center gap-2"
+                className="w-full py-4 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
+                  boxShadow: '0 8px 32px hsla(var(--primary), 0.3)'
+                }}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Publication...</span>
+                    <span>Publication en cours...</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    <span>Publier</span>
+                    <span>Publier maintenant</span>
                   </>
                 )}
               </motion.button>
 
               <button
                 onClick={() => setPhase('capture')}
-                className="w-full py-3 text-white/70"
+                className="w-full py-3 text-white/60 hover:text-white/80 transition-colors flex items-center justify-center gap-2"
               >
-                ← Modifier
+                <ChevronLeft className="w-4 h-4" />
+                <span>Modifier</span>
               </button>
-            </div>
+            </motion.div>
           </div>
 
           {/* Close button */}
-          <button
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             onClick={handleClose}
             className="absolute top-4 right-4 ios-float-button p-3 rounded-full"
           >
-            <X className="w-5 h-5 text-white" />
-          </button>
+            <X className="w-5 h-5 text-white/80" />
+          </motion.button>
         </AnimatedBackground>
       </motion.div>
     );
