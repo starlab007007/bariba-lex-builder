@@ -4,7 +4,7 @@ import {
   X, Mic, Video, Camera, Check, ChevronRight, ChevronLeft, 
   Volume2, Pause, Play, Loader2, RotateCcw, Sparkles, 
   Hash, Lightbulb, Music, Palette, ArrowLeft, Send, Sliders,
-  Filter, Edit3, Trash2, SkipBack, SkipForward
+  Filter, Edit3, Trash2, SkipBack, SkipForward, Users
 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
@@ -14,9 +14,69 @@ import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatedBackground, BackgroundTheme } from './AnimatedBackground';
-import { AIContentCreator } from './AIContentCreator';
+import { DynamicAITemplates } from './DynamicAITemplates';
 import { MUSIC_LIBRARY, MusicTrack, getSuggestedMusic } from '@/data/musicLibrary';
 import { VideoFiltersPanel, VIDEO_FILTERS, VideoFilter, useVideoFilter } from './VideoFilters';
+
+// Phase transition animation variants
+const phaseVariants = {
+  initial: { opacity: 0, scale: 0.92, y: 30 },
+  animate: { 
+    opacity: 1, 
+    scale: 1, 
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.22, 1, 0.36, 1] // iOS-like spring
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    scale: 1.08, 
+    y: -30,
+    transition: {
+      duration: 0.35,
+      ease: [0.22, 1, 0.36, 1]
+    }
+  }
+};
+
+const slideUpVariants = {
+  initial: { opacity: 0, y: 100 },
+  animate: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      type: 'spring',
+      damping: 25,
+      stiffness: 300
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    y: 100,
+    transition: { duration: 0.25 }
+  }
+};
+
+const staggerContainerVariants = {
+  animate: {
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const staggerItemVariants = {
+  initial: { opacity: 0, y: 20, scale: 0.95 },
+  animate: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    transition: { type: 'spring', stiffness: 300, damping: 20 }
+  }
+};
 
 interface TemplateStep {
   step: number;
@@ -847,13 +907,14 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                   <Sparkles className="w-5 h-5 text-violet-500" />
                   Contenu IA Lovable
                 </h3>
-                <AIContentCreator
+                <DynamicAITemplates
                   topic={selectedTemplate?.category || ''}
                   templateKey={selectedTemplate?.template_key}
-                  compact
-                  onContentGenerated={(content) => {
-                    setAiContent(content);
+                  isSheet
+                  onSelectContent={(type, content) => {
+                    setAiContent({ type, content });
                   }}
+                  onClose={() => setShowAI(false)}
                 />
               </motion.div>
             </motion.div>
