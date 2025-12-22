@@ -248,19 +248,45 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
         )}
       </div>
 
-      {/* Media Content */}
+      {/* Media Content - Support for multiple photos */}
       {post.media_type === 'photo' && post.media_url && (
         <div className="relative">
-          <img 
-            src={post.media_url} 
-            alt="Post media" 
-            className="w-full max-h-96 object-cover"
-          />
+          {post.media_url.includes(',') ? (
+            // Multiple photos - carousel style
+            <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+              {post.media_url.split(',').map((url, idx) => (
+                <div key={idx} className="flex-shrink-0 w-full snap-center">
+                  <img 
+                    src={url.trim()} 
+                    alt={`Photo ${idx + 1}`} 
+                    className="w-full max-h-96 object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            // Single photo
+            <img 
+              src={post.media_url} 
+              alt="Post media" 
+              className="w-full max-h-96 object-cover"
+              loading="lazy"
+            />
+          )}
+          
+          {/* Photo count indicator for multiple photos */}
+          {post.media_url.includes(',') && (
+            <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white text-xs font-medium">
+              {post.media_url.split(',').length} photos
+            </div>
+          )}
+          
           {/* Audio overlay button */}
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={handlePlayPause}
-            className="absolute bottom-4 right-4 w-14 h-14 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white"
+            className="absolute bottom-4 right-4 w-14 h-14 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20"
           >
             {isPlaying ? <Pause className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
           </motion.button>
@@ -268,11 +294,12 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
       )}
 
       {post.media_type === 'video' && post.media_url && (
-        <div className="relative bg-black">
+        <div className="relative bg-black rounded-lg overflow-hidden">
           <video 
-            src={post.media_url}
+            src={post.media_url.split(',')[0]}
             poster={post.thumbnail_url || undefined}
             controls
+            playsInline
             className="w-full max-h-96"
           />
         </div>

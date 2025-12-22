@@ -219,10 +219,10 @@ export default function TamTamSocial() {
   const isLoading = postsLoading || pollsLoading;
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] pb-24">
-      {/* Tab Bar with Voice Support */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="flex justify-between items-center p-3">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-24">
+      {/* Tab Bar with Voice Support - iOS Style */}
+      <div className="sticky top-0 z-20 ios-glass-light border-b border-border/50">
+        <div className="flex justify-between items-center p-3 safe-area-top">
           <div className="flex justify-center gap-2 flex-1">
             {tabs.map(tab => {
               const Icon = tab.icon;
@@ -233,10 +233,10 @@ export default function TamTamSocial() {
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleTabChange(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-medium transition-all ${
                       isActive 
-                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg' 
-                        : 'bg-gray-100 text-gray-500'
+                        ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/20' 
+                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -256,9 +256,9 @@ export default function TamTamSocial() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowUserSearch(true)}
-              className="p-2.5 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              className="p-2.5 bg-muted/50 rounded-xl hover:bg-muted transition-colors"
             >
-              <Search className="w-5 h-5 text-gray-600" />
+              <Search className="w-5 h-5 text-muted-foreground" />
             </motion.button>
             <SpeakerButton 
               labelKey="search"
@@ -277,12 +277,12 @@ export default function TamTamSocial() {
             exit={{ opacity: 0, x: 20 }}
           >
             {/* Feed Mode Selector */}
-            <div className="p-3 bg-white border-b border-gray-100 flex justify-center">
+            <div className="p-3 bg-card/50 border-b border-border/30 flex justify-center">
               <FeedModeSelector currentMode={feedMode} onModeChange={setFeedMode} />
             </div>
 
             {/* Stories */}
-            <div className="bg-white border-b border-gray-100">
+            <div className="bg-card border-b border-border/30">
               <TamTamStories 
                 stories={stories} 
                 onCreateStory={() => setShowStoryCreator(true)}
@@ -321,19 +321,21 @@ export default function TamTamSocial() {
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                    className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full"
+                    className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full"
                   />
-                  <p className="mt-4 text-gray-400">{t('loading')}</p>
+                  <p className="mt-4 text-muted-foreground">{t('loading')}</p>
                 </div>
               ) : feedItems.length === 0 ? (
                 <div className="text-center py-12">
-                  <Newspaper className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500">{t('noData')}</p>
-                  <p className="text-sm text-gray-400 mt-1">Soyez le premier à publier !</p>
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                    <Newspaper className="w-10 h-10 text-muted-foreground" />
+                  </div>
+                  <p className="text-foreground font-medium">{t('noData')}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Soyez le premier à publier !</p>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowCreatePost(true)}
-                    className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium"
+                    className="mt-4 px-6 py-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-xl font-medium shadow-lg shadow-primary/20"
                   >
                     Créer ma première publication
                   </motion.button>
