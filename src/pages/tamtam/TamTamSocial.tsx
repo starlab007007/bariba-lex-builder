@@ -498,10 +498,10 @@ export default function TamTamSocial() {
         }}
       />
 
-      {/* Radio Mini Player */}
-      {feedMode === 'radio' && (
+      {/* Radio Mini Player - Only show when actively playing in radio mode */}
+      {feedMode === 'radio' && radioFeed.isPlaying && radioFeed.currentPost && (
         <RadioMiniPlayer
-          isVisible={radioFeed.isPlaying || !!radioFeed.currentPost}
+          isVisible={true}
           isPlaying={radioFeed.isPlaying}
           currentPost={radioFeed.currentPost}
           currentTime={radioFeed.currentTime}
