@@ -701,6 +701,48 @@ export type Database = {
         }
         Relationships: []
       }
+      tamtam_creation_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          icon: string
+          id: string
+          is_active: boolean | null
+          label_ba: string | null
+          label_fr: string
+          music_url: string | null
+          steps: Json
+          template_key: string
+          usage_count: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          icon: string
+          id?: string
+          is_active?: boolean | null
+          label_ba?: string | null
+          label_fr: string
+          music_url?: string | null
+          steps: Json
+          template_key: string
+          usage_count?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          label_ba?: string | null
+          label_fr?: string
+          music_url?: string | null
+          steps?: Json
+          template_key?: string
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       tamtam_emergency_contacts: {
         Row: {
           created_at: string | null
@@ -977,6 +1019,47 @@ export type Database = {
         }
         Relationships: []
       }
+      tamtam_learning_progress: {
+        Row: {
+          created_at: string | null
+          feedback: string | null
+          id: string
+          post_id: string
+          quiz_score: number | null
+          repeated: boolean | null
+          understood: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          feedback?: string | null
+          id?: string
+          post_id: string
+          quiz_score?: number | null
+          repeated?: boolean | null
+          understood?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          feedback?: string | null
+          id?: string
+          post_id?: string
+          quiz_score?: number | null
+          repeated?: boolean | null
+          understood?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_learning_progress_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tamtam_live_reactions: {
         Row: {
           created_at: string | null
@@ -1088,6 +1171,57 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      tamtam_local_alerts: {
+        Row: {
+          alert_type: string
+          audio_url: string | null
+          audio_url_ba: string | null
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          location_lat: number | null
+          location_lng: number | null
+          location_name: string | null
+          radius_km: number | null
+          title: string
+        }
+        Insert: {
+          alert_type: string
+          audio_url?: string | null
+          audio_url_ba?: string | null
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          radius_km?: number | null
+          title: string
+        }
+        Update: {
+          alert_type?: string
+          audio_url?: string | null
+          audio_url_ba?: string | null
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          radius_km?: number | null
+          title?: string
+        }
+        Relationships: []
       }
       tamtam_messages: {
         Row: {
@@ -1288,63 +1422,106 @@ export type Database = {
       }
       tamtam_posts: {
         Row: {
+          action_buttons: Json | null
+          audio_narration_ba_url: string | null
+          audio_narration_url: string | null
           audio_url: string
           comments_count: number | null
+          comprehension_score: number | null
           created_at: string | null
+          culture_score: number | null
           duration_seconds: number | null
           feeling_emoji: string | null
           hashtags: string[] | null
           id: string
           is_public: boolean | null
           likes_count: number | null
+          location_lat: number | null
+          location_lng: number | null
+          location_name: string | null
           media_type: string | null
           media_url: string | null
+          response_to_post_id: string | null
           shares_count: number | null
+          template_id: string | null
           thumbnail_url: string | null
+          topic: string | null
           transcript: string | null
           transcript_ba: string | null
           transcript_fr: string | null
           user_id: string | null
+          utility_score: number | null
         }
         Insert: {
+          action_buttons?: Json | null
+          audio_narration_ba_url?: string | null
+          audio_narration_url?: string | null
           audio_url: string
           comments_count?: number | null
+          comprehension_score?: number | null
           created_at?: string | null
+          culture_score?: number | null
           duration_seconds?: number | null
           feeling_emoji?: string | null
           hashtags?: string[] | null
           id?: string
           is_public?: boolean | null
           likes_count?: number | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
           media_type?: string | null
           media_url?: string | null
+          response_to_post_id?: string | null
           shares_count?: number | null
+          template_id?: string | null
           thumbnail_url?: string | null
+          topic?: string | null
           transcript?: string | null
           transcript_ba?: string | null
           transcript_fr?: string | null
           user_id?: string | null
+          utility_score?: number | null
         }
         Update: {
+          action_buttons?: Json | null
+          audio_narration_ba_url?: string | null
+          audio_narration_url?: string | null
           audio_url?: string
           comments_count?: number | null
+          comprehension_score?: number | null
           created_at?: string | null
+          culture_score?: number | null
           duration_seconds?: number | null
           feeling_emoji?: string | null
           hashtags?: string[] | null
           id?: string
           is_public?: boolean | null
           likes_count?: number | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
           media_type?: string | null
           media_url?: string | null
+          response_to_post_id?: string | null
           shares_count?: number | null
+          template_id?: string | null
           thumbnail_url?: string | null
+          topic?: string | null
           transcript?: string | null
           transcript_ba?: string | null
           transcript_fr?: string | null
           user_id?: string | null
+          utility_score?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tamtam_posts_response_to_post_id_fkey"
+            columns: ["response_to_post_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_posts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tamtam_posts_user_id_fkey"
             columns: ["user_id"]
