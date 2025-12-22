@@ -463,247 +463,277 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     );
   }
 
-  // CAPTURE PHASE - TikTok Style Full Screen
+  // CAPTURE PHASE - TikTok Light Mode Style
   if (phase === 'capture' && selectedTemplate && currentStepData) {
+    const recordingModes = ['10 min', '60 s', '15 s', 'PHOTO', 'TEXTE'];
+    const currentMode = currentStepData.type === 'photo' ? 'PHOTO' : 
+                        currentStepData.type === 'audio' ? '60 s' : '15 s';
+    
     return (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="fullscreen-creator"
+        className="tiktok-light-creator"
       >
-        {/* Background with animation */}
-        <AnimatedBackground theme={selectedBackground} intensity={0.6} className="absolute inset-0 z-0">
-          {/* Video preview - full screen */}
-          {currentStepData.type !== 'audio' && (
-            <video
-              ref={videoPreviewRef}
-              autoPlay
-              muted
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ transform: isFrontCamera ? 'scaleX(-1)' : 'none' }}
-            />
-          )}
+        {/* Light Gradient Background */}
+        <div 
+          className="absolute inset-0 z-0"
+          style={{
+            background: 'linear-gradient(180deg, #C9CDD4 0%, #9AA1AC 50%, #6B7280 100%)'
+          }}
+        />
 
-          {/* Audio mode visualization */}
-          {currentStepData.type === 'audio' && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <motion.div
-                animate={isRecording ? { scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] } : {}}
-                transition={{ repeat: Infinity, duration: 1 }}
-                className="w-40 h-40 rounded-full bg-white/10 flex items-center justify-center"
-              >
-                <div className="w-28 h-28 rounded-full bg-white/20 flex items-center justify-center">
-                  <Mic className={`w-14 h-14 ${isRecording ? 'text-red-400' : 'text-white'}`} />
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatedBackground>
+        {/* Video preview - full screen */}
+        {currentStepData.type !== 'audio' && (
+          <video
+            ref={videoPreviewRef}
+            autoPlay
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover z-[1]"
+            style={{ transform: isFrontCamera ? 'scaleX(-1)' : 'none' }}
+          />
+        )}
 
-        {/* TOP HEADER - iOS Glass */}
-        <div className="absolute top-0 left-0 right-0 z-20">
-          <div className="ios-glass-dark mx-3 mt-3 rounded-2xl px-4 py-3 flex items-center justify-between">
-            <button onClick={handleClose} className="p-2">
-              <ArrowLeft className="w-5 h-5 text-white" />
+        {/* Audio mode visualization */}
+        {currentStepData.type === 'audio' && (
+          <div className="absolute inset-0 flex items-center justify-center z-[1]">
+            <motion.div
+              animate={isRecording ? { scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] } : {}}
+              transition={{ repeat: Infinity, duration: 1.2 }}
+              className="w-36 h-36 rounded-full bg-white/15 flex items-center justify-center backdrop-blur-sm"
+            >
+              <div className="w-24 h-24 rounded-full bg-white/25 flex items-center justify-center">
+                <Mic className={`w-12 h-12 ${isRecording ? 'text-red-400' : 'text-white'}`} />
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* TOP HEADER - Transparent TikTok Style */}
+        <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
+          <div className="tiktok-light-top-bar">
+            {/* Close Button */}
+            <button onClick={handleClose} className="tiktok-light-icon-btn">
+              <X className="w-6 h-6" />
             </button>
             
-            <div className="flex items-center gap-3">
-              {isRecording && (
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-500">
-                  <div className="w-2 h-2 rounded-full bg-white rec-indicator" />
-                  <span className="text-white text-sm font-medium">REC</span>
-                </div>
-              )}
-              <span className="text-white/80 text-sm">
-                {Math.floor(recordingProgress / 100 * (currentStepData?.duration || 0))}s
-              </span>
-            </div>
+            {/* Sound Button */}
+            <button 
+              onClick={() => setShowMusic(true)}
+              className="tiktok-light-sound-button"
+            >
+              <Music className="w-4 h-4" />
+              <span>{selectedMusic?.name || 'Ajouter un son'}</span>
+            </button>
 
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{selectedTemplate.icon}</span>
-            </div>
+            {/* Flip Camera */}
+            <button onClick={flipCamera} className="tiktok-light-icon-btn">
+              <RotateCcw className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        {/* STEP INDICATOR */}
-        <div className="absolute top-20 left-0 right-0 z-20 flex justify-center">
-          <div className="step-dots">
-            {selectedTemplate.steps.map((_, idx) => (
-              <div
-                key={idx}
-                className={`step-dot ${idx === currentStep ? 'active' : idx < currentStep ? 'completed' : ''}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* CENTER - Instruction Card - Ultra Transparent */}
-        <div className="absolute top-1/3 left-4 right-4 z-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 300 }}
-            className="ios-glass rounded-3xl p-5 text-center"
-          >
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <motion.div
-                animate={isSpeaking ? { scale: [1, 1.15, 1] } : {}}
-                transition={{ repeat: Infinity, duration: 0.6 }}
-                className={`p-2 rounded-full ${isSpeaking ? 'bg-primary/20' : 'bg-white/5'}`}
-              >
-                <Volume2 className={`w-4 h-4 ${isSpeaking ? 'text-primary' : 'text-white/50'}`} />
-              </motion.div>
-              <span className="ios-pill text-white/60 text-xs">
-                Étape {currentStep + 1} / {selectedTemplate.steps.length}
-              </span>
-            </div>
-            <p className="text-white text-lg font-medium leading-relaxed">
-              {currentLang === 'ba' ? currentStepData.instruction_ba : currentStepData.instruction_fr}
-            </p>
-            
-            {/* Progress Bar - More Visible */}
-            <div className="mt-4 h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <motion.div 
-                className="h-full rounded-full"
-                style={{ 
-                  width: `${recordingProgress}%`,
-                  background: isRecording 
-                    ? 'linear-gradient(90deg, hsl(var(--destructive)), hsl(var(--accent)))'
-                    : 'linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))'
-                }}
-                animate={isRecording ? { opacity: [1, 0.7, 1] } : {}}
-                transition={{ repeat: Infinity, duration: 0.8 }}
-              />
-            </div>
-            
-            {/* Recording Timer */}
-            {isRecording && (
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-2 text-white/40 text-sm font-mono"
-              >
+        {/* Recording Timer - Top Center */}
+        {isRecording && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
+            <div className="tiktok-light-timer">
+              <div className="tiktok-light-timer-dot" />
+              <span className="text-sm font-medium">
                 {Math.floor(recordingProgress / 100 * (currentStepData?.duration || 0))}s / {currentStepData?.duration}s
-              </motion.p>
-            )}
-          </motion.div>
-        </div>
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* RIGHT SIDE CONTROLS - TikTok Style */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-4">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={flipCamera}
-            className="ios-float-button w-12 h-12 rounded-full flex items-center justify-center"
-          >
-            <RotateCcw className="w-5 h-5 text-white" />
-          </motion.button>
-          
+        <div className="tiktok-light-side-controls">
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowBackgrounds(true)}
-            className="ios-float-button w-12 h-12 rounded-full flex items-center justify-center"
+            className="tiktok-light-side-button"
           >
-            <Palette className="w-5 h-5 text-white" />
+            <Palette className="w-5 h-5" />
           </motion.button>
           
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowMusic(true)}
-            className="ios-float-button w-12 h-12 rounded-full flex items-center justify-center"
+            className="tiktok-light-side-button"
           >
-            <Music className="w-5 h-5 text-white" />
+            <Music className="w-5 h-5" />
           </motion.button>
           
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowAI(true)}
-            className="ios-float-button w-12 h-12 rounded-full flex items-center justify-center"
+            className="tiktok-light-side-button"
           >
-            <Sparkles className="w-5 h-5 text-white" />
+            <Sparkles className="w-5 h-5" />
+            <span>IA</span>
+          </motion.button>
+          
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowAI(true)}
+            className="tiktok-light-side-button"
+          >
+            <Lightbulb className="w-5 h-5" />
           </motion.button>
         </div>
 
-        {/* BOTTOM AI TOOLBAR */}
-        <div className="absolute bottom-32 left-4 right-4 z-20">
-          <div className="ai-toolbar-compact">
-            <button className="ai-toolbar-item flex items-center gap-1" onClick={() => setShowAI(true)}>
-              <Sparkles className="w-4 h-4" />
-              <span>Script IA</span>
-            </button>
-            <button className="ai-toolbar-item flex items-center gap-1" onClick={() => setShowAI(true)}>
-              <Hash className="w-4 h-4" />
-              <span>Hashtags</span>
-            </button>
-            <button className="ai-toolbar-item flex items-center gap-1" onClick={() => setShowAI(true)}>
-              <Lightbulb className="w-4 h-4" />
-              <span>Hook</span>
-            </button>
+        {/* Instruction Text - Subtle at bottom */}
+        {!isRecording && (
+          <p className="tiktok-light-instruction">
+            {currentLang === 'ba' ? currentStepData.instruction_ba : currentStepData.instruction_fr}
+          </p>
+        )}
+
+        {/* AI TEMPLATES ROW - White Cards */}
+        <div className="absolute bottom-52 left-0 right-0 z-20">
+          <div className="tiktok-ai-templates">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowAI(true)}
+              className="tiktok-ai-template-card"
+            >
+              <span className="icon">✨</span>
+              <span className="label">Script IA</span>
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowAI(true)}
+              className="tiktok-ai-template-card"
+            >
+              <span className="icon">#️⃣</span>
+              <span className="label">Hashtags</span>
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowAI(true)}
+              className="tiktok-ai-template-card"
+            >
+              <span className="icon">💡</span>
+              <span className="label">Hook viral</span>
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowAI(true)}
+              className="tiktok-ai-template-card"
+            >
+              <span className="icon">🎬</span>
+              <span className="label">Intro</span>
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowAI(true)}
+              className="tiktok-ai-template-card"
+            >
+              <span className="icon">🔚</span>
+              <span className="label">Outro</span>
+            </motion.button>
+            <div className="tiktok-ai-badge ml-1">
+              <Sparkles className="w-3 h-3" />
+              <span>Lovable IA</span>
+            </div>
           </div>
         </div>
 
-        {/* BOTTOM CONTROLS */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 pb-8 pt-4">
-          <div className="ios-glass-dark mx-3 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              {/* Previous */}
+        {/* MODE SELECTOR - Bottom */}
+        <div className="absolute bottom-36 left-0 right-0 z-20">
+          <div className="tiktok-light-mode-selector">
+            {recordingModes.map((mode) => (
               <button
-                onClick={previousStep}
-                disabled={currentStep === 0}
-                className="p-3 disabled:opacity-30"
+                key={mode}
+                className={`tiktok-light-mode-item ${mode === currentMode ? 'active' : ''}`}
               >
-                <ChevronLeft className="w-6 h-6 text-white" />
+                {mode}
               </button>
-
-              {/* Record Button */}
-              <div className="flex-1 flex justify-center">
-                {!isRecording && !hasRecordedCurrentStep && (
-                  <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    onClick={startRecording}
-                    disabled={isSpeaking}
-                    className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center border-4 border-white/30 disabled:opacity-50"
-                  >
-                    <div className="w-14 h-14 rounded-full bg-red-500 border-2 border-white" />
-                  </motion.button>
-                )}
-
-                {isRecording && (
-                  <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    onClick={stopRecording}
-                    className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center border-4 border-white"
-                  >
-                    <div className="w-8 h-8 rounded-sm bg-red-500" />
-                  </motion.button>
-                )}
-
-                {hasRecordedCurrentStep && !isRecording && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-20 h-20 rounded-full bg-green-500/80 flex items-center justify-center"
-                  >
-                    <Check className="w-10 h-10 text-white" />
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Next */}
-              <button
-                onClick={nextStep}
-                disabled={!hasRecordedCurrentStep}
-                className="p-3 disabled:opacity-30"
-              >
-                {currentStep === selectedTemplate.steps.length - 1 ? (
-                  <Send className="w-6 h-6 text-white" />
-                ) : (
-                  <ChevronRight className="w-6 h-6 text-white" />
-                )}
-              </button>
-            </div>
+            ))}
           </div>
+        </div>
+
+        {/* CAPTURE BUTTON - Center Bottom */}
+        <div className="absolute bottom-16 left-0 right-0 z-20 flex justify-center">
+          {!isRecording && !hasRecordedCurrentStep && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={startRecording}
+              disabled={isSpeaking}
+              className="tiktok-light-capture-button"
+            >
+              <div className="tiktok-light-capture-button-inner" />
+            </motion.button>
+          )}
+
+          {isRecording && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={stopRecording}
+              className="tiktok-light-capture-button recording"
+            >
+              <div className="tiktok-light-capture-button-inner" />
+            </motion.button>
+          )}
+
+          {hasRecordedCurrentStep && !isRecording && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg"
+            >
+              <Check className="w-10 h-10 text-green-500" />
+            </motion.div>
+          )}
+        </div>
+
+        {/* Step navigation arrows */}
+        <div className="absolute bottom-20 left-4 z-20">
+          <button
+            onClick={previousStep}
+            disabled={currentStep === 0}
+            className="p-2 text-white disabled:opacity-30"
+          >
+            <ChevronLeft className="w-7 h-7" />
+          </button>
+        </div>
+        <div className="absolute bottom-20 right-4 z-20">
+          <button
+            onClick={nextStep}
+            disabled={!hasRecordedCurrentStep}
+            className="p-2 text-white disabled:opacity-30"
+          >
+            {currentStep === selectedTemplate.steps.length - 1 ? (
+              <Send className="w-6 h-6" />
+            ) : (
+              <ChevronRight className="w-7 h-7" />
+            )}
+          </button>
+        </div>
+
+        {/* BOTTOM NAV */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 safe-area-bottom">
+          <div className="tiktok-light-bottom-nav">
+            <button className="tiktok-light-nav-item">LIVE</button>
+            <button className="tiktok-light-nav-item active">PUBLICATION</button>
+            <button className="tiktok-light-nav-item">CRÉER</button>
+          </div>
+        </div>
+
+        {/* STEP DOTS */}
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {selectedTemplate.steps.map((_, idx) => (
+            <div
+              key={idx}
+              className={`w-2 h-2 rounded-full transition-all ${
+                idx === currentStep 
+                  ? 'bg-white w-6' 
+                  : idx < currentStep 
+                    ? 'bg-white/80' 
+                    : 'bg-white/40'
+              }`}
+            />
+          ))}
         </div>
 
         {/* BACKGROUND SELECTOR SHEET */}
@@ -721,16 +751,16 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 onClick={e => e.stopPropagation()}
-                className="absolute bottom-0 left-0 right-0 ios-glass-dark rounded-t-3xl p-4 max-h-[50vh] overflow-y-auto"
+                className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-4 max-h-[50vh] overflow-y-auto"
               >
-                <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4" />
-                <h3 className="text-white font-semibold mb-4">Arrière-plans</h3>
+                <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+                <h3 className="text-gray-800 font-semibold mb-4">Arrière-plans</h3>
                 <div className="grid grid-cols-4 gap-3">
                   {(['savanna', 'night_village', 'harvest', 'festival', 'sunrise', 'ocean', 'forest'] as BackgroundTheme[]).map(theme => (
                     <button
                       key={theme}
                       onClick={() => { setSelectedBackground(theme); setShowBackgrounds(false); }}
-                      className={`aspect-square rounded-xl overflow-hidden border-2 ${selectedBackground === theme ? 'border-white' : 'border-transparent'}`}
+                      className={`aspect-square rounded-xl overflow-hidden border-2 ${selectedBackground === theme ? 'border-blue-500' : 'border-transparent'}`}
                     >
                       <div className={`w-full h-full bg-gradient-to-br ${
                         theme === 'savanna' ? 'from-amber-400 to-orange-600' :
@@ -764,26 +794,28 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 onClick={e => e.stopPropagation()}
-                className="absolute bottom-0 left-0 right-0 ios-glass-dark rounded-t-3xl p-4 max-h-[60vh] overflow-y-auto"
+                className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-4 max-h-[60vh] overflow-y-auto"
               >
-                <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4" />
-                <h3 className="text-white font-semibold mb-4">Musiques Bariba</h3>
+                <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+                <h3 className="text-gray-800 font-semibold mb-4">Musiques</h3>
                 <div className="space-y-2">
                   {MUSIC_LIBRARY.filter(t => t.category === 'traditional').slice(0, 6).map(track => (
                     <button
                       key={track.id}
                       onClick={() => { setSelectedMusic(track); setShowMusic(false); }}
-                      className={`w-full p-3 rounded-xl flex items-center gap-3 ${selectedMusic?.id === track.id ? 'bg-white/20' : 'bg-white/5'}`}
+                      className={`w-full p-3 rounded-xl flex items-center gap-3 transition-colors ${
+                        selectedMusic?.id === track.id ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 hover:bg-gray-100'
+                      }`}
                     >
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center">
                         <Music className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1 text-left">
-                        <p className="text-white font-medium">{track.name}</p>
-                        <p className="text-white/50 text-sm">{track.duration}s • {track.mood}</p>
+                        <p className="text-gray-800 font-medium">{track.name}</p>
+                        <p className="text-gray-500 text-sm">{track.duration}s • {track.mood}</p>
                       </div>
                       {selectedMusic?.id === track.id && (
-                        <Check className="w-5 h-5 text-primary" />
+                        <Check className="w-5 h-5 text-blue-500" />
                       )}
                     </button>
                   ))}
@@ -808,12 +840,12 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 onClick={e => e.stopPropagation()}
-                className="absolute bottom-0 left-0 right-0 ios-glass-dark rounded-t-3xl p-4 max-h-[70vh] overflow-y-auto"
+                className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-4 max-h-[70vh] overflow-y-auto"
               >
-                <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4" />
-                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  Contenu IA
+                <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+                <h3 className="text-gray-800 font-semibold mb-4 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-violet-500" />
+                  Contenu IA Lovable
                 </h3>
                 <AIContentCreator
                   topic={selectedTemplate?.category || ''}
