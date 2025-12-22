@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.ocr-translate]
 verify_jwt = false
+
+[functions.generate-content]
+verify_jwt = false
