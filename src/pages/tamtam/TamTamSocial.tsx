@@ -22,7 +22,7 @@ import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
 import { FeedModeSelector, FeedMode } from '@/components/tamtam/FeedModeSelector';
 import { RadioMiniPlayer } from '@/components/tamtam/RadioMiniPlayer';
-import { VoiceGuidedCreator } from '@/components/tamtam/VoiceGuidedCreator';
+import { FullscreenCreator } from '@/components/tamtam/FullscreenCreator';
 import { PostActionType } from '@/components/tamtam/PostActionBar';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
@@ -300,13 +300,18 @@ export default function TamTamSocial() {
               }}
             />
 
-            {/* Guided Creation FAB */}
+            {/* Gradient FAB - Opens directly to template selection */}
             <motion.button
               whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.05 }}
               onClick={() => setShowGuidedCreator(true)}
-              className="fixed bottom-24 right-4 z-30 w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-xl flex items-center justify-center"
+              className="fixed bottom-24 right-4 z-30 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, #A855F7 0%, #EC4899 50%, #F97316 100%)',
+                boxShadow: '0 8px 32px rgba(168, 85, 247, 0.4)'
+              }}
             >
-              <Plus className="w-7 h-7" />
+              <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
             </motion.button>
 
             {/* Feed - Combined posts and polls */}
@@ -456,8 +461,8 @@ export default function TamTamSocial() {
         }}
       />
 
-      {/* Voice Guided Creator */}
-      <VoiceGuidedCreator
+      {/* Fullscreen Creator - Direct template selection */}
+      <FullscreenCreator
         isOpen={showGuidedCreator}
         onClose={() => setShowGuidedCreator(false)}
         onComplete={async (data) => {
