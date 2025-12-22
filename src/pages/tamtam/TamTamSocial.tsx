@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Radio, Newspaper, Search, Users } from 'lucide-react';
+import { MessageCircle, Radio, Newspaper, Search, Users, Plus } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
 import { useTamTamPolls } from '@/hooks/useTamTamPolls';
+import { useRadioFeed } from '@/hooks/useRadioFeed';
+import { useFeedAlgorithm } from '@/hooks/useFeedAlgorithm';
 import { TamTamEnhancedFeedCard, EnhancedPost } from '@/components/tamtam/TamTamEnhancedFeedCard';
+import { RadioVisualFeedCard, RadioVisualPost } from '@/components/tamtam/RadioVisualFeedCard';
 import { TamTamPollCard } from '@/components/tamtam/TamTamPollCard';
 import { TamTamStories } from '@/components/tamtam/TamTamStories';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
@@ -17,6 +20,10 @@ import { TamTamFriendSuggestions } from '@/components/tamtam/TamTamFriendSuggest
 import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
 import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
+import { FeedModeSelector, FeedMode } from '@/components/tamtam/FeedModeSelector';
+import { RadioMiniPlayer } from '@/components/tamtam/RadioMiniPlayer';
+import { VoiceGuidedCreator } from '@/components/tamtam/VoiceGuidedCreator';
+import { PostActionType } from '@/components/tamtam/PostActionBar';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -53,13 +60,19 @@ export default function TamTamSocial() {
   } = useTamTamPosts();
 
   const { polls, isLoading: pollsLoading, votePoll } = useTamTamPolls();
+  
+  // Radio feed hook
+  const radioFeed = useRadioFeed({ autoAdvance: true });
+  const { rankPosts, recordInteraction } = useFeedAlgorithm({ prioritizeUtility: true, prioritizeCulture: true });
 
   const [activeTab, setActiveTab] = useState('feed');
+  const [feedMode, setFeedMode] = useState<FeedMode>('radio');
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [showStoryCreator, setShowStoryCreator] = useState(false);
   const [showMessagesHub, setShowMessagesHub] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [showGuidedCreator, setShowGuidedCreator] = useState(false);
   const [commentsModal, setCommentsModal] = useState<{
     isOpen: boolean;
     postId: string | null;
@@ -166,9 +179,12 @@ export default function TamTamSocial() {
     feeling_emoji: (post as any).feeling_emoji || null,
   }));
 
-  // Combine posts and polls into a unified feed, sorted by date
+  // Apply smart ranking algorithm
+  const rankedPosts = rankPosts(enhancedPosts);
+
+  // Combine posts and polls into a unified feed
   const feedItems: FeedItem[] = [
-    ...enhancedPosts.map(post => ({
+    ...rankedPosts.map(post => ({
       type: 'post' as const,
       data: post,
       createdAt: new Date(post.created_at)
@@ -178,7 +194,27 @@ export default function TamTamSocial() {
       data: poll,
       createdAt: new Date(poll.created_at)
     }))
-  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  ];
+
+  // Update radio queue when posts change
+  useEffect(() => {
+    if (feedMode === 'radio' && rankedPosts.length > 0) {
+      radioFeed.setQueue(rankedPosts);
+    }
+  }, [feedMode, rankedPosts.length]);
+
+  // Handle post actions from RadioVisualFeedCard
+  const handlePostAction = (action: PostActionType, postId: string) => {
+    recordInteraction(postId, action === 'understood' ? 'understood' : action === 'question' ? 'question' : 'view');
+    if (action === 'like') {
+      addReaction(postId, 'like');
+    }
+  };
+
+  const handlePostRespond = (type: 'imitate' | 'voice_reply', postId: string) => {
+    recordInteraction(postId, 'imitate');
+    setShowGuidedCreator(true);
+  };
 
   const isLoading = postsLoading || pollsLoading;
 
@@ -240,6 +276,11 @@ export default function TamTamSocial() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
           >
+            {/* Feed Mode Selector */}
+            <div className="p-3 bg-white border-b border-gray-100 flex justify-center">
+              <FeedModeSelector currentMode={feedMode} onModeChange={setFeedMode} />
+            </div>
+
             {/* Stories */}
             <div className="bg-white border-b border-gray-100">
               <TamTamStories 
@@ -258,6 +299,15 @@ export default function TamTamSocial() {
                 // Navigate to profile or open profile modal
               }}
             />
+
+            {/* Guided Creation FAB */}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowGuidedCreator(true)}
+              className="fixed bottom-24 right-4 z-30 w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-xl flex items-center justify-center"
+            >
+              <Plus className="w-7 h-7" />
+            </motion.button>
 
             {/* Feed - Combined posts and polls */}
             <div className="p-4 space-y-4">
@@ -294,6 +344,24 @@ export default function TamTamSocial() {
                       />
                     );
                   }
+                  
+                  // Use RadioVisualFeedCard for radio/learning modes
+                  if (feedMode === 'radio' || feedMode === 'learning') {
+                    return (
+                      <RadioVisualFeedCard
+                        key={`post-${item.data.id}`}
+                        post={item.data as RadioVisualPost}
+                        mode={feedMode}
+                        autoplayAudio={feedMode === 'radio'}
+                        isCurrentInRadio={radioFeed.currentPost?.id === item.data.id}
+                        onAction={handlePostAction}
+                        onRespond={handlePostRespond}
+                        onComment={handleOpenComments}
+                        onShare={handleShare}
+                      />
+                    );
+                  }
+                  
                   return (
                     <TamTamEnhancedFeedCard
                       key={`post-${item.data.id}`}
@@ -387,6 +455,31 @@ export default function TamTamSocial() {
           setShowMessagesHub(true);
         }}
       />
+
+      {/* Voice Guided Creator */}
+      <VoiceGuidedCreator
+        isOpen={showGuidedCreator}
+        onClose={() => setShowGuidedCreator(false)}
+        onComplete={async (data) => {
+          await createPost(data);
+          triggerFeedback('success');
+        }}
+      />
+
+      {/* Radio Mini Player */}
+      {feedMode === 'radio' && (
+        <RadioMiniPlayer
+          isVisible={radioFeed.isPlaying || !!radioFeed.currentPost}
+          isPlaying={radioFeed.isPlaying}
+          currentPost={radioFeed.currentPost}
+          currentTime={radioFeed.currentTime}
+          onPlay={radioFeed.play}
+          onPause={radioFeed.pause}
+          onNext={radioFeed.next}
+          onPrevious={radioFeed.previous}
+          onClose={radioFeed.pause}
+        />
+      )}
     </div>
   );
 }
