@@ -335,4 +335,103 @@
   .karaoke-word.passed {
     color: hsl(var(--muted-foreground));
   }
+
+  /* ================================== */
+  /* iOS 26.3 Glassmorphism Design      */
+  /* ================================== */
+
+  .ios-glass {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  .ios-glass-dark {
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .ios-float-button {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+  }
+
+  .ios-float-button:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .fullscreen-creator {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: black;
+  }
+
+  .rec-indicator {
+    animation: rec-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes rec-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .step-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .step-dot.active {
+    width: 24px;
+    border-radius: 3px;
+    background: white;
+  }
+
+  .step-dot.completed {
+    background: hsl(var(--primary));
+  }
+
+  .ai-toolbar-compact {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .ai-toolbar-compact::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ai-toolbar-item {
+    @apply flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    transition: all 0.2s ease;
+  }
+
+  .ai-toolbar-item:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.25);
+  }
 }
