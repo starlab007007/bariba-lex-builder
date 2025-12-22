@@ -3,7 +3,8 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { 
   X, Mic, Video, Camera, Check, ChevronRight, ChevronLeft, 
   Volume2, Pause, Play, Loader2, RotateCcw, Sparkles, 
-  Hash, Lightbulb, Music, Palette, ArrowLeft, Send
+  Hash, Lightbulb, Music, Palette, ArrowLeft, Send, Sliders,
+  Filter, Edit3, Trash2, SkipBack, SkipForward
 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
@@ -15,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AnimatedBackground, BackgroundTheme } from './AnimatedBackground';
 import { AIContentCreator } from './AIContentCreator';
 import { MUSIC_LIBRARY, MusicTrack, getSuggestedMusic } from '@/data/musicLibrary';
+import { VideoFiltersPanel, VIDEO_FILTERS, VideoFilter, useVideoFilter } from './VideoFilters';
 
 interface TemplateStep {
   step: number;
@@ -80,11 +82,22 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const [showAI, setShowAI] = useState(false);
   const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [aiContent, setAiContent] = useState<any>(null);
+  
+  // Preview phase states
+  const [showFilters, setShowFilters] = useState(false);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [previewProgress, setPreviewProgress] = useState(0);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+  
+  // Video filter hook
+  const { currentFilter, setCurrentFilter, getFilterStyle } = useVideoFilter();
 
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const previewAudioRef = useRef<HTMLAudioElement>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -818,109 +831,287 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     );
   }
 
-  // PREVIEW PHASE - Clean iOS Style
+  // Helper functions for preview
+  const getPreviewUrl = (media: { blob: Blob }) => URL.createObjectURL(media.blob);
+  
+  const playPreview = () => {
+    const media = capturedMedia[currentPreviewIndex];
+    if (!media) return;
+    
+    if (media.type === 'video' && previewVideoRef.current) {
+      previewVideoRef.current.play();
+      setIsPreviewPlaying(true);
+    } else if (media.type === 'audio' && previewAudioRef.current) {
+      previewAudioRef.current.play();
+      setIsPreviewPlaying(true);
+    }
+  };
+  
+  const pausePreview = () => {
+    if (previewVideoRef.current) previewVideoRef.current.pause();
+    if (previewAudioRef.current) previewAudioRef.current.pause();
+    setIsPreviewPlaying(false);
+  };
+  
+  const nextPreviewSegment = () => {
+    if (currentPreviewIndex < capturedMedia.length - 1) {
+      pausePreview();
+      setCurrentPreviewIndex(prev => prev + 1);
+      setPreviewProgress(0);
+    }
+  };
+  
+  const prevPreviewSegment = () => {
+    if (currentPreviewIndex > 0) {
+      pausePreview();
+      setCurrentPreviewIndex(prev => prev - 1);
+      setPreviewProgress(0);
+    }
+  };
+  
+  const deleteSegment = (index: number) => {
+    setCapturedMedia(prev => prev.filter((_, i) => i !== index));
+    if (currentPreviewIndex >= capturedMedia.length - 1) {
+      setCurrentPreviewIndex(Math.max(0, capturedMedia.length - 2));
+    }
+    triggerFeedback('notification');
+  };
+
+  // PREVIEW PHASE - Enhanced with Video Preview & Filters
   if (phase === 'preview') {
+    const currentMedia = capturedMedia[currentPreviewIndex];
+    const hasVideo = capturedMedia.some(m => m.type === 'video');
+    const hasAudio = capturedMedia.some(m => m.type === 'audio');
+    
     return (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="fullscreen-creator"
       >
-        <AnimatedBackground theme={selectedBackground} intensity={0.4}>
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
-            {/* Success Animation */}
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-              className="w-28 h-28 rounded-full flex items-center justify-center mb-8"
-              style={{
-                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.8), rgba(16, 185, 129, 0.8))',
-                boxShadow: '0 0 60px rgba(34, 197, 94, 0.4)'
-              }}
-            >
-              <Check className="w-14 h-14 text-white" strokeWidth={2.5} />
-            </motion.div>
-            
-            <motion.h2 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-white text-2xl font-bold mb-2"
-            >
-              {currentLang === 'ba' ? 'Ti parí!' : 'Création terminée !'}
-            </motion.h2>
-            
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-white/50 mb-8 text-center"
-            >
-              {capturedMedia.length} segment{capturedMedia.length > 1 ? 's' : ''} • {selectedTemplate?.label_fr}
-            </motion.p>
+        <AnimatedBackground theme={selectedBackground} intensity={0.3}>
+          {/* Top Bar */}
+          <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
+            <div className="capture-top-bar mx-3 mt-3 px-4 py-3 flex items-center justify-between">
+              <button 
+                onClick={handleClose} 
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-700" />
+              </button>
+              
+              <h3 className="text-gray-800 font-semibold">
+                {currentLang === 'ba' ? 'Àyẹ̀wò' : 'Prévisualisation'}
+              </h3>
+              
+              <div className="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full">
+                <Check className="w-4 h-4 text-green-600" />
+                <span className="text-green-700 text-sm font-medium">{capturedMedia.length}</span>
+              </div>
+            </div>
+          </div>
 
-            {/* Captured Media Preview */}
+          {/* Main Preview Area */}
+          <div className="absolute inset-0 flex flex-col pt-20 pb-48 px-4">
+            {/* Video/Audio Preview */}
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="w-full max-w-xs mb-8"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex-1 relative rounded-3xl overflow-hidden capture-frame"
             >
-              <div className="ios-glass rounded-2xl p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                    <span className="text-xl">{selectedTemplate?.icon}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-medium text-sm">{selectedTemplate?.label_fr}</p>
-                    <p className="text-white/40 text-xs">Prêt à publier</p>
-                  </div>
+              {currentMedia?.type === 'video' ? (
+                <video
+                  ref={previewVideoRef}
+                  src={getPreviewUrl(currentMedia)}
+                  className="w-full h-full object-cover"
+                  style={getFilterStyle(currentFilter, currentFilter.intensity)}
+                  loop
+                  playsInline
+                  onTimeUpdate={(e) => {
+                    const video = e.currentTarget;
+                    setPreviewProgress((video.currentTime / video.duration) * 100);
+                  }}
+                  onEnded={() => setIsPreviewPlaying(false)}
+                />
+              ) : currentMedia?.type === 'audio' ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-violet-50">
+                  <motion.div
+                    animate={isPreviewPlaying ? { scale: [1, 1.1, 1] } : {}}
+                    transition={{ repeat: Infinity, duration: 1 }}
+                    className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center mb-6 shadow-xl"
+                  >
+                    <Mic className="w-16 h-16 text-white" />
+                  </motion.div>
+                  <audio
+                    ref={previewAudioRef}
+                    src={getPreviewUrl(currentMedia)}
+                    onTimeUpdate={(e) => {
+                      const audio = e.currentTarget;
+                      setPreviewProgress((audio.currentTime / audio.duration) * 100);
+                    }}
+                    onEnded={() => setIsPreviewPlaying(false)}
+                  />
+                  <p className="text-gray-600 font-medium">
+                    {currentLang === 'ba' ? 'Ohùn' : 'Audio'} - Étape {currentMedia.step + 1}
+                  </p>
                 </div>
+              ) : currentMedia?.type === 'photo' ? (
+                <img 
+                  src={getPreviewUrl(currentMedia)} 
+                  className="w-full h-full object-cover"
+                  style={getFilterStyle(currentFilter, currentFilter.intensity)}
+                  alt="Preview"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                  <p className="text-gray-500">Aucun média</p>
+                </div>
+              )}
+              
+              {/* Play/Pause Overlay */}
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={isPreviewPlaying ? pausePreview : playPreview}
+                className="absolute inset-0 flex items-center justify-center bg-black/10 transition-opacity"
+                style={{ opacity: isPreviewPlaying ? 0 : 1 }}
+              >
+                <div className="w-20 h-20 rounded-full bg-white/90 flex items-center justify-center shadow-xl">
+                  {isPreviewPlaying ? (
+                    <Pause className="w-10 h-10 text-gray-800" />
+                  ) : (
+                    <Play className="w-10 h-10 text-gray-800 ml-1" />
+                  )}
+                </div>
+              </motion.button>
+              
+              {/* Progress Bar */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
+                <div 
+                  className="h-full bg-white transition-all" 
+                  style={{ width: `${previewProgress}%` }} 
+                />
+              </div>
+              
+              {/* Filter indicator */}
+              {currentFilter.id !== 'none' && (
+                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2 shadow">
+                  <span className="text-lg">{currentFilter.icon}</span>
+                  <span className="text-gray-700 text-sm font-medium">{currentFilter.name}</span>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Segment Navigation */}
+            {capturedMedia.length > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-4">
+                <button
+                  onClick={prevPreviewSegment}
+                  disabled={currentPreviewIndex === 0}
+                  className="p-2 rounded-full bg-white/80 disabled:opacity-30 shadow"
+                >
+                  <SkipBack className="w-5 h-5 text-gray-700" />
+                </button>
                 
-                {/* Media Types Captured */}
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2">
                   {capturedMedia.map((media, idx) => (
-                    <span 
-                      key={idx} 
-                      className={`media-badge ${
-                        media.type === 'video' ? 'media-badge-video' :
-                        media.type === 'photo' ? 'media-badge-photo' :
-                        'media-badge-audio'
+                    <motion.button
+                      key={idx}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => {
+                        pausePreview();
+                        setCurrentPreviewIndex(idx);
+                        setPreviewProgress(0);
+                      }}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                        idx === currentPreviewIndex 
+                          ? 'bg-blue-500 text-white shadow-lg' 
+                          : 'bg-white/80 text-gray-600'
                       }`}
                     >
-                      {media.type === 'video' ? <Video className="w-3 h-3" /> :
-                       media.type === 'photo' ? <Camera className="w-3 h-3" /> :
-                       <Mic className="w-3 h-3" />}
-                      Étape {media.step + 1}
-                    </span>
+                      {media.type === 'video' ? <Video className="w-4 h-4" /> :
+                       media.type === 'photo' ? <Camera className="w-4 h-4" /> :
+                       <Mic className="w-4 h-4" />}
+                    </motion.button>
                   ))}
                 </div>
+                
+                <button
+                  onClick={nextPreviewSegment}
+                  disabled={currentPreviewIndex === capturedMedia.length - 1}
+                  className="p-2 rounded-full bg-white/80 disabled:opacity-30 shadow"
+                >
+                  <SkipForward className="w-5 h-5 text-gray-700" />
+                </button>
               </div>
-            </motion.div>
+            )}
 
-            {/* Actions */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="w-full max-w-xs space-y-3"
-            >
+            {/* Edit Options Bar */}
+            <div className="flex justify-center gap-3 mt-4">
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowFilters(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/90 shadow"
+              >
+                <Filter className="w-5 h-5 text-violet-500" />
+                <span className="text-gray-700 font-medium text-sm">Filtres</span>
+              </motion.button>
+              
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setPhase('capture')}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/90 shadow"
+              >
+                <Edit3 className="w-5 h-5 text-blue-500" />
+                <span className="text-gray-700 font-medium text-sm">Modifier</span>
+              </motion.button>
+              
+              {capturedMedia.length > 1 && (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => deleteSegment(currentPreviewIndex)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/90 shadow"
+                >
+                  <Trash2 className="w-5 h-5 text-red-500" />
+                  <span className="text-gray-700 font-medium text-sm">Supprimer</span>
+                </motion.button>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Action Bar */}
+          <div className="absolute bottom-0 left-0 right-0 z-20 pb-8 pt-4 safe-area-bottom">
+            <div className="capture-bottom-bar mx-3 p-4 flex flex-col gap-3">
+              {/* Template info */}
+              <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center">
+                  <span className="text-2xl">{selectedTemplate?.icon}</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-gray-800 font-semibold">{selectedTemplate?.label_fr}</p>
+                  <p className="text-gray-500 text-sm">
+                    {capturedMedia.length} segment{capturedMedia.length > 1 ? 's' : ''} • {
+                      selectedTemplate?.steps.reduce((sum, s) => sum + s.duration, 0)
+                    }s
+                  </p>
+                </div>
+              </div>
+              
+              {/* Publish button */}
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.01 }}
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className="w-full py-4 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{
-                  background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
-                  boxShadow: '0 8px 32px hsla(var(--primary), 0.3)'
+                  background: 'linear-gradient(135deg, #4DA3FF 0%, #8B7CFF 100%)',
+                  boxShadow: '0 8px 24px rgba(77, 163, 255, 0.3)'
                 }}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Publication en cours...</span>
+                    <span>Publication...</span>
                   </>
                 ) : (
                   <>
@@ -929,26 +1120,20 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                   </>
                 )}
               </motion.button>
-
-              <button
-                onClick={() => setPhase('capture')}
-                className="w-full py-3 text-white/60 hover:text-white/80 transition-colors flex items-center justify-center gap-2"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Modifier</span>
-              </button>
-            </motion.div>
+            </div>
           </div>
 
-          {/* Close button */}
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            onClick={handleClose}
-            className="absolute top-4 right-4 ios-float-button p-3 rounded-full"
-          >
-            <X className="w-5 h-5 text-white/80" />
-          </motion.button>
+          {/* Filters Panel */}
+          <AnimatePresence>
+            {showFilters && (
+              <VideoFiltersPanel
+                isOpen={showFilters}
+                onClose={() => setShowFilters(false)}
+                onSelectFilter={setCurrentFilter}
+                currentFilter={currentFilter}
+              />
+            )}
+          </AnimatePresence>
         </AnimatedBackground>
       </motion.div>
     );
