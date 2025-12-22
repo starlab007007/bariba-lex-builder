@@ -32,11 +32,11 @@ const PHOTO_FORMATS = "image/jpeg,image/png,image/gif,image/webp,image/heic,imag
 const VIDEO_FORMATS = "video/mp4,video/quicktime,video/x-m4v,video/webm,video/x-msvideo,video/3gpp,video/mpeg,video/ogg";
 const MAX_PHOTOS = 3;
 
-const mediaTypes: { type: string; icon: typeof Mic; label: string; labelKey: keyof VoiceMenuLabels; color: string }[] = [
-  { type: 'audio', icon: Mic, label: 'audio', labelKey: 'audio', color: 'from-blue-500 to-blue-600' },
-  { type: 'photo', icon: Image, label: 'photo', labelKey: 'photo', color: 'from-emerald-500 to-emerald-600' },
-  { type: 'video', icon: Video, label: 'video', labelKey: 'video', color: 'from-purple-500 to-purple-600' },
-  { type: 'poll', icon: BarChart3, label: 'poll', labelKey: 'poll', color: 'from-orange-500 to-orange-600' },
+const mediaTypes: { type: string; icon: typeof Mic; label: string; labelKey: keyof VoiceMenuLabels; bgColor: string; textColor: string }[] = [
+  { type: 'audio', icon: Mic, label: 'audio', labelKey: 'audio', bgColor: 'bg-blue-500', textColor: 'text-white' },
+  { type: 'photo', icon: Image, label: 'photo', labelKey: 'photo', bgColor: 'bg-emerald-500', textColor: 'text-white' },
+  { type: 'video', icon: Video, label: 'video', labelKey: 'video', bgColor: 'bg-violet-500', textColor: 'text-white' },
+  { type: 'poll', icon: BarChart3, label: 'poll', labelKey: 'poll', bgColor: 'bg-orange-500', textColor: 'text-white' },
 ];
 
 const emojis = ['😊', '😂', '❤️', '🎉', '🤔', '😢', '🙏', '💪', '🔥', '✨'];
@@ -438,19 +438,19 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 <p className="text-center text-gray-500 mb-6">{t('whatToShare')}</p>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  {mediaTypes.map(({ type, icon: Icon, label, labelKey, color }) => (
+                  {mediaTypes.map(({ type, icon: Icon, label, labelKey, bgColor, textColor }) => (
                     <div key={type} className="relative">
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleTypeSelect(type)}
-                        className={`w-full p-6 rounded-3xl flex flex-col items-center gap-3 ${
+                        className={`w-full p-6 rounded-3xl flex flex-col items-center gap-3 shadow-md transition-all ${
                           selectedType === type 
-                            ? `bg-gradient-to-br ${color} text-white shadow-lg` 
-                            : 'bg-gray-50 text-gray-600'
+                            ? `${bgColor} ${textColor} shadow-lg ring-2 ring-offset-2 ring-blue-300` 
+                            : `${bgColor} ${textColor} opacity-80 hover:opacity-100`
                         }`}
                       >
                         <Icon className="w-10 h-10" />
-                        <span className="font-medium">{t(label)}</span>
+                        <span className="font-semibold">{t(label)}</span>
                       </motion.button>
                       {/* Speaker button for voice accessibility */}
                       <SpeakerButton 
