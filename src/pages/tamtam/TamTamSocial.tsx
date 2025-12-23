@@ -493,8 +493,19 @@ export default function TamTamSocial() {
         isOpen={showGuidedCreator}
         onClose={() => setShowGuidedCreator(false)}
         onComplete={async (data) => {
-          await createPost(data);
+          await createPost({
+            audio_url: data.audio_url,
+            media_type: data.media_url ? 'video' : 'audio',
+            media_url: data.media_url,
+            transcript_fr: data.transcript_fr,
+            transcript_ba: data.transcript_ba,
+            duration_seconds: data.duration_seconds,
+            topic: data.topic,
+            template_id: data.template_id
+          });
+          toast({ title: "✅ Publié avec succès !" });
           triggerFeedback('success');
+          fetchPosts(); // Refresh feed
         }}
       />
 

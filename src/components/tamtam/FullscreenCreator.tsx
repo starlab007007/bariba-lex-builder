@@ -18,6 +18,39 @@ import { DynamicAITemplates } from './DynamicAITemplates';
 import { MUSIC_LIBRARY, MusicTrack, getSuggestedMusic } from '@/data/musicLibrary';
 import { VideoFiltersPanel, VIDEO_FILTERS, VideoFilter, useVideoFilter } from './VideoFilters';
 
+// ============= Cross-browser MIME type detection =============
+const getSupportedMimeType = (mediaType: 'audio' | 'video'): string => {
+  if (mediaType === 'audio') {
+    // Priority: MP4 (Safari/iOS) > WebM (Chrome/Firefox) > OGG
+    if (MediaRecorder.isTypeSupported('audio/mp4')) return 'audio/mp4';
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
+    if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
+    if (MediaRecorder.isTypeSupported('audio/ogg')) return 'audio/ogg';
+    return ''; // Let browser choose default
+  } else {
+    // Priority: MP4 (Safari/iOS) > WebM VP9 > WebM
+    if (MediaRecorder.isTypeSupported('video/mp4')) return 'video/mp4';
+    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) return 'video/webm;codecs=vp9,opus';
+    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) return 'video/webm;codecs=vp9';
+    if (MediaRecorder.isTypeSupported('video/webm')) return 'video/webm';
+    return ''; // Let browser choose default
+  }
+};
+
+const getFileExtension = (mimeType: string): string => {
+  const map: Record<string, string> = {
+    'audio/mp4': 'm4a',
+    'audio/webm': 'webm',
+    'audio/webm;codecs=opus': 'webm',
+    'audio/ogg': 'ogg',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/webm;codecs=vp9': 'webm',
+    'video/webm;codecs=vp9,opus': 'webm'
+  };
+  return map[mimeType] || 'webm';
+};
+
 // Phase transition animation variants
 const phaseVariants = {
   initial: { opacity: 0, scale: 0.92, y: 30 },
@@ -250,8 +283,35 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = stream;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[FullscreenCreator] Camera error:', err);
+      
+      // Explicit error handling for user feedback
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        toast({
+          title: "🎤 Permission requise",
+          description: "Autorisez l'accès au micro et à la caméra dans les paramètres",
+          variant: "destructive"
+        });
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        toast({
+          title: "📷 Appareil non trouvé",
+          description: "Aucun micro ou caméra détecté sur cet appareil",
+          variant: "destructive"
+        });
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        toast({
+          title: "⚠️ Appareil occupé",
+          description: "Le micro/caméra est utilisé par une autre application",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erreur",
+          description: err.message || "Impossible d'accéder à la caméra",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -287,9 +347,19 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         }
       }
 
-      const mediaRecorder = new MediaRecorder(streamRef.current, {
-        mimeType: step.type === 'audio' ? 'audio/webm' : 'video/webm'
-      });
+      // Cross-browser MIME type detection
+      const isAudio = step.type === 'audio';
+      const mimeType = getSupportedMimeType(isAudio ? 'audio' : 'video');
+      
+      const options: MediaRecorderOptions = {};
+      if (mimeType) {
+        options.mimeType = mimeType;
+      }
+      
+      console.log('[FullscreenCreator] Using mimeType:', mimeType || 'browser default');
+
+      const mediaRecorder = new MediaRecorder(streamRef.current, options);
+      const actualMimeType = mediaRecorder.mimeType || mimeType;
       
       chunksRef.current = [];
       
@@ -298,14 +368,17 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { 
-          type: step.type === 'audio' ? 'audio/webm' : 'video/webm' 
-        });
-        setCapturedMedia(prev => [...prev, { step: currentStep, blob, type: step.type }]);
+        const blob = new Blob(chunksRef.current, { type: actualMimeType });
+        setCapturedMedia(prev => [...prev, { 
+          step: currentStep, 
+          blob, 
+          type: step.type,
+          mimeType: actualMimeType 
+        } as any]);
       };
 
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // Collect data every second
       setIsRecording(true);
       setRecordingProgress(0);
       
@@ -328,9 +401,24 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       }, interval);
 
       triggerFeedback('notification');
-    } catch (err) {
+    } catch (err: any) {
       console.error('[FullscreenCreator] Recording error:', err);
-      toast({ title: "Erreur", description: "Impossible d'enregistrer", variant: "destructive" });
+      
+      if (err.name === 'NotSupportedError') {
+        toast({ 
+          title: "Format non supporté", 
+          description: "Ce navigateur ne supporte pas l'enregistrement. Essayez Chrome ou Safari.", 
+          variant: "destructive" 
+        });
+      } else if (err.name === 'NotAllowedError') {
+        toast({ 
+          title: "Permission refusée", 
+          description: "Autorisez l'accès au micro dans les paramètres", 
+          variant: "destructive" 
+        });
+      } else {
+        toast({ title: "Erreur", description: err.message || "Impossible d'enregistrer", variant: "destructive" });
+      }
     }
   };
 
@@ -378,13 +466,21 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     setIsSubmitting(true);
     
     try {
-      const mainBlob = capturedMedia[0].blob;
+      const mainMedia = capturedMedia[0] as any;
+      const mainBlob = mainMedia.blob;
       const isVideo = capturedMedia.some(m => m.type === 'video');
-      const fileName = `creator_${selectedTemplate.template_key}_${Date.now()}.webm`;
+      const mimeType = mainMedia.mimeType || (isVideo ? 'video/webm' : 'audio/webm');
+      const extension = getFileExtension(mimeType);
+      const fileName = `creator_${selectedTemplate.template_key}_${Date.now()}.${extension}`;
+      
+      console.log('[FullscreenCreator] Uploading:', { fileName, mimeType, size: mainBlob.size });
       
       const { error: uploadError } = await supabase.storage
         .from('tamtam-audio')
-        .upload(fileName, mainBlob);
+        .upload(fileName, mainBlob, {
+          contentType: mimeType,
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
@@ -394,7 +490,8 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
       let transcript_fr, transcript_ba;
       
-      if (!isVideo && mainBlob) {
+      // Transcribe audio/video
+      if (mainBlob) {
         try {
           const base64 = await blobToBase64(mainBlob);
           const result = await transcribeWithTranslation(base64, currentLang === 'ba' ? 'ba' : 'fr');
@@ -421,7 +518,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       handleClose();
     } catch (err: any) {
       console.error('[FullscreenCreator] Submit error:', err);
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      toast({ title: "Erreur de publication", description: err.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
