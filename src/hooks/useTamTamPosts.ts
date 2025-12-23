@@ -155,6 +155,8 @@ export const useTamTamPosts = () => {
     transcript_ba?: string;
     feeling_emoji?: string;
     duration_seconds?: number;
+    topic?: string;
+    template_id?: string;
   }) => {
     console.log('[useTamTamPosts.createPost] Starting post creation...');
     console.log('[useTamTamPosts.createPost] Post data:', JSON.stringify(postData, null, 2));
@@ -188,6 +190,8 @@ export const useTamTamPosts = () => {
         transcript_ba: postData.transcript_ba || null,
         feeling_emoji: postData.feeling_emoji || null,
         duration_seconds: postData.duration_seconds || null,
+        topic: postData.topic || null,
+        template_id: postData.template_id || null,
         is_public: true
       };
       
