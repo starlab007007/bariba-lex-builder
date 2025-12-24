@@ -69,6 +69,7 @@ interface FullscreenCreatorProps {
   onClose: () => void;
   onComplete: (data: {
     audio_url: string;
+    media_type: 'audio' | 'video' | 'photo' | 'text';
     media_url?: string;
     transcript_fr?: string;
     transcript_ba?: string;
@@ -344,6 +345,45 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     setPhase('preview');
   };
 
+  const createSilentWavBlob = (durationMs = 600, sampleRate = 44100) => {
+    const numSamples = Math.max(1, Math.floor(sampleRate * (durationMs / 1000)));
+    const dataSize = numSamples * 2;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // PCM
+    view.setUint16(20, 1, true); // audio format
+    view.setUint16(22, 1, true); // channels
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // byte rate
+    view.setUint16(32, 2, true); // block align
+    view.setUint16(34, 16, true); // bits per sample
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    // PCM samples are already 0 (silence)
+    return new Blob([buffer], { type: 'audio/wav' });
+  };
+
+  const uploadToPublicUrl = async (fileName: string, blob: Blob, contentType: string) => {
+    const { error: uploadError } = await supabase.storage
+      .from('tamtam-audio')
+      .upload(fileName, blob, { contentType, upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabase.storage.from('tamtam-audio').getPublicUrl(fileName);
+    return urlData.publicUrl;
+  };
+
   const handleSubmit = async () => {
     if (captureType === 'text' && !textContent.trim()) {
       toast({ title: "Erreur", description: "Aucun contenu", variant: "destructive" });
@@ -355,54 +395,53 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     }
 
     setIsSubmitting(true);
-    
+
     try {
+      let media_type: 'audio' | 'video' | 'photo' | 'text' = captureType;
       let audio_url = '';
       let media_url: string | undefined;
       let transcript_fr: string | undefined;
       let transcript_ba: string | undefined;
 
+      // For text/photo: we still need a real audio file (the feed always plays audio_url)
+      const ensureAudioUrlForNonAudioPosts = async () => {
+        if (audio_url) return;
+        const silent = createSilentWavBlob(700);
+        audio_url = await uploadToPublicUrl(`silent_${Date.now()}.wav`, silent, 'audio/wav');
+      };
+
       if (captureType === 'text') {
-        // For text posts, create a simple audio placeholder or TTS
-        const textBlob = new Blob([textContent], { type: 'text/plain' });
-        const fileName = `text_post_${Date.now()}.txt`;
-        
-        // Store the text content
-        const { error: uploadError } = await supabase.storage
-          .from('tamtam-audio')
-          .upload(fileName, textBlob, { contentType: 'text/plain' });
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('tamtam-audio')
-          .getPublicUrl(fileName);
-
-        audio_url = urlData.publicUrl;
         transcript_fr = textContent;
+        await ensureAudioUrlForNonAudioPosts();
       } else {
         const mainMedia = capturedMedia[0];
-        const mimeType = mainMedia.mimeType || (mainMedia.type === 'video' ? 'video/webm' : mainMedia.type === 'photo' ? 'image/jpeg' : 'audio/webm');
+        const mimeType =
+          mainMedia.mimeType ||
+          (mainMedia.type === 'video'
+            ? 'video/webm'
+            : mainMedia.type === 'photo'
+              ? 'image/jpeg'
+              : 'audio/webm');
+
         const extension = mainMedia.type === 'photo' ? 'jpg' : getFileExtension(mimeType);
         const fileName = `creator_${creatorMode}_${Date.now()}.${extension}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('tamtam-audio')
-          .upload(fileName, mainMedia.blob, { contentType: mimeType, upsert: false });
 
-        if (uploadError) throw uploadError;
+        const uploadedUrl = await uploadToPublicUrl(fileName, mainMedia.blob, mimeType);
 
-        const { data: urlData } = supabase.storage
-          .from('tamtam-audio')
-          .getPublicUrl(fileName);
-
-        audio_url = urlData.publicUrl;
-        
-        if (mainMedia.type === 'video' || mainMedia.type === 'photo') {
-          media_url = urlData.publicUrl;
+        if (mainMedia.type === 'video') {
+          media_type = 'video';
+          media_url = uploadedUrl;
+          audio_url = uploadedUrl; // audio track is inside the video
+        } else if (mainMedia.type === 'audio') {
+          media_type = 'audio';
+          audio_url = uploadedUrl;
+        } else if (mainMedia.type === 'photo') {
+          media_type = 'photo';
+          media_url = uploadedUrl;
+          await ensureAudioUrlForNonAudioPosts();
         }
 
-        // Transcribe audio/video
+        // Transcribe audio/video only
         if (mainMedia.type === 'audio' || mainMedia.type === 'video') {
           try {
             const base64 = await blobToBase64(mainMedia.blob);
@@ -417,12 +456,13 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
       await onComplete({
         audio_url,
+        media_type,
         media_url,
         transcript_fr,
         transcript_ba,
         template_id: `direct_${captureType}`,
         topic: creatorMode,
-        duration_seconds: selectedDuration,
+        duration_seconds: selectedDuration || (captureType === 'photo' || captureType === 'text' ? 5 : 15),
         text_content: captureType === 'text' ? textContent : undefined
       });
 
@@ -478,12 +518,12 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const playPreview = () => {
     const media = capturedMedia[0];
     if (!media) return;
-    
+
     if (media.type === 'video' && previewVideoRef.current) {
-      previewVideoRef.current.play();
+      previewVideoRef.current.play().catch(() => {});
       setIsPreviewPlaying(true);
     } else if (media.type === 'audio' && previewAudioRef.current) {
-      previewAudioRef.current.play();
+      previewAudioRef.current.play().catch(() => {});
       setIsPreviewPlaying(true);
     }
   };
