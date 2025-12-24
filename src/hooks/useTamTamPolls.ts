@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+// TamTam Polls Hook - manages vocal polls with voting
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
-
 export interface PollOption {
   id: string;
   poll_id: string;
