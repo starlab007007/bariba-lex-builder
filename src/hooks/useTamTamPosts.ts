@@ -361,6 +361,52 @@ export const useTamTamPosts = () => {
     }
   }, [fetchStories, toast]);
 
+  const deletePost = useCallback(async (postId: string) => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('tamtam_posts')
+        .delete()
+        .eq('id', postId)
+        .eq('user_id', userData.user.id);
+
+      if (error) throw error;
+
+      toast({ title: "🗑️ Publication supprimée" });
+      await fetchPosts();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      throw err;
+    }
+  }, [fetchPosts, toast]);
+
+  const updatePost = useCallback(async (postId: string, updates: {
+    transcript_fr?: string;
+    transcript_ba?: string;
+    feeling_emoji?: string;
+  }) => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('tamtam_posts')
+        .update(updates)
+        .eq('id', postId)
+        .eq('user_id', userData.user.id);
+
+      if (error) throw error;
+
+      toast({ title: "✏️ Publication modifiée" });
+      await fetchPosts();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      throw err;
+    }
+  }, [fetchPosts, toast]);
+
   useEffect(() => {
     fetchPosts();
     fetchStories();
@@ -374,6 +420,8 @@ export const useTamTamPosts = () => {
     fetchPosts,
     fetchStories,
     createPost,
+    deletePost,
+    updatePost,
     addReaction,
     fetchComments,
     addComment,
