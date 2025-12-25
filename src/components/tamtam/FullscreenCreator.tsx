@@ -491,7 +491,8 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         if (mainMedia.type === 'video') {
           media_type = 'video';
           media_url = uploadedUrl;
-          audio_url = uploadedUrl; // audio track is inside the video
+          // IMPORTANT: <audio> cannot reliably play video/mp4/webm; keep audio_url as real audio
+          await ensureAudioUrlForNonAudioPosts();
         } else if (mainMedia.type === 'audio') {
           media_type = 'audio';
           audio_url = uploadedUrl;

@@ -85,15 +85,24 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
   const altTranscript = currentLang === 'fr' ? post.transcript_ba : post.transcript_fr;
 
   const handlePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-        triggerFeedback('record', { haptic: false });
-      }
-      setIsPlaying(!isPlaying);
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      return;
     }
+
+    audioRef.current
+      .play()
+      .then(() => {
+        setIsPlaying(true);
+        triggerFeedback('record', { haptic: false });
+      })
+      .catch((err) => {
+        console.warn('[TamTamEnhancedFeedCard] audio play failed:', err);
+        setIsPlaying(false);
+      });
   };
 
   // Read post aloud with TTS
@@ -189,8 +198,13 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
       optionAudioRefs.current[optionId].onended = () => setPlayingOptionId(null);
     }
 
-    optionAudioRefs.current[optionId].play();
-    setPlayingOptionId(optionId);
+    optionAudioRefs.current[optionId]
+      .play()
+      .then(() => setPlayingOptionId(optionId))
+      .catch((err) => {
+        console.warn('[TamTamEnhancedFeedCard] option audio play failed:', err);
+        setPlayingOptionId(null);
+      });
   };
 
   const totalReactions = post.reactions 
