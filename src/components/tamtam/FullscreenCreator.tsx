@@ -64,6 +64,24 @@ const DURATION_OPTIONS = [
 // Creator modes
 type CreatorMode = 'live' | 'publication' | 'create';
 
+// Template interface from DB
+interface CreationTemplate {
+  id: string;
+  template_key: string;
+  label_fr: string;
+  label_ba?: string;
+  icon: string;
+  category: string;
+  steps: Array<{
+    step: number;
+    type: 'audio' | 'video';
+    duration: number;
+    instruction_fr: string;
+    instruction_ba?: string;
+  }>;
+  music_url?: string;
+}
+
 interface FullscreenCreatorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -80,7 +98,7 @@ interface FullscreenCreatorProps {
   }) => Promise<void>;
 }
 
-type Phase = 'capture' | 'preview';
+type Phase = 'template' | 'capture' | 'preview';
 
 export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   isOpen,
@@ -94,10 +112,15 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const { toast } = useToast();
 
   // Core states
-  const [phase, setPhase] = useState<Phase>('capture');
+  const [phase, setPhase] = useState<Phase>('template');
   const [creatorMode, setCreatorMode] = useState<CreatorMode>('publication');
   const [selectedDuration, setSelectedDuration] = useState(15);
   const [captureType, setCaptureType] = useState<'video' | 'audio' | 'photo' | 'text'>('video');
+  
+  // Template states
+  const [templates, setTemplates] = useState<CreationTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<CreationTemplate | null>(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   
   // Recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -133,6 +156,43 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Load templates from database
+  useEffect(() => {
+    if (isOpen) {
+      loadTemplates();
+    }
+  }, [isOpen]);
+
+  const loadTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const { data, error } = await supabase
+        .from('tamtam_creation_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('category', { ascending: true });
+      
+      if (error) throw error;
+      
+      const parsed = (data || []).map((t: any) => ({
+        id: t.id,
+        template_key: t.template_key,
+        label_fr: t.label_fr,
+        label_ba: t.label_ba,
+        icon: t.icon,
+        category: t.category,
+        steps: Array.isArray(t.steps) ? t.steps : [],
+        music_url: t.music_url
+      })) as CreationTemplate[];
+      
+      setTemplates(parsed);
+    } catch (err) {
+      console.error('[FullscreenCreator] Load templates error:', err);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
 
   // Initialize camera when in capture phase
   useEffect(() => {
@@ -460,8 +520,8 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         media_url,
         transcript_fr,
         transcript_ba,
-        template_id: `direct_${captureType}`,
-        topic: creatorMode,
+        template_id: selectedTemplate?.id || `direct_${captureType}`,
+        topic: selectedTemplate?.label_fr || creatorMode,
         duration_seconds: selectedDuration || (captureType === 'photo' || captureType === 'text' ? 5 : 15),
         text_content: captureType === 'text' ? textContent : undefined
       });
@@ -490,7 +550,8 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     if (timerRef.current) clearInterval(timerRef.current);
     if (audioRef.current) audioRef.current.pause();
     setCapturedMedia([]);
-    setPhase('capture');
+    setPhase('template');
+    setSelectedTemplate(null);
     setIsRecording(false);
     setShowBackgrounds(false);
     setShowMusic(false);
@@ -498,6 +559,23 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     setTextContent('');
     setAiContent(null);
     onClose();
+  };
+
+  const handleSelectTemplate = (template: CreationTemplate) => {
+    setSelectedTemplate(template);
+    // Determine capture type based on first step
+    const firstStep = template.steps[0];
+    if (firstStep) {
+      setCaptureType(firstStep.type);
+      const totalDuration = template.steps.reduce((sum, s) => sum + s.duration, 0);
+      setSelectedDuration(totalDuration);
+    }
+    setPhase('capture');
+  };
+
+  const handleSkipTemplate = () => {
+    setSelectedTemplate(null);
+    setPhase('capture');
   };
 
   const handleDurationSelect = (option: typeof DURATION_OPTIONS[0]) => {
@@ -536,6 +614,78 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
   if (!isOpen) return null;
 
+  // TEMPLATE SELECTION PHASE
+  if (phase === 'template') {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 z-50 bg-gradient-to-b from-amber-700/90 via-amber-800/95 to-amber-900"
+      >
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
+          <div className="flex items-center justify-between p-4">
+            <button 
+              onClick={handleClose} 
+              className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+            
+            <h2 className="text-white text-lg font-semibold">Créer</h2>
+            
+            <div className="w-10" />
+          </div>
+        </div>
+
+        {/* Subtitle */}
+        <div className="absolute top-20 left-0 right-0 z-10 px-4">
+          <p className="text-white/80 text-center text-sm">Choisis ton format de création</p>
+        </div>
+
+        {/* Templates Grid */}
+        <div className="absolute inset-0 pt-28 pb-24 px-4 overflow-y-auto">
+          {loadingTemplates ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {templates.map((template) => (
+                <motion.button
+                  key={template.id}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => handleSelectTemplate(template)}
+                  className="aspect-[4/3] rounded-2xl bg-amber-600/50 backdrop-blur-sm border border-amber-500/30 flex flex-col items-center justify-center gap-2 p-4 hover:bg-amber-600/70 transition-colors"
+                >
+                  <span className="text-4xl">{template.icon}</span>
+                  <span className="text-white font-medium text-sm text-center">{template.label_fr}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/50 text-white text-xs">
+                    {template.steps.length} étapes
+                  </span>
+                </motion.button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom: Skip option */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 safe-area-bottom">
+          <div className="flex justify-center py-6">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleSkipTemplate}
+              className="px-6 py-3 rounded-full bg-white/20 backdrop-blur-sm text-white font-medium flex items-center gap-2"
+            >
+              <span>Créer librement</span>
+              <ChevronRight className="w-5 h-5" />
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   // CAPTURE PHASE
   if (phase === 'capture') {
     return (
@@ -566,21 +716,28 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
           <div className="flex items-center justify-between p-4">
             <button 
-              onClick={handleClose} 
+              onClick={() => setPhase('template')} 
               className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center"
             >
-              <X className="w-6 h-6 text-white" />
+              <ArrowLeft className="w-6 h-6 text-white" />
             </button>
             
-            <button 
-              onClick={() => setShowMusic(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-sm"
-            >
-              <Music className="w-4 h-4 text-white" />
-              <span className="text-white text-sm font-medium">
-                {selectedMusic?.name || 'Ajouter un son'}
-              </span>
-            </button>
+            {selectedTemplate ? (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 backdrop-blur-sm">
+                <span className="text-xl">{selectedTemplate.icon}</span>
+                <span className="text-gray-800 text-sm font-medium">{selectedTemplate.label_fr}</span>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setShowMusic(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-sm"
+              >
+                <Music className="w-4 h-4 text-white" />
+                <span className="text-white text-sm font-medium">
+                  {selectedMusic?.name || 'Ajouter un son'}
+                </span>
+              </button>
+            )}
 
             {(captureType === 'video' || captureType === 'photo') && (
               <button 
@@ -594,6 +751,20 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
             {captureType === 'audio' && <div className="w-10" />}
           </div>
         </div>
+
+        {/* Template Step Instructions */}
+        {selectedTemplate && selectedTemplate.steps.length > 0 && (
+          <div className="absolute top-20 left-0 right-0 z-20 px-4">
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 mx-auto max-w-sm">
+              <p className="text-gray-800 text-sm font-medium text-center">
+                Étape 1: {selectedTemplate.steps[0].instruction_fr}
+              </p>
+              <p className="text-gray-500 text-xs text-center mt-1">
+                {selectedTemplate.steps[0].type === 'video' ? '🎥 Vidéo' : '🎤 Audio'} • {selectedTemplate.steps[0].duration}s
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Recording Timer */}
         {isRecording && (
