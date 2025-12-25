@@ -45,14 +45,21 @@ export const TamTamFeedCard: React.FC<TamTamFeedCardProps> = ({
   const altTranscript = currentLang === 'fr' ? post.transcript_ba : post.transcript_fr;
 
   const handlePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      return;
     }
+
+    audioRef.current
+      .play()
+      .then(() => setIsPlaying(true))
+      .catch((err) => {
+        console.warn('[TamTamFeedCard] audio play failed:', err);
+        setIsPlaying(false);
+      });
   };
 
   const handleTranslate = async () => {
