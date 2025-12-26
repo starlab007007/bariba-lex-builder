@@ -1,0 +1,422 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Loader2, Check, ChevronRight, Volume2 } from 'lucide-react';
+import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import { useMarketJobs, CreateJobInput } from '@/hooks/useMarketJobs';
+import { tamtamFeedback } from '@/utils/tamtamFeedback';
+import { supabase } from '@/integrations/supabase/client';
+
+interface VoiceGuidedJobCreatorProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+  initialType?: 'offer' | 'demand';
+}
+
+type Step = 'type' | 'category' | 'title' | 'details' | 'confirm';
+
+const JOB_CATEGORIES = [
+  { id: 'agriculture', emoji: '🚜', labelFr: 'Agriculture', labelBa: 'Àgbẹ̀' },
+  { id: 'construction', emoji: '🏗️', labelFr: 'Construction', labelBa: 'Ìkọ́lé' },
+  { id: 'transport', emoji: '🚗', labelFr: 'Transport', labelBa: 'Ìrìnnà' },
+  { id: 'commerce', emoji: '🛒', labelFr: 'Commerce', labelBa: 'Òwò' },
+  { id: 'domestic', emoji: '🏠', labelFr: 'Domestique', labelBa: 'Iṣẹ́ ilé' },
+  { id: 'craft', emoji: '🔧', labelFr: 'Artisanat', labelBa: 'Iṣẹ́ ọwọ́' },
+  { id: 'education', emoji: '📚', labelFr: 'Éducation', labelBa: 'Ẹ̀kọ́' },
+  { id: 'other', emoji: '💼', labelFr: 'Autre', labelBa: 'Mìíràn' },
+];
+
+export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType }: VoiceGuidedJobCreatorProps) {
+  const [step, setStep] = useState<Step>(initialType ? 'category' : 'type');
+  const [jobData, setJobData] = useState<Partial<CreateJobInput>>({
+    job_type: initialType
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [audioPresentationUrl, setAudioPresentationUrl] = useState<string | null>(null);
+  
+  const { currentLang } = useTamTamLanguage();
+  const { speakCurrentLang } = useBilingualAudio();
+  const { createJob, isCreating } = useMarketJobs();
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep(initialType ? 'category' : 'type');
+      setJobData({ job_type: initialType });
+      setAudioPresentationUrl(null);
+      
+      if (initialType) {
+        speakCurrentLang(
+          currentLang === 'ba' 
+            ? 'Yan ẹ̀ka iṣẹ́ náà' 
+            : 'Choisissez le domaine'
+        );
+      } else {
+        speakCurrentLang(
+          currentLang === 'ba' 
+            ? 'Ṣé o ń pèsè iṣẹ́ tàbí o ń wá iṣẹ́?' 
+            : 'Proposez-vous un emploi ou cherchez-vous du travail ?'
+        );
+      }
+    }
+  }, [isOpen, initialType, speakCurrentLang, currentLang]);
+
+  const handleTypeSelect = async (type: 'offer' | 'demand') => {
+    tamtamFeedback.play('click');
+    setJobData(prev => ({ ...prev, job_type: type }));
+    setStep('category');
+    await speakCurrentLang(
+      currentLang === 'ba' ? 'Yan ẹ̀ka iṣẹ́ náà' : 'Choisissez le domaine'
+    );
+  };
+
+  const handleCategorySelect = async (category: typeof JOB_CATEGORIES[0]) => {
+    tamtamFeedback.play('click');
+    setJobData(prev => ({ ...prev, category: category.id, emoji_icon: category.emoji }));
+    setStep('title');
+    await speakCurrentLang(
+      currentLang === 'ba' ? 'Sọ orúkọ iṣẹ́ náà' : 'Dites le titre du poste'
+    );
+  };
+
+  const handleVoiceInput = async (result: { audioBase64: string; transcription?: string; sourceLang: 'ba' | 'fr' }) => {
+    if (!result.transcription) {
+      await speakCurrentLang(currentLang === 'ba' ? 'Mo kò gbọ́. Tún gbìyànjú' : 'Je n\'ai pas compris. Réessayez.');
+      return;
+    }
+
+    setIsProcessing(true);
+    tamtamFeedback.play('send');
+
+    try {
+      if (step === 'title') {
+        setJobData(prev => ({ 
+          ...prev, 
+          title_fr: result.transcription,
+          title_ba: result.sourceLang === 'ba' ? result.transcription : undefined
+        }));
+        setStep('details');
+        await speakCurrentLang(
+          jobData.job_type === 'offer'
+            ? (currentLang === 'ba' ? 'Ṣàpèjúwe iṣẹ́ náà' : 'Décrivez le poste et le salaire')
+            : (currentLang === 'ba' ? 'Ṣàpèjúwe ìrírí rẹ' : 'Décrivez votre expérience')
+        );
+      } else if (step === 'details') {
+        // Upload audio as presentation
+        const audioBlob = new Blob(
+          [Uint8Array.from(atob(result.audioBase64), c => c.charCodeAt(0))],
+          { type: 'audio/webm' }
+        );
+        
+        const fileName = `job-${jobData.job_type}-${Date.now()}.webm`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('tamtam-audio')
+          .upload(fileName, audioBlob);
+
+        if (!uploadError && uploadData) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('tamtam-audio')
+            .getPublicUrl(uploadData.path);
+          
+          setAudioPresentationUrl(publicUrl);
+          setJobData(prev => ({ 
+            ...prev, 
+            description_text: result.transcription,
+            audio_presentation_url: publicUrl
+          }));
+        } else {
+          setJobData(prev => ({ 
+            ...prev, 
+            description_text: result.transcription
+          }));
+        }
+        
+        setStep('confirm');
+        await speakCurrentLang(
+          currentLang === 'ba' ? 'Jẹ́rìísí àwọn àlàyé rẹ' : 'Vérifiez et confirmez'
+        );
+      }
+    } catch (err) {
+      console.error('[VoiceGuidedJobCreator] Error:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    tamtamFeedback.play('send');
+    
+    const newJob = await createJob(jobData as CreateJobInput);
+    
+    if (newJob) {
+      tamtamFeedback.play('success');
+      await speakCurrentLang(
+        currentLang === 'ba' 
+          ? 'Ó dára! Ìpolówó rẹ ti jẹ́ títẹ̀jáde' 
+          : 'Parfait ! Votre annonce est en ligne'
+      );
+      onComplete();
+      onClose();
+    }
+  };
+
+  const handleBack = () => {
+    const steps: Step[] = ['type', 'category', 'title', 'details', 'confirm'];
+    const currentIndex = steps.indexOf(step);
+    if (currentIndex > 0) {
+      const prevStep = initialType && steps[currentIndex - 1] === 'type' 
+        ? 'category' 
+        : steps[currentIndex - 1];
+      setStep(prevStep);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        onClick={e => e.stopPropagation()}
+        className="bg-tamtam-bg w-full max-w-lg rounded-t-3xl max-h-[90vh] overflow-y-auto"
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-tamtam-bg px-6 py-4 border-b border-tamtam-border flex items-center justify-between">
+          <button onClick={handleBack} className="text-tamtam-text-muted" disabled={step === 'type' || (initialType && step === 'category')}>
+            {(step !== 'type' && !(initialType && step === 'category')) && <ChevronRight className="w-6 h-6 rotate-180" />}
+          </button>
+          <h2 className="text-lg font-bold text-tamtam-text">
+            {jobData.job_type === 'offer' 
+              ? (currentLang === 'ba' ? 'Pèsè iṣẹ́' : 'Proposer un emploi')
+              : jobData.job_type === 'demand'
+              ? (currentLang === 'ba' ? 'Wá iṣẹ́' : 'Chercher un emploi')
+              : (currentLang === 'ba' ? 'Iṣẹ́' : 'Emploi')
+            }
+          </h2>
+          <button onClick={onClose}>
+            <X className="w-6 h-6 text-tamtam-text-muted" />
+          </button>
+        </div>
+
+        {/* Progress */}
+        <div className="px-6 py-3">
+          <div className="flex gap-1">
+            {(initialType ? ['category', 'title', 'details', 'confirm'] : ['type', 'category', 'title', 'details', 'confirm']).map((s, i, arr) => (
+              <div 
+                key={s}
+                className={`h-1 flex-1 rounded-full transition-all ${
+                  arr.indexOf(step) >= i 
+                    ? 'bg-tamtam-primary' 
+                    : 'bg-tamtam-border'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <AnimatePresence mode="wait">
+            {/* Type selection */}
+            {step === 'type' && (
+              <motion.div
+                key="type"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
+              >
+                <button
+                  onClick={() => handleTypeSelect('offer')}
+                  className="w-full p-6 bg-blue-50 rounded-3xl flex items-center gap-4 hover:bg-blue-100 transition-all"
+                >
+                  <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center">
+                    <span className="text-4xl">💼</span>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-bold text-tamtam-text text-lg">
+                      {currentLang === 'ba' ? 'Mo ń pèsè iṣẹ́' : 'Je propose un emploi'}
+                    </h3>
+                    <p className="text-tamtam-text-muted text-sm">
+                      {currentLang === 'ba' ? 'Mo ń wá ènìyàn láti ṣiṣẹ́' : 'Je cherche quelqu\'un pour travailler'}
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleTypeSelect('demand')}
+                  className="w-full p-6 bg-green-50 rounded-3xl flex items-center gap-4 hover:bg-green-100 transition-all"
+                >
+                  <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center">
+                    <span className="text-4xl">🙋</span>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-bold text-tamtam-text text-lg">
+                      {currentLang === 'ba' ? 'Mo ń wá iṣẹ́' : 'Je cherche du travail'}
+                    </h3>
+                    <p className="text-tamtam-text-muted text-sm">
+                      {currentLang === 'ba' ? 'Mo fẹ́ ṣiṣẹ́' : 'Je veux travailler'}
+                    </p>
+                  </div>
+                </button>
+              </motion.div>
+            )}
+
+            {/* Category selection */}
+            {step === 'category' && (
+              <motion.div
+                key="category"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <p className="text-center text-tamtam-text-muted mb-6">
+                  {currentLang === 'ba' ? 'Yan ẹ̀ka iṣẹ́' : 'Choisissez le domaine'}
+                </p>
+                <div className="grid grid-cols-4 gap-3">
+                  {JOB_CATEGORIES.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => handleCategorySelect(cat)}
+                      className="flex flex-col items-center p-4 bg-tamtam-surface rounded-2xl hover:bg-tamtam-primary/10 transition-all"
+                    >
+                      <span className="text-4xl mb-2">{cat.emoji}</span>
+                      <span className="text-xs text-tamtam-text text-center">
+                        {currentLang === 'ba' ? cat.labelBa : cat.labelFr}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Voice input steps */}
+            {(step === 'title' || step === 'details') && (
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="text-center"
+              >
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+                  jobData.job_type === 'offer' ? 'bg-blue-100' : 'bg-green-100'
+                }`}>
+                  <span className="text-4xl">{jobData.emoji_icon || '💼'}</span>
+                </div>
+
+                <p className="text-tamtam-text mb-2 font-medium">
+                  {step === 'title' && (currentLang === 'ba' ? 'Orúkọ iṣẹ́ náà?' : 'Titre du poste ?')}
+                  {step === 'details' && (
+                    jobData.job_type === 'offer'
+                      ? (currentLang === 'ba' ? 'Ṣàpèjúwe iṣẹ́ náà' : 'Décrivez le poste')
+                      : (currentLang === 'ba' ? 'Ṣàpèjúwe ara rẹ' : 'Présentez-vous')
+                  )}
+                </p>
+                
+                {jobData.title_fr && (
+                  <p className="text-tamtam-primary font-bold mb-2">{jobData.title_fr}</p>
+                )}
+
+                <p className="text-tamtam-text-muted text-sm mb-8">
+                  {currentLang === 'ba' ? 'Tẹ bọ́tìnì náà, kí o sì sọ̀rọ̀' : 'Appuyez sur le micro et parlez'}
+                </p>
+
+                <div className="flex justify-center">
+                  <TamTamMicButton
+                    size="lg"
+                    onRecordingComplete={handleVoiceInput}
+                    autoTranscribe={true}
+                    autoTranslate={false}
+                    sourceLang={currentLang}
+                    disabled={isProcessing}
+                  />
+                </div>
+
+                {isProcessing && (
+                  <div className="flex items-center justify-center mt-6 gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin text-tamtam-primary" />
+                    <span className="text-tamtam-text-muted">
+                      {currentLang === 'ba' ? 'Ń ṣiṣẹ́...' : 'Traitement...'}
+                    </span>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Confirmation */}
+            {step === 'confirm' && (
+              <motion.div
+                key="confirm"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <div className={`rounded-3xl p-6 mb-6 ${
+                  jobData.job_type === 'offer' ? 'bg-blue-50' : 'bg-green-50'
+                }`}>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
+                      jobData.job_type === 'offer' ? 'bg-blue-100' : 'bg-green-100'
+                    }`}>
+                      <span className="text-4xl">{jobData.emoji_icon || '💼'}</span>
+                    </div>
+                    <div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        jobData.job_type === 'offer' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'
+                      }`}>
+                        {jobData.job_type === 'offer' 
+                          ? (currentLang === 'ba' ? 'Iṣẹ́ tí wọ́n ń pèsè' : 'Offre d\'emploi')
+                          : (currentLang === 'ba' ? 'Ẹni tó ń wá iṣẹ́' : 'Demande d\'emploi')
+                        }
+                      </span>
+                      <h3 className="font-bold text-tamtam-text text-lg mt-1">{jobData.title_fr}</h3>
+                    </div>
+                  </div>
+
+                  {jobData.description_text && (
+                    <p className="text-tamtam-text-muted text-sm">{jobData.description_text}</p>
+                  )}
+
+                  {audioPresentationUrl && (
+                    <button 
+                      onClick={() => new Audio(audioPresentationUrl).play()}
+                      className="mt-3 flex items-center gap-2 text-tamtam-primary"
+                    >
+                      <Volume2 className="w-4 h-4" />
+                      <span className="text-sm">{currentLang === 'ba' ? 'Gbọ́ àpèjúwe' : 'Écouter la présentation'}</span>
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleConfirm}
+                  disabled={isCreating}
+                  className="w-full py-4 bg-tamtam-primary text-white rounded-2xl flex items-center justify-center gap-3 font-medium text-lg"
+                >
+                  {isCreating ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Check className="w-6 h-6" />
+                      <span>{currentLang === 'ba' ? 'Jẹ́rìísí' : 'Publier'}</span>
+                    </>
+                  )}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}

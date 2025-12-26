@@ -974,48 +974,116 @@ export type Database = {
         }
         Relationships: []
       }
+      tamtam_job_applications: {
+        Row: {
+          applicant_id: string
+          audio_message_url: string | null
+          created_at: string | null
+          id: string
+          job_id: string
+          notes: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          applicant_id: string
+          audio_message_url?: string | null
+          created_at?: string | null
+          id?: string
+          job_id: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          applicant_id?: string
+          audio_message_url?: string | null
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tamtam_jobs: {
         Row: {
           applications_count: number | null
+          audio_presentation_url: string | null
+          availability_status: string | null
           category: string | null
+          contact_phone: string | null
           created_at: string | null
           description_audio_url: string | null
           description_text: string | null
+          emoji_icon: string | null
           employer_id: string | null
           id: string
           is_active: boolean | null
           job_type: string | null
           location: string | null
           salary_range: string | null
+          skills_audio_url: string | null
           title: string
+          title_ba: string | null
+          title_fr: string | null
+          updated_at: string | null
+          urgency: string | null
         }
         Insert: {
           applications_count?: number | null
+          audio_presentation_url?: string | null
+          availability_status?: string | null
           category?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           description_audio_url?: string | null
           description_text?: string | null
+          emoji_icon?: string | null
           employer_id?: string | null
           id?: string
           is_active?: boolean | null
           job_type?: string | null
           location?: string | null
           salary_range?: string | null
+          skills_audio_url?: string | null
           title: string
+          title_ba?: string | null
+          title_fr?: string | null
+          updated_at?: string | null
+          urgency?: string | null
         }
         Update: {
           applications_count?: number | null
+          audio_presentation_url?: string | null
+          availability_status?: string | null
           category?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           description_audio_url?: string | null
           description_text?: string | null
+          emoji_icon?: string | null
           employer_id?: string | null
           id?: string
           is_active?: boolean | null
           job_type?: string | null
           location?: string | null
           salary_range?: string | null
+          skills_audio_url?: string | null
           title?: string
+          title_ba?: string | null
+          title_fr?: string | null
+          updated_at?: string | null
+          urgency?: string | null
         }
         Relationships: []
       }
@@ -1533,48 +1601,75 @@ export type Database = {
       }
       tamtam_products: {
         Row: {
+          audio_description_ba: string | null
           category: string | null
+          contact_audio_url: string | null
           created_at: string | null
           currency: string | null
           description_audio_url: string | null
           description_text: string | null
+          emoji_icon: string | null
           id: string
           images: string[] | null
           is_available: boolean | null
           location: string | null
           price: number | null
           seller_id: string | null
+          seller_phone: string | null
+          status: string | null
+          thumbnail_url: string | null
           title: string
+          title_ba: string | null
+          title_fr: string | null
+          updated_at: string | null
           views_count: number | null
         }
         Insert: {
+          audio_description_ba?: string | null
           category?: string | null
+          contact_audio_url?: string | null
           created_at?: string | null
           currency?: string | null
           description_audio_url?: string | null
           description_text?: string | null
+          emoji_icon?: string | null
           id?: string
           images?: string[] | null
           is_available?: boolean | null
           location?: string | null
           price?: number | null
           seller_id?: string | null
+          seller_phone?: string | null
+          status?: string | null
+          thumbnail_url?: string | null
           title: string
+          title_ba?: string | null
+          title_fr?: string | null
+          updated_at?: string | null
           views_count?: number | null
         }
         Update: {
+          audio_description_ba?: string | null
           category?: string | null
+          contact_audio_url?: string | null
           created_at?: string | null
           currency?: string | null
           description_audio_url?: string | null
           description_text?: string | null
+          emoji_icon?: string | null
           id?: string
           images?: string[] | null
           is_available?: boolean | null
           location?: string | null
           price?: number | null
           seller_id?: string | null
+          seller_phone?: string | null
+          status?: string | null
+          thumbnail_url?: string | null
           title?: string
+          title_ba?: string | null
+          title_fr?: string | null
+          updated_at?: string | null
           views_count?: number | null
         }
         Relationships: []
