@@ -10,12 +10,13 @@ export interface AudioRecorderState {
 }
 
 export interface UseAudioRecorderReturn extends AudioRecorderState {
-  startRecording: () => Promise<void>;
+  startRecording: () => Promise<MediaStream | null>;
   stopRecording: () => Promise<string | null>;
   pauseRecording: () => void;
   resumeRecording: () => void;
   cancelRecording: () => void;
   getAudioBase64: () => Promise<string | null>;
+  getStream: () => MediaStream | null;
 }
 
 export const useAudioRecorder = (): UseAudioRecorderReturn => {
@@ -45,7 +46,12 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
     };
   }, []);
 
-  const startRecording = useCallback(async () => {
+  // Expose the current stream for sharing with useAudioLevel
+  const getStream = useCallback((): MediaStream | null => {
+    return streamRef.current;
+  }, []);
+
+  const startRecording = useCallback(async (): Promise<MediaStream | null> => {
     try {
       setState(prev => ({ ...prev, error: null }));
 
@@ -109,12 +115,16 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
         audioUrl: null,
       }));
 
+      // Return stream for sharing with useAudioLevel
+      return stream;
+
     } catch (error: any) {
       console.error('Error starting recording:', error);
       setState(prev => ({
         ...prev,
         error: error.message || 'Impossible d\'accéder au microphone'
       }));
+      return null;
     }
   }, []);
 
@@ -210,6 +220,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
     resumeRecording,
     cancelRecording,
     getAudioBase64,
+    getStream,
   };
 };
 

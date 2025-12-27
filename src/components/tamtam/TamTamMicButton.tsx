@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Mic, Square, Loader2 } from 'lucide-react';
+import { Mic, Square, Loader2, RefreshCw } from 'lucide-react';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
@@ -42,7 +42,7 @@ const iconSizes = {
 // Audio level indicator component
 function AudioLevelIndicator({ level, isSpeaking }: { level: number; isSpeaking: boolean }) {
   const bars = 5;
-  const barHeights = [20, 35, 50, 35, 20]; // Base heights for visual appeal
+  const barHeights = [20, 35, 50, 35, 20];
   
   return (
     <div className="flex items-end justify-center gap-1 h-8">
@@ -90,16 +90,18 @@ export function TamTamMicButton({
   const [internalRecording, setInternalRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState<string>('');
+  const [showRetry, setShowRetry] = useState(false);
   
   const audioRecorder = useAudioRecorder();
   const unifiedAudio = useUnifiedAudio();
   const webSpeechSTT = useWebSpeechSTT();
-  const audioLevel = useAudioLevel(15); // Threshold de 15% pour considérer comme "speaking"
+  const audioLevel = useAudioLevel(15);
   
   const isRecording = externalIsRecording !== undefined ? externalIsRecording : internalRecording;
 
   // Track collected transcript for French via ref to avoid stale closure
   const collectedTranscriptRef = useRef('');
+  const recordingStartTimeRef = useRef<number>(0);
   
   // Update collected transcript when Web Speech API provides results
   useEffect(() => {
@@ -130,30 +132,43 @@ export function TamTamMicButton({
         // === START RECORDING ===
         console.log('[TamTamMicButton] 🎙️ Starting recording, sourceLang:', sourceLang);
         setInternalRecording(true);
+        setShowRetry(false);
         collectedTranscriptRef.current = '';
+        recordingStartTimeRef.current = Date.now();
         setStatusText(sourceLang === 'fr' ? '🎤 Parlez en français...' : '🎤 Parlez en bariba...');
         
-        // Start audio level monitoring
-        if (showAudioLevel) {
-          audioLevel.startMonitoring();
-        }
-        
         if (sourceLang === 'fr') {
-          // FRENCH: Use Web Speech API ONLY (no audio recording needed)
-          console.log('[TamTamMicButton] 🇫🇷 French mode - Starting Web Speech API only');
+          // === FRENCH: Web Speech API ONLY (no audio recording needed for STT) ===
+          // But we still record audio for potential upload
+          console.log('[TamTamMicButton] 🇫🇷 French mode - Starting Web Speech API + audio recording');
+          
+          // Start audio recording first to get the stream
+          const stream = await audioRecorder.startRecording();
+          
+          // Share the stream with audio level monitoring (avoid multiple stream conflicts)
+          if (showAudioLevel && stream) {
+            audioLevel.startMonitoring(stream);
+          }
+          
+          // Start Web Speech API (uses browser's native microphone access, separate from our stream)
           webSpeechSTT.resetTranscript();
           webSpeechSTT.startListening();
-          // Also start audio recorder as backup
-          await audioRecorder.startRecording();
+          
         } else {
-          // BARIBA: Use audio recording ONLY (no Web Speech API)
+          // === BARIBA: Audio recording ONLY (Web Speech doesn't support Bariba) ===
           console.log('[TamTamMicButton] 🔊 Bariba mode - Audio recording only');
-          await audioRecorder.startRecording();
+          
+          const stream = await audioRecorder.startRecording();
+          
+          // Share the stream with audio level monitoring
+          if (showAudioLevel && stream) {
+            audioLevel.startMonitoring(stream);
+          }
         }
         
         toast({
           title: sourceLang === 'fr' ? "🎤 Parlez en français..." : "🎤 Parlez en bariba...",
-          description: "Appuyez à nouveau pour arrêter (min 1s)"
+          description: "Appuyez à nouveau pour arrêter (min 2s)"
         });
         
       } else {
@@ -166,14 +181,14 @@ export function TamTamMicButton({
         // Stop audio level monitoring
         audioLevel.stopMonitoring();
         
-        const recordingDuration = audioRecorder.duration;
+        const recordingDuration = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
         console.log('[TamTamMicButton] Recording duration:', recordingDuration, 'seconds');
         
-        // Check minimum duration
-        if (recordingDuration < 1) {
+        // Check minimum duration (increased to 2 seconds for better detection)
+        if (recordingDuration < 2) {
           toast({
             title: "⚠️ Enregistrement trop court",
-            description: "Parlez au moins 1 seconde",
+            description: "Parlez au moins 2 secondes pour une meilleure détection",
             variant: "destructive"
           });
           setIsProcessing(false);
@@ -193,8 +208,8 @@ export function TamTamMicButton({
           // Stop Web Speech if running (for French)
           if (sourceLang === 'fr') {
             webSpeechSTT.stopListening();
-            // Small delay to let Web Speech finish processing
-            await new Promise(r => setTimeout(r, 300));
+            // INCREASED delay to let Web Speech finish processing (800ms instead of 300ms)
+            await new Promise(r => setTimeout(r, 800));
           }
           
           let transcription: string | undefined;
@@ -216,9 +231,10 @@ export function TamTamMicButton({
               
               if (!transcription) {
                 console.warn('[TamTamMicButton] ⚠️ No French transcription from Web Speech API');
+                setShowRetry(true);
                 toast({
                   title: "⚠️ Aucune parole détectée",
-                  description: "Parlez plus fort ou plus longtemps (2-3 secondes)",
+                  description: "Parlez plus fort et plus longtemps (3-5 secondes). Bouton réessayer disponible.",
                   variant: "destructive"
                 });
               } else {
@@ -241,6 +257,7 @@ export function TamTamMicButton({
               // === BARIBA STT ===
               if (!audioBase64 || audioBase64.length < 100) {
                 console.error('[TamTamMicButton] ❌ No/insufficient audio data for Bariba STT');
+                setShowRetry(true);
                 toast({
                   title: "❌ Erreur audio",
                   description: "Aucune donnée audio enregistrée. Réessayez.",
@@ -260,9 +277,10 @@ export function TamTamMicButton({
               transcription = result.transcription || undefined;
               
               if (!transcription) {
+                setShowRetry(true);
                 toast({
                   title: "⚠️ Transcription échouée",
-                  description: "Le service Bariba n'a pas pu transcrire. Essayez avec un audio plus clair.",
+                  description: "Le service Bariba n'a pas pu transcrire. Parlez plus clairement et réessayez.",
                   variant: "destructive"
                 });
               } else {
@@ -296,6 +314,7 @@ export function TamTamMicButton({
           
         } catch (err) {
           console.error('[TamTamMicButton] ❌ Recording error:', err);
+          setShowRetry(true);
           toast({
             title: "❌ Erreur",
             description: err instanceof Error ? err.message : "Impossible de traiter l'enregistrement",
@@ -421,6 +440,22 @@ export function TamTamMicButton({
         >
           {statusText}
         </motion.p>
+      )}
+      
+      {/* Retry button when transcription fails */}
+      {showRetry && !isProcessing && !showRecordingState && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          onClick={() => {
+            setShowRetry(false);
+            handlePress();
+          }}
+          className="flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium"
+        >
+          <RefreshCw className="w-3 h-3" />
+          Réessayer
+        </motion.button>
       )}
     </div>
   );

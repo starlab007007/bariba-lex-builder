@@ -13,12 +13,28 @@ interface STTRequest {
 
 const SPACE_URL = 'https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space';
 
+// Check if the HuggingFace Space is awake
+async function wakeUpSpace(hfToken: string): Promise<boolean> {
+  try {
+    console.log('🔄 Checking if HuggingFace Space is awake...');
+    const response = await fetch(`${SPACE_URL}/`, {
+      headers: { 'Authorization': `Bearer ${hfToken}` },
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+    console.log(`   Space status: ${response.status}`);
+    return response.ok;
+  } catch (e) {
+    console.log(`   Space wake-up check failed: ${e.message}`);
+    return false;
+  }
+}
+
 async function pollForResult(
   spaceUrl: string,
   apiPrefix: string,
   sessionHash: string,
   hfToken: string,
-  maxAttempts = 15 // Reduced from 30 to fail faster
+  maxAttempts = 30 // Increased from 15 for more reliability
 ): Promise<any> {
   const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
   console.log(`📡 Polling: ${pollUrl}`);
@@ -30,6 +46,7 @@ async function pollForResult(
           'Authorization': `Bearer ${hfToken}`,
           'Accept': 'text/event-stream'
         },
+        signal: AbortSignal.timeout(10000) // 10 second timeout per poll
       });
       
       if (response.ok) {
@@ -67,10 +84,11 @@ async function pollForResult(
         }
       }
       
-      // Wait before next poll
-      await new Promise(r => setTimeout(r, 500));
+      // Wait before next poll (increased to 800ms for more stability)
+      await new Promise(r => setTimeout(r, 800));
     } catch (e) {
       console.log(`   Poll error: ${e.message}`);
+      if (e.message?.includes('HuggingFace')) throw e;
     }
   }
   
@@ -109,6 +127,7 @@ async function callGradioSTT(
         fn_index: 0, 
         session_hash: sessionHash 
       }),
+      signal: AbortSignal.timeout(15000) // 15 second timeout
     });
     
     console.log(`   Join status: ${joinResponse.status}`);
@@ -117,12 +136,13 @@ async function callGradioSTT(
       const joinText = await joinResponse.text();
       console.log(`   Join response: ${joinText.substring(0, 200)}`);
       
-      // Poll for result
-      const result = await pollForResult(spaceUrl, apiPrefix, sessionHash, hfToken);
+      // Poll for result with increased attempts
+      const result = await pollForResult(spaceUrl, apiPrefix, sessionHash, hfToken, 30);
       if (result) return result;
     }
   } catch (e) {
     console.log(`   Queue error: ${e.message}`);
+    if (e.message?.includes('HuggingFace')) throw e;
   }
 
   // Method 2: Direct call API
@@ -135,6 +155,7 @@ async function callGradioSTT(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ data }),
+      signal: AbortSignal.timeout(30000) // 30 second timeout
     });
     
     console.log(`   Status: ${response.status}`);
@@ -152,6 +173,7 @@ async function callGradioSTT(
             'Authorization': `Bearer ${hfToken}`,
             'Accept': 'text/event-stream'
           },
+          signal: AbortSignal.timeout(30000)
         });
         
         if (eventResponse.ok) {
@@ -231,8 +253,7 @@ serve(async (req) => {
       );
     }
 
-    // Check minimum audio length (avoid sending too short recordings)
-    // Réduit à 100 pour accepter les enregistrements très courts
+    // Check minimum audio length
     const minAudioLength = 100;
     console.log(`📏 Audio received: ${audio.length} chars (min: ${minAudioLength})`);
     console.log(`📏 Audio preview (first 100 chars): ${audio.substring(0, 100)}`);
@@ -242,15 +263,15 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Audio too short', 
-          details: 'L\'enregistrement est trop court. Parlez plus longtemps (au moins 1 seconde).',
+          details: 'L\'enregistrement est trop court. Parlez plus longtemps (au moins 2 secondes).',
           audioLength: audio.length,
-          suggestion: 'Maintenez le bouton micro et parlez pendant au moins 1 seconde avant de relâcher.'
+          suggestion: 'Maintenez le bouton micro et parlez pendant au moins 2 secondes avant de relâcher.'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check maximum audio length to avoid timeouts (limit to ~200KB base64 = ~150KB audio)
+    // Check maximum audio length to avoid timeouts
     const maxAudioLength = 300000;
     if (audio.length > maxAudioLength) {
       console.log(`⚠️ Audio too large: ${audio.length} chars (max: ${maxAudioLength})`);
@@ -275,11 +296,18 @@ serve(async (req) => {
     console.log(`🎤 Bariba STT: audio=${audio.length} chars, robust=${robustMode}, speaker=${speakerType}`);
     const startTime = Date.now();
 
+    // Try to wake up the space first
+    const isAwake = await wakeUpSpace(HF_TOKEN);
+    if (!isAwake) {
+      console.log('⚠️ HuggingFace Space may be sleeping, attempting anyway...');
+    }
+
     // Get API prefix from config
     let apiPrefix = '/gradio_api';
     try {
       const configResponse = await fetch(`${SPACE_URL}/config`, {
-        headers: { 'Authorization': `Bearer ${HF_TOKEN}` }
+        headers: { 'Authorization': `Bearer ${HF_TOKEN}` },
+        signal: AbortSignal.timeout(5000)
       });
       if (configResponse.ok) {
         const config = await configResponse.json();
@@ -338,7 +366,8 @@ serve(async (req) => {
         JSON.stringify({
           error: 'No transcription returned',
           details: 'Le modèle HuggingFace n\'a pas retourné de transcription. L\'audio peut être trop court ou inaudible.',
-          duration
+          duration,
+          suggestion: 'Parlez plus fort et plus longtemps (3-5 secondes minimum).'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -357,7 +386,7 @@ serve(async (req) => {
           duration,
           suggestion: isHFError 
             ? 'Le modèle Bariba a retourné une erreur. Réessayez avec un audio plus clair.'
-            : 'Visit the Space URL to wake it up'
+            : 'Le service est temporairement indisponible. Réessayez dans quelques secondes.'
         }),
         { status: isHFError ? 400 : 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -365,7 +394,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Fatal error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'STT failed' }),
+      JSON.stringify({ error: error.message || 'STT failed', suggestion: 'Une erreur inattendue s\'est produite. Réessayez.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
