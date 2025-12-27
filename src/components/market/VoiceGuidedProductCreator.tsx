@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Check, ChevronRight, Volume2 } from 'lucide-react';
+import { X, Loader2, Check, ChevronRight, Volume2, RefreshCw, Keyboard } from 'lucide-react';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { useMarketProducts, CreateProductInput } from '@/hooks/useMarketProducts';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
+import { Input } from '@/components/ui/input';
 
 interface VoiceGuidedProductCreatorProps {
   isOpen: boolean;
@@ -33,6 +34,9 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
   const [productData, setProductData] = useState<Partial<CreateProductInput>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioDescriptionUrl, setAudioDescriptionUrl] = useState<string | null>(null);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textInputValue, setTextInputValue] = useState('');
+  const [voiceError, setVoiceError] = useState(false);
   
   const { currentLang } = useTamTamLanguage();
   const { speakCurrentLang } = useBilingualAudio();
@@ -40,7 +44,10 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
 
   useEffect(() => {
     if (isOpen) {
-      // Check for prefill data
+      setVoiceError(false);
+      setShowTextInput(false);
+      setTextInputValue('');
+      
       if (prefillData.category) {
         setProductData(prefillData);
         setStep('title');
@@ -69,52 +76,74 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
     tamtamFeedback.play('click');
     setProductData(prev => ({ ...prev, category: category.id, emoji_icon: category.emoji }));
     setStep('title');
+    setVoiceError(false);
+    setShowTextInput(false);
     await announceStep('title');
   };
 
   const handleVoiceInput = async (result: { audioBase64: string; transcription?: string; sourceLang: 'ba' | 'fr' }) => {
     if (!result.transcription) {
-      await speakCurrentLang(currentLang === 'ba' ? 'Mo kò gbọ́. Tún gbìyànjú' : 'Je n\'ai pas compris. Réessayez.');
+      setVoiceError(true);
+      await speakCurrentLang(currentLang === 'ba' ? 'Mo kò gbọ́. Tún gbìyànjú tàbí kọ ọ́rọ̀' : 'Je n\'ai pas compris. Réessayez ou tapez le texte.');
       return;
     }
 
+    setVoiceError(false);
     setIsProcessing(true);
     tamtamFeedback.play('send');
 
+    await processInput(result.transcription, result.audioBase64, result.sourceLang);
+  };
+
+  const handleTextSubmit = async () => {
+    if (!textInputValue.trim()) return;
+    
+    setIsProcessing(true);
+    tamtamFeedback.play('send');
+    
+    await processInput(textInputValue.trim(), '', currentLang);
+    setTextInputValue('');
+    setShowTextInput(false);
+  };
+
+  const processInput = async (text: string, audioBase64: string, sourceLang: 'ba' | 'fr') => {
     try {
       if (step === 'title') {
-        // Upload audio for the title/description
-        const audioBlob = new Blob(
-          [Uint8Array.from(atob(result.audioBase64), c => c.charCodeAt(0))],
-          { type: 'audio/webm' }
-        );
-        
-        const fileName = `product-${Date.now()}.webm`;
-        const { data: uploadData } = await supabase.storage
-          .from('tamtam-audio')
-          .upload(fileName, audioBlob);
-
         let audioUrl = null;
-        if (uploadData) {
-          const { data: { publicUrl } } = supabase.storage
+        
+        // Upload audio if provided
+        if (audioBase64 && audioBase64.length > 100) {
+          const audioBlob = new Blob(
+            [Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))],
+            { type: 'audio/webm' }
+          );
+          
+          const fileName = `product-${Date.now()}.webm`;
+          const { data: uploadData } = await supabase.storage
             .from('tamtam-audio')
-            .getPublicUrl(uploadData.path);
-          audioUrl = publicUrl;
-          setAudioDescriptionUrl(publicUrl);
+            .upload(fileName, audioBlob);
+
+          if (uploadData) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('tamtam-audio')
+              .getPublicUrl(uploadData.path);
+            audioUrl = publicUrl;
+            setAudioDescriptionUrl(publicUrl);
+          }
         }
 
         setProductData(prev => ({ 
           ...prev, 
-          title_fr: result.transcription,
-          title_ba: result.sourceLang === 'ba' ? result.transcription : undefined,
-          description_text: result.transcription,
+          title_fr: text,
+          title_ba: sourceLang === 'ba' ? text : undefined,
+          description_text: text,
           description_audio_url: audioUrl
         }));
         setStep('price');
         await announceStep('price');
       } else if (step === 'price') {
-        // Extract number from speech
-        const priceMatch = result.transcription.match(/\d+/);
+        // Extract number from speech/text
+        const priceMatch = text.match(/\d+/);
         const price = priceMatch ? parseInt(priceMatch[0], 10) : 0;
         
         if (price > 0) {
@@ -122,10 +151,11 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
           setStep('confirm');
           await announceStep('confirm');
         } else {
+          setVoiceError(true);
           await speakCurrentLang(
             currentLang === 'ba' 
               ? 'Jọ̀wọ́ sọ iye owó tó yẹ' 
-              : 'Veuillez donner un prix valide'
+              : 'Veuillez donner un prix valide (ex: 5000)'
           );
         }
       }
@@ -158,6 +188,8 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
       setStep(steps[currentIndex - 1]);
+      setVoiceError(false);
+      setShowTextInput(false);
     }
   };
 
@@ -226,7 +258,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                     <button
                       key={cat.id}
                       onClick={() => handleCategorySelect(cat)}
-                      className="flex flex-col items-center p-4 bg-tamtam-surface rounded-2xl hover:bg-tamtam-primary/10 transition-all"
+                      className="flex flex-col items-center p-4 bg-tamtam-surface rounded-2xl hover:bg-tamtam-primary/10 transition-all active:scale-95"
                     >
                       <span className="text-4xl mb-2">{cat.emoji}</span>
                       <span className="text-xs text-tamtam-text text-center">
@@ -260,20 +292,83 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                   <p className="text-tamtam-primary font-bold mb-2 text-xl">{productData.title_fr}</p>
                 )}
 
-                <p className="text-tamtam-text-muted text-sm mb-8">
+                <p className="text-tamtam-text-muted text-sm mb-6">
                   {currentLang === 'ba' ? 'Tẹ bọ́tìnì náà, kí o sì sọ̀rọ̀' : 'Appuyez et parlez'}
                 </p>
 
-                <div className="flex justify-center">
-                  <TamTamMicButton
-                    size="lg"
-                    onRecordingComplete={handleVoiceInput}
-                    autoTranscribe={true}
-                    autoTranslate={false}
-                    sourceLang={currentLang}
-                    disabled={isProcessing}
-                  />
-                </div>
+                {/* Voice input */}
+                {!showTextInput && (
+                  <div className="flex flex-col items-center gap-4">
+                    <TamTamMicButton
+                      size="lg"
+                      onRecordingComplete={handleVoiceInput}
+                      autoTranscribe={true}
+                      autoTranslate={false}
+                      sourceLang={currentLang}
+                      disabled={isProcessing}
+                    />
+                    
+                    {/* Error feedback with retry and text fallback */}
+                    {voiceError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-col items-center gap-2"
+                      >
+                        <p className="text-amber-600 text-sm">
+                          {currentLang === 'ba' ? 'Kò gbọ́. Gbìyànjú lẹ́ẹ̀kan síi' : 'Pas compris. Réessayez ou tapez'}
+                        </p>
+                        <button
+                          onClick={() => setShowTextInput(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-tamtam-surface rounded-full text-sm text-tamtam-text"
+                        >
+                          <Keyboard className="w-4 h-4" />
+                          {currentLang === 'ba' ? 'Kọ ọ́rọ̀' : 'Taper le texte'}
+                        </button>
+                      </motion.div>
+                    )}
+                  </div>
+                )}
+
+                {/* Text input fallback */}
+                {showTextInput && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col gap-3"
+                  >
+                    <Input
+                      value={textInputValue}
+                      onChange={(e) => setTextInputValue(e.target.value)}
+                      placeholder={step === 'title' 
+                        ? (currentLang === 'ba' ? 'Orúkọ ọjà...' : 'Nom du produit...') 
+                        : (currentLang === 'ba' ? 'Iye owó (ex: 5000)' : 'Prix (ex: 5000)')
+                      }
+                      className="text-center text-lg"
+                      autoFocus
+                      onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+                    />
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={() => {
+                          setShowTextInput(false);
+                          setTextInputValue('');
+                        }}
+                        className="px-4 py-2 bg-tamtam-surface rounded-xl text-tamtam-text-muted"
+                      >
+                        {currentLang === 'ba' ? 'Padà' : 'Retour'}
+                      </button>
+                      <button
+                        onClick={handleTextSubmit}
+                        disabled={!textInputValue.trim() || isProcessing}
+                        className="px-6 py-2 bg-tamtam-primary text-white rounded-xl flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <Check className="w-4 h-4" />
+                        {currentLang === 'ba' ? 'Tẹ̀síwájú' : 'Continuer'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
 
                 {isProcessing && (
                   <div className="flex items-center justify-center mt-6 gap-2">

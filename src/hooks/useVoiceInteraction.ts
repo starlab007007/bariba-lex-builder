@@ -218,7 +218,7 @@ export const useVoiceInteraction = (): UseVoiceInteractionReturn => {
 
   return {
     // Recording
-    startRecording: audioRecorder.startRecording,
+    startRecording: async () => { await audioRecorder.startRecording(); },
     stopRecording: audioRecorder.stopRecording,
     cancelRecording: audioRecorder.cancelRecording,
     isRecording: audioRecorder.isRecording,

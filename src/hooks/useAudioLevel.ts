@@ -1,6 +1,7 @@
 /**
  * useAudioLevel - Hook pour mesurer le niveau audio du microphone en temps réel
  * Utilise Web Audio API pour analyser le volume
+ * AMÉLIORÉ: Peut accepter un stream externe pour éviter la concurrence des streams
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -8,7 +9,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 interface UseAudioLevelReturn {
   level: number; // 0-100
   isActive: boolean;
-  startMonitoring: () => Promise<void>;
+  startMonitoring: (externalStream?: MediaStream) => Promise<void>;
   stopMonitoring: () => void;
   isSpeaking: boolean; // true si le niveau est suffisant
 }
@@ -22,6 +23,7 @@ export const useAudioLevel = (threshold = 15): UseAudioLevelReturn => {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationRef = useRef<number | null>(null);
+  const isExternalStreamRef = useRef(false);
 
   const stopMonitoring = useCallback(() => {
     console.log('[useAudioLevel] Stopping monitoring');
@@ -31,10 +33,12 @@ export const useAudioLevel = (threshold = 15): UseAudioLevelReturn => {
       animationRef.current = null;
     }
     
-    if (streamRef.current) {
+    // Only stop the stream if we created it (not external)
+    if (streamRef.current && !isExternalStreamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
     }
+    streamRef.current = null;
+    isExternalStreamRef.current = false;
     
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
@@ -47,21 +51,31 @@ export const useAudioLevel = (threshold = 15): UseAudioLevelReturn => {
     setIsSpeaking(false);
   }, []);
 
-  const startMonitoring = useCallback(async () => {
+  const startMonitoring = useCallback(async (externalStream?: MediaStream) => {
     try {
-      console.log('[useAudioLevel] Starting audio level monitoring');
+      console.log('[useAudioLevel] Starting audio level monitoring, external stream:', !!externalStream);
       
       // Stop any existing monitoring
       stopMonitoring();
       
-      // Get microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { 
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        } 
-      });
+      let stream: MediaStream;
+      
+      if (externalStream) {
+        // Use external stream (no new microphone access needed)
+        stream = externalStream;
+        isExternalStreamRef.current = true;
+      } else {
+        // Get new microphone access
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: { 
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
+        isExternalStreamRef.current = false;
+      }
+      
       streamRef.current = stream;
       
       // Create audio context and analyser
