@@ -81,12 +81,7 @@ export function useMarketProducts(): UseMarketProductsReturn {
     try {
       let query = supabase
         .from('tamtam_products')
-        .select(`
-          *,
-          seller_profile:tamtam_profiles!tamtam_products_seller_id_fkey(
-            display_name, avatar_url, username
-          )
-        `)
+        .select('*')
         .eq('is_available', true)
         .order('created_at', { ascending: false });
 
