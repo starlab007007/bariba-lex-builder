@@ -13,9 +13,10 @@ interface VoiceGuidedJobCreatorProps {
   onClose: () => void;
   onComplete: () => void;
   initialType?: 'offer' | 'demand';
+  prefillData?: Record<string, any>;
 }
 
-type Step = 'type' | 'category' | 'title' | 'details' | 'confirm';
+type Step = 'type' | 'category' | 'title' | 'confirm';
 
 const JOB_CATEGORIES = [
   { id: 'agriculture', emoji: '🚜', labelFr: 'Agriculture', labelBa: 'Àgbẹ̀' },
@@ -28,7 +29,7 @@ const JOB_CATEGORIES = [
   { id: 'other', emoji: '💼', labelFr: 'Autre', labelBa: 'Mìíràn' },
 ];
 
-export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType }: VoiceGuidedJobCreatorProps) {
+export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType, prefillData = {} }: VoiceGuidedJobCreatorProps) {
   const [step, setStep] = useState<Step>(initialType ? 'category' : 'type');
   const [jobData, setJobData] = useState<Partial<CreateJobInput>>({
     job_type: initialType
@@ -42,25 +43,24 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
 
   useEffect(() => {
     if (isOpen) {
-      setStep(initialType ? 'category' : 'type');
-      setJobData({ job_type: initialType });
       setAudioPresentationUrl(null);
       
-      if (initialType) {
-        speakCurrentLang(
-          currentLang === 'ba' 
-            ? 'Yan ẹ̀ka iṣẹ́ náà' 
-            : 'Choisissez le domaine'
-        );
+      // Check for prefill data
+      if (prefillData.category) {
+        setJobData({ ...prefillData, job_type: prefillData.job_type || initialType });
+        setStep('title');
+        speakCurrentLang(currentLang === 'ba' ? 'Sọ orúkọ iṣẹ́ náà' : 'Décrivez le poste');
+      } else if (initialType) {
+        setStep('category');
+        setJobData({ job_type: initialType });
+        speakCurrentLang(currentLang === 'ba' ? 'Yan ẹ̀ka iṣẹ́ náà' : 'Choisissez le domaine');
       } else {
-        speakCurrentLang(
-          currentLang === 'ba' 
-            ? 'Ṣé o ń pèsè iṣẹ́ tàbí o ń wá iṣẹ́?' 
-            : 'Proposez-vous un emploi ou cherchez-vous du travail ?'
-        );
+        setStep('type');
+        setJobData({});
+        speakCurrentLang(currentLang === 'ba' ? 'Ṣé o ń pèsè iṣẹ́ tàbí o ń wá iṣẹ́?' : 'Offre ou demande ?');
       }
     }
-  }, [isOpen, initialType, speakCurrentLang, currentLang]);
+  }, [isOpen, initialType, prefillData, speakCurrentLang, currentLang]);
 
   const handleTypeSelect = async (type: 'offer' | 'demand') => {
     tamtamFeedback.play('click');
@@ -91,18 +91,6 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
 
     try {
       if (step === 'title') {
-        setJobData(prev => ({ 
-          ...prev, 
-          title_fr: result.transcription,
-          title_ba: result.sourceLang === 'ba' ? result.transcription : undefined
-        }));
-        setStep('details');
-        await speakCurrentLang(
-          jobData.job_type === 'offer'
-            ? (currentLang === 'ba' ? 'Ṣàpèjúwe iṣẹ́ náà' : 'Décrivez le poste et le salaire')
-            : (currentLang === 'ba' ? 'Ṣàpèjúwe ìrírí rẹ' : 'Décrivez votre expérience')
-        );
-      } else if (step === 'details') {
         // Upload audio as presentation
         const audioBlob = new Blob(
           [Uint8Array.from(atob(result.audioBase64), c => c.charCodeAt(0))],
@@ -110,32 +98,29 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
         );
         
         const fileName = `job-${jobData.job_type}-${Date.now()}.webm`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { data: uploadData } = await supabase.storage
           .from('tamtam-audio')
           .upload(fileName, audioBlob);
 
-        if (!uploadError && uploadData) {
+        let audioUrl = null;
+        if (uploadData) {
           const { data: { publicUrl } } = supabase.storage
             .from('tamtam-audio')
             .getPublicUrl(uploadData.path);
-          
+          audioUrl = publicUrl;
           setAudioPresentationUrl(publicUrl);
-          setJobData(prev => ({ 
-            ...prev, 
-            description_text: result.transcription,
-            audio_presentation_url: publicUrl
-          }));
-        } else {
-          setJobData(prev => ({ 
-            ...prev, 
-            description_text: result.transcription
-          }));
         }
+
+        setJobData(prev => ({ 
+          ...prev, 
+          title_fr: result.transcription,
+          title_ba: result.sourceLang === 'ba' ? result.transcription : undefined,
+          description_text: result.transcription,
+          audio_presentation_url: audioUrl
+        }));
         
         setStep('confirm');
-        await speakCurrentLang(
-          currentLang === 'ba' ? 'Jẹ́rìísí àwọn àlàyé rẹ' : 'Vérifiez et confirmez'
-        );
+        await speakCurrentLang(currentLang === 'ba' ? 'Jẹ́rìísí àwọn àlàyé rẹ' : 'Vérifiez et confirmez');
       }
     } catch (err) {
       console.error('[VoiceGuidedJobCreator] Error:', err);
@@ -162,7 +147,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
   };
 
   const handleBack = () => {
-    const steps: Step[] = ['type', 'category', 'title', 'details', 'confirm'];
+    const steps: Step[] = ['type', 'category', 'title', 'confirm'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
       const prevStep = initialType && steps[currentIndex - 1] === 'type' 
@@ -210,7 +195,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
         {/* Progress */}
         <div className="px-6 py-3">
           <div className="flex gap-1">
-            {(initialType ? ['category', 'title', 'details', 'confirm'] : ['type', 'category', 'title', 'details', 'confirm']).map((s, i, arr) => (
+            {(initialType ? ['category', 'title', 'confirm'] : ['type', 'category', 'title', 'confirm']).map((s, i, arr) => (
               <div 
                 key={s}
                 className={`h-1 flex-1 rounded-full transition-all ${
@@ -299,8 +284,8 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
               </motion.div>
             )}
 
-            {/* Voice input steps */}
-            {(step === 'title' || step === 'details') && (
+            {/* Voice input step */}
+            {step === 'title' && (
               <motion.div
                 key={step}
                 initial={{ opacity: 0, x: 20 }}
@@ -314,21 +299,15 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                   <span className="text-4xl">{jobData.emoji_icon || '💼'}</span>
                 </div>
 
-                <p className="text-tamtam-text mb-2 font-medium">
-                  {step === 'title' && (currentLang === 'ba' ? 'Orúkọ iṣẹ́ náà?' : 'Titre du poste ?')}
-                  {step === 'details' && (
-                    jobData.job_type === 'offer'
-                      ? (currentLang === 'ba' ? 'Ṣàpèjúwe iṣẹ́ náà' : 'Décrivez le poste')
-                      : (currentLang === 'ba' ? 'Ṣàpèjúwe ara rẹ' : 'Présentez-vous')
-                  )}
+                <p className="text-tamtam-text mb-2 font-medium text-lg">
+                  {jobData.job_type === 'offer'
+                    ? (currentLang === 'ba' ? 'Ṣàpèjúwe iṣẹ́ náà' : 'Décrivez le poste')
+                    : (currentLang === 'ba' ? 'Ṣàpèjúwe ara rẹ' : 'Présentez-vous')
+                  }
                 </p>
-                
-                {jobData.title_fr && (
-                  <p className="text-tamtam-primary font-bold mb-2">{jobData.title_fr}</p>
-                )}
 
                 <p className="text-tamtam-text-muted text-sm mb-8">
-                  {currentLang === 'ba' ? 'Tẹ bọ́tìnì náà, kí o sì sọ̀rọ̀' : 'Appuyez sur le micro et parlez'}
+                  {currentLang === 'ba' ? 'Tẹ bọ́tìnì náà, kí o sì sọ̀rọ̀' : 'Appuyez et parlez'}
                 </p>
 
                 <div className="flex justify-center">

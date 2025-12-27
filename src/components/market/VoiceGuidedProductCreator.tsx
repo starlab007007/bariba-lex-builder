@@ -12,9 +12,10 @@ interface VoiceGuidedProductCreatorProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: () => void;
+  prefillData?: Record<string, any>;
 }
 
-type Step = 'category' | 'title' | 'price' | 'description' | 'confirm';
+type Step = 'category' | 'title' | 'price' | 'confirm';
 
 const CATEGORIES = [
   { id: 'food', emoji: '🍅', labelFr: 'Alimentation', labelBa: 'Oúnjẹ' },
@@ -27,7 +28,7 @@ const CATEGORIES = [
   { id: 'other', emoji: '📦', labelFr: 'Autre', labelBa: 'Mìíràn' },
 ];
 
-export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete }: VoiceGuidedProductCreatorProps) {
+export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefillData = {} }: VoiceGuidedProductCreatorProps) {
   const [step, setStep] = useState<Step>('category');
   const [productData, setProductData] = useState<Partial<CreateProductInput>>({});
   const [isProcessing, setIsProcessing] = useState(false);
@@ -39,26 +40,25 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete }: Voice
 
   useEffect(() => {
     if (isOpen) {
-      // Reset state
-      setStep('category');
-      setProductData({});
+      // Check for prefill data
+      if (prefillData.category) {
+        setProductData(prefillData);
+        setStep('title');
+        speakCurrentLang(currentLang === 'ba' ? 'Sọ orúkọ ọjà rẹ' : 'Dites le nom de votre produit');
+      } else {
+        setStep('category');
+        setProductData({});
+        speakCurrentLang(currentLang === 'ba' ? 'Ẹ yan irú ọjà náà' : 'Choisissez la catégorie');
+      }
       setAudioDescriptionUrl(null);
-      
-      // Announce step
-      speakCurrentLang(
-        currentLang === 'ba' 
-          ? 'Ẹ yan irú ọjà náà' 
-          : 'Choisissez la catégorie de votre produit'
-      );
     }
-  }, [isOpen, speakCurrentLang, currentLang]);
+  }, [isOpen, prefillData, speakCurrentLang, currentLang]);
 
   const announceStep = async (nextStep: Step) => {
     const announcements: Record<Step, { fr: string; ba: string }> = {
       category: { fr: 'Choisissez une catégorie', ba: 'Yan ẹ̀ka kan' },
       title: { fr: 'Dites le nom de votre produit', ba: 'Sọ orúkọ ọjà rẹ' },
       price: { fr: 'Dites le prix en francs', ba: 'Sọ iye owó ọjà náà' },
-      description: { fr: 'Décrivez votre produit', ba: 'Ṣàpèjúwe ọjà rẹ' },
       confirm: { fr: 'Vérifiez et confirmez', ba: 'Jẹ́rìísí ọjà rẹ' }
     };
     
@@ -83,10 +83,32 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete }: Voice
 
     try {
       if (step === 'title') {
+        // Upload audio for the title/description
+        const audioBlob = new Blob(
+          [Uint8Array.from(atob(result.audioBase64), c => c.charCodeAt(0))],
+          { type: 'audio/webm' }
+        );
+        
+        const fileName = `product-${Date.now()}.webm`;
+        const { data: uploadData } = await supabase.storage
+          .from('tamtam-audio')
+          .upload(fileName, audioBlob);
+
+        let audioUrl = null;
+        if (uploadData) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('tamtam-audio')
+            .getPublicUrl(uploadData.path);
+          audioUrl = publicUrl;
+          setAudioDescriptionUrl(publicUrl);
+        }
+
         setProductData(prev => ({ 
           ...prev, 
           title_fr: result.transcription,
-          title_ba: result.sourceLang === 'ba' ? result.transcription : undefined
+          title_ba: result.sourceLang === 'ba' ? result.transcription : undefined,
+          description_text: result.transcription,
+          description_audio_url: audioUrl
         }));
         setStep('price');
         await announceStep('price');
@@ -97,8 +119,8 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete }: Voice
         
         if (price > 0) {
           setProductData(prev => ({ ...prev, price }));
-          setStep('description');
-          await announceStep('description');
+          setStep('confirm');
+          await announceStep('confirm');
         } else {
           await speakCurrentLang(
             currentLang === 'ba' 
@@ -106,33 +128,6 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete }: Voice
               : 'Veuillez donner un prix valide'
           );
         }
-      } else if (step === 'description') {
-        // Upload audio as description
-        const audioBlob = new Blob(
-          [Uint8Array.from(atob(result.audioBase64), c => c.charCodeAt(0))],
-          { type: 'audio/webm' }
-        );
-        
-        const fileName = `product-desc-${Date.now()}.webm`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('tamtam-audio')
-          .upload(fileName, audioBlob);
-
-        if (!uploadError && uploadData) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('tamtam-audio')
-            .getPublicUrl(uploadData.path);
-          
-          setAudioDescriptionUrl(publicUrl);
-          setProductData(prev => ({ 
-            ...prev, 
-            description_text: result.transcription,
-            description_audio_url: publicUrl
-          }));
-        }
-        
-        setStep('confirm');
-        await announceStep('confirm');
       }
     } catch (err) {
       console.error('[VoiceGuidedProductCreator] Error:', err);
@@ -159,7 +154,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete }: Voice
   };
 
   const handleBack = () => {
-    const steps: Step[] = ['category', 'title', 'price', 'description', 'confirm'];
+    const steps: Step[] = ['category', 'title', 'price', 'confirm'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
       setStep(steps[currentIndex - 1]);
@@ -199,11 +194,11 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete }: Voice
         {/* Progress */}
         <div className="px-6 py-3">
           <div className="flex gap-1">
-            {['category', 'title', 'price', 'description', 'confirm'].map((s, i) => (
+            {['category', 'title', 'price', 'confirm'].map((s, i) => (
               <div 
                 key={s}
                 className={`h-1 flex-1 rounded-full transition-all ${
-                  ['category', 'title', 'price', 'description', 'confirm'].indexOf(step) >= i 
+                  ['category', 'title', 'price', 'confirm'].indexOf(step) >= i 
                     ? 'bg-tamtam-primary' 
                     : 'bg-tamtam-border'
                 }`}
@@ -244,7 +239,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete }: Voice
             )}
 
             {/* Voice input steps */}
-            {(step === 'title' || step === 'price' || step === 'description') && (
+            {(step === 'title' || step === 'price') && (
               <motion.div
                 key={step}
                 initial={{ opacity: 0, x: 20 }}
@@ -256,21 +251,17 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete }: Voice
                   <span className="text-4xl">{productData.emoji_icon || '📦'}</span>
                 </div>
 
-                <p className="text-tamtam-text mb-2 font-medium">
-                  {step === 'title' && (currentLang === 'ba' ? 'Orúkọ ọjà náà?' : 'Nom du produit ?')}
-                  {step === 'price' && (currentLang === 'ba' ? 'Iye owó?' : 'Prix ?')}
-                  {step === 'description' && (currentLang === 'ba' ? 'Ṣàpèjúwe rẹ̀' : 'Description ?')}
+                <p className="text-tamtam-text mb-2 font-medium text-lg">
+                  {step === 'title' && (currentLang === 'ba' ? 'Kíni o ń tà?' : 'Que vendez-vous ?')}
+                  {step === 'price' && (currentLang === 'ba' ? 'Iye owó?' : 'Quel prix ?')}
                 </p>
                 
-                {productData.title_fr && (
-                  <p className="text-tamtam-primary font-bold mb-2">{productData.title_fr}</p>
-                )}
-                {productData.price && (
-                  <p className="text-tamtam-primary font-bold mb-2">{productData.price} F</p>
+                {productData.title_fr && step === 'price' && (
+                  <p className="text-tamtam-primary font-bold mb-2 text-xl">{productData.title_fr}</p>
                 )}
 
                 <p className="text-tamtam-text-muted text-sm mb-8">
-                  {currentLang === 'ba' ? 'Tẹ bọ́tìnì náà, kí o sì sọ̀rọ̀' : 'Appuyez sur le micro et parlez'}
+                  {currentLang === 'ba' ? 'Tẹ bọ́tìnì náà, kí o sì sọ̀rọ̀' : 'Appuyez et parlez'}
                 </p>
 
                 <div className="flex justify-center">
