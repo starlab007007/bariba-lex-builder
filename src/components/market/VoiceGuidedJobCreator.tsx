@@ -8,6 +8,7 @@ import { useMarketJobs, CreateJobInput } from '@/hooks/useMarketJobs';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
+import { PhotoUploader } from './PhotoUploader';
 
 interface VoiceGuidedJobCreatorProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ interface VoiceGuidedJobCreatorProps {
   prefillData?: Record<string, any>;
 }
 
-type Step = 'type' | 'category' | 'title' | 'confirm';
+type Step = 'type' | 'category' | 'title' | 'photos' | 'confirm';
 
 const JOB_CATEGORIES = [
   { id: 'agriculture', emoji: '🚜', labelFr: 'Agriculture', labelBa: 'Àgbẹ̀' },
@@ -40,6 +41,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInputValue, setTextInputValue] = useState('');
   const [voiceError, setVoiceError] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
   
   const { currentLang } = useTamTamLanguage();
   const { speakCurrentLang } = useBilingualAudio();
@@ -51,6 +53,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
       setVoiceError(false);
       setShowTextInput(false);
       setTextInputValue('');
+      setPhotos([]);
       
       if (prefillData.category) {
         setJobData({ ...prefillData, job_type: prefillData.job_type || initialType });
@@ -147,8 +150,8 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
           audio_presentation_url: audioUrl
         }));
         
-        setStep('confirm');
-        await speakCurrentLang(currentLang === 'ba' ? 'Jẹ́rìísí àwọn àlàyé rẹ' : 'Vérifiez et confirmez');
+        setStep('photos');
+        await speakCurrentLang(currentLang === 'ba' ? 'Fi àwọn fọ́tò kun bí o bá fẹ́' : 'Ajoutez des photos si vous voulez');
       }
     } catch (err) {
       console.error('[VoiceGuidedJobCreator] Error:', err);
@@ -157,9 +160,15 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
     }
   };
 
+  const handleSkipPhotos = async () => {
+    setStep('confirm');
+    await speakCurrentLang(currentLang === 'ba' ? 'Jẹ́rìísí àwọn àlàyé rẹ' : 'Vérifiez et confirmez');
+  };
+
   const handleConfirm = async () => {
     tamtamFeedback.play('send');
     
+    // Note: jobs table doesn't have images column, but we could add it if needed
     const newJob = await createJob(jobData as CreateJobInput);
     
     if (newJob) {
@@ -175,7 +184,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
   };
 
   const handleBack = () => {
-    const steps: Step[] = ['type', 'category', 'title', 'confirm'];
+    const steps: Step[] = ['type', 'category', 'title', 'photos', 'confirm'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
       const prevStep = initialType && steps[currentIndex - 1] === 'type' 
@@ -225,7 +234,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
         {/* Progress */}
         <div className="px-6 py-3">
           <div className="flex gap-1">
-            {(initialType ? ['category', 'title', 'confirm'] : ['type', 'category', 'title', 'confirm']).map((s, i, arr) => (
+            {(initialType ? ['category', 'title', 'photos', 'confirm'] : ['type', 'category', 'title', 'photos', 'confirm']).map((s, i, arr) => (
               <div 
                 key={s}
                 className={`h-1 flex-1 rounded-full transition-all ${
@@ -422,6 +431,53 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
               </motion.div>
             )}
 
+            {/* Photos step (optional) */}
+            {step === 'photos' && (
+              <motion.div
+                key="photos"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center">
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    jobData.job_type === 'offer' ? 'bg-blue-100' : 'bg-green-100'
+                  }`}>
+                    <span className="text-4xl">{jobData.emoji_icon || '💼'}</span>
+                  </div>
+                  <p className="text-tamtam-text font-medium">
+                    {currentLang === 'ba' ? 'Fi àwọn fọ́tò kun' : 'Ajoutez des photos'}
+                  </p>
+                  <p className="text-tamtam-text-muted text-sm">
+                    {currentLang === 'ba' ? 'Àṣàyàn (ó pọ̀ jù 3)' : 'Facultatif (max 3)'}
+                  </p>
+                </div>
+
+                <PhotoUploader
+                  photos={photos}
+                  onPhotosChange={setPhotos}
+                  maxPhotos={3}
+                />
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSkipPhotos}
+                    className="flex-1 py-3 bg-tamtam-surface text-tamtam-text rounded-xl font-medium"
+                  >
+                    {currentLang === 'ba' ? 'Fo' : 'Passer'}
+                  </button>
+                  <button
+                    onClick={handleSkipPhotos}
+                    className="flex-1 py-3 bg-tamtam-primary text-white rounded-xl flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Check className="w-5 h-5" />
+                    {currentLang === 'ba' ? 'Tẹ̀síwájú' : 'Continuer'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             {/* Confirmation */}
             {step === 'confirm' && (
               <motion.div
@@ -454,6 +510,17 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
 
                   {jobData.description_text && (
                     <p className="text-tamtam-text-muted text-sm">{jobData.description_text}</p>
+                  )}
+
+                  {/* Display photos preview */}
+                  {photos.length > 0 && (
+                    <div className="flex gap-2 mt-4">
+                      {photos.map((url, index) => (
+                        <div key={url} className="w-16 h-16 rounded-lg overflow-hidden">
+                          <img src={url} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
                   )}
 
                   {audioPresentationUrl && (
