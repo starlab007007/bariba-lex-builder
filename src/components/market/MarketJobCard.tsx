@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Volume2, Phone, MapPin, Users, AlertTriangle, Clock } from 'lucide-react';
+import { Volume2, Phone, MapPin, Users, AlertTriangle, Clock, Eye } from 'lucide-react';
 import { MarketJob } from '@/hooks/useMarketJobs';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
@@ -9,6 +9,7 @@ interface MarketJobCardProps {
   job: MarketJob;
   onApply?: (job: MarketJob) => void;
   onContact?: (job: MarketJob) => void;
+  onViewDetails?: (job: MarketJob) => void;
   isPlaying?: boolean;
   onPlayToggle?: () => void;
   showApplyButton?: boolean;
@@ -18,6 +19,7 @@ export function MarketJobCard({
   job, 
   onApply,
   onContact,
+  onViewDetails,
   isPlaying = false,
   onPlayToggle,
   showApplyButton = true
@@ -75,6 +77,11 @@ export function MarketJobCard({
     onContact?.(job);
   };
 
+  const handleViewDetails = () => {
+    tamtamFeedback.play('click');
+    onViewDetails?.(job);
+  };
+
   const isOffer = job.job_type === 'offer';
   const statusInfo = availabilityLabels[job.availability_status];
 
@@ -85,12 +92,18 @@ export function MarketJobCard({
       className={`rounded-3xl p-5 shadow-tamtam-soft ${urgencyConfig[job.urgency].color || 'bg-tamtam-surface'}`}
     >
       <div className="flex items-start gap-4">
-        {/* Job icon */}
-        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-          isOffer ? 'bg-blue-100' : 'bg-green-100'
-        }`}>
+        {/* Job icon - clickable for details */}
+        <button 
+          onClick={handleViewDetails}
+          className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 relative group ${
+            isOffer ? 'bg-blue-100' : 'bg-green-100'
+          }`}
+        >
           <span className="text-4xl">{job.emoji_icon || (isOffer ? '💼' : '🙋')}</span>
-        </div>
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-2xl flex items-center justify-center">
+            <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        </button>
 
         {/* Info */}
         <div className="flex-1 min-w-0">

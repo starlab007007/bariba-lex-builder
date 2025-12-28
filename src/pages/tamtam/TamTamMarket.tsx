@@ -4,7 +4,7 @@ import { Loader2, ShoppingCart, Package, Briefcase, HandHelping, Volume2 } from 
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
-import { useMarketProducts } from '@/hooks/useMarketProducts';
+import { useMarketProducts, MarketProduct } from '@/hooks/useMarketProducts';
 import { useMarketJobs, MarketJob } from '@/hooks/useMarketJobs';
 import { useAuth } from '@/contexts/AuthContext';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
@@ -15,6 +15,8 @@ import { MarketQuickTemplates, QuickTemplate } from '@/components/market/MarketQ
 import { VoiceButton } from '@/components/market/VoiceButton';
 import { VoiceGuidedProductCreator } from '@/components/market/VoiceGuidedProductCreator';
 import { VoiceGuidedJobCreator } from '@/components/market/VoiceGuidedJobCreator';
+import { ProductDetailModal } from '@/components/market/ProductDetailModal';
+import { JobDetailModal } from '@/components/market/JobDetailModal';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,6 +29,8 @@ export default function TamTamMarket() {
   const [jobCreatorType, setJobCreatorType] = useState<'offer' | 'demand'>('offer');
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [prefillData, setPrefillData] = useState<Record<string, any>>({});
+  const [selectedProduct, setSelectedProduct] = useState<MarketProduct | null>(null);
+  const [selectedJob, setSelectedJob] = useState<MarketJob | null>(null);
 
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
@@ -293,7 +297,8 @@ export default function TamTamMarket() {
                     product={product}
                     isPlaying={playingId === product.id}
                     onPlayToggle={() => setPlayingId(playingId === product.id ? null : product.id)}
-                    onContact={() => toast({ title: '📞', description: product.seller_phone || 'Contact vendeur' })}
+                    onViewDetails={(p) => setSelectedProduct(p)}
+                    onContact={() => setSelectedProduct(product)}
                   />
                 ))}
                 {products.length === 0 && (
@@ -351,7 +356,8 @@ export default function TamTamMarket() {
                   <MarketJobCard 
                     key={job.id} 
                     job={job} 
-                    onApply={handleApplyToJob} 
+                    onApply={handleApplyToJob}
+                    onViewDetails={(j) => setSelectedJob(j)}
                     isPlaying={playingId === job.id} 
                     onPlayToggle={() => setPlayingId(playingId === job.id ? null : job.id)} 
                   />
@@ -412,7 +418,8 @@ export default function TamTamMarket() {
                     key={job.id} 
                     job={job} 
                     showApplyButton={false}
-                    onContact={() => toast({ title: '📞', description: job.contact_phone || 'Contact' })}
+                    onViewDetails={(j) => setSelectedJob(j)}
+                    onContact={(j) => setSelectedJob(j)}
                     isPlaying={playingId === job.id} 
                     onPlayToggle={() => setPlayingId(playingId === job.id ? null : job.id)} 
                   />
@@ -531,6 +538,18 @@ export default function TamTamMarket() {
         onComplete={() => { fetchOffers(); fetchDemands(); fetchMyJobs(); }} 
         initialType={jobCreatorType}
         prefillData={prefillData}
+      />
+
+      {/* Detail Modals */}
+      <ProductDetailModal
+        product={selectedProduct}
+        isOpen={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+      />
+      <JobDetailModal
+        job={selectedJob}
+        isOpen={!!selectedJob}
+        onClose={() => setSelectedJob(null)}
       />
     </div>
   );
