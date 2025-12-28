@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Check, ChevronRight, Volume2, RefreshCw, Keyboard } from 'lucide-react';
+import { X, Loader2, Check, ChevronRight, Volume2, Keyboard } from 'lucide-react';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
@@ -8,7 +8,7 @@ import { useMarketProducts, CreateProductInput } from '@/hooks/useMarketProducts
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
-
+import { PhotoUploader } from './PhotoUploader';
 interface VoiceGuidedProductCreatorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,7 +16,7 @@ interface VoiceGuidedProductCreatorProps {
   prefillData?: Record<string, any>;
 }
 
-type Step = 'category' | 'title' | 'price' | 'confirm';
+type Step = 'category' | 'title' | 'price' | 'photos' | 'confirm';
 
 const CATEGORIES = [
   { id: 'food', emoji: '🍅', labelFr: 'Alimentation', labelBa: 'Oúnjẹ' },
@@ -37,6 +37,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInputValue, setTextInputValue] = useState('');
   const [voiceError, setVoiceError] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
   
   const { currentLang } = useTamTamLanguage();
   const { speakCurrentLang } = useBilingualAudio();
@@ -58,6 +59,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
         speakCurrentLang(currentLang === 'ba' ? 'Ẹ yan irú ọjà náà' : 'Choisissez la catégorie');
       }
       setAudioDescriptionUrl(null);
+      setPhotos([]);
     }
   }, [isOpen, prefillData, speakCurrentLang, currentLang]);
 
@@ -66,6 +68,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
       category: { fr: 'Choisissez une catégorie', ba: 'Yan ẹ̀ka kan' },
       title: { fr: 'Dites le nom de votre produit', ba: 'Sọ orúkọ ọjà rẹ' },
       price: { fr: 'Dites le prix en francs', ba: 'Sọ iye owó ọjà náà' },
+      photos: { fr: 'Ajoutez des photos si vous voulez', ba: 'Fi àwọn fọ́tò kun bí o bá fẹ́' },
       confirm: { fr: 'Vérifiez et confirmez', ba: 'Jẹ́rìísí ọjà rẹ' }
     };
     
@@ -148,8 +151,8 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
         
         if (price > 0) {
           setProductData(prev => ({ ...prev, price }));
-          setStep('confirm');
-          await announceStep('confirm');
+          setStep('photos');
+          await announceStep('photos');
         } else {
           setVoiceError(true);
           await speakCurrentLang(
@@ -166,10 +169,21 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
     }
   };
 
+  const handleSkipPhotos = async () => {
+    setStep('confirm');
+    await announceStep('confirm');
+  };
+
   const handleConfirm = async () => {
     tamtamFeedback.play('send');
     
-    const newProduct = await createProduct(productData as CreateProductInput);
+    // Include photos in product data
+    const finalProductData = {
+      ...productData,
+      images: photos.length > 0 ? photos : undefined
+    };
+    
+    const newProduct = await createProduct(finalProductData as CreateProductInput);
     
     if (newProduct) {
       tamtamFeedback.play('success');
@@ -184,7 +198,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
   };
 
   const handleBack = () => {
-    const steps: Step[] = ['category', 'title', 'price', 'confirm'];
+    const steps: Step[] = ['category', 'title', 'price', 'photos', 'confirm'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
       setStep(steps[currentIndex - 1]);
@@ -226,11 +240,11 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
         {/* Progress */}
         <div className="px-6 py-3">
           <div className="flex gap-1">
-            {['category', 'title', 'price', 'confirm'].map((s, i) => (
+            {['category', 'title', 'price', 'photos', 'confirm'].map((s, i) => (
               <div 
                 key={s}
                 className={`h-1 flex-1 rounded-full transition-all ${
-                  ['category', 'title', 'price', 'confirm'].indexOf(step) >= i 
+                  ['category', 'title', 'price', 'photos', 'confirm'].indexOf(step) >= i 
                     ? 'bg-tamtam-primary' 
                     : 'bg-tamtam-border'
                 }`}
@@ -381,6 +395,51 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
               </motion.div>
             )}
 
+            {/* Photos step (optional) */}
+            {step === 'photos' && (
+              <motion.div
+                key="photos"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-tamtam-surface rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-4xl">{productData.emoji_icon || '📦'}</span>
+                  </div>
+                  <p className="text-tamtam-text font-medium">
+                    {currentLang === 'ba' ? 'Fi àwọn fọ́tò kun' : 'Ajoutez des photos'}
+                  </p>
+                  <p className="text-tamtam-text-muted text-sm">
+                    {currentLang === 'ba' ? 'Àṣàyàn (ó pọ̀ jù 3)' : 'Facultatif (max 3)'}
+                  </p>
+                </div>
+
+                <PhotoUploader
+                  photos={photos}
+                  onPhotosChange={setPhotos}
+                  maxPhotos={3}
+                />
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSkipPhotos}
+                    className="flex-1 py-3 bg-tamtam-surface text-tamtam-text rounded-xl font-medium"
+                  >
+                    {currentLang === 'ba' ? 'Fo' : 'Passer'}
+                  </button>
+                  <button
+                    onClick={handleSkipPhotos}
+                    className="flex-1 py-3 bg-tamtam-primary text-white rounded-xl flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Check className="w-5 h-5" />
+                    {currentLang === 'ba' ? 'Tẹ̀síwájú' : 'Continuer'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             {/* Confirmation */}
             {step === 'confirm' && (
               <motion.div
@@ -402,6 +461,17 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
 
                   {productData.description_text && (
                     <p className="text-tamtam-text-muted text-sm">{productData.description_text}</p>
+                  )}
+
+                  {/* Display photos preview */}
+                  {photos.length > 0 && (
+                    <div className="flex gap-2 mt-4">
+                      {photos.map((url, index) => (
+                        <div key={url} className="w-16 h-16 rounded-lg overflow-hidden">
+                          <img src={url} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
                   )}
 
                   {audioDescriptionUrl && (
