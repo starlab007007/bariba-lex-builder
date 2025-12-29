@@ -1,22 +1,38 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { 
-  X, Mic, Video, Camera, Check, ChevronRight, ChevronLeft, 
-  Volume2, Pause, Play, Loader2, RotateCcw, Sparkles, 
-  Hash, Lightbulb, Music, Palette, ArrowLeft, Send, Sliders,
-  Filter, Edit3, Trash2, SkipBack, SkipForward, Users, Type, Image
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  X,
+  Mic,
+  Video,
+  Camera,
+  Check,
+  ChevronRight,
+  ArrowLeft,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+  Music,
+  Palette,
+  Send,
+  Filter,
+  Lightbulb,
+  Type,
+  Trash2,
+  Play,
+  Pause,
+  Sliders,
 } from 'lucide-react';
+
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
-import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
 import { AnimatedBackground, BackgroundTheme } from './AnimatedBackground';
 import { DynamicAITemplates } from './DynamicAITemplates';
 import { MUSIC_LIBRARY, MusicTrack, getSuggestedMusic } from '@/data/musicLibrary';
-import { VideoFiltersPanel, VIDEO_FILTERS, VideoFilter, useVideoFilter } from './VideoFilters';
+import { VideoFiltersPanel, useVideoFilter, VideoFilter } from './VideoFilters';
 import { Textarea } from '@/components/ui/textarea';
 
 // ============= Cross-browser MIME type detection =============
@@ -45,24 +61,49 @@ const getFileExtension = (mimeType: string): string => {
     'video/mp4': 'mp4',
     'video/webm': 'webm',
     'video/webm;codecs=vp9': 'webm',
-    'video/webm;codecs=vp9,opus': 'webm'
+    'video/webm;codecs=vp9,opus': 'webm',
+    'image/jpeg': 'jpg',
   };
   return map[mimeType] || 'webm';
 };
 
 // Duration options
 const DURATION_OPTIONS = [
-  { label: '5 s', value: 5, type: 'video' },
-  { label: '10 s', value: 10, type: 'video' },
-  { label: '15 s', value: 15, type: 'video' },
-  { label: '60 s', value: 60, type: 'video' },
-  { label: '10 min', value: 600, type: 'video' },
-  { label: 'PHOTO', value: 0, type: 'photo' },
-  { label: 'TEXTE', value: 0, type: 'text' },
+  { label: '5 s', value: 5, type: 'video' as const },
+  { label: '10 s', value: 10, type: 'video' as const },
+  { label: '15 s', value: 15, type: 'video' as const },
+  { label: '45 s', value: 45, type: 'video' as const },
+  { label: '60 s', value: 60, type: 'video' as const },
+  { label: 'PHOTO', value: 0, type: 'photo' as const },
+  { label: 'TEXTE', value: 0, type: 'text' as const },
 ];
 
 // Creator modes
 type CreatorMode = 'live' | 'publication' | 'create';
+
+// Phase
+type Phase = 'template' | 'capture' | 'preview';
+
+// Intention (édition par intention)
+type Intent =
+  | 'informer'
+  | 'expliquer'
+  | 'vendre'
+  | 'sensibiliser'
+  | 'raconter';
+
+const INTENTS: Array<{
+  id: Intent;
+  label: string;
+  icon: string;
+  hint: string;
+}> = [
+  { id: 'informer', label: 'Informer', icon: '📰', hint: 'Donne 1 fait + 1 action claire.' },
+  { id: 'expliquer', label: 'Expliquer', icon: '🎓', hint: '1 idée → 1 exemple → 1 conclusion.' },
+  { id: 'vendre', label: 'Vendre', icon: '🛒', hint: 'Problème → Solution → Prix/Contact.' },
+  { id: 'sensibiliser', label: 'Sensibiliser', icon: '🚨', hint: 'Risque → Conseils → Appel à agir.' },
+  { id: 'raconter', label: 'Raconter', icon: '📖', hint: 'Contexte → tournant → leçon.' },
+];
 
 // Template interface from DB
 interface CreationTemplate {
@@ -98,71 +139,158 @@ interface FullscreenCreatorProps {
   }) => Promise<void>;
 }
 
-type Phase = 'template' | 'capture' | 'preview';
+type CapturedMedia = { blob: Blob; type: 'audio' | 'video' | 'photo'; mimeType?: string };
+
+const safeClearInterval = (ref: React.MutableRefObject<number | null>) => {
+  if (ref.current) {
+    window.clearInterval(ref.current);
+    ref.current = null;
+  }
+};
+
+const blobToBase64 = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+const createSilentWavBlob = (durationMs = 700, sampleRate = 44100) => {
+  const numSamples = Math.max(1, Math.floor(sampleRate * (durationMs / 1000)));
+  const dataSize = numSamples * 2;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true); // PCM
+  view.setUint16(20, 1, true); // audio format
+  view.setUint16(22, 1, true); // channels
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // byte rate
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+  // PCM samples are already 0 (silence)
+  return new Blob([buffer], { type: 'audio/wav' });
+};
 
 export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   isOpen,
   onClose,
-  onComplete
+  onComplete,
 }) => {
   const { currentLang } = useTamTamLanguage();
-  const { speak: speakFrench, isSpeaking: isSpeakingFr } = useFrenchTTS();
-  const { speak: speakBariba, isSpeaking: isSpeakingBa } = useBaribaTTS();
   const { transcribeWithTranslation } = useUnifiedAudio();
   const { toast } = useToast();
 
-  // Core states
+  // Phases
   const [phase, setPhase] = useState<Phase>('template');
+
+  // Modes / capture
   const [creatorMode, setCreatorMode] = useState<CreatorMode>('publication');
-  const [selectedDuration, setSelectedDuration] = useState(15);
   const [captureType, setCaptureType] = useState<'video' | 'audio' | 'photo' | 'text'>('video');
-  
-  // Template states
+  const [selectedDuration, setSelectedDuration] = useState(15);
+
+  // Intention
+  const [intent, setIntent] = useState<Intent>('informer');
+
+  // Templates
   const [templates, setTemplates] = useState<CreationTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<CreationTemplate | null>(null);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
-  
-  // Recording states
+
+  // Recording
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState(0);
-  const [capturedMedia, setCapturedMedia] = useState<{ blob: Blob; type: string; mimeType?: string }[]>([]);
+  const [capturedMedia, setCapturedMedia] = useState<CapturedMedia[]>([]);
   const [textContent, setTextContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Customization states
+
+  // Customization
   const [selectedBackground, setSelectedBackground] = useState<BackgroundTheme>('savanna');
   const [selectedMusic, setSelectedMusic] = useState<MusicTrack | null>(null);
   const [showBackgrounds, setShowBackgrounds] = useState(false);
   const [showMusic, setShowMusic] = useState(false);
   const [showAI, setShowAI] = useState(false);
-  const [isFrontCamera, setIsFrontCamera] = useState(true);
-  const [aiContent, setAiContent] = useState<{ type: string; content: string } | null>(null);
-  
-  // Preview states
+
+  // Preview / IA
   const [showFilters, setShowFilters] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
-  const [previewProgress, setPreviewProgress] = useState(0);
-  
+  const [previewTranscriptFr, setPreviewTranscriptFr] = useState<string>('');
+  const [previewTranscriptBa, setPreviewTranscriptBa] = useState<string>('');
+  const [isGeneratingCaptions, setIsGeneratingCaptions] = useState(false);
+  const [coachHintsOpen, setCoachHintsOpen] = useState(true);
+
+  // Camera
+  const [isFrontCamera, setIsFrontCamera] = useState(true);
+
   // Video filter hook
   const { currentFilter, setCurrentFilter, getFilterStyle } = useVideoFilter();
 
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<number | null>(null);
+
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Load templates from database
+  const previewUrl = useMemo(() => {
+    if (!capturedMedia[0]) return '';
+    return URL.createObjectURL(capturedMedia[0].blob);
+  }, [capturedMedia]);
+
+  // Cleanup preview object URL
   useEffect(() => {
-    if (isOpen) {
-      loadTemplates();
-    }
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  // Load templates when open
+  useEffect(() => {
+    if (!isOpen) return;
+    loadTemplates();
   }, [isOpen]);
+
+  // Suggested music (based on intent)
+  useEffect(() => {
+    if (!isOpen) return;
+    const topic = intent === 'vendre' ? 'business' : intent === 'raconter' ? 'culture' : 'education';
+    const suggestions = getSuggestedMusic({ topic });
+    if (!selectedMusic && suggestions.length > 0) setSelectedMusic(suggestions[0]);
+  }, [isOpen, intent, selectedMusic]);
+
+  // Init camera on capture if needed
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (phase === 'capture' && (captureType === 'video' || captureType === 'photo')) {
+      initCamera();
+    }
+
+    return () => {
+      if (!isOpen) {
+        stopStream();
+        safeClearInterval(timerRef);
+        stopBgMusic();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, phase, captureType]);
 
   const loadTemplates = async () => {
     setLoadingTemplates(true);
@@ -172,9 +300,9 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         .select('*')
         .eq('is_active', true)
         .order('category', { ascending: true });
-      
+
       if (error) throw error;
-      
+
       const parsed = (data || []).map((t: any) => ({
         id: t.id,
         template_key: t.template_key,
@@ -183,45 +311,43 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         icon: t.icon,
         category: t.category,
         steps: Array.isArray(t.steps) ? t.steps : [],
-        music_url: t.music_url
+        music_url: t.music_url,
       })) as CreationTemplate[];
-      
+
       setTemplates(parsed);
     } catch (err) {
       console.error('[FullscreenCreator] Load templates error:', err);
+      toast({
+        title: 'Erreur templates',
+        description: "Impossible de charger les templates de création.",
+        variant: 'destructive',
+      });
     } finally {
       setLoadingTemplates(false);
     }
   };
 
-  // Initialize camera when in capture phase
-  useEffect(() => {
-    if (isOpen && phase === 'capture' && (captureType === 'video' || captureType === 'photo')) {
-      initCamera();
+  const stopBgMusic = () => {
+    if (bgAudioRef.current) {
+      try {
+        bgAudioRef.current.pause();
+      } catch {}
+      bgAudioRef.current = null;
     }
-    return () => {
-      if (!isOpen) {
-        stopStream();
-        if (timerRef.current) clearInterval(timerRef.current);
-      }
-    };
-  }, [isOpen, phase, captureType]);
+  };
 
-  // Music suggestion
-  useEffect(() => {
-    if (isOpen && !selectedMusic) {
-      const suggestions = getSuggestedMusic({ topic: 'culture' });
-      if (suggestions.length > 0) {
-        setSelectedMusic(suggestions[0]);
-      }
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
-  }, [isOpen]);
+  };
 
   const initCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: isFrontCamera ? 'user' : 'environment' },
-        audio: captureType !== 'photo'
+        audio: captureType !== 'photo',
       });
       streamRef.current = stream;
       if (videoPreviewRef.current) {
@@ -229,80 +355,119 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       }
     } catch (err: any) {
       console.error('[FullscreenCreator] Camera error:', err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        toast({
-          title: "🎤 Permission requise",
-          description: "Autorisez l'accès au micro et à la caméra",
-          variant: "destructive"
-        });
-      } else if (err.name === 'NotFoundError') {
-        toast({
-          title: "📷 Appareil non trouvé",
-          description: "Aucun micro/caméra détecté",
-          variant: "destructive"
-        });
-      } else if (err.name === 'NotReadableError') {
-        toast({
-          title: "⚠️ Appareil occupé",
-          description: "Le micro/caméra est utilisé par une autre app",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Erreur",
-          description: err.message || "Impossible d'accéder à la caméra",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: 'Permission requise',
+        description: "Autorisez l'accès au micro et à la caméra.",
+        variant: 'destructive',
+      });
     }
   };
 
   const flipCamera = async () => {
     stopStream();
-    setIsFrontCamera(!isFrontCamera);
-    setTimeout(initCamera, 100);
+    setIsFrontCamera((v) => !v);
+    window.setTimeout(() => initCamera(), 120);
   };
 
-  const stopStream = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
+  const handleClose = () => {
+    stopStream();
+    safeClearInterval(timerRef);
+    stopBgMusic();
+
+    setCapturedMedia([]);
+    setPhase('template');
+    setSelectedTemplate(null);
+    setIsRecording(false);
+    setRecordingProgress(0);
+    setShowBackgrounds(false);
+    setShowMusic(false);
+    setShowAI(false);
+    setShowFilters(false);
+    setTextContent('');
+    setPreviewTranscriptFr('');
+    setPreviewTranscriptBa('');
+    setIsPreviewPlaying(false);
+    setCoachHintsOpen(true);
+
+    onClose();
+  };
+
+  const handleSelectTemplate = (template: CreationTemplate) => {
+    setSelectedTemplate(template);
+
+    // Simple: 1er step uniquement (sinon, UX et concat nécessaires)
+    const firstStep = template.steps?.[0];
+    if (firstStep) {
+      setCaptureType(firstStep.type);
+      setSelectedDuration(firstStep.duration || 15);
+    } else {
+      setCaptureType('video');
+      setSelectedDuration(15);
     }
+
+    setPhase('capture');
+  };
+
+  const handleSkipTemplate = () => {
+    setSelectedTemplate(null);
+    setPhase('capture');
+  };
+
+  const handleDurationSelect = (option: typeof DURATION_OPTIONS[number]) => {
+    if (option.type === 'photo') {
+      setCaptureType('photo');
+      setSelectedDuration(0);
+      return;
+    }
+    if (option.type === 'text') {
+      setCaptureType('text');
+      setSelectedDuration(0);
+      return;
+    }
+    setCaptureType('video');
+    setSelectedDuration(option.value);
   };
 
   const takePhoto = () => {
     if (!videoPreviewRef.current || !canvasRef.current) return;
-    
+
     const video = videoPreviewRef.current;
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
+    canvas.width = video.videoWidth || 720;
+    canvas.height = video.videoHeight || 1280;
+
     const ctx = canvas.getContext('2d');
-    if (ctx) {
-      if (isFrontCamera) {
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
-      }
-      ctx.drawImage(video, 0, 0);
-      
-      canvas.toBlob((blob) => {
-        if (blob) {
-          setCapturedMedia([{ blob, type: 'photo', mimeType: 'image/jpeg' }]);
-          setPhase('preview');
-          triggerFeedback('success');
-        }
-      }, 'image/jpeg', 0.9);
+    if (!ctx) return;
+
+    if (isFrontCamera) {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
     }
+
+    // Appliquer filtre CSS sur canvas via ctx.filter (approx)
+    // NB: ce n'est pas identique à CSS mais très proche pour les filtres simples.
+    ctx.filter = (currentFilter?.cssFilter && currentFilter.cssFilter !== 'none') ? currentFilter.cssFilter : 'none';
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        setCapturedMedia([{ blob, type: 'photo', mimeType: 'image/jpeg' }]);
+        setPhase('preview');
+        triggerFeedback('success');
+      },
+      'image/jpeg',
+      0.9
+    );
   };
 
   const startRecording = async () => {
     try {
       const isAudio = captureType === 'audio';
-      
+
       const constraints: MediaStreamConstraints = {
         audio: true,
-        video: !isAudio ? { facingMode: isFrontCamera ? 'user' : 'environment' } : false
+        video: !isAudio ? { facingMode: isFrontCamera ? 'user' : 'environment' } : false,
       };
 
       if (!streamRef.current) {
@@ -316,79 +481,64 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       const mimeType = getSupportedMimeType(isAudio ? 'audio' : 'video');
       const options: MediaRecorderOptions = {};
       if (mimeType) options.mimeType = mimeType;
-      
-      console.log('[FullscreenCreator] Recording with mimeType:', mimeType || 'default');
 
-      const mediaRecorder = new MediaRecorder(streamRef.current, options);
-      const actualMimeType = mediaRecorder.mimeType || mimeType;
-      
+      const recorder = new MediaRecorder(streamRef.current, options);
+      const actualMimeType = recorder.mimeType || mimeType || (isAudio ? 'audio/webm' : 'video/webm');
+
       chunksRef.current = [];
-      
-      mediaRecorder.ondataavailable = (e) => {
+
+      recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      mediaRecorder.onstop = () => {
+      recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: actualMimeType });
         setCapturedMedia([{ blob, type: isAudio ? 'audio' : 'video', mimeType: actualMimeType }]);
         setPhase('preview');
       };
 
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(1000);
+      mediaRecorderRef.current = recorder;
+      recorder.start(800);
       setIsRecording(true);
       setRecordingProgress(0);
-      
-      // Play background music
+
+      // Background music while recording (faible volume)
+      stopBgMusic();
       if (selectedMusic?.url) {
-        audioRef.current = new Audio(selectedMusic.url);
-        audioRef.current.volume = 0.3;
-        audioRef.current.play().catch(() => {});
+        const a = new Audio(selectedMusic.url);
+        a.volume = 0.25;
+        bgAudioRef.current = a;
+        a.play().catch(() => {});
       }
-      
+
       // Progress timer
-      const duration = selectedDuration * 1000;
+      const durationMs = Math.max(1, selectedDuration) * 1000;
       const interval = 100;
       let elapsed = 0;
-      
-      timerRef.current = setInterval(() => {
+
+      safeClearInterval(timerRef);
+      timerRef.current = window.setInterval(() => {
         elapsed += interval;
-        setRecordingProgress((elapsed / duration) * 100);
-        if (elapsed >= duration) stopRecording();
+        const pct = Math.min(100, (elapsed / durationMs) * 100);
+        setRecordingProgress(pct);
+        if (elapsed >= durationMs) stopRecording();
       }, interval);
 
       triggerFeedback('notification');
     } catch (err: any) {
       console.error('[FullscreenCreator] Recording error:', err);
-      
-      if (err.name === 'NotSupportedError') {
-        toast({ 
-          title: "Format non supporté", 
-          description: "Essayez Chrome ou Safari", 
-          variant: "destructive" 
-        });
-      } else if (err.name === 'NotAllowedError') {
-        toast({ 
-          title: "Permission refusée", 
-          description: "Autorisez l'accès au micro", 
-          variant: "destructive" 
-        });
-      } else {
-        toast({ 
-          title: "Erreur", 
-          description: err.message || "Impossible d'enregistrer", 
-          variant: "destructive" 
-        });
-      }
+      toast({
+        title: 'Erreur enregistrement',
+        description: err?.message || "Impossible d'enregistrer.",
+        variant: 'destructive',
+      });
     }
   };
 
   const stopRecording = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    safeClearInterval(timerRef);
+    stopBgMusic();
+
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
@@ -399,38 +549,16 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
   const handleTextSubmit = () => {
     if (!textContent.trim()) {
-      toast({ title: "Texte requis", description: "Écrivez quelque chose", variant: "destructive" });
+      toast({ title: 'Texte requis', description: 'Écrivez quelque chose.', variant: 'destructive' });
       return;
     }
     setPhase('preview');
   };
 
-  const createSilentWavBlob = (durationMs = 600, sampleRate = 44100) => {
-    const numSamples = Math.max(1, Math.floor(sampleRate * (durationMs / 1000)));
-    const dataSize = numSamples * 2;
-    const buffer = new ArrayBuffer(44 + dataSize);
-    const view = new DataView(buffer);
-
-    const writeString = (offset: number, str: string) => {
-      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-    };
-
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + dataSize, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true); // PCM
-    view.setUint16(20, 1, true); // audio format
-    view.setUint16(22, 1, true); // channels
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true); // byte rate
-    view.setUint16(32, 2, true); // block align
-    view.setUint16(34, 16, true); // bits per sample
-    writeString(36, 'data');
-    view.setUint32(40, dataSize, true);
-
-    // PCM samples are already 0 (silence)
-    return new Blob([buffer], { type: 'audio/wav' });
+  const ensureAudioUrlForNonAudioPosts = async () => {
+    // Votre feed exige un audio_url jouable → on met un WAV silencieux
+    const silent = createSilentWavBlob(700);
+    return uploadToPublicUrl(`silent_${Date.now()}.wav`, silent, 'audio/wav');
   };
 
   const uploadToPublicUrl = async (fileName: string, blob: Blob, contentType: string) => {
@@ -444,155 +572,34 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     return urlData.publicUrl;
   };
 
-  const handleSubmit = async () => {
-    if (captureType === 'text' && !textContent.trim()) {
-      toast({ title: "Erreur", description: "Aucun contenu", variant: "destructive" });
-      return;
-    }
-    if (captureType !== 'text' && capturedMedia.length === 0) {
-      toast({ title: "Erreur", description: "Aucun média capturé", variant: "destructive" });
-      return;
-    }
+  const generateCaptionsPreview = async () => {
+    const media = capturedMedia[0];
+    if (!media || (media.type !== 'audio' && media.type !== 'video')) return;
 
-    setIsSubmitting(true);
+    setIsGeneratingCaptions(true);
+    triggerFeedback('notification');
 
     try {
-      let media_type: 'audio' | 'video' | 'photo' | 'text' = captureType;
-      let audio_url = '';
-      let media_url: string | undefined;
-      let transcript_fr: string | undefined;
-      let transcript_ba: string | undefined;
+      const base64 = await blobToBase64(media.blob);
+      const result = await transcribeWithTranslation(base64, currentLang === 'ba' ? 'ba' : 'fr');
 
-      // For text/photo: we still need a real audio file (the feed always plays audio_url)
-      const ensureAudioUrlForNonAudioPosts = async () => {
-        if (audio_url) return;
-        const silent = createSilentWavBlob(700);
-        audio_url = await uploadToPublicUrl(`silent_${Date.now()}.wav`, silent, 'audio/wav');
-      };
+      const fr = result.transcription_fr || result.transcription || '';
+      const ba = result.transcription_ba || '';
 
-      if (captureType === 'text') {
-        transcript_fr = textContent;
-        await ensureAudioUrlForNonAudioPosts();
-      } else {
-        const mainMedia = capturedMedia[0];
-        const mimeType =
-          mainMedia.mimeType ||
-          (mainMedia.type === 'video'
-            ? 'video/webm'
-            : mainMedia.type === 'photo'
-              ? 'image/jpeg'
-              : 'audio/webm');
-
-        const extension = mainMedia.type === 'photo' ? 'jpg' : getFileExtension(mimeType);
-        const fileName = `creator_${creatorMode}_${Date.now()}.${extension}`;
-
-        const uploadedUrl = await uploadToPublicUrl(fileName, mainMedia.blob, mimeType);
-
-        if (mainMedia.type === 'video') {
-          media_type = 'video';
-          media_url = uploadedUrl;
-          // IMPORTANT: <audio> cannot reliably play video/mp4/webm; keep audio_url as real audio
-          await ensureAudioUrlForNonAudioPosts();
-        } else if (mainMedia.type === 'audio') {
-          media_type = 'audio';
-          audio_url = uploadedUrl;
-        } else if (mainMedia.type === 'photo') {
-          media_type = 'photo';
-          media_url = uploadedUrl;
-          await ensureAudioUrlForNonAudioPosts();
-        }
-
-        // Transcribe audio/video only
-        if (mainMedia.type === 'audio' || mainMedia.type === 'video') {
-          try {
-            const base64 = await blobToBase64(mainMedia.blob);
-            const result = await transcribeWithTranslation(base64, currentLang === 'ba' ? 'ba' : 'fr');
-            transcript_fr = result.transcription_fr || result.transcription;
-            transcript_ba = result.transcription_ba;
-          } catch (e) {
-            console.warn('[FullscreenCreator] Transcription failed:', e);
-          }
-        }
-      }
-
-      await onComplete({
-        audio_url,
-        media_type,
-        media_url,
-        transcript_fr,
-        transcript_ba,
-        template_id: selectedTemplate?.id || `direct_${captureType}`,
-        topic: selectedTemplate?.label_fr || creatorMode,
-        duration_seconds: selectedDuration || (captureType === 'photo' || captureType === 'text' ? 5 : 15),
-        text_content: captureType === 'text' ? textContent : undefined
+      setPreviewTranscriptFr(fr);
+      setPreviewTranscriptBa(ba);
+      triggerFeedback('success');
+    } catch (e) {
+      console.warn('[FullscreenCreator] Preview transcription failed:', e);
+      toast({
+        title: 'Sous-titres indisponibles',
+        description: "Impossible de générer les sous-titres pour l’instant.",
+        variant: 'destructive',
       });
-
-      toast({ title: "✅ Publié !" });
-      handleClose();
-    } catch (err: any) {
-      console.error('[FullscreenCreator] Submit error:', err);
-      toast({ title: "Erreur de publication", description: err.message, variant: "destructive" });
     } finally {
-      setIsSubmitting(false);
+      setIsGeneratingCaptions(false);
     }
   };
-
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
-
-  const handleClose = () => {
-    stopStream();
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (audioRef.current) audioRef.current.pause();
-    setCapturedMedia([]);
-    setPhase('template');
-    setSelectedTemplate(null);
-    setIsRecording(false);
-    setShowBackgrounds(false);
-    setShowMusic(false);
-    setShowAI(false);
-    setTextContent('');
-    setAiContent(null);
-    onClose();
-  };
-
-  const handleSelectTemplate = (template: CreationTemplate) => {
-    setSelectedTemplate(template);
-    // Determine capture type based on first step
-    const firstStep = template.steps[0];
-    if (firstStep) {
-      setCaptureType(firstStep.type);
-      const totalDuration = template.steps.reduce((sum, s) => sum + s.duration, 0);
-      setSelectedDuration(totalDuration);
-    }
-    setPhase('capture');
-  };
-
-  const handleSkipTemplate = () => {
-    setSelectedTemplate(null);
-    setPhase('capture');
-  };
-
-  const handleDurationSelect = (option: typeof DURATION_OPTIONS[0]) => {
-    if (option.type === 'photo') {
-      setCaptureType('photo');
-      setSelectedDuration(0);
-    } else if (option.type === 'text') {
-      setCaptureType('text');
-      setSelectedDuration(0);
-    } else {
-      setCaptureType('video');
-      setSelectedDuration(option.value);
-    }
-  };
-
-  const getPreviewUrl = (media: { blob: Blob }) => URL.createObjectURL(media.blob);
 
   const playPreview = () => {
     const media = capturedMedia[0];
@@ -613,9 +620,126 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     setIsPreviewPlaying(false);
   };
 
+  const resetCapture = () => {
+    pausePreview();
+    setCapturedMedia([]);
+    setPreviewTranscriptFr('');
+    setPreviewTranscriptBa('');
+    setPhase('capture');
+    triggerFeedback('notification');
+  };
+
+  const removeCurrentMedia = () => {
+    pausePreview();
+    setCapturedMedia([]);
+    setPreviewTranscriptFr('');
+    setPreviewTranscriptBa('');
+    toast({ title: '🗑️ Média supprimé' });
+  };
+
+  const handleSubmit = async () => {
+    if (captureType === 'text' && !textContent.trim()) {
+      toast({ title: 'Erreur', description: 'Aucun contenu.', variant: 'destructive' });
+      return;
+    }
+    if (captureType !== 'text' && capturedMedia.length === 0) {
+      toast({ title: 'Erreur', description: 'Aucun média capturé.', variant: 'destructive' });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      let media_type: 'audio' | 'video' | 'photo' | 'text' = captureType;
+      let audio_url = '';
+      let media_url: string | undefined;
+      let transcript_fr: string | undefined;
+      let transcript_ba: string | undefined;
+
+      if (captureType === 'text') {
+        transcript_fr = textContent;
+        audio_url = await ensureAudioUrlForNonAudioPosts();
+      } else {
+        const main = capturedMedia[0];
+        const mimeType =
+          main.mimeType ||
+          (main.type === 'video'
+            ? 'video/webm'
+            : main.type === 'photo'
+              ? 'image/jpeg'
+              : 'audio/webm');
+
+        const ext = getFileExtension(mimeType);
+        const fileName = `creator_${creatorMode}_${intent}_${Date.now()}.${ext}`;
+        const uploadedUrl = await uploadToPublicUrl(fileName, main.blob, mimeType);
+
+        if (main.type === 'video') {
+          media_type = 'video';
+          media_url = uploadedUrl;
+          // audio_url doit rester un vrai audio jouable
+          audio_url = await ensureAudioUrlForNonAudioPosts();
+        } else if (main.type === 'audio') {
+          media_type = 'audio';
+          audio_url = uploadedUrl;
+        } else if (main.type === 'photo') {
+          media_type = 'photo';
+          media_url = uploadedUrl;
+          audio_url = await ensureAudioUrlForNonAudioPosts();
+        }
+
+        // Transcription (audio/video)
+        if (main.type === 'audio' || main.type === 'video') {
+          try {
+            const base64 = await blobToBase64(main.blob);
+            const result = await transcribeWithTranslation(base64, currentLang === 'ba' ? 'ba' : 'fr');
+            transcript_fr = result.transcription_fr || result.transcription || '';
+            transcript_ba = result.transcription_ba || '';
+          } catch (e) {
+            console.warn('[FullscreenCreator] Transcription failed:', e);
+          }
+        } else {
+          // photo: si on a déjà un texte (captions preview), on l’envoie
+          transcript_fr = previewTranscriptFr || undefined;
+          transcript_ba = previewTranscriptBa || undefined;
+        }
+      }
+
+      const topic =
+        selectedTemplate?.label_fr ||
+        INTENTS.find((i) => i.id === intent)?.label ||
+        creatorMode;
+
+      await onComplete({
+        audio_url,
+        media_type,
+        media_url,
+        transcript_fr,
+        transcript_ba,
+        template_id: selectedTemplate?.id || `direct_${captureType}_${intent}`,
+        topic,
+        duration_seconds:
+          selectedDuration || (captureType === 'photo' || captureType === 'text' ? 5 : 15),
+        text_content: captureType === 'text' ? textContent : undefined,
+      });
+
+      toast({ title: '✅ Publié !' });
+      handleClose();
+    } catch (err: any) {
+      console.error('[FullscreenCreator] Submit error:', err);
+      toast({
+        title: 'Erreur de publication',
+        description: err?.message || 'Impossible de publier.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ===== Guard
   if (!isOpen) return null;
 
-  // TEMPLATE SELECTION PHASE
+  // ===== TEMPLATE PHASE
   if (phase === 'template') {
     return (
       <motion.div
@@ -623,28 +747,25 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         animate={{ opacity: 1 }}
         className="fixed inset-0 z-50 bg-gradient-to-b from-amber-700/90 via-amber-800/95 to-amber-900"
       >
-        {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
           <div className="flex items-center justify-between p-4">
-            <button 
-              onClick={handleClose} 
+            <button
+              onClick={handleClose}
               className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center"
             >
               <X className="w-6 h-6 text-white" />
             </button>
-            
             <h2 className="text-white text-lg font-semibold">Créer</h2>
-            
             <div className="w-10" />
           </div>
         </div>
 
-        {/* Subtitle */}
         <div className="absolute top-20 left-0 right-0 z-10 px-4">
-          <p className="text-white/80 text-center text-sm">Choisis ton format de création</p>
+          <p className="text-white/80 text-center text-sm">
+            Choisis un template (ou crée librement)
+          </p>
         </div>
 
-        {/* Templates Grid */}
         <div className="absolute inset-0 pt-28 pb-24 px-4 overflow-y-auto">
           {loadingTemplates ? (
             <div className="flex items-center justify-center h-full">
@@ -652,17 +773,17 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {templates.map((template) => (
+              {templates.map((t) => (
                 <motion.button
-                  key={template.id}
+                  key={t.id}
                   whileTap={{ scale: 0.97 }}
-                  onClick={() => handleSelectTemplate(template)}
+                  onClick={() => handleSelectTemplate(t)}
                   className="aspect-[4/3] rounded-2xl bg-amber-600/50 backdrop-blur-sm border border-amber-500/30 flex flex-col items-center justify-center gap-2 p-4 hover:bg-amber-600/70 transition-colors"
                 >
-                  <span className="text-4xl">{template.icon}</span>
-                  <span className="text-white font-medium text-sm text-center">{template.label_fr}</span>
+                  <span className="text-4xl">{t.icon}</span>
+                  <span className="text-white font-medium text-sm text-center">{t.label_fr}</span>
                   <span className="px-2 py-0.5 rounded-full bg-amber-500/50 text-white text-xs">
-                    {template.steps.length} étapes
+                    {(t.steps?.length || 1)} étape
                   </span>
                 </motion.button>
               ))}
@@ -670,7 +791,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
           )}
         </div>
 
-        {/* Bottom: Skip option */}
         <div className="absolute bottom-0 left-0 right-0 z-20 safe-area-bottom">
           <div className="flex justify-center py-6">
             <motion.button
@@ -687,8 +807,10 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     );
   }
 
-  // CAPTURE PHASE
+  // ===== CAPTURE PHASE
   if (phase === 'capture') {
+    const intentMeta = INTENTS.find((i) => i.id === intent);
+
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -696,8 +818,8 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         className="fixed inset-0 z-50 bg-gradient-to-b from-gray-400 via-gray-500 to-gray-600"
       >
         <canvas ref={canvasRef} className="hidden" />
-        
-        {/* Background when no camera */}
+
+        {/* Background */}
         {captureType === 'audio' || captureType === 'text' ? (
           <AnimatedBackground theme={selectedBackground} intensity={0.4}>
             <div className="absolute inset-0" />
@@ -709,100 +831,134 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
             muted
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ transform: isFrontCamera ? 'scaleX(-1)' : 'none' }}
+            style={{
+              transform: isFrontCamera ? 'scaleX(-1)' : 'none',
+              ...getFilterStyle(currentFilter, currentFilter?.intensity ?? 100),
+            }}
           />
         )}
 
-        {/* TOP HEADER */}
+        {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
           <div className="flex items-center justify-between p-4">
-            <button 
-              onClick={() => setPhase('template')} 
+            <button
+              onClick={() => setPhase('template')}
               className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center"
             >
               <ArrowLeft className="w-6 h-6 text-white" />
             </button>
-            
+
             {selectedTemplate ? (
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 backdrop-blur-sm">
                 <span className="text-xl">{selectedTemplate.icon}</span>
                 <span className="text-gray-800 text-sm font-medium">{selectedTemplate.label_fr}</span>
               </div>
             ) : (
-              <button 
-                onClick={() => setShowMusic(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-sm"
-              >
-                <Music className="w-4 h-4 text-white" />
-                <span className="text-white text-sm font-medium">
-                  {selectedMusic?.name || 'Ajouter un son'}
-                </span>
-              </button>
+              <div className="px-3 py-2 rounded-full bg-black/40 backdrop-blur-sm text-white text-xs flex items-center gap-2">
+                <span className="text-base">{intentMeta?.icon}</span>
+                <span className="font-semibold">{intentMeta?.label}</span>
+              </div>
             )}
 
-            {(captureType === 'video' || captureType === 'photo') && (
-              <button 
-                onClick={flipCamera} 
+            {(captureType === 'video' || captureType === 'photo') ? (
+              <button
+                onClick={flipCamera}
                 className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center"
               >
                 <RotateCcw className="w-5 h-5 text-white" />
               </button>
+            ) : (
+              <div className="w-10" />
             )}
-            
-            {captureType === 'audio' && <div className="w-10" />}
           </div>
         </div>
 
-        {/* Template Step Instructions */}
-        {selectedTemplate && selectedTemplate.steps.length > 0 && (
-          <div className="absolute top-20 left-0 right-0 z-20 px-4">
+        {/* Coach hint (pré-record) */}
+        <AnimatePresence>
+          {coachHintsOpen && !isRecording && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="absolute top-20 left-0 right-0 z-20 px-4"
+            >
+              <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-3 mx-auto max-w-md shadow-lg">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
+                    <Lightbulb className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-900 font-semibold text-sm">
+                      Coach IA (rapide)
+                    </p>
+                    <p className="text-gray-700 text-sm mt-1">
+                      {intentMeta?.hint}
+                    </p>
+                    <p className="text-gray-500 text-xs mt-1">
+                      Conseil: 15–45s, voix claire, 1 idée principale.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setCoachHintsOpen(false)}
+                    className="p-1 rounded-lg hover:bg-black/5"
+                  >
+                    <X className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Template step (si template) */}
+        {selectedTemplate?.steps?.[0] && (
+          <div className="absolute top-36 left-0 right-0 z-20 px-4">
             <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 mx-auto max-w-sm">
               <p className="text-gray-800 text-sm font-medium text-center">
-                Étape 1: {selectedTemplate.steps[0].instruction_fr}
+                {selectedTemplate.steps[0].instruction_fr}
               </p>
               <p className="text-gray-500 text-xs text-center mt-1">
-                {selectedTemplate.steps[0].type === 'video' ? '🎥 Vidéo' : '🎤 Audio'} • {selectedTemplate.steps[0].duration}s
+                {selectedTemplate.steps[0].type === 'video' ? '🎥 Vidéo' : '🎙 Audio'} • {selectedTemplate.steps[0].duration}s
               </p>
             </div>
           </div>
         )}
 
-        {/* Recording Timer */}
+        {/* Recording timer */}
         {isRecording && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20">
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/90 backdrop-blur-sm">
               <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
               <span className="text-white text-sm font-medium">
-                {Math.floor(recordingProgress / 100 * selectedDuration)}s / {selectedDuration}s
+                {Math.floor((recordingProgress / 100) * selectedDuration)}s / {selectedDuration}s
               </span>
             </div>
           </div>
         )}
 
-        {/* Step dots indicator */}
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-          {[0, 1, 2].map((_, idx) => (
-            <div
-              key={idx}
-              className={`w-2 h-2 rounded-full transition-all ${
-                idx === 0 ? 'bg-white w-6' : 'bg-white/40'
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* Audio visualization */}
-        {captureType === 'audio' && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
-            <motion.div
-              animate={isRecording ? { scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] } : {}}
-              transition={{ repeat: Infinity, duration: 1.2 }}
-              className="w-36 h-36 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
-            >
-              <div className="w-24 h-24 rounded-full bg-white/25 flex items-center justify-center">
-                <Mic className={`w-12 h-12 ${isRecording ? 'text-red-400' : 'text-white'}`} />
-              </div>
-            </motion.div>
+        {/* Intention chips (création par intention) */}
+        {!selectedTemplate && (
+          <div className="absolute bottom-56 left-0 right-0 z-20 px-4">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {INTENTS.map((it) => {
+                const active = it.id === intent;
+                return (
+                  <motion.button
+                    key={it.id}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIntent(it.id)}
+                    className={`flex-shrink-0 px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm border transition-colors ${
+                      active
+                        ? 'bg-white text-gray-900 border-white'
+                        : 'bg-white/85 text-gray-700 border-white/40'
+                    }`}
+                  >
+                    <span className="mr-2">{it.icon}</span>
+                    <span className="text-xs font-semibold whitespace-nowrap">{it.label}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -814,97 +970,74 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
                 placeholder="Écrivez votre message..."
-                className="min-h-[200px] text-xl bg-white/90 backdrop-blur-sm border-0 rounded-2xl p-6 resize-none"
-                maxLength={500}
+                className="min-h-[220px] text-xl bg-white/90 backdrop-blur-sm border-0 rounded-2xl p-6 resize-none"
+                maxLength={650}
               />
-              <p className="text-white/70 text-sm text-right mt-2">{textContent.length}/500</p>
+              <p className="text-white/70 text-sm text-right mt-2">{textContent.length}/650</p>
             </div>
           </div>
         )}
 
-        {/* RIGHT SIDE CONTROLS */}
+        {/* Side controls */}
         <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-4">
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowBackgrounds(true)}
-            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex flex-col items-center justify-center"
+            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
+            title="Fond"
           >
             <Palette className="w-5 h-5 text-white" />
           </motion.button>
-          
+
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowMusic(true)}
-            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex flex-col items-center justify-center"
+            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
+            title="Musique"
           >
             <Music className="w-5 h-5 text-white" />
           </motion.button>
-          
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowFilters(true)}
+            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
+            title="Filtres"
+          >
+            <Filter className="w-5 h-5 text-white" />
+          </motion.button>
+
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowAI(true)}
             className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex flex-col items-center justify-center"
+            title="IA"
           >
             <Sparkles className="w-5 h-5 text-white" />
             <span className="text-white text-[10px] mt-0.5">IA</span>
           </motion.button>
-          
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setShowAI(true)}
-            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex flex-col items-center justify-center"
-          >
-            <Lightbulb className="w-5 h-5 text-white" />
-          </motion.button>
         </div>
 
-        {/* AI TEMPLATES ROW */}
-        <div className="absolute bottom-52 left-0 right-0 z-20 px-4">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {[
-              { icon: '✨', label: 'Script IA' },
-              { icon: '#️⃣', label: 'Hashtags' },
-              { icon: '💡', label: 'Hook viral' },
-              { icon: '🎬', label: 'Intro' },
-              { icon: '🔚', label: 'Outro' },
-            ].map((item) => (
-              <motion.button
-                key={item.label}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowAI(true)}
-                className="flex-shrink-0 flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-white/90 backdrop-blur-sm shadow-sm"
-              >
-                <span className="text-lg">{item.icon}</span>
-                <span className="text-xs text-gray-700 font-medium whitespace-nowrap">{item.label}</span>
-              </motion.button>
-            ))}
-            <div className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-500 to-pink-500 ml-1">
-              <Sparkles className="w-3 h-3 text-white" />
-              <span className="text-white text-xs font-semibold">Lovable IA</span>
-            </div>
-          </div>
-        </div>
-
-        {/* DURATION SELECTOR */}
+        {/* Duration selector */}
         <div className="absolute bottom-36 left-0 right-0 z-20">
           <div className="flex items-center justify-center gap-3 px-4 overflow-x-auto scrollbar-hide">
-            {DURATION_OPTIONS.map((option) => (
+            {DURATION_OPTIONS.map((opt) => (
               <button
-                key={option.label}
-                onClick={() => handleDurationSelect(option)}
+                key={opt.label}
+                onClick={() => handleDurationSelect(opt)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  (option.type === captureType && (option.type !== 'video' || option.value === selectedDuration))
+                  (opt.type === captureType && (opt.type !== 'video' || opt.value === selectedDuration))
                     ? 'bg-white text-gray-900 shadow-lg'
                     : 'text-white/80 hover:text-white'
                 }`}
               >
-                {option.label}
+                {opt.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* CAPTURE BUTTON */}
+        {/* Capture button */}
         <div className="absolute bottom-16 left-0 right-0 z-20 flex justify-center">
           {captureType === 'text' ? (
             <motion.button
@@ -927,104 +1060,101 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={startRecording}
-              className="w-20 h-20 rounded-full bg-white border-4 border-white/50 flex items-center justify-center shadow-xl"
+              className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-xl"
             >
-              <div className="w-16 h-16 rounded-full bg-red-500" />
+              {captureType === 'audio' ? (
+                <Mic className="w-9 h-9 text-white" />
+              ) : (
+                <Video className="w-9 h-9 text-white" />
+              )}
             </motion.button>
           ) : (
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={stopRecording}
-              className="w-20 h-20 rounded-full bg-white border-4 border-red-500 flex items-center justify-center shadow-xl"
+              className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl"
             >
-              <div className="w-8 h-8 rounded-sm bg-red-500" />
+              <div className="w-7 h-7 rounded-md bg-red-500" />
             </motion.button>
           )}
         </div>
 
-        {/* Recording progress ring */}
-        {isRecording && (
-          <svg className="absolute bottom-14 left-1/2 -translate-x-1/2 w-24 h-24 z-10 -rotate-90">
-            <circle
-              cx="48"
-              cy="48"
-              r="42"
-              stroke="rgba(255,255,255,0.3)"
-              strokeWidth="4"
-              fill="none"
-            />
-            <circle
-              cx="48"
-              cy="48"
-              r="42"
-              stroke="white"
-              strokeWidth="4"
-              fill="none"
-              strokeDasharray={`${2 * Math.PI * 42}`}
-              strokeDashoffset={`${2 * Math.PI * 42 * (1 - recordingProgress / 100)}`}
-              strokeLinecap="round"
-              className="transition-all"
-            />
-          </svg>
-        )}
-
-        {/* BOTTOM NAV - LIVE / PUBLICATION / CRÉER */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 safe-area-bottom">
-          <div className="flex justify-center gap-8 py-4">
-            {(['live', 'publication', 'create'] as CreatorMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setCreatorMode(mode)}
-                className={`text-sm font-semibold uppercase tracking-wide transition-all ${
-                  creatorMode === mode
-                    ? 'text-white border-b-2 border-white pb-1'
-                    : 'text-white/60'
-                }`}
-              >
-                {mode === 'live' ? 'LIVE' : mode === 'publication' ? 'PUBLICATION' : 'CRÉER'}
-              </button>
-            ))}
+        {/* Bottom mode toggle */}
+        <div className="absolute bottom-2 left-0 right-0 z-20 safe-area-bottom">
+          <div className="flex justify-center gap-2 px-4 pb-4">
+            {(['live', 'publication', 'create'] as CreatorMode[]).map((m) => {
+              const active = creatorMode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setCreatorMode(m)}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-sm transition-colors ${
+                    active ? 'bg-white text-gray-900' : 'bg-black/30 text-white'
+                  }`}
+                >
+                  {m === 'live' ? 'LIVE' : m === 'publication' ? 'PUBLICATION' : 'CRÉER'}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* SHEETS */}
+        {/* Modals */}
         <AnimatePresence>
-          {showBackgrounds && (
+          {showFilters && (
+            <VideoFiltersPanel
+              isOpen={showFilters}
+              onClose={() => setShowFilters(false)}
+              onSelectFilter={(f: VideoFilter) => setCurrentFilter(f)}
+              currentFilter={currentFilter}
+              videoElement={videoPreviewRef.current}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showAI && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-30 bg-black/50"
-              onClick={() => setShowBackgrounds(false)}
+              className="absolute inset-0 z-40 bg-black/55"
+              onClick={() => setShowAI(false)}
             >
               <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                onClick={e => e.stopPropagation()}
-                className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-4 max-h-[50vh] overflow-y-auto"
+                initial={{ y: '12%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '12%', opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 right-0 bottom-0 bg-white rounded-t-3xl p-4 pb-6"
               >
-                <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
-                <h3 className="text-gray-800 font-semibold mb-4">Arrière-plans</h3>
-                <div className="grid grid-cols-4 gap-3">
-                  {(['savanna', 'night_village', 'harvest', 'festival', 'sunrise', 'ocean', 'forest'] as BackgroundTheme[]).map(theme => (
-                    <button
-                      key={theme}
-                      onClick={() => { setSelectedBackground(theme); setShowBackgrounds(false); }}
-                      className={`aspect-square rounded-xl overflow-hidden border-2 ${selectedBackground === theme ? 'border-blue-500' : 'border-transparent'}`}
-                    >
-                      <div className={`w-full h-full bg-gradient-to-br ${
-                        theme === 'savanna' ? 'from-amber-400 to-orange-600' :
-                        theme === 'night_village' ? 'from-indigo-900 to-purple-800' :
-                        theme === 'harvest' ? 'from-green-500 to-emerald-600' :
-                        theme === 'festival' ? 'from-pink-500 to-orange-500' :
-                        theme === 'sunrise' ? 'from-yellow-300 to-rose-500' :
-                        theme === 'ocean' ? 'from-blue-400 to-cyan-600' :
-                        'from-green-700 to-emerald-900'
-                      }`} />
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">IA de création</p>
+                      <p className="text-xs text-gray-500">Scripts, hooks, hashtags, idées…</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAI(false)}
+                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
+                  >
+                    <X className="w-5 h-5 text-gray-700" />
+                  </button>
                 </div>
+
+                <DynamicAITemplates
+                  topic={selectedTemplate?.label_fr || INTENTS.find((i) => i.id === intent)?.label || 'tamtam'}
+                  templateKey={selectedTemplate?.template_key || `direct_${intent}`}
+                  isSheet={true}
+                  onClose={() => setShowAI(false)}
+                  onSelectContent={() => {
+                    toast({ title: '✅ Contenu IA prêt', description: 'Vous le verrez en preview (sous-titres/texte).' });
+                  }}
+                />
               </motion.div>
             </motion.div>
           )}
@@ -1036,37 +1166,59 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-30 bg-black/50"
+              className="absolute inset-0 z-40 bg-black/55"
               onClick={() => setShowMusic(false)}
             >
               <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                onClick={e => e.stopPropagation()}
-                className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-4 max-h-[60vh] overflow-y-auto"
+                initial={{ y: '12%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '12%', opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 right-0 bottom-0 bg-white rounded-t-3xl p-4 pb-6"
               >
-                <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
-                <h3 className="text-gray-800 font-semibold mb-4">Musiques</h3>
-                <div className="space-y-2">
-                  {MUSIC_LIBRARY.filter(t => t.category === 'traditional').slice(0, 8).map(track => (
-                    <button
-                      key={track.id}
-                      onClick={() => { setSelectedMusic(track); setShowMusic(false); }}
-                      className={`w-full p-3 rounded-xl flex items-center gap-3 transition-colors ${
-                        selectedMusic?.id === track.id ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 hover:bg-gray-100'
-                      }`}
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center">
-                        <Music className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-gray-800 font-medium">{track.name}</p>
-                        <p className="text-gray-500 text-sm">{track.duration}s • {track.mood}</p>
-                      </div>
-                      {selectedMusic?.id === track.id && <Check className="w-5 h-5 text-blue-500" />}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-gray-900">Choisir une musique</p>
+                  <button
+                    onClick={() => setShowMusic(false)}
+                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
+                  >
+                    <X className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+
+                <div className="mt-3 max-h-[50vh] overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-2">
+                    {MUSIC_LIBRARY.map((track) => {
+                      const active = selectedMusic?.id === track.id;
+                      return (
+                        <button
+                          key={track.id}
+                          onClick={() => {
+                            setSelectedMusic(track);
+                            triggerFeedback('success');
+                          }}
+                          className={`w-full p-3 rounded-2xl border flex items-center justify-between ${
+                            active ? 'border-violet-500 bg-violet-50' : 'border-gray-200 bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-pink-500 flex items-center justify-center">
+                              <Music className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="text-left">
+                              <p className="font-semibold text-gray-900">{track.name}</p>
+                              <p className="text-xs text-gray-500">{track.mood || 'Ambiance'}</p>
+                            </div>
+                          </div>
+                          {active && (
+                            <div className="w-7 h-7 rounded-full bg-violet-500 flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </motion.div>
             </motion.div>
@@ -1074,38 +1226,51 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         </AnimatePresence>
 
         <AnimatePresence>
-          {showAI && (
+          {showBackgrounds && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-30 bg-black/50"
-              onClick={() => setShowAI(false)}
+              className="absolute inset-0 z-40 bg-black/55"
+              onClick={() => setShowBackgrounds(false)}
             >
               <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                onClick={e => e.stopPropagation()}
-                className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-4 max-h-[70vh] overflow-y-auto"
+                initial={{ y: '12%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '12%', opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 right-0 bottom-0 bg-white rounded-t-3xl p-4 pb-6"
               >
-                <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
-                <h3 className="text-gray-800 font-semibold mb-4 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-violet-500" />
-                  Contenu IA Lovable
-                </h3>
-                <DynamicAITemplates
-                  topic={creatorMode}
-                  templateKey={`direct_${captureType}`}
-                  isSheet
-                  onSelectContent={(type, content) => {
-                    setAiContent({ type, content });
-                    if (captureType === 'text') {
-                      setTextContent(content);
-                    }
-                  }}
-                  onClose={() => setShowAI(false)}
-                />
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-gray-900">Choisir un fond</p>
+                  <button
+                    onClick={() => setShowBackgrounds(false)}
+                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
+                  >
+                    <X className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {(['savanna', 'ocean', 'forest', 'city', 'sunset', 'night'] as BackgroundTheme[]).map((t) => {
+                    const active = selectedBackground === t;
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => {
+                          setSelectedBackground(t);
+                          triggerFeedback('success');
+                        }}
+                        className={`p-3 rounded-2xl border text-left ${
+                          active ? 'border-amber-500 bg-amber-50' : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <p className="font-semibold text-gray-900 capitalize">{t}</p>
+                        <p className="text-xs text-gray-500">Ambiance</p>
+                      </button>
+                    );
+                  })}
+                </div>
               </motion.div>
             </motion.div>
           )}
@@ -1114,160 +1279,180 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     );
   }
 
-  // PREVIEW PHASE
-  const currentMedia = capturedMedia[0];
-  
+  // ===== PREVIEW PHASE
+  const media = capturedMedia[0];
+  const canGenerateCaptions = media && (media.type === 'audio' || media.type === 'video');
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50"
+      className="fixed inset-0 z-50 bg-black"
     >
-      <AnimatedBackground theme={selectedBackground} intensity={0.3}>
-        {/* Top Bar */}
+      {/* Background */}
+      <AnimatedBackground theme={selectedBackground} intensity={0.25}>
+        {/* Media */}
+        <div className="absolute inset-0">
+          {captureType === 'video' && media?.type === 'video' ? (
+            <video
+              ref={previewVideoRef}
+              src={previewUrl}
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+              style={getFilterStyle(currentFilter, currentFilter?.intensity ?? 100)}
+              onEnded={() => setIsPreviewPlaying(false)}
+              onPause={() => setIsPreviewPlaying(false)}
+            />
+          ) : captureType === 'audio' && media?.type === 'audio' ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-52 h-52 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                <div className="w-36 h-36 rounded-full bg-white/15 flex items-center justify-center">
+                  <Mic className="w-16 h-16 text-white" />
+                </div>
+              </div>
+              <audio
+                ref={previewAudioRef}
+                src={previewUrl}
+                onEnded={() => setIsPreviewPlaying(false)}
+                onPause={() => setIsPreviewPlaying(false)}
+              />
+            </div>
+          ) : captureType === 'photo' && media?.type === 'photo' ? (
+            <img
+              src={previewUrl}
+              alt="Captured"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={getFilterStyle(currentFilter, currentFilter?.intensity ?? 100)}
+            />
+          ) : captureType === 'text' ? (
+            <div className="absolute inset-0 flex items-center justify-center px-6">
+              <div className="w-full max-w-xl rounded-3xl bg-white/90 backdrop-blur-sm p-6">
+                <p className="text-gray-900 text-xl whitespace-pre-wrap leading-relaxed">
+                  {textContent}
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
-          <div className="flex items-center justify-between p-4 mx-3 mt-3 rounded-2xl bg-white/90 backdrop-blur-sm shadow-sm">
-            <button 
-              onClick={() => setPhase('capture')} 
-              className="p-2 rounded-full hover:bg-gray-100"
+          <div className="flex items-center justify-between p-4">
+            <button
+              onClick={handleClose}
+              className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
+              <X className="w-6 h-6 text-white" />
             </button>
-            
-            <h3 className="text-gray-800 font-semibold">Prévisualisation</h3>
-            
-            <div className="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full">
-              <Check className="w-4 h-4 text-green-600" />
-              <span className="text-green-700 text-sm font-medium">Prêt</span>
+
+            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-black/35 backdrop-blur-sm">
+              <span className="text-white text-xs font-semibold">
+                {selectedTemplate?.label_fr || INTENTS.find((i) => i.id === intent)?.label || 'Création'}
+              </span>
+            </div>
+
+            <button
+              onClick={() => setShowAI(true)}
+              className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center"
+              title="IA"
+            >
+              <Sparkles className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Subtitle / captions overlay (light) */}
+        {(previewTranscriptFr || previewTranscriptBa) && (
+          <div className="absolute bottom-36 left-0 right-0 z-20 px-4">
+            <div className="mx-auto max-w-xl rounded-2xl bg-black/45 backdrop-blur-sm p-3">
+              <p className="text-white text-sm leading-relaxed">
+                {(currentLang === 'ba' ? previewTranscriptBa : previewTranscriptFr) || previewTranscriptFr || previewTranscriptBa}
+              </p>
             </div>
           </div>
+        )}
+
+        {/* Preview controls */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-4">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowFilters(true)}
+            className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+            title="Filtres"
+          >
+            <Filter className="w-5 h-5 text-white" />
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={resetCapture}
+            className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+            title="Reprendre"
+          >
+            <Sliders className="w-5 h-5 text-white" />
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={removeCurrentMedia}
+            className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+            title="Supprimer"
+          >
+            <Trash2 className="w-5 h-5 text-white" />
+          </motion.button>
         </div>
 
-        {/* Preview Content */}
-        <div className="absolute inset-0 flex flex-col pt-24 pb-48 px-4">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 relative rounded-3xl overflow-hidden bg-white shadow-xl"
-          >
-            {captureType === 'text' ? (
-              <div className="w-full h-full flex items-center justify-center p-8 bg-gradient-to-br from-blue-50 to-violet-50">
-                <div className="text-center">
-                  <Type className="w-16 h-16 text-blue-400 mx-auto mb-6" />
-                  <p className="text-xl text-gray-800 leading-relaxed">{textContent}</p>
-                </div>
-              </div>
-            ) : currentMedia?.type === 'video' ? (
-              <video
-                ref={previewVideoRef}
-                src={getPreviewUrl(currentMedia)}
-                className="w-full h-full object-cover"
-                style={getFilterStyle(currentFilter, currentFilter.intensity)}
-                loop
-                playsInline
-                onTimeUpdate={(e) => {
-                  const video = e.currentTarget;
-                  setPreviewProgress((video.currentTime / video.duration) * 100);
-                }}
-                onEnded={() => setIsPreviewPlaying(false)}
-              />
-            ) : currentMedia?.type === 'audio' ? (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-violet-50">
-                <motion.div
-                  animate={isPreviewPlaying ? { scale: [1, 1.1, 1] } : {}}
-                  transition={{ repeat: Infinity, duration: 1 }}
-                  className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center mb-6 shadow-xl"
-                >
-                  <Mic className="w-16 h-16 text-white" />
-                </motion.div>
-                <audio
-                  ref={previewAudioRef}
-                  src={getPreviewUrl(currentMedia)}
-                  onTimeUpdate={(e) => {
-                    const audio = e.currentTarget;
-                    setPreviewProgress((audio.currentTime / audio.duration) * 100);
-                  }}
-                  onEnded={() => setIsPreviewPlaying(false)}
-                />
-                <p className="text-gray-600 font-medium">Audio - {selectedDuration}s</p>
-              </div>
-            ) : currentMedia?.type === 'photo' ? (
-              <img 
-                src={getPreviewUrl(currentMedia)} 
-                className="w-full h-full object-cover"
-                style={getFilterStyle(currentFilter, currentFilter.intensity)}
-                alt="Preview"
-              />
-            ) : null}
-            
-            {/* Play/Pause Overlay */}
-            {(currentMedia?.type === 'video' || currentMedia?.type === 'audio') && (
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={isPreviewPlaying ? pausePreview : playPreview}
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ opacity: isPreviewPlaying ? 0 : 1 }}
-              >
-                <div className="w-20 h-20 rounded-full bg-white/90 flex items-center justify-center shadow-xl">
-                  {isPreviewPlaying ? (
-                    <Pause className="w-10 h-10 text-gray-800" />
-                  ) : (
-                    <Play className="w-10 h-10 text-gray-800 ml-1" />
-                  )}
-                </div>
-              </motion.button>
-            )}
-            
-            {/* Progress Bar */}
-            {(currentMedia?.type === 'video' || currentMedia?.type === 'audio') && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
-                <div 
-                  className="h-full bg-white transition-all" 
-                  style={{ width: `${previewProgress}%` }} 
-                />
-              </div>
-            )}
-          </motion.div>
-
-          {/* Edit Options */}
-          <div className="flex justify-center gap-3 mt-4">
-            {currentMedia?.type !== 'photo' && captureType !== 'text' && (
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowFilters(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/90 shadow"
-              >
-                <Filter className="w-5 h-5 text-violet-500" />
-                <span className="text-gray-700 font-medium text-sm">Filtres</span>
-              </motion.button>
-            )}
-            
+        {/* Play/Pause */}
+        {(captureType === 'video' || captureType === 'audio') && (
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-20">
             <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setCapturedMedia([]);
-                setPhase('capture');
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/90 shadow"
+              whileTap={{ scale: 0.92 }}
+              onClick={() => (isPreviewPlaying ? pausePreview() : playPreview())}
+              className="w-12 h-12 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center"
             >
-              <Edit3 className="w-5 h-5 text-blue-500" />
-              <span className="text-gray-700 font-medium text-sm">Refaire</span>
-            </motion.button>
-            
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setCapturedMedia([]);
-                setTextContent('');
-                handleClose();
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/90 shadow"
-            >
-              <Trash2 className="w-5 h-5 text-red-500" />
-              <span className="text-gray-700 font-medium text-sm">Supprimer</span>
+              {isPreviewPlaying ? (
+                <Pause className="w-5 h-5 text-white" />
+              ) : (
+                <Play className="w-5 h-5 text-white" />
+              )}
             </motion.button>
           </div>
-        </div>
+        )}
+
+        {/* Caption generation */}
+        {canGenerateCaptions && (
+          <div className="absolute bottom-24 left-0 right-0 z-20 px-4">
+            <div className="mx-auto max-w-xl flex gap-2">
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={generateCaptionsPreview}
+                disabled={isGeneratingCaptions}
+                className="flex-1 py-3 rounded-2xl bg-white/90 backdrop-blur-sm text-gray-900 font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {isGeneratingCaptions ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Génération sous-titres…</span>
+                  </>
+                ) : (
+                  <>
+                    <Type className="w-4 h-4" />
+                    <span>Sous-titres intelligents</span>
+                  </>
+                )}
+              </motion.button>
+
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowAI(true)}
+                className="px-4 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-pink-500 text-white font-semibold flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>IA</span>
+              </motion.button>
+            </div>
+          </div>
+        )}
 
         {/* Bottom Action Bar */}
         <div className="absolute bottom-0 left-0 right-0 z-20 pb-8 pt-4 safe-area-bottom">
@@ -1275,20 +1460,35 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
             {/* Info */}
             <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center">
-                {captureType === 'video' ? <Video className="w-6 h-6 text-white" /> :
-                 captureType === 'audio' ? <Mic className="w-6 h-6 text-white" /> :
-                 captureType === 'photo' ? <Camera className="w-6 h-6 text-white" /> :
-                 <Type className="w-6 h-6 text-white" />}
+                {captureType === 'video' ? (
+                  <Video className="w-6 h-6 text-white" />
+                ) : captureType === 'audio' ? (
+                  <Mic className="w-6 h-6 text-white" />
+                ) : captureType === 'photo' ? (
+                  <Camera className="w-6 h-6 text-white" />
+                ) : (
+                  <Type className="w-6 h-6 text-white" />
+                )}
               </div>
+
               <div className="flex-1">
-                <p className="text-gray-800 font-semibold capitalize">{captureType}</p>
+                <p className="text-gray-800 font-semibold capitalize">
+                  {captureType} • {INTENTS.find((i) => i.id === intent)?.label}
+                </p>
                 <p className="text-gray-500 text-sm">
-                  {captureType === 'text' ? `${textContent.length} caractères` : 
-                   captureType === 'photo' ? 'Photo' : `${selectedDuration}s`}
+                  {captureType === 'text'
+                    ? `${textContent.length} caractères`
+                    : captureType === 'photo'
+                      ? 'Photo'
+                      : `${selectedDuration}s`}
                 </p>
               </div>
+
+              <div className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
+                {creatorMode === 'live' ? 'LIVE' : creatorMode === 'publication' ? 'PUB' : 'CRÉER'}
+              </div>
             </div>
-            
+
             {/* Publish button */}
             <motion.button
               whileTap={{ scale: 0.97 }}
@@ -1310,6 +1510,69 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
             </motion.button>
           </div>
         </div>
+
+        {/* Overlays */}
+        <AnimatePresence>
+          {showFilters && (
+            <VideoFiltersPanel
+              isOpen={showFilters}
+              onClose={() => setShowFilters(false)}
+              onSelectFilter={(f: VideoFilter) => setCurrentFilter(f)}
+              currentFilter={currentFilter}
+              videoElement={previewVideoRef.current}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showAI && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-40 bg-black/55"
+              onClick={() => setShowAI(false)}
+            >
+              <motion.div
+                initial={{ y: '12%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '12%', opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 right-0 bottom-0 bg-white rounded-t-3xl p-4 pb-6"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">IA de création</p>
+                      <p className="text-xs text-gray-500">Script, hook, hashtags, idées…</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAI(false)}
+                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
+                  >
+                    <X className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+
+                <DynamicAITemplates
+                  topic={selectedTemplate?.label_fr || INTENTS.find((i) => i.id === intent)?.label || 'tamtam'}
+                  templateKey={selectedTemplate?.template_key || `direct_${intent}`}
+                  isSheet={true}
+                  onClose={() => setShowAI(false)}
+                  onSelectContent={(_, content) => {
+                    // On met ça dans le transcript preview (utile pour texte/photo)
+                    if (!previewTranscriptFr) setPreviewTranscriptFr(content);
+                    toast({ title: '✅ Contenu IA appliqué' });
+                  }}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </AnimatedBackground>
     </motion.div>
   );
