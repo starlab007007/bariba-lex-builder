@@ -36,18 +36,32 @@ import { VideoFiltersPanel, useVideoFilter, VideoFilter } from './VideoFilters';
 import { Textarea } from '@/components/ui/textarea';
 
 // ============= Cross-browser MIME type detection =============
+const canUseMediaRecorder = () => typeof window !== 'undefined' && typeof MediaRecorder !== 'undefined';
+
+const safeIsTypeSupported = (mime: string) => {
+  try {
+    return !!(MediaRecorder as any)?.isTypeSupported?.(mime);
+  } catch {
+    return false;
+  }
+};
+
 const getSupportedMimeType = (mediaType: 'audio' | 'video'): string => {
+  if (!canUseMediaRecorder()) return '';
+
   if (mediaType === 'audio') {
-    if (MediaRecorder.isTypeSupported('audio/mp4')) return 'audio/mp4';
-    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
-    if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
-    if (MediaRecorder.isTypeSupported('audio/ogg')) return 'audio/ogg';
+    // Safari: audio/mp4 parfois ok, sinon webm/opus selon navigateur
+    if (safeIsTypeSupported('audio/mp4')) return 'audio/mp4';
+    if (safeIsTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
+    if (safeIsTypeSupported('audio/webm')) return 'audio/webm';
+    if (safeIsTypeSupported('audio/ogg')) return 'audio/ogg';
     return '';
   } else {
-    if (MediaRecorder.isTypeSupported('video/mp4')) return 'video/mp4';
-    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) return 'video/webm;codecs=vp9,opus';
-    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) return 'video/webm;codecs=vp9';
-    if (MediaRecorder.isTypeSupported('video/webm')) return 'video/webm';
+    // Video: privilégier webm, mp4 si supporté
+    if (safeIsTypeSupported('video/mp4')) return 'video/mp4';
+    if (safeIsTypeSupported('video/webm;codecs=vp9,opus')) return 'video/webm;codecs=vp9,opus';
+    if (safeIsTypeSupported('video/webm;codecs=vp9')) return 'video/webm;codecs=vp9';
+    if (safeIsTypeSupported('video/webm')) return 'video/webm';
     return '';
   }
 };
@@ -85,12 +99,7 @@ type CreatorMode = 'live' | 'publication' | 'create';
 type Phase = 'template' | 'capture' | 'preview';
 
 // Intention (édition par intention)
-type Intent =
-  | 'informer'
-  | 'expliquer'
-  | 'vendre'
-  | 'sensibiliser'
-  | 'raconter';
+type Intent = 'informer' | 'expliquer' | 'vendre' | 'sensibiliser' | 'raconter';
 
 const INTENTS: Array<{
   id: Intent;
@@ -142,7 +151,7 @@ interface FullscreenCreatorProps {
 type CapturedMedia = { blob: Blob; type: 'audio' | 'video' | 'photo'; mimeType?: string };
 
 const safeClearInterval = (ref: React.MutableRefObject<number | null>) => {
-  if (ref.current) {
+  if (ref.current !== null) {
     window.clearInterval(ref.current);
     ref.current = null;
   }
@@ -179,15 +188,10 @@ const createSilentWavBlob = (durationMs = 700, sampleRate = 44100) => {
   view.setUint16(34, 16, true); // bits per sample
   writeString(36, 'data');
   view.setUint32(40, dataSize, true);
-  // PCM samples are already 0 (silence)
   return new Blob([buffer], { type: 'audio/wav' });
 };
 
-export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
-  isOpen,
-  onClose,
-  onComplete,
-}) => {
+export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, onClose, onComplete }) => {
   const { currentLang } = useTamTamLanguage();
   const { transcribeWithTranslation } = useUnifiedAudio();
   const { toast } = useToast();
@@ -241,6 +245,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
+  const stoppingRef = useRef(false);
 
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
@@ -253,17 +258,106 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     return URL.createObjectURL(capturedMedia[0].blob);
   }, [capturedMedia]);
 
-  // Cleanup preview object URL
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
 
+  // ===== Stream helpers (FIX: un seul stream, toujours conforme au mode)
+  const stopStream = () => {
+    try {
+      if (videoPreviewRef.current) videoPreviewRef.current.srcObject = null;
+    } catch {}
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {}
+      });
+      streamRef.current = null;
+    }
+  };
+
+  const stopBgMusic = () => {
+    if (bgAudioRef.current) {
+      try {
+        bgAudioRef.current.pause();
+      } catch {}
+      bgAudioRef.current = null;
+    }
+  };
+
+  const safeStopRecorder = () => {
+    // idempotent
+    if (stoppingRef.current) return;
+    stoppingRef.current = true;
+
+    safeClearInterval(timerRef);
+    stopBgMusic();
+
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== 'inactive') {
+      try {
+        // flush avant stop (plus fiable sur Safari)
+        rec.requestData?.();
+      } catch {}
+      try {
+        rec.stop();
+      } catch {}
+    } else {
+      stoppingRef.current = false;
+    }
+  };
+
+  const ensureStreamFor = async (kind: 'video' | 'audio' | 'photo') => {
+    const needVideo = kind === 'video' || kind === 'photo';
+    const needAudio = kind === 'video' || kind === 'audio';
+
+    const hasAudio = !!streamRef.current?.getAudioTracks()?.length;
+    const hasVideo = !!streamRef.current?.getVideoTracks()?.length;
+
+    const okAudio = !needAudio || hasAudio;
+    const okVideo = !needVideo || hasVideo;
+
+    // Si stream existe mais ne correspond pas → stop et recrée
+    if (!streamRef.current || !okAudio || !okVideo) {
+      stopStream();
+
+      const constraints: MediaStreamConstraints = {
+        audio: needAudio
+          ? {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            }
+          : false,
+        video: needVideo ? { facingMode: isFrontCamera ? 'user' : 'environment' } : false,
+      };
+
+      const s = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = s;
+
+      if (needVideo && videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = s;
+      }
+    }
+
+    // Si on est en audio-only, assure que la preview vidéo n’a pas de srcObject
+    if (!needVideo && videoPreviewRef.current) {
+      try {
+        videoPreviewRef.current.srcObject = null;
+      } catch {}
+    }
+
+    return streamRef.current!;
+  };
+
   // Load templates when open
   useEffect(() => {
     if (!isOpen) return;
-    loadTemplates();
+    loadTemplates().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Suggested music (based on intent)
@@ -274,23 +368,44 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     if (!selectedMusic && suggestions.length > 0) setSelectedMusic(suggestions[0]);
   }, [isOpen, intent, selectedMusic]);
 
-  // Init camera on capture if needed
+  // Init camera stream only when capture phase + video/photo
   useEffect(() => {
     if (!isOpen) return;
 
-    if (phase === 'capture' && (captureType === 'video' || captureType === 'photo')) {
-      initCamera();
-    }
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        if (phase === 'capture' && (captureType === 'video' || captureType === 'photo')) {
+          await ensureStreamFor(captureType);
+        } else {
+          // Pas besoin caméra en template/preview/text/audio (tant qu’on n’enregistre pas)
+          // On stoppe pour éviter de garder la caméra ouverte et réduire les freezes
+          if (!isRecording) stopStream();
+        }
+      } catch (err: any) {
+        if (cancelled) return;
+        console.error('[FullscreenCreator] Camera/mic error:', err);
+        toast({
+          title: 'Permission requise',
+          description: "Autorisez l'accès au micro et à la caméra.",
+          variant: 'destructive',
+        });
+      }
+    };
+
+    run();
 
     return () => {
+      cancelled = true;
+      // Cleanup quand on ferme
       if (!isOpen) {
+        safeStopRecorder();
         stopStream();
-        safeClearInterval(timerRef);
-        stopBgMusic();
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, phase, captureType]);
+  }, [isOpen, phase, captureType, isFrontCamera]);
 
   const loadTemplates = async () => {
     setLoadingTemplates(true);
@@ -327,49 +442,18 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     }
   };
 
-  const stopBgMusic = () => {
-    if (bgAudioRef.current) {
-      try {
-        bgAudioRef.current.pause();
-      } catch {}
-      bgAudioRef.current = null;
-    }
-  };
-
-  const stopStream = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-  };
-
-  const initCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: isFrontCamera ? 'user' : 'environment' },
-        audio: captureType !== 'photo',
-      });
-      streamRef.current = stream;
-      if (videoPreviewRef.current) {
-        videoPreviewRef.current.srcObject = stream;
-      }
-    } catch (err: any) {
-      console.error('[FullscreenCreator] Camera error:', err);
-      toast({
-        title: 'Permission requise',
-        description: "Autorisez l'accès au micro et à la caméra.",
-        variant: 'destructive',
-      });
-    }
-  };
-
   const flipCamera = async () => {
+    // stop stream avant de recréer (FIX important)
     stopStream();
     setIsFrontCamera((v) => !v);
-    window.setTimeout(() => initCamera(), 120);
+    window.setTimeout(() => {
+      // stream sera recréé automatiquement via useEffect
+    }, 80);
   };
 
   const handleClose = () => {
+    // STOP recorder & stream proprement (FIX)
+    safeStopRecorder();
     stopStream();
     safeClearInterval(timerRef);
     stopBgMusic();
@@ -395,7 +479,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const handleSelectTemplate = (template: CreationTemplate) => {
     setSelectedTemplate(template);
 
-    // Simple: 1er step uniquement (sinon, UX et concat nécessaires)
     const firstStep = template.steps?.[0];
     if (firstStep) {
       setCaptureType(firstStep.type);
@@ -414,6 +497,12 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   };
 
   const handleDurationSelect = (option: typeof DURATION_OPTIONS[number]) => {
+    // STOP stream si on quitte video/photo (évite empilement)
+    if (option.type === 'text' || option.type === 'photo') {
+      safeStopRecorder();
+      if (!isRecording) stopStream();
+    }
+
     if (option.type === 'photo') {
       setCaptureType('photo');
       setSelectedDuration(0);
@@ -428,77 +517,127 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     setSelectedDuration(option.value);
   };
 
-  const takePhoto = () => {
-    if (!videoPreviewRef.current || !canvasRef.current) return;
+  const takePhoto = async () => {
+    try {
+      await ensureStreamFor('photo');
 
-    const video = videoPreviewRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 720;
-    canvas.height = video.videoHeight || 1280;
+      if (!videoPreviewRef.current || !canvasRef.current) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+      const video = videoPreviewRef.current;
+      const canvas = canvasRef.current;
 
-    if (isFrontCamera) {
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
+      canvas.width = video.videoWidth || 720;
+      canvas.height = video.videoHeight || 1280;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // reset transform (FIX: évite accumulation)
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+      if (isFrontCamera) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+
+      ctx.filter =
+        currentFilter?.cssFilter && currentFilter.cssFilter !== 'none' ? currentFilter.cssFilter : 'none';
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return;
+          setCapturedMedia([{ blob, type: 'photo', mimeType: 'image/jpeg' }]);
+          setPhase('preview');
+          triggerFeedback('success');
+
+          // Libère la caméra en preview (FIX: réduit freeze)
+          stopStream();
+        },
+        'image/jpeg',
+        0.9
+      );
+    } catch (err: any) {
+      console.error('[FullscreenCreator] takePhoto error:', err);
+      toast({
+        title: 'Erreur photo',
+        description: err?.message || 'Impossible de prendre la photo.',
+        variant: 'destructive',
+      });
     }
-
-    // Appliquer filtre CSS sur canvas via ctx.filter (approx)
-    // NB: ce n'est pas identique à CSS mais très proche pour les filtres simples.
-    ctx.filter = (currentFilter?.cssFilter && currentFilter.cssFilter !== 'none') ? currentFilter.cssFilter : 'none';
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        setCapturedMedia([{ blob, type: 'photo', mimeType: 'image/jpeg' }]);
-        setPhase('preview');
-        triggerFeedback('success');
-      },
-      'image/jpeg',
-      0.9
-    );
   };
 
   const startRecording = async () => {
+    if (isRecording) return;
+
+    if (!canUseMediaRecorder()) {
+      toast({
+        title: 'Navigateur non supporté',
+        description: "Votre navigateur ne supporte pas l'enregistrement.",
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       const isAudio = captureType === 'audio';
+      const kind: 'audio' | 'video' = isAudio ? 'audio' : 'video';
 
-      const constraints: MediaStreamConstraints = {
-        audio: true,
-        video: !isAudio ? { facingMode: isFrontCamera ? 'user' : 'environment' } : false,
-      };
+      // FIX: toujours garantir un stream conforme au mode
+      const stream = await ensureStreamFor(isAudio ? 'audio' : 'video');
 
-      if (!streamRef.current) {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        streamRef.current = stream;
-        if (videoPreviewRef.current && !isAudio) {
-          videoPreviewRef.current.srcObject = stream;
-        }
-      }
-
-      const mimeType = getSupportedMimeType(isAudio ? 'audio' : 'video');
+      const mimeType = getSupportedMimeType(kind);
       const options: MediaRecorderOptions = {};
       if (mimeType) options.mimeType = mimeType;
 
-      const recorder = new MediaRecorder(streamRef.current, options);
+      // IMPORTANT: si audio, évite un stream qui contient vidéo (ensureStreamFor le garantit)
+      const recorder = new MediaRecorder(stream, options);
       const actualMimeType = recorder.mimeType || mimeType || (isAudio ? 'audio/webm' : 'video/webm');
 
       chunksRef.current = [];
+      stoppingRef.current = false;
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onerror = (e: any) => {
+        console.error('[FullscreenCreator] MediaRecorder error:', e);
+        toast({
+          title: 'Erreur enregistrement',
+          description: e?.error?.message || e?.message || "Impossible d'enregistrer.",
+          variant: 'destructive',
+        });
+        setIsRecording(false);
+        setRecordingProgress(0);
+        stoppingRef.current = false;
+        safeClearInterval(timerRef);
+        stopBgMusic();
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: actualMimeType });
-        setCapturedMedia([{ blob, type: isAudio ? 'audio' : 'video', mimeType: actualMimeType }]);
-        setPhase('preview');
+        try {
+          const blob = new Blob(chunksRef.current, { type: actualMimeType });
+          setCapturedMedia([{ blob, type: isAudio ? 'audio' : 'video', mimeType: actualMimeType }]);
+          setPhase('preview');
+        } finally {
+          setIsRecording(false);
+          setRecordingProgress(100);
+          stoppingRef.current = false;
+          safeClearInterval(timerRef);
+          stopBgMusic();
+
+          // Libérer caméra/mic en preview (FIX anti-freeze)
+          stopStream();
+        }
       };
 
       mediaRecorderRef.current = recorder;
-      recorder.start(800);
+
+      // Start: timeslice plus grand (moins d’events)
+      recorder.start(1000);
+
       setIsRecording(true);
       setRecordingProgress(0);
 
@@ -511,17 +650,20 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         a.play().catch(() => {});
       }
 
-      // Progress timer
+      // Progress timer (moins fréquent = moins de rerenders)
       const durationMs = Math.max(1, selectedDuration) * 1000;
-      const interval = 100;
-      let elapsed = 0;
+      const interval = 250;
 
+      let startedAt = Date.now();
       safeClearInterval(timerRef);
       timerRef.current = window.setInterval(() => {
-        elapsed += interval;
+        const elapsed = Date.now() - startedAt;
         const pct = Math.min(100, (elapsed / durationMs) * 100);
         setRecordingProgress(pct);
-        if (elapsed >= durationMs) stopRecording();
+
+        if (elapsed >= durationMs) {
+          stopRecording();
+        }
       }, interval);
 
       triggerFeedback('notification');
@@ -532,19 +674,18 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         description: err?.message || "Impossible d'enregistrer.",
         variant: 'destructive',
       });
+      setIsRecording(false);
+      setRecordingProgress(0);
+      stoppingRef.current = false;
+      safeClearInterval(timerRef);
+      stopBgMusic();
     }
   };
 
   const stopRecording = () => {
-    safeClearInterval(timerRef);
-    stopBgMusic();
-
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-    setIsRecording(false);
-    setRecordingProgress(100);
+    if (!isRecording) return;
     triggerFeedback('success');
+    safeStopRecorder();
   };
 
   const handleTextSubmit = () => {
@@ -553,12 +694,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       return;
     }
     setPhase('preview');
-  };
-
-  const ensureAudioUrlForNonAudioPosts = async () => {
-    // Votre feed exige un audio_url jouable → on met un WAV silencieux
-    const silent = createSilentWavBlob(700);
-    return uploadToPublicUrl(`silent_${Date.now()}.wav`, silent, 'audio/wav');
   };
 
   const uploadToPublicUrl = async (fileName: string, blob: Blob, contentType: string) => {
@@ -570,6 +705,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
     const { data: urlData } = supabase.storage.from('tamtam-audio').getPublicUrl(fileName);
     return urlData.publicUrl;
+  };
+
+  const ensureAudioUrlForNonAudioPosts = async () => {
+    const silent = createSilentWavBlob(700);
+    return uploadToPublicUrl(`silent_${Date.now()}.wav`, silent, 'audio/wav');
   };
 
   const generateCaptionsPreview = async () => {
@@ -625,8 +765,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     setCapturedMedia([]);
     setPreviewTranscriptFr('');
     setPreviewTranscriptBa('');
+    setRecordingProgress(0);
+    setIsRecording(false);
     setPhase('capture');
     triggerFeedback('notification');
+    // stream sera réinitialisé automatiquement si video/photo
   };
 
   const removeCurrentMedia = () => {
@@ -676,7 +819,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         if (main.type === 'video') {
           media_type = 'video';
           media_url = uploadedUrl;
-          // audio_url doit rester un vrai audio jouable
           audio_url = await ensureAudioUrlForNonAudioPosts();
         } else if (main.type === 'audio') {
           media_type = 'audio';
@@ -687,7 +829,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
           audio_url = await ensureAudioUrlForNonAudioPosts();
         }
 
-        // Transcription (audio/video)
         if (main.type === 'audio' || main.type === 'video') {
           try {
             const base64 = await blobToBase64(main.blob);
@@ -698,16 +839,13 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
             console.warn('[FullscreenCreator] Transcription failed:', e);
           }
         } else {
-          // photo: si on a déjà un texte (captions preview), on l’envoie
           transcript_fr = previewTranscriptFr || undefined;
           transcript_ba = previewTranscriptBa || undefined;
         }
       }
 
       const topic =
-        selectedTemplate?.label_fr ||
-        INTENTS.find((i) => i.id === intent)?.label ||
-        creatorMode;
+        selectedTemplate?.label_fr || INTENTS.find((i) => i.id === intent)?.label || creatorMode;
 
       await onComplete({
         audio_url,
@@ -717,8 +855,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         transcript_ba,
         template_id: selectedTemplate?.id || `direct_${captureType}_${intent}`,
         topic,
-        duration_seconds:
-          selectedDuration || (captureType === 'photo' || captureType === 'text' ? 5 : 15),
+        duration_seconds: selectedDuration || (captureType === 'photo' || captureType === 'text' ? 5 : 15),
         text_content: captureType === 'text' ? textContent : undefined,
       });
 
@@ -761,9 +898,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         </div>
 
         <div className="absolute top-20 left-0 right-0 z-10 px-4">
-          <p className="text-white/80 text-center text-sm">
-            Choisis un template (ou crée librement)
-          </p>
+          <p className="text-white/80 text-center text-sm">Choisis un template (ou crée librement)</p>
         </div>
 
         <div className="absolute inset-0 pt-28 pb-24 px-4 overflow-y-auto">
@@ -783,7 +918,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                   <span className="text-4xl">{t.icon}</span>
                   <span className="text-white font-medium text-sm text-center">{t.label_fr}</span>
                   <span className="px-2 py-0.5 rounded-full bg-amber-500/50 text-white text-xs">
-                    {(t.steps?.length || 1)} étape
+                    {t.steps?.length || 1} étape
                   </span>
                 </motion.button>
               ))}
@@ -888,20 +1023,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                     <Lightbulb className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-gray-900 font-semibold text-sm">
-                      Coach IA (rapide)
-                    </p>
-                    <p className="text-gray-700 text-sm mt-1">
-                      {intentMeta?.hint}
-                    </p>
-                    <p className="text-gray-500 text-xs mt-1">
-                      Conseil: 15–45s, voix claire, 1 idée principale.
-                    </p>
+                    <p className="text-gray-900 font-semibold text-sm">Coach IA (rapide)</p>
+                    <p className="text-gray-700 text-sm mt-1">{intentMeta?.hint}</p>
+                    <p className="text-gray-500 text-xs mt-1">Conseil: 15–45s, voix claire, 1 idée principale.</p>
                   </div>
-                  <button
-                    onClick={() => setCoachHintsOpen(false)}
-                    className="p-1 rounded-lg hover:bg-black/5"
-                  >
+                  <button onClick={() => setCoachHintsOpen(false)} className="p-1 rounded-lg hover:bg-black/5">
                     <X className="w-4 h-4 text-gray-600" />
                   </button>
                 </div>
@@ -936,7 +1062,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
           </div>
         )}
 
-        {/* Intention chips (création par intention) */}
+        {/* Intention chips */}
         {!selectedTemplate && (
           <div className="absolute bottom-56 left-0 right-0 z-20 px-4">
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -948,9 +1074,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setIntent(it.id)}
                     className={`flex-shrink-0 px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm border transition-colors ${
-                      active
-                        ? 'bg-white text-gray-900 border-white'
-                        : 'bg-white/85 text-gray-700 border-white/40'
+                      active ? 'bg-white text-gray-900 border-white' : 'bg-white/85 text-gray-700 border-white/40'
                     }`}
                   >
                     <span className="mr-2">{it.icon}</span>
@@ -1026,7 +1150,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                 key={opt.label}
                 onClick={() => handleDurationSelect(opt)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  (opt.type === captureType && (opt.type !== 'video' || opt.value === selectedDuration))
+                  opt.type === captureType && (opt.type !== 'video' || opt.value === selectedDuration)
                     ? 'bg-white text-gray-900 shadow-lg'
                     : 'text-white/80 hover:text-white'
                 }`}
@@ -1062,11 +1186,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
               onClick={startRecording}
               className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-xl"
             >
-              {captureType === 'audio' ? (
-                <Mic className="w-9 h-9 text-white" />
-              ) : (
-                <Video className="w-9 h-9 text-white" />
-              )}
+              {captureType === 'audio' ? <Mic className="w-9 h-9 text-white" /> : <Video className="w-9 h-9 text-white" />}
             </motion.button>
           ) : (
             <motion.button
@@ -1138,10 +1258,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                       <p className="text-xs text-gray-500">Scripts, hooks, hashtags, idées…</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setShowAI(false)}
-                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
-                  >
+                  <button onClick={() => setShowAI(false)} className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center">
                     <X className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
@@ -1178,10 +1295,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-gray-900">Choisir une musique</p>
-                  <button
-                    onClick={() => setShowMusic(false)}
-                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
-                  >
+                  <button onClick={() => setShowMusic(false)} className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center">
                     <X className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
@@ -1243,10 +1357,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-gray-900">Choisir un fond</p>
-                  <button
-                    onClick={() => setShowBackgrounds(false)}
-                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
-                  >
+                  <button onClick={() => setShowBackgrounds(false)} className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center">
                     <X className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
@@ -1284,14 +1395,8 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const canGenerateCaptions = media && (media.type === 'audio' || media.type === 'video');
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 bg-black"
-    >
-      {/* Background */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-black">
       <AnimatedBackground theme={selectedBackground} intensity={0.25}>
-        {/* Media */}
         <div className="absolute inset-0">
           {captureType === 'video' && media?.type === 'video' ? (
             <video
@@ -1327,9 +1432,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
           ) : captureType === 'text' ? (
             <div className="absolute inset-0 flex items-center justify-center px-6">
               <div className="w-full max-w-xl rounded-3xl bg-white/90 backdrop-blur-sm p-6">
-                <p className="text-gray-900 text-xl whitespace-pre-wrap leading-relaxed">
-                  {textContent}
-                </p>
+                <p className="text-gray-900 text-xl whitespace-pre-wrap leading-relaxed">{textContent}</p>
               </div>
             </div>
           ) : null}
@@ -1338,10 +1441,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
           <div className="flex items-center justify-between p-4">
-            <button
-              onClick={handleClose}
-              className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center"
-            >
+            <button onClick={handleClose} className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center">
               <X className="w-6 h-6 text-white" />
             </button>
 
@@ -1361,7 +1461,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
           </div>
         </div>
 
-        {/* Subtitle / captions overlay (light) */}
+        {/* Subtitle overlay */}
         {(previewTranscriptFr || previewTranscriptBa) && (
           <div className="absolute bottom-36 left-0 right-0 z-20 px-4">
             <div className="mx-auto max-w-xl rounded-2xl bg-black/45 backdrop-blur-sm p-3">
@@ -1410,11 +1510,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
               onClick={() => (isPreviewPlaying ? pausePreview() : playPreview())}
               className="w-12 h-12 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center"
             >
-              {isPreviewPlaying ? (
-                <Pause className="w-5 h-5 text-white" />
-              ) : (
-                <Play className="w-5 h-5 text-white" />
-              )}
+              {isPreviewPlaying ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
             </motion.button>
           </div>
         )}
@@ -1457,7 +1553,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         {/* Bottom Action Bar */}
         <div className="absolute bottom-0 left-0 right-0 z-20 pb-8 pt-4 safe-area-bottom">
           <div className="mx-3 p-4 rounded-2xl bg-white/95 backdrop-blur-sm shadow-xl flex flex-col gap-3">
-            {/* Info */}
             <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center">
                 {captureType === 'video' ? (
@@ -1476,11 +1571,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                   {captureType} • {INTENTS.find((i) => i.id === intent)?.label}
                 </p>
                 <p className="text-gray-500 text-sm">
-                  {captureType === 'text'
-                    ? `${textContent.length} caractères`
-                    : captureType === 'photo'
-                      ? 'Photo'
-                      : `${selectedDuration}s`}
+                  {captureType === 'text' ? `${textContent.length} caractères` : captureType === 'photo' ? 'Photo' : `${selectedDuration}s`}
                 </p>
               </div>
 
@@ -1489,7 +1580,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
               </div>
             </div>
 
-            {/* Publish button */}
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handleSubmit}
@@ -1550,10 +1640,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                       <p className="text-xs text-gray-500">Script, hook, hashtags, idées…</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setShowAI(false)}
-                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
-                  >
+                  <button onClick={() => setShowAI(false)} className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center">
                     <X className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
@@ -1564,7 +1651,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
                   isSheet={true}
                   onClose={() => setShowAI(false)}
                   onSelectContent={(_, content) => {
-                    // On met ça dans le transcript preview (utile pour texte/photo)
                     if (!previewTranscriptFr) setPreviewTranscriptFr(content);
                     toast({ title: '✅ Contenu IA appliqué' });
                   }}
