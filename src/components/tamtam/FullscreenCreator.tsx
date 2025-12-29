@@ -5,6 +5,7 @@ import {
   Mic,
   Video,
   Camera,
+  Check,
   ChevronRight,
   ArrowLeft,
   Loader2,
@@ -20,8 +21,6 @@ import {
   Play,
   Pause,
   Sliders,
-  ShieldCheck,
-  Zap,
 } from 'lucide-react';
 
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
@@ -36,40 +35,18 @@ import { MUSIC_LIBRARY, MusicTrack, getSuggestedMusic } from '@/data/musicLibrar
 import { VideoFiltersPanel, useVideoFilter, VideoFilter } from './VideoFilters';
 import { Textarea } from '@/components/ui/textarea';
 
-// ----------------- Helpers -----------------
-const safeClearInterval = (ref: React.MutableRefObject<number | null>) => {
-  if (ref.current != null) {
-    window.clearInterval(ref.current);
-    ref.current = null;
-  }
-};
-
-const isProbablyIOS = () =>
-  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-  // iPadOS can report as Mac
-  (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-
-const isProbablySafari = () => {
-  const ua = navigator.userAgent.toLowerCase();
-  // Safari present, but not chrome/edge/opera
-  return ua.includes('safari') && !ua.includes('chrome') && !ua.includes('crios') && !ua.includes('edg') && !ua.includes('opr');
-};
-
-const canUseMediaRecorder = () => {
-  return typeof window !== 'undefined' && 'MediaRecorder' in window && !!navigator.mediaDevices?.getUserMedia;
-};
-
+// ============= Cross-browser MIME type detection =============
 const getSupportedMimeType = (mediaType: 'audio' | 'video'): string => {
-  // Let browser choose if unsure (best for Safari)
-  if (!('MediaRecorder' in window)) return '';
   if (mediaType === 'audio') {
     if (MediaRecorder.isTypeSupported('audio/mp4')) return 'audio/mp4';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
     if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
+    if (MediaRecorder.isTypeSupported('audio/ogg')) return 'audio/ogg';
     return '';
   } else {
     if (MediaRecorder.isTypeSupported('video/mp4')) return 'video/mp4';
     if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) return 'video/webm;codecs=vp9,opus';
+    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) return 'video/webm;codecs=vp9';
     if (MediaRecorder.isTypeSupported('video/webm')) return 'video/webm';
     return '';
   }
@@ -79,48 +56,18 @@ const getFileExtension = (mimeType: string): string => {
   const map: Record<string, string> = {
     'audio/mp4': 'm4a',
     'audio/webm': 'webm',
+    'audio/webm;codecs=opus': 'webm',
+    'audio/ogg': 'ogg',
     'video/mp4': 'mp4',
     'video/webm': 'webm',
+    'video/webm;codecs=vp9': 'webm',
+    'video/webm;codecs=vp9,opus': 'webm',
     'image/jpeg': 'jpg',
-    'image/png': 'png',
   };
-  return map[mimeType] || 'bin';
+  return map[mimeType] || 'webm';
 };
 
-const blobToBase64 = (blob: Blob): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onloadend = () => resolve(r.result as string);
-    r.onerror = reject;
-    r.readAsDataURL(blob);
-  });
-
-const createSilentWavBlob = (durationMs = 700, sampleRate = 44100) => {
-  const numSamples = Math.max(1, Math.floor(sampleRate * (durationMs / 1000)));
-  const dataSize = numSamples * 2;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-
-  const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-  };
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, dataSize, true);
-  return new Blob([buffer], { type: 'audio/wav' });
-};
-
+// Duration options
 const DURATION_OPTIONS = [
   { label: '5 s', value: 5, type: 'video' as const },
   { label: '10 s', value: 10, type: 'video' as const },
@@ -131,19 +78,34 @@ const DURATION_OPTIONS = [
   { label: 'TEXTE', value: 0, type: 'text' as const },
 ];
 
+// Creator modes
 type CreatorMode = 'live' | 'publication' | 'create';
+
+// Phase
 type Phase = 'template' | 'capture' | 'preview';
 
-type Intent = 'informer' | 'expliquer' | 'vendre' | 'sensibiliser' | 'raconter';
+// Intention (édition par intention)
+type Intent =
+  | 'informer'
+  | 'expliquer'
+  | 'vendre'
+  | 'sensibiliser'
+  | 'raconter';
 
-const INTENTS: Array<{ id: Intent; label: string; icon: string; hint: string }> = [
-  { id: 'informer', label: 'Informer', icon: '📰', hint: '1 fait + 1 action claire.' },
+const INTENTS: Array<{
+  id: Intent;
+  label: string;
+  icon: string;
+  hint: string;
+}> = [
+  { id: 'informer', label: 'Informer', icon: '📰', hint: 'Donne 1 fait + 1 action claire.' },
   { id: 'expliquer', label: 'Expliquer', icon: '🎓', hint: '1 idée → 1 exemple → 1 conclusion.' },
-  { id: 'vendre', label: 'Vendre', icon: '🛒', hint: 'Problème → Solution → Contact.' },
+  { id: 'vendre', label: 'Vendre', icon: '🛒', hint: 'Problème → Solution → Prix/Contact.' },
   { id: 'sensibiliser', label: 'Sensibiliser', icon: '🚨', hint: 'Risque → Conseils → Appel à agir.' },
   { id: 'raconter', label: 'Raconter', icon: '📖', hint: 'Contexte → tournant → leçon.' },
 ];
 
+// Template interface from DB
 interface CreationTemplate {
   id: string;
   template_key: string;
@@ -179,130 +141,132 @@ interface FullscreenCreatorProps {
 
 type CapturedMedia = { blob: Blob; type: 'audio' | 'video' | 'photo'; mimeType?: string };
 
-export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, onClose, onComplete }) => {
+const safeClearInterval = (ref: React.MutableRefObject<number | null>) => {
+  if (ref.current) {
+    window.clearInterval(ref.current);
+    ref.current = null;
+  }
+};
+
+const blobToBase64 = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+const createSilentWavBlob = (durationMs = 700, sampleRate = 44100) => {
+  const numSamples = Math.max(1, Math.floor(sampleRate * (durationMs / 1000)));
+  const dataSize = numSamples * 2;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true); // PCM
+  view.setUint16(20, 1, true); // audio format
+  view.setUint16(22, 1, true); // channels
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // byte rate
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+  // PCM samples are already 0 (silence)
+  return new Blob([buffer], { type: 'audio/wav' });
+};
+
+export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
+  isOpen,
+  onClose,
+  onComplete,
+}) => {
   const { currentLang } = useTamTamLanguage();
   const { transcribeWithTranslation } = useUnifiedAudio();
   const { toast } = useToast();
 
+  // Phases
   const [phase, setPhase] = useState<Phase>('template');
+
+  // Modes / capture
   const [creatorMode, setCreatorMode] = useState<CreatorMode>('publication');
   const [captureType, setCaptureType] = useState<'video' | 'audio' | 'photo' | 'text'>('video');
   const [selectedDuration, setSelectedDuration] = useState(15);
+
+  // Intention
   const [intent, setIntent] = useState<Intent>('informer');
 
+  // Templates
   const [templates, setTemplates] = useState<CreationTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<CreationTemplate | null>(null);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
 
+  // Recording
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingProgress, setRecordingProgress] = useState(0);
   const [capturedMedia, setCapturedMedia] = useState<CapturedMedia[]>([]);
   const [textContent, setTextContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Customization
   const [selectedBackground, setSelectedBackground] = useState<BackgroundTheme>('savanna');
   const [selectedMusic, setSelectedMusic] = useState<MusicTrack | null>(null);
-
+  const [showBackgrounds, setShowBackgrounds] = useState(false);
+  const [showMusic, setShowMusic] = useState(false);
   const [showAI, setShowAI] = useState(false);
+
+  // Preview / IA
   const [showFilters, setShowFilters] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
-
-  const [previewTranscriptFr, setPreviewTranscriptFr] = useState('');
-  const [previewTranscriptBa, setPreviewTranscriptBa] = useState('');
+  const [previewTranscriptFr, setPreviewTranscriptFr] = useState<string>('');
+  const [previewTranscriptBa, setPreviewTranscriptBa] = useState<string>('');
   const [isGeneratingCaptions, setIsGeneratingCaptions] = useState(false);
   const [coachHintsOpen, setCoachHintsOpen] = useState(true);
 
+  // Camera
   const [isFrontCamera, setIsFrontCamera] = useState(true);
 
-  // ✅ Mode capture: "compat" évite MediaRecorder (anti-freeze)
-  const defaultCompat = isProbablyIOS() || isProbablySafari() || !canUseMediaRecorder();
-  const [captureEngine, setCaptureEngine] = useState<'compat' | 'advanced'>(defaultCompat ? 'compat' : 'advanced');
-
+  // Video filter hook
   const { currentFilter, setCurrentFilter, getFilterStyle } = useVideoFilter();
 
-  // Refs: file inputs (Compat)
-  const fileVideoRef = useRef<HTMLInputElement>(null);
-  const fileAudioRef = useRef<HTMLInputElement>(null);
-  const filePhotoRef = useRef<HTMLInputElement>(null);
-
-  // Refs: preview URLs
-  const previewUrlRef = useRef<string | null>(null);
-  const previewVideoRef = useRef<HTMLVideoElement>(null);
-  const previewAudioRef = useRef<HTMLAudioElement>(null);
-
-  // (Optional) Advanced engine resources
-  const streamRef = useRef<MediaStream | null>(null);
+  // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
 
-  const stopStream = () => {
-    if (!streamRef.current) return;
-    try {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-    } catch {}
-    streamRef.current = null;
-  };
+  const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const previewAudioRef = useRef<HTMLAudioElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const stopRecorder = () => {
-    safeClearInterval(timerRef);
-    try {
-      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
-    } catch {}
-    mediaRecorderRef.current = null;
-  };
-
-  // revoke object url when media changes
-  useEffect(() => {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-    if (capturedMedia[0]) {
-      previewUrlRef.current = URL.createObjectURL(capturedMedia[0].blob);
-    }
-    return () => {
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-        previewUrlRef.current = null;
-      }
-    };
+  const previewUrl = useMemo(() => {
+    if (!capturedMedia[0]) return '';
+    return URL.createObjectURL(capturedMedia[0].blob);
   }, [capturedMedia]);
+
+  // Cleanup preview object URL
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   // Load templates when open
   useEffect(() => {
     if (!isOpen) return;
-    (async () => {
-      setLoadingTemplates(true);
-      try {
-        const { data, error } = await supabase
-          .from('tamtam_creation_templates')
-          .select('*')
-          .eq('is_active', true)
-          .order('category', { ascending: true });
-        if (error) throw error;
-
-        const parsed = (data || []).map((t: any) => ({
-          id: t.id,
-          template_key: t.template_key,
-          label_fr: t.label_fr,
-          label_ba: t.label_ba,
-          icon: t.icon,
-          category: t.category,
-          steps: Array.isArray(t.steps) ? t.steps : [],
-          music_url: t.music_url,
-        })) as CreationTemplate[];
-
-        setTemplates(parsed);
-      } catch (e) {
-        console.error('[FullscreenCreator] loadTemplates error:', e);
-        toast({ title: 'Erreur templates', description: 'Impossible de charger les templates.', variant: 'destructive' });
-      } finally {
-        setLoadingTemplates(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadTemplates();
   }, [isOpen]);
 
-  // suggested music
+  // Suggested music (based on intent)
   useEffect(() => {
     if (!isOpen) return;
     const topic = intent === 'vendre' ? 'business' : intent === 'raconter' ? 'culture' : 'education';
@@ -310,40 +274,137 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
     if (!selectedMusic && suggestions.length > 0) setSelectedMusic(suggestions[0]);
   }, [isOpen, intent, selectedMusic]);
 
-  // Cleanup when close/unmount
+  // Init camera on capture if needed
   useEffect(() => {
     if (!isOpen) return;
+
+    if (phase === 'capture' && (captureType === 'video' || captureType === 'photo')) {
+      initCamera();
+    }
+
     return () => {
-      stopRecorder();
-      stopStream();
-      safeClearInterval(timerRef);
+      if (!isOpen) {
+        stopStream();
+        safeClearInterval(timerRef);
+        stopBgMusic();
+      }
     };
-  }, [isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, phase, captureType]);
+
+  const loadTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const { data, error } = await supabase
+        .from('tamtam_creation_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('category', { ascending: true });
+
+      if (error) throw error;
+
+      const parsed = (data || []).map((t: any) => ({
+        id: t.id,
+        template_key: t.template_key,
+        label_fr: t.label_fr,
+        label_ba: t.label_ba,
+        icon: t.icon,
+        category: t.category,
+        steps: Array.isArray(t.steps) ? t.steps : [],
+        music_url: t.music_url,
+      })) as CreationTemplate[];
+
+      setTemplates(parsed);
+    } catch (err) {
+      console.error('[FullscreenCreator] Load templates error:', err);
+      toast({
+        title: 'Erreur templates',
+        description: "Impossible de charger les templates de création.",
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const stopBgMusic = () => {
+    if (bgAudioRef.current) {
+      try {
+        bgAudioRef.current.pause();
+      } catch {}
+      bgAudioRef.current = null;
+    }
+  };
+
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const initCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: isFrontCamera ? 'user' : 'environment' },
+        audio: captureType !== 'photo',
+      });
+      streamRef.current = stream;
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream;
+      }
+    } catch (err: any) {
+      console.error('[FullscreenCreator] Camera error:', err);
+      toast({
+        title: 'Permission requise',
+        description: "Autorisez l'accès au micro et à la caméra.",
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const flipCamera = async () => {
+    stopStream();
+    setIsFrontCamera((v) => !v);
+    window.setTimeout(() => initCamera(), 120);
+  };
 
   const handleClose = () => {
-    stopRecorder();
     stopStream();
+    safeClearInterval(timerRef);
+    stopBgMusic();
+
     setCapturedMedia([]);
     setPhase('template');
     setSelectedTemplate(null);
+    setIsRecording(false);
+    setRecordingProgress(0);
+    setShowBackgrounds(false);
+    setShowMusic(false);
+    setShowAI(false);
+    setShowFilters(false);
+    setTextContent('');
     setPreviewTranscriptFr('');
     setPreviewTranscriptBa('');
-    setTextContent('');
     setIsPreviewPlaying(false);
     setCoachHintsOpen(true);
+
     onClose();
   };
 
   const handleSelectTemplate = (template: CreationTemplate) => {
     setSelectedTemplate(template);
-    const first = template.steps?.[0];
-    if (first) {
-      setCaptureType(first.type);
-      setSelectedDuration(first.duration || 15);
+
+    // Simple: 1er step uniquement (sinon, UX et concat nécessaires)
+    const firstStep = template.steps?.[0];
+    if (firstStep) {
+      setCaptureType(firstStep.type);
+      setSelectedDuration(firstStep.duration || 15);
     } else {
       setCaptureType('video');
       setSelectedDuration(15);
     }
+
     setPhase('capture');
   };
 
@@ -352,109 +413,165 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
     setPhase('capture');
   };
 
-  const flipCamera = () => {
-    setIsFrontCamera((v) => !v);
-    triggerFeedback('notification');
-  };
-
-  // ----------------- COMPAT CAPTURE (anti-freeze) -----------------
-  const openCompatCapture = (type: 'video' | 'audio' | 'photo') => {
-    if (type === 'video') fileVideoRef.current?.click();
-    if (type === 'audio') fileAudioRef.current?.click();
-    if (type === 'photo') filePhotoRef.current?.click();
-  };
-
-  const onFilePicked = (type: 'video' | 'audio' | 'photo') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (!f) return;
-
-    const mime = f.type || (type === 'photo' ? 'image/jpeg' : type === 'audio' ? 'audio/mp4' : 'video/mp4');
-    setCapturedMedia([{ blob: f, type, mimeType: mime }]);
-    setPhase('preview');
-    triggerFeedback('success');
-  };
-
-  // ----------------- ADVANCED CAPTURE (MediaRecorder) -----------------
-  const startAdvancedRecording = async () => {
-    if (!canUseMediaRecorder()) {
-      toast({ title: 'Non supporté', description: 'MediaRecorder indisponible. Utilise le mode Compatibilité.', variant: 'destructive' });
-      setCaptureEngine('compat');
+  const handleDurationSelect = (option: typeof DURATION_OPTIONS[number]) => {
+    if (option.type === 'photo') {
+      setCaptureType('photo');
+      setSelectedDuration(0);
       return;
     }
+    if (option.type === 'text') {
+      setCaptureType('text');
+      setSelectedDuration(0);
+      return;
+    }
+    setCaptureType('video');
+    setSelectedDuration(option.value);
+  };
+
+  const takePhoto = () => {
+    if (!videoPreviewRef.current || !canvasRef.current) return;
+
+    const video = videoPreviewRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 720;
+    canvas.height = video.videoHeight || 1280;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    if (isFrontCamera) {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+
+    // Appliquer filtre CSS sur canvas via ctx.filter (approx)
+    // NB: ce n'est pas identique à CSS mais très proche pour les filtres simples.
+    ctx.filter = (currentFilter?.cssFilter && currentFilter.cssFilter !== 'none') ? currentFilter.cssFilter : 'none';
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        setCapturedMedia([{ blob, type: 'photo', mimeType: 'image/jpeg' }]);
+        setPhase('preview');
+        triggerFeedback('success');
+      },
+      'image/jpeg',
+      0.9
+    );
+  };
+
+  const startRecording = async () => {
     try {
-      stopRecorder();
-      stopStream();
+      const isAudio = captureType === 'audio';
+
+      const constraints: MediaStreamConstraints = {
+        audio: true,
+        video: !isAudio ? { facingMode: isFrontCamera ? 'user' : 'environment' } : false,
+      };
+
+      if (!streamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
+        if (videoPreviewRef.current && !isAudio) {
+          videoPreviewRef.current.srcObject = stream;
+        }
+      }
+
+      const mimeType = getSupportedMimeType(isAudio ? 'audio' : 'video');
+      const options: MediaRecorderOptions = {};
+      if (mimeType) options.mimeType = mimeType;
+
+      const recorder = new MediaRecorder(streamRef.current, options);
+      const actualMimeType = recorder.mimeType || mimeType || (isAudio ? 'audio/webm' : 'video/webm');
+
       chunksRef.current = [];
 
-      const isAudio = captureType === 'audio';
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: isAudio ? false : { facingMode: isFrontCamera ? 'user' : 'environment' },
-      });
-
-      streamRef.current = stream;
-
-      const mime = getSupportedMimeType(isAudio ? 'audio' : 'video');
-      const opts: MediaRecorderOptions = mime ? { mimeType: mime } : {};
-      const rec = new MediaRecorder(stream, opts);
-
-      rec.onerror = (ev) => {
-        console.error('[MediaRecorder] onerror', ev);
-        toast({ title: 'Erreur enregistrement', description: 'MediaRecorder a échoué. Passe en Compatibilité.', variant: 'destructive' });
-        setCaptureEngine('compat');
-        stopRecorder();
-        stopStream();
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      rec.ondataavailable = (ev) => {
-        if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
-      };
-
-      rec.onstop = () => {
-        const finalMime = rec.mimeType || mime || (isAudio ? 'audio/webm' : 'video/webm');
-        const blob = new Blob(chunksRef.current, { type: finalMime });
-        setCapturedMedia([{ blob, type: isAudio ? 'audio' : 'video', mimeType: finalMime }]);
-        stopStream();
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: actualMimeType });
+        setCapturedMedia([{ blob, type: isAudio ? 'audio' : 'video', mimeType: actualMimeType }]);
         setPhase('preview');
       };
 
-      mediaRecorderRef.current = rec;
-      rec.start(500);
+      mediaRecorderRef.current = recorder;
+      recorder.start(800);
+      setIsRecording(true);
+      setRecordingProgress(0);
 
-      // timer auto-stop (moins fréquent pour éviter charges)
+      // Background music while recording (faible volume)
+      stopBgMusic();
+      if (selectedMusic?.url) {
+        const a = new Audio(selectedMusic.url);
+        a.volume = 0.25;
+        bgAudioRef.current = a;
+        a.play().catch(() => {});
+      }
+
+      // Progress timer
       const durationMs = Math.max(1, selectedDuration) * 1000;
+      const interval = 100;
+      let elapsed = 0;
+
       safeClearInterval(timerRef);
       timerRef.current = window.setInterval(() => {
-        // stop after duration
-        try {
-          if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
-        } catch {}
-        safeClearInterval(timerRef);
-      }, durationMs);
+        elapsed += interval;
+        const pct = Math.min(100, (elapsed / durationMs) * 100);
+        setRecordingProgress(pct);
+        if (elapsed >= durationMs) stopRecording();
+      }, interval);
 
       triggerFeedback('notification');
-    } catch (e: any) {
-      console.error('[FullscreenCreator] startAdvancedRecording error:', e);
+    } catch (err: any) {
+      console.error('[FullscreenCreator] Recording error:', err);
       toast({
-        title: 'Capture impossible',
-        description: e?.message || 'Erreur getUserMedia/MediaRecorder. Passe en Compatibilité.',
+        title: 'Erreur enregistrement',
+        description: err?.message || "Impossible d'enregistrer.",
         variant: 'destructive',
       });
-      setCaptureEngine('compat');
-      stopRecorder();
-      stopStream();
     }
   };
 
-  const stopAdvancedRecording = () => {
-    try {
-      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
-    } catch {}
+  const stopRecording = () => {
     safeClearInterval(timerRef);
+    stopBgMusic();
+
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setRecordingProgress(100);
+    triggerFeedback('success');
   };
 
-  // ----------------- Captions preview -----------------
+  const handleTextSubmit = () => {
+    if (!textContent.trim()) {
+      toast({ title: 'Texte requis', description: 'Écrivez quelque chose.', variant: 'destructive' });
+      return;
+    }
+    setPhase('preview');
+  };
+
+  const ensureAudioUrlForNonAudioPosts = async () => {
+    // Votre feed exige un audio_url jouable → on met un WAV silencieux
+    const silent = createSilentWavBlob(700);
+    return uploadToPublicUrl(`silent_${Date.now()}.wav`, silent, 'audio/wav');
+  };
+
+  const uploadToPublicUrl = async (fileName: string, blob: Blob, contentType: string) => {
+    const { error: uploadError } = await supabase.storage
+      .from('tamtam-audio')
+      .upload(fileName, blob, { contentType, upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabase.storage.from('tamtam-audio').getPublicUrl(fileName);
+    return urlData.publicUrl;
+  };
+
   const generateCaptionsPreview = async () => {
     const media = capturedMedia[0];
     if (!media || (media.type !== 'audio' && media.type !== 'video')) return;
@@ -465,12 +582,20 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
     try {
       const base64 = await blobToBase64(media.blob);
       const result = await transcribeWithTranslation(base64, currentLang === 'ba' ? 'ba' : 'fr');
-      setPreviewTranscriptFr(result.transcription_fr || result.transcription || '');
-      setPreviewTranscriptBa(result.transcription_ba || '');
+
+      const fr = result.transcription_fr || result.transcription || '';
+      const ba = result.transcription_ba || '';
+
+      setPreviewTranscriptFr(fr);
+      setPreviewTranscriptBa(ba);
       triggerFeedback('success');
     } catch (e) {
-      console.warn('[FullscreenCreator] captions error:', e);
-      toast({ title: 'Sous-titres indisponibles', description: 'Impossible de générer les sous-titres.', variant: 'destructive' });
+      console.warn('[FullscreenCreator] Preview transcription failed:', e);
+      toast({
+        title: 'Sous-titres indisponibles',
+        description: "Impossible de générer les sous-titres pour l’instant.",
+        variant: 'destructive',
+      });
     } finally {
       setIsGeneratingCaptions(false);
     }
@@ -479,14 +604,19 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
   const playPreview = () => {
     const media = capturedMedia[0];
     if (!media) return;
-    if (media.type === 'video') previewVideoRef.current?.play().catch(() => {});
-    if (media.type === 'audio') previewAudioRef.current?.play().catch(() => {});
-    setIsPreviewPlaying(true);
+
+    if (media.type === 'video' && previewVideoRef.current) {
+      previewVideoRef.current.play().catch(() => {});
+      setIsPreviewPlaying(true);
+    } else if (media.type === 'audio' && previewAudioRef.current) {
+      previewAudioRef.current.play().catch(() => {});
+      setIsPreviewPlaying(true);
+    }
   };
 
   const pausePreview = () => {
-    previewVideoRef.current?.pause();
-    previewAudioRef.current?.pause();
+    if (previewVideoRef.current) previewVideoRef.current.pause();
+    if (previewAudioRef.current) previewAudioRef.current.pause();
     setIsPreviewPlaying(false);
   };
 
@@ -496,34 +626,29 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
     setPreviewTranscriptFr('');
     setPreviewTranscriptBa('');
     setPhase('capture');
+    triggerFeedback('notification');
   };
 
-  const ensureAudioUrlForNonAudioPosts = async () => {
-    const silent = createSilentWavBlob(700);
-    return uploadToPublicUrl(`silent_${Date.now()}.wav`, silent, 'audio/wav');
-  };
-
-  const uploadToPublicUrl = async (fileName: string, blob: Blob, contentType: string) => {
-    const { error: uploadError } = await supabase.storage.from('tamtam-audio').upload(fileName, blob, {
-      contentType,
-      upsert: false,
-    });
-    if (uploadError) throw uploadError;
-    const { data: urlData } = supabase.storage.from('tamtam-audio').getPublicUrl(fileName);
-    return urlData.publicUrl;
+  const removeCurrentMedia = () => {
+    pausePreview();
+    setCapturedMedia([]);
+    setPreviewTranscriptFr('');
+    setPreviewTranscriptBa('');
+    toast({ title: '🗑️ Média supprimé' });
   };
 
   const handleSubmit = async () => {
     if (captureType === 'text' && !textContent.trim()) {
-      toast({ title: 'Erreur', description: 'Texte vide.', variant: 'destructive' });
+      toast({ title: 'Erreur', description: 'Aucun contenu.', variant: 'destructive' });
       return;
     }
-    if (captureType !== 'text' && !capturedMedia[0]) {
-      toast({ title: 'Erreur', description: 'Aucun média.', variant: 'destructive' });
+    if (captureType !== 'text' && capturedMedia.length === 0) {
+      toast({ title: 'Erreur', description: 'Aucun média capturé.', variant: 'destructive' });
       return;
     }
 
     setIsSubmitting(true);
+
     try {
       let media_type: 'audio' | 'video' | 'photo' | 'text' = captureType;
       let audio_url = '';
@@ -536,38 +661,53 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
         audio_url = await ensureAudioUrlForNonAudioPosts();
       } else {
         const main = capturedMedia[0];
-        const mimeType = main.mimeType || (main.type === 'photo' ? 'image/jpeg' : main.type === 'audio' ? 'audio/mp4' : 'video/mp4');
+        const mimeType =
+          main.mimeType ||
+          (main.type === 'video'
+            ? 'video/webm'
+            : main.type === 'photo'
+              ? 'image/jpeg'
+              : 'audio/webm');
+
         const ext = getFileExtension(mimeType);
         const fileName = `creator_${creatorMode}_${intent}_${Date.now()}.${ext}`;
         const uploadedUrl = await uploadToPublicUrl(fileName, main.blob, mimeType);
 
-        if (main.type === 'audio') {
-          media_type = 'audio';
-          audio_url = uploadedUrl;
-        } else if (main.type === 'video') {
+        if (main.type === 'video') {
           media_type = 'video';
           media_url = uploadedUrl;
+          // audio_url doit rester un vrai audio jouable
           audio_url = await ensureAudioUrlForNonAudioPosts();
-        } else {
+        } else if (main.type === 'audio') {
+          media_type = 'audio';
+          audio_url = uploadedUrl;
+        } else if (main.type === 'photo') {
           media_type = 'photo';
           media_url = uploadedUrl;
           audio_url = await ensureAudioUrlForNonAudioPosts();
         }
 
+        // Transcription (audio/video)
         if (main.type === 'audio' || main.type === 'video') {
           try {
             const base64 = await blobToBase64(main.blob);
             const result = await transcribeWithTranslation(base64, currentLang === 'ba' ? 'ba' : 'fr');
             transcript_fr = result.transcription_fr || result.transcription || '';
             transcript_ba = result.transcription_ba || '';
-          } catch {}
+          } catch (e) {
+            console.warn('[FullscreenCreator] Transcription failed:', e);
+          }
         } else {
+          // photo: si on a déjà un texte (captions preview), on l’envoie
           transcript_fr = previewTranscriptFr || undefined;
           transcript_ba = previewTranscriptBa || undefined;
         }
       }
 
-      const topic = selectedTemplate?.label_fr || INTENTS.find((i) => i.id === intent)?.label || creatorMode;
+      const topic =
+        selectedTemplate?.label_fr ||
+        INTENTS.find((i) => i.id === intent)?.label ||
+        creatorMode;
 
       await onComplete({
         audio_url,
@@ -577,29 +717,42 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
         transcript_ba,
         template_id: selectedTemplate?.id || `direct_${captureType}_${intent}`,
         topic,
-        duration_seconds: selectedDuration || (captureType === 'photo' || captureType === 'text' ? 5 : 15),
+        duration_seconds:
+          selectedDuration || (captureType === 'photo' || captureType === 'text' ? 5 : 15),
         text_content: captureType === 'text' ? textContent : undefined,
       });
 
       toast({ title: '✅ Publié !' });
       handleClose();
-    } catch (e: any) {
-      console.error('[FullscreenCreator] submit error:', e);
-      toast({ title: 'Erreur publication', description: e?.message || 'Impossible de publier.', variant: 'destructive' });
+    } catch (err: any) {
+      console.error('[FullscreenCreator] Submit error:', err);
+      toast({
+        title: 'Erreur de publication',
+        description: err?.message || 'Impossible de publier.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // ===== Guard
   if (!isOpen) return null;
 
-  // ----------------- TEMPLATE PHASE -----------------
+  // ===== TEMPLATE PHASE
   if (phase === 'template') {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-gradient-to-b from-amber-700/90 via-amber-800/95 to-amber-900">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 z-50 bg-gradient-to-b from-amber-700/90 via-amber-800/95 to-amber-900"
+      >
         <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
           <div className="flex items-center justify-between p-4">
-            <button onClick={handleClose} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+            <button
+              onClick={handleClose}
+              className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center"
+            >
               <X className="w-6 h-6 text-white" />
             </button>
             <h2 className="text-white text-lg font-semibold">Créer</h2>
@@ -608,7 +761,9 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
         </div>
 
         <div className="absolute top-20 left-0 right-0 z-10 px-4">
-          <p className="text-white/80 text-center text-sm">Choisis un template (ou crée librement)</p>
+          <p className="text-white/80 text-center text-sm">
+            Choisis un template (ou crée librement)
+          </p>
         </div>
 
         <div className="absolute inset-0 pt-28 pb-24 px-4 overflow-y-auto">
@@ -627,7 +782,9 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
                 >
                   <span className="text-4xl">{t.icon}</span>
                   <span className="text-white font-medium text-sm text-center">{t.label_fr}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-500/50 text-white text-xs">{(t.steps?.length || 1)} étape</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/50 text-white text-xs">
+                    {(t.steps?.length || 1)} étape
+                  </span>
                 </motion.button>
               ))}
             </div>
@@ -636,7 +793,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
 
         <div className="absolute bottom-0 left-0 right-0 z-20 safe-area-bottom">
           <div className="flex justify-center py-6">
-            <motion.button whileTap={{ scale: 0.95 }} onClick={handleSkipTemplate} className="px-6 py-3 rounded-full bg-white/20 backdrop-blur-sm text-white font-medium flex items-center gap-2">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleSkipTemplate}
+              className="px-6 py-3 rounded-full bg-white/20 backdrop-blur-sm text-white font-medium flex items-center gap-2"
+            >
               <span>Créer librement</span>
               <ChevronRight className="w-5 h-5" />
             </motion.button>
@@ -646,44 +807,44 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
     );
   }
 
-  // ----------------- CAPTURE PHASE -----------------
+  // ===== CAPTURE PHASE
   if (phase === 'capture') {
     const intentMeta = INTENTS.find((i) => i.id === intent);
 
-    const startCapture = () => {
-      if (captureType === 'text') return;
-
-      if (captureEngine === 'compat') {
-        if (captureType === 'video') return openCompatCapture('video');
-        if (captureType === 'audio') return openCompatCapture('audio');
-        if (captureType === 'photo') return openCompatCapture('photo');
-      } else {
-        // advanced
-        if (captureType === 'photo') return openCompatCapture('photo'); // photo: toujours compat (stable)
-        return startAdvancedRecording();
-      }
-    };
-
-    const stopCapture = () => {
-      if (captureEngine === 'advanced') stopAdvancedRecording();
-    };
-
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-gradient-to-b from-gray-400 via-gray-500 to-gray-600">
-        {/* hidden file inputs for compat capture */}
-        <input ref={fileVideoRef} type="file" accept="video/*" capture={isFrontCamera ? 'user' : 'environment'} className="hidden" onChange={onFilePicked('video')} />
-        <input ref={fileAudioRef} type="file" accept="audio/*" capture="microphone" className="hidden" onChange={onFilePicked('audio')} />
-        <input ref={filePhotoRef} type="file" accept="image/*" capture={isFrontCamera ? 'user' : 'environment'} className="hidden" onChange={onFilePicked('photo')} />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 z-50 bg-gradient-to-b from-gray-400 via-gray-500 to-gray-600"
+      >
+        <canvas ref={canvasRef} className="hidden" />
 
-        {/* Background (no live camera to avoid freeze) */}
-        <AnimatedBackground theme={selectedBackground} intensity={0.35}>
-          <div className="absolute inset-0" />
-        </AnimatedBackground>
+        {/* Background */}
+        {captureType === 'audio' || captureType === 'text' ? (
+          <AnimatedBackground theme={selectedBackground} intensity={0.4}>
+            <div className="absolute inset-0" />
+          </AnimatedBackground>
+        ) : (
+          <video
+            ref={videoPreviewRef}
+            autoPlay
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              transform: isFrontCamera ? 'scaleX(-1)' : 'none',
+              ...getFilterStyle(currentFilter, currentFilter?.intensity ?? 100),
+            }}
+          />
+        )}
 
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
           <div className="flex items-center justify-between p-4">
-            <button onClick={() => setPhase('template')} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+            <button
+              onClick={() => setPhase('template')}
+              className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center"
+            >
               <ArrowLeft className="w-6 h-6 text-white" />
             </button>
 
@@ -700,7 +861,10 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
             )}
 
             {(captureType === 'video' || captureType === 'photo') ? (
-              <button onClick={flipCamera} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+              <button
+                onClick={flipCamera}
+                className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center"
+              >
                 <RotateCcw className="w-5 h-5 text-white" />
               </button>
             ) : (
@@ -709,23 +873,35 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
           </div>
         </div>
 
-        {/* Coach */}
+        {/* Coach hint (pré-record) */}
         <AnimatePresence>
-          {coachHintsOpen && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute top-20 left-0 right-0 z-20 px-4">
+          {coachHintsOpen && !isRecording && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="absolute top-20 left-0 right-0 z-20 px-4"
+            >
               <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-3 mx-auto max-w-md shadow-lg">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
                     <Lightbulb className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-gray-900 font-semibold text-sm">Coach IA</p>
-                    <p className="text-gray-700 text-sm mt-1">{intentMeta?.hint}</p>
+                    <p className="text-gray-900 font-semibold text-sm">
+                      Coach IA (rapide)
+                    </p>
+                    <p className="text-gray-700 text-sm mt-1">
+                      {intentMeta?.hint}
+                    </p>
                     <p className="text-gray-500 text-xs mt-1">
-                      Mode capture: {captureEngine === 'compat' ? 'Compatibilité (stable)' : 'Avancé (MediaRecorder)'}
+                      Conseil: 15–45s, voix claire, 1 idée principale.
                     </p>
                   </div>
-                  <button onClick={() => setCoachHintsOpen(false)} className="p-1 rounded-lg hover:bg-black/5">
+                  <button
+                    onClick={() => setCoachHintsOpen(false)}
+                    className="p-1 rounded-lg hover:bg-black/5"
+                  >
                     <X className="w-4 h-4 text-gray-600" />
                   </button>
                 </div>
@@ -734,30 +910,59 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
           )}
         </AnimatePresence>
 
-        {/* Engine toggle (important for debug) */}
-        <div className="absolute top-36 left-0 right-0 z-20 px-4">
-          <div className="mx-auto max-w-md rounded-2xl bg-black/30 backdrop-blur-sm p-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white text-sm">
-              {captureEngine === 'compat' ? <ShieldCheck className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-              <span className="font-semibold">{captureEngine === 'compat' ? 'Compatibilité (recommandé)' : 'Avancé'}</span>
+        {/* Template step (si template) */}
+        {selectedTemplate?.steps?.[0] && (
+          <div className="absolute top-36 left-0 right-0 z-20 px-4">
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 mx-auto max-w-sm">
+              <p className="text-gray-800 text-sm font-medium text-center">
+                {selectedTemplate.steps[0].instruction_fr}
+              </p>
+              <p className="text-gray-500 text-xs text-center mt-1">
+                {selectedTemplate.steps[0].type === 'video' ? '🎥 Vidéo' : '🎙 Audio'} • {selectedTemplate.steps[0].duration}s
+              </p>
             </div>
-            <button
-              onClick={() => {
-                const next = captureEngine === 'compat' ? 'advanced' : 'compat';
-                if (next === 'advanced' && !canUseMediaRecorder()) {
-                  toast({ title: 'Avancé indisponible', description: 'MediaRecorder non supporté ici.', variant: 'destructive' });
-                  return;
-                }
-                setCaptureEngine(next);
-              }}
-              className="px-3 py-1.5 rounded-xl bg-white/15 text-white text-xs font-semibold"
-            >
-              Basculer
-            </button>
           </div>
-        </div>
+        )}
 
-        {/* Text mode */}
+        {/* Recording timer */}
+        {isRecording && (
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/90 backdrop-blur-sm">
+              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              <span className="text-white text-sm font-medium">
+                {Math.floor((recordingProgress / 100) * selectedDuration)}s / {selectedDuration}s
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Intention chips (création par intention) */}
+        {!selectedTemplate && (
+          <div className="absolute bottom-56 left-0 right-0 z-20 px-4">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {INTENTS.map((it) => {
+                const active = it.id === intent;
+                return (
+                  <motion.button
+                    key={it.id}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIntent(it.id)}
+                    className={`flex-shrink-0 px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm border transition-colors ${
+                      active
+                        ? 'bg-white text-gray-900 border-white'
+                        : 'bg-white/85 text-gray-700 border-white/40'
+                    }`}
+                  >
+                    <span className="mr-2">{it.icon}</span>
+                    <span className="text-xs font-semibold whitespace-nowrap">{it.label}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Text input mode */}
         {captureType === 'text' && (
           <div className="absolute inset-0 flex items-center justify-center px-6 z-10">
             <div className="w-full max-w-md">
@@ -773,26 +978,53 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
           </div>
         )}
 
+        {/* Side controls */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-4">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowBackgrounds(true)}
+            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
+            title="Fond"
+          >
+            <Palette className="w-5 h-5 text-white" />
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowMusic(true)}
+            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
+            title="Musique"
+          >
+            <Music className="w-5 h-5 text-white" />
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowFilters(true)}
+            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
+            title="Filtres"
+          >
+            <Filter className="w-5 h-5 text-white" />
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowAI(true)}
+            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex flex-col items-center justify-center"
+            title="IA"
+          >
+            <Sparkles className="w-5 h-5 text-white" />
+            <span className="text-white text-[10px] mt-0.5">IA</span>
+          </motion.button>
+        </div>
+
         {/* Duration selector */}
         <div className="absolute bottom-36 left-0 right-0 z-20">
           <div className="flex items-center justify-center gap-3 px-4 overflow-x-auto scrollbar-hide">
             {DURATION_OPTIONS.map((opt) => (
               <button
                 key={opt.label}
-                onClick={() => {
-                  if (opt.type === 'photo') {
-                    setCaptureType('photo');
-                    setSelectedDuration(0);
-                    return;
-                  }
-                  if (opt.type === 'text') {
-                    setCaptureType('text');
-                    setSelectedDuration(0);
-                    return;
-                  }
-                  setCaptureType('video');
-                  setSelectedDuration(opt.value);
-                }}
+                onClick={() => handleDurationSelect(opt)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   (opt.type === captureType && (opt.type !== 'video' || opt.value === selectedDuration))
                     ? 'bg-white text-gray-900 shadow-lg'
@@ -810,44 +1042,41 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
           {captureType === 'text' ? (
             <motion.button
               whileTap={{ scale: 0.9 }}
-              onClick={() => {
-                if (!textContent.trim()) {
-                  toast({ title: 'Texte requis', description: 'Écrivez quelque chose.', variant: 'destructive' });
-                  return;
-                }
-                setPhase('preview');
-              }}
-              className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl"
+              onClick={handleTextSubmit}
+              disabled={!textContent.trim()}
+              className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl disabled:opacity-50"
             >
               <Send className="w-8 h-8 text-blue-500" />
             </motion.button>
-          ) : (
-            <motion.button whileTap={{ scale: 0.9 }} onClick={startCapture} className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-xl">
-              {captureType === 'audio' ? <Mic className="w-9 h-9 text-white" /> : captureType === 'photo' ? <Camera className="w-9 h-9 text-white" /> : <Video className="w-9 h-9 text-white" />}
-            </motion.button>
-          )}
-
-          {captureEngine === 'advanced' && (captureType === 'video' || captureType === 'audio') && (
+          ) : captureType === 'photo' ? (
             <motion.button
               whileTap={{ scale: 0.9 }}
-              onClick={stopCapture}
-              className="ml-3 w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl"
-              title="Stop (Avancé)"
+              onClick={takePhoto}
+              className="w-20 h-20 rounded-full bg-white border-4 border-white/50 flex items-center justify-center shadow-xl"
+            >
+              <div className="w-16 h-16 rounded-full bg-white" />
+            </motion.button>
+          ) : !isRecording ? (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={startRecording}
+              className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-xl"
+            >
+              {captureType === 'audio' ? (
+                <Mic className="w-9 h-9 text-white" />
+              ) : (
+                <Video className="w-9 h-9 text-white" />
+              )}
+            </motion.button>
+          ) : (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={stopRecording}
+              className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl"
             >
               <div className="w-7 h-7 rounded-md bg-red-500" />
             </motion.button>
           )}
-        </div>
-
-        {/* Side quick buttons */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-4">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowFilters(true)} className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center" title="Filtres">
-            <Filter className="w-5 h-5 text-white" />
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowAI(true)} className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex flex-col items-center justify-center" title="IA">
-            <Sparkles className="w-5 h-5 text-white" />
-            <span className="text-white text-[10px] mt-0.5">IA</span>
-          </motion.button>
         </div>
 
         {/* Bottom mode toggle */}
@@ -870,6 +1099,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
           </div>
         </div>
 
+        {/* Modals */}
         <AnimatePresence>
           {showFilters && (
             <VideoFiltersPanel
@@ -877,14 +1107,20 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
               onClose={() => setShowFilters(false)}
               onSelectFilter={(f: VideoFilter) => setCurrentFilter(f)}
               currentFilter={currentFilter}
-              videoElement={null}
+              videoElement={videoPreviewRef.current}
             />
           )}
         </AnimatePresence>
 
         <AnimatePresence>
           {showAI && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-40 bg-black/55" onClick={() => setShowAI(false)}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-40 bg-black/55"
+              onClick={() => setShowAI(false)}
+            >
               <motion.div
                 initial={{ y: '12%', opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -899,10 +1135,13 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">IA de création</p>
-                      <p className="text-xs text-gray-500">Script, hook, hashtags…</p>
+                      <p className="text-xs text-gray-500">Scripts, hooks, hashtags, idées…</p>
                     </div>
                   </div>
-                  <button onClick={() => setShowAI(false)} className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center">
+                  <button
+                    onClick={() => setShowAI(false)}
+                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
+                  >
                     <X className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
@@ -912,11 +1151,126 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
                   templateKey={selectedTemplate?.template_key || `direct_${intent}`}
                   isSheet={true}
                   onClose={() => setShowAI(false)}
-                  onSelectContent={(_, content) => {
-                    if (!previewTranscriptFr) setPreviewTranscriptFr(content);
-                    toast({ title: '✅ Contenu IA appliqué' });
+                  onSelectContent={() => {
+                    toast({ title: '✅ Contenu IA prêt', description: 'Vous le verrez en preview (sous-titres/texte).' });
                   }}
                 />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showMusic && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-40 bg-black/55"
+              onClick={() => setShowMusic(false)}
+            >
+              <motion.div
+                initial={{ y: '12%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '12%', opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 right-0 bottom-0 bg-white rounded-t-3xl p-4 pb-6"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-gray-900">Choisir une musique</p>
+                  <button
+                    onClick={() => setShowMusic(false)}
+                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
+                  >
+                    <X className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+
+                <div className="mt-3 max-h-[50vh] overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-2">
+                    {MUSIC_LIBRARY.map((track) => {
+                      const active = selectedMusic?.id === track.id;
+                      return (
+                        <button
+                          key={track.id}
+                          onClick={() => {
+                            setSelectedMusic(track);
+                            triggerFeedback('success');
+                          }}
+                          className={`w-full p-3 rounded-2xl border flex items-center justify-between ${
+                            active ? 'border-violet-500 bg-violet-50' : 'border-gray-200 bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-pink-500 flex items-center justify-center">
+                              <Music className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="text-left">
+                              <p className="font-semibold text-gray-900">{track.name}</p>
+                              <p className="text-xs text-gray-500">{track.mood || 'Ambiance'}</p>
+                            </div>
+                          </div>
+                          {active && (
+                            <div className="w-7 h-7 rounded-full bg-violet-500 flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showBackgrounds && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-40 bg-black/55"
+              onClick={() => setShowBackgrounds(false)}
+            >
+              <motion.div
+                initial={{ y: '12%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '12%', opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 right-0 bottom-0 bg-white rounded-t-3xl p-4 pb-6"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-gray-900">Choisir un fond</p>
+                  <button
+                    onClick={() => setShowBackgrounds(false)}
+                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
+                  >
+                    <X className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {(['savanna', 'ocean', 'forest', 'city', 'sunset', 'night'] as BackgroundTheme[]).map((t) => {
+                    const active = selectedBackground === t;
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => {
+                          setSelectedBackground(t);
+                          triggerFeedback('success');
+                        }}
+                        className={`p-3 rounded-2xl border text-left ${
+                          active ? 'border-amber-500 bg-amber-50' : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <p className="font-semibold text-gray-900 capitalize">{t}</p>
+                        <p className="text-xs text-gray-500">Ambiance</p>
+                      </button>
+                    );
+                  })}
+                </div>
               </motion.div>
             </motion.div>
           )}
@@ -925,25 +1279,29 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
     );
   }
 
-  // ----------------- PREVIEW PHASE -----------------
+  // ===== PREVIEW PHASE
   const media = capturedMedia[0];
-  const realPreviewUrl = previewUrlRef.current || '';
   const canGenerateCaptions = media && (media.type === 'audio' || media.type === 'video');
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-black">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 bg-black"
+    >
+      {/* Background */}
       <AnimatedBackground theme={selectedBackground} intensity={0.25}>
+        {/* Media */}
         <div className="absolute inset-0">
           {captureType === 'video' && media?.type === 'video' ? (
             <video
               ref={previewVideoRef}
-              src={realPreviewUrl}
+              src={previewUrl}
               playsInline
               className="absolute inset-0 w-full h-full object-cover"
               style={getFilterStyle(currentFilter, currentFilter?.intensity ?? 100)}
               onEnded={() => setIsPreviewPlaying(false)}
               onPause={() => setIsPreviewPlaying(false)}
-              controls={false}
             />
           ) : captureType === 'audio' && media?.type === 'audio' ? (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -952,33 +1310,58 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
                   <Mic className="w-16 h-16 text-white" />
                 </div>
               </div>
-              <audio ref={previewAudioRef} src={realPreviewUrl} onEnded={() => setIsPreviewPlaying(false)} onPause={() => setIsPreviewPlaying(false)} />
+              <audio
+                ref={previewAudioRef}
+                src={previewUrl}
+                onEnded={() => setIsPreviewPlaying(false)}
+                onPause={() => setIsPreviewPlaying(false)}
+              />
             </div>
           ) : captureType === 'photo' && media?.type === 'photo' ? (
-            <img src={realPreviewUrl} alt="Captured" className="absolute inset-0 w-full h-full object-cover" style={getFilterStyle(currentFilter, currentFilter?.intensity ?? 100)} />
+            <img
+              src={previewUrl}
+              alt="Captured"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={getFilterStyle(currentFilter, currentFilter?.intensity ?? 100)}
+            />
           ) : captureType === 'text' ? (
             <div className="absolute inset-0 flex items-center justify-center px-6">
               <div className="w-full max-w-xl rounded-3xl bg-white/90 backdrop-blur-sm p-6">
-                <p className="text-gray-900 text-xl whitespace-pre-wrap leading-relaxed">{textContent}</p>
+                <p className="text-gray-900 text-xl whitespace-pre-wrap leading-relaxed">
+                  {textContent}
+                </p>
               </div>
             </div>
           ) : null}
         </div>
 
+        {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 safe-area-top">
           <div className="flex items-center justify-between p-4">
-            <button onClick={handleClose} className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center">
+            <button
+              onClick={handleClose}
+              className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center"
+            >
               <X className="w-6 h-6 text-white" />
             </button>
+
             <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-black/35 backdrop-blur-sm">
-              <span className="text-white text-xs font-semibold">{selectedTemplate?.label_fr || INTENTS.find((i) => i.id === intent)?.label || 'Création'}</span>
+              <span className="text-white text-xs font-semibold">
+                {selectedTemplate?.label_fr || INTENTS.find((i) => i.id === intent)?.label || 'Création'}
+              </span>
             </div>
-            <button onClick={() => setShowAI(true)} className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center" title="IA">
+
+            <button
+              onClick={() => setShowAI(true)}
+              className="w-10 h-10 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center"
+              title="IA"
+            >
               <Sparkles className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>
 
+        {/* Subtitle / captions overlay (light) */}
         {(previewTranscriptFr || previewTranscriptBa) && (
           <div className="absolute bottom-36 left-0 right-0 z-20 px-4">
             <div className="mx-auto max-w-xl rounded-2xl bg-black/45 backdrop-blur-sm p-3">
@@ -989,26 +1372,54 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
           </div>
         )}
 
-        {(captureType === 'video' || captureType === 'audio') && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-20">
-            <motion.button whileTap={{ scale: 0.92 }} onClick={() => (isPreviewPlaying ? pausePreview() : playPreview())} className="w-12 h-12 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center">
-              {isPreviewPlaying ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
-            </motion.button>
-          </div>
-        )}
-
+        {/* Preview controls */}
         <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-4">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowFilters(true)} className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center" title="Filtres">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowFilters(true)}
+            className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+            title="Filtres"
+          >
             <Filter className="w-5 h-5 text-white" />
           </motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={resetCapture} className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center" title="Reprendre">
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={resetCapture}
+            className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+            title="Reprendre"
+          >
             <Sliders className="w-5 h-5 text-white" />
           </motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => { setCapturedMedia([]); toast({ title: '🗑️ Média supprimé' }); }} className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center" title="Supprimer">
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={removeCurrentMedia}
+            className="w-12 h-12 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+            title="Supprimer"
+          >
             <Trash2 className="w-5 h-5 text-white" />
           </motion.button>
         </div>
 
+        {/* Play/Pause */}
+        {(captureType === 'video' || captureType === 'audio') && (
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-20">
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              onClick={() => (isPreviewPlaying ? pausePreview() : playPreview())}
+              className="w-12 h-12 rounded-full bg-black/35 backdrop-blur-sm flex items-center justify-center"
+            >
+              {isPreviewPlaying ? (
+                <Pause className="w-5 h-5 text-white" />
+              ) : (
+                <Play className="w-5 h-5 text-white" />
+              )}
+            </motion.button>
+          </div>
+        )}
+
+        {/* Caption generation */}
         {canGenerateCaptions && (
           <div className="absolute bottom-24 left-0 right-0 z-20 px-4">
             <div className="mx-auto max-w-xl flex gap-2">
@@ -1021,16 +1432,21 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
                 {isGeneratingCaptions ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Génération…</span>
+                    <span>Génération sous-titres…</span>
                   </>
                 ) : (
                   <>
                     <Type className="w-4 h-4" />
-                    <span>Sous-titres</span>
+                    <span>Sous-titres intelligents</span>
                   </>
                 )}
               </motion.button>
-              <motion.button whileTap={{ scale: 0.98 }} onClick={() => setShowAI(true)} className="px-4 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-pink-500 text-white font-semibold flex items-center justify-center gap-2">
+
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowAI(true)}
+                className="px-4 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-pink-500 text-white font-semibold flex items-center justify-center gap-2"
+              >
                 <Sparkles className="w-4 h-4" />
                 <span>IA</span>
               </motion.button>
@@ -1038,8 +1454,42 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
           </div>
         )}
 
+        {/* Bottom Action Bar */}
         <div className="absolute bottom-0 left-0 right-0 z-20 pb-8 pt-4 safe-area-bottom">
           <div className="mx-3 p-4 rounded-2xl bg-white/95 backdrop-blur-sm shadow-xl flex flex-col gap-3">
+            {/* Info */}
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center">
+                {captureType === 'video' ? (
+                  <Video className="w-6 h-6 text-white" />
+                ) : captureType === 'audio' ? (
+                  <Mic className="w-6 h-6 text-white" />
+                ) : captureType === 'photo' ? (
+                  <Camera className="w-6 h-6 text-white" />
+                ) : (
+                  <Type className="w-6 h-6 text-white" />
+                )}
+              </div>
+
+              <div className="flex-1">
+                <p className="text-gray-800 font-semibold capitalize">
+                  {captureType} • {INTENTS.find((i) => i.id === intent)?.label}
+                </p>
+                <p className="text-gray-500 text-sm">
+                  {captureType === 'text'
+                    ? `${textContent.length} caractères`
+                    : captureType === 'photo'
+                      ? 'Photo'
+                      : `${selectedDuration}s`}
+                </p>
+              </div>
+
+              <div className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
+                {creatorMode === 'live' ? 'LIVE' : creatorMode === 'publication' ? 'PUB' : 'CRÉER'}
+              </div>
+            </div>
+
+            {/* Publish button */}
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handleSubmit}
@@ -1061,6 +1511,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
           </div>
         </div>
 
+        {/* Overlays */}
         <AnimatePresence>
           {showFilters && (
             <VideoFiltersPanel
@@ -1075,7 +1526,13 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
 
         <AnimatePresence>
           {showAI && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-40 bg-black/55" onClick={() => setShowAI(false)}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-40 bg-black/55"
+              onClick={() => setShowAI(false)}
+            >
               <motion.div
                 initial={{ y: '12%', opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -1090,10 +1547,13 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">IA de création</p>
-                      <p className="text-xs text-gray-500">Script, hook, hashtags…</p>
+                      <p className="text-xs text-gray-500">Script, hook, hashtags, idées…</p>
                     </div>
                   </div>
-                  <button onClick={() => setShowAI(false)} className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center">
+                  <button
+                    onClick={() => setShowAI(false)}
+                    className="w-9 h-9 rounded-full bg-black/5 flex items-center justify-center"
+                  >
                     <X className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
@@ -1104,6 +1564,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen, on
                   isSheet={true}
                   onClose={() => setShowAI(false)}
                   onSelectContent={(_, content) => {
+                    // On met ça dans le transcript preview (utile pour texte/photo)
                     if (!previewTranscriptFr) setPreviewTranscriptFr(content);
                     toast({ title: '✅ Contenu IA appliqué' });
                   }}
