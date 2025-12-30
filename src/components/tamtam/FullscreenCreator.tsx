@@ -1,29 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X,
-  Music,
-  Repeat2,
-  Timer,
-  Flame,
-  Eye,
-  Sparkles,
-  Gauge,
-  Zap,
-  Wand2,
-  Send,
-  MessageCircle,
-  Radio,
-  Camera,
-  Type as TypeIcon,
-  RotateCcw,
-  Check,
-  AlertCircle,
-  Loader2,
+  X, Music, Repeat2, Timer, Flame, Eye, Sparkles, Gauge, Expand, Zap, ChevronDown,
+  Image as ImageIcon, Video as VideoIcon, Type as TypeIcon, Wand2, Send, MessageCircle,
+  Radio, Camera, Play, Pause, RotateCcw, Check, AlertCircle, Loader2, Globe,
 } from 'lucide-react';
 
 import { DynamicAITemplates, AITemplate, AIGenType } from './DynamicAITemplates';
-import VideoFiltersPanel, { useVideoFilter } from './VideoFilters';
+import VideoFiltersPanel, { VIDEO_FILTERS, VideoFilter, useVideoFilter } from './VideoFilters';
 
 type TopTab = 'video' | 'story' | 'template' | 'live';
 type CaptureMode = 'burst' | 'photo' | 'video' | 'text';
@@ -61,30 +45,28 @@ function pickMimeType(kind: 'video' | 'audio') {
     kind === 'video'
       ? ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
       : ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
-
-  return (
-    candidates.find(
-      (t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(t)
-    ) || ''
-  );
+  return candidates.find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(t)) || '';
 }
 
 async function uploadToSupabaseStorage(blob: Blob, ext: string, folder: string): Promise<string> {
-  const { supabase } = await import('@/integrations/supabase/client');
-  const bucket = 'tamtam-media';
-  const name = `${folder}/${nowKey()}-${crypto.randomUUID()}.${ext}`;
-  const contentType =
-    blob.type ||
-    (ext === 'webm' ? 'video/webm' : ext === 'png' ? 'image/png' : 'application/octet-stream');
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const bucket = 'tamtam-media';
+    const name = `${folder}/${nowKey()}-${crypto.randomUUID()}.${ext}`;
+    const contentType = blob.type || (ext === 'webm' ? 'video/webm' : ext === 'png' ? 'image/png' : 'application/octet-stream');
 
-  const { error } = await supabase.storage.from(bucket).upload(name, blob, {
-    upsert: true,
-    contentType,
-  });
-  if (error) throw error;
+    const { error } = await supabase.storage.from(bucket).upload(name, blob, {
+      upsert: true,
+      contentType,
+    });
+    if (error) throw error;
 
-  const { data } = supabase.storage.from(bucket).getPublicUrl(name);
-  return data.publicUrl;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(name);
+    return data.publicUrl;
+  } catch (e) {
+    console.error('[Upload Error]', e);
+    throw e;
+  }
 }
 
 async function renderStoryTextToImage(text: string, gradient: GradientTheme): Promise<Blob> {
@@ -118,10 +100,9 @@ async function renderStoryTextToImage(text: string, gradient: GradientTheme): Pr
   const x = 80;
   let y = 280;
 
-  const words = (text || ' ').split(/\s+/);
+  const words = text.split(/\s+/);
   let line = '';
   const lines: string[] = [];
-
   for (const w of words) {
     const test = line ? `${line} ${w}` : w;
     if (ctx.measureText(test).width > maxWidth) {
@@ -153,46 +134,6 @@ async function tryToggleTorch(stream: MediaStream | null, enabled: boolean) {
   }
 }
 
-const Sheet: React.FC<{
-  open: boolean;
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}> = ({ open, title, onClose, children }) => {
-  return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            className="fixed inset-0 z-[120] bg-black/60"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-          <motion.div
-            className="fixed left-0 right-0 bottom-0 z-[130] rounded-t-3xl bg-[#0b0b0f] border border-white/10 p-4"
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 40, opacity: 0 }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-white font-semibold">{title}</div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/15 transition"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
-            </div>
-            {children}
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-};
-
 export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   isOpen = true,
   onClose,
@@ -206,9 +147,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const burstTimerRef = useRef<number | null>(null);
-
   const recordingStartTime = useRef<number>(0);
-  const lastRecordedMsRef = useRef<number>(0);
 
   const [topTab, setTopTab] = useState<TopTab>('video');
   const [mode, setMode] = useState<CaptureMode>('video');
@@ -220,10 +159,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
   const [timerSeconds, setTimerSeconds] = useState<0 | 3 | 10>(0);
   const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
+  const [fullMode, setFullMode] = useState<boolean>(true);
   const [flashOn, setFlashOn] = useState<boolean>(false);
   const [livePhotoOn, setLivePhotoOn] = useState<boolean>(false);
 
-  const [rightExpanded] = useState<boolean>(true);
+  const [rightExpanded, setRightExpanded] = useState<boolean>(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [magicOpen, setMagicOpen] = useState(false);
 
@@ -232,26 +172,24 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   const [tags, setTags] = useState<string[]>([]);
 
   const [music, setMusic] = useState<MusicChoice | null>(null);
-  const [durationPick] = useState<60 | 300>(60);
+  const [durationPick, setDurationPick] = useState<60 | 300>(60);
 
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [previewType, setPreviewType] = useState<'video' | 'photo' | 'text' | ''>('');
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
 
-  const [storyGradient] = useState<GradientTheme>('purpleBlue');
+  const [storyGradient, setStoryGradient] = useState<GradientTheme>('purpleBlue');
   const [textContent, setTextContent] = useState<string>('');
 
-  const [timerPanelOpen, setTimerPanelOpen] = useState(false);
-  const [speedPanelOpen, setSpeedPanelOpen] = useState(false);
-  const [challengePanelOpen, setChallengePanelOpen] = useState(false);
-  const [inspiringPanelOpen, setInspiringPanelOpen] = useState(false);
-  const [musicPanelOpen, setMusicPanelOpen] = useState(false);
+  const [timerPanel, setTimerPanel] = useState(false);
+  const [speedPanel, setSpeedPanel] = useState(false);
+  const [challengePanel, setChallengePanel] = useState(false);
+  const [inspiringPanel, setInspiringPanel] = useState(false);
+  const [musicPanel, setMusicPanel] = useState(false);
 
   const [livePanelOpen, setLivePanelOpen] = useState(false);
   const [liveSessionId, setLiveSessionId] = useState<string>('');
-  const [liveMessages, setLiveMessages] = useState<
-    Array<{ id: number; message: string; created_at: string; display_name?: string }>
-  >([]);
+  const [liveMessages, setLiveMessages] = useState<Array<{ id: number; message: string; created_at: string; display_name?: string }>>([]);
   const [liveInput, setLiveInput] = useState('');
   const [liveViewers, setLiveViewers] = useState<number>(0);
 
@@ -288,7 +226,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     () => [
       language === 'ba' ? 'Ṣàlàyé ohun tó gbọ́ní lọ́gbọ́n' : 'Explique une astuce en 30 secondes',
       language === 'ba' ? 'Ṣíwájú/Lẹ́yìn àyípadà' : 'Avant/Après transformation',
-      language === 'ba' ? 'Ìtàn díẹ̀: "ohun tí mo kọ́"' : 'Une histoire courte: "ce que j’ai appris"',
+      language === 'ba' ? 'Ìtàn díẹ̀: "ohun tí mo kọ́"' : 'Une histoire courte: "ce que j\'ai appris"',
       language === 'ba' ? 'Àṣìṣe 3 tó tóbi jù' : 'Top 3 erreurs à éviter',
       language === 'ba' ? 'Ìdánwò: sọ ọ̀rọ̀ yìí ní èdè àbínibí' : 'Défi: répète ce mot en langue locale',
       language === 'ba' ? 'Ìmọ̀ràn ọjọ́ọjọ́' : 'Conseil du jour',
@@ -314,17 +252,9 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
   const stopStream = useCallback(() => {
     try {
-      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-        recorderRef.current.stop();
-      }
+      recorderRef.current?.stop();
     } catch {}
     recorderRef.current = null;
-    setIsRecording(false);
-
-    if (burstTimerRef.current) {
-      window.clearInterval(burstTimerRef.current);
-      burstTimerRef.current = null;
-    }
 
     if (streamRef.current) {
       for (const t of streamRef.current.getTracks()) t.stop();
@@ -334,8 +264,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-
-    setCountdown(0);
     setCameraError('');
   }, []);
 
@@ -349,24 +277,12 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
           facingMode,
           width: { ideal: 1080 },
           height: { ideal: 1920 },
-          aspectRatio: { ideal: 9 / 16 },
-          frameRate: { ideal: 30, max: 60 },
         },
         audio: topTab === 'live' || mode === 'video',
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-
-      // Reduce “default zoom” when device exposes zoom capability
-      try {
-        const track = stream.getVideoTracks?.()[0];
-        const caps: any = track?.getCapabilities?.();
-        if (caps?.zoom) {
-          const minZoom = typeof caps.zoom.min === 'number' ? caps.zoom.min : 1;
-          await track.applyConstraints({ advanced: [{ zoom: minZoom }] as any });
-        }
-      } catch {}
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -376,11 +292,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       if (flashOn) {
         await tryToggleTorch(stream, true);
       }
-    } catch (e) {
+    } catch (e: any) {
       setCameraError(
         language === 'ba'
           ? 'Kò lè wo kámẹ́rà. Ṣàyẹ̀wò ìyọ̀nda.'
-          : "Impossible d'accéder à la caméra. Vérifiez les permissions."
+          : 'Impossible d\'accéder à la caméra. Vérifiez les permissions.'
       );
       console.error('[Camera Error]', e);
     }
@@ -388,8 +304,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
-
-    // Templates: pas besoin de caméra
     if (topTab === 'template') return;
 
     startStream();
@@ -405,12 +319,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       if (burstTimerRef.current) window.clearInterval(burstTimerRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    // Auto-open templates when tab is "template"
-    if (topTab === 'template') setMagicOpen(true);
-    else setMagicOpen(false);
-  }, [topTab]);
 
   const handleClose = useCallback(() => {
     stopStream();
@@ -433,39 +341,29 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
 
     return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (b) => (b ? resolve(b) : reject(new Error('photo toBlob failed'))),
-        'image/png',
-        1
-      );
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('photo toBlob failed'))), 'image/png', 1);
     });
   }, [currentFilter, getFilterStyle]);
 
-  const startMediaRecorder = useCallback(async (kind: 'video' | 'audio') => {
-    if (!streamRef.current) throw new Error('No stream');
-    chunksRef.current = [];
+  const startMediaRecorder = useCallback(
+    async (kind: 'video' | 'audio') => {
+      if (!streamRef.current) throw new Error('No stream');
+      chunksRef.current = [];
 
-    const mimeType = pickMimeType(kind);
-    const rec = new MediaRecorder(streamRef.current, mimeType ? { mimeType } : undefined);
-    recorderRef.current = rec;
+      const mimeType = pickMimeType(kind);
+      const rec = new MediaRecorder(streamRef.current, mimeType ? { mimeType } : undefined);
+      recorderRef.current = rec;
 
-    rec.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
-    };
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
 
-    rec.onerror = (e) => {
-      console.error('[Recorder Error]', e);
-      try {
-        rec.stop();
-      } catch {}
-    };
-
-    recordingStartTime.current = Date.now();
-    lastRecordedMsRef.current = 0;
-    setIsRecording(true);
-
-    rec.start(300);
-  }, []);
+      rec.start(300);
+      recordingStartTime.current = Date.now();
+      setIsRecording(true);
+    },
+    []
+  );
 
   const stopRecorderGetBlob = useCallback(async (): Promise<Blob> => {
     return await new Promise<Blob>((resolve) => {
@@ -476,16 +374,13 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       }
 
       const finalize = () => {
-        lastRecordedMsRef.current = Math.max(0, Date.now() - recordingStartTime.current);
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'video/webm' });
         resolve(blob);
       };
 
       rec.addEventListener('stop', finalize, { once: true });
-
       try {
-        if (rec.state !== 'inactive') rec.stop();
-        else finalize();
+        rec.stop();
       } catch {
         finalize();
       } finally {
@@ -562,11 +457,9 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
             photos.push(b);
             count += 1;
             setBurstCount(count);
-
             if (count >= 8) {
               if (burstTimerRef.current) window.clearInterval(burstTimerRef.current);
               burstTimerRef.current = null;
-
               const last = photos[photos.length - 1];
               const url = URL.createObjectURL(last);
               setPreviewBlob(last);
@@ -586,6 +479,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       setPreviewBlob(blob);
       setPreviewUrl(url);
       setPreviewType('photo');
+      return;
     }
   }, [
     capturePhotoBlob,
@@ -621,7 +515,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
     try {
       let mediaUrl = '';
-      const mediaType: 'video' | 'photo' | 'text' = (previewType as any) || 'photo';
+      let mediaType: 'video' | 'photo' | 'text' = previewType || 'photo';
 
       if (mediaType === 'video') {
         mediaUrl = await uploadToSupabaseStorage(previewBlob, 'webm', 'videos');
@@ -630,24 +524,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       }
 
       const isStory = topTab === 'story';
-      const recordedSeconds = Math.max(1, Math.floor((lastRecordedMsRef.current || 0) / 1000));
-      const seconds =
-        mediaType === 'video'
-          ? recordedSeconds || durationPick
-          : isStory
-          ? 15
-          : mode === 'text'
-          ? 10
-          : 5;
+      const seconds = mode === 'video' ? Math.floor(recordingDuration / 1000) || durationPick : isStory ? 15 : 5;
 
       const payload = {
         audio_url: mediaType === 'video' ? mediaUrl : '',
-        media_type:
-          mediaType === 'photo'
-            ? ('photo' as const)
-            : mediaType === 'video'
-            ? ('video' as const)
-            : ('text' as const),
+        media_type: mediaType === 'photo' ? ('photo' as const) : mediaType === 'video' ? ('video' as const) : ('text' as const),
         media_url: mediaUrl,
         transcript_fr: '',
         transcript_ba: '',
@@ -661,13 +542,15 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
         is_story: isStory,
       };
 
-      if (onComplete) await onComplete(payload);
+      if (onComplete) {
+        await onComplete(payload);
+      }
 
       clearPreview();
       handleClose();
-    } catch (e) {
+    } catch (e: any) {
       console.error('[Submit Error]', e);
-      alert(language === 'ba' ? 'Àṣìṣe ní fífi sí server' : "Erreur lors de l'envoi");
+      alert(language === 'ba' ? 'Àṣìṣe ní fífi sí server' : 'Erreur lors de l\'envoi');
     } finally {
       setIsSubmitting(false);
     }
@@ -682,6 +565,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     onComplete,
     previewBlob,
     previewType,
+    recordingDuration,
     tags,
     textContent,
     topTab,
@@ -705,12 +589,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     }
   }, [previewType, speed]);
 
-  // LIVE: realtime channel
   useEffect(() => {
     if (!liveSessionId) return;
-
+    
     let channel: any;
-
+    
     const setupLive = async () => {
       try {
         const { supabase } = await import('@/integrations/supabase/client');
@@ -721,7 +604,6 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
             { event: 'INSERT', schema: 'public', table: 'live_messages', filter: `session_id=eq.${liveSessionId}` },
             (payload) => {
               const row = payload.new as any;
-              // ✅ FIX: spread correct
               setLiveMessages((prev) => [...prev, row]);
             }
           )
@@ -745,10 +627,10 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
     return () => {
       if (channel) {
-        // ✅ FIX: no require() in web build
-        import('@/integrations/supabase/client')
-          .then(({ supabase }) => supabase.removeChannel(channel))
-          .catch(() => {});
+        try {
+          const { supabase } = require('@/integrations/supabase/client');
+          supabase.removeChannel(channel);
+        } catch {}
       }
     };
   }, [liveSessionId]);
@@ -796,7 +678,9 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   }, [liveSessionId]);
 
   useEffect(() => {
-    if (topTab === 'live' && liveSessionId) joinLive();
+    if (topTab === 'live' && liveSessionId) {
+      joinLive();
+    }
   }, [joinLive, liveSessionId, topTab]);
 
   const sendLive = useCallback(async () => {
@@ -835,23 +719,15 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     [topic]
   );
 
-  const onApplyTemplate = useCallback(
-    (t: AITemplate) => {
-      setMagicOpen(false);
-      if (!topic) setTopic(t.title);
-      if (topTab === 'template') setTopTab('video');
-    },
-    [topic, topTab]
-  );
+  const onApplyTemplate = useCallback((t: AITemplate) => {
+    setMagicOpen(false);
+    if (!topic) setTopic(t.title);
+  }, [topic]);
 
   if (isOpen === false) return null;
 
   const isStory = topTab === 'story';
-  const recordDurationText = `${Math.floor(recordingDuration / 60000)}:${Math.floor(
-    (recordingDuration % 60000) / 1000
-  )
-    .toString()
-    .padStart(2, '0')}`;
+  const recordDurationText = `${Math.floor(recordingDuration / 60000)}:${Math.floor((recordingDuration % 60000) / 1000).toString().padStart(2, '0')}`;
 
   const RightButton = ({
     icon,
@@ -992,11 +868,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
           >
             <RightButton icon={<Wand2 />} label="Magic AI" onClick={() => setMagicOpen(true)} />
             <RightButton icon={<Sparkles />} label={language === 'ba' ? 'Àwọ̀' : 'Filtres'} onClick={() => setFiltersOpen(true)} />
-            <RightButton icon={<Timer />} label="Timer" onClick={() => setTimerPanelOpen(true)} active={timerSeconds > 0} />
-            <RightButton icon={<Gauge />} label="Speed" onClick={() => setSpeedPanelOpen(true)} active={speed !== 1} />
-            <RightButton icon={<Music />} label={language === 'ba' ? 'Orin' : 'Musique'} onClick={() => setMusicPanelOpen(true)} active={!!music} />
-            <RightButton icon={<Flame />} label="Challenge" onClick={() => setChallengePanelOpen(true)} hidden={isStory} />
-            <RightButton icon={<Sparkles />} label={language === 'ba' ? 'Ìmọ̀ràn' : 'Idées'} onClick={() => setInspiringPanelOpen(true)} />
+            <RightButton icon={<Timer />} label="Timer" onClick={() => setTimerPanel(true)} active={timerSeconds > 0} />
+            <RightButton icon={<Gauge />} label="Speed" onClick={() => setSpeedPanel(true)} active={speed !== 1} />
+            <RightButton icon={<Music />} label={language === 'ba' ? 'Orin' : 'Musique'} onClick={() => setMusicPanel(true)} active={!!music} />
+            <RightButton icon={<Flame />} label="Challenge" onClick={() => setChallengePanel(true)} hidden={isStory} />
+            <RightButton icon={<Sparkles />} label={language === 'ba' ? 'Ìmọ̀ràn' : 'Idées'} onClick={() => setInspiringPanel(true)} />
             <RightButton icon={<Zap />} label="Flash" onClick={toggleFlash} active={flashOn} />
           </motion.div>
         )}
@@ -1095,160 +971,9 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       {/* Panels */}
       <VideoFiltersPanel isOpen={filtersOpen} onClose={() => setFiltersOpen(false)} language={language} />
 
-      <Sheet open={timerPanelOpen} title="Timer" onClose={() => setTimerPanelOpen(false)}>
-        <div className="flex gap-2">
-          {[0, 3, 10].map((t) => (
-            <button
-              key={t}
-              onClick={() => {
-                setTimerSeconds(t as 0 | 3 | 10);
-                setTimerPanelOpen(false);
-              }}
-              className={`px-4 py-2 rounded-full border transition ${
-                timerSeconds === t ? 'bg-white text-black border-white' : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
-              }`}
-            >
-              {t === 0 ? 'Off' : `${t}s`}
-            </button>
-          ))}
-        </div>
-      </Sheet>
-
-      <Sheet open={speedPanelOpen} title="Speed" onClose={() => setSpeedPanelOpen(false)}>
-        <div className="flex gap-2">
-          {[0.5, 1, 2].map((s) => (
-            <button
-              key={s}
-              onClick={() => {
-                setSpeed(s as 0.5 | 1 | 2);
-                setSpeedPanelOpen(false);
-              }}
-              className={`px-4 py-2 rounded-full border transition ${
-                speed === s ? 'bg-white text-black border-white' : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
-              }`}
-            >
-              {s}x
-            </button>
-          ))}
-        </div>
-      </Sheet>
-
-      <Sheet open={musicPanelOpen} title="Musique" onClose={() => setMusicPanelOpen(false)}>
-        <div className="space-y-2">
-          <button
-            onClick={() => {
-              setMusic(null);
-              setMusicPanelOpen(false);
-            }}
-            className="w-full text-left px-4 py-3 rounded-xl bg-white/10 text-white hover:bg-white/15 transition"
-          >
-            (Aucune musique)
-          </button>
-          {MUSIC_LIST.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => {
-                setMusic(m);
-                setMusicPanelOpen(false);
-              }}
-              className={`w-full text-left px-4 py-3 rounded-xl border transition ${
-                music?.id === m.id ? 'bg-white text-black border-white' : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
-              }`}
-            >
-              <div className="font-semibold">{m.title}</div>
-              <div className="text-xs opacity-80">{m.artist}</div>
-            </button>
-          ))}
-        </div>
-      </Sheet>
-
-      <Sheet open={challengePanelOpen} title="Challenge" onClose={() => setChallengePanelOpen(false)}>
-        <div className="flex flex-wrap gap-2">
-          {CHALLENGES.map((c) => (
-            <button
-              key={c}
-              onClick={() => {
-                setChallenge(c);
-                if (!topic) setTopic(c);
-                setChallengePanelOpen(false);
-              }}
-              className={`px-4 py-2 rounded-full border transition ${
-                challenge === c ? 'bg-white text-black border-white' : 'bg-white/10 text-white border-white/10 hover:bg-white/15'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </Sheet>
-
-      <Sheet open={inspiringPanelOpen} title="Idées" onClose={() => setInspiringPanelOpen(false)}>
-        <div className="space-y-2">
-          {INSPIRING.map((idea, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                setTopic(idea.slice(0, 80));
-                setInspiringPanelOpen(false);
-              }}
-              className="w-full text-left px-4 py-3 rounded-xl bg-white/10 text-white hover:bg-white/15 transition"
-            >
-              {idea}
-            </button>
-          ))}
-        </div>
-      </Sheet>
-
-      <Sheet open={livePanelOpen} title="LIVE Chat" onClose={() => setLivePanelOpen(false)}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-white/80 text-sm">
-            <MessageCircle className="w-4 h-4" />
-            <span>{liveMessages.length} messages</span>
-          </div>
-          <div className="flex items-center gap-2 text-white/80 text-sm">
-            <Eye className="w-4 h-4" />
-            <span>{liveViewers}</span>
-          </div>
-        </div>
-
-        <div className="max-h-[45vh] overflow-auto rounded-xl border border-white/10 bg-black/30 p-3 space-y-2">
-          {liveMessages.slice(-40).map((m) => (
-            <div key={m.id} className="text-white text-sm">
-              <span className="text-white/60 mr-2">{m.display_name || 'viewer'}:</span>
-              <span>{m.message}</span>
-            </div>
-          ))}
-          {liveMessages.length === 0 && (
-            <div className="text-white/60 text-sm">Aucun message pour le moment…</div>
-          )}
-        </div>
-
-        <div className="mt-3 flex gap-2">
-          <input
-            value={liveInput}
-            onChange={(e) => setLiveInput(e.target.value)}
-            placeholder={language === 'ba' ? 'Kọ ọrọ…' : 'Écris un message…'}
-            className="flex-1 px-4 py-3 rounded-xl bg-white/10 text-white placeholder:text-white/40 outline-none border border-white/10"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') sendLive();
-            }}
-          />
-          <button
-            onClick={sendLive}
-            className="px-4 py-3 rounded-xl bg-white text-black hover:bg-white/90 transition"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-      </Sheet>
-
-      {/* Templates / Magic */}
       <DynamicAITemplates
         isOpen={magicOpen}
-        onClose={() => {
-          setMagicOpen(false);
-          if (topTab === 'template') setTopTab('video');
-        }}
+        onClose={() => setMagicOpen(false)}
         topic={topic}
         language={language}
         onApplyTemplate={onApplyTemplate}
