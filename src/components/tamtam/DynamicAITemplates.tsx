@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, Sparkles, Wand2, Hash, Film, TextQuote, X, Play, Flame, Music2, 
-  Zap, TrendingUp, Video, Image as ImageIcon, Copy, Check 
+import {
+  Search, Sparkles, Wand2, Hash, Film, TextQuote, X, Play, Flame, Music2,
+  Zap, TrendingUp, Video, Image as ImageIcon, Copy, Check
 } from 'lucide-react';
 
 export type AIGenType =
@@ -125,7 +125,8 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   {
     id: 'live_intro',
     title: 'Intro LIVE',
-    subtitle: 'Phrase d'ouverture + règles du jeu + CTA',
+    // ✅ FIX BUILD: apostrophe dans une string -> passer en double-quotes
+    subtitle: "Phrase d'ouverture + règles du jeu + CTA",
     type: 'live_intro',
     tags: ['live', 'streaming'],
     icon: <Sparkles className="w-5 h-5" />,
@@ -153,56 +154,54 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
 ];
 
 const DEFAULT_THEMES: AITheme[] = [
-  { 
-    id: 't1', 
-    hashtag: '#萝卜刀猫咪变装', 
-    watchingLabel: '9.8m watching', 
+  {
+    id: 't1',
+    hashtag: '#萝卜刀猫咪变装',
+    watchingLabel: '9.8m watching',
     action: 'imitate',
     category: 'trending',
     trending: true,
   },
-  { 
-    id: 't2', 
-    hashtag: '#苦海翻起爱恨转场', 
-    watchingLabel: '9.8m watching', 
+  {
+    id: 't2',
+    hashtag: '#苦海翻起爱恨转场',
+    watchingLabel: '9.8m watching',
     action: 'make',
     category: 'trending',
   },
-  { 
-    id: 't3', 
-    hashtag: '#冬日摇', 
-    watchingLabel: '9.7m watching', 
+  {
+    id: 't3',
+    hashtag: '#冬日摇',
+    watchingLabel: '9.7m watching',
     action: 'imitate',
     category: 'hot',
   },
-  { 
-    id: 't4', 
-    hashtag: '#DanceChallenge', 
-    watchingLabel: '8.9m watching', 
+  {
+    id: 't4',
+    hashtag: '#DanceChallenge',
+    watchingLabel: '8.9m watching',
     action: 'imitate',
     category: 'hot',
   },
-  { 
-    id: 't5', 
-    hashtag: '#BeforeAfter', 
-    watchingLabel: '5.4m watching', 
+  {
+    id: 't5',
+    hashtag: '#BeforeAfter',
+    watchingLabel: '5.4m watching',
     action: 'make',
     category: 'new',
   },
-  { 
-    id: 't6', 
-    hashtag: '#LearnIn60s', 
-    watchingLabel: '3.6m watching', 
+  {
+    id: 't6',
+    hashtag: '#LearnIn60s',
+    watchingLabel: '3.6m watching',
     action: 'make',
     category: 'new',
   },
 ];
 
-// FIX: Typage correct de import.meta.env
 function safeEnv(key: string): string | undefined {
   try {
-    const env = import.meta.env as Record<string, string | undefined>;
-    return env[key];
+    return (import.meta as any).env?.[key] as string | undefined;
   } catch {
     return undefined;
   }
@@ -300,7 +299,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
   const filteredTemplates = useMemo(() => {
     const query = q.trim().toLowerCase();
     if (!query) return templates;
-    return templates.filter((t) => 
+    return templates.filter((t) =>
       `${t.title} ${t.subtitle} ${t.tags.join(' ')}`.toLowerCase().includes(query)
     );
   }, [q, templates]);
@@ -409,8 +408,8 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                   </div>
                 </div>
               </div>
-              <button 
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition flex items-center justify-center" 
+              <button
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition flex items-center justify-center"
                 onClick={onClose}
               >
                 <X className="w-5 h-5 text-white" />
@@ -433,8 +432,8 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                 <button
                   onClick={() => setTab('template')}
                   className={`px-4 py-2.5 rounded-xl text-sm font-medium transition ${
-                    tab === 'template' 
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' 
+                    tab === 'template'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
                       : 'bg-white/10 text-white/70 hover:bg-white/15'
                   }`}
                 >
@@ -443,8 +442,8 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                 <button
                   onClick={() => setTab('theme')}
                   className={`px-4 py-2.5 rounded-xl text-sm font-medium transition ${
-                    tab === 'theme' 
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' 
+                    tab === 'theme'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
                       : 'bg-white/10 text-white/70 hover:bg-white/15'
                   }`}
                 >
@@ -460,8 +459,8 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                       key={c.id}
                       onClick={() => setCategory(c.id)}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${
-                        category === c.id 
-                          ? 'bg-white/20 text-white border border-white/20' 
+                        category === c.id
+                          ? 'bg-white/20 text-white border border-white/20'
                           : 'bg-white/10 text-white/70 hover:bg-white/15'
                       }`}
                     >
@@ -477,8 +476,8 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
               {tab === 'template' && (
                 <div className="grid grid-cols-2 gap-3">
                   {filteredTemplates.map((t) => (
-                    <motion.div 
-                      key={t.id} 
+                    <motion.div
+                      key={t.id}
                       className="rounded-2xl bg-white/5 border border-white/10 p-3 hover:bg-white/10 transition"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -534,8 +533,8 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
               {tab === 'theme' && (
                 <div className="space-y-3">
                   {filteredThemes.map((th, idx) => (
-                    <motion.div 
-                      key={th.id} 
+                    <motion.div
+                      key={th.id}
                       className="rounded-2xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition"
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
@@ -570,7 +569,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
               {/* AI Output */}
               <AnimatePresence>
                 {(streamText || isGenerating) && (
-                  <motion.div 
+                  <motion.div
                     className="mt-4 rounded-2xl bg-black/40 border border-purple-500/30 p-4"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
