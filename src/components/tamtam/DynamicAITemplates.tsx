@@ -19,16 +19,22 @@ import { useToast } from '@/hooks/use-toast';
 type CreatorIntent = 'informer' | 'expliquer' | 'vendre' | 'sensibiliser' | 'raconter' | string;
 type CreatorSegment = 'intro' | 'message' | 'outro' | string;
 
-interface DynamicAITemplatesProps {
+// Export type for external usage
+export type AIGenType = 'script' | 'hashtags' | 'hook' | 'suggestions' | 'intro' | 'outro';
+
+export interface DynamicAITemplatesProps {
   topic?: string;
   templateKey?: string;
+  language?: string;
 
   intent?: CreatorIntent;
   segment?: CreatorSegment;
 
   onSelectContent?: (type: string, content: string) => void;
+  onGenerated?: (payload: { type: string; content: string }) => void;
 
   isSheet?: boolean;
+  isOpen?: boolean;
   onClose?: () => void;
 }
 
@@ -37,7 +43,7 @@ interface AITemplate {
   icon: string;
   label: string;
   label_ba: string;
-  type: 'script' | 'hashtags' | 'hook' | 'suggestions' | 'intro' | 'outro';
+  type: AIGenType;
   color: string;
   description: string;
 }
@@ -194,12 +200,17 @@ async function parseStreamingSSE(
 export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
   topic,
   templateKey,
+  language,
   intent,
   segment,
   onSelectContent,
+  onGenerated,
   isSheet = false,
+  isOpen = true,
   onClose,
 }) => {
+  // If isOpen is false, don't render
+  if (!isOpen) return null;
   const { currentLang } = useTamTamLanguage();
   const { toast } = useToast();
 

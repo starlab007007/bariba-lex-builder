@@ -22,7 +22,7 @@ import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
 import { FeedModeSelector, FeedMode } from '@/components/tamtam/FeedModeSelector';
 import { RadioMiniPlayer } from '@/components/tamtam/RadioMiniPlayer';
-import { FullscreenCreator } from '@/components/tamtam/FullscreenCreator';
+import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
 import { PostActionType } from '@/components/tamtam/PostActionBar';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
@@ -492,17 +492,7 @@ export default function TamTamSocial() {
       <FullscreenCreator
         isOpen={showGuidedCreator}
         onClose={() => setShowGuidedCreator(false)}
-        onComplete={async (data) => {
-          await createPost({
-            audio_url: data.audio_url,
-            media_type: data.media_type,
-            media_url: data.media_url || null,
-            transcript_fr: data.transcript_fr,
-            transcript_ba: data.transcript_ba,
-            duration_seconds: data.duration_seconds,
-            topic: data.topic,
-            template_id: data.template_id
-          });
+        onPublished={async (postId) => {
           toast({ title: "✅ Publié avec succès !" });
           triggerFeedback('success');
           fetchPosts(); // Refresh feed

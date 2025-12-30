@@ -24,7 +24,7 @@ import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
 
-import DynamicAITemplates, { AIGenType } from './DynamicAITemplates';
+import DynamicAITemplates from './DynamicAITemplates';
 import VideoFiltersPanel, { VideoFilter, VIDEO_FILTERS } from './VideoFilters';
 
 type CaptureMode = 'video' | 'photo' | 'text' | 'live' | 'audio';
@@ -159,15 +159,14 @@ async function createPost(params: {
 
   const payload = {
     user_id: userId,
-    type,
-    caption,
-    hashtags,
-    music: music ? { id: music.id, title: music.title, artist: music.artist } : null,
-    filter_id: filter?.id ?? null,
-    media_path: mediaPath ?? null,
+    audio_url: mediaUrl ?? '', // Required field
+    transcript_fr: caption,
+    transcript_ba: null,
+    media_type: type,
     media_url: mediaUrl ?? null,
-    duration_sec: durationSec ?? null,
-    status: 'published',
+    hashtags,
+    duration_seconds: durationSec ?? null,
+    is_public: true,
   };
 
   const { data, error } = await supabase
@@ -683,7 +682,7 @@ export default function FullscreenCreator({ isOpen, onClose, onPublished }: Full
   ]);
 
   const applyTemplateOutput = useCallback(
-    (payload: { type: AIGenType; content: string }) => {
+    (payload: { type: string; content: string }) => {
       triggerFeedback('notification');
 
       if (payload.type === 'hashtags') {
@@ -692,15 +691,8 @@ export default function FullscreenCreator({ isOpen, onClose, onPublished }: Full
         return;
       }
 
-      if (payload.type === 'caption' || payload.type === 'title' || payload.type === 'hook' || payload.type === 'script') {
-        // on met le texte dans caption (tu peux aussi l’envoyer vers un champ "script" si tu en as un)
-        setCaption((prev) => (prev ? `${prev}\n\n${payload.content}` : payload.content));
-        return;
-      }
-
-      if (payload.type === 'suggestions' || payload.type === 'shotlist' || payload.type === 'cta' || payload.type === 'live_intro') {
-        setCaption((prev) => (prev ? `${prev}\n\n${payload.content}` : payload.content));
-      }
+      // All other types: add to caption
+      setCaption((prev) => (prev ? `${prev}\n\n${payload.content}` : payload.content));
     },
     []
   );
@@ -1068,7 +1060,7 @@ export default function FullscreenCreator({ isOpen, onClose, onPublished }: Full
           onClose={() => setShowTemplates(false)}
           topic={caption || 'Mon sujet'}
           language={currentLang === 'ba' ? 'ba' : 'fr'}
-          onGenerated={(p) => applyTemplateOutput(p)}
+          onGenerated={(p: { type: string; content: string }) => applyTemplateOutput(p)}
         />
       </motion.div>
     </AnimatePresence>
