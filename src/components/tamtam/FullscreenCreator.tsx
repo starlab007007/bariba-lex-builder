@@ -236,6 +236,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     [language]
   );
 
+  // Recording duration timer
   useEffect(() => {
     let interval: number | undefined;
     if (isRecording) {
@@ -589,6 +590,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     }
   }, [previewType, speed]);
 
+  // LIVE realtime
   useEffect(() => {
     if (!liveSessionId) return;
     
@@ -744,241 +746,922 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
   }) => {
     if (hidden) return null;
     return (
-      <button
+      <motion.button
         onClick={onClick}
-        className={`flex flex-col items-center justify-center gap-1 py-2 px-3 rounded-lg transition ${
-          active ? 'bg-white/20 text-white' : 'bg-white/10 text-white/70 hover:bg-white/15'
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className={`flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition ${
+          active ? 'bg-white/20 text-white' : 'bg-transparent text-white/85 hover:bg-white/10'
         }`}
       >
-        <div className="w-6 h-6">{icon}</div>
-        <div className="text-[10px] font-medium whitespace-nowrap">{label}</div>
-      </button>
+        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+          active ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg' : 'bg-black/25 border border-white/10'
+        }`}>
+          {icon}
+        </div>
+        <span className="text-[11px] font-medium">{label}</span>
+      </motion.button>
     );
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black">
-      {/* Video Preview */}
-      <div className="absolute inset-0">
-        <video
-          ref={videoRef}
-          className="w-full h-full object-cover"
-          style={getFilterStyle(currentFilter, currentFilter?.intensity || 100)}
-          autoPlay
-          playsInline
-          muted
+    <div className="fixed inset-0 z-[70] bg-black text-white overflow-hidden">
+      {/* CAMERA PREVIEW */}
+      {topTab !== 'template' && (
+        <div className="absolute inset-0">
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            className="w-full h-full"
+            style={{
+              objectFit: fullMode ? 'cover' : 'contain',
+              ...(currentFilter ? getFilterStyle(currentFilter, currentFilter.intensity) : {}),
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
+        </div>
+      )}
+
+      {/* TEMPLATE TAB BG */}
+      {topTab === 'template' && (
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-black to-pink-900">
+          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.3),transparent_50%)]" />
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_bottom_left,rgba(236,72,153,0.3),transparent_50%)]" />
+        </div>
+      )}
+
+      {/* Camera Error */}
+      {cameraError && topTab !== 'template' && (
+        <div className="absolute top-20 left-0 right-0 mx-4 p-4 rounded-2xl bg-red-500/20 border border-red-500/30 backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+            <p className="text-sm text-white">{cameraError}</p>
+          </div>
+        </div>
+      )}
+
+      {/* TOP BAR */}
+      <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-10">
+        <motion.button
+          onClick={handleClose}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="w-10 h-10 rounded-full bg-black/40 border border-white/10 backdrop-blur-xl flex items-center justify-center"
+        >
+          <X className="w-5 h-5" />
+        </motion.button>
+
+        <button
+          onClick={() => setMusicPanel(true)}
+          className="px-4 py-2 rounded-full bg-black/35 border border-white/10 backdrop-blur-xl flex items-center gap-2 hover:bg-black/45 transition"
+        >
+          <Music className="w-4 h-4" />
+          <span className="text-sm font-medium truncate max-w-[120px]">
+            {music?.title ?? (language === 'ba' ? 'Orin' : 'Musique')}
+          </span>
+        </button>
+
+        <div className="w-10 h-10" />
+      </div>
+
+      {/* RECORDING INDICATOR */}
+      {isRecording && (
+        <motion.div
+          className="absolute top-16 left-4 px-3 py-2 rounded-full bg-red-500/90 backdrop-blur-xl flex items-center gap-2"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <motion.div
+            className="w-2 h-2 rounded-full bg-white"
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
+          <span className="text-white font-mono text-sm tabular-nums">{recordDurationText}</span>
+        </motion.div>
+      )}
+
+      {/* BURST COUNTER */}
+      {burstCount > 0 && (
+        <motion.div
+          className="absolute top-16 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-purple-500/90 backdrop-blur-xl"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <span className="text-white font-bold">{burstCount}/8</span>
+        </motion.div>
+      )}
+
+      {/* RIGHT RAIL */}
+      <div className="absolute right-3 top-20 z-10 flex flex-col gap-2 items-center">
+        <RightButton icon={<Repeat2 className="w-5 h-5" />} label={language === 'ba' ? 'Yípadà' : 'Switch'} onClick={doSwitch} />
+        <RightButton
+          icon={<Timer className="w-5 h-5" />}
+          label={language === 'ba' ? 'Àkókò' : 'Timer'}
+          onClick={() => setTimerPanel(true)}
+          active={timerSeconds !== 0}
+        />
+        <RightButton
+          icon={<Flame className="w-5 h-5" />}
+          label={language === 'ba' ? 'Ìdíje' : 'Challenge'}
+          onClick={() => setChallengePanel(true)}
+          active={!!challenge}
+        />
+        <RightButton
+          icon={<Eye className="w-5 h-5" />}
+          label={language === 'ba' ? 'Ìmọ̀ràn' : 'Idées'}
+          onClick={() => setInspiringPanel(true)}
+        />
+        <RightButton
+          icon={<Sparkles className="w-5 h-5" />}
+          label={language === 'ba' ? 'Ẹwà' : 'Filtres'}
+          onClick={() => setFiltersOpen(true)}
         />
 
-        {cameraError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/80">
-            <div className="text-center px-6">
-              <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-              <p className="text-white text-sm">{cameraError}</p>
-            </div>
-          </div>
-        )}
+        <RightButton
+          icon={<Gauge className="w-5 h-5" />}
+          label={language === 'ba' ? 'Iyára' : 'Vitesse'}
+          onClick={() => setSpeedPanel(true)}
+          active={speed !== 1}
+          hidden={!rightExpanded}
+        />
+        <RightButton
+          icon={<Expand className="w-5 h-5" />}
+          label="Full"
+          onClick={() => setFullMode((p) => !p)}
+          active={fullMode}
+          hidden={!rightExpanded}
+        />
+        <RightButton
+          icon={<Zap className="w-5 h-5" />}
+          label="Flash"
+          onClick={toggleFlash}
+          active={flashOn}
+          hidden={!rightExpanded}
+        />
 
+        <button
+          onClick={() => setRightExpanded((p) => !p)}
+          className="w-10 h-10 rounded-full bg-black/40 border border-white/10 backdrop-blur-xl flex items-center justify-center mt-2"
+        >
+          <ChevronDown className={`w-5 h-5 transition-transform ${rightExpanded ? 'rotate-0' : '-rotate-90'}`} />
+        </button>
+      </div>
+
+      {/* COUNTDOWN */}
+      <AnimatePresence>
         {countdown > 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <motion.div
+            className="absolute inset-0 z-20 flex items-center justify-center bg-black/40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <motion.div
-              key={countdown}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1.2, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              className="text-white text-9xl font-bold"
+              className="text-9xl font-extrabold text-white drop-shadow-2xl"
+              initial={{ scale: 0 }}
+              animate={{ scale: [0, 1.2, 1] }}
+              transition={{ duration: 0.5 }}
             >
               {countdown}
             </motion.div>
-          </div>
-        )}
-
-        {burstCount > 0 && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="bg-black/70 px-6 py-3 rounded-full">
-              <p className="text-white text-xl font-bold">{burstCount} / 8</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/60 to-transparent">
-        <div className="flex items-center justify-between">
-          <button onClick={handleClose} className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition">
-            <X className="w-6 h-6 text-white" />
-          </button>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => setTopTab('video')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                topTab === 'video' ? 'bg-white text-black' : 'bg-white/20 text-white'
-              }`}
-            >
-              {language === 'ba' ? 'Fídíò' : 'Vidéo'}
-            </button>
-            <button
-              onClick={() => setTopTab('story')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                topTab === 'story' ? 'bg-white text-black' : 'bg-white/20 text-white'
-              }`}
-            >
-              Story
-            </button>
-            <button
-              onClick={() => setTopTab('template')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                topTab === 'template' ? 'bg-white text-black' : 'bg-white/20 text-white'
-              }`}
-            >
-              Template
-            </button>
-            <button
-              onClick={() => setTopTab('live')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                topTab === 'live' ? 'bg-red-500 text-white' : 'bg-white/20 text-white'
-              }`}
-            >
-              <Radio className="w-4 h-4 inline mr-1" />
-              LIVE
-            </button>
-          </div>
-
-          <button onClick={doSwitch} className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition">
-            <RotateCcw className="w-6 h-6 text-white" />
-          </button>
-        </div>
-
-        {isRecording && (
-          <div className="mt-3 flex items-center justify-center gap-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-white text-lg font-mono">{recordDurationText}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Right Sidebar */}
-      <AnimatePresence>
-        {rightExpanded && topTab !== 'template' && (
-          <motion.div
-            initial={{ x: 100, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 100, opacity: 0 }}
-            className="absolute top-20 right-4 flex flex-col gap-2"
-          >
-            <RightButton icon={<Wand2 />} label="Magic AI" onClick={() => setMagicOpen(true)} />
-            <RightButton icon={<Sparkles />} label={language === 'ba' ? 'Àwọ̀' : 'Filtres'} onClick={() => setFiltersOpen(true)} />
-            <RightButton icon={<Timer />} label="Timer" onClick={() => setTimerPanel(true)} active={timerSeconds > 0} />
-            <RightButton icon={<Gauge />} label="Speed" onClick={() => setSpeedPanel(true)} active={speed !== 1} />
-            <RightButton icon={<Music />} label={language === 'ba' ? 'Orin' : 'Musique'} onClick={() => setMusicPanel(true)} active={!!music} />
-            <RightButton icon={<Flame />} label="Challenge" onClick={() => setChallengePanel(true)} hidden={isStory} />
-            <RightButton icon={<Sparkles />} label={language === 'ba' ? 'Ìmọ̀ràn' : 'Idées'} onClick={() => setInspiringPanel(true)} />
-            <RightButton icon={<Zap />} label="Flash" onClick={toggleFlash} active={flashOn} />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Bottom Controls */}
-      {topTab !== 'template' && !previewUrl && (
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
-          <div className="flex items-center justify-between max-w-2xl mx-auto">
-            <div className="flex gap-2">
-              {!isStory && (
-                <>
-                  <button
-                    onClick={() => setMode('burst')}
-                    className={`p-3 rounded-full transition ${
-                      mode === 'burst' ? 'bg-white text-black' : 'bg-white/20 text-white'
-                    }`}
-                  >
-                    <Repeat2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => setMode('photo')}
-                    className={`p-3 rounded-full transition ${
-                      mode === 'photo' ? 'bg-white text-black' : 'bg-white/20 text-white'
-                    }`}
-                  >
-                    <Camera className="w-5 h-5" />
-                  </button>
-                </>
-              )}
-            </div>
-
-            <button
-              onClick={isRecording ? endVideoCapture : beginCapture}
-              disabled={!!cameraError}
-              className={`w-20 h-20 rounded-full border-4 transition ${
-                isRecording
-                  ? 'bg-red-500 border-red-300'
-                  : 'bg-white border-white/50 hover:border-white disabled:opacity-50'
-              }`}
-            >
-              {isRecording && <div className="w-8 h-8 bg-white rounded mx-auto" />}
-            </button>
-
-            <div className="flex gap-2">
-              {isStory && (
-                <button
-                  onClick={() => setMode('text')}
-                  className={`p-3 rounded-full transition ${
-                    mode === 'text' ? 'bg-white text-black' : 'bg-white/20 text-white'
-                  }`}
-                >
-                  <TypeIcon className="w-5 h-5" />
-                </button>
-              )}
-              {topTab === 'live' && (
-                <button onClick={createLive} className="p-3 rounded-full bg-red-500 text-white">
-                  <Radio className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Preview Mode */}
-      {previewUrl && (
-        <div className="absolute inset-0 bg-black z-20">
-          {previewType === 'video' && (
-            <video id="tamtam-preview-video" src={previewUrl} controls className="w-full h-full object-contain" />
-          )}
-          {previewType === 'photo' && <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />}
-
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
-            <div className="flex gap-3 justify-center">
+      {/* PREVIEW MODAL */}
+      <AnimatePresence>
+        {!!previewUrl && (
+          <motion.div
+            className="absolute inset-0 z-[60] bg-black/95 flex flex-col"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="flex items-center justify-between p-4">
               <button
                 onClick={clearPreview}
-                className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/20 text-white hover:bg-white/30 transition"
+                className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition flex items-center gap-2"
               >
-                <RotateCcw className="w-5 h-5" />
-                {language === 'ba' ? 'Tún ṣe' : 'Refaire'}
+                <RotateCcw className="w-4 h-4" />
+                <span>{language === 'ba' ? 'Ṣe Lẹ́ẹ̀kan si' : 'Reprendre'}</span>
               </button>
+              <div className="text-white/70 text-sm font-medium">
+                {isStory ? (language === 'ba' ? 'Ìtàn' : 'Story') : language === 'ba' ? 'Àgbéjade' : 'Aperçu'}
+              </div>
               <button
                 onClick={submit}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50"
+                className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium disabled:opacity-50 flex items-center gap-2 shadow-lg transition"
               >
-                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-                {language === 'ba' ? 'Fi ránṣẹ́' : 'Publier'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{language === 'ba' ? 'Ń fi ránṣẹ́...' : 'Envoi...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>{language === 'ba' ? 'Fíránṣẹ́' : 'Publier'}</span>
+                  </>
+                )}
               </button>
             </div>
+
+            <div className="flex-1 flex items-center justify-center px-4 pb-6">
+              {previewType === 'video' ? (
+                <video
+                  id="tamtam-preview-video"
+                  src={previewUrl}
+                  controls
+                  autoPlay
+                  loop
+                  className="max-h-[80vh] w-full rounded-2xl bg-black shadow-2xl"
+                />
+              ) : (
+                <img src={previewUrl} className="max-h-[80vh] w-full object-contain rounded-2xl bg-black shadow-2xl" alt="preview" />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* BOTTOM CREATOR */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 pb-6">
+        {/* TOP TAB BAR */}
+        <div className="mx-auto max-w-md px-4">
+          <div className="rounded-2xl bg-black/40 border border-white/10 backdrop-blur-xl p-2 flex items-center justify-between shadow-xl">
+            {(['video', 'story', 'template', 'live'] as TopTab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => {
+                  setTopTab(t);
+                  if (t === 'live') setMode('video');
+                  if (t === 'template') stopStream();
+                }}
+                className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
+                  topTab === t ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' : 'text-white/70 hover:text-white'
+                }`}
+              >
+                {t === 'video'
+                  ? language === 'ba'
+                    ? 'Fídíò'
+                    : 'Video'
+                  : t === 'story'
+                  ? language === 'ba'
+                    ? 'Ìtàn'
+                    : 'Story'
+                  : t === 'template'
+                  ? 'AI'
+                  : 'LIVE'}
+              </button>
+            ))}
           </div>
         </div>
-      )}
 
-      {/* Panels */}
-      <VideoFiltersPanel isOpen={filtersOpen} onClose={() => setFiltersOpen(false)} language={language} />
+        {/* TEMPLATE TAB CONTENT */}
+        {topTab === 'template' && (
+          <div className="mx-auto max-w-md px-4 mt-4 space-y-3">
+            <motion.button
+              onClick={() => setMagicOpen(true)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 backdrop-blur-xl p-4 flex items-center justify-between shadow-xl"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+                  <Wand2 className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-left">
+                  <div className="font-semibold text-white">
+                    {language === 'ba' ? 'AI Àwọn Àpẹẹrẹ' : 'AI Templates & Magic'}
+                  </div>
+                  <div className="text-xs text-white/60">
+                    {language === 'ba' ? 'Àwọn àpẹẹrẹ • àkọlé • hashtags' : 'Auto montage • scripts • hashtags • thèmes'}
+                  </div>
+                </div>
+              </div>
+              <ChevronDown className="w-5 h-5 text-white/70 -rotate-90" />
+            </motion.button>
+
+            <div className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl p-4">
+              <div className="text-white/70 text-sm mb-3 flex items-center gap-2">
+                <Globe className="w-4 h-4" />
+                {language === 'ba' ? 'Àwọn kókó tó gbajúmọ̀' : 'Sujets tendance'}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {INSPIRING.slice(0, 4).map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setTopic(s);
+                      setTopTab('video');
+                      setMode('video');
+                    }}
+                    className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 text-white/80 text-xs font-medium transition"
+                  >
+                    {s.length > 30 ? `${s.slice(0, 30)}...` : s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* LIVE TAB CONTENT */}
+        {topTab === 'live' && (
+          <div className="mx-auto max-w-md px-4 mt-3">
+            <div className="rounded-2xl bg-black/40 border border-red-500/30 backdrop-blur-xl p-4 shadow-xl">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <motion.div
+                    className="w-3 h-3 rounded-full bg-red-500"
+                    animate={{ opacity: [1, 0.5, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  />
+                  <Radio className="w-5 h-5 text-red-400" />
+                  <div className="font-semibold text-white">
+                    {language === 'ba' ? 'ÌRÒYÌN LÁÌ' : 'LIVE'}
+                  </div>
+                  {liveSessionId && (
+                    <div className="text-xs text-white/60">
+                      {liveSessionId.slice(0, 8)}...
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/10">
+                  <Eye className="w-4 h-4 text-white/70" />
+                  <span className="text-xs text-white font-medium">{liveViewers}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={createLive}
+                  disabled={!!liveSessionId}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold disabled:opacity-50 transition shadow-lg"
+                >
+                  {language === 'ba' ? 'Bẹ̀rẹ̀ LIVE' : 'Démarrer LIVE'}
+                </button>
+                <button
+                  onClick={() => setLivePanelOpen(true)}
+                  disabled={!liveSessionId}
+                  className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-semibold disabled:opacity-50 transition"
+                >
+                  {language === 'ba' ? 'Ìfọ̀rọ̀wánilẹ̀nuwò' : 'Chat'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CAPTURE STRIP */}
+        {topTab !== 'template' && (
+          <>
+            {/* Duration picker for video */}
+            {(mode === 'video' || topTab === 'live') && (
+              <div className="flex justify-center gap-3 mb-3 mt-4">
+                {[300, 60].map((dur) => (
+                  <button
+                    key={dur}
+                    className={`px-4 py-2 rounded-full font-medium text-sm transition ${
+                      durationPick === dur
+                        ? 'bg-white text-black shadow-lg'
+                        : 'bg-black/30 border border-white/10 text-white/80 hover:bg-black/40'
+                    }`}
+                    onClick={() => setDurationPick(dur as 60 | 300)}
+                  >
+                    {dur === 300 ? '5 min' : '1 min'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Mode Strip */}
+            <div className="flex justify-center gap-8 mb-3 text-sm font-semibold">
+              {(['burst', 'photo', 'video', 'text'] as CaptureMode[]).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => {
+                    setMode(m);
+                    if (m === 'text') setStoryGradient('purpleBlue');
+                  }}
+                  className={`px-3 py-1.5 rounded-full transition ${
+                    mode === m ? 'bg-white text-black shadow-lg' : 'text-white/75 hover:text-white'
+                  }`}
+                >
+                  {m === 'burst'
+                    ? language === 'ba'
+                      ? 'Púpọ̀'
+                      : 'Rafale'
+                    : m === 'photo'
+                    ? language === 'ba'
+                      ? 'Àwòrán'
+                      : 'Photo'
+                    : m === 'video'
+                    ? language === 'ba'
+                      ? 'Fídíò'
+                      : 'Vidéo'
+                    : language === 'ba'
+                    ? 'Ọ̀rọ̀'
+                    : 'Texte'}
+                </button>
+              ))}
+            </div>
+
+            {/* Bottom Controls */}
+            <div className="mx-auto max-w-md px-10 flex items-end justify-between">
+              {/* Magic AI */}
+              <motion.button
+                onClick={() => setMagicOpen(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex flex-col items-center gap-1.5"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-purple-500/30 backdrop-blur-xl flex items-center justify-center shadow-lg">
+                  <Wand2 className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-xs text-white/90 font-medium">Magic</div>
+              </motion.button>
+
+              {/* Record Button */}
+              <div className="flex flex-col items-center gap-2">
+                <motion.button
+                  onClick={isRecording ? endVideoCapture : beginCapture}
+                  disabled={countdown > 0}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`w-20 h-20 rounded-full border-4 flex items-center justify-center shadow-2xl ${
+                    isRecording
+                      ? 'border-red-500 bg-red-500/40 backdrop-blur-xl'
+                      : 'border-white/90 bg-gradient-to-tr from-purple-500/80 to-pink-500/80 backdrop-blur-xl'
+                  }`}
+                >
+                  {mode === 'photo' || mode === 'burst' ? (
+                    <Camera className="w-8 h-8 text-white" />
+                  ) : mode === 'text' ? (
+                    <TypeIcon className="w-8 h-8 text-white" />
+                  ) : isRecording ? (
+                    <Pause className="w-8 h-8 text-white" />
+                  ) : (
+                    <Play className="w-8 h-8 text-white" />
+                  )}
+                </motion.button>
+
+                {/* Livephoto toggle */}
+                {mode === 'photo' && (
+                  <button
+                    onClick={() => setLivePhotoOn((p) => !p)}
+                    className={`text-xs px-3 py-1 rounded-full border border-white/20 font-medium transition ${
+                      livePhotoOn ? 'bg-white text-black' : 'bg-black/30 text-white/80'
+                    }`}
+                  >
+                    Livephoto {livePhotoOn ? 'ON' : 'OFF'}
+                  </button>
+                )}
+              </div>
+
+              {/* Albums */}
+              <label className="flex flex-col items-center gap-1.5 cursor-pointer">
+                <div className="w-14 h-14 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-xl flex items-center justify-center shadow-lg hover:bg-black/50 transition">
+                  <ImageIcon className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-xs text-white/90 font-medium">{language === 'ba' ? 'Album' : 'Albums'}</div>
+                <input
+                  type="file"
+                  accept="video/*,image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const url = URL.createObjectURL(file);
+                    setPreviewBlob(file);
+                    setPreviewUrl(url);
+                    setPreviewType(file.type.startsWith('video') ? 'video' : 'photo');
+                  }}
+                />
+              </label>
+            </div>
+
+            {/* Story Text Editor */}
+            {mode === 'text' && (
+              <div className="mx-auto max-w-md px-4 mt-4">
+                <div
+                  className={`rounded-2xl border border-white/20 backdrop-blur-xl p-4 shadow-xl ${
+                    storyGradient === 'purpleBlue'
+                      ? 'bg-gradient-to-br from-purple-500/40 to-sky-500/40'
+                      : storyGradient === 'orangePink'
+                      ? 'bg-gradient-to-br from-rose-500/40 to-orange-500/40'
+                      : storyGradient === 'pinkPurple'
+                      ? 'bg-gradient-to-br from-pink-500/40 to-purple-500/40'
+                      : 'bg-gradient-to-br from-green-500/40 to-cyan-500/40'
+                  }`}
+                >
+                  <div className="text-white/90 text-sm mb-2 font-medium">
+                    {language === 'ba' ? 'Kọ ohùn inú rẹ' : 'Écris ton humeur'}
+                  </div>
+                  <textarea
+                    value={textContent}
+                    onChange={(e) => setTextContent(e.target.value)}
+                    placeholder={language === 'ba' ? 'Kọ níbí...' : 'Écris ici...'}
+                    className="w-full min-h-[100px] rounded-xl bg-black/30 border border-white/20 p-3 text-white outline-none placeholder:text-white/40 focus:border-white/40 transition"
+                  />
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {(['purpleBlue', 'orangePink', 'pinkPurple', 'greenCyan'] as GradientTheme[]).map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => setStoryGradient(g)}
+                        className={`py-2 rounded-xl border text-xs font-medium transition ${
+                          storyGradient === g
+                            ? 'bg-white/30 border-white/50 text-white shadow-lg'
+                            : 'bg-black/20 border-white/10 text-white/70 hover:bg-black/30'
+                        }`}
+                      >
+                        {g === 'purpleBlue'
+                          ? '🟣🔵'
+                          : g === 'orangePink'
+                          ? '🟠🩷'
+                          : g === 'pinkPurple'
+                          ? '🩷🟣'
+                          : '🟢🩵'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Topic/Challenge Input */}
+            <div className="mx-auto max-w-md px-4 mt-3">
+              <input
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder={
+                  language === 'ba' ? 'Kókó / èrò...' : 'Sujet / idée...'
+                }
+                className="w-full px-4 py-3 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-xl text-white placeholder:text-white/40 outline-none focus:border-white/30 transition"
+              />
+              {(challenge || tags.length > 0) && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {challenge && (
+                    <span className="text-xs px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-white font-medium">
+                      {challenge}
+                    </span>
+                  )}
+                  {tags.slice(0, 6).map((t, i) => (
+                    <span key={i} className="text-xs px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white/80">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* PANELS */}
+      <VideoFiltersPanel
+        isOpen={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        onSelectFilter={(f: VideoFilter) => setCurrentFilter(f)}
+        currentFilter={currentFilter}
+        initialCategory="beauty"
+        language={language}
+      />
 
       <DynamicAITemplates
         isOpen={magicOpen}
         onClose={() => setMagicOpen(false)}
-        topic={topic}
+        topic={topic || challenge || ' '}
         language={language}
         onApplyTemplate={onApplyTemplate}
         onGenerated={onGenerated}
       />
+
+      {/* TIMER PANEL */}
+      <AnimatePresence>
+        {timerPanel && (
+          <motion.div
+            className="fixed inset-0 z-[95] bg-black/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setTimerPanel(false)}
+          >
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-black/95 backdrop-blur-xl border-t border-white/10 p-4"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-white font-semibold text-lg mb-4">
+                {language === 'ba' ? 'Àkókò Ìdádúró' : 'Minuterie'}
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[0, 3, 10].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setTimerSeconds(t as 0 | 3 | 10);
+                      setTimerPanel(false);
+                    }}
+                    className={`py-4 rounded-2xl border font-semibold transition ${
+                      timerSeconds === t
+                        ? 'bg-white text-black border-white shadow-lg'
+                        : 'bg-white/10 border-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    {t === 0 ? (language === 'ba' ? 'Kò sí' : 'Désactivé') : `${t}s`}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* SPEED PANEL */}
+      <AnimatePresence>
+        {speedPanel && (
+          <motion.div
+            className="fixed inset-0 z-[95] bg-black/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSpeedPanel(false)}
+          >
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-black/95 backdrop-blur-xl border-t border-white/10 p-4"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-white font-semibold text-lg mb-4">
+                {language === 'ba' ? 'Iyára' : 'Vitesse'}
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[0.5, 1, 2].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      setSpeed(s as 0.5 | 1 | 2);
+                      setSpeedPanel(false);
+                    }}
+                    className={`py-4 rounded-2xl border font-semibold transition ${
+                      speed === s
+                        ? 'bg-white text-black border-white shadow-lg'
+                        : 'bg-white/10 border-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    {s}x
+                  </button>
+                ))}
+              </div>
+              <div className="text-xs text-white/60 mt-3 text-center">
+                {language === 'ba'
+                  ? 'Iyára ń ṣiṣẹ́ lórí ìwòye nìkan'
+                  : 'La vitesse affecte la lecture uniquement'}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* CHALLENGE PANEL */}
+      <AnimatePresence>
+        {challengePanel && (
+          <motion.div
+            className="fixed inset-0 z-[95] bg-black/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setChallengePanel(false)}
+          >
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-black/95 backdrop-blur-xl border-t border-white/10 p-4"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <Flame className="w-5 h-5 text-orange-400" />
+                {language === 'ba' ? 'Ìdíje' : 'Challenges'}
+              </div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {CHALLENGES.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => {
+                      setChallenge(c);
+                      setChallengePanel(false);
+                    }}
+                    className={`px-4 py-2 rounded-full border font-medium transition ${
+                      challenge === c
+                        ? 'bg-white text-black border-white'
+                        : 'bg-white/10 border-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => {
+                  setChallenge('');
+                  setChallengePanel(false);
+                }}
+                className="w-full py-3 rounded-2xl bg-white/10 border border-white/10 text-white font-medium hover:bg-white/20 transition"
+              >
+                {language === 'ba' ? 'Parẹ́' : 'Effacer'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* INSPIRING PANEL */}
+      <AnimatePresence>
+        {inspiringPanel && (
+          <motion.div
+            className="fixed inset-0 z-[95] bg-black/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setInspiringPanel(false)}
+          >
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-black/95 backdrop-blur-xl border-t border-white/10 p-4 max-h-[70vh] overflow-y-auto"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <Eye className="w-5 h-5 text-purple-400" />
+                {language === 'ba' ? 'Àwọn Ìmọ̀ràn' : 'Idées Inspirantes'}
+              </div>
+              <div className="space-y-2">
+                {INSPIRING.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setTopic(s);
+                      setInspiringPanel(false);
+                      setMagicOpen(true);
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-purple-500/30 flex items-center justify-center text-sm font-bold">
+                        {i + 1}
+                      </div>
+                      <span className="text-sm">{s}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MUSIC PANEL */}
+      <AnimatePresence>
+        {musicPanel && (
+          <motion.div
+            className="fixed inset-0 z-[95] bg-black/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMusicPanel(false)}
+          >
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-black/95 backdrop-blur-xl border-t border-white/10 p-4 max-h-[60vh] overflow-y-auto"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <Music className="w-5 h-5 text-pink-400" />
+                {language === 'ba' ? 'Orin' : 'Musique'}
+              </div>
+              <div className="space-y-2">
+                {MUSIC_LIST.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      setMusic(m);
+                      setMusicPanel(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border transition ${
+                      music?.id === m.id
+                        ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/30'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Music className="w-5 h-5 text-white/70" />
+                      <div className="text-left">
+                        <div className="text-white font-medium">{m.title}</div>
+                        <div className="text-xs text-white/60">{m.artist}</div>
+                      </div>
+                    </div>
+                    {music?.id === m.id && <Check className="w-5 h-5 text-white" />}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => {
+                  setMusic(null);
+                  setMusicPanel(false);
+                }}
+                className="w-full mt-3 py-3 rounded-2xl bg-white/10 border border-white/10 text-white font-medium hover:bg-white/20 transition"
+              >
+                {language === 'ba' ? 'Parẹ́' : 'Aucune musique'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* LIVE CHAT PANEL */}
+      <AnimatePresence>
+        {livePanelOpen && (
+          <motion.div
+            className="fixed inset-0 z-[98] bg-black/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setLivePanelOpen(false)}
+          >
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-black/95 backdrop-blur-xl border-t border-white/10 p-4 max-h-[75vh] overflow-hidden flex flex-col"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-purple-400" />
+                  <div className="font-semibold text-white">
+                    {language === 'ba' ? 'Ìfọ̀rọ̀wánilẹ̀nuwò LIVE' : 'Chat LIVE'}
+                  </div>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/10">
+                    <Eye className="w-3 h-3 text-white/70" />
+                    <span className="text-xs text-white">{liveViewers}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setLivePanelOpen(false)}
+                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm transition"
+                >
+                  {language === 'ba' ? 'Padé' : 'Fermer'}
+                </button>
+              </div>
+
+              <div className="flex-1 rounded-2xl bg-black/30 border border-white/10 p-3 overflow-y-auto mb-3 space-y-2">
+                {liveMessages.length === 0 ? (
+                  <div className="text-white/50 text-sm text-center py-8">
+                    {language === 'ba' ? 'Kò sí ìfọ̀rọ̀wánilẹ̀nuwò kan' : 'Aucun message pour le moment'}
+                  </div>
+                ) : (
+                  liveMessages.map((m) => (
+                    <div key={m.id} className="text-sm bg-white/5 rounded-lg p-2 border border-white/5">
+                      <span className="text-purple-400 font-medium text-xs mr-2">
+                        {m.display_name ?? 'viewer'}:
+                      </span>
+                      <span className="text-white">{m.message}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  value={liveInput}
+                  onChange={(e) => setLiveInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendLive()}
+                  placeholder={language === 'ba' ? 'Kọ ìfọ̀rọ̀wánilẹ̀nuwò...' : 'Écris un message...'}
+                  className="flex-1 px-4 py-3 rounded-2xl bg-black/40 border border-white/10 text-white outline-none placeholder:text-white/40 focus:border-white/30 transition"
+                />
+                <button
+                  onClick={sendLive}
+                  disabled={!liveInput.trim()}
+                  className="w-12 h-12 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 flex items-center justify-center disabled:opacity-50 transition shadow-lg"
+                >
+                  <Send className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
