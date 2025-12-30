@@ -1,8 +1,6 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Sparkles, Sun, Camera, Palette, Check, Sliders } from 'lucide-react';
-import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
-import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Sun, Camera, Palette, Check, Sliders, X } from 'lucide-react';
 
 export interface VideoFilter {
   id: string;
@@ -10,16 +8,10 @@ export interface VideoFilter {
   name_ba?: string;
   icon: string;
   cssFilter: string;
-  intensity: number; // 0-100
+  intensity: number;
   category: 'beauty' | 'color' | 'artistic' | 'mood';
 }
 
-/**
- * Robust CSS filter scaler:
- * - Supports negative values (e.g., hue-rotate(-10deg))
- * - Scales multiplicative filters around 1 (brightness/contrast/saturate)
- * - Scales additive/absolute filters directly (sepia/grayscale/blur/hue-rotate)
- */
 export const scaleCssFilter = (cssFilter: string, intensity: number): string => {
   if (!cssFilter || cssFilter === 'none') return 'none';
   const scale = Math.max(0, Math.min(100, intensity)) / 100;
@@ -50,29 +42,28 @@ export const scaleCssFilter = (cssFilter: string, intensity: number): string => 
 };
 
 export const VIDEO_FILTERS: VideoFilter[] = [
-  // Beauty
   { id: 'none', name: 'Original', name_ba: 'Àdáwà', icon: '📷', cssFilter: 'none', intensity: 100, category: 'beauty' },
   { id: 'beauty', name: 'Beauté', name_ba: 'Ẹwà', icon: '✨', cssFilter: 'brightness(1.05) contrast(0.95) saturate(1.1) blur(0.3px)', intensity: 50, category: 'beauty' },
   { id: 'soft_glow', name: 'Lueur Douce', name_ba: 'Ìmọ́lẹ̀ Rírọ̀', icon: '🌟', cssFilter: 'brightness(1.1) contrast(0.9) saturate(1.05)', intensity: 60, category: 'beauty' },
   { id: 'smooth', name: 'Lisse', name_ba: 'Dídán', icon: '💎', cssFilter: 'brightness(1.02) contrast(0.98) blur(0.5px)', intensity: 40, category: 'beauty' },
-
-  // Color
+  { id: 'porcelain', name: 'Porcelaine', name_ba: 'Àwọ̀ Funfun', icon: '🎀', cssFilter: 'brightness(1.08) contrast(0.92) saturate(0.95) blur(0.4px)', intensity: 55, category: 'beauty' },
+  
   { id: 'warm', name: 'Chaud', name_ba: 'Gbígbóná', icon: '🔥', cssFilter: 'sepia(0.2) saturate(1.3) brightness(1.05)', intensity: 50, category: 'color' },
   { id: 'cool', name: 'Froid', name_ba: 'Tutù', icon: '❄️', cssFilter: 'saturate(0.9) brightness(1.05) hue-rotate(10deg)', intensity: 50, category: 'color' },
   { id: 'vivid', name: 'Vif', name_ba: 'Kíkankíkan', icon: '🌈', cssFilter: 'saturate(1.5) contrast(1.1) brightness(1.05)', intensity: 60, category: 'color' },
-
-  // Artistic
+  { id: 'pastel', name: 'Pastel', name_ba: 'Àwọ̀ Rírọ̀', icon: '🌸', cssFilter: 'saturate(0.7) brightness(1.12) contrast(0.88)', intensity: 65, category: 'color' },
+  
   { id: 'vintage', name: 'Vintage', name_ba: 'Àtijọ́', icon: '📻', cssFilter: 'sepia(0.4) contrast(1.1) brightness(0.95) saturate(0.9)', intensity: 70, category: 'artistic' },
   { id: 'noir', name: 'Noir & Blanc', name_ba: 'Dúdú àti Funfun', icon: '🎬', cssFilter: 'grayscale(1) contrast(1.2) brightness(1.05)', intensity: 100, category: 'artistic' },
   { id: 'neon', name: 'Néon', name_ba: 'Ìmọ́lẹ̀ Dídán', icon: '💜', cssFilter: 'saturate(2) contrast(1.3) brightness(1.1) hue-rotate(-10deg)', intensity: 80, category: 'artistic' },
   { id: 'cyberpunk', name: 'Cyberpunk', name_ba: 'Ọjọ́ Ọ̀la', icon: '🤖', cssFilter: 'saturate(1.8) contrast(1.4) brightness(0.95) hue-rotate(180deg)', intensity: 70, category: 'artistic' },
   { id: 'film', name: 'Film', name_ba: 'Fíìmù', icon: '🎞️', cssFilter: 'sepia(0.15) contrast(1.15) brightness(0.95) saturate(1.1)', intensity: 50, category: 'artistic' },
-
-  // Mood
+  
   { id: 'dreamy', name: 'Rêveur', name_ba: 'Àlá', icon: '💭', cssFilter: 'brightness(1.1) contrast(0.85) saturate(1.1) blur(0.8px)', intensity: 60, category: 'mood' },
   { id: 'dramatic', name: 'Dramatique', name_ba: 'Ẹ̀rù', icon: '🎭', cssFilter: 'contrast(1.4) brightness(0.9) saturate(0.8)', intensity: 70, category: 'mood' },
   { id: 'sunrise', name: 'Lever de Soleil', name_ba: 'Ìmọ́lẹ̀ Àárọ̀', icon: '🌅', cssFilter: 'sepia(0.3) saturate(1.4) brightness(1.1) hue-rotate(-15deg)', intensity: 60, category: 'mood' },
   { id: 'sunset', name: 'Coucher de Soleil', name_ba: 'Ìrọ̀lẹ́', icon: '🌇', cssFilter: 'sepia(0.4) saturate(1.3) brightness(1.0) hue-rotate(10deg)', intensity: 65, category: 'mood' },
+  { id: 'moody', name: 'Atmosphérique', name_ba: 'Ọkàn Dúdú', icon: '🌑', cssFilter: 'brightness(0.85) contrast(1.25) saturate(0.9)', intensity: 75, category: 'mood' },
 ];
 
 interface VideoFiltersProps {
@@ -81,6 +72,7 @@ interface VideoFiltersProps {
   onSelectFilter: (filter: VideoFilter) => void;
   currentFilter: VideoFilter | null;
   initialCategory?: VideoFilter['category'];
+  language?: 'fr' | 'ba';
 }
 
 export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
@@ -89,19 +81,20 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
   onSelectFilter,
   currentFilter,
   initialCategory = 'beauty',
+  language = 'fr',
 }) => {
-  const { currentLang } = useTamTamLanguage();
   const [activeCategory, setActiveCategory] = useState<VideoFilter['category']>(initialCategory);
   const [customIntensity, setCustomIntensity] = useState<number>(currentFilter?.intensity ?? 60);
+  const [isAdjusting, setIsAdjusting] = useState(false);
 
   const categories = useMemo(
     () => [
-      { id: 'beauty' as const, label: 'Beautify', icon: <Sparkles className="w-4 h-4" /> },
-      { id: 'color' as const, label: 'Color', icon: <Sun className="w-4 h-4" /> },
-      { id: 'artistic' as const, label: 'Art', icon: <Camera className="w-4 h-4" /> },
-      { id: 'mood' as const, label: 'Mood', icon: <Palette className="w-4 h-4" /> },
+      { id: 'beauty' as const, label: language === 'ba' ? 'Ẹwà' : 'Beauté', icon: <Sparkles className="w-4 h-4" /> },
+      { id: 'color' as const, label: language === 'ba' ? 'Àwọ̀' : 'Couleur', icon: <Sun className="w-4 h-4" /> },
+      { id: 'artistic' as const, label: language === 'ba' ? 'Ọnà' : 'Artistique', icon: <Camera className="w-4 h-4" /> },
+      { id: 'mood' as const, label: language === 'ba' ? 'Ọkàn' : 'Ambiance', icon: <Palette className="w-4 h-4" /> },
     ],
-    []
+    [language]
   );
 
   const filteredFilters = useMemo(
@@ -109,116 +102,165 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
     [activeCategory]
   );
 
-  const handleSelectFilter = (filter: VideoFilter) => {
+  const handleSelectFilter = useCallback((filter: VideoFilter) => {
     const adjustedFilter: VideoFilter = { ...filter, intensity: customIntensity };
     onSelectFilter(adjustedFilter);
-    triggerFeedback('notification');
-  };
+  }, [customIntensity, onSelectFilter]);
+
+  const handleIntensityChange = useCallback((value: number) => {
+    setCustomIntensity(value);
+    setIsAdjusting(true);
+    if (currentFilter && currentFilter.id !== 'none') {
+      const adjustedFilter: VideoFilter = { ...currentFilter, intensity: value };
+      onSelectFilter(adjustedFilter);
+    }
+  }, [currentFilter, onSelectFilter]);
+
+  const handleIntensityEnd = useCallback(() => {
+    setIsAdjusting(false);
+  }, []);
 
   if (!isOpen) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80] bg-black/60"
-      onClick={onClose}
-    >
+    <AnimatePresence>
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        onClick={(e) => e.stopPropagation()}
-        className="absolute bottom-0 left-0 right-0 ios-glass-dark rounded-t-3xl max-h-[75vh] overflow-hidden"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[80] bg-black/60"
+        onClick={onClose}
       >
-        <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-white/30 rounded-full" />
-        </div>
-
-        <div className="px-4 pb-3 flex items-center justify-between">
-          <div>
-            <h3 className="text-white font-semibold text-lg">
-              {currentLang === 'ba' ? 'Àwọ̀ Fídíò' : 'Beautify & Filters'}
-            </h3>
-            <p className="text-white/60 text-xs">
-              {currentLang === 'ba' ? 'Yàn àwọ̀, ṣàtúnṣe ìkankíkan' : 'Choose a filter and adjust intensity'}
-            </p>
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute bottom-0 left-0 right-0 rounded-t-3xl max-h-[80vh] overflow-hidden"
+          style={{
+            background: 'rgba(20, 20, 25, 0.95)',
+            backdropFilter: 'blur(40px)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
+          {/* Drag Handle */}
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-10 h-1 bg-white/30 rounded-full" />
           </div>
-          {currentFilter && currentFilter.id !== 'none' && (
-            <span className="text-xs text-white/60">{currentFilter.name}</span>
-          )}
-        </div>
 
-        <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                activeCategory === cat.id ? 'bg-primary text-white' : 'bg-white/10 text-white/70'
-              }`}
+          {/* Header */}
+          <div className="px-4 pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-white font-semibold text-lg">
+                {language === 'ba' ? 'Àwọ̀ Fídíò' : 'Filtres & Beauté'}
+              </h3>
+              <p className="text-white/60 text-xs">
+                {language === 'ba' ? 'Yàn àwọ̀, ṣàtúnṣe ìkankíkan' : 'Choisir et ajuster l\'intensité'}
+              </p>
+            </div>
+            <button 
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"
             >
-              {cat.icon}
-              {cat.label}
+              <X className="w-5 h-5 text-white" />
             </button>
-          ))}
-        </div>
-
-        <div className="px-4 pb-3">
-          <div className="flex items-center gap-3">
-            <Sliders className="w-4 h-4 text-white/60" />
-            <span className="text-white/80 text-sm">Intensity</span>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={customIntensity}
-              onChange={(e) => setCustomIntensity(Number.parseInt(e.target.value, 10))}
-              className="flex-1 accent-primary"
-            />
-            <span className="text-white/80 text-sm w-10">{customIntensity}%</span>
           </div>
-        </div>
 
-        <div className="px-4 pb-6 grid grid-cols-4 gap-3 max-h-[45vh] overflow-y-auto">
-          {filteredFilters.map((filter) => {
-            const isSelected = currentFilter?.id === filter.id;
-            const previewIntensity = isSelected ? customIntensity : filter.intensity;
-
-            return (
+          {/* Category Tabs */}
+          <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
+            {categories.map((cat) => (
               <button
-                key={filter.id}
-                onClick={() => handleSelectFilter(filter)}
-                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-colors ${
-                  isSelected ? 'border-primary' : 'border-transparent'
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  activeCategory === cat.id 
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' 
+                    : 'bg-white/10 text-white/70 hover:bg-white/15'
                 }`}
               >
-                <div
-                  className="absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400"
-                  style={{ filter: scaleCssFilter(filter.cssFilter, previewIntensity) }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl drop-shadow-lg">{filter.icon}</span>
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 bg-black/50 py-1 px-1">
-                  <span className="text-white text-[10px] font-medium block text-center truncate">
-                    {currentLang === 'ba' && filter.name_ba ? filter.name_ba : filter.name}
+                {cat.icon}
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Intensity Slider */}
+          {currentFilter && currentFilter.id !== 'none' && (
+            <div className="px-4 pb-3">
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                <div className="flex items-center gap-3 mb-2">
+                  <Sliders className="w-4 h-4 text-white/60" />
+                  <span className="text-white/80 text-sm font-medium">
+                    {language === 'ba' ? 'Ìkankíkan' : 'Intensité'}
+                  </span>
+                  <div className="flex-1" />
+                  <span className="text-white font-semibold text-sm tabular-nums">
+                    {customIntensity}%
                   </span>
                 </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={customIntensity}
+                  onChange={(e) => handleIntensityChange(Number.parseInt(e.target.value, 10))}
+                  onMouseUp={handleIntensityEnd}
+                  onTouchEnd={handleIntensityEnd}
+                  className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, rgb(168, 85, 247) 0%, rgb(236, 72, 153) ${customIntensity}%, rgba(255,255,255,0.1) ${customIntensity}%, rgba(255,255,255,0.1) 100%)`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
-                {isSelected && (
-                  <div className="absolute top-1 right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
+          {/* Filters Grid */}
+          <div className="px-4 pb-6 grid grid-cols-4 gap-3 max-h-[45vh] overflow-y-auto">
+            {filteredFilters.map((filter) => {
+              const isSelected = currentFilter?.id === filter.id;
+              const previewIntensity = isSelected ? customIntensity : filter.intensity;
+
+              return (
+                <button
+                  key={filter.id}
+                  onClick={() => handleSelectFilter(filter)}
+                  className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                    isSelected 
+                      ? 'border-purple-500 shadow-lg shadow-purple-500/50 scale-105' 
+                      : 'border-transparent hover:border-white/20'
+                  }`}
+                >
+                  <div
+                    className="absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400"
+                    style={{ filter: scaleCssFilter(filter.cssFilter, previewIntensity) }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-2xl drop-shadow-lg">{filter.icon}</span>
                   </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent py-1.5 px-1">
+                    <span className="text-white text-[10px] font-medium block text-center truncate">
+                      {language === 'ba' && filter.name_ba ? filter.name_ba : filter.name}
+                    </span>
+                  </div>
+
+                  {isSelected && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute top-1 right-1 w-5 h-5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg"
+                    >
+                      <Check className="w-3 h-3 text-white" />
+                    </motion.div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </AnimatePresence>
   );
 };
 
