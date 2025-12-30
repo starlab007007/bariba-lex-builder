@@ -226,7 +226,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     () => [
       language === 'ba' ? 'Ṣàlàyé ohun tó gbọ́ní lọ́gbọ́n' : 'Explique une astuce en 30 secondes',
       language === 'ba' ? 'Ṣíwájú/Lẹ́yìn àyípadà' : 'Avant/Après transformation',
-      language === 'ba' ? 'Ìtàn díẹ̀: "ohun tí mo kọ́"' : 'Une histoire courte: "ce que j\'ai appris"',
+      language === 'ba' ? 'Ìtàn díẹ̀: "ohun tí mo kọ́"' : "Une histoire courte: \"ce que j'ai appris\"",
       language === 'ba' ? 'Àṣìṣe 3 tó tóbi jù' : 'Top 3 erreurs à éviter',
       language === 'ba' ? 'Ìdánwò: sọ ọ̀rọ̀ yìí ní èdè àbínibí' : 'Défi: répète ce mot en langue locale',
       language === 'ba' ? 'Ìmọ̀ràn ọjọ́ọjọ́' : 'Conseil du jour',
@@ -297,7 +297,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       setCameraError(
         language === 'ba'
           ? 'Kò lè wo kámẹ́rà. Ṣàyẹ̀wò ìyọ̀nda.'
-          : 'Impossible d\'accéder à la caméra. Vérifiez les permissions.'
+          : "Impossible d'accéder à la caméra. Vérifiez les permissions."
       );
       console.error('[Camera Error]', e);
     }
@@ -551,7 +551,7 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
       handleClose();
     } catch (e: any) {
       console.error('[Submit Error]', e);
-      alert(language === 'ba' ? 'Àṣìṣe ní fífi sí server' : 'Erreur lors de l\'envoi');
+      alert(language === 'ba' ? 'Àṣìṣe ní fífi sí server' : "Erreur lors de l'envoi");
     } finally {
       setIsSubmitting(false);
     }
