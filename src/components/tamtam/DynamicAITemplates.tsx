@@ -198,9 +198,11 @@ const DEFAULT_THEMES: AITheme[] = [
   },
 ];
 
+// FIX: Typage correct de import.meta.env
 function safeEnv(key: string): string | undefined {
   try {
-    return (import.meta as any).env?.[key] as string | undefined;
+    const env = import.meta.env as Record<string, string | undefined>;
+    return env[key];
   } catch {
     return undefined;
   }
