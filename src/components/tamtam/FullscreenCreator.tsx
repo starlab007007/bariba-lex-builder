@@ -1,1068 +1,986 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X,
-  Music2,
-  RefreshCw,
-  Timer,
-  Sparkles,
-  Zap,
-  Image as ImageIcon,
-  Video as VideoIcon,
-  Type,
-  Flashlight,
-  FlashlightOff,
-  Check,
-  Loader2,
-  Upload,
-  Maximize2,
-  Minimize2,
+  X, Music, Repeat2, Timer, Flame, Eye, Sparkles, Gauge, Expand, Zap, ChevronDown,
+  Image as ImageIcon, Video as VideoIcon, Type as TypeIcon, Wand2, Send, MessageCircle,
+  Radio, Camera, Play, Pause, RotateCcw, Check, AlertCircle, Loader2, Globe,
 } from 'lucide-react';
 
-import { supabase } from '@/integrations/supabase/client';
-import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
-import { triggerFeedback } from '@/utils/tamtamFeedback';
-import { useToast } from '@/hooks/use-toast';
+import { DynamicAITemplates, AITemplate, AIGenType } from './DynamicAITemplates';
+import VideoFiltersPanel, { VIDEO_FILTERS, VideoFilter, useVideoFilter } from './VideoFilters';
 
-import DynamicAITemplates from './DynamicAITemplates';
-import VideoFiltersPanel, { VideoFilter, VIDEO_FILTERS } from './VideoFilters';
-
-type CaptureMode = 'video' | 'photo' | 'text' | 'live' | 'audio';
-type Stage = 'capture' | 'preview' | 'publishing';
-
-type FitMode = 'full' | 'fill';
-
-type MusicTrack = {
-  id: string;
-  title: string;
-  artist?: string;
-  cover?: string;
-  previewUrl?: string;
-};
-
-type PublishResult = { postId: string };
+type TopTab = 'video' | 'story' | 'template' | 'live';
+type CaptureMode = 'burst' | 'photo' | 'video' | 'text';
 
 interface FullscreenCreatorProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onPublished?: (postId: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
+  onComplete?: (data: {
+    audio_url: string;
+    media_type: 'audio' | 'video' | 'photo' | 'text';
+    media_url?: string;
+    transcript_fr?: string;
+    transcript_ba?: string;
+    template_id: string;
+    topic: string;
+    duration_seconds: number;
+    text_content?: string;
+    tags?: string[];
+    challenge?: string;
+    music_title?: string;
+    is_story?: boolean;
+  }) => Promise<void>;
+  language?: 'fr' | 'ba';
 }
 
-/**
- * ✅ IMPORTANT
- * Mets tes vrais noms ici si ton backend diffère.
- */
-const POSTS_TABLE = 'tamtam_posts';
-const STORAGE_BUCKET = 'tamtam-media';
+type MusicChoice = { id: string; title: string; url?: string; artist?: string };
+type GradientTheme = 'purpleBlue' | 'orangePink' | 'greenCyan' | 'pinkPurple';
 
-function extractHashtags(text: string): string[] {
-  const tags = new Set<string>();
-  const matches = text.match(/#[\p{L}\p{N}_]+/gu) ?? [];
-  for (const m of matches) tags.add(m.trim());
-  return Array.from(tags);
+function nowKey() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
 }
 
-function safeFilenameExt(mime: string, fallbackExt: string): string {
-  const map: Record<string, string> = {
-    'video/webm': 'webm',
-    'video/mp4': 'mp4',
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'audio/webm': 'webm',
-    'audio/mpeg': 'mp3',
-    'audio/mp4': 'm4a',
-  };
-  return map[mime] ?? fallbackExt;
+function pickMimeType(kind: 'video' | 'audio') {
+  const candidates =
+    kind === 'video'
+      ? ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+      : ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+  return candidates.find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(t)) || '';
 }
 
-async function ensureZoom1(stream: MediaStream): Promise<void> {
-  const track = stream.getVideoTracks()[0];
-  if (!track) return;
-
-  // Certains navigateurs ne typent pas zoom. On fait safe + try/catch.
+async function uploadToSupabaseStorage(blob: Blob, ext: string, folder: string): Promise<string> {
   try {
-    const caps = (track.getCapabilities?.() ?? {}) as unknown as { zoom?: unknown };
-    if (!caps.zoom) return;
+    const { supabase } = await import('@/integrations/supabase/client');
+    const bucket = 'tamtam-media';
+    const name = `${folder}/${nowKey()}-${crypto.randomUUID()}.${ext}`;
+    const contentType = blob.type || (ext === 'webm' ? 'video/webm' : ext === 'png' ? 'image/png' : 'application/octet-stream');
 
-    const adv = [{ zoom: 1 } as unknown as MediaTrackConstraintSet];
-    await track.applyConstraints({ advanced: adv } as MediaTrackConstraints);
-  } catch {
-    // ignore
+    const { error } = await supabase.storage.from(bucket).upload(name, blob, {
+      upsert: true,
+      contentType,
+    });
+    if (error) throw error;
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(name);
+    return data.publicUrl;
+  } catch (e) {
+    console.error('[Upload Error]', e);
+    throw e;
   }
 }
 
-async function uploadToStorage(params: {
-  blob: Blob;
-  userId: string;
-  type: 'video' | 'photo' | 'audio';
-  onProgress?: (p: number) => void;
-}): Promise<{ path: string; publicUrl: string }> {
-  const { blob, userId, type, onProgress } = params;
+async function renderStoryTextToImage(text: string, gradient: GradientTheme): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('No canvas ctx');
 
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
+  const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  if (gradient === 'purpleBlue') {
+    g.addColorStop(0, '#7c3aed');
+    g.addColorStop(1, '#0ea5e9');
+  } else if (gradient === 'orangePink') {
+    g.addColorStop(0, '#fb7185');
+    g.addColorStop(1, '#fb923c');
+  } else if (gradient === 'pinkPurple') {
+    g.addColorStop(0, '#ec4899');
+    g.addColorStop(1, '#8b5cf6');
+  } else {
+    g.addColorStop(0, '#22c55e');
+    g.addColorStop(1, '#06b6d4');
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const mime = blob.type || (type === 'photo' ? 'image/jpeg' : type === 'audio' ? 'audio/webm' : 'video/webm');
-  const ext = safeFilenameExt(mime, type === 'photo' ? 'jpg' : type === 'audio' ? 'webm' : 'webm');
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = '700 64px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
 
-  const fileName = `${crypto.randomUUID()}.${ext}`;
-  const path = `${userId}/${yyyy}-${mm}-${dd}/${type}/${fileName}`;
+  const maxWidth = 920;
+  const x = 80;
+  let y = 280;
 
-  onProgress?.(10);
+  const words = text.split(/\s+/);
+  let line = '';
+  const lines: string[] = [];
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w;
+    if (ctx.measureText(test).width > maxWidth) {
+      if (line) lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
 
-  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, blob, {
-    contentType: mime,
-    upsert: false,
-    cacheControl: '3600',
+  for (const l of lines.slice(0, 10)) {
+    ctx.fillText(l, x, y);
+    y += 84;
+  }
+
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png', 1);
   });
-
-  if (error) throw error;
-
-  onProgress?.(70);
-
-  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-  const publicUrl = data.publicUrl;
-
-  onProgress?.(85);
-
-  return { path, publicUrl };
 }
 
-async function createPost(params: {
-  userId: string;
-  type: 'video' | 'photo' | 'audio' | 'text' | 'live';
-  caption: string;
-  hashtags: string[];
-  music: MusicTrack | null;
-  filter: VideoFilter | null;
-  mediaPath?: string | null;
-  mediaUrl?: string | null;
-  durationSec?: number | null;
-  onProgress?: (p: number) => void;
-}): Promise<PublishResult> {
-  const {
-    userId,
-    type,
-    caption,
-    hashtags,
-    music,
-    filter,
-    mediaPath,
-    mediaUrl,
-    durationSec,
-    onProgress,
-  } = params;
-
-  onProgress?.(90);
-
-  const payload = {
-    user_id: userId,
-    audio_url: mediaUrl ?? '', // Required field
-    transcript_fr: caption,
-    transcript_ba: null,
-    media_type: type,
-    media_url: mediaUrl ?? null,
-    hashtags,
-    duration_seconds: durationSec ?? null,
-    is_public: true,
-  };
-
-  const { data, error } = await supabase
-    .from(POSTS_TABLE)
-    .insert(payload)
-    .select('id')
-    .single();
-
-  if (error) throw error;
-
-  onProgress?.(100);
-
-  return { postId: String((data as { id: string }).id) };
+async function tryToggleTorch(stream: MediaStream | null, enabled: boolean) {
+  try {
+    const track = stream?.getVideoTracks?.()[0];
+    await track?.applyConstraints?.({ advanced: [{ torch: enabled } as any] });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-export default function FullscreenCreator({ isOpen, onClose, onPublished }: FullscreenCreatorProps) {
-  const { toast } = useToast();
-  const { currentLang } = useTamTamLanguage();
+export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
+  isOpen = true,
+  onClose,
+  onComplete,
+  language = 'fr',
+}) => {
+  const { currentFilter, setCurrentFilter, getFilterStyle } = useVideoFilter();
 
-  // UI state
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const burstTimerRef = useRef<number | null>(null);
+  const recordingStartTime = useRef<number>(0);
+
+  const [topTab, setTopTab] = useState<TopTab>('video');
   const [mode, setMode] = useState<CaptureMode>('video');
-  const [stage, setStage] = useState<Stage>('capture');
-  const [fitMode, setFitMode] = useState<FitMode>('full'); // ✅ Full par défaut → évite l’effet “zoom”
-  const [flashOn, setFlashOn] = useState(false);
-  const [timerSec, setTimerSec] = useState<0 | 3 | 10>(0);
-  const [showFilters, setShowFilters] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [caption, setCaption] = useState('');
-  const [hashtags, setHashtags] = useState<string[]>([]);
-  const [progress, setProgress] = useState(0);
 
-  const [selectedMusic, setSelectedMusic] = useState<MusicTrack | null>(null);
-  const musicPresets: MusicTrack[] = useMemo(
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [countdown, setCountdown] = useState<number>(0);
+
+  const [timerSeconds, setTimerSeconds] = useState<0 | 3 | 10>(0);
+  const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
+  const [fullMode, setFullMode] = useState<boolean>(true);
+  const [flashOn, setFlashOn] = useState<boolean>(false);
+  const [livePhotoOn, setLivePhotoOn] = useState<boolean>(false);
+
+  const [rightExpanded, setRightExpanded] = useState<boolean>(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [magicOpen, setMagicOpen] = useState(false);
+
+  const [topic, setTopic] = useState<string>('');
+  const [challenge, setChallenge] = useState<string>('');
+  const [tags, setTags] = useState<string[]>([]);
+
+  const [music, setMusic] = useState<MusicChoice | null>(null);
+  const [durationPick, setDurationPick] = useState<60 | 300>(60);
+
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewType, setPreviewType] = useState<'video' | 'photo' | 'text' | ''>('');
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+
+  const [storyGradient, setStoryGradient] = useState<GradientTheme>('purpleBlue');
+  const [textContent, setTextContent] = useState<string>('');
+
+  const [timerPanel, setTimerPanel] = useState(false);
+  const [speedPanel, setSpeedPanel] = useState(false);
+  const [challengePanel, setChallengePanel] = useState(false);
+  const [inspiringPanel, setInspiringPanel] = useState(false);
+  const [musicPanel, setMusicPanel] = useState(false);
+
+  const [livePanelOpen, setLivePanelOpen] = useState(false);
+  const [liveSessionId, setLiveSessionId] = useState<string>('');
+  const [liveMessages, setLiveMessages] = useState<Array<{ id: number; message: string; created_at: string; display_name?: string }>>([]);
+  const [liveInput, setLiveInput] = useState('');
+  const [liveViewers, setLiveViewers] = useState<number>(0);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cameraError, setCameraError] = useState<string>('');
+  const [burstCount, setBurstCount] = useState(0);
+
+  const MUSIC_LIST: MusicChoice[] = useMemo(
     () => [
-      { id: 'hot_1', title: 'Hot Beat', artist: 'TamTam' },
-      { id: 'village_1', title: 'Village Vibes', artist: 'TamTam' },
-      { id: 'edu_1', title: 'Learning Loop', artist: 'TamTam' },
+      { id: 'm1', title: 'Afro Chill', artist: 'TamTam Beats' },
+      { id: 'm2', title: 'Drum Groove', artist: 'TamTam Studio' },
+      { id: 'm3', title: 'Story Piano', artist: 'TamTam Music' },
+      { id: 'm4', title: 'Viral Dance', artist: 'Trending Sounds' },
+      { id: 'm5', title: 'Lo-Fi Vibes', artist: 'Chill Zone' },
     ],
     []
   );
 
-  // Camera/recording state
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordMs, setRecordMs] = useState(0);
-  const tickRef = useRef<number | null>(null);
+  const CHALLENGES = useMemo(
+    () => [
+      '#DanceChallenge',
+      '#BeforeAfter',
+      '#LearnIn60s',
+      '#MoodStory',
+      '#VillageNews',
+      '#DailyVlog',
+      '#CookingTime',
+      '#Fashion2025',
+    ],
+    []
+  );
 
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const INSPIRING = useMemo(
+    () => [
+      language === 'ba' ? 'Ṣàlàyé ohun tó gbọ́ní lọ́gbọ́n' : 'Explique une astuce en 30 secondes',
+      language === 'ba' ? 'Ṣíwájú/Lẹ́yìn àyípadà' : 'Avant/Après transformation',
+      language === 'ba' ? 'Ìtàn díẹ̀: "ohun tí mo kọ́"' : 'Une histoire courte: "ce que j\'ai appris"',
+      language === 'ba' ? 'Àṣìṣe 3 tó tóbi jù' : 'Top 3 erreurs à éviter',
+      language === 'ba' ? 'Ìdánwò: sọ ọ̀rọ̀ yìí ní èdè àbínibí' : 'Défi: répète ce mot en langue locale',
+      language === 'ba' ? 'Ìmọ̀ràn ọjọ́ọjọ́' : 'Conseil du jour',
+      language === 'ba' ? 'Àṣírí tí kò gbọ́dọ̀ sọ' : 'Secret bien gardé',
+      language === 'ba' ? 'Ọjọ́ kan ní ìgbésí ayé mi' : 'Un jour dans ma vie',
+    ],
+    [language]
+  );
 
-  // captured media
-  const [mediaBlob, setMediaBlob] = useState<Blob | null>(null);
-  const [mediaUrl, setMediaUrl] = useState<string>('');
-  const [mediaType, setMediaType] = useState<'video' | 'photo' | 'audio' | 'text' | 'live'>('video');
-  const [durationSec, setDurationSec] = useState<number | null>(null);
-
-  const [currentFilter, setCurrentFilter] = useState<VideoFilter | null>(VIDEO_FILTERS[0]);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const resetAll = useCallback(() => {
-    setStage('capture');
-    setCaption('');
-    setHashtags([]);
-    setProgress(0);
-    setMediaBlob(null);
-    if (mediaUrl) URL.revokeObjectURL(mediaUrl);
-    setMediaUrl('');
-    setMediaType('video');
-    setDurationSec(null);
-    setIsRecording(false);
-    setRecordMs(0);
-    chunksRef.current = [];
-  }, [mediaUrl]);
+  useEffect(() => {
+    let interval: number | undefined;
+    if (isRecording) {
+      interval = window.setInterval(() => {
+        setRecordingDuration(Date.now() - recordingStartTime.current);
+      }, 100);
+    } else {
+      setRecordingDuration(0);
+    }
+    return () => {
+      if (interval) window.clearInterval(interval);
+    };
+  }, [isRecording]);
 
   const stopStream = useCallback(() => {
+    try {
+      recorderRef.current?.stop();
+    } catch {}
+    recorderRef.current = null;
+
     if (streamRef.current) {
       for (const t of streamRef.current.getTracks()) t.stop();
-      streamRef.current = null;
     }
+    streamRef.current = null;
+
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setCameraError('');
   }, []);
 
   const startStream = useCallback(async () => {
     stopStream();
-
-    const wantsVideo = mode !== 'audio' && mode !== 'text';
-    const wantsAudio = mode !== 'photo' && mode !== 'text';
-
-    const constraints: MediaStreamConstraints = {
-      video: wantsVideo
-        ? {
-            facingMode,
-            width: { ideal: 1080 },
-            height: { ideal: 1920 },
-            aspectRatio: { ideal: 9 / 16 },
-          }
-        : false,
-      audio: wantsAudio ? { echoCancellation: true, noiseSuppression: true } : false,
-    };
-
-    const s = await navigator.mediaDevices.getUserMedia(constraints);
-    streamRef.current = s;
-
-    // ✅ tente d’annuler le zoom matériel si supporté
-    if (wantsVideo) await ensureZoom1(s);
-
-    if (videoRef.current && wantsVideo) {
-      videoRef.current.srcObject = s;
-      await videoRef.current.play().catch(() => undefined);
-    }
-  }, [facingMode, mode, stopStream]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setStage('capture');
-    setMode('video');
-    setFitMode('full');
-    setFacingMode('user');
-    setFlashOn(false);
-    setTimerSec(0);
-    setCurrentFilter(VIDEO_FILTERS[0]);
-    setSelectedMusic(null);
-    setShowFilters(false);
-    setShowTemplates(false);
-    setCaption('');
-    setHashtags([]);
-    setProgress(0);
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    // stream only for capture modes that need it
-    if (stage === 'capture' && (mode === 'video' || mode === 'photo' || mode === 'audio' || mode === 'live')) {
-      startStream().catch((e: unknown) => {
-        toast({
-          title: 'Camera error',
-          description: e instanceof Error ? e.message : 'Unable to access camera/mic',
-          variant: 'destructive',
-        });
-      });
-    }
-
-    return () => {
-      // keep stream while modal open, but stop when close
-      if (!isOpen) stopStream();
-    };
-  }, [isOpen, mode, stage, startStream, stopStream, toast]);
-
-  useEffect(() => {
-    // cleanup tick
-    return () => {
-      if (tickRef.current != null) cancelAnimationFrame(tickRef.current);
-      tickRef.current = null;
-    };
-  }, []);
-
-  const startTick = useCallback(() => {
-    const start = performance.now();
-    const loop = () => {
-      const ms = performance.now() - start;
-      setRecordMs(ms);
-      tickRef.current = requestAnimationFrame(loop);
-    };
-    loop();
-  }, []);
-
-  const stopTick = useCallback(() => {
-    if (tickRef.current != null) cancelAnimationFrame(tickRef.current);
-    tickRef.current = null;
-  }, []);
-
-  const toggleFlash = useCallback(async () => {
-    const s = streamRef.current;
-    if (!s) return;
-    const track = s.getVideoTracks()[0];
-    if (!track) return;
+    setCameraError('');
 
     try {
-      const caps = (track.getCapabilities?.() ?? {}) as unknown as { torch?: boolean };
-      if (!caps.torch) {
-        toast({ title: 'Flash', description: 'Torch not supported on this device', variant: 'default' });
-        return;
-      }
-      const next = !flashOn;
-      await track.applyConstraints({ advanced: [{ torch: next } as unknown as MediaTrackConstraintSet] } as MediaTrackConstraints);
-      setFlashOn(next);
-      triggerFeedback('notification');
-    } catch {
-      toast({ title: 'Flash', description: 'Unable to toggle flash', variant: 'destructive' });
-    }
-  }, [flashOn, toast]);
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode,
+          width: { ideal: 1080 },
+          height: { ideal: 1920 },
+        },
+        audio: topTab === 'live' || mode === 'video',
+      };
 
-  const switchCamera = useCallback(async () => {
-    triggerFeedback('notification');
-    setFacingMode((p) => (p === 'user' ? 'environment' : 'user'));
-  }, []);
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+
+      if (flashOn) {
+        await tryToggleTorch(stream, true);
+      }
+    } catch (e: any) {
+      setCameraError(
+        language === 'ba'
+          ? 'Kò lè wo kámẹ́rà. Ṣàyẹ̀wò ìyọ̀nda.'
+          : 'Impossible d\'accéder à la caméra. Vérifiez les permissions.'
+      );
+      console.error('[Camera Error]', e);
+    }
+  }, [facingMode, flashOn, language, mode, stopStream, topTab]);
 
   useEffect(() => {
-    // when facing changes, restart stream if capturing
     if (!isOpen) return;
-    if (stage !== 'capture') return;
-    if (mode === 'text') return;
-    startStream().catch(() => undefined);
-  }, [facingMode, isOpen, mode, stage, startStream]);
+    if (topTab === 'template') return;
 
-  const runTimerThen = useCallback(
-    async (fn: () => Promise<void> | void) => {
-      if (timerSec === 0) {
-        await fn();
-        return;
-      }
-      triggerFeedback('notification');
+    startStream();
 
-      const startedAt = Date.now();
-      toast({ title: 'Timer', description: `${timerSec}s...`, variant: 'default' });
-
-      await new Promise<void>((resolve) => {
-        const iv = window.setInterval(() => {
-          const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-          const left = timerSec - elapsed;
-          if (left <= 0) {
-            window.clearInterval(iv);
-            resolve();
-          }
-        }, 250);
-      });
-
-      await fn();
-    },
-    [timerSec, toast]
-  );
-
-  const startRecording = useCallback(async () => {
-    const s = streamRef.current;
-    if (!s) return;
-
-    chunksRef.current = [];
-    setIsRecording(true);
-    setRecordMs(0);
-    startTick();
-
-    const mimeCandidates = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
-    const chosen = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) ?? '';
-
-    const rec = new MediaRecorder(s, chosen ? { mimeType: chosen } : undefined);
-    recorderRef.current = rec;
-
-    rec.ondataavailable = (evt: BlobEvent) => {
-      if (evt.data && evt.data.size > 0) chunksRef.current.push(evt.data);
+    return () => {
+      stopStream();
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
+  }, [isOpen, topTab, facingMode, startStream, stopStream, previewUrl]);
 
-    rec.onstop = () => {
-      stopTick();
-      setIsRecording(false);
-
-      const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'video/webm' });
-      setMediaBlob(blob);
-      const url = URL.createObjectURL(blob);
-      setMediaUrl(url);
-      setMediaType('video');
-      setDurationSec(Math.max(1, Math.round(recordMs / 1000)));
-
-      setStage('preview');
-      triggerFeedback('notification');
+  useEffect(() => {
+    return () => {
+      if (burstTimerRef.current) window.clearInterval(burstTimerRef.current);
     };
-
-    rec.start(250);
-  }, [recordMs, startTick, stopTick]);
-
-  const stopRecording = useCallback(() => {
-    const r = recorderRef.current;
-    if (!r) return;
-    try {
-      r.stop();
-    } catch {
-      // ignore
-    }
   }, []);
 
-  const takePhoto = useCallback(async () => {
+  const handleClose = useCallback(() => {
+    stopStream();
+    onClose?.();
+  }, [onClose, stopStream]);
+
+  const capturePhotoBlob = useCallback(async (): Promise<Blob> => {
     const v = videoRef.current;
-    if (!v) return;
+    if (!v) throw new Error('No video element');
 
     const canvas = document.createElement('canvas');
-    const w = v.videoWidth || 1080;
-    const h = v.videoHeight || 1920;
-    canvas.width = w;
-    canvas.height = h;
-
+    canvas.width = v.videoWidth || 1080;
+    canvas.height = v.videoHeight || 1920;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) throw new Error('No canvas ctx');
 
-    // apply filter preview into capture
-    if (currentFilter?.id && currentFilter.id !== 'none') {
-      ctx.filter = currentFilter.cssFilter;
-    }
+    const f = currentFilter?.id !== 'none' ? currentFilter : null;
+    if (f) ctx.filter = (getFilterStyle(f, f.intensity).filter as string) || 'none';
 
-    ctx.drawImage(v, 0, 0, w, h);
+    ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
 
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
-    if (!blob) return;
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('photo toBlob failed'))), 'image/png', 1);
+    });
+  }, [currentFilter, getFilterStyle]);
 
-    setMediaBlob(blob);
-    const url = URL.createObjectURL(blob);
-    setMediaUrl(url);
-    setMediaType('photo');
-    setDurationSec(null);
-    setStage('preview');
-    triggerFeedback('notification');
-  }, [currentFilter]);
+  const startMediaRecorder = useCallback(
+    async (kind: 'video' | 'audio') => {
+      if (!streamRef.current) throw new Error('No stream');
+      chunksRef.current = [];
 
-  const startAudio = useCallback(async () => {
-    const s = streamRef.current;
-    if (!s) return;
+      const mimeType = pickMimeType(kind);
+      const rec = new MediaRecorder(streamRef.current, mimeType ? { mimeType } : undefined);
+      recorderRef.current = rec;
 
-    chunksRef.current = [];
-    setIsRecording(true);
-    setRecordMs(0);
-    startTick();
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
 
-    const mimeCandidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mpeg', 'audio/mp4'];
-    const chosen = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) ?? '';
-
-    const rec = new MediaRecorder(s, chosen ? { mimeType: chosen } : undefined);
-    recorderRef.current = rec;
-
-    rec.ondataavailable = (evt: BlobEvent) => {
-      if (evt.data && evt.data.size > 0) chunksRef.current.push(evt.data);
-    };
-
-    rec.onstop = () => {
-      stopTick();
-      setIsRecording(false);
-
-      const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
-      setMediaBlob(blob);
-      const url = URL.createObjectURL(blob);
-      setMediaUrl(url);
-      setMediaType('audio');
-      setDurationSec(Math.max(1, Math.round(recordMs / 1000)));
-
-      setStage('preview');
-      triggerFeedback('notification');
-    };
-
-    rec.start(250);
-  }, [recordMs, startTick, stopTick]);
-
-  const onSelectFromAlbums = useCallback(async (file: File) => {
-    triggerFeedback('notification');
-
-    const url = URL.createObjectURL(file);
-    setMediaUrl(url);
-    setMediaBlob(file);
-    setDurationSec(null);
-
-    if (file.type.startsWith('video/')) setMediaType('video');
-    else if (file.type.startsWith('image/')) setMediaType('photo');
-    else if (file.type.startsWith('audio/')) setMediaType('audio');
-    else setMediaType('text');
-
-    setStage('preview');
-  }, []);
-
-  const publish = useCallback(async () => {
-    if (stage === 'publishing') return;
-
-    const { data: sess } = await supabase.auth.getSession();
-    const userId = sess.session?.user?.id;
-    if (!userId) {
-      toast({ title: 'Connexion requise', description: 'Connecte-toi pour publier.', variant: 'destructive' });
-      return;
-    }
-
-    // text post
-    if (mediaType === 'text') {
-      setStage('publishing');
-      setProgress(20);
-
-      try {
-        const mergedTags = Array.from(new Set([...hashtags, ...extractHashtags(caption)]));
-        const res = await createPost({
-          userId,
-          type: 'text',
-          caption,
-          hashtags: mergedTags,
-          music: selectedMusic,
-          filter: currentFilter,
-          mediaPath: null,
-          mediaUrl: null,
-          durationSec: null,
-          onProgress: setProgress,
-        });
-
-        toast({ title: 'Publié', description: 'Ton texte est en ligne ✅' });
-        onPublished?.(res.postId);
-        resetAll();
-        onClose();
-      } catch (e: unknown) {
-        toast({
-          title: 'Publication échouée',
-          description: e instanceof Error ? e.message : 'Erreur inconnue',
-          variant: 'destructive',
-        });
-        setStage('preview');
-      } finally {
-        setProgress(0);
-      }
-
-      return;
-    }
-
-    // live placeholder (tu peux brancher ton mode LIVE réel ensuite)
-    if (mediaType === 'live') {
-      setStage('publishing');
-      setProgress(30);
-      try {
-        const mergedTags = Array.from(new Set([...hashtags, ...extractHashtags(caption)]));
-        const res = await createPost({
-          userId,
-          type: 'live',
-          caption,
-          hashtags: mergedTags,
-          music: selectedMusic,
-          filter: currentFilter,
-          mediaPath: null,
-          mediaUrl: null,
-          durationSec: null,
-          onProgress: setProgress,
-        });
-        toast({ title: 'LIVE prêt', description: 'Session créée ✅' });
-        onPublished?.(res.postId);
-        resetAll();
-        onClose();
-      } catch (e: unknown) {
-        toast({
-          title: 'LIVE échoué',
-          description: e instanceof Error ? e.message : 'Erreur inconnue',
-          variant: 'destructive',
-        });
-        setStage('preview');
-      } finally {
-        setProgress(0);
-      }
-      return;
-    }
-
-    // media posts (video/photo/audio)
-    if (!mediaBlob) {
-      toast({ title: 'Rien à publier', description: 'Capture d’abord un contenu.', variant: 'destructive' });
-      return;
-    }
-
-    setStage('publishing');
-    setProgress(1);
-
-    try {
-      const mergedTags = Array.from(new Set([...hashtags, ...extractHashtags(caption)]));
-      const upload = await uploadToStorage({
-        blob: mediaBlob,
-        userId,
-        type: mediaType === 'photo' ? 'photo' : mediaType === 'audio' ? 'audio' : 'video',
-        onProgress: setProgress,
-      });
-
-      const res = await createPost({
-        userId,
-        type: mediaType,
-        caption,
-        hashtags: mergedTags,
-        music: selectedMusic,
-        filter: currentFilter,
-        mediaPath: upload.path,
-        mediaUrl: upload.publicUrl,
-        durationSec,
-        onProgress: setProgress,
-      });
-
-      toast({ title: 'Publié', description: 'Ton post est en ligne ✅' });
-      onPublished?.(res.postId);
-
-      resetAll();
-      onClose();
-    } catch (e: unknown) {
-      toast({
-        title: 'Publication échouée',
-        description: e instanceof Error ? e.message : 'Erreur inconnue',
-        variant: 'destructive',
-      });
-      setStage('preview');
-    } finally {
-      setProgress(0);
-    }
-  }, [
-    caption,
-    currentFilter,
-    durationSec,
-    hashtags,
-    mediaBlob,
-    mediaType,
-    onClose,
-    onPublished,
-    resetAll,
-    selectedMusic,
-    stage,
-    toast,
-  ]);
-
-  const applyTemplateOutput = useCallback(
-    (payload: { type: string; content: string }) => {
-      triggerFeedback('notification');
-
-      if (payload.type === 'hashtags') {
-        const tags = extractHashtags(payload.content);
-        setHashtags((prev) => Array.from(new Set([...prev, ...tags])));
-        return;
-      }
-
-      // All other types: add to caption
-      setCaption((prev) => (prev ? `${prev}\n\n${payload.content}` : payload.content));
+      rec.start(300);
+      recordingStartTime.current = Date.now();
+      setIsRecording(true);
     },
     []
   );
 
-  const previewStyle: React.CSSProperties = useMemo(() => {
-    const css = currentFilter?.id && currentFilter.id !== 'none' ? currentFilter.cssFilter : 'none';
-    return css === 'none' ? {} : { filter: css };
-  }, [currentFilter]);
+  const stopRecorderGetBlob = useCallback(async (): Promise<Blob> => {
+    return await new Promise<Blob>((resolve) => {
+      const rec = recorderRef.current;
+      if (!rec) {
+        resolve(new Blob([], { type: 'video/webm' }));
+        return;
+      }
 
-  const closeAll = useCallback(() => {
-    // éviter de couper une publication en cours
-    if (stage === 'publishing') return;
-    triggerFeedback('notification');
-    resetAll();
-    stopStream();
-    onClose();
-  }, [onClose, resetAll, stage, stopStream]);
+      const finalize = () => {
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'video/webm' });
+        resolve(blob);
+      };
 
-  const modeTabs = useMemo(
-    () => [
-      { id: 'video' as const, label: 'Video', icon: <VideoIcon className="w-4 h-4" /> },
-      { id: 'photo' as const, label: 'Photo', icon: <ImageIcon className="w-4 h-4" /> },
-      { id: 'text' as const, label: 'Text', icon: <Type className="w-4 h-4" /> },
-      { id: 'live' as const, label: 'Live', icon: <Zap className="w-4 h-4" /> },
-    ],
-    []
+      rec.addEventListener('stop', finalize, { once: true });
+      try {
+        rec.stop();
+      } catch {
+        finalize();
+      } finally {
+        recorderRef.current = null;
+        setIsRecording(false);
+      }
+    });
+  }, []);
+
+  const doCountdownThen = useCallback(
+    async (fn: () => Promise<void>) => {
+      if (timerSeconds === 0) return fn();
+
+      setCountdown(timerSeconds);
+      let remaining = timerSeconds;
+
+      const tick = () =>
+        new Promise<void>((resolve) => {
+          window.setTimeout(() => resolve(), 1000);
+        });
+
+      while (remaining > 0) {
+        await tick();
+        remaining -= 1;
+        setCountdown(remaining);
+      }
+      return fn();
+    },
+    [timerSeconds]
   );
 
-  const recordLabel = useMemo(() => {
-    if (mode === 'photo') return currentLang === 'ba' ? 'Yà' : 'Prendre';
-    if (mode === 'audio') return currentLang === 'ba' ? 'Gbé' : 'Enregistrer';
-    if (mode === 'text') return currentLang === 'ba' ? 'Tẹ̀' : 'Écrire';
-    if (mode === 'live') return currentLang === 'ba' ? 'Làìfù' : 'Go Live';
-    return isRecording ? (currentLang === 'ba' ? 'Dúró' : 'Stop') : currentLang === 'ba' ? 'Gbé' : 'Rec';
-  }, [currentLang, isRecording, mode]);
+  const beginCapture = useCallback(async () => {
+    if (!isOpen) return;
 
-  const onMainAction = useCallback(async () => {
-    if (stage !== 'capture') return;
-
-    if (mode === 'text') {
-      setMediaType('text');
-      setStage('preview');
-      return;
-    }
-
-    if (mode === 'live') {
-      setMediaType('live');
-      setStage('preview');
+    if (mode === 'video') {
+      await doCountdownThen(async () => {
+        await startMediaRecorder('video');
+      });
       return;
     }
 
     if (mode === 'photo') {
-      await runTimerThen(async () => takePhoto());
+      await doCountdownThen(async () => {
+        if (livePhotoOn) {
+          await startMediaRecorder('video');
+          await new Promise((r) => window.setTimeout(r, 2000));
+          const blob = await stopRecorderGetBlob();
+          const url = URL.createObjectURL(blob);
+          setPreviewBlob(blob);
+          setPreviewUrl(url);
+          setPreviewType('video');
+        } else {
+          const blob = await capturePhotoBlob();
+          const url = URL.createObjectURL(blob);
+          setPreviewBlob(blob);
+          setPreviewUrl(url);
+          setPreviewType('photo');
+        }
+      });
       return;
     }
 
-    if (mode === 'audio') {
-      if (!isRecording) await runTimerThen(async () => startAudio());
-      else stopRecording();
+    if (mode === 'burst') {
+      await doCountdownThen(async () => {
+        const photos: Blob[] = [];
+        let count = 0;
+        setBurstCount(0);
+
+        if (burstTimerRef.current) window.clearInterval(burstTimerRef.current);
+
+        burstTimerRef.current = window.setInterval(async () => {
+          try {
+            const b = await capturePhotoBlob();
+            photos.push(b);
+            count += 1;
+            setBurstCount(count);
+            if (count >= 8) {
+              if (burstTimerRef.current) window.clearInterval(burstTimerRef.current);
+              burstTimerRef.current = null;
+              const last = photos[photos.length - 1];
+              const url = URL.createObjectURL(last);
+              setPreviewBlob(last);
+              setPreviewUrl(url);
+              setPreviewType('photo');
+              setBurstCount(0);
+            }
+          } catch {}
+        }, 250);
+      });
       return;
     }
 
-    // video
-    if (!isRecording) await runTimerThen(async () => startRecording());
-    else stopRecording();
-  }, [isRecording, mode, runTimerThen, stage, startAudio, startRecording, stopRecording, takePhoto]);
+    if (mode === 'text') {
+      const blob = await renderStoryTextToImage(textContent || ' ', storyGradient);
+      const url = URL.createObjectURL(blob);
+      setPreviewBlob(blob);
+      setPreviewUrl(url);
+      setPreviewType('photo');
+      return;
+    }
+  }, [
+    capturePhotoBlob,
+    doCountdownThen,
+    isOpen,
+    livePhotoOn,
+    mode,
+    startMediaRecorder,
+    stopRecorderGetBlob,
+    storyGradient,
+    textContent,
+  ]);
 
-  const openAlbums = useCallback(() => {
-    triggerFeedback('notification');
-    fileInputRef.current?.click();
+  const endVideoCapture = useCallback(async () => {
+    const blob = await stopRecorderGetBlob();
+    const url = URL.createObjectURL(blob);
+    setPreviewBlob(blob);
+    setPreviewUrl(url);
+    setPreviewType('video');
+  }, [stopRecorderGetBlob]);
+
+  const clearPreview = useCallback(() => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl('');
+    setPreviewType('');
+    setPreviewBlob(null);
+  }, [previewUrl]);
+
+  const submit = useCallback(async () => {
+    if (!previewBlob) return;
+
+    setIsSubmitting(true);
+
+    try {
+      let mediaUrl = '';
+      let mediaType: 'video' | 'photo' | 'text' = previewType || 'photo';
+
+      if (mediaType === 'video') {
+        mediaUrl = await uploadToSupabaseStorage(previewBlob, 'webm', 'videos');
+      } else {
+        mediaUrl = await uploadToSupabaseStorage(previewBlob, 'png', 'photos');
+      }
+
+      const isStory = topTab === 'story';
+      const seconds = mode === 'video' ? Math.floor(recordingDuration / 1000) || durationPick : isStory ? 15 : 5;
+
+      const payload = {
+        audio_url: mediaType === 'video' ? mediaUrl : '',
+        media_type: mediaType === 'photo' ? ('photo' as const) : mediaType === 'video' ? ('video' as const) : ('text' as const),
+        media_url: mediaUrl,
+        transcript_fr: '',
+        transcript_ba: '',
+        template_id: 'kuaishou-inspired-core',
+        topic: topic || (challenge ? challenge : isStory ? 'story' : 'post'),
+        duration_seconds: seconds,
+        text_content: mode === 'text' ? textContent : undefined,
+        tags,
+        challenge,
+        music_title: music?.title,
+        is_story: isStory,
+      };
+
+      if (onComplete) {
+        await onComplete(payload);
+      }
+
+      clearPreview();
+      handleClose();
+    } catch (e: any) {
+      console.error('[Submit Error]', e);
+      alert(language === 'ba' ? 'Àṣìṣe ní fífi sí server' : 'Erreur lors de l\'envoi');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    challenge,
+    clearPreview,
+    durationPick,
+    handleClose,
+    language,
+    mode,
+    music?.title,
+    onComplete,
+    previewBlob,
+    previewType,
+    recordingDuration,
+    tags,
+    textContent,
+    topTab,
+    topic,
+  ]);
+
+  const doSwitch = useCallback(() => {
+    setFacingMode((p) => (p === 'environment' ? 'user' : 'environment'));
   }, []);
 
-  if (!isOpen) return null;
+  const toggleFlash = useCallback(async () => {
+    const next = !flashOn;
+    setFlashOn(next);
+    await tryToggleTorch(streamRef.current, next);
+  }, [flashOn]);
+
+  useEffect(() => {
+    if (previewType === 'video') {
+      const v = document.getElementById('tamtam-preview-video') as HTMLVideoElement | null;
+      if (v) v.playbackRate = speed;
+    }
+  }, [previewType, speed]);
+
+  useEffect(() => {
+    if (!liveSessionId) return;
+    
+    let channel: any;
+    
+    const setupLive = async () => {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        channel = supabase
+          .channel(`live:${liveSessionId}`, { config: { presence: { key: 'viewer' } } })
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'live_messages', filter: `session_id=eq.${liveSessionId}` },
+            (payload) => {
+              const row = payload.new as any;
+              setLiveMessages((prev) => [...prev, row]);
+            }
+          )
+          .on('presence', { event: 'sync' }, () => {
+            const state = channel.presenceState() as any;
+            const count = Object.keys(state || {}).length;
+            setLiveViewers(count);
+          });
+
+        await channel.subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.track({ online_at: new Date().toISOString() });
+          }
+        });
+      } catch (e) {
+        console.error('[Live Setup Error]', e);
+      }
+    };
+
+    setupLive();
+
+    return () => {
+      if (channel) {
+        try {
+          const { supabase } = require('@/integrations/supabase/client');
+          supabase.removeChannel(channel);
+        } catch {}
+      }
+    };
+  }, [liveSessionId]);
+
+  const createLive = useCallback(async () => {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+      if (!uid) {
+        alert(language === 'ba' ? 'Wọlé láti bẹ̀rẹ̀ LIVE' : 'Connecte-toi pour lancer un LIVE');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('live_sessions')
+        .insert({ creator_id: uid, title: topic || 'LIVE', status: 'live', started_at: new Date().toISOString() })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      setLiveSessionId(data.id);
+      setLivePanelOpen(true);
+    } catch (e) {
+      console.error('[Create Live Error]', e);
+      alert(language === 'ba' ? 'Àṣìṣe ní ṣíṣe LIVE' : 'Erreur lors de la création du LIVE');
+    }
+  }, [language, topic]);
+
+  const joinLive = useCallback(async () => {
+    if (!liveSessionId) return;
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+      if (!uid) return;
+
+      await supabase
+        .from('live_participants')
+        .upsert({ session_id: liveSessionId, user_id: uid, role: 'viewer', last_seen_at: new Date().toISOString() });
+    } catch (e) {
+      console.error('[Join Live Error]', e);
+    }
+  }, [liveSessionId]);
+
+  useEffect(() => {
+    if (topTab === 'live' && liveSessionId) {
+      joinLive();
+    }
+  }, [joinLive, liveSessionId, topTab]);
+
+  const sendLive = useCallback(async () => {
+    const msg = liveInput.trim();
+    if (!msg || !liveSessionId) return;
+    setLiveInput('');
+
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+
+      await supabase.from('live_messages').insert({
+        session_id: liveSessionId,
+        user_id: uid,
+        display_name: session.session?.user.email?.split('@')[0] ?? 'viewer',
+        message: msg,
+        lang: language,
+      });
+    } catch (e) {
+      console.error('[Send Live Message Error]', e);
+    }
+  }, [language, liveInput, liveSessionId]);
+
+  const onGenerated = useCallback(
+    (p: { type: AIGenType; content: string; templateId?: string }) => {
+      if (p.type === 'hashtags') {
+        const hs = p.content.split(/\s+/).filter((x) => x.startsWith('#')).slice(0, 18);
+        setTags((prev) => Array.from(new Set([...prev, ...hs])));
+      } else if (p.type === 'hook' || p.type === 'title') {
+        setTopic(p.content.split('\n')[0]?.slice(0, 80) || topic);
+      } else if (p.type === 'caption' || p.type === 'script') {
+        setTextContent(p.content);
+      }
+    },
+    [topic]
+  );
+
+  const onApplyTemplate = useCallback((t: AITemplate) => {
+    setMagicOpen(false);
+    if (!topic) setTopic(t.title);
+  }, [topic]);
+
+  if (isOpen === false) return null;
+
+  const isStory = topTab === 'story';
+  const recordDurationText = `${Math.floor(recordingDuration / 60000)}:${Math.floor((recordingDuration % 60000) / 1000).toString().padStart(2, '0')}`;
+
+  const RightButton = ({
+    icon,
+    label,
+    onClick,
+    active,
+    hidden,
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    onClick: () => void;
+    active?: boolean;
+    hidden?: boolean;
+  }) => {
+    if (hidden) return null;
+    return (
+      <button
+        onClick={onClick}
+        className={`flex flex-col items-center justify-center gap-1 py-2 px-3 rounded-lg transition ${
+          active ? 'bg-white/20 text-white' : 'bg-white/10 text-white/70 hover:bg-white/15'
+        }`}
+      >
+        <div className="w-6 h-6">{icon}</div>
+        <div className="text-[10px] font-medium whitespace-nowrap">{label}</div>
+      </button>
+    );
+  };
 
   return (
-    <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 z-[70] bg-black"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        {/* Top bar */}
-        <div className="absolute top-0 left-0 right-0 z-[3] flex items-center justify-between px-4 pt-4">
-          <button onClick={closeAll} className="p-2 rounded-full bg-white/10 text-white">
-            <X className="w-5 h-5" />
-          </button>
+    <div className="fixed inset-0 z-[100] bg-black">
+      {/* Video Preview */}
+      <div className="absolute inset-0">
+        <video
+          ref={videoRef}
+          className="w-full h-full object-cover"
+          style={getFilterStyle(currentFilter, currentFilter?.intensity || 100)}
+          autoPlay
+          playsInline
+          muted
+        />
 
-          <button
-            onClick={() => {
-              triggerFeedback('notification');
-              const next = selectedMusic ? null : musicPresets[0];
-              setSelectedMusic(next);
-            }}
-            className="px-4 py-2 rounded-full bg-white/10 text-white flex items-center gap-2"
-          >
-            <Music2 className="w-4 h-4" />
-            <span className="text-sm">{selectedMusic ? selectedMusic.title : 'Music'}</span>
-          </button>
-
-          <div className="w-10" />
-        </div>
-
-        {/* Right actions (Kuaishou-like) */}
-        <div className="absolute right-3 top-24 z-[3] flex flex-col gap-3">
-          <button onClick={switchCamera} className="w-12 h-12 rounded-2xl bg-white/10 text-white flex flex-col items-center justify-center">
-            <RefreshCw className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5">Switch</span>
-          </button>
-
-          <button
-            onClick={() => {
-              triggerFeedback('notification');
-              setTimerSec((p) => (p === 0 ? 3 : p === 3 ? 10 : 0));
-            }}
-            className="w-12 h-12 rounded-2xl bg-white/10 text-white flex flex-col items-center justify-center"
-          >
-            <Timer className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5">{timerSec === 0 ? 'Timer' : `${timerSec}s`}</span>
-          </button>
-
-          <button
-            onClick={() => setShowFilters(true)}
-            className="w-12 h-12 rounded-2xl bg-white/10 text-white flex flex-col items-center justify-center"
-          >
-            <Sparkles className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5">Beautify</span>
-          </button>
-
-          <button
-            onClick={() => {
-              triggerFeedback('notification');
-              setFitMode((p) => (p === 'full' ? 'fill' : 'full'));
-            }}
-            className="w-12 h-12 rounded-2xl bg-white/10 text-white flex flex-col items-center justify-center"
-          >
-            {fitMode === 'full' ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-            <span className="text-[10px] mt-0.5">{fitMode === 'full' ? 'Full' : 'Fill'}</span>
-          </button>
-
-          <button
-            onClick={toggleFlash}
-            className="w-12 h-12 rounded-2xl bg-white/10 text-white flex flex-col items-center justify-center"
-          >
-            {flashOn ? <Flashlight className="w-5 h-5" /> : <FlashlightOff className="w-5 h-5" />}
-            <span className="text-[10px] mt-0.5">Flash</span>
-          </button>
-        </div>
-
-        {/* Preview / Capture area */}
-        <div className="absolute inset-0">
-          <div className="w-full h-full flex items-center justify-center">
-            {stage === 'capture' && mode !== 'text' && (
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className={`w-full h-full ${fitMode === 'full' ? 'object-contain' : 'object-cover'}`}
-                style={previewStyle}
-              />
-            )}
-
-            {stage === 'capture' && mode === 'text' && (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500/40 to-blue-500/40">
-                <div className="text-white/90 text-lg font-semibold">Write down your mood</div>
-              </div>
-            )}
-
-            {stage === 'preview' && (
-              <div className="w-full h-full">
-                {mediaType === 'video' && (
-                  <video
-                    src={mediaUrl}
-                    controls
-                    playsInline
-                    className={`w-full h-full ${fitMode === 'full' ? 'object-contain' : 'object-cover'}`}
-                  />
-                )}
-                {mediaType === 'photo' && (
-                  <img src={mediaUrl} alt="preview" className={`w-full h-full ${fitMode === 'full' ? 'object-contain' : 'object-cover'}`} />
-                )}
-                {mediaType === 'audio' && (
-                  <div className="w-full h-full flex items-center justify-center bg-black">
-                    <audio src={mediaUrl} controls className="w-[90%]" />
-                  </div>
-                )}
-                {mediaType === 'text' && (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500/40 to-blue-500/40">
-                    <div className="text-white/90 text-lg font-semibold">Text post</div>
-                  </div>
-                )}
-                {mediaType === 'live' && (
-                  <div className="w-full h-full flex items-center justify-center bg-black">
-                    <div className="text-white text-lg font-semibold">LIVE Preview</div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {stage === 'publishing' && (
-              <div className="w-full h-full flex items-center justify-center bg-black">
-                <div className="w-[85%] max-w-md rounded-3xl bg-white/10 border border-white/10 p-4">
-                  <div className="text-white font-semibold flex items-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Publication…
-                  </div>
-                  <div className="text-white/60 text-sm mt-1">Upload + DB insert</div>
-                  <div className="mt-3 w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
-                  </div>
-                  <div className="text-white/60 text-xs mt-2">{progress}%</div>
-                </div>
-              </div>
-            )}
+        {cameraError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+            <div className="text-center px-6">
+              <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+              <p className="text-white text-sm">{cameraError}</p>
+            </div>
           </div>
+        )}
+
+        {countdown > 0 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+            <motion.div
+              key={countdown}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1.2, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              className="text-white text-9xl font-bold"
+            >
+              {countdown}
+            </motion.div>
+          </div>
+        )}
+
+        {burstCount > 0 && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="bg-black/70 px-6 py-3 rounded-full">
+              <p className="text-white text-xl font-bold">{burstCount} / 8</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Top Bar */}
+      <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/60 to-transparent">
+        <div className="flex items-center justify-between">
+          <button onClick={handleClose} className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition">
+            <X className="w-6 h-6 text-white" />
+          </button>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTopTab('video')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                topTab === 'video' ? 'bg-white text-black' : 'bg-white/20 text-white'
+              }`}
+            >
+              {language === 'ba' ? 'Fídíò' : 'Vidéo'}
+            </button>
+            <button
+              onClick={() => setTopTab('story')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                topTab === 'story' ? 'bg-white text-black' : 'bg-white/20 text-white'
+              }`}
+            >
+              Story
+            </button>
+            <button
+              onClick={() => setTopTab('template')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                topTab === 'template' ? 'bg-white text-black' : 'bg-white/20 text-white'
+              }`}
+            >
+              Template
+            </button>
+            <button
+              onClick={() => setTopTab('live')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                topTab === 'live' ? 'bg-red-500 text-white' : 'bg-white/20 text-white'
+              }`}
+            >
+              <Radio className="w-4 h-4 inline mr-1" />
+              LIVE
+            </button>
+          </div>
+
+          <button onClick={doSwitch} className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition">
+            <RotateCcw className="w-6 h-6 text-white" />
+          </button>
         </div>
 
-        {/* Bottom controls */}
-        <div className="absolute bottom-0 left-0 right-0 z-[3] pb-6">
-          {/* Mode tabs */}
-          <div className="mx-auto max-w-md px-4">
-            <div className="flex items-center justify-between bg-black/40 border border-white/10 rounded-full px-2 py-2">
-              {modeTabs.map((t) => (
+        {isRecording && (
+          <div className="mt-3 flex items-center justify-center gap-2">
+            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-white text-lg font-mono">{recordDurationText}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Right Sidebar */}
+      <AnimatePresence>
+        {rightExpanded && topTab !== 'template' && (
+          <motion.div
+            initial={{ x: 100, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 100, opacity: 0 }}
+            className="absolute top-20 right-4 flex flex-col gap-2"
+          >
+            <RightButton icon={<Wand2 />} label="Magic AI" onClick={() => setMagicOpen(true)} />
+            <RightButton icon={<Sparkles />} label={language === 'ba' ? 'Àwọ̀' : 'Filtres'} onClick={() => setFiltersOpen(true)} />
+            <RightButton icon={<Timer />} label="Timer" onClick={() => setTimerPanel(true)} active={timerSeconds > 0} />
+            <RightButton icon={<Gauge />} label="Speed" onClick={() => setSpeedPanel(true)} active={speed !== 1} />
+            <RightButton icon={<Music />} label={language === 'ba' ? 'Orin' : 'Musique'} onClick={() => setMusicPanel(true)} active={!!music} />
+            <RightButton icon={<Flame />} label="Challenge" onClick={() => setChallengePanel(true)} hidden={isStory} />
+            <RightButton icon={<Sparkles />} label={language === 'ba' ? 'Ìmọ̀ràn' : 'Idées'} onClick={() => setInspiringPanel(true)} />
+            <RightButton icon={<Zap />} label="Flash" onClick={toggleFlash} active={flashOn} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bottom Controls */}
+      {topTab !== 'template' && !previewUrl && (
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+          <div className="flex items-center justify-between max-w-2xl mx-auto">
+            <div className="flex gap-2">
+              {!isStory && (
+                <>
+                  <button
+                    onClick={() => setMode('burst')}
+                    className={`p-3 rounded-full transition ${
+                      mode === 'burst' ? 'bg-white text-black' : 'bg-white/20 text-white'
+                    }`}
+                  >
+                    <Repeat2 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setMode('photo')}
+                    className={`p-3 rounded-full transition ${
+                      mode === 'photo' ? 'bg-white text-black' : 'bg-white/20 text-white'
+                    }`}
+                  >
+                    <Camera className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={isRecording ? endVideoCapture : beginCapture}
+              disabled={!!cameraError}
+              className={`w-20 h-20 rounded-full border-4 transition ${
+                isRecording
+                  ? 'bg-red-500 border-red-300'
+                  : 'bg-white border-white/50 hover:border-white disabled:opacity-50'
+              }`}
+            >
+              {isRecording && <div className="w-8 h-8 bg-white rounded mx-auto" />}
+            </button>
+
+            <div className="flex gap-2">
+              {isStory && (
                 <button
-                  key={t.id}
-                  onClick={() => {
-                    triggerFeedback('notification');
-                    setMode(t.id);
-                    // reset capture-only state
-                    if (stage === 'capture') {
-                      setIsRecording(false);
-                      setRecordMs(0);
-                      chunksRef.current = [];
-                    }
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm ${
-                    mode === t.id ? 'bg-white/15 text-white' : 'text-white/70'
+                  onClick={() => setMode('text')}
+                  className={`p-3 rounded-full transition ${
+                    mode === 'text' ? 'bg-white text-black' : 'bg-white/20 text-white'
                   }`}
                 >
-                  {t.icon}
-                  {t.label}
+                  <TypeIcon className="w-5 h-5" />
                 </button>
-              ))}
+              )}
+              {topTab === 'live' && (
+                <button onClick={createLive} className="p-3 rounded-full bg-red-500 text-white">
+                  <Radio className="w-5 h-5" />
+                </button>
+              )}
             </div>
           </div>
-
-          {/* Action row */}
-          <div className="mt-4 flex items-center justify-center gap-10">
-            {/* Magic / templates */}
-            <button
-              onClick={() => setShowTemplates(true)}
-              className="w-16 h-16 rounded-2xl bg-white/10 text-white flex flex-col items-center justify-center"
-            >
-              <Sparkles className="w-6 h-6" />
-              <span className="text-[11px] mt-1">Magic</span>
-            </button>
-
-            {/* Main capture button */}
-            <button
-              onClick={onMainAction}
-              className={`w-20 h-20 rounded-full border-4 ${
-                isRecording ? 'border-red-400' : 'border-white/80'
-              } flex items-center justify-center bg-white/10`}
-            >
-              <div className={`w-14 h-14 rounded-full ${isRecording ? 'bg-red-500' : 'bg-gradient-to-br from-pink-500 to-orange-400'}`} />
-            </button>
-
-            {/* Albums */}
-            <button
-              onClick={openAlbums}
-              className="w-16 h-16 rounded-2xl bg-white/10 text-white flex flex-col items-center justify-center"
-            >
-              <Upload className="w-6 h-6" />
-              <span className="text-[11px] mt-1">Albums</span>
-            </button>
-          </div>
-
-          {/* Recording hint */}
-          <div className="mt-3 text-center text-white/70 text-sm">
-            {mode === 'video' || mode === 'audio' ? (
-              <span>
-                {recordLabel}
-                {isRecording ? ` • ${Math.max(1, Math.round(recordMs / 1000))}s` : ''}
-              </span>
-            ) : (
-              <span>{recordLabel}</span>
-            )}
-          </div>
-
-          {/* Preview footer */}
-          {stage === 'preview' && (
-            <div className="mt-4 mx-auto max-w-md px-4">
-              <div className="rounded-2xl bg-black/50 border border-white/10 p-3">
-                <textarea
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Caption…"
-                  className="w-full bg-transparent text-white placeholder:text-white/40 outline-none text-sm min-h-[80px]"
-                />
-
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {hashtags.map((h) => (
-                    <span
-                      key={h}
-                      className="text-xs px-2 py-1 rounded-full bg-white/10 text-white/80"
-                      onClick={() => setHashtags((prev) => prev.filter((x) => x !== h))}
-                    >
-                      {h}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => {
-                      triggerFeedback('notification');
-                      setStage('capture');
-                      setMediaBlob(null);
-                      if (mediaUrl) URL.revokeObjectURL(mediaUrl);
-                      setMediaUrl('');
-                    }}
-                    className="flex-1 py-2 rounded-xl bg-white/10 text-white text-sm"
-                  >
-                    Back
-                  </button>
-
-                  <button onClick={publish} className="flex-1 py-2 rounded-xl bg-primary text-white text-sm flex items-center justify-center gap-2">
-                    <Check className="w-4 h-4" />
-                    Publish
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
+      )}
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="video/*,image/*,audio/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (!f) return;
-            onSelectFromAlbums(f).catch(() => undefined);
-            e.currentTarget.value = '';
-          }}
-        />
+      {/* Preview Mode */}
+      {previewUrl && (
+        <div className="absolute inset-0 bg-black z-20">
+          {previewType === 'video' && (
+            <video id="tamtam-preview-video" src={previewUrl} controls className="w-full h-full object-contain" />
+          )}
+          {previewType === 'photo' && <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />}
 
-        {/* Filters panel */}
-        <VideoFiltersPanel
-          isOpen={showFilters}
-          onClose={() => setShowFilters(false)}
-          currentFilter={currentFilter}
-          onSelectFilter={(f) => {
-            setCurrentFilter(f);
-            setShowFilters(false);
-          }}
-        />
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={clearPreview}
+                className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/20 text-white hover:bg-white/30 transition"
+              >
+                <RotateCcw className="w-5 h-5" />
+                {language === 'ba' ? 'Tún ṣe' : 'Refaire'}
+              </button>
+              <button
+                onClick={submit}
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                {language === 'ba' ? 'Fi ránṣẹ́' : 'Publier'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-        {/* Templates panel */}
-        <DynamicAITemplates
-          isOpen={showTemplates}
-          onClose={() => setShowTemplates(false)}
-          topic={caption || 'Mon sujet'}
-          language={currentLang === 'ba' ? 'ba' : 'fr'}
-          onGenerated={(p: { type: string; content: string }) => applyTemplateOutput(p)}
-        />
-      </motion.div>
-    </AnimatePresence>
+      {/* Panels */}
+      <VideoFiltersPanel isOpen={filtersOpen} onClose={() => setFiltersOpen(false)} language={language} />
+
+      <DynamicAITemplates
+        isOpen={magicOpen}
+        onClose={() => setMagicOpen(false)}
+        topic={topic}
+        language={language}
+        onApplyTemplate={onApplyTemplate}
+        onGenerated={onGenerated}
+      />
+    </div>
   );
-}
+};
+
+export default FullscreenCreator;
