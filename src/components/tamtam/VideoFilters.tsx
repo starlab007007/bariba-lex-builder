@@ -1,6 +1,14 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+// VideoFilters.tsx - TOUTES LES AMÉLIORATIONS INTÉGRÉES
+// ✅ Barre de catégories horizontale avec overflow-x-auto
+// ✅ Grille de filtres avec overflow-y-auto et snap-y
+// ✅ Slider d'intensité ajustable en temps réel
+// ✅ Bouton Reset pour désactiver les filtres
+// ✅ useEffect pour appliquer/nettoyer les filtres CSS
+// ✅ Accessibilité améliorée
+
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Sun, Camera, Palette, Check, Sliders, X } from 'lucide-react';
+import { Sparkles, Sun, Camera, Palette, Check, Sliders, X, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface VideoFilter {
   id: string;
@@ -42,14 +50,14 @@ export const scaleCssFilter = (cssFilter: string, intensity: number): string => 
 };
 
 export const VIDEO_FILTERS: VideoFilter[] = [
-  { id: 'none', name: 'Original', name_ba: 'Àdáwà', icon: '📷', cssFilter: 'none', intensity: 100, category: 'beauty' },
+  { id: 'none', name: 'Original', name_ba: 'Àdáwọ̀', icon: '📷', cssFilter: 'none', intensity: 100, category: 'beauty' },
   { id: 'beauty', name: 'Beauté', name_ba: 'Ẹwà', icon: '✨', cssFilter: 'brightness(1.05) contrast(0.95) saturate(1.1) blur(0.3px)', intensity: 50, category: 'beauty' },
   { id: 'soft_glow', name: 'Lueur Douce', name_ba: 'Ìmọ́lẹ̀ Rírọ̀', icon: '🌟', cssFilter: 'brightness(1.1) contrast(0.9) saturate(1.05)', intensity: 60, category: 'beauty' },
   { id: 'smooth', name: 'Lisse', name_ba: 'Dídán', icon: '💎', cssFilter: 'brightness(1.02) contrast(0.98) blur(0.5px)', intensity: 40, category: 'beauty' },
   { id: 'porcelain', name: 'Porcelaine', name_ba: 'Àwọ̀ Funfun', icon: '🎀', cssFilter: 'brightness(1.08) contrast(0.92) saturate(0.95) blur(0.4px)', intensity: 55, category: 'beauty' },
   
   { id: 'warm', name: 'Chaud', name_ba: 'Gbígbóná', icon: '🔥', cssFilter: 'sepia(0.2) saturate(1.3) brightness(1.05)', intensity: 50, category: 'color' },
-  { id: 'cool', name: 'Froid', name_ba: 'Tutù', icon: '❄️', cssFilter: 'saturate(0.9) brightness(1.05) hue-rotate(10deg)', intensity: 50, category: 'color' },
+  { id: 'cool', name: 'Froid', name_ba: 'Tútù', icon: '❄️', cssFilter: 'saturate(0.9) brightness(1.05) hue-rotate(10deg)', intensity: 50, category: 'color' },
   { id: 'vivid', name: 'Vif', name_ba: 'Kíkankíkan', icon: '🌈', cssFilter: 'saturate(1.5) contrast(1.1) brightness(1.05)', intensity: 60, category: 'color' },
   { id: 'pastel', name: 'Pastel', name_ba: 'Àwọ̀ Rírọ̀', icon: '🌸', cssFilter: 'saturate(0.7) brightness(1.12) contrast(0.88)', intensity: 65, category: 'color' },
   
@@ -87,6 +95,11 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
   const [customIntensity, setCustomIntensity] = useState<number>(currentFilter?.intensity ?? 60);
   const [isAdjusting, setIsAdjusting] = useState(false);
 
+  // ✅ Référence pour le scroll des catégories
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+
   const categories = useMemo(
     () => [
       { id: 'beauty' as const, label: language === 'ba' ? 'Ẹwà' : 'Beauté', icon: <Sparkles className="w-4 h-4" /> },
@@ -101,6 +114,49 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
     () => VIDEO_FILTERS.filter((f) => f.category === activeCategory),
     [activeCategory]
   );
+
+  // ✅ Vérifier si les flèches doivent être affichées
+  const checkScrollArrows = useCallback(() => {
+    const container = categoryScrollRef.current;
+    if (!container) return;
+
+    setShowLeftArrow(container.scrollLeft > 0);
+    setShowRightArrow(
+      container.scrollLeft < container.scrollWidth - container.clientWidth - 5
+    );
+  }, []);
+
+  useEffect(() => {
+    checkScrollArrows();
+    const container = categoryScrollRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScrollArrows);
+      window.addEventListener('resize', checkScrollArrows);
+      return () => {
+        container.removeEventListener('scroll', checkScrollArrows);
+        window.removeEventListener('resize', checkScrollArrows);
+      };
+    }
+  }, [checkScrollArrows]);
+
+  // ✅ Fonction pour faire défiler les catégories
+  const scrollCategories = useCallback((direction: 'left' | 'right') => {
+    const container = categoryScrollRef.current;
+    if (!container) return;
+
+    const scrollAmount = 150;
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  }, []);
+
+  // ✅ Synchroniser l'intensité avec le filtre actuel
+  useEffect(() => {
+    if (currentFilter) {
+      setCustomIntensity(currentFilter.intensity);
+    }
+  }, [currentFilter]);
 
   const handleSelectFilter = useCallback((filter: VideoFilter) => {
     const adjustedFilter: VideoFilter = { ...filter, intensity: customIntensity };
@@ -120,6 +176,15 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
     setIsAdjusting(false);
   }, []);
 
+  // ✅ Fonction Reset pour désactiver tous les filtres
+  const handleReset = useCallback(() => {
+    const noneFilter = VIDEO_FILTERS.find(f => f.id === 'none');
+    if (noneFilter) {
+      onSelectFilter(noneFilter);
+      setCustomIntensity(100);
+    }
+  }, [onSelectFilter]);
+
   if (!isOpen) return null;
 
   return (
@@ -137,7 +202,7 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 rounded-t-3xl max-h-[80vh] overflow-hidden"
+          className="absolute bottom-0 left-0 right-0 rounded-t-3xl max-h-[80vh] overflow-hidden flex flex-col"
           style={{
             background: 'rgba(20, 20, 25, 0.95)',
             backdropFilter: 'blur(40px)',
@@ -150,7 +215,7 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
           </div>
 
           {/* Header */}
-          <div className="px-4 pb-3 flex items-center justify-between">
+          <div className="px-4 pb-3 flex items-center justify-between flex-shrink-0">
             <div>
               <h3 className="text-white font-semibold text-lg">
                 {language === 'ba' ? 'Àwọ̀ Fídíò' : 'Filtres & Beauté'}
@@ -159,35 +224,95 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
                 {language === 'ba' ? 'Yàn àwọ̀, ṣàtúnṣe ìkankíkan' : 'Choisir et ajuster l\'intensité'}
               </p>
             </div>
-            <button 
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"
-            >
-              <X className="w-5 h-5 text-white" />
-            </button>
-          </div>
-
-          {/* Category Tabs */}
-          <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                  activeCategory === cat.id 
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' 
-                    : 'bg-white/10 text-white/70 hover:bg-white/15'
-                }`}
+            <div className="flex items-center gap-2">
+              {/* ✅ Bouton Reset */}
+              {currentFilter && currentFilter.id !== 'none' && (
+                <motion.button
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  onClick={handleReset}
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+                  title={language === 'ba' ? 'Parẹ́' : 'Réinitialiser'}
+                  aria-label={language === 'ba' ? 'Parẹ́ àwọ̀' : 'Réinitialiser les filtres'}
+                >
+                  <RotateCcw className="w-4 h-4 text-white" />
+                </motion.button>
+              )}
+              <button 
+                onClick={onClose}
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"
+                aria-label={language === 'ba' ? 'Padé' : 'Fermer'}
               >
-                {cat.icon}
-                {cat.label}
+                <X className="w-5 h-5 text-white" />
               </button>
-            ))}
+            </div>
           </div>
 
-          {/* Intensity Slider */}
+          {/* ✅ Category Tabs avec défilement horizontal */}
+          <div className="px-4 pb-3 flex-shrink-0 relative">
+            {/* Flèche gauche */}
+            {showLeftArrow && (
+              <button
+                onClick={() => scrollCategories('left')}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-black/80 backdrop-blur-sm flex items-center justify-center shadow-lg"
+                aria-label={language === 'ba' ? 'Síwájú' : 'Précédent'}
+              >
+                <ChevronLeft className="w-4 h-4 text-white" />
+              </button>
+            )}
+
+            {/* Conteneur des catégories */}
+            <div 
+              ref={categoryScrollRef}
+              className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
+              style={{ scrollSnapType: 'x proximity' }}
+            >
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                    activeCategory === cat.id 
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' 
+                      : 'bg-white/10 text-white/70 hover:bg-white/15'
+                  }`}
+                  style={{ scrollSnapAlign: 'start' }}
+                  aria-label={`${language === 'ba' ? 'Yàn àkójọ' : 'Catégorie'} ${cat.label}`}
+                >
+                  {cat.icon}
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Flèche droite */}
+            {showRightArrow && (
+              <button
+                onClick={() => scrollCategories('right')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-black/80 backdrop-blur-sm flex items-center justify-center shadow-lg"
+                aria-label={language === 'ba' ? 'Tẹ̀lé' : 'Suivant'}
+              >
+                <ChevronRight className="w-4 h-4 text-white" />
+              </button>
+            )}
+
+            {/* Gradients d'indication */}
+            {showLeftArrow && (
+              <div className="absolute left-11 top-0 bottom-0 w-6 bg-gradient-to-r from-[rgba(20,20,25,0.95)] to-transparent pointer-events-none" />
+            )}
+            {showRightArrow && (
+              <div className="absolute right-11 top-0 bottom-0 w-6 bg-gradient-to-l from-[rgba(20,20,25,0.95)] to-transparent pointer-events-none" />
+            )}
+          </div>
+
+          {/* ✅ Intensity Slider */}
           {currentFilter && currentFilter.id !== 'none' && (
-            <div className="px-4 pb-3">
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="px-4 pb-3 flex-shrink-0"
+            >
               <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
                 <div className="flex items-center gap-3 mb-2">
                   <Sliders className="w-4 h-4 text-white/60" />
@@ -211,19 +336,23 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
                   style={{
                     background: `linear-gradient(to right, rgb(168, 85, 247) 0%, rgb(236, 72, 153) ${customIntensity}%, rgba(255,255,255,0.1) ${customIntensity}%, rgba(255,255,255,0.1) 100%)`,
                   }}
+                  aria-label={`${language === 'ba' ? 'Ṣàtúnṣe ìkankíkan' : 'Ajuster l\'intensité'}: ${customIntensity}%`}
                 />
               </div>
-            </div>
+            </motion.div>
           )}
 
-          {/* Filters Grid */}
-          <div className="px-4 pb-6 grid grid-cols-4 gap-3 max-h-[45vh] overflow-y-auto">
+          {/* ✅ Filters Grid avec snap-y */}
+          <div 
+            className="px-4 pb-6 grid grid-cols-4 gap-3 overflow-y-auto flex-1"
+            style={{ scrollSnapType: 'y proximity' }}
+          >
             {filteredFilters.map((filter) => {
               const isSelected = currentFilter?.id === filter.id;
               const previewIntensity = isSelected ? customIntensity : filter.intensity;
 
               return (
-                <button
+                <motion.button
                   key={filter.id}
                   onClick={() => handleSelectFilter(filter)}
                   className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
@@ -231,6 +360,11 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
                       ? 'border-purple-500 shadow-lg shadow-purple-500/50 scale-105' 
                       : 'border-transparent hover:border-white/20'
                   }`}
+                  style={{ scrollSnapAlign: 'start' }}
+                  whileHover={{ scale: isSelected ? 1.05 : 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  aria-label={`${language === 'ba' ? 'Lo àwọ̀' : 'Appliquer le filtre'} ${language === 'ba' && filter.name_ba ? filter.name_ba : filter.name}`}
+                  title={language === 'ba' && filter.name_ba ? filter.name_ba : filter.name}
                 >
                   <div
                     className="absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400"
@@ -254,7 +388,7 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
                       <Check className="w-3 h-3 text-white" />
                     </motion.div>
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -303,6 +437,13 @@ export const useVideoFilter = () => {
     if (filter.id === 'none') return {};
     return { filter: scaleCssFilter(filter.cssFilter, intensity) };
   }, []);
+
+  // ✅ Nettoyer le filtre lors du démontage du composant
+  useEffect(() => {
+    return () => {
+      stopFilter();
+    };
+  }, [stopFilter]);
 
   return {
     currentFilter,
