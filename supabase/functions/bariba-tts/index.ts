@@ -63,8 +63,8 @@ async function pollForResult(
       
       // Wait before next poll
       await new Promise(r => setTimeout(r, 500));
-    } catch (e) {
-      console.log(`   Poll error: ${e.message}`);
+    } catch (e: unknown) {
+      console.log(`   Poll error: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
   }
   
@@ -121,8 +121,8 @@ async function callGradioTTS(
       const result = await pollForResult(spaceUrl, apiPrefix, sessionHash, hfToken);
       if (result) return result;
     }
-  } catch (e) {
-    console.log(`   Queue error: ${e.message}`);
+  } catch (e: unknown) {
+    console.log(`   Queue error: ${e instanceof Error ? e.message : 'Unknown error'}`);
   }
 
   // Method 2: Direct call API
@@ -173,8 +173,8 @@ async function callGradioTTS(
       
       return result;
     }
-  } catch (e) {
-    console.log(`   Direct call error: ${e.message}`);
+  } catch (e: unknown) {
+    console.log(`   Direct call error: ${e instanceof Error ? e.message : 'Unknown error'}`);
   }
 
   throw new Error('All Gradio API methods failed');
@@ -220,8 +220,8 @@ async function extractAudio(result: any, spaceUrl: string, hfToken: string): Pro
         }
         return `data:audio/wav;base64,${btoa(binary)}`;
       }
-    } catch (e) {
-      console.log(`   Error fetching audio: ${e.message}`);
+    } catch (e: unknown) {
+      console.log(`   Error fetching audio: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
   }
   
@@ -296,8 +296,8 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-    } catch (e) {
-      console.error(`❌ API error: ${e.message}`);
+    } catch (e: unknown) {
+      console.error(`❌ API error: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
 
     const duration = Date.now() - startTime;
@@ -313,10 +313,10 @@ serve(async (req) => {
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Fatal error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'TTS failed' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'TTS failed' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -23,8 +23,8 @@ async function wakeUpSpace(hfToken: string): Promise<boolean> {
     });
     console.log(`   Space status: ${response.status}`);
     return response.ok;
-  } catch (e) {
-    console.log(`   Space wake-up check failed: ${e.message}`);
+  } catch (e: unknown) {
+    console.log(`   Space wake-up check failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
     return false;
   }
 }
@@ -372,17 +372,18 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
       
-    } catch (e) {
+    } catch (e: unknown) {
       const duration = Date.now() - startTime;
-      console.error(`❌ API error after ${duration}ms: ${e.message}`);
+      const errMsg = e instanceof Error ? e.message : 'Unknown error';
+      console.error(`❌ API error after ${duration}ms: ${errMsg}`);
       
       // Check if it's a HuggingFace-specific error
-      const isHFError = e.message?.includes('HuggingFace');
+      const isHFError = errMsg.includes('HuggingFace');
       
       return new Response(
         JSON.stringify({
           error: isHFError ? 'HuggingFace model error' : 'Bariba STT service unavailable',
-          details: e.message || 'HuggingFace Space API not responding.',
+          details: errMsg || 'HuggingFace Space API not responding.',
           duration,
           suggestion: isHFError 
             ? 'Le modèle Bariba a retourné une erreur. Réessayez avec un audio plus clair.'
@@ -391,10 +392,10 @@ serve(async (req) => {
         { status: isHFError ? 400 : 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Fatal error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'STT failed', suggestion: 'Une erreur inattendue s\'est produite. Réessayez.' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'STT failed', suggestion: 'Une erreur inattendue s\'est produite. Réessayez.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

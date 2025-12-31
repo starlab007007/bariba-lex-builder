@@ -132,7 +132,7 @@ serve(async (req) => {
       const hashtags = generatedContent.match(/#\w+/g) || [];
       parsed.hashtags = hashtags;
     } else if (type === 'hook') {
-      const lines = generatedContent.split('\n').filter(l => l.trim());
+      const lines = generatedContent.split('\n').filter((l: string) => l.trim());
       parsed.hooks = lines.slice(0, 3);
     } else if (type === 'script') {
       parsed.script = generatedContent;
@@ -157,11 +157,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Generate content error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Generation failed',
+        error: error instanceof Error ? error.message : 'Generation failed',
         content: null
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

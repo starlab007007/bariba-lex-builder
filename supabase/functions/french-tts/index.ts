@@ -48,10 +48,10 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Fatal error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'TTS failed' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'TTS failed' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

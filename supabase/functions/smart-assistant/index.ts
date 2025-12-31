@@ -439,11 +439,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Smart Assistant error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Assistant error',
+        error: error instanceof Error ? error.message : 'Assistant error',
         response_fr: 'Désolé, une erreur s\'est produite. Réessayez.',
         response_ba: 'Má bìnú, àṣìṣe kan wáyé. Gbìyànjú lẹ́ẹ̀kan sí i.'
       }),
