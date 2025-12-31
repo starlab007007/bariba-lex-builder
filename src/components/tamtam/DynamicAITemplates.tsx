@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Sparkles, Wand2, Hash, Film, TextQuote, X, Play, Flame, Music2,
-  Zap, TrendingUp, Video, Image as ImageIcon, Copy, Check
+  Zap, TrendingUp, Video, Image as ImageIcon, Copy, Check, ChevronLeft, ChevronRight, RotateCcw
 } from 'lucide-react';
 
 export type AIGenType =
@@ -54,6 +54,8 @@ const CATEGORIES = [
   { id: 'new', label: '⚡ New', icon: <Zap className="w-4 h-4" /> },
   { id: 'play', label: '▶️ Play', icon: <Play className="w-4 h-4" /> },
   { id: 'trending', label: '📈 Trending', icon: <TrendingUp className="w-4 h-4" /> },
+  { id: 'viral', label: '🚀 Viral', icon: <TrendingUp className="w-4 h-4" /> },
+  { id: 'comedy', label: '😂 Comedy', icon: <Sparkles className="w-4 h-4" /> },
 ];
 
 const DEFAULT_TEMPLATES: AITemplate[] = [
@@ -79,7 +81,7 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   {
     id: 'viral_hooks',
     title: 'Accroches Virales',
-    subtitle: '5 hooks prêts à dire pour capter l\'attention',
+    subtitle: "5 hooks prêts à dire pour capter l'attention",
     type: 'hook',
     tags: ['hook', 'viral', 'engagement'],
     icon: <TextQuote className="w-5 h-5" />,
@@ -277,6 +279,26 @@ async function generateViaFallback(body: unknown): Promise<string> {
   }
 }
 
+// Composant pour les indicateurs de défilement horizontal
+const ScrollIndicator: React.FC<{ direction: 'left' | 'right'; onClick: () => void; visible: boolean }> = ({
+  direction,
+  onClick,
+  visible,
+}) => {
+  if (!visible) return null;
+  return (
+    <button
+      onClick={onClick}
+      className={`absolute top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white/80 hover:bg-black/80 transition ${
+        direction === 'left' ? 'left-0' : 'right-0'
+      }`}
+      aria-label={direction === 'left' ? 'Défiler vers la gauche' : 'Défiler vers la droite'}
+    >
+      {direction === 'left' ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+    </button>
+  );
+};
+
 export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
   isOpen,
   onClose,
@@ -292,6 +314,11 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
   const [streamText, setStreamText] = useState('');
   const [copiedId, setCopiedId] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
+  
+  // Refs pour le défilement horizontal des catégories
+  const categoriesRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const templates = useMemo(() => DEFAULT_TEMPLATES, []);
   const themes = useMemo(() => DEFAULT_THEMES, []);
@@ -309,6 +336,32 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
     return themes.filter((th) => th.category === category);
   }, [category, themes]);
 
+  // Vérifier les possibilités de défilement
+  const checkScrollability = useCallback(() => {
+    if (categoriesRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = categoriesRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 5);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkScrollability();
+    window.addEventListener('resize', checkScrollability);
+    return () => window.removeEventListener('resize', checkScrollability);
+  }, [checkScrollability, tab]);
+
+  const scrollCategories = useCallback((direction: 'left' | 'right') => {
+    if (categoriesRef.current) {
+      const scrollAmount = 150;
+      categoriesRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+      setTimeout(checkScrollability, 300);
+    }
+  }, [checkScrollability]);
+
   useEffect(() => {
     if (!isOpen) {
       setQ('');
@@ -320,7 +373,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
 
   const gen = useCallback(async (t: AITemplate) => {
     if (!topic?.trim()) {
-      alert(language === 'ba' ? 'Fi kókó kọ́kọ́' : 'Ajoute un sujet d\'abord');
+      alert(language === 'ba' ? 'Fi kókó kọ́kọ́' : "Ajoute un sujet d'abord");
       return;
     }
 
@@ -369,6 +422,11 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
     });
   }, []);
 
+  const resetOutput = useCallback(() => {
+    setStreamText('');
+    setIsGenerating(false);
+  }, []);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -380,7 +438,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
           onClick={onClose}
         >
           <motion.div
-            className="absolute bottom-0 left-0 right-0 rounded-t-3xl max-h-[88vh] overflow-hidden"
+            className="absolute bottom-0 left-0 right-0 rounded-t-3xl max-h-[88vh] overflow-hidden flex flex-col"
             style={{
               background: 'rgba(20, 20, 25, 0.98)',
               backdropFilter: 'blur(40px)',
@@ -398,7 +456,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
             </div>
 
             {/* Header */}
-            <div className="px-4 pb-2 flex items-center justify-between">
+            <div className="px-4 pb-2 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Wand2 className="w-6 h-6 text-purple-400" />
                 <div>
@@ -411,13 +469,15 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
               <button
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition flex items-center justify-center"
                 onClick={onClose}
+                aria-label={language === 'ba' ? 'Padé' : 'Fermer'}
+                title={language === 'ba' ? 'Padé' : 'Fermer'}
               >
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
             {/* Search & Tabs */}
-            <div className="px-4 pb-3 space-y-3">
+            <div className="px-4 pb-3 space-y-3 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <Search className="w-4 h-4 text-white/50 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -426,6 +486,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                     onChange={(e) => setQ(e.target.value)}
                     placeholder={language === 'ba' ? 'Wá àwọn àpẹẹrẹ...' : 'Rechercher des templates...'}
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder:text-white/40 outline-none focus:bg-white/15 focus:border-white/20 transition"
+                    aria-label={language === 'ba' ? 'Wá àwọn àpẹẹrẹ' : 'Rechercher des templates'}
                   />
                 </div>
 
@@ -436,6 +497,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
                       : 'bg-white/10 text-white/70 hover:bg-white/15'
                   }`}
+                  aria-pressed={tab === 'template'}
                 >
                   Template
                 </button>
@@ -446,39 +508,68 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
                       : 'bg-white/10 text-white/70 hover:bg-white/15'
                   }`}
+                  aria-pressed={tab === 'theme'}
                 >
                   Theme
                 </button>
               </div>
 
-              {/* Category Pills */}
+              {/* Category Pills - Défilement horizontal amélioré */}
               {tab === 'template' && (
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                  {CATEGORIES.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => setCategory(c.id)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${
-                        category === c.id
-                          ? 'bg-white/20 text-white border border-white/20'
-                          : 'bg-white/10 text-white/70 hover:bg-white/15'
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
+                <div className="relative">
+                  {/* Indicateurs de défilement */}
+                  <ScrollIndicator
+                    direction="left"
+                    onClick={() => scrollCategories('left')}
+                    visible={canScrollLeft}
+                  />
+                  <ScrollIndicator
+                    direction="right"
+                    onClick={() => scrollCategories('right')}
+                    visible={canScrollRight}
+                  />
+
+                  {/* Gradients visuels pour indiquer le défilement */}
+                  {canScrollLeft && (
+                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[rgba(20,20,25,0.98)] to-transparent z-[5] pointer-events-none" />
+                  )}
+                  {canScrollRight && (
+                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[rgba(20,20,25,0.98)] to-transparent z-[5] pointer-events-none" />
+                  )}
+
+                  <div
+                    ref={categoriesRef}
+                    onScroll={checkScrollability}
+                    className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory px-1 py-1"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {CATEGORIES.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setCategory(c.id)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition snap-start flex-shrink-0 ${
+                          category === c.id
+                            ? 'bg-white/20 text-white border border-white/20'
+                            : 'bg-white/10 text-white/70 hover:bg-white/15'
+                        }`}
+                        aria-pressed={category === c.id}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Content */}
-            <div className="px-4 pb-5 overflow-y-auto max-h-[60vh]">
+            {/* Content - Défilement vertical avec snap */}
+            <div className="px-4 pb-5 overflow-y-auto flex-1 scroll-smooth snap-y snap-mandatory overscroll-contain">
               {tab === 'template' && (
                 <div className="grid grid-cols-2 gap-3">
                   {filteredTemplates.map((t) => (
                     <motion.div
                       key={t.id}
-                      className="rounded-2xl bg-white/5 border border-white/10 p-3 hover:bg-white/10 transition"
+                      className="rounded-2xl bg-white/5 border border-white/10 p-3 hover:bg-white/10 transition snap-start"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -513,6 +604,8 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                         <button
                           className="flex-1 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm font-medium transition"
                           onClick={() => onApplyTemplate?.(t)}
+                          aria-label={`${language === 'ba' ? 'Lo' : 'Appliquer'} ${t.title}`}
+                          title={language === 'ba' ? 'Lo àpẹẹrẹ yìí' : 'Appliquer ce template'}
                         >
                           Apply
                         </button>
@@ -520,7 +613,8 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                           className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium disabled:opacity-50 transition shadow-lg"
                           onClick={() => gen(t)}
                           disabled={isGenerating || !topic?.trim()}
-                          title={!topic?.trim() ? (language === 'ba' ? 'Fi kókó kọ́kọ́' : 'Ajoute un sujet') : 'Générer'}
+                          title={!topic?.trim() ? (language === 'ba' ? 'Fi kókó kọ́kọ́' : 'Ajoute un sujet') : (language === 'ba' ? 'Ṣe' : 'Générer le contenu')}
+                          aria-label={`${language === 'ba' ? 'Ṣe' : 'Générer'} ${t.title}`}
                         >
                           {isGenerating ? '...' : language === 'ba' ? 'Ṣe' : 'Generate'}
                         </button>
@@ -535,7 +629,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                   {filteredThemes.map((th, idx) => (
                     <motion.div
                       key={th.id}
-                      className="rounded-2xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition"
+                      className="rounded-2xl bg-white/5 border border-white/10 p-4 hover:bg-white/10 transition snap-start"
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                     >
@@ -557,6 +651,8 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                         <button
                           className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 text-white text-sm font-medium transition"
                           onClick={() => applyTheme(th)}
+                          aria-label={th.action === 'imitate' ? (language === 'ba' ? 'Ṣe àfarawé' : 'Imiter ce thème') : (language === 'ba' ? 'Ṣe' : 'Créer avec ce thème')}
+                          title={th.action === 'imitate' ? (language === 'ba' ? 'Ṣe àfarawé' : 'Imiter ce thème') : (language === 'ba' ? 'Ṣe' : 'Créer avec ce thème')}
                         >
                           {th.action === 'imitate' ? (language === 'ba' ? 'Ṣe àfarawé' : 'Imiter') : (language === 'ba' ? 'Ṣe' : 'Créer')}
                         </button>
@@ -570,7 +666,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
               <AnimatePresence>
                 {(streamText || isGenerating) && (
                   <motion.div
-                    className="mt-4 rounded-2xl bg-black/40 border border-purple-500/30 p-4"
+                    className="mt-4 rounded-2xl bg-black/40 border border-purple-500/30 p-4 snap-start"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
@@ -580,19 +676,32 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                         <Sparkles className="w-4 h-4" />
                         {language === 'ba' ? 'Èsì AI' : 'Résultat AI'}
                       </div>
-                      {streamText && !isGenerating && (
-                        <button
-                          onClick={() => copyToClipboard(streamText, 'output')}
-                          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
-                          title={language === 'ba' ? 'Ṣe àdàkọ' : 'Copier'}
-                        >
-                          {copiedId === 'output' ? (
-                            <Check className="w-4 h-4 text-green-400" />
-                          ) : (
-                            <Copy className="w-4 h-4 text-white/70" />
-                          )}
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {streamText && !isGenerating && (
+                          <>
+                            <button
+                              onClick={resetOutput}
+                              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
+                              title={language === 'ba' ? 'Tún bẹ̀rẹ̀' : 'Réinitialiser'}
+                              aria-label={language === 'ba' ? 'Tún bẹ̀rẹ̀' : 'Réinitialiser'}
+                            >
+                              <RotateCcw className="w-4 h-4 text-white/70" />
+                            </button>
+                            <button
+                              onClick={() => copyToClipboard(streamText, 'output')}
+                              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
+                              title={language === 'ba' ? 'Ṣe àdàkọ' : 'Copier'}
+                              aria-label={language === 'ba' ? 'Ṣe àdàkọ' : 'Copier le résultat'}
+                            >
+                              {copiedId === 'output' ? (
+                                <Check className="w-4 h-4 text-green-400" />
+                              ) : (
+                                <Copy className="w-4 h-4 text-white/70" />
+                              )}
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className="bg-black/30 rounded-xl p-3 max-h-[200px] overflow-y-auto">
                       <pre className="whitespace-pre-wrap text-white text-sm leading-relaxed font-sans">
