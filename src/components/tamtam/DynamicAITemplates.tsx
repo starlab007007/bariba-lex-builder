@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Sparkles, Wand2, Hash, Film, TextQuote, X, Play, Flame, Music2,
-  Zap, TrendingUp, Video, Image as ImageIcon, Copy, Check, ChevronLeft, ChevronRight, RotateCcw
+  Zap, TrendingUp, Video, Copy, Check, ChevronLeft, ChevronRight, RotateCcw
 } from 'lucide-react';
 
 export type AIGenType =
@@ -62,7 +62,7 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   {
     id: 'ai_edit_album',
     title: 'AI Edit Album',
-    subtitle: "Sélectionne des médias, l'IA fait le montage + rythme",
+    subtitle: "Sélectionne des médias, l'IA fait le montage",
     type: 'shotlist',
     tags: ['auto-edit', 'album', 'music'],
     icon: <Wand2 className="w-5 h-5" />,
@@ -72,7 +72,7 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   {
     id: 'short_script',
     title: 'Script Court',
-    subtitle: 'Intro → valeur → conclusion (30-60s)',
+    subtitle: 'Intro, valeur, conclusion (30-60s)',
     type: 'script',
     tags: ['video', 'story', 'creator'],
     icon: <Film className="w-5 h-5" />,
@@ -81,7 +81,7 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   {
     id: 'viral_hooks',
     title: 'Accroches Virales',
-    subtitle: "5 hooks prêts à dire pour capter l'attention",
+    subtitle: "5 hooks pour capter l'attention",
     type: 'hook',
     tags: ['hook', 'viral', 'engagement'],
     icon: <TextQuote className="w-5 h-5" />,
@@ -91,7 +91,7 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   {
     id: 'captions',
     title: 'Captions',
-    subtitle: '6 descriptions prêtes à poster',
+    subtitle: '6 descriptions pretes a poster',
     type: 'caption',
     tags: ['caption', 'post', 'description'],
     icon: <TextQuote className="w-5 h-5" />,
@@ -100,7 +100,7 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   {
     id: 'hashtags_pack',
     title: 'Pack Hashtags',
-    subtitle: '10–18 hashtags pertinents pour ton contenu',
+    subtitle: '10-18 hashtags pertinents',
     type: 'hashtags',
     tags: ['hashtags', 'seo', 'visibility'],
     icon: <Hash className="w-5 h-5" />,
@@ -108,8 +108,8 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   },
   {
     id: 'ideas',
-    title: 'Idées Vidéos',
-    subtitle: '8 idées créatives adaptées à ton sujet',
+    title: 'Idees Videos',
+    subtitle: '8 idees creatives adaptees',
     type: 'suggestions',
     tags: ['ideas', 'brainstorm'],
     icon: <Sparkles className="w-5 h-5" />,
@@ -118,7 +118,7 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   {
     id: 'shotlist',
     title: 'Plan de Tournage',
-    subtitle: 'Scènes détaillées + plans + transitions',
+    subtitle: 'Scenes detaillees + plans + transitions',
     type: 'shotlist',
     tags: ['shoot', 'edit', 'planning'],
     icon: <Video className="w-5 h-5" />,
@@ -127,8 +127,7 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
   {
     id: 'live_intro',
     title: 'Intro LIVE',
-    // ✅ FIX BUILD: apostrophe dans une string -> passer en double-quotes
-    subtitle: "Phrase d'ouverture + règles du jeu + CTA",
+    subtitle: "Phrase d'ouverture + regles du jeu + CTA",
     type: 'live_intro',
     tags: ['live', 'streaming'],
     icon: <Sparkles className="w-5 h-5" />,
@@ -143,67 +142,20 @@ const DEFAULT_TEMPLATES: AITemplate[] = [
     icon: <TextQuote className="w-5 h-5" />,
     usageCount: '9.1k',
   },
-  {
-    id: 'news_style',
-    title: 'Style Actualité',
-    subtitle: 'Format reportage/news comme dans les médias',
-    type: 'script',
-    tags: ['news', 'report', 'media'],
-    icon: <Film className="w-5 h-5" />,
-    usageCount: '2.8k',
-    trending: true,
-  },
 ];
 
 const DEFAULT_THEMES: AITheme[] = [
-  {
-    id: 't1',
-    hashtag: '#萝卜刀猫咪变装',
-    watchingLabel: '9.8m watching',
-    action: 'imitate',
-    category: 'trending',
-    trending: true,
-  },
-  {
-    id: 't2',
-    hashtag: '#苦海翻起爱恨转场',
-    watchingLabel: '9.8m watching',
-    action: 'make',
-    category: 'trending',
-  },
-  {
-    id: 't3',
-    hashtag: '#冬日摇',
-    watchingLabel: '9.7m watching',
-    action: 'imitate',
-    category: 'hot',
-  },
-  {
-    id: 't4',
-    hashtag: '#DanceChallenge',
-    watchingLabel: '8.9m watching',
-    action: 'imitate',
-    category: 'hot',
-  },
-  {
-    id: 't5',
-    hashtag: '#BeforeAfter',
-    watchingLabel: '5.4m watching',
-    action: 'make',
-    category: 'new',
-  },
-  {
-    id: 't6',
-    hashtag: '#LearnIn60s',
-    watchingLabel: '3.6m watching',
-    action: 'make',
-    category: 'new',
-  },
+  { id: 't1', hashtag: '#DanceChallenge', watchingLabel: '9.8m watching', action: 'imitate', category: 'trending', trending: true },
+  { id: 't2', hashtag: '#BeforeAfter', watchingLabel: '9.8m watching', action: 'make', category: 'trending' },
+  { id: 't3', hashtag: '#LearnIn60s', watchingLabel: '9.7m watching', action: 'imitate', category: 'hot' },
+  { id: 't4', hashtag: '#VillageNews', watchingLabel: '8.9m watching', action: 'imitate', category: 'hot' },
+  { id: 't5', hashtag: '#CookingTime', watchingLabel: '5.4m watching', action: 'make', category: 'new' },
+  { id: 't6', hashtag: '#Fashion2025', watchingLabel: '3.6m watching', action: 'make', category: 'new' },
 ];
 
 function safeEnv(key: string): string | undefined {
   try {
-    return (import.meta as any).env?.[key] as string | undefined;
+    return (import.meta as Record<string, Record<string, string>>).env?.[key];
   } catch {
     return undefined;
   }
@@ -224,24 +176,20 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 async function generateViaStreaming(body: unknown): Promise<string> {
   const baseUrl = safeEnv('VITE_SUPABASE_URL');
   if (!baseUrl) throw new Error('Missing VITE_SUPABASE_URL');
-
   const auth = await getAuthHeader();
   const res = await fetch(`${baseUrl}/functions/v1/generate-content-stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...auth },
     body: JSON.stringify(body),
   });
-
   if (!res.ok || !res.body) {
     const t = await res.text().catch(() => '');
     throw new Error(t || 'Streaming failed');
   }
-
   const reader = res.body.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
   let out = '';
-
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -258,11 +206,10 @@ async function generateViaStreaming(body: unknown): Promise<string> {
         const delta = json?.delta?.content ?? json?.choices?.[0]?.delta?.content;
         if (typeof delta === 'string') out += delta;
       } catch {
-        // ignore
+        // ignore parse errors
       }
     }
   }
-
   return out.trim();
 }
 
@@ -271,7 +218,7 @@ async function generateViaFallback(body: unknown): Promise<string> {
     const { supabase } = await import('@/integrations/supabase/client');
     const { data, error } = await supabase.functions.invoke('generate-content', { body });
     if (error) throw error;
-    const content = (data as any)?.content;
+    const content = (data as Record<string, unknown>)?.content;
     if (!content || typeof content !== 'string') return '';
     return content.trim();
   } catch {
@@ -279,11 +226,8 @@ async function generateViaFallback(body: unknown): Promise<string> {
   }
 }
 
-// Composant pour les indicateurs de défilement horizontal
 const ScrollIndicator: React.FC<{ direction: 'left' | 'right'; onClick: () => void; visible: boolean }> = ({
-  direction,
-  onClick,
-  visible,
+  direction, onClick, visible,
 }) => {
   if (!visible) return null;
   return (
@@ -292,7 +236,7 @@ const ScrollIndicator: React.FC<{ direction: 'left' | 'right'; onClick: () => vo
       className={`absolute top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white/80 hover:bg-black/80 transition ${
         direction === 'left' ? 'left-0' : 'right-0'
       }`}
-      aria-label={direction === 'left' ? 'Défiler vers la gauche' : 'Défiler vers la droite'}
+      aria-label={direction === 'left' ? 'Défiler gauche' : 'Défiler droite'}
     >
       {direction === 'left' ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
     </button>
@@ -300,12 +244,7 @@ const ScrollIndicator: React.FC<{ direction: 'left' | 'right'; onClick: () => vo
 };
 
 export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
-  isOpen,
-  onClose,
-  topic,
-  language = 'fr',
-  onApplyTemplate,
-  onGenerated,
+  isOpen, onClose, topic, language = 'fr', onApplyTemplate, onGenerated,
 }) => {
   const [tab, setTab] = useState<'template' | 'theme'>('template');
   const [category, setCategory] = useState<string>('hot');
@@ -313,9 +252,6 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [streamText, setStreamText] = useState('');
   const [copiedId, setCopiedId] = useState<string>('');
-  const abortRef = useRef<AbortController | null>(null);
-  
-  // Refs pour le défilement horizontal des catégories
   const categoriesRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -336,7 +272,6 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
     return themes.filter((th) => th.category === category);
   }, [category, themes]);
 
-  // Vérifier les possibilités de défilement
   const checkScrollability = useCallback(() => {
     if (categoriesRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = categoriesRef.current;
@@ -373,21 +308,12 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
 
   const gen = useCallback(async (t: AITemplate) => {
     if (!topic?.trim()) {
-      alert(language === 'ba' ? 'Fi kókó kọ́kọ́' : "Ajoute un sujet d'abord");
+      alert(language === 'ba' ? 'Fi koko kọkọ' : "Ajoute un sujet d'abord");
       return;
     }
-
     setIsGenerating(true);
     setStreamText('');
-
-    const payload = {
-      type: t.type,
-      topic,
-      templateKey: t.id,
-      templateId: t.id,
-      language,
-    };
-
+    const payload = { type: t.type, topic, templateKey: t.id, templateId: t.id, language };
     try {
       const content = await generateViaStreaming(payload);
       if (!content) {
@@ -398,7 +324,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
         setStreamText(content);
         onGenerated?.({ type: t.type, content, templateId: t.id });
       }
-    } catch (e) {
+    } catch {
       const fallback = await generateViaFallback(payload).catch(() => '');
       setStreamText(fallback);
       if (fallback) onGenerated?.({ type: t.type, content: fallback, templateId: t.id });
@@ -408,11 +334,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
   }, [language, onGenerated, topic]);
 
   const applyTheme = useCallback((th: AITheme) => {
-    onGenerated?.({
-      type: 'hashtags',
-      content: th.hashtag,
-      templateId: th.id,
-    });
+    onGenerated?.({ type: 'hashtags', content: th.hashtag, templateId: th.id });
   }, [onGenerated]);
 
   const copyToClipboard = useCallback((text: string, id: string) => {
@@ -450,33 +372,29 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drag Handle */}
             <div className="flex justify-center pt-3 pb-2">
               <div className="w-10 h-1 bg-white/30 rounded-full" />
             </div>
 
-            {/* Header */}
             <div className="px-4 pb-2 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Wand2 className="w-6 h-6 text-purple-400" />
                 <div>
                   <div className="text-white font-semibold text-lg">Magic AI</div>
                   <div className="text-white/50 text-xs">
-                    {language === 'ba' ? 'Àwọn àpẹẹrẹ • àkọlé • hashtags' : 'Templates • thèmes • auto edit'}
+                    {language === 'ba' ? 'Awọn apẹẹrẹ, akọlé, hashtags' : 'Templates, thèmes, auto edit'}
                   </div>
                 </div>
               </div>
               <button
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition flex items-center justify-center"
                 onClick={onClose}
-                aria-label={language === 'ba' ? 'Padé' : 'Fermer'}
-                title={language === 'ba' ? 'Padé' : 'Fermer'}
+                aria-label={language === 'ba' ? 'Pade' : 'Fermer'}
               >
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            {/* Search & Tabs */}
             <div className="px-4 pb-3 space-y-3 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
@@ -484,12 +402,11 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                   <input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
-                    placeholder={language === 'ba' ? 'Wá àwọn àpẹẹrẹ...' : 'Rechercher des templates...'}
+                    placeholder={language === 'ba' ? 'Wa awọn apẹẹrẹ...' : 'Rechercher des templates...'}
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder:text-white/40 outline-none focus:bg-white/15 focus:border-white/20 transition"
-                    aria-label={language === 'ba' ? 'Wá àwọn àpẹẹrẹ' : 'Rechercher des templates'}
+                    aria-label={language === 'ba' ? 'Wa awọn apẹẹrẹ' : 'Rechercher des templates'}
                   />
                 </div>
-
                 <button
                   onClick={() => setTab('template')}
                   className={`px-4 py-2.5 rounded-xl text-sm font-medium transition ${
@@ -514,29 +431,16 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                 </button>
               </div>
 
-              {/* Category Pills - Défilement horizontal amélioré */}
               {tab === 'template' && (
                 <div className="relative">
-                  {/* Indicateurs de défilement */}
-                  <ScrollIndicator
-                    direction="left"
-                    onClick={() => scrollCategories('left')}
-                    visible={canScrollLeft}
-                  />
-                  <ScrollIndicator
-                    direction="right"
-                    onClick={() => scrollCategories('right')}
-                    visible={canScrollRight}
-                  />
-
-                  {/* Gradients visuels pour indiquer le défilement */}
+                  <ScrollIndicator direction="left" onClick={() => scrollCategories('left')} visible={canScrollLeft} />
+                  <ScrollIndicator direction="right" onClick={() => scrollCategories('right')} visible={canScrollRight} />
                   {canScrollLeft && (
                     <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[rgba(20,20,25,0.98)] to-transparent z-[5] pointer-events-none" />
                   )}
                   {canScrollRight && (
                     <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[rgba(20,20,25,0.98)] to-transparent z-[5] pointer-events-none" />
                   )}
-
                   <div
                     ref={categoriesRef}
                     onScroll={checkScrollability}
@@ -562,7 +466,6 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
               )}
             </div>
 
-            {/* Content - Défilement vertical avec snap */}
             <div className="px-4 pb-5 overflow-y-auto flex-1 scroll-smooth snap-y snap-mandatory overscroll-contain">
               {tab === 'template' && (
                 <div className="grid grid-cols-2 gap-3">
@@ -585,13 +488,9 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                           <div className="text-xs text-white/60 line-clamp-2">{t.subtitle}</div>
                         </div>
                       </div>
-
                       {t.usageCount && (
-                        <div className="text-[10px] text-white/50 mb-2">
-                          {t.usageCount} usage
-                        </div>
+                        <div className="text-[10px] text-white/50 mb-2">{t.usageCount} usage</div>
                       )}
-
                       <div className="flex flex-wrap gap-1 mb-3">
                         {t.tags.slice(0, 2).map((tag) => (
                           <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/70">
@@ -599,13 +498,11 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                           </span>
                         ))}
                       </div>
-
                       <div className="flex gap-2">
                         <button
                           className="flex-1 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm font-medium transition"
                           onClick={() => onApplyTemplate?.(t)}
-                          aria-label={`${language === 'ba' ? 'Lo' : 'Appliquer'} ${t.title}`}
-                          title={language === 'ba' ? 'Lo àpẹẹrẹ yìí' : 'Appliquer ce template'}
+                          aria-label={`Appliquer ${t.title}`}
                         >
                           Apply
                         </button>
@@ -613,10 +510,9 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                           className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium disabled:opacity-50 transition shadow-lg"
                           onClick={() => gen(t)}
                           disabled={isGenerating || !topic?.trim()}
-                          title={!topic?.trim() ? (language === 'ba' ? 'Fi kókó kọ́kọ́' : 'Ajoute un sujet') : (language === 'ba' ? 'Ṣe' : 'Générer le contenu')}
-                          aria-label={`${language === 'ba' ? 'Ṣe' : 'Générer'} ${t.title}`}
+                          aria-label={`Generer ${t.title}`}
                         >
-                          {isGenerating ? '...' : language === 'ba' ? 'Ṣe' : 'Generate'}
+                          {isGenerating ? '...' : language === 'ba' ? 'Se' : 'Generate'}
                         </button>
                       </div>
                     </motion.div>
@@ -643,18 +539,15 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                               <div className="text-white font-semibold truncate">{th.hashtag}</div>
                               {th.trending && <Flame className="w-4 h-4 text-orange-400 flex-shrink-0" />}
                             </div>
-                            <div className="text-white/50 text-xs mt-0.5">
-                              {th.watchingLabel ?? ''}
-                            </div>
+                            <div className="text-white/50 text-xs mt-0.5">{th.watchingLabel ?? ''}</div>
                           </div>
                         </div>
                         <button
                           className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 text-white text-sm font-medium transition"
                           onClick={() => applyTheme(th)}
-                          aria-label={th.action === 'imitate' ? (language === 'ba' ? 'Ṣe àfarawé' : 'Imiter ce thème') : (language === 'ba' ? 'Ṣe' : 'Créer avec ce thème')}
-                          title={th.action === 'imitate' ? (language === 'ba' ? 'Ṣe àfarawé' : 'Imiter ce thème') : (language === 'ba' ? 'Ṣe' : 'Créer avec ce thème')}
+                          aria-label={th.action === 'imitate' ? 'Imiter ce theme' : 'Creer avec ce theme'}
                         >
-                          {th.action === 'imitate' ? (language === 'ba' ? 'Ṣe àfarawé' : 'Imiter') : (language === 'ba' ? 'Ṣe' : 'Créer')}
+                          {th.action === 'imitate' ? (language === 'ba' ? 'Se afarawe' : 'Imiter') : (language === 'ba' ? 'Se' : 'Creer')}
                         </button>
                       </div>
                     </motion.div>
@@ -662,7 +555,6 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                 </div>
               )}
 
-              {/* AI Output */}
               <AnimatePresence>
                 {(streamText || isGenerating) && (
                   <motion.div
@@ -674,7 +566,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-white/70 text-xs font-medium flex items-center gap-2">
                         <Sparkles className="w-4 h-4" />
-                        {language === 'ba' ? 'Èsì AI' : 'Résultat AI'}
+                        {language === 'ba' ? 'Esi AI' : 'Résultat AI'}
                       </div>
                       <div className="flex items-center gap-2">
                         {streamText && !isGenerating && (
@@ -682,16 +574,14 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                             <button
                               onClick={resetOutput}
                               className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
-                              title={language === 'ba' ? 'Tún bẹ̀rẹ̀' : 'Réinitialiser'}
-                              aria-label={language === 'ba' ? 'Tún bẹ̀rẹ̀' : 'Réinitialiser'}
+                              aria-label={language === 'ba' ? 'Tun bẹrẹ' : 'Réinitialiser'}
                             >
                               <RotateCcw className="w-4 h-4 text-white/70" />
                             </button>
                             <button
                               onClick={() => copyToClipboard(streamText, 'output')}
                               className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition"
-                              title={language === 'ba' ? 'Ṣe àdàkọ' : 'Copier'}
-                              aria-label={language === 'ba' ? 'Ṣe àdàkọ' : 'Copier le résultat'}
+                              aria-label={language === 'ba' ? 'Se adako' : 'Copier le résultat'}
                             >
                               {copiedId === 'output' ? (
                                 <Check className="w-4 h-4 text-green-400" />
@@ -707,7 +597,7 @@ export const DynamicAITemplates: React.FC<DynamicAITemplatesProps> = ({
                       <pre className="whitespace-pre-wrap text-white text-sm leading-relaxed font-sans">
                         {streamText || (
                           <span className="text-white/50 italic">
-                            {language === 'ba' ? 'Ń ṣe iṣẹ́...' : 'Génération en cours...'}
+                            {language === 'ba' ? 'N se ise...' : 'Génération en cours...'}
                           </span>
                         )}
                       </pre>
