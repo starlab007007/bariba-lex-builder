@@ -141,7 +141,7 @@ async function pollForResult(
       if (abortSignal?.aborted) {
         return { success: false, error: 'Request timeout' };
       }
-      console.log(`   Poll error: ${e.message}`);
+      console.log(`   Poll error: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
   }
   
@@ -181,8 +181,8 @@ async function callGradioTranslate(
       const info = await infoResp.json();
       console.log(`📋 API Info: ${JSON.stringify(info).substring(0, 500)}`);
     }
-  } catch (e) {
-    console.log(`   Info fetch failed: ${e.message}`);
+  } catch (e: unknown) {
+    console.log(`   Info fetch failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
   }
 
   // The correct endpoint from API exploration: /translate_pipeline is fn_index=2
@@ -280,9 +280,9 @@ async function callGradioTranslate(
       const errorText = await joinResponse.text().catch(() => '');
       console.log(`   Join error: ${errorText.substring(0, 300)}`);
     }
-  } catch (e) {
+  } catch (e: unknown) {
     if (abortSignal?.aborted) return { success: false, error: 'Request timeout' };
-    console.log(`   Error: ${e.message}`);
+    console.log(`   Error: ${e instanceof Error ? e.message : 'Unknown error'}`);
   }
 
   return { success: false, error: 'Translation failed - no valid response from HuggingFace Space' };
@@ -404,12 +404,12 @@ serve(async (req) => {
           }),
           { status: healthy ? 200 : 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
-      } catch (e) {
+      } catch (e: unknown) {
         return new Response(
           JSON.stringify({
             healthy: false,
             error: 'ByT5 health check failed',
-            details: e?.message || 'Unknown error',
+            details: e instanceof Error ? e.message : 'Unknown error',
             duration: Date.now() - hcStart,
             spaceUrl: SPACE_URL,
           }),
@@ -607,13 +607,13 @@ serve(async (req) => {
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     clearTimeout(timeoutId);
     const duration = Date.now() - startTime;
     console.error(`Fatal error after ${duration}ms:`, error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Translation failed',
+        error: error instanceof Error ? error.message : 'Translation failed',
         duration 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

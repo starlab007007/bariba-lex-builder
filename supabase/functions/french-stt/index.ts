@@ -47,12 +47,12 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('French STT error:', error);
     return new Response(
       JSON.stringify({ 
         useClientSide: true,
-        error: error.message || 'STT processing failed',
+        error: error instanceof Error ? error.message : 'STT processing failed',
         fallback: 'web-speech-api',
         message: 'Utilisez Web Speech API comme fallback'
       }),

@@ -72,7 +72,7 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const analysisResults = [];
+    const analysisResults: Array<{ id: string; quality_score: number; issues: string[]; suggestions: string[] }> = [];
 
     // Analyze in batches of 10
     for (let i = 0; i < phrases.length; i += 10) {
@@ -171,10 +171,10 @@ Réponds au format JSON suivant :
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in analyze-phrase-quality:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

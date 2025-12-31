@@ -154,11 +154,11 @@ serve(async (req) => {
       },
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Generate content stream error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Generation failed'
+        error: error instanceof Error ? error.message : 'Generation failed'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

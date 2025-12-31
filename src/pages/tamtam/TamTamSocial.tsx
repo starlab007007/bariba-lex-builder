@@ -492,7 +492,7 @@ export default function TamTamSocial() {
       <FullscreenCreator
         isOpen={showGuidedCreator}
         onClose={() => setShowGuidedCreator(false)}
-        onPublished={async (postId) => {
+        onComplete={async () => {
           toast({ title: "✅ Publié avec succès !" });
           triggerFeedback('success');
           fetchPosts(); // Refresh feed

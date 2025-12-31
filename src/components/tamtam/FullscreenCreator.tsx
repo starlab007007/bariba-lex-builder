@@ -637,47 +637,17 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
     };
   }, [liveSessionId]);
 
+  // LIVE feature is not yet implemented - placeholder functions
   const createLive = useCallback(async () => {
-    try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data: session } = await supabase.auth.getSession();
-      const uid = session.session?.user.id;
-      if (!uid) {
-        alert(language === 'ba' ? 'Wọlé láti bẹ̀rẹ̀ LIVE' : 'Connecte-toi pour lancer un LIVE');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .insert({ creator_id: uid, title: topic || 'LIVE', status: 'live', started_at: new Date().toISOString() })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-      setLiveSessionId(data.id);
-      setLivePanelOpen(true);
-    } catch (e) {
-      console.error('[Create Live Error]', e);
-      alert(language === 'ba' ? 'Àṣìṣe ní ṣíṣe LIVE' : 'Erreur lors de la création du LIVE');
-    }
-  }, [language, topic]);
+    // LIVE tables not yet created - show coming soon message
+    alert(language === 'ba' ? 'LIVE ń bọ̀ láìpẹ́!' : 'LIVE arrive bientôt !');
+    console.log('[Create Live] Feature coming soon');
+  }, [language]);
 
   const joinLive = useCallback(async () => {
-    if (!liveSessionId) return;
-    try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data: session } = await supabase.auth.getSession();
-      const uid = session.session?.user.id;
-      if (!uid) return;
-
-      await supabase
-        .from('live_participants')
-        .upsert({ session_id: liveSessionId, user_id: uid, role: 'viewer', last_seen_at: new Date().toISOString() });
-    } catch (e) {
-      console.error('[Join Live Error]', e);
-    }
-  }, [liveSessionId]);
+    // LIVE tables not yet created
+    console.log('[Join Live] Feature coming soon');
+  }, []);
 
   useEffect(() => {
     if (topTab === 'live' && liveSessionId) {
@@ -687,25 +657,11 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({
 
   const sendLive = useCallback(async () => {
     const msg = liveInput.trim();
-    if (!msg || !liveSessionId) return;
+    if (!msg) return;
     setLiveInput('');
-
-    try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data: session } = await supabase.auth.getSession();
-      const uid = session.session?.user.id;
-
-      await supabase.from('live_messages').insert({
-        session_id: liveSessionId,
-        user_id: uid,
-        display_name: session.session?.user.email?.split('@')[0] ?? 'viewer',
-        message: msg,
-        lang: language,
-      });
-    } catch (e) {
-      console.error('[Send Live Message Error]', e);
-    }
-  }, [language, liveInput, liveSessionId]);
+    // LIVE tables not yet created
+    console.log('[Send Live Message] Feature coming soon:', msg);
+  }, [liveInput]);
 
   const onGenerated = useCallback(
     (p: { type: AIGenType; content: string; templateId?: string }) => {
