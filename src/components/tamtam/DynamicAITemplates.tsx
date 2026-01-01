@@ -155,7 +155,7 @@ const DEFAULT_THEMES: AITheme[] = [
 
 function safeEnv(key: string): string | undefined {
   try {
-    return (import.meta as Record<string, Record<string, string>>).env?.[key];
+    return (import.meta as unknown as Record<string, Record<string, string>>).env?.[key];
   } catch {
     return undefined;
   }
