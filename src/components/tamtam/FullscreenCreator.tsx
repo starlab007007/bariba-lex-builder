@@ -64,6 +64,45 @@ async function uploadToSupabaseStorage(blob: Blob, ext: string, folder: string):
   } catch (e) { console.error('[Upload Error]', e); throw e; }
 }
 
+// Generate silent WAV audio for posts without audio (photo/text posts)
+function generateSilentAudioBlob(durationSeconds: number): Blob {
+  const sampleRate = 44100;
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const numSamples = sampleRate * durationSeconds;
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const dataSize = numSamples * numChannels * (bitsPerSample / 8);
+  const bufferSize = 44 + dataSize;
+  
+  const buffer = new ArrayBuffer(bufferSize);
+  const view = new DataView(buffer);
+  
+  // RIFF header
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  
+  writeString(0, 'RIFF');
+  view.setUint32(4, bufferSize - 8, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+  
+  // Silent audio data (all zeros)
+  for (let i = 44; i < bufferSize; i++) view.setUint8(i, 0);
+  
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
 async function renderStoryTextToImage(text: string, gradient: GradientTheme): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = 1080; canvas.height = 1920;
@@ -322,10 +361,36 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen = t
     if (!previewBlob) return;
     setIsSubmitting(true); announceVoice('published');
     try {
-      let mediaUrl = ''; const mediaType = previewType === 'video' ? 'video' : 'photo';
+      let mediaUrl = ''; 
+      const mediaType = previewType === 'video' ? 'video' : (mode === 'text' ? 'text' : 'photo');
       mediaUrl = await uploadToSupabaseStorage(previewBlob, mediaType === 'video' ? 'webm' : 'png', mediaType === 'video' ? 'videos' : 'photos');
-      const isStory = topTab === 'story'; const seconds = mode === 'video' ? Math.floor(recordingDuration / 1000) || durationPick : isStory ? 15 : 5;
-      const payload = { audio_url: mediaType === 'video' ? mediaUrl : '', media_type: mediaType as 'video' | 'photo', media_url: mediaUrl, transcript_fr: '', transcript_ba: '', template_id: 'kuaishou-core', topic: topic || challenge || (isStory ? 'story' : 'post'), duration_seconds: seconds, text_content: mode === 'text' ? textContent : undefined, tags, challenge, music_title: music?.title, is_story: isStory, filter_applied: currentFilter?.id };
+      
+      const isStory = topTab === 'story'; 
+      const seconds = mode === 'video' ? Math.floor(recordingDuration / 1000) || durationPick : isStory ? 15 : 5;
+      
+      // For photo/text posts, generate silent audio to ensure audio_url is valid
+      let audioUrl = mediaType === 'video' ? mediaUrl : '';
+      if (!audioUrl && (mediaType === 'photo' || mediaType === 'text')) {
+        const silentAudio = generateSilentAudioBlob(seconds);
+        audioUrl = await uploadToSupabaseStorage(silentAudio, 'wav', 'audio');
+      }
+      
+      const payload = { 
+        audio_url: audioUrl, 
+        media_type: mediaType as 'video' | 'photo' | 'text', 
+        media_url: mediaUrl, 
+        transcript_fr: '', 
+        transcript_ba: '', 
+        template_id: 'kuaishou-core', 
+        topic: topic || challenge || (isStory ? 'story' : 'post'), 
+        duration_seconds: seconds, 
+        text_content: mode === 'text' ? textContent : undefined, 
+        tags, 
+        challenge, 
+        music_title: music?.title, 
+        is_story: isStory, 
+        filter_applied: currentFilter?.id 
+      };
       if (onComplete) await onComplete(payload);
       clearPreview(); handleClose();
     } catch { announceVoice('error'); alert(language === 'ba' ? 'Asise' : 'Erreur'); }
