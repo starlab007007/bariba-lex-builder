@@ -1,14 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  X, Mic, Check, Loader2, ChevronLeft, Volume2,
-  // Patrimoine
+  X, Mic, Check, Loader2, ChevronLeft, Volume2, Play, Pause,
   Landmark, BookOpen, Music, MessageSquareQuote, Leaf, Calendar,
-  Lock, Users, Globe, Shield, Heart, AlertTriangle, Sparkles,
-  // Nouvelles icônes pour "Voix du Village"
-  Radio, Users2, HelpCircle, Megaphone, HandHeart, MessageCircle,
-  Phone, Wifi, Sun, Moon, Cloud, Zap, Star, Gift, Bell,
-  PlayCircle, PauseCircle, RotateCcw, Send, ThumbsUp
+  Lock, Users, Globe, Shield, Heart, Sparkles, Radio, HelpCircle, 
+  Megaphone, HandHeart, Gift, Bell, Wifi, Zap, Send, RotateCcw,
+  // Nouvelles icônes pour templates
+  Baby, PartyPopper, Church, Flower2, Wheat, Moon, Sun, Cloud,
+  CloudRain, Droplets, TreePine, Bird, Fish, Drumstick, Flame,
+  Home, Crown, Sword, Scale, BookHeart, GraduationCap, Stethoscope,
+  Tractor, Cow, Milk, Egg, Apple, Carrot, Coins, HandCoins,
+  AlertTriangle, Siren, Car, Construction, Skull, ThermometerSun,
+  Waves, Wind, Bug, Rat, Phone, MapPin, Clock, CalendarDays,
+  Users2, UserPlus, HeartHandshake, Handshake, Medal, Trophy,
+  Star, Gem, Palette, Guitar, Mic2, Drama, Camera, Film
 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
@@ -17,290 +22,1087 @@ import { AudioServicesStatusBar } from '@/components/tamtam/AudioServiceStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
-import { useVoiceMenu, VoiceMenuLabels } from '@/hooks/useVoiceMenu';
-import { SpeakerButton } from '@/components/tamtam/VoiceMenuItem';
+import { useVoiceMenu } from '@/hooks/useVoiceMenu';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🎯 CONCEPT INNOVANT : "VOIX DU VILLAGE" (Village Voice)
+// 🎯 INNOVATION MILLÉNAIRE : TEMPLATES VISUELS PRÉDÉFINIS
 // ═══════════════════════════════════════════════════════════════════════════
-// 
-// Au lieu de Audio/Photo/Vidéo/Sondage classiques, on propose 2 SUPER-CATÉGORIES
-// pensées pour les populations rurales non-lettrées :
 //
-// 1️⃣ PATRIMOINE - Préserver la culture orale (contes, musique, savoirs)
-// 2️⃣ VOIX DU VILLAGE - Communication communautaire simplifiée
+// CONCEPT : "PARLE AVEC LES IMAGES" (Speak with Pictures)
 //
-// La "Voix du Village" permet :
-// - Envoyer un message vocal à tout le village
-// - Demander de l'aide (urgence, conseil, solidarité)
-// - Annoncer un événement (naissance, mariage, décès, fête)
-// - Poser une question à la communauté
-// - Partager une bonne nouvelle
+// Au lieu de demander à l'utilisateur de décrire ce qu'il veut partager,
+// on lui présente des TEMPLATES VISUELS PRÉDÉFINIS qu'il reconnaît 
+// instantanément grâce aux icônes universelles.
 //
-// PRINCIPE : 100% VOCAL, 0 ÉCRITURE, ICÔNES UNIVERSELLES
+// L'utilisateur :
+// 1. Touche une IMAGE qui représente ce qu'il veut dire
+// 2. Écoute le prompt audio qui lui explique quoi enregistrer
+// 3. Parle naturellement
+// 4. C'est publié !
+//
+// RÉVOLUTION : 0 lecture, 0 écriture, 100% visuel + vocal
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES & INTERFACES
+// TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface TamTamCreatePostProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (postData: PostSubmitData) => Promise<void>;
-  onOpenPoll?: () => void;
+  onSubmit: (postData: any) => Promise<void>;
 }
 
-interface PostSubmitData {
-  audio_url: string;
-  media_type?: string;
-  media_url?: string;
-  transcript_fr?: string;
-  transcript_ba?: string;
-  feeling_emoji?: string;
-  duration_seconds?: number;
-  // Patrimoine
-  heritage_type?: HeritageType;
-  visibility?: VisibilityLevel;
-  sensitivity?: SensitivityLevel;
-  consent?: boolean;
-  attribution?: string;
-  village?: string;
-  age_rating?: 'kids' | 'all';
-  language?: string;
-  // Voix du Village
-  village_voice_type?: VillageVoiceType;
-  urgency?: UrgencyLevel;
-  reach?: ReachLevel;
-}
-
-// Types de patrimoine
-type HeritageType = 
-  | 'heritage_story' | 'heritage_music' | 'heritage_proverb' 
-  | 'heritage_history' | 'heritage_knowledge' | 'heritage_event';
-
-// Types de "Voix du Village"
-type VillageVoiceType = 
-  | 'announce'      // Annonce générale
-  | 'help_request'  // Demande d'aide
-  | 'celebration'   // Bonne nouvelle / Célébration
-  | 'question'      // Question à la communauté
-  | 'alert';        // Alerte importante
-
-type VisibilityLevel = 'public' | 'community' | 'vault';
-type SensitivityLevel = 'normal' | 'sensitive';
-type UrgencyLevel = 'normal' | 'urgent' | 'critical';
-type ReachLevel = 'village' | 'commune' | 'region' | 'all';
-
-// Type principal de contenu
-type MainContentType = 'patrimoine' | 'village_voice';
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONSTANTES
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Les 2 super-catégories principales
-const mainCategories: {
-  type: MainContentType;
-  icon: typeof Landmark;
-  title: string;
+interface Template {
+  id: string;
+  category: 'patrimoine' | 'village_voice';
+  subcategory: string;
+  icon: any;
+  emoji: string;
+  visualEmojis: string[]; // Séquence d'emojis qui racontent visuellement le template
+  titleFr: string;
   titleBa: string;
-  subtitle: string;
+  audioPromptFr: string;
+  audioPromptBa: string;
+  exampleFr: string;
   gradient: string;
-  emoji: string;
-}[] = [
+  bgPattern: string;
+  animationType: 'pulse' | 'bounce' | 'shake' | 'glow' | 'float';
+  tags: string[];
+  visibility: 'public' | 'community' | 'vault';
+  urgency?: 'normal' | 'urgent' | 'critical';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🏛️ TEMPLATES PATRIMOINE - 30 Templates prédéfinis
+// ═══════════════════════════════════════════════════════════════════════════
+
+const patrimoineTemplates: Template[] = [
+  // ─── CONTES (6 templates) ────────────────────────────────────────────────
   {
-    type: 'patrimoine',
-    icon: Landmark,
-    title: 'Patrimoine',
-    titleBa: 'Kpààrà',
-    subtitle: 'Contes, musique, savoirs ancestraux',
-    gradient: 'from-amber-500 via-yellow-500 to-orange-500',
-    emoji: '🏛️'
+    id: 'conte_animaux',
+    category: 'patrimoine',
+    subcategory: 'conte',
+    icon: Bird,
+    emoji: '🦁',
+    visualEmojis: ['🦁', '🐘', '🐢', '🌙', '✨'],
+    titleFr: 'Conte des animaux',
+    titleBa: 'Sìírà nɛ̀ɛ̀má',
+    audioPromptFr: 'Racontez un conte avec des animaux. Le lion, l\'éléphant, la tortue...',
+    audioPromptBa: 'Sìírà nɛ̀ɛ̀má kà sɔ̀ɔ̀',
+    exampleFr: 'Il était une fois un lion et une tortue...',
+    gradient: 'from-amber-500 via-orange-500 to-red-500',
+    bgPattern: 'radial',
+    animationType: 'bounce',
+    tags: ['animaux', 'sagesse', 'enfants'],
+    visibility: 'public',
   },
   {
-    type: 'village_voice',
-    icon: Radio,
-    title: 'Voix du Village',
-    titleBa: 'Kùú dɔ̀ɔ̀rɔ̀',
-    subtitle: 'Annonces, entraide, célébrations',
+    id: 'conte_origine',
+    category: 'patrimoine',
+    subcategory: 'conte',
+    icon: Globe,
+    emoji: '🌍',
+    visualEmojis: ['🌍', '👤', '🌅', '🏔️', '💫'],
+    titleFr: 'Origine du monde',
+    titleBa: 'Dùnìyá bɛ̀rɛ̀',
+    audioPromptFr: 'Racontez comment le monde a été créé selon votre tradition',
+    audioPromptBa: 'Dùnìyá bɛ̀rɛ̀ sìírà',
+    exampleFr: 'Au commencement, il n\'y avait que...',
+    gradient: 'from-indigo-600 via-purple-600 to-pink-500',
+    bgPattern: 'cosmic',
+    animationType: 'glow',
+    tags: ['création', 'mythologie', 'sacré'],
+    visibility: 'public',
+  },
+  {
+    id: 'conte_heros',
+    category: 'patrimoine',
+    subcategory: 'conte',
+    icon: Sword,
+    emoji: '⚔️',
+    visualEmojis: ['👑', '⚔️', '🐎', '🏰', '🎖️'],
+    titleFr: 'Héros légendaire',
+    titleBa: 'Gànnú fàráfìn',
+    audioPromptFr: 'Racontez l\'histoire d\'un héros ou guerrier de votre peuple',
+    audioPromptBa: 'Gànnú fàráfìn sìírà',
+    exampleFr: 'Il y avait un grand guerrier nommé...',
+    gradient: 'from-red-600 via-rose-600 to-pink-500',
+    bgPattern: 'flames',
+    animationType: 'shake',
+    tags: ['héros', 'guerre', 'courage'],
+    visibility: 'public',
+  },
+  {
+    id: 'conte_enfant',
+    category: 'patrimoine',
+    subcategory: 'conte',
+    icon: Baby,
+    emoji: '👶',
+    visualEmojis: ['👶', '🌟', '🧚', '🌈', '😴'],
+    titleFr: 'Conte pour enfants',
+    titleBa: 'Dénmísɛ́n sìírà',
+    audioPromptFr: 'Racontez une histoire douce pour endormir les enfants',
+    audioPromptBa: 'Dénmísɛ́n sìírà sùnɔ̀gɔ̀',
+    exampleFr: 'Pour que les enfants dorment bien...',
+    gradient: 'from-pink-400 via-purple-400 to-indigo-400',
+    bgPattern: 'stars',
+    animationType: 'float',
+    tags: ['enfants', 'douceur', 'nuit'],
+    visibility: 'public',
+  },
+  {
+    id: 'conte_ruse',
+    category: 'patrimoine',
+    subcategory: 'conte',
+    icon: Drama,
+    emoji: '🦊',
+    visualEmojis: ['🦊', '🤔', '💡', '😂', '🎭'],
+    titleFr: 'Conte de ruse',
+    titleBa: 'Hàkílì sìírà',
+    audioPromptFr: 'Racontez une histoire où le plus malin gagne',
+    audioPromptBa: 'Hàkílì sìírà',
+    exampleFr: 'Le lièvre était plus malin que...',
+    gradient: 'from-orange-500 via-amber-500 to-yellow-400',
+    bgPattern: 'zigzag',
+    animationType: 'bounce',
+    tags: ['ruse', 'intelligence', 'humour'],
+    visibility: 'public',
+  },
+  {
+    id: 'conte_moral',
+    category: 'patrimoine',
+    subcategory: 'conte',
+    icon: Scale,
+    emoji: '⚖️',
+    visualEmojis: ['⚖️', '❤️', '🙏', '✨', '🕊️'],
+    titleFr: 'Conte moral',
+    titleBa: 'Kɔ̀nɔ̀ sìírà',
+    audioPromptFr: 'Racontez une histoire qui enseigne une leçon de vie',
+    audioPromptBa: 'Kɔ̀nɔ̀ sìírà kálan',
+    exampleFr: 'Cette histoire nous apprend que...',
     gradient: 'from-emerald-500 via-teal-500 to-cyan-500',
-    emoji: '📢'
-  }
-];
+    bgPattern: 'waves',
+    animationType: 'pulse',
+    tags: ['morale', 'leçon', 'sagesse'],
+    visibility: 'public',
+  },
 
-// Types de patrimoine
-const heritageTypes: {
-  type: HeritageType;
-  icon: typeof BookOpen;
-  label: string;
-  labelBa: string;
-  emoji: string;
-  color: string;
-  gradient: string;
-  audioPrompt: string;
-}[] = [
+  // ─── MUSIQUE (6 templates) ───────────────────────────────────────────────
   {
-    type: 'heritage_story',
-    icon: BookOpen,
-    label: 'Conte',
-    labelBa: 'Sìírà',
-    emoji: '📖',
-    color: 'bg-purple-500',
-    gradient: 'from-purple-500 to-purple-700',
-    audioPrompt: 'Racontez votre conte ou histoire traditionnelle'
+    id: 'musique_mariage',
+    category: 'patrimoine',
+    subcategory: 'musique',
+    icon: Heart,
+    emoji: '💒',
+    visualEmojis: ['💒', '👰', '🤵', '💍', '🎶'],
+    titleFr: 'Chant de mariage',
+    titleBa: 'Fúrú dùùrú',
+    audioPromptFr: 'Chantez un chant traditionnel de mariage',
+    audioPromptBa: 'Fúrú dùùrú kà dùùrú',
+    exampleFr: 'Chanson pour les mariés...',
+    gradient: 'from-pink-500 via-rose-500 to-red-400',
+    bgPattern: 'hearts',
+    animationType: 'pulse',
+    tags: ['mariage', 'amour', 'célébration'],
+    visibility: 'public',
   },
   {
-    type: 'heritage_music',
-    icon: Music,
-    label: 'Musique',
-    labelBa: 'Dùùrú',
-    emoji: '🎵',
-    color: 'bg-pink-500',
-    gradient: 'from-pink-500 to-rose-600',
-    audioPrompt: 'Chantez ou jouez votre musique traditionnelle'
+    id: 'musique_naissance',
+    category: 'patrimoine',
+    subcategory: 'musique',
+    icon: Baby,
+    emoji: '👶',
+    visualEmojis: ['👶', '🍼', '🎵', '👩‍👧', '🌟'],
+    titleFr: 'Berceuse',
+    titleBa: 'Dén sùnɔ̀gɔ̀ dùùrú',
+    audioPromptFr: 'Chantez une berceuse pour les bébés',
+    audioPromptBa: 'Dén sùnɔ̀gɔ̀ dùùrú',
+    exampleFr: 'Dors mon enfant...',
+    gradient: 'from-blue-300 via-indigo-300 to-purple-300',
+    bgPattern: 'clouds',
+    animationType: 'float',
+    tags: ['bébé', 'berceuse', 'douceur'],
+    visibility: 'public',
   },
   {
-    type: 'heritage_proverb',
-    icon: MessageSquareQuote,
-    label: 'Proverbe',
-    labelBa: 'Sɔ̀ɔ̀rɔ̀',
-    emoji: '💬',
-    color: 'bg-teal-500',
-    gradient: 'from-teal-500 to-cyan-600',
-    audioPrompt: 'Dites le proverbe et expliquez sa signification'
+    id: 'musique_travail',
+    category: 'patrimoine',
+    subcategory: 'musique',
+    icon: Wheat,
+    emoji: '🌾',
+    visualEmojis: ['🌾', '👨‍🌾', '☀️', '💪', '🎵'],
+    titleFr: 'Chant de travail',
+    titleBa: 'Báárá dùùrú',
+    audioPromptFr: 'Chantez un chant qu\'on chante en travaillant aux champs',
+    audioPromptBa: 'Báárá dùùrú fòrò kɔ̀nɔ̀',
+    exampleFr: 'On chante pour avoir la force...',
+    gradient: 'from-yellow-500 via-amber-500 to-orange-500',
+    bgPattern: 'fields',
+    animationType: 'bounce',
+    tags: ['travail', 'champs', 'force'],
+    visibility: 'public',
   },
   {
-    type: 'heritage_history',
-    icon: Landmark,
-    label: 'Histoire',
-    labelBa: 'Kpààrà',
-    emoji: '🏛️',
-    color: 'bg-amber-600',
-    gradient: 'from-amber-600 to-orange-700',
-    audioPrompt: 'Racontez l\'histoire de votre village ou famille'
+    id: 'musique_funerailles',
+    category: 'patrimoine',
+    subcategory: 'musique',
+    icon: Flower2,
+    emoji: '🕯️',
+    visualEmojis: ['🕯️', '🙏', '👼', '🌺', '💔'],
+    titleFr: 'Chant funéraire',
+    titleBa: 'Sú dùùrú',
+    audioPromptFr: 'Chantez un chant pour accompagner les défunts',
+    audioPromptBa: 'Sú dùùrú',
+    exampleFr: 'Pour accompagner ceux qui partent...',
+    gradient: 'from-gray-600 via-slate-600 to-gray-700',
+    bgPattern: 'mist',
+    animationType: 'pulse',
+    tags: ['deuil', 'hommage', 'spirituel'],
+    visibility: 'community',
   },
   {
-    type: 'heritage_knowledge',
-    icon: Leaf,
-    label: 'Savoir',
-    labelBa: 'Dɔ̀nnìyá',
-    emoji: '🌿',
-    color: 'bg-green-600',
-    gradient: 'from-green-600 to-emerald-700',
-    audioPrompt: 'Partagez une connaissance traditionnelle'
+    id: 'musique_fete',
+    category: 'patrimoine',
+    subcategory: 'musique',
+    icon: PartyPopper,
+    emoji: '🥁',
+    visualEmojis: ['🥁', '💃', '🕺', '🎉', '🔥'],
+    titleFr: 'Chant de fête',
+    titleBa: 'Sèlí dùùrú',
+    audioPromptFr: 'Chantez un chant de fête et de danse',
+    audioPromptBa: 'Sèlí dùùrú dɔ̀n',
+    exampleFr: 'Quand on danse, on chante...',
+    gradient: 'from-fuchsia-500 via-purple-500 to-violet-600',
+    bgPattern: 'confetti',
+    animationType: 'shake',
+    tags: ['fête', 'danse', 'joie'],
+    visibility: 'public',
   },
   {
-    type: 'heritage_event',
-    icon: Calendar,
-    label: 'Fête',
-    labelBa: 'Tìɛ̀rɛ̀',
-    emoji: '🎉',
-    color: 'bg-red-500',
-    gradient: 'from-red-500 to-rose-700',
-    audioPrompt: 'Décrivez cette fête ou cérémonie traditionnelle'
+    id: 'musique_initiation',
+    category: 'patrimoine',
+    subcategory: 'musique',
+    icon: Crown,
+    emoji: '👑',
+    visualEmojis: ['👑', '🔥', '💪', '🌙', '✨'],
+    titleFr: 'Chant d\'initiation',
+    titleBa: 'Bólò dùùrú',
+    audioPromptFr: 'Chantez un chant d\'initiation ou de passage',
+    audioPromptBa: 'Bólò dùùrú',
+    exampleFr: 'Pour devenir un homme/une femme...',
+    gradient: 'from-amber-600 via-orange-600 to-red-600',
+    bgPattern: 'tribal',
+    animationType: 'glow',
+    tags: ['initiation', 'passage', 'tradition'],
+    visibility: 'vault',
   },
-];
 
-// Types de "Voix du Village" - INNOVATION PRINCIPALE
-const villageVoiceTypes: {
-  type: VillageVoiceType;
-  icon: typeof Megaphone;
-  label: string;
-  labelBa: string;
-  emoji: string;
-  color: string;
-  gradient: string;
-  audioPrompt: string;
-  example: string;
-}[] = [
+  // ─── PROVERBES (6 templates) ─────────────────────────────────────────────
   {
-    type: 'announce',
-    icon: Megaphone,
-    label: 'Annonce',
-    labelBa: 'Kùú',
-    emoji: '📢',
-    color: 'bg-blue-500',
-    gradient: 'from-blue-500 to-blue-700',
-    audioPrompt: 'Faites votre annonce au village',
-    example: 'Réunion demain à 8h sous l\'arbre'
+    id: 'proverbe_sagesse',
+    category: 'patrimoine',
+    subcategory: 'proverbe',
+    icon: BookHeart,
+    emoji: '🧓',
+    visualEmojis: ['🧓', '💭', '💡', '🙏', '✨'],
+    titleFr: 'Sagesse des anciens',
+    titleBa: 'Kɔ̀rɔ̀ hàkílì',
+    audioPromptFr: 'Dites un proverbe de sagesse et expliquez-le',
+    audioPromptBa: 'Kɔ̀rɔ̀ sɔ̀ɔ̀rɔ̀ kà fɔ̀',
+    exampleFr: 'Nos ancêtres disaient que...',
+    gradient: 'from-amber-600 via-yellow-600 to-orange-500',
+    bgPattern: 'ancient',
+    animationType: 'pulse',
+    tags: ['sagesse', 'ancien', 'conseil'],
+    visibility: 'public',
   },
   {
-    type: 'help_request',
+    id: 'proverbe_travail',
+    category: 'patrimoine',
+    subcategory: 'proverbe',
+    icon: Tractor,
+    emoji: '👨‍🌾',
+    visualEmojis: ['👨‍🌾', '🌱', '💪', '🌾', '🙏'],
+    titleFr: 'Proverbe du travail',
+    titleBa: 'Báárá sɔ̀ɔ̀rɔ̀',
+    audioPromptFr: 'Dites un proverbe sur le travail et l\'effort',
+    audioPromptBa: 'Báárá sɔ̀ɔ̀rɔ̀',
+    exampleFr: 'Celui qui ne travaille pas...',
+    gradient: 'from-green-600 via-emerald-600 to-teal-500',
+    bgPattern: 'seeds',
+    animationType: 'bounce',
+    tags: ['travail', 'effort', 'récolte'],
+    visibility: 'public',
+  },
+  {
+    id: 'proverbe_famille',
+    category: 'patrimoine',
+    subcategory: 'proverbe',
+    icon: Users,
+    emoji: '👨‍👩‍👧‍👦',
+    visualEmojis: ['👨‍👩‍👧‍👦', '🏠', '❤️', '🤝', '🌳'],
+    titleFr: 'Proverbe de famille',
+    titleBa: 'Dénbáyá sɔ̀ɔ̀rɔ̀',
+    audioPromptFr: 'Dites un proverbe sur la famille et l\'union',
+    audioPromptBa: 'Dénbáyá sɔ̀ɔ̀rɔ̀',
+    exampleFr: 'Une famille unie est comme...',
+    gradient: 'from-blue-500 via-indigo-500 to-purple-500',
+    bgPattern: 'family',
+    animationType: 'pulse',
+    tags: ['famille', 'union', 'amour'],
+    visibility: 'public',
+  },
+  {
+    id: 'proverbe_patience',
+    category: 'patrimoine',
+    subcategory: 'proverbe',
+    icon: Clock,
+    emoji: '⏳',
+    visualEmojis: ['⏳', '🐢', '🎯', '✨', '🏆'],
+    titleFr: 'Proverbe de patience',
+    titleBa: 'Múɲu sɔ̀ɔ̀rɔ̀',
+    audioPromptFr: 'Dites un proverbe sur la patience',
+    audioPromptBa: 'Múɲu sɔ̀ɔ̀rɔ̀',
+    exampleFr: 'La patience est...',
+    gradient: 'from-cyan-500 via-blue-500 to-indigo-500',
+    bgPattern: 'time',
+    animationType: 'float',
+    tags: ['patience', 'temps', 'sagesse'],
+    visibility: 'public',
+  },
+  {
+    id: 'proverbe_nature',
+    category: 'patrimoine',
+    subcategory: 'proverbe',
+    icon: TreePine,
+    emoji: '🌳',
+    visualEmojis: ['🌳', '🌊', '🦅', '☀️', '🌍'],
+    titleFr: 'Proverbe de la nature',
+    titleBa: 'Dùnìyá sɔ̀ɔ̀rɔ̀',
+    audioPromptFr: 'Dites un proverbe inspiré de la nature',
+    audioPromptBa: 'Dùnìyá sɔ̀ɔ̀rɔ̀',
+    exampleFr: 'L\'arbre qui...',
+    gradient: 'from-green-500 via-emerald-500 to-teal-400',
+    bgPattern: 'leaves',
+    animationType: 'bounce',
+    tags: ['nature', 'environnement', 'leçon'],
+    visibility: 'public',
+  },
+  {
+    id: 'proverbe_humilite',
+    category: 'patrimoine',
+    subcategory: 'proverbe',
     icon: HandHeart,
-    label: 'Aide',
-    labelBa: 'Sɔ̀ɔ̀nɔ̀',
     emoji: '🙏',
-    color: 'bg-red-500',
-    gradient: 'from-red-500 to-rose-700',
-    audioPrompt: 'Expliquez de quelle aide vous avez besoin',
-    example: 'J\'ai besoin d\'aide pour la récolte'
+    visualEmojis: ['🙏', '👇', '❤️', '🕊️', '✨'],
+    titleFr: 'Proverbe d\'humilité',
+    titleBa: 'Màyá sɔ̀ɔ̀rɔ̀',
+    audioPromptFr: 'Dites un proverbe sur l\'humilité et le respect',
+    audioPromptBa: 'Màyá sɔ̀ɔ̀rɔ̀',
+    exampleFr: 'L\'humble sera...',
+    gradient: 'from-violet-500 via-purple-500 to-fuchsia-500',
+    bgPattern: 'peaceful',
+    animationType: 'pulse',
+    tags: ['humilité', 'respect', 'vertu'],
+    visibility: 'public',
+  },
+
+  // ─── SAVOIRS (6 templates) ───────────────────────────────────────────────
+  {
+    id: 'savoir_plantes',
+    category: 'patrimoine',
+    subcategory: 'savoir',
+    icon: Leaf,
+    emoji: '🌿',
+    visualEmojis: ['🌿', '💊', '🩹', '👨‍⚕️', '✨'],
+    titleFr: 'Plantes médicinales',
+    titleBa: 'Fúrá yírí',
+    audioPromptFr: 'Partagez une connaissance sur une plante qui soigne',
+    audioPromptBa: 'Fúrá yírí dɔ̀nnìyá',
+    exampleFr: 'Cette plante soigne...',
+    gradient: 'from-green-600 via-emerald-500 to-lime-400',
+    bgPattern: 'herbs',
+    animationType: 'float',
+    tags: ['plantes', 'médecine', 'guérison'],
+    visibility: 'community',
   },
   {
-    type: 'celebration',
-    icon: Gift,
-    label: 'Joie',
-    labelBa: 'Fɛ̀rɛ̀',
+    id: 'savoir_cuisine',
+    category: 'patrimoine',
+    subcategory: 'savoir',
+    icon: Drumstick,
+    emoji: '🍲',
+    visualEmojis: ['🍲', '🔥', '👨‍🍳', '🧅', '😋'],
+    titleFr: 'Recette traditionnelle',
+    titleBa: 'Dúmúní dàn',
+    audioPromptFr: 'Partagez une recette de cuisine traditionnelle',
+    audioPromptBa: 'Dúmúní dàn kàlàn',
+    exampleFr: 'Pour préparer ce plat...',
+    gradient: 'from-orange-500 via-red-500 to-rose-500',
+    bgPattern: 'kitchen',
+    animationType: 'bounce',
+    tags: ['cuisine', 'recette', 'tradition'],
+    visibility: 'public',
+  },
+  {
+    id: 'savoir_artisanat',
+    category: 'patrimoine',
+    subcategory: 'savoir',
+    icon: Palette,
+    emoji: '🧶',
+    visualEmojis: ['🧶', '🪡', '👐', '🎨', '✨'],
+    titleFr: 'Artisanat',
+    titleBa: 'Bólò báárá',
+    audioPromptFr: 'Expliquez une technique artisanale traditionnelle',
+    audioPromptBa: 'Bólò báárá dɔ̀nnìyá',
+    exampleFr: 'Pour tisser/sculpter/fabriquer...',
+    gradient: 'from-amber-500 via-orange-500 to-red-400',
+    bgPattern: 'weave',
+    animationType: 'pulse',
+    tags: ['artisanat', 'technique', 'savoir-faire'],
+    visibility: 'public',
+  },
+  {
+    id: 'savoir_agriculture',
+    category: 'patrimoine',
+    subcategory: 'savoir',
+    icon: Wheat,
+    emoji: '🌱',
+    visualEmojis: ['🌱', '🌧️', '☀️', '🌾', '👨‍🌾'],
+    titleFr: 'Savoir agricole',
+    titleBa: 'Sɛ̀nɛ̀ dɔ̀nnìyá',
+    audioPromptFr: 'Partagez une technique agricole traditionnelle',
+    audioPromptBa: 'Sɛ̀nɛ̀ dɔ̀nnìyá',
+    exampleFr: 'Pour bien cultiver...',
+    gradient: 'from-lime-500 via-green-500 to-emerald-500',
+    bgPattern: 'farm',
+    animationType: 'bounce',
+    tags: ['agriculture', 'culture', 'terre'],
+    visibility: 'public',
+  },
+  {
+    id: 'savoir_elevage',
+    category: 'patrimoine',
+    subcategory: 'savoir',
+    icon: Cow,
+    emoji: '🐄',
+    visualEmojis: ['🐄', '🥛', '🏕️', '👨‍🌾', '🌾'],
+    titleFr: 'Savoir élevage',
+    titleBa: 'Bàgán dɔ̀nnìyá',
+    audioPromptFr: 'Partagez une connaissance sur l\'élevage',
+    audioPromptBa: 'Bàgán dɔ̀nnìyá',
+    exampleFr: 'Pour bien élever les animaux...',
+    gradient: 'from-amber-600 via-yellow-500 to-lime-400',
+    bgPattern: 'pastoral',
+    animationType: 'float',
+    tags: ['élevage', 'animaux', 'bétail'],
+    visibility: 'public',
+  },
+  {
+    id: 'savoir_meteo',
+    category: 'patrimoine',
+    subcategory: 'savoir',
+    icon: Cloud,
+    emoji: '🌦️',
+    visualEmojis: ['🌦️', '🌙', '🐦', '🌳', '👀'],
+    titleFr: 'Lire le temps',
+    titleBa: 'Sán kàlàn',
+    audioPromptFr: 'Expliquez comment prévoir le temps avec les signes naturels',
+    audioPromptBa: 'Sán kàlàn dɔ̀nnìyá',
+    exampleFr: 'Quand on voit ceci, il va pleuvoir...',
+    gradient: 'from-blue-400 via-cyan-400 to-teal-400',
+    bgPattern: 'sky',
+    animationType: 'float',
+    tags: ['météo', 'nature', 'prédiction'],
+    visibility: 'public',
+  },
+
+  // ─── HISTOIRE (6 templates) ──────────────────────────────────────────────
+  {
+    id: 'histoire_village',
+    category: 'patrimoine',
+    subcategory: 'histoire',
+    icon: Home,
+    emoji: '🏘️',
+    visualEmojis: ['🏘️', '👴', '📜', '🌳', '⏳'],
+    titleFr: 'Histoire du village',
+    titleBa: 'Sò kpààrà',
+    audioPromptFr: 'Racontez l\'histoire de la fondation de votre village',
+    audioPromptBa: 'Án sò kpààrà',
+    exampleFr: 'Notre village a été fondé par...',
+    gradient: 'from-amber-700 via-orange-600 to-yellow-500',
+    bgPattern: 'village',
+    animationType: 'pulse',
+    tags: ['village', 'fondation', 'ancêtres'],
+    visibility: 'public',
+  },
+  {
+    id: 'histoire_famille',
+    category: 'patrimoine',
+    subcategory: 'histoire',
+    icon: Users2,
+    emoji: '👪',
+    visualEmojis: ['👪', '👴', '👶', '🌳', '❤️'],
+    titleFr: 'Histoire de famille',
+    titleBa: 'Dénbáyá kpààrà',
+    audioPromptFr: 'Racontez l\'histoire de votre famille ou lignée',
+    audioPromptBa: 'Dénbáyá kpààrà',
+    exampleFr: 'Notre famille vient de...',
+    gradient: 'from-blue-600 via-indigo-500 to-purple-500',
+    bgPattern: 'tree',
+    animationType: 'float',
+    tags: ['famille', 'généalogie', 'lignée'],
+    visibility: 'community',
+  },
+  {
+    id: 'histoire_roi',
+    category: 'patrimoine',
+    subcategory: 'histoire',
+    icon: Crown,
+    emoji: '👑',
+    visualEmojis: ['👑', '🏰', '⚔️', '🎺', '📜'],
+    titleFr: 'Histoire des rois',
+    titleBa: 'Màsá kpààrà',
+    audioPromptFr: 'Racontez l\'histoire d\'un roi ou chef de votre région',
+    audioPromptBa: 'Màsá kpààrà',
+    exampleFr: 'Le grand roi qui...',
+    gradient: 'from-yellow-500 via-amber-500 to-orange-600',
+    bgPattern: 'royal',
+    animationType: 'glow',
+    tags: ['roi', 'royaume', 'pouvoir'],
+    visibility: 'public',
+  },
+  {
+    id: 'histoire_guerre',
+    category: 'patrimoine',
+    subcategory: 'histoire',
+    icon: Sword,
+    emoji: '⚔️',
+    visualEmojis: ['⚔️', '🛡️', '🐎', '🏹', '🎖️'],
+    titleFr: 'Histoire de bataille',
+    titleBa: 'Kɛ̀lɛ̀ kpààrà',
+    audioPromptFr: 'Racontez une bataille ou guerre de votre histoire',
+    audioPromptBa: 'Kɛ̀lɛ̀ kpààrà',
+    exampleFr: 'Quand nos ancêtres ont combattu...',
+    gradient: 'from-red-700 via-rose-600 to-orange-500',
+    bgPattern: 'battle',
+    animationType: 'shake',
+    tags: ['guerre', 'bataille', 'résistance'],
+    visibility: 'public',
+  },
+  {
+    id: 'histoire_lieu',
+    category: 'patrimoine',
+    subcategory: 'histoire',
+    icon: MapPin,
+    emoji: '📍',
+    visualEmojis: ['📍', '🏛️', '🌳', '💎', '✨'],
+    titleFr: 'Lieu sacré',
+    titleBa: 'Yɔ̀rɔ̀ sènùmàn',
+    audioPromptFr: 'Parlez d\'un lieu sacré ou important de votre région',
+    audioPromptBa: 'Yɔ̀rɔ̀ sènùmàn kpààrà',
+    exampleFr: 'Cet endroit est sacré car...',
+    gradient: 'from-purple-600 via-violet-500 to-fuchsia-500',
+    bgPattern: 'sacred',
+    animationType: 'glow',
+    tags: ['lieu', 'sacré', 'spirituel'],
+    visibility: 'community',
+  },
+  {
+    id: 'histoire_tradition',
+    category: 'patrimoine',
+    subcategory: 'histoire',
+    icon: Flame,
+    emoji: '🔥',
+    visualEmojis: ['🔥', '🌙', '👥', '🙏', '✨'],
+    titleFr: 'Tradition ancienne',
+    titleBa: 'Làdá kɔ̀rɔ̀',
+    audioPromptFr: 'Expliquez une tradition ancienne de votre peuple',
+    audioPromptBa: 'Làdá kɔ̀rɔ̀ kpààrà',
+    exampleFr: 'Depuis toujours, nous faisons...',
+    gradient: 'from-orange-600 via-red-500 to-rose-500',
+    bgPattern: 'fire',
+    animationType: 'pulse',
+    tags: ['tradition', 'coutume', 'rite'],
+    visibility: 'public',
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 📢 TEMPLATES VOIX DU VILLAGE - 25 Templates prédéfinis
+// ═══════════════════════════════════════════════════════════════════════════
+
+const villageVoiceTemplates: Template[] = [
+  // ─── ANNONCES (5 templates) ──────────────────────────────────────────────
+  {
+    id: 'annonce_reunion',
+    category: 'village_voice',
+    subcategory: 'annonce',
+    icon: Users,
+    emoji: '👥',
+    visualEmojis: ['👥', '🗓️', '🏠', '⏰', '📢'],
+    titleFr: 'Réunion',
+    titleBa: 'Ɲɔ̀gɔ̀n-yé',
+    audioPromptFr: 'Annoncez une réunion. Dites où, quand et pourquoi',
+    audioPromptBa: 'Ɲɔ̀gɔ̀n-yé kùú',
+    exampleFr: 'Réunion demain sous l\'arbre à palabres',
+    gradient: 'from-blue-500 via-indigo-500 to-violet-500',
+    bgPattern: 'meeting',
+    animationType: 'pulse',
+    tags: ['réunion', 'assemblée', 'communauté'],
+    visibility: 'community',
+  },
+  {
+    id: 'annonce_marche',
+    category: 'village_voice',
+    subcategory: 'annonce',
+    icon: Coins,
+    emoji: '🏪',
+    visualEmojis: ['🏪', '🍅', '💰', '📅', '🛒'],
+    titleFr: 'Jour de marché',
+    titleBa: 'Sùgú dɔ̀n',
+    audioPromptFr: 'Annoncez le prochain jour de marché ou une vente spéciale',
+    audioPromptBa: 'Sùgú kùú',
+    exampleFr: 'Le marché sera...',
+    gradient: 'from-emerald-500 via-green-500 to-lime-400',
+    bgPattern: 'market',
+    animationType: 'bounce',
+    tags: ['marché', 'commerce', 'vente'],
+    visibility: 'public',
+  },
+  {
+    id: 'annonce_travaux',
+    category: 'village_voice',
+    subcategory: 'annonce',
+    icon: Construction,
+    emoji: '🔨',
+    visualEmojis: ['🔨', '🏗️', '👷', '🤝', '💪'],
+    titleFr: 'Travaux collectifs',
+    titleBa: 'Cí-báárá',
+    audioPromptFr: 'Appelez le village pour des travaux collectifs',
+    audioPromptBa: 'Cí-báárá kùú',
+    exampleFr: 'Tous ensemble pour construire/réparer...',
+    gradient: 'from-amber-500 via-orange-500 to-red-400',
+    bgPattern: 'work',
+    animationType: 'shake',
+    tags: ['travaux', 'construction', 'collectif'],
+    visibility: 'community',
+  },
+  {
+    id: 'annonce_visite',
+    category: 'village_voice',
+    subcategory: 'annonce',
+    icon: Car,
+    emoji: '🚗',
+    visualEmojis: ['🚗', '👔', '🏛️', '📅', '🎉'],
+    titleFr: 'Visite importante',
+    titleBa: 'Náfà-tìgì nàná',
+    audioPromptFr: 'Annoncez la visite d\'une personnalité ou autorité',
+    audioPromptBa: 'Náfà-tìgì nàná kùú',
+    exampleFr: 'Le préfet/chef va venir...',
+    gradient: 'from-slate-600 via-gray-500 to-zinc-400',
+    bgPattern: 'official',
+    animationType: 'pulse',
+    tags: ['visite', 'autorité', 'officiel'],
+    visibility: 'public',
+  },
+  {
+    id: 'annonce_generale',
+    category: 'village_voice',
+    subcategory: 'annonce',
+    icon: Megaphone,
+    emoji: '📢',
+    visualEmojis: ['📢', '👂', '❗', '🏘️', '📣'],
+    titleFr: 'Annonce générale',
+    titleBa: 'Kùú bɛ̀ɛ̀',
+    audioPromptFr: 'Faites une annonce importante au village',
+    audioPromptBa: 'Kùú bɛ̀ɛ̀ yé',
+    exampleFr: 'Écoutez tous...',
+    gradient: 'from-blue-600 via-cyan-500 to-teal-400',
+    bgPattern: 'broadcast',
+    animationType: 'bounce',
+    tags: ['annonce', 'information', 'tous'],
+    visibility: 'community',
+  },
+
+  // ─── CÉLÉBRATIONS (5 templates) ──────────────────────────────────────────
+  {
+    id: 'joie_naissance',
+    category: 'village_voice',
+    subcategory: 'celebration',
+    icon: Baby,
+    emoji: '👶',
+    visualEmojis: ['👶', '🍼', '🎉', '❤️', '🙏'],
+    titleFr: 'Naissance',
+    titleBa: 'Dén wólò',
+    audioPromptFr: 'Annoncez une naissance. Garçon ou fille ? Nom ?',
+    audioPromptBa: 'Dén wólò kùú',
+    exampleFr: 'Un enfant est né ! C\'est un/une...',
+    gradient: 'from-pink-400 via-rose-400 to-red-300',
+    bgPattern: 'baby',
+    animationType: 'float',
+    tags: ['naissance', 'bébé', 'famille'],
+    visibility: 'public',
+  },
+  {
+    id: 'joie_mariage',
+    category: 'village_voice',
+    subcategory: 'celebration',
+    icon: Heart,
+    emoji: '💒',
+    visualEmojis: ['💒', '👰', '🤵', '💍', '🎊'],
+    titleFr: 'Mariage',
+    titleBa: 'Fúrú',
+    audioPromptFr: 'Annoncez un mariage. Qui se marie ? Quand ?',
+    audioPromptBa: 'Fúrú kùú',
+    exampleFr: 'X et Y vont se marier...',
+    gradient: 'from-red-400 via-pink-400 to-rose-300',
+    bgPattern: 'wedding',
+    animationType: 'pulse',
+    tags: ['mariage', 'amour', 'fête'],
+    visibility: 'public',
+  },
+  {
+    id: 'joie_reussite',
+    category: 'village_voice',
+    subcategory: 'celebration',
+    icon: GraduationCap,
+    emoji: '🎓',
+    visualEmojis: ['🎓', '📚', '🏆', '👏', '🌟'],
+    titleFr: 'Réussite scolaire',
+    titleBa: 'Kàlàn sègin',
+    audioPromptFr: 'Célébrez une réussite aux examens. Qui ? Quel diplôme ?',
+    audioPromptBa: 'Kàlàn sègin kùú',
+    exampleFr: 'Félicitations à X qui a réussi...',
+    gradient: 'from-indigo-500 via-blue-500 to-cyan-400',
+    bgPattern: 'graduate',
+    animationType: 'bounce',
+    tags: ['études', 'diplôme', 'réussite'],
+    visibility: 'public',
+  },
+  {
+    id: 'joie_guerison',
+    category: 'village_voice',
+    subcategory: 'celebration',
+    icon: Stethoscope,
+    emoji: '💪',
+    visualEmojis: ['💪', '🏥', '🙏', '❤️', '🎉'],
+    titleFr: 'Guérison',
+    titleBa: 'Kɛ́nɛ̀yá sɔ̀rɔ̀',
+    audioPromptFr: 'Annoncez une guérison. Remerciez Dieu et la communauté',
+    audioPromptBa: 'Kɛ́nɛ̀yá sɔ̀rɔ̀ kùú',
+    exampleFr: 'X est guéri ! Gloire à Dieu...',
+    gradient: 'from-green-400 via-emerald-400 to-teal-300',
+    bgPattern: 'health',
+    animationType: 'glow',
+    tags: ['guérison', 'santé', 'gratitude'],
+    visibility: 'public',
+  },
+  {
+    id: 'joie_generale',
+    category: 'village_voice',
+    subcategory: 'celebration',
+    icon: PartyPopper,
     emoji: '🎉',
-    color: 'bg-yellow-500',
-    gradient: 'from-yellow-500 to-amber-600',
-    audioPrompt: 'Partagez votre bonne nouvelle',
-    example: 'Naissance, mariage, réussite...'
+    visualEmojis: ['🎉', '🎊', '🥳', '🙌', '✨'],
+    titleFr: 'Bonne nouvelle',
+    titleBa: 'Kíbárú ɲùmàn',
+    audioPromptFr: 'Partagez n\'importe quelle bonne nouvelle',
+    audioPromptBa: 'Kíbárú ɲùmàn',
+    exampleFr: 'J\'ai une bonne nouvelle...',
+    gradient: 'from-yellow-400 via-amber-400 to-orange-400',
+    bgPattern: 'confetti',
+    animationType: 'shake',
+    tags: ['joie', 'nouvelle', 'partage'],
+    visibility: 'public',
+  },
+
+  // ─── DEMANDES D'AIDE (5 templates) ───────────────────────────────────────
+  {
+    id: 'aide_sante',
+    category: 'village_voice',
+    subcategory: 'help',
+    icon: Stethoscope,
+    emoji: '🏥',
+    visualEmojis: ['🏥', '🤒', '💊', '🚑', '🙏'],
+    titleFr: 'Aide santé',
+    titleBa: 'Kɛ́nɛ̀yá dɛ̀mɛ̀',
+    audioPromptFr: 'Demandez de l\'aide pour un problème de santé',
+    audioPromptBa: 'Kɛ́nɛ̀yá dɛ̀mɛ̀ ɲìní',
+    exampleFr: 'Quelqu\'un est malade et on a besoin...',
+    gradient: 'from-red-500 via-rose-500 to-pink-400',
+    bgPattern: 'medical',
+    animationType: 'pulse',
+    tags: ['santé', 'maladie', 'urgence'],
+    visibility: 'community',
+    urgency: 'urgent',
   },
   {
-    type: 'question',
+    id: 'aide_argent',
+    category: 'village_voice',
+    subcategory: 'help',
+    icon: HandCoins,
+    emoji: '💰',
+    visualEmojis: ['💰', '🤲', '🙏', '❤️', '🤝'],
+    titleFr: 'Aide financière',
+    titleBa: 'Wári dɛ̀mɛ̀',
+    audioPromptFr: 'Demandez une aide financière. Expliquez pourquoi',
+    audioPromptBa: 'Wári dɛ̀mɛ̀ ɲìní',
+    exampleFr: 'J\'ai besoin d\'aide pour...',
+    gradient: 'from-amber-500 via-yellow-500 to-lime-400',
+    bgPattern: 'money',
+    animationType: 'bounce',
+    tags: ['argent', 'cotisation', 'solidarité'],
+    visibility: 'community',
+  },
+  {
+    id: 'aide_travail',
+    category: 'village_voice',
+    subcategory: 'help',
+    icon: Wheat,
+    emoji: '🌾',
+    visualEmojis: ['🌾', '👨‍🌾', '💪', '🤝', '☀️'],
+    titleFr: 'Aide aux champs',
+    titleBa: 'Fòrò dɛ̀mɛ̀',
+    audioPromptFr: 'Demandez de l\'aide pour les travaux agricoles',
+    audioPromptBa: 'Fòrò dɛ̀mɛ̀ ɲìní',
+    exampleFr: 'J\'ai besoin de bras pour...',
+    gradient: 'from-green-500 via-emerald-500 to-teal-400',
+    bgPattern: 'farm',
+    animationType: 'bounce',
+    tags: ['champs', 'récolte', 'entraide'],
+    visibility: 'community',
+  },
+  {
+    id: 'aide_deuil',
+    category: 'village_voice',
+    subcategory: 'help',
+    icon: Flower2,
+    emoji: '🕯️',
+    visualEmojis: ['🕯️', '💔', '🙏', '🤲', '❤️'],
+    titleFr: 'Aide pour deuil',
+    titleBa: 'Sú dɛ̀mɛ̀',
+    audioPromptFr: 'Demandez du soutien après un décès',
+    audioPromptBa: 'Sú dɛ̀mɛ̀ ɲìní',
+    exampleFr: 'Nous avons perdu... nous avons besoin...',
+    gradient: 'from-gray-600 via-slate-500 to-zinc-400',
+    bgPattern: 'memorial',
+    animationType: 'pulse',
+    tags: ['deuil', 'décès', 'soutien'],
+    visibility: 'community',
+  },
+  {
+    id: 'aide_generale',
+    category: 'village_voice',
+    subcategory: 'help',
+    icon: HandHeart,
+    emoji: '🙏',
+    visualEmojis: ['🙏', '🤲', '❤️', '🤝', '💪'],
+    titleFr: 'Demande d\'aide',
+    titleBa: 'Dɛ̀mɛ̀ ɲìní',
+    audioPromptFr: 'Demandez n\'importe quelle aide à la communauté',
+    audioPromptBa: 'Dɛ̀mɛ̀ ɲìní',
+    exampleFr: 'J\'ai besoin de votre aide pour...',
+    gradient: 'from-rose-500 via-red-500 to-orange-400',
+    bgPattern: 'hands',
+    animationType: 'pulse',
+    tags: ['aide', 'solidarité', 'communauté'],
+    visibility: 'community',
+  },
+
+  // ─── QUESTIONS (5 templates) ─────────────────────────────────────────────
+  {
+    id: 'question_sante',
+    category: 'village_voice',
+    subcategory: 'question',
+    icon: Stethoscope,
+    emoji: '💊',
+    visualEmojis: ['💊', '🤔', '🌿', '👨‍⚕️', '❓'],
+    titleFr: 'Question santé',
+    titleBa: 'Kɛ́nɛ̀yá ɲìnìnkàlí',
+    audioPromptFr: 'Posez une question sur un problème de santé',
+    audioPromptBa: 'Kɛ́nɛ̀yá ɲìnìnkàlí',
+    exampleFr: 'Qui connaît un remède pour...?',
+    gradient: 'from-teal-500 via-cyan-500 to-blue-400',
+    bgPattern: 'question',
+    animationType: 'bounce',
+    tags: ['santé', 'remède', 'conseil'],
+    visibility: 'community',
+  },
+  {
+    id: 'question_agriculture',
+    category: 'village_voice',
+    subcategory: 'question',
+    icon: Leaf,
+    emoji: '🌱',
+    visualEmojis: ['🌱', '🤔', '👨‍🌾', '☀️', '❓'],
+    titleFr: 'Question agriculture',
+    titleBa: 'Sɛ̀nɛ̀ ɲìnìnkàlí',
+    audioPromptFr: 'Posez une question sur l\'agriculture',
+    audioPromptBa: 'Sɛ̀nɛ̀ ɲìnìnkàlí',
+    exampleFr: 'Comment faire pour...?',
+    gradient: 'from-green-500 via-lime-500 to-yellow-400',
+    bgPattern: 'plant',
+    animationType: 'float',
+    tags: ['agriculture', 'culture', 'conseil'],
+    visibility: 'community',
+  },
+  {
+    id: 'question_perdu',
+    category: 'village_voice',
+    subcategory: 'question',
+    icon: MapPin,
+    emoji: '🔍',
+    visualEmojis: ['🔍', '❓', '👀', '🐄', '📍'],
+    titleFr: 'Objet/Animal perdu',
+    titleBa: 'Fɛ̀n tùnú',
+    audioPromptFr: 'Demandez si quelqu\'un a vu votre objet ou animal perdu',
+    audioPromptBa: 'Fɛ̀n tùnú ɲìnìnkàlí',
+    exampleFr: 'Qui a vu mon/ma...?',
+    gradient: 'from-purple-500 via-violet-500 to-fuchsia-400',
+    bgPattern: 'search',
+    animationType: 'shake',
+    tags: ['perdu', 'recherche', 'aide'],
+    visibility: 'community',
+  },
+  {
+    id: 'question_conseil',
+    category: 'village_voice',
+    subcategory: 'question',
     icon: HelpCircle,
-    label: 'Question',
-    labelBa: 'Bìká',
-    emoji: '❓',
-    color: 'bg-purple-500',
-    gradient: 'from-purple-500 to-violet-700',
-    audioPrompt: 'Posez votre question à la communauté',
-    example: 'Qui connaît un bon remède pour...?'
+    emoji: '🤔',
+    visualEmojis: ['🤔', '💭', '👥', '💡', '❓'],
+    titleFr: 'Demander conseil',
+    titleBa: 'Làdílí ɲìní',
+    audioPromptFr: 'Demandez un conseil à la communauté',
+    audioPromptBa: 'Làdílí ɲìnìnkàlí',
+    exampleFr: 'Que me conseillez-vous pour...?',
+    gradient: 'from-indigo-500 via-blue-500 to-cyan-400',
+    bgPattern: 'think',
+    animationType: 'pulse',
+    tags: ['conseil', 'avis', 'sagesse'],
+    visibility: 'community',
   },
   {
-    type: 'alert',
-    icon: Bell,
-    label: 'Alerte',
-    labelBa: 'Gbàrà',
+    id: 'question_cherche',
+    category: 'village_voice',
+    subcategory: 'question',
+    icon: Users2,
+    emoji: '👤',
+    visualEmojis: ['👤', '🔍', '📞', '🏘️', '❓'],
+    titleFr: 'Cherche quelqu\'un',
+    titleBa: 'Mɔ̀gɔ̀ ɲìní',
+    audioPromptFr: 'Cherchez quelqu\'un (artisan, spécialiste, personne)',
+    audioPromptBa: 'Mɔ̀gɔ̀ ɲìnìnkàlí',
+    exampleFr: 'Qui connaît un bon...?',
+    gradient: 'from-orange-500 via-amber-500 to-yellow-400',
+    bgPattern: 'people',
+    animationType: 'bounce',
+    tags: ['recherche', 'contact', 'service'],
+    visibility: 'community',
+  },
+
+  // ─── ALERTES (5 templates) ───────────────────────────────────────────────
+  {
+    id: 'alerte_meteo',
+    category: 'village_voice',
+    subcategory: 'alert',
+    icon: CloudRain,
+    emoji: '⛈️',
+    visualEmojis: ['⛈️', '🌊', '💨', '⚠️', '🏠'],
+    titleFr: 'Alerte météo',
+    titleBa: 'Sán gbàrà',
+    audioPromptFr: 'Alertez sur un danger météo : pluie forte, vent, inondation',
+    audioPromptBa: 'Sán gbàrà kùú',
+    exampleFr: 'Attention, forte pluie/vent arrive...',
+    gradient: 'from-slate-600 via-blue-600 to-cyan-500',
+    bgPattern: 'storm',
+    animationType: 'shake',
+    tags: ['météo', 'pluie', 'danger'],
+    visibility: 'public',
+    urgency: 'urgent',
+  },
+  {
+    id: 'alerte_sante',
+    category: 'village_voice',
+    subcategory: 'alert',
+    icon: AlertTriangle,
+    emoji: '🦠',
+    visualEmojis: ['🦠', '😷', '⚠️', '🏥', '📢'],
+    titleFr: 'Alerte sanitaire',
+    titleBa: 'Bànà gbàrà',
+    audioPromptFr: 'Alertez sur une maladie ou épidémie',
+    audioPromptBa: 'Bànà gbàrà kùú',
+    exampleFr: 'Attention, maladie dans la zone...',
+    gradient: 'from-red-600 via-rose-600 to-pink-500',
+    bgPattern: 'virus',
+    animationType: 'pulse',
+    tags: ['maladie', 'épidémie', 'prévention'],
+    visibility: 'public',
+    urgency: 'critical',
+  },
+  {
+    id: 'alerte_route',
+    category: 'village_voice',
+    subcategory: 'alert',
+    icon: Car,
+    emoji: '🚧',
+    visualEmojis: ['🚧', '🚗', '⚠️', '🛣️', '❌'],
+    titleFr: 'Route coupée',
+    titleBa: 'Sírá tìgɛ́',
+    audioPromptFr: 'Signalez une route coupée ou dangereuse',
+    audioPromptBa: 'Sírá tìgɛ́ gbàrà',
+    exampleFr: 'La route de X est coupée/dangereuse...',
+    gradient: 'from-orange-600 via-amber-600 to-yellow-500',
+    bgPattern: 'road',
+    animationType: 'shake',
+    tags: ['route', 'circulation', 'danger'],
+    visibility: 'public',
+    urgency: 'urgent',
+  },
+  {
+    id: 'alerte_animaux',
+    category: 'village_voice',
+    subcategory: 'alert',
+    icon: Bug,
+    emoji: '🐍',
+    visualEmojis: ['🐍', '🦂', '⚠️', '👀', '🏃'],
+    titleFr: 'Animal dangereux',
+    titleBa: 'Sògò júgú',
+    audioPromptFr: 'Signalez un animal dangereux dans la zone',
+    audioPromptBa: 'Sògò júgú gbàrà',
+    exampleFr: 'Attention, serpent/scorpion vu à...',
+    gradient: 'from-lime-600 via-green-600 to-emerald-500',
+    bgPattern: 'danger',
+    animationType: 'shake',
+    tags: ['animal', 'serpent', 'danger'],
+    visibility: 'community',
+    urgency: 'urgent',
+  },
+  {
+    id: 'alerte_vol',
+    category: 'village_voice',
+    subcategory: 'alert',
+    icon: Siren,
     emoji: '🚨',
-    color: 'bg-orange-600',
-    gradient: 'from-orange-600 to-red-700',
-    audioPrompt: 'Décrivez l\'alerte ou le danger',
-    example: 'Attention, route coupée...'
+    visualEmojis: ['🚨', '👤', '🏃', '⚠️', '📢'],
+    titleFr: 'Vol / Insécurité',
+    titleBa: 'Sònyàlí gbàrà',
+    audioPromptFr: 'Signalez un vol ou une situation d\'insécurité',
+    audioPromptBa: 'Sònyàlí gbàrà kùú',
+    exampleFr: 'Attention, vol signalé à...',
+    gradient: 'from-red-700 via-rose-700 to-pink-600',
+    bgPattern: 'alert',
+    animationType: 'shake',
+    tags: ['vol', 'sécurité', 'vigilance'],
+    visibility: 'community',
+    urgency: 'critical',
   },
 ];
 
-// Options de visibilité
-const visibilityOptions: {
-  level: VisibilityLevel;
-  icon: typeof Globe;
-  label: string;
-  labelBa: string;
-  emoji: string;
-  color: string;
-}[] = [
-  { level: 'public', icon: Globe, label: 'Tous', labelBa: 'Gbogbo', emoji: '🌍', color: 'bg-green-500' },
-  { level: 'community', icon: Users, label: 'Village', labelBa: 'Kùú', emoji: '🏘️', color: 'bg-blue-500' },
-  { level: 'vault', icon: Lock, label: 'Privé', labelBa: 'Àṣírí', emoji: '🔒', color: 'bg-purple-500' },
-];
-
-// Options de portée (pour Voix du Village)
-const reachOptions: {
-  level: ReachLevel;
-  icon: typeof Users2;
-  label: string;
-  emoji: string;
-  color: string;
-}[] = [
-  { level: 'village', icon: Users2, label: 'Mon village', emoji: '🏘️', color: 'bg-emerald-500' },
-  { level: 'commune', icon: Users, label: 'Ma commune', emoji: '🏙️', color: 'bg-blue-500' },
-  { level: 'region', icon: Globe, label: 'Ma région', emoji: '🗺️', color: 'bg-purple-500' },
-  { level: 'all', icon: Wifi, label: 'Tout le monde', emoji: '🌍', color: 'bg-amber-500' },
-];
-
-// Emojis de ressenti
-const feelingEmojis = ['😊', '🙏', '❤️', '🎉', '💪', '🙌', '✨', '🌟'];
+// Combiner tous les templates
+const allTemplates = [...patrimoineTemplates, ...villageVoiceTemplates];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPOSANT PRINCIPAL
@@ -310,293 +1112,118 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  onOpenPoll
 }) => {
   const { t, currentLang } = useTamTamLanguage();
   const { toast } = useToast();
-  const { 
-    transcribeWithTranslation, 
-    health, 
-    isTranscribing, 
-    liveTranscript, 
-    interimTranscript 
-  } = useUnifiedAudio();
-  const { speakLabel, getLabel } = useVoiceMenu();
+  const { transcribeWithTranslation, health, isTranscribing, liveTranscript } = useUnifiedAudio();
+  const { speakLabel } = useVoiceMenu();
   
-  // ─── États principaux ────────────────────────────────────────────────────
-  const [mainCategory, setMainCategory] = useState<MainContentType | null>(null);
+  // États
+  const [step, setStep] = useState<'category' | 'templates' | 'record' | 'preview'>('category');
+  const [mainCategory, setMainCategory] = useState<'patrimoine' | 'village_voice' | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number>(0);
   const [transcript, setTranscript] = useState<string>('');
-  const [translatedTranscript, setTranslatedTranscript] = useState<string>('');
-  const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState<
-    'category' | 'heritage-type' | 'heritage-settings' | 
-    'village-type' | 'village-settings' | 'record' | 'preview'
-  >('category');
-  const [transcriptionFailed, setTranscriptionFailed] = useState(false);
-  const [capturedLiveTranscript, setCapturedLiveTranscript] = useState<string>('');
   const [isPlayingPrompt, setIsPlayingPrompt] = useState(false);
-  
-  // ─── États Patrimoine ────────────────────────────────────────────────────
-  const [selectedHeritageType, setSelectedHeritageType] = useState<HeritageType | null>(null);
-  const [visibility, setVisibility] = useState<VisibilityLevel>('public');
-  const [sensitivity, setSensitivity] = useState<SensitivityLevel>('normal');
-  const [consent, setConsent] = useState<boolean>(false);
-  const [attribution, setAttribution] = useState<string>('');
-  const [village, setVillage] = useState<string>('');
-  const [ageRating, setAgeRating] = useState<'kids' | 'all'>('all');
-  
-  // ─── États Voix du Village ───────────────────────────────────────────────
-  const [selectedVoiceType, setSelectedVoiceType] = useState<VillageVoiceType | null>(null);
-  const [urgency, setUrgency] = useState<UrgencyLevel>('normal');
-  const [reach, setReach] = useState<ReachLevel>('village');
+  const [searchFilter, setSearchFilter] = useState<string>('');
 
-  // ─── Effets ──────────────────────────────────────────────────────────────
-  
-  useEffect(() => {
-    if (liveTranscript && currentLang === 'fr') {
-      setCapturedLiveTranscript(liveTranscript);
-    }
-  }, [liveTranscript, currentLang]);
-
-  // Lecture audio du prompt à l'ouverture de chaque étape
-  useEffect(() => {
-    if (step === 'category' && isOpen) {
-      // Optionnel: lire automatiquement les instructions
-      // playAudioPrompt('Que voulez-vous partager ? Touchez une icône.');
-    }
-  }, [step, isOpen]);
-
-  // ─── Fonctions utilitaires ───────────────────────────────────────────────
-
-  const playAudioPrompt = async (text: string) => {
+  // Lecture audio du prompt
+  const playAudioPrompt = (text: string) => {
     setIsPlayingPrompt(true);
-    try {
-      // Utiliser le TTS pour lire le prompt
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = currentLang === 'ba' ? 'fr-FR' : 'fr-FR';
-      utterance.rate = 0.9;
-      utterance.onend = () => setIsPlayingPrompt(false);
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      setIsPlayingPrompt(false);
-    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'fr-FR';
+    utterance.rate = 0.85;
+    utterance.onend = () => setIsPlayingPrompt(false);
+    window.speechSynthesis.speak(utterance);
   };
 
-  const getCurrentAudioPrompt = (): string => {
-    if (mainCategory === 'patrimoine' && selectedHeritageType) {
-      return heritageTypes.find(h => h.type === selectedHeritageType)?.audioPrompt || '';
-    }
-    if (mainCategory === 'village_voice' && selectedVoiceType) {
-      return villageVoiceTypes.find(v => v.type === selectedVoiceType)?.audioPrompt || '';
-    }
-    return 'Enregistrez votre message vocal';
+  // Filtrer les templates par catégorie
+  const getFilteredTemplates = () => {
+    if (!mainCategory) return [];
+    const templates = mainCategory === 'patrimoine' ? patrimoineTemplates : villageVoiceTemplates;
+    if (!searchFilter) return templates;
+    return templates.filter(t => 
+      t.tags.some(tag => tag.toLowerCase().includes(searchFilter.toLowerCase())) ||
+      t.titleFr.toLowerCase().includes(searchFilter.toLowerCase())
+    );
   };
 
-  // ─── Gestionnaires d'événements ──────────────────────────────────────────
-
-  const handleMainCategorySelect = (category: MainContentType) => {
-    setMainCategory(category);
+  // Sélection d'un template
+  const handleTemplateSelect = (template: Template) => {
+    setSelectedTemplate(template);
     triggerFeedback('notification');
-    
-    if (category === 'patrimoine') {
-      setStep('heritage-type');
-    } else {
-      setStep('village-type');
-    }
-  };
-
-  const handleHeritageTypeSelect = (heritageType: HeritageType) => {
-    setSelectedHeritageType(heritageType);
-    triggerFeedback('notification');
-    
-    const heritage = heritageTypes.find(h => h.type === heritageType);
-    if (heritage) {
-      playAudioPrompt(heritage.audioPrompt);
-    }
-    
-    setStep('heritage-settings');
-  };
-
-  const handleVoiceTypeSelect = (voiceType: VillageVoiceType) => {
-    setSelectedVoiceType(voiceType);
-    triggerFeedback('notification');
-    
-    const voice = villageVoiceTypes.find(v => v.type === voiceType);
-    if (voice) {
-      playAudioPrompt(voice.audioPrompt);
-    }
-    
-    setStep('village-settings');
-  };
-
-  const handleSettingsComplete = () => {
-    if (mainCategory === 'patrimoine' && !consent) {
-      toast({
-        title: "⚠️ Consentement requis",
-        description: "Confirmez que vous avez le droit de partager ce contenu",
-        variant: "destructive"
-      });
-      triggerFeedback('error');
-      return;
-    }
-    
-    triggerFeedback('success');
-    playAudioPrompt(getCurrentAudioPrompt());
+    playAudioPrompt(currentLang === 'ba' ? template.audioPromptBa : template.audioPromptFr);
     setStep('record');
   };
 
-  const handleRecordingComplete = async (base64: string, duration?: number, recorderLiveTranscript?: string) => {
-    console.log('[TamTamCreatePost] Recording complete');
-    
+  // Enregistrement terminé
+  const handleRecordingComplete = async (base64: string, duration?: number) => {
     setAudioBase64(base64);
     setAudioDuration(duration || 0);
-    setTranscriptionFailed(false);
     triggerFeedback('success');
     
-    toast({ title: "🎤 Traitement...", description: "Analyse de votre message" });
-    
-    const allTranscripts = [
-      recorderLiveTranscript,
-      capturedLiveTranscript,
-      liveTranscript,
-      interimTranscript
-    ].filter(t => t && t.trim().length > 0);
-    
-    const bestLiveTranscript = allTranscripts.length > 0 
-      ? allTranscripts.reduce((a, b) => (a && a.length > (b?.length || 0) ? a : b)) 
-      : '';
-    
-    const sourceLang = currentLang === 'ba' ? 'ba' : 'fr';
-    
-    if (sourceLang === 'fr' && bestLiveTranscript && bestLiveTranscript.length > 0) {
-      setTranscript(bestLiveTranscript);
-      
-      try {
-        const translateResult = await transcribeWithTranslation(base64, 'fr');
-        if (translateResult.transcription_ba) {
-          setTranslatedTranscript(translateResult.transcription_ba);
-        }
-      } catch (e) {
-        console.warn('Translation failed:', e);
-      }
-      
-      toast({ title: "✅ Message prêt", description: "Vérifiez et publiez" });
-      setStep('preview');
-      return;
-    }
-    
-    const result = await transcribeWithTranslation(base64, sourceLang);
-    
-    if (result.transcription && result.transcription.length > 0) {
+    // Transcription
+    const result = await transcribeWithTranslation(base64, currentLang === 'ba' ? 'ba' : 'fr');
+    if (result.transcription) {
       setTranscript(result.transcription);
-      setTranslatedTranscript(sourceLang === 'fr' ? result.transcription_ba : result.transcription_fr);
-      toast({ title: "✅ Message prêt" });
-    } else if (bestLiveTranscript) {
-      setTranscript(bestLiveTranscript);
-      toast({ title: "✅ Message enregistré" });
-    } else {
-      setTranscriptionFailed(true);
-      toast({ title: "⚠️ Audio sans texte", description: "Publication vocale uniquement" });
     }
     
     setStep('preview');
   };
 
+  // Soumission
   const handleSubmit = async () => {
-    if (!audioBase64) {
-      toast({ title: "🎤 Audio requis", description: "Enregistrez votre message", variant: "destructive" });
-      triggerFeedback('error');
-      return;
-    }
-
-    setIsSubmitting(true);
+    if (!audioBase64 || !selectedTemplate) return;
     
+    setIsSubmitting(true);
     try {
       // Upload audio
       const audioBlob = base64ToBlob(audioBase64, 'audio/webm');
-      const audioFileName = `post_${Date.now()}_${Math.random().toString(36).substring(7)}.webm`;
+      const audioFileName = `post_${Date.now()}.webm`;
       
-      const { error: audioError } = await supabase.storage
+      const { error } = await supabase.storage
         .from('tamtam-audio')
-        .upload(audioFileName, audioBlob, { contentType: 'audio/webm' });
-
-      if (audioError) throw audioError;
-
-      const { data: audioUrlData } = supabase.storage
+        .upload(audioFileName, audioBlob);
+      
+      if (error) throw error;
+      
+      const { data: urlData } = supabase.storage
         .from('tamtam-audio')
         .getPublicUrl(audioFileName);
 
-      // Construire les données du post
-      const postData: PostSubmitData = {
-        audio_url: audioUrlData.publicUrl,
-        media_type: mainCategory === 'patrimoine' 
-          ? selectedHeritageType || 'heritage_story' 
-          : `village_${selectedVoiceType || 'announce'}`,
-        transcript_fr: currentLang === 'fr' ? transcript : translatedTranscript || undefined,
-        transcript_ba: currentLang === 'ba' ? transcript : translatedTranscript || undefined,
-        feeling_emoji: selectedEmoji || undefined,
-        duration_seconds: audioDuration || 0,
-        language: currentLang,
-        // Patrimoine
-        heritage_type: mainCategory === 'patrimoine' ? selectedHeritageType || undefined : undefined,
-        visibility: visibility,
-        sensitivity: mainCategory === 'patrimoine' ? sensitivity : undefined,
-        consent: mainCategory === 'patrimoine' ? consent : true,
-        attribution: attribution || undefined,
-        village: village || undefined,
-        age_rating: mainCategory === 'patrimoine' ? ageRating : undefined,
-        // Voix du Village
-        village_voice_type: mainCategory === 'village_voice' ? selectedVoiceType || undefined : undefined,
-        urgency: mainCategory === 'village_voice' ? urgency : undefined,
-        reach: mainCategory === 'village_voice' ? reach : undefined,
-      };
-      
-      await onSubmit(postData);
-      
+      await onSubmit({
+        audio_url: urlData.publicUrl,
+        media_type: selectedTemplate.id,
+        template_id: selectedTemplate.id,
+        category: selectedTemplate.category,
+        subcategory: selectedTemplate.subcategory,
+        transcript_fr: transcript,
+        duration_seconds: audioDuration,
+        visibility: selectedTemplate.visibility,
+        urgency: selectedTemplate.urgency,
+      });
+
       triggerFeedback('success');
-      
-      // Message de confirmation vocal
-      playAudioPrompt(mainCategory === 'patrimoine' 
-        ? 'Votre patrimoine a été partagé avec succès' 
-        : 'Votre message a été envoyé au village');
-      
-      resetPostState();
+      playAudioPrompt('Votre message a été envoyé avec succès');
+      resetState();
       onClose();
-      
     } catch (err: any) {
-      console.error('Submit error:', err);
       triggerFeedback('error');
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const resetPostState = () => {
+  const resetState = () => {
+    setStep('category');
     setMainCategory(null);
+    setSelectedTemplate(null);
     setAudioBase64(null);
     setAudioDuration(0);
     setTranscript('');
-    setTranslatedTranscript('');
-    setSelectedEmoji(null);
-    setTranscriptionFailed(false);
-    setCapturedLiveTranscript('');
-    setStep('category');
-    // Patrimoine
-    setSelectedHeritageType(null);
-    setVisibility('public');
-    setSensitivity('normal');
-    setConsent(false);
-    setAttribution('');
-    setVillage('');
-    setAgeRating('all');
-    // Voix du Village
-    setSelectedVoiceType(null);
-    setUrgency('normal');
-    setReach('village');
   };
 
   const base64ToBlob = (base64: string, mimeType: string): Blob => {
@@ -610,26 +1237,9 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
 
   const goBack = () => {
     triggerFeedback('notification');
-    switch (step) {
-      case 'heritage-type':
-      case 'village-type':
-        setStep('category');
-        break;
-      case 'heritage-settings':
-        setStep('heritage-type');
-        break;
-      case 'village-settings':
-        setStep('village-type');
-        break;
-      case 'record':
-        setStep(mainCategory === 'patrimoine' ? 'heritage-settings' : 'village-settings');
-        break;
-      case 'preview':
-        setStep('record');
-        break;
-      default:
-        setStep('category');
-    }
+    if (step === 'templates') setStep('category');
+    else if (step === 'record') setStep('templates');
+    else if (step === 'preview') setStep('record');
   };
 
   if (!isOpen) return null;
@@ -643,7 +1253,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center"
+      className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center"
       onClick={onClose}
     >
       <motion.div
@@ -652,7 +1262,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 25 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-lg bg-gradient-to-b from-slate-50 to-white rounded-t-[2rem] min-h-[65vh] max-h-[92vh] flex flex-col shadow-2xl"
+        className="w-full max-w-lg bg-gradient-to-b from-white to-slate-50 rounded-t-[2.5rem] min-h-[70vh] max-h-[95vh] flex flex-col shadow-2xl"
       >
         {/* ═══════════════════════════════════════════════════════════════════
             HEADER
@@ -663,58 +1273,50 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={goBack}
-                className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"
+                className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl"
               >
-                <ChevronLeft className="w-6 h-6 text-slate-600" />
+                ←
               </motion.button>
             )}
             <div>
               <h3 className="text-xl font-bold text-slate-800">
                 {step === 'category' && '🎙️ Nouveau message'}
-                {step === 'heritage-type' && '🏛️ Patrimoine'}
-                {step === 'heritage-settings' && '⚙️ Paramètres'}
-                {step === 'village-type' && '📢 Voix du Village'}
-                {step === 'village-settings' && '📍 Portée'}
-                {step === 'record' && '🎤 Enregistrement'}
-                {step === 'preview' && '✅ Aperçu'}
+                {step === 'templates' && (mainCategory === 'patrimoine' ? '🏛️ Patrimoine' : '📢 Village')}
+                {step === 'record' && '🎤 Parlez'}
+                {step === 'preview' && '✅ Vérifier'}
               </h3>
-              {isTranscribing && (
-                <div className="flex items-center gap-1 text-blue-500 text-sm">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  <span>Analyse...</span>
-                </div>
+              {selectedTemplate && step !== 'category' && step !== 'templates' && (
+                <p className="text-sm text-slate-500">{selectedTemplate.titleFr}</p>
               )}
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Bouton lecture vocale */}
             <motion.button
               whileTap={{ scale: 0.9 }}
-              onClick={() => playAudioPrompt(getCurrentAudioPrompt())}
-              disabled={isPlayingPrompt}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                isPlayingPrompt ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-600'
+              onClick={() => selectedTemplate && playAudioPrompt(selectedTemplate.audioPromptFr)}
+              disabled={isPlayingPrompt || !selectedTemplate}
+              className={`w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all ${
+                isPlayingPrompt ? 'bg-blue-500 text-white animate-pulse' : 'bg-blue-100 text-blue-600'
               }`}
             >
-              <Volume2 className={`w-5 h-5 ${isPlayingPrompt ? 'animate-pulse' : ''}`} />
+              🔊
             </motion.button>
-            
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"
+              className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl"
             >
-              <X className="w-5 h-5 text-slate-500" />
+              ✕
             </motion.button>
           </div>
         </div>
 
-        <div className="flex-1 p-4 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
             
             {/* ═══════════════════════════════════════════════════════════════
-                STEP 1: CHOIX DE LA CATÉGORIE PRINCIPALE
+                STEP 1: CHOIX CATÉGORIE
             ═══════════════════════════════════════════════════════════════ */}
             {step === 'category' && (
               <motion.div
@@ -722,544 +1324,252 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="space-y-6"
+                className="p-4 space-y-4"
               >
-                <p className="text-center text-slate-500 text-lg">
-                  Que voulez-vous partager ?
+                <p className="text-center text-slate-500 text-lg mb-2">
+                  Touchez une image pour commencer
                 </p>
                 
-                <div className="space-y-4">
-                  {mainCategories.map((cat, index) => {
-                    const Icon = cat.icon;
-                    return (
-                      <motion.button
-                        key={cat.type}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        whileTap={{ scale: 0.98 }}
-                        whileHover={{ scale: 1.02 }}
-                        onClick={() => handleMainCategorySelect(cat.type)}
-                        className={`w-full p-6 rounded-3xl bg-gradient-to-r ${cat.gradient} text-white shadow-xl relative overflow-hidden group`}
-                      >
-                        {/* Décoration animée */}
-                        <div className="absolute inset-0 opacity-20">
-                          <motion.div 
-                            className="absolute -top-10 -right-10 w-40 h-40 bg-white rounded-full"
-                            animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
-                            transition={{ duration: 10, repeat: Infinity }}
-                          />
-                          <motion.div 
-                            className="absolute -bottom-10 -left-10 w-32 h-32 bg-white rounded-full"
-                            animate={{ scale: [1, 1.3, 1] }}
-                            transition={{ duration: 8, repeat: Infinity }}
-                          />
-                        </div>
-                        
-                        <div className="relative z-10 flex items-center gap-5">
-                          <div className="w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center text-4xl">
-                            {cat.emoji}
-                          </div>
-                          <div className="flex-1 text-left">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-2xl">{cat.title}</span>
-                              <span className="text-white/70 text-lg">({cat.titleBa})</span>
-                            </div>
-                            <p className="text-white/80 mt-1">{cat.subtitle}</p>
-                          </div>
-                          <motion.div
-                            animate={{ x: [0, 5, 0] }}
-                            transition={{ duration: 1.5, repeat: Infinity }}
-                          >
-                            <Sparkles className="w-8 h-8 text-white/70" />
-                          </motion.div>
-                        </div>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-
-            {/* ═══════════════════════════════════════════════════════════════
-                STEP 2A: TYPES DE PATRIMOINE
-            ═══════════════════════════════════════════════════════════════ */}
-            {step === 'heritage-type' && (
-              <motion.div
-                key="heritage-type"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4"
-              >
-                <p className="text-center text-slate-500 mb-2">
-                  Quel patrimoine voulez-vous partager ?
-                </p>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {heritageTypes.map((heritage, index) => (
-                    <motion.button
-                      key={heritage.type}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleHeritageTypeSelect(heritage.type)}
-                      className={`p-5 rounded-2xl bg-gradient-to-br ${heritage.gradient} text-white shadow-lg flex flex-col items-center gap-2`}
-                    >
-                      <span className="text-4xl">{heritage.emoji}</span>
-                      <span className="font-bold text-lg">{heritage.label}</span>
-                      <span className="text-white/70 text-sm">{heritage.labelBa}</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* ═══════════════════════════════════════════════════════════════
-                STEP 2B: TYPES DE VOIX DU VILLAGE
-            ═══════════════════════════════════════════════════════════════ */}
-            {step === 'village-type' && (
-              <motion.div
-                key="village-type"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4"
-              >
-                <p className="text-center text-slate-500 mb-2">
-                  Quel type de message ?
-                </p>
-                
-                <div className="space-y-3">
-                  {villageVoiceTypes.map((voice, index) => (
-                    <motion.button
-                      key={voice.type}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleVoiceTypeSelect(voice.type)}
-                      className={`w-full p-4 rounded-2xl bg-gradient-to-r ${voice.gradient} text-white shadow-lg flex items-center gap-4`}
-                    >
-                      <span className="text-3xl">{voice.emoji}</span>
-                      <div className="flex-1 text-left">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-lg">{voice.label}</span>
-                          <span className="text-white/70">({voice.labelBa})</span>
-                        </div>
-                        <p className="text-white/70 text-sm">{voice.example}</p>
-                      </div>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* ═══════════════════════════════════════════════════════════════
-                STEP 3A: PARAMÈTRES PATRIMOINE
-            ═══════════════════════════════════════════════════════════════ */}
-            {step === 'heritage-settings' && (
-              <motion.div
-                key="heritage-settings"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-5"
-              >
-                {/* Badge type sélectionné */}
-                {selectedHeritageType && (() => {
-                  const heritage = heritageTypes.find(h => h.type === selectedHeritageType);
-                  if (!heritage) return null;
-                  return (
-                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${heritage.gradient} text-white font-medium`}>
-                      <span className="text-xl">{heritage.emoji}</span>
-                      {heritage.label}
-                    </div>
-                  );
-                })()}
-
-                {/* Visibilité */}
-                <div>
-                  <p className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-                    <Globe className="w-4 h-4" /> Qui peut voir ?
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {visibilityOptions.map((opt) => (
-                      <motion.button
-                        key={opt.level}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setVisibility(opt.level)}
-                        className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all ${
-                          visibility === opt.level 
-                            ? `${opt.color} text-white shadow-lg scale-105` 
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        <span className="text-2xl">{opt.emoji}</span>
-                        <span className="text-sm font-medium">{opt.label}</span>
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Sensibilité */}
-                <div>
-                  <p className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-                    <Shield className="w-4 h-4" /> Protéger ce savoir ?
-                  </p>
-                  <div className="flex gap-3">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSensitivity('normal')}
-                      className={`flex-1 p-4 rounded-xl flex items-center justify-center gap-2 transition-all ${
-                        sensitivity === 'normal' ? 'bg-green-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      <span className="text-xl">✅</span>
-                      <span className="font-medium">Normal</span>
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSensitivity('sensitive')}
-                      className={`flex-1 p-4 rounded-xl flex items-center justify-center gap-2 transition-all ${
-                        sensitivity === 'sensitive' ? 'bg-amber-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      <span className="text-xl">🔐</span>
-                      <span className="font-medium">Protégé</span>
-                    </motion.button>
-                  </div>
-                </div>
-
-                {/* Public cible */}
-                <div>
-                  <p className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-                    <Users className="w-4 h-4" /> Pour qui ?
-                  </p>
-                  <div className="flex gap-3">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setAgeRating('all')}
-                      className={`flex-1 p-4 rounded-xl flex items-center justify-center gap-2 transition-all ${
-                        ageRating === 'all' ? 'bg-blue-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      <span className="text-xl">👥</span>
-                      <span className="font-medium">Tous</span>
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setAgeRating('kids')}
-                      className={`flex-1 p-4 rounded-xl flex items-center justify-center gap-2 transition-all ${
-                        ageRating === 'kids' ? 'bg-pink-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      <span className="text-xl">👶</span>
-                      <span className="font-medium">Enfants</span>
-                    </motion.button>
-                  </div>
-                </div>
-
-                {/* Consentement */}
+                {/* Patrimoine */}
                 <motion.button
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setConsent(!consent)}
-                  className={`w-full p-4 rounded-xl flex items-center gap-3 transition-all ${
-                    consent ? 'bg-green-100 border-2 border-green-500' : 'bg-slate-100 border-2 border-transparent'
-                  }`}
+                  whileHover={{ scale: 1.01 }}
+                  onClick={() => {
+                    setMainCategory('patrimoine');
+                    setStep('templates');
+                    triggerFeedback('notification');
+                  }}
+                  className="w-full p-6 rounded-3xl bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-white shadow-xl relative overflow-hidden"
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xl ${
-                    consent ? 'bg-green-500 text-white' : 'bg-slate-300'
-                  }`}>
-                    {consent ? '✓' : ''}
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-white rounded-full animate-pulse" />
                   </div>
-                  <span className={`text-sm ${consent ? 'text-green-700' : 'text-slate-600'}`}>
-                    ✋ Je confirme avoir le droit de partager ce patrimoine
-                  </span>
+                  <div className="relative z-10 flex items-center gap-5">
+                    <div className="w-24 h-24 rounded-2xl bg-white/20 flex items-center justify-center">
+                      <span className="text-6xl">🏛️</span>
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="text-3xl font-bold">Patrimoine</div>
+                      <div className="text-white/80 text-lg">Kpààrà</div>
+                      <div className="flex gap-1 mt-2">
+                        {['📖', '🎵', '💬', '🌿', '🏛️', '🎉'].map((e, i) => (
+                          <span key={i} className="text-2xl">{e}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </motion.button>
 
-                {/* Bouton continuer */}
+                {/* Voix du Village */}
                 <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleSettingsComplete}
-                  disabled={!consent}
-                  className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all ${
-                    consent 
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg' 
-                      : 'bg-slate-200 text-slate-400'
-                  }`}
+                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.01 }}
+                  onClick={() => {
+                    setMainCategory('village_voice');
+                    setStep('templates');
+                    triggerFeedback('notification');
+                  }}
+                  className="w-full p-6 rounded-3xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-xl relative overflow-hidden"
                 >
-                  <Mic className="w-6 h-6" />
-                  🎤 Enregistrer
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white rounded-full animate-pulse" />
+                  </div>
+                  <div className="relative z-10 flex items-center gap-5">
+                    <div className="w-24 h-24 rounded-2xl bg-white/20 flex items-center justify-center">
+                      <span className="text-6xl">📢</span>
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="text-3xl font-bold">Voix du Village</div>
+                      <div className="text-white/80 text-lg">Kùú dɔ̀ɔ̀rɔ̀</div>
+                      <div className="flex gap-1 mt-2">
+                        {['📢', '🙏', '🎉', '❓', '🚨'].map((e, i) => (
+                          <span key={i} className="text-2xl">{e}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </motion.button>
               </motion.div>
             )}
 
             {/* ═══════════════════════════════════════════════════════════════
-                STEP 3B: PARAMÈTRES VOIX DU VILLAGE
+                STEP 2: GRILLE DE TEMPLATES
             ═══════════════════════════════════════════════════════════════ */}
-            {step === 'village-settings' && (
+            {step === 'templates' && (
               <motion.div
-                key="village-settings"
+                key="templates"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="space-y-5"
+                className="p-4"
               >
-                {/* Badge type sélectionné */}
-                {selectedVoiceType && (() => {
-                  const voice = villageVoiceTypes.find(v => v.type === selectedVoiceType);
-                  if (!voice) return null;
-                  return (
-                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${voice.gradient} text-white font-medium`}>
-                      <span className="text-xl">{voice.emoji}</span>
-                      {voice.label}
-                    </div>
-                  );
-                })()}
-
-                {/* Portée du message */}
-                <div>
-                  <p className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-                    <Wifi className="w-4 h-4" /> Qui doit entendre ?
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {reachOptions.map((opt) => (
-                      <motion.button
-                        key={opt.level}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setReach(opt.level)}
-                        className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all ${
-                          reach === opt.level 
-                            ? `${opt.color} text-white shadow-lg scale-105` 
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        <span className="text-2xl">{opt.emoji}</span>
-                        <span className="text-sm font-medium">{opt.label}</span>
-                      </motion.button>
-                    ))}
-                  </div>
+                <p className="text-center text-slate-500 mb-4">
+                  Touchez l'image qui correspond à ce que vous voulez dire
+                </p>
+                
+                {/* Grille de templates */}
+                <div className="grid grid-cols-3 gap-3">
+                  {getFilteredTemplates().map((template, index) => (
+                    <motion.button
+                      key={template.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleTemplateSelect(template)}
+                      className={`aspect-square rounded-2xl bg-gradient-to-br ${template.gradient} p-3 flex flex-col items-center justify-center gap-1 shadow-lg relative overflow-hidden`}
+                    >
+                      {/* Emojis visuels en arrière-plan */}
+                      <div className="absolute inset-0 opacity-20 flex flex-wrap justify-center items-center gap-1 p-2">
+                        {template.visualEmojis.map((e, i) => (
+                          <span key={i} className="text-lg">{e}</span>
+                        ))}
+                      </div>
+                      
+                      {/* Contenu principal */}
+                      <div className="relative z-10 flex flex-col items-center">
+                        <span className="text-4xl mb-1">{template.emoji}</span>
+                        <span className="text-white font-bold text-xs text-center leading-tight">
+                          {template.titleFr}
+                        </span>
+                        <span className="text-white/70 text-[10px]">
+                          {template.titleBa}
+                        </span>
+                      </div>
+                      
+                      {/* Badge urgence */}
+                      {template.urgency === 'critical' && (
+                        <div className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+                      )}
+                    </motion.button>
+                  ))}
                 </div>
-
-                {/* Urgence (seulement pour aide et alerte) */}
-                {(selectedVoiceType === 'help_request' || selectedVoiceType === 'alert') && (
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
-                      <Zap className="w-4 h-4" /> C'est urgent ?
-                    </p>
-                    <div className="flex gap-3">
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setUrgency('normal')}
-                        className={`flex-1 p-4 rounded-xl flex flex-col items-center gap-1 transition-all ${
-                          urgency === 'normal' ? 'bg-green-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        <span className="text-2xl">🟢</span>
-                        <span className="text-sm font-medium">Normal</span>
-                      </motion.button>
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setUrgency('urgent')}
-                        className={`flex-1 p-4 rounded-xl flex flex-col items-center gap-1 transition-all ${
-                          urgency === 'urgent' ? 'bg-orange-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        <span className="text-2xl">🟠</span>
-                        <span className="text-sm font-medium">Urgent</span>
-                      </motion.button>
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setUrgency('critical')}
-                        className={`flex-1 p-4 rounded-xl flex flex-col items-center gap-1 transition-all ${
-                          urgency === 'critical' ? 'bg-red-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        <span className="text-2xl">🔴</span>
-                        <span className="text-sm font-medium">Critique</span>
-                      </motion.button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Bouton continuer */}
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleSettingsComplete}
-                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-lg flex items-center justify-center gap-3 shadow-lg"
-                >
-                  <Mic className="w-6 h-6" />
-                  🎤 Enregistrer mon message
-                </motion.button>
               </motion.div>
             )}
 
             {/* ═══════════════════════════════════════════════════════════════
-                STEP 4: ENREGISTREMENT
+                STEP 3: ENREGISTREMENT
             ═══════════════════════════════════════════════════════════════ */}
-            {step === 'record' && (
+            {step === 'record' && selectedTemplate && (
               <motion.div
                 key="record"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="space-y-6"
+                className="p-6 flex flex-col items-center"
               >
-                {/* Badge contexte */}
-                <div className="text-center">
-                  {mainCategory === 'patrimoine' && selectedHeritageType && (() => {
-                    const heritage = heritageTypes.find(h => h.type === selectedHeritageType);
-                    if (!heritage) return null;
-                    return (
-                      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${heritage.gradient} text-white font-medium mb-3`}>
-                        <span className="text-xl">{heritage.emoji}</span>
-                        {heritage.label}
-                      </div>
-                    );
-                  })()}
-                  
-                  {mainCategory === 'village_voice' && selectedVoiceType && (() => {
-                    const voice = villageVoiceTypes.find(v => v.type === selectedVoiceType);
-                    if (!voice) return null;
-                    return (
-                      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${voice.gradient} text-white font-medium mb-3`}>
-                        <span className="text-xl">{voice.emoji}</span>
-                        {voice.label}
-                      </div>
-                    );
-                  })()}
-                  
-                  <p className="text-slate-500">
-                    {getCurrentAudioPrompt()}
+                {/* Badge du template */}
+                <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-full bg-gradient-to-r ${selectedTemplate.gradient} text-white font-bold mb-4 shadow-lg`}>
+                  <span className="text-3xl">{selectedTemplate.emoji}</span>
+                  <span className="text-xl">{selectedTemplate.titleFr}</span>
+                </div>
+
+                {/* Séquence visuelle d'emojis */}
+                <div className="flex gap-2 mb-4">
+                  {selectedTemplate.visualEmojis.map((emoji, i) => (
+                    <motion.span
+                      key={i}
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="text-4xl"
+                    >
+                      {emoji}
+                    </motion.span>
+                  ))}
+                </div>
+
+                {/* Prompt */}
+                <div className="bg-slate-100 rounded-2xl p-4 mb-6 max-w-sm">
+                  <p className="text-slate-600 text-center">
+                    {currentLang === 'ba' ? selectedTemplate.audioPromptBa : selectedTemplate.audioPromptFr}
                   </p>
                 </div>
 
                 {/* Enregistreur */}
-                <div className="flex flex-col items-center py-6">
-                  <SmartVoiceRecorder
-                    onRecordingComplete={handleRecordingComplete}
-                    language={currentLang === 'ba' ? 'bariba' : 'french'}
-                  />
-                </div>
+                <SmartVoiceRecorder
+                  onRecordingComplete={handleRecordingComplete}
+                  language={currentLang === 'ba' ? 'bariba' : 'french'}
+                />
 
-                {/* Conseils */}
-                <div className="bg-slate-50 rounded-2xl p-4">
-                  <p className="text-sm text-slate-500 text-center">
-                    💡 Parlez clairement et prenez votre temps
-                  </p>
+                {/* Exemple */}
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-slate-400">💡 Exemple :</p>
+                  <p className="text-slate-500 italic">"{selectedTemplate.exampleFr}"</p>
                 </div>
               </motion.div>
             )}
 
             {/* ═══════════════════════════════════════════════════════════════
-                STEP 5: PREVIEW
+                STEP 4: PREVIEW
             ═══════════════════════════════════════════════════════════════ */}
-            {step === 'preview' && (
+            {step === 'preview' && selectedTemplate && (
               <motion.div
                 key="preview"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="space-y-4"
+                className="p-4 space-y-4"
               >
-                {/* Badges */}
-                <div className="flex flex-wrap gap-2">
-                  {mainCategory === 'patrimoine' && selectedHeritageType && (() => {
-                    const heritage = heritageTypes.find(h => h.type === selectedHeritageType);
-                    if (!heritage) return null;
-                    return (
-                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${heritage.gradient} text-white text-sm font-medium`}>
-                        <span>{heritage.emoji}</span>
-                        {heritage.label}
-                      </div>
-                    );
-                  })()}
-                  
-                  {mainCategory === 'village_voice' && selectedVoiceType && (() => {
-                    const voice = villageVoiceTypes.find(v => v.type === selectedVoiceType);
-                    if (!voice) return null;
-                    return (
-                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${voice.gradient} text-white text-sm font-medium`}>
-                        <span>{voice.emoji}</span>
-                        {voice.label}
-                      </div>
-                    );
-                  })()}
-                  
-                  <div className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${
-                    visibility === 'public' ? 'bg-green-100 text-green-700' :
-                    visibility === 'community' ? 'bg-blue-100 text-blue-700' :
-                    'bg-purple-100 text-purple-700'
-                  }`}>
-                    {visibilityOptions.find(v => v.level === visibility)?.emoji}
-                    {visibilityOptions.find(v => v.level === visibility)?.label}
+                {/* Carte de preview */}
+                <div className={`rounded-2xl bg-gradient-to-br ${selectedTemplate.gradient} p-5 text-white shadow-xl`}>
+                  <div className="flex items-center gap-4 mb-4">
+                    <span className="text-5xl">{selectedTemplate.emoji}</span>
+                    <div>
+                      <h4 className="text-2xl font-bold">{selectedTemplate.titleFr}</h4>
+                      <p className="text-white/70">{selectedTemplate.titleBa}</p>
+                    </div>
                   </div>
                   
-                  {mainCategory === 'village_voice' && (
-                    <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-teal-100 text-teal-700 text-xs font-medium">
-                      📍 {reachOptions.find(r => r.level === reach)?.label}
-                    </div>
-                  )}
-                </div>
-
-                {/* Audio indicator */}
-                {audioBase64 && (
-                  <div className={`flex items-center gap-4 rounded-2xl p-5 ${
-                    mainCategory === 'patrimoine' 
-                      ? 'bg-gradient-to-r from-amber-50 to-orange-50'
-                      : 'bg-gradient-to-r from-emerald-50 to-teal-50'
-                  }`}>
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
-                      mainCategory === 'patrimoine'
-                        ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                        : 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                    }`}>
-                      <Mic className="w-7 h-7 text-white" />
+                  {/* Emojis visuels */}
+                  <div className="flex gap-2 mb-4">
+                    {selectedTemplate.visualEmojis.map((e, i) => (
+                      <span key={i} className="text-3xl">{e}</span>
+                    ))}
+                  </div>
+                  
+                  {/* Audio indicator */}
+                  <div className="bg-white/20 rounded-xl p-4 flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-white/30 flex items-center justify-center">
+                      🎤
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-slate-800 text-lg">
-                        {mainCategory === 'patrimoine' ? '🏛️ Patrimoine' : '📢 Message'}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {audioDuration}s enregistré{transcriptionFailed ? ' (sans texte)' : ''}
-                      </p>
+                      <p className="font-bold">Audio enregistré</p>
+                      <p className="text-white/70 text-sm">{audioDuration}s</p>
                     </div>
-                    <Check className={`w-8 h-8 ${
-                      mainCategory === 'patrimoine' ? 'text-amber-500' : 'text-emerald-500'
-                    }`} />
+                    <span className="text-3xl">✅</span>
                   </div>
-                )}
+                </div>
 
-                {/* Transcript */}
+                {/* Transcription */}
                 {transcript && (
                   <div className="bg-slate-50 rounded-2xl p-4">
-                    <p className="text-sm text-slate-400 mb-1">📝 Transcription</p>
+                    <p className="text-sm text-slate-400 mb-1">📝 Ce que vous avez dit :</p>
                     <p className="text-slate-700">{transcript}</p>
                   </div>
                 )}
 
-                {/* Emoji selector */}
-                <div>
-                  <p className="text-sm text-slate-400 mb-2">Comment vous sentez-vous ?</p>
-                  <div className="flex flex-wrap gap-2">
-                    {feelingEmojis.map(emoji => (
-                      <motion.button
-                        key={emoji}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => {
-                          setSelectedEmoji(emoji === selectedEmoji ? null : emoji);
-                          triggerFeedback('notification');
-                        }}
-                        className={`text-3xl p-2 rounded-xl ${
-                          selectedEmoji === emoji ? 'bg-blue-100 ring-2 ring-blue-500' : 'bg-slate-50'
-                        }`}
-                      >
-                        {emoji}
-                      </motion.button>
-                    ))}
-                  </div>
+                {/* Badges info */}
+                <div className="flex flex-wrap gap-2">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    selectedTemplate.visibility === 'public' 
+                      ? 'bg-green-100 text-green-700' 
+                      : selectedTemplate.visibility === 'community'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-purple-100 text-purple-700'
+                  }`}>
+                    {selectedTemplate.visibility === 'public' ? '🌍 Public' : 
+                     selectedTemplate.visibility === 'community' ? '🏘️ Village' : '🔒 Privé'}
+                  </span>
+                  {selectedTemplate.urgency && (
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      selectedTemplate.urgency === 'critical' 
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {selectedTemplate.urgency === 'critical' ? '🔴 Critique' : '🟠 Urgent'}
+                    </span>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -1274,28 +1584,26 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setStep('record')}
-              className="py-4 px-6 rounded-2xl bg-slate-100 text-slate-600 font-medium flex items-center gap-2"
+              className="py-4 px-6 rounded-2xl bg-slate-100 text-slate-600 font-bold text-lg flex items-center gap-2"
             >
-              <RotateCcw className="w-5 h-5" />
-              Refaire
+              🔄 Refaire
             </motion.button>
             
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`flex-1 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 ${
-                mainCategory === 'patrimoine'
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
-                  : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+              className={`flex-1 py-4 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 text-white shadow-lg ${
+                selectedTemplate?.category === 'patrimoine'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-500'
               }`}
             >
               {isSubmitting ? (
                 <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
                 <>
-                  <Send className="w-6 h-6" />
-                  Envoyer
+                  📤 Envoyer
                 </>
               )}
             </motion.button>
