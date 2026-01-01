@@ -344,20 +344,17 @@ export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen = t
   const onApplyTemplate = useCallback((t: AITemplate) => { setMagicOpen(false); if (!topic) setTopic(t.title); }, [topic]);
 
   const createLive = useCallback(async () => {
-    try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session?.user.id) { alert(language === 'ba' ? 'Wọle' : 'Connecte-toi'); return; }
-      const { data, error } = await supabase.from('live_sessions').insert({ creator_id: session.session.user.id, title: topic || 'LIVE', status: 'live', started_at: new Date().toISOString() }).select('id').single();
-      if (error) throw error;
-      setLiveSessionId(data.id); setLivePanelOpen(true);
-    } catch { alert(language === 'ba' ? 'Asise' : 'Erreur'); }
-  }, [language, topic]);
+    // LIVE feature coming soon - tables not yet available
+    console.log('LIVE feature coming soon');
+    alert(language === 'ba' ? 'LIVE n bɔ laipe!' : 'Fonctionnalité LIVE bientôt disponible!');
+  }, [language]);
 
   const sendLive = useCallback(async () => {
-    if (!liveInput.trim() || !liveSessionId) return; setLiveInput('');
-    try { const { supabase } = await import('@/integrations/supabase/client'); const { data: session } = await supabase.auth.getSession(); await supabase.from('live_messages').insert({ session_id: liveSessionId, user_id: session.session?.user.id, display_name: session.session?.user.email?.split('@')[0] ?? 'viewer', message: liveInput, lang: language }); } catch { /* ignore */ }
-  }, [language, liveInput, liveSessionId]);
+    // LIVE messages feature coming soon
+    if (!liveInput.trim()) return;
+    console.log('LIVE message:', liveInput);
+    setLiveInput('');
+  }, [liveInput]);
 
   if (!isOpen) return null;
 
