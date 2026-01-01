@@ -42,28 +42,25 @@ export const scaleCssFilter = (cssFilter: string, intensity: number): string => 
 };
 
 export const VIDEO_FILTERS: VideoFilter[] = [
-  { id: 'none', name: 'Original', name_ba: 'Àdáwà', icon: '📷', cssFilter: 'none', intensity: 100, category: 'beauty' },
-  { id: 'beauty', name: 'Beauté', name_ba: 'Ẹwà', icon: '✨', cssFilter: 'brightness(1.05) contrast(0.95) saturate(1.1) blur(0.3px)', intensity: 50, category: 'beauty' },
-  { id: 'soft_glow', name: 'Lueur Douce', name_ba: 'Ìmọ̀lẹ̀ Rírọ̀', icon: '🌟', cssFilter: 'brightness(1.1) contrast(0.9) saturate(1.05)', intensity: 60, category: 'beauty' },
-  { id: 'smooth', name: 'Lisse', name_ba: 'Dídán', icon: '💎', cssFilter: 'brightness(1.02) contrast(0.98) blur(0.5px)', intensity: 40, category: 'beauty' },
-  { id: 'porcelain', name: 'Porcelaine', name_ba: 'Àwọ̀ Funfun', icon: '🎀', cssFilter: 'brightness(1.08) contrast(0.92) saturate(0.95) blur(0.4px)', intensity: 55, category: 'beauty' },
-  
-  { id: 'warm', name: 'Chaud', name_ba: 'Gbígbóná', icon: '🔥', cssFilter: 'sepia(0.2) saturate(1.3) brightness(1.05)', intensity: 50, category: 'color' },
-  { id: 'cool', name: 'Froid', name_ba: 'Tutù', icon: '❄️', cssFilter: 'saturate(0.9) brightness(1.05) hue-rotate(10deg)', intensity: 50, category: 'color' },
-  { id: 'vivid', name: 'Vif', name_ba: 'Kíkankíkan', icon: '🌈', cssFilter: 'saturate(1.5) contrast(1.1) brightness(1.05)', intensity: 60, category: 'color' },
-  { id: 'pastel', name: 'Pastel', name_ba: 'Àwọ̀ Rírọ̀', icon: '🌸', cssFilter: 'saturate(0.7) brightness(1.12) contrast(0.88)', intensity: 65, category: 'color' },
-  
-  { id: 'vintage', name: 'Vintage', name_ba: 'Àtijọ́', icon: '📻', cssFilter: 'sepia(0.4) contrast(1.1) brightness(0.95) saturate(0.9)', intensity: 70, category: 'artistic' },
-  { id: 'noir', name: 'Noir & Blanc', name_ba: 'Dúdú àti Funfun', icon: '🎬', cssFilter: 'grayscale(1) contrast(1.2) brightness(1.05)', intensity: 100, category: 'artistic' },
-  { id: 'neon', name: 'Néon', name_ba: 'Ìmọ̀lẹ̀ Dídán', icon: '💜', cssFilter: 'saturate(2) contrast(1.3) brightness(1.1) hue-rotate(-10deg)', intensity: 80, category: 'artistic' },
-  { id: 'cyberpunk', name: 'Cyberpunk', name_ba: 'Ọjọ́ Ọ̀la', icon: '🤖', cssFilter: 'saturate(1.8) contrast(1.4) brightness(0.95) hue-rotate(180deg)', intensity: 70, category: 'artistic' },
-  { id: 'film', name: 'Film', name_ba: 'Fíìmù', icon: '🎞️', cssFilter: 'sepia(0.15) contrast(1.15) brightness(0.95) saturate(1.1)', intensity: 50, category: 'artistic' },
-  
-  { id: 'dreamy', name: 'Rêveur', name_ba: 'Àlá', icon: '💭', cssFilter: 'brightness(1.1) contrast(0.85) saturate(1.1) blur(0.8px)', intensity: 60, category: 'mood' },
-  { id: 'dramatic', name: 'Dramatique', name_ba: 'Ẹ̀rù', icon: '🎭', cssFilter: 'contrast(1.4) brightness(0.9) saturate(0.8)', intensity: 70, category: 'mood' },
-  { id: 'sunrise', name: 'Lever de Soleil', name_ba: 'Ìmọ̀lẹ̀ Àárọ̀', icon: '🌅', cssFilter: 'sepia(0.3) saturate(1.4) brightness(1.1) hue-rotate(-15deg)', intensity: 60, category: 'mood' },
-  { id: 'sunset', name: 'Coucher de Soleil', name_ba: 'Ìrọ̀lẹ̀', icon: '🌇', cssFilter: 'sepia(0.4) saturate(1.3) brightness(1.0) hue-rotate(10deg)', intensity: 65, category: 'mood' },
-  { id: 'moody', name: 'Atmosphérique', name_ba: 'Ọkàn Dúdú', icon: '🌑', cssFilter: 'brightness(0.85) contrast(1.25) saturate(0.9)', intensity: 75, category: 'mood' },
+  { id: 'none', name: 'Original', name_ba: 'Atilẹba', icon: '📷', cssFilter: 'none', intensity: 100, category: 'beauty' },
+  { id: 'beauty', name: 'Beauté', name_ba: 'Ẹwa', icon: '✨', cssFilter: 'brightness(1.05) contrast(0.95) saturate(1.1) blur(0.3px)', intensity: 50, category: 'beauty' },
+  { id: 'soft_glow', name: 'Lueur Douce', name_ba: 'Imọlẹ Riro', icon: '🌟', cssFilter: 'brightness(1.1) contrast(0.9) saturate(1.05)', intensity: 60, category: 'beauty' },
+  { id: 'smooth', name: 'Lisse', name_ba: 'Didan', icon: '💎', cssFilter: 'brightness(1.02) contrast(0.98) blur(0.5px)', intensity: 40, category: 'beauty' },
+  { id: 'porcelain', name: 'Porcelaine', name_ba: 'Awọ Funfun', icon: '🎀', cssFilter: 'brightness(1.08) contrast(0.92) saturate(0.95) blur(0.4px)', intensity: 55, category: 'beauty' },
+  { id: 'warm', name: 'Chaud', name_ba: 'Gbigbona', icon: '🔥', cssFilter: 'sepia(0.2) saturate(1.3) brightness(1.05)', intensity: 50, category: 'color' },
+  { id: 'cool', name: 'Froid', name_ba: 'Tutu', icon: '❄️', cssFilter: 'saturate(0.9) brightness(1.05) hue-rotate(10deg)', intensity: 50, category: 'color' },
+  { id: 'vivid', name: 'Vif', name_ba: 'Kikan', icon: '🌈', cssFilter: 'saturate(1.5) contrast(1.1) brightness(1.05)', intensity: 60, category: 'color' },
+  { id: 'pastel', name: 'Pastel', name_ba: 'Awọ Riro', icon: '🌸', cssFilter: 'saturate(0.7) brightness(1.12) contrast(0.88)', intensity: 65, category: 'color' },
+  { id: 'vintage', name: 'Vintage', name_ba: 'Atijo', icon: '📻', cssFilter: 'sepia(0.4) contrast(1.1) brightness(0.95) saturate(0.9)', intensity: 70, category: 'artistic' },
+  { id: 'noir', name: 'Noir & Blanc', name_ba: 'Dudu ati Funfun', icon: '🎬', cssFilter: 'grayscale(1) contrast(1.2) brightness(1.05)', intensity: 100, category: 'artistic' },
+  { id: 'neon', name: 'Néon', name_ba: 'Imọlẹ Didan', icon: '💜', cssFilter: 'saturate(2) contrast(1.3) brightness(1.1) hue-rotate(-10deg)', intensity: 80, category: 'artistic' },
+  { id: 'cyberpunk', name: 'Cyberpunk', name_ba: 'Ọjọ Ọla', icon: '🤖', cssFilter: 'saturate(1.8) contrast(1.4) brightness(0.95) hue-rotate(180deg)', intensity: 70, category: 'artistic' },
+  { id: 'film', name: 'Film', name_ba: 'Fiimu', icon: '🎞️', cssFilter: 'sepia(0.15) contrast(1.15) brightness(0.95) saturate(1.1)', intensity: 50, category: 'artistic' },
+  { id: 'dreamy', name: 'Rêveur', name_ba: 'Ala', icon: '💭', cssFilter: 'brightness(1.1) contrast(0.85) saturate(1.1) blur(0.8px)', intensity: 60, category: 'mood' },
+  { id: 'dramatic', name: 'Dramatique', name_ba: 'Eru', icon: '🎭', cssFilter: 'contrast(1.4) brightness(0.9) saturate(0.8)', intensity: 70, category: 'mood' },
+  { id: 'sunrise', name: 'Lever de Soleil', name_ba: 'Imọlẹ Aaro', icon: '🌅', cssFilter: 'sepia(0.3) saturate(1.4) brightness(1.1) hue-rotate(-15deg)', intensity: 60, category: 'mood' },
+  { id: 'sunset', name: 'Coucher de Soleil', name_ba: 'Irolẹ', icon: '🌇', cssFilter: 'sepia(0.4) saturate(1.3) brightness(1.0) hue-rotate(10deg)', intensity: 65, category: 'mood' },
+  { id: 'moody', name: 'Atmosphérique', name_ba: 'Okan Dudu', icon: '🌑', cssFilter: 'brightness(0.85) contrast(1.25) saturate(0.9)', intensity: 75, category: 'mood' },
 ];
 
 interface VideoFiltersProps {
@@ -75,7 +72,6 @@ interface VideoFiltersProps {
   language?: 'fr' | 'ba';
 }
 
-// Composant pour les indicateurs de défilement horizontal
 const ScrollIndicator: React.FC<{ direction: 'left' | 'right'; onClick: () => void; visible: boolean }> = ({
   direction,
   onClick,
@@ -106,19 +102,16 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
   const [activeCategory, setActiveCategory] = useState<VideoFilter['category']>(initialCategory);
   const [customIntensity, setCustomIntensity] = useState<number>(currentFilter?.intensity ?? 60);
   const [isAdjusting, setIsAdjusting] = useState(false);
-  
-  // Refs pour le défilement
   const categoriesRef = useRef<HTMLDivElement>(null);
-  const filtersGridRef = useRef<HTMLDivElement>(null);
   const [canScrollCatLeft, setCanScrollCatLeft] = useState(false);
   const [canScrollCatRight, setCanScrollCatRight] = useState(false);
 
   const categories = useMemo(
     () => [
-      { id: 'beauty' as const, label: language === 'ba' ? 'Ẹwà' : 'Beauté', icon: <Sparkles className="w-4 h-4" /> },
-      { id: 'color' as const, label: language === 'ba' ? 'Àwọ̀' : 'Couleur', icon: <Sun className="w-4 h-4" /> },
-      { id: 'artistic' as const, label: language === 'ba' ? 'Ọnà' : 'Artistique', icon: <Camera className="w-4 h-4" /> },
-      { id: 'mood' as const, label: language === 'ba' ? 'Ọkàn' : 'Ambiance', icon: <Palette className="w-4 h-4" /> },
+      { id: 'beauty' as const, label: language === 'ba' ? 'Ẹwa' : 'Beauté', icon: <Sparkles className="w-4 h-4" /> },
+      { id: 'color' as const, label: language === 'ba' ? 'Awọ' : 'Couleur', icon: <Sun className="w-4 h-4" /> },
+      { id: 'artistic' as const, label: language === 'ba' ? 'Ọna' : 'Artistique', icon: <Camera className="w-4 h-4" /> },
+      { id: 'mood' as const, label: language === 'ba' ? 'Okan' : 'Ambiance', icon: <Palette className="w-4 h-4" /> },
     ],
     [language]
   );
@@ -128,14 +121,12 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
     [activeCategory]
   );
 
-  // Synchroniser l'intensité avec le filtre actuel
   useEffect(() => {
     if (currentFilter) {
       setCustomIntensity(currentFilter.intensity);
     }
   }, [currentFilter?.id]);
 
-  // Vérifier les possibilités de défilement des catégories
   const checkCategoryScrollability = useCallback(() => {
     if (categoriesRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = categoriesRef.current;
@@ -179,7 +170,6 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
     setIsAdjusting(false);
   }, []);
 
-  // Bouton Reset pour désactiver tous les filtres
   const handleReset = useCallback(() => {
     const noFilter = VIDEO_FILTERS.find(f => f.id === 'none');
     if (noFilter) {
@@ -188,8 +178,7 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
     }
   }, [onSelectFilter]);
 
-  // Gestion du glissement vers le bas pour fermer
-  const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = useCallback((_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.velocity.y > 500 || info.offset.y > 150) {
       onClose();
     }
@@ -223,29 +212,25 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
             borderTop: '1px solid rgba(255, 255, 255, 0.1)',
           }}
         >
-          {/* Drag Handle */}
           <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
             <div className="w-10 h-1 bg-white/30 rounded-full" />
           </div>
 
-          {/* Header */}
           <div className="px-4 pb-3 flex items-center justify-between flex-shrink-0">
             <div>
               <h3 className="text-white font-semibold text-lg">
-                {language === 'ba' ? 'Àwọ̀ Fídíò' : 'Filtres & Beauté'}
+                {language === 'ba' ? 'Awọ Fidio' : 'Filtres & Beauté'}
               </h3>
               <p className="text-white/60 text-xs">
-                {language === 'ba' ? 'Yàn àwọ̀, ṣàtúnṣe ìkankíkan' : "Choisir et ajuster l'intensité"}
+                {language === 'ba' ? 'Yan awọ, satunse ikankan' : "Choisir et ajuster l'intensité"}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {/* Bouton Reset */}
               {currentFilter && currentFilter.id !== 'none' && (
                 <button
                   onClick={handleReset}
                   className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"
-                  aria-label={language === 'ba' ? 'Tún padà' : 'Réinitialiser'}
-                  title={language === 'ba' ? 'Tún padà' : 'Réinitialiser les filtres'}
+                  aria-label={language === 'ba' ? 'Tun pada' : 'Réinitialiser'}
                 >
                   <RotateCcw className="w-4 h-4 text-white" />
                 </button>
@@ -253,37 +238,23 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
               <button 
                 onClick={onClose}
                 className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"
-                aria-label={language === 'ba' ? 'Padé' : 'Fermer'}
-                title={language === 'ba' ? 'Padé' : 'Fermer'}
+                aria-label={language === 'ba' ? 'Pade' : 'Fermer'}
               >
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
           </div>
 
-          {/* Category Tabs - Défilement horizontal amélioré */}
           <div className="px-4 pb-3 flex-shrink-0">
             <div className="relative">
-              {/* Indicateurs de défilement */}
-              <ScrollIndicator
-                direction="left"
-                onClick={() => scrollCategories('left')}
-                visible={canScrollCatLeft}
-              />
-              <ScrollIndicator
-                direction="right"
-                onClick={() => scrollCategories('right')}
-                visible={canScrollCatRight}
-              />
-
-              {/* Gradients visuels */}
+              <ScrollIndicator direction="left" onClick={() => scrollCategories('left')} visible={canScrollCatLeft} />
+              <ScrollIndicator direction="right" onClick={() => scrollCategories('right')} visible={canScrollCatRight} />
               {canScrollCatLeft && (
                 <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[rgba(20,20,25,0.95)] to-transparent z-[5] pointer-events-none" />
               )}
               {canScrollCatRight && (
                 <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[rgba(20,20,25,0.95)] to-transparent z-[5] pointer-events-none" />
               )}
-
               <div
                 ref={categoriesRef}
                 onScroll={checkCategoryScrollability}
@@ -309,14 +280,13 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
             </div>
           </div>
 
-          {/* Intensity Slider */}
           {currentFilter && currentFilter.id !== 'none' && (
             <div className="px-4 pb-3 flex-shrink-0">
               <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
                 <div className="flex items-center gap-3 mb-2">
                   <Sliders className="w-4 h-4 text-white/60" />
                   <span className="text-white/80 text-sm font-medium">
-                    {language === 'ba' ? 'Ìkankíkan' : 'Intensité'}
+                    {language === 'ba' ? 'Ikankan' : 'Intensité'}
                   </span>
                   <div className="flex-1" />
                   <span className="text-white font-semibold text-sm tabular-nums">
@@ -335,15 +305,13 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
                   style={{
                     background: `linear-gradient(to right, rgb(168, 85, 247) 0%, rgb(236, 72, 153) ${customIntensity}%, rgba(255,255,255,0.1) ${customIntensity}%, rgba(255,255,255,0.1) 100%)`,
                   }}
-                  aria-label={language === 'ba' ? 'Ìkankíkan àṣàyàn' : "Intensité du filtre"}
+                  aria-label={language === 'ba' ? 'Ikankan asayan' : "Intensité du filtre"}
                 />
               </div>
             </div>
           )}
 
-          {/* Filters Grid - Défilement vertical avec snap */}
           <div 
-            ref={filtersGridRef}
             className="px-4 pb-6 grid grid-cols-4 gap-3 max-h-[50vh] overflow-y-auto scroll-smooth snap-y snap-mandatory overscroll-contain flex-1"
             style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.2) transparent' }}
           >
@@ -362,7 +330,6 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
                   }`}
                   aria-pressed={isSelected}
                   aria-label={language === 'ba' && filter.name_ba ? filter.name_ba : filter.name}
-                  title={language === 'ba' && filter.name_ba ? filter.name_ba : filter.name}
                 >
                   <div
                     className="absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400"
@@ -376,7 +343,6 @@ export const VideoFiltersPanel: React.FC<VideoFiltersProps> = ({
                       {language === 'ba' && filter.name_ba ? filter.name_ba : filter.name}
                     </span>
                   </div>
-
                   {isSelected && (
                     <motion.div 
                       initial={{ scale: 0 }}
@@ -412,20 +378,15 @@ export const useVideoFilter = () => {
     (videoElement: HTMLVideoElement, canvas: HTMLCanvasElement, filter: VideoFilter, intensity?: number) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-
       stopFilter();
-
       canvas.width = videoElement.videoWidth || 640;
       canvas.height = videoElement.videoHeight || 480;
-
       const css = scaleCssFilter(filter.cssFilter, intensity ?? filter.intensity ?? 100);
-
       const render = () => {
         ctx.filter = css === 'none' ? 'none' : css;
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
         animationRef.current = requestAnimationFrame(render);
       };
-
       render();
     },
     [stopFilter]
@@ -436,16 +397,12 @@ export const useVideoFilter = () => {
     return { filter: scaleCssFilter(filter.cssFilter, intensity) };
   }, []);
 
-  // Réinitialiser le filtre
   const resetFilter = useCallback(() => {
     setCurrentFilter(VIDEO_FILTERS[0]);
   }, []);
 
-  // Nettoyer à la fermeture du panneau
   useEffect(() => {
-    return () => {
-      stopFilter();
-    };
+    return () => { stopFilter(); };
   }, [stopFilter]);
 
   return {
