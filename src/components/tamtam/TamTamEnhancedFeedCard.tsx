@@ -27,6 +27,8 @@ export interface EnhancedPost {
   shares_count: number | null;
   duration_seconds: number | null;
   created_at: string | null;
+  template_id?: string | null;
+  topic?: string | null;
   // Poll data
   poll_options?: { id: string; audio_url: string; votes: number; transcript?: string }[];
   poll_total_votes?: number;

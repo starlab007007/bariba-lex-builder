@@ -66,7 +66,7 @@ export default function TamTamSocial() {
   const { rankPosts, recordInteraction } = useFeedAlgorithm({ prioritizeUtility: true, prioritizeCulture: true });
 
   const [activeTab, setActiveTab] = useState('feed');
-  const [feedMode, setFeedMode] = useState<FeedMode>('radio');
+  const [feedMode, setFeedMode] = useState<FeedMode>('creation');
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [showStoryCreator, setShowStoryCreator] = useState(false);
@@ -366,7 +366,17 @@ export default function TamTamSocial() {
                   </motion.button>
                 </div>
               ) : (
-                feedItems.map(item => {
+                feedItems
+                  .filter(item => {
+                    // In creation mode, show only multimedia content (video, photo, posts with templates)
+                    if (feedMode === 'creation') {
+                      if (item.type === 'poll') return false;
+                      const post = item.data as EnhancedPost;
+                      return post.media_type === 'video' || post.media_type === 'photo' || post.template_id;
+                    }
+                    return true;
+                  })
+                  .map(item => {
                   if (item.type === 'poll') {
                     return (
                       <TamTamPollCard
@@ -394,6 +404,7 @@ export default function TamTamSocial() {
                     );
                   }
                   
+                  // Use TamTamEnhancedFeedCard for creation/discovery/village modes
                   return (
                     <TamTamEnhancedFeedCard
                       key={`post-${item.data.id}`}
@@ -492,7 +503,18 @@ export default function TamTamSocial() {
       <FullscreenCreator
         isOpen={showGuidedCreator}
         onClose={() => setShowGuidedCreator(false)}
-        onComplete={async () => {
+        onComplete={async (data) => {
+          // Create post with data from FullscreenCreator
+          await createPost({
+            audio_url: data.audio_url,
+            media_type: data.media_type,
+            media_url: data.media_url,
+            transcript_fr: data.transcript_fr || '',
+            transcript_ba: data.transcript_ba || '',
+            topic: data.topic,
+            template_id: data.template_id,
+            duration_seconds: data.duration_seconds,
+          });
           toast({ title: "✅ Publié avec succès !" });
           triggerFeedback('success');
           fetchPosts(); // Refresh feed
