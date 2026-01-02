@@ -1,15 +1,36 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Heart, Mic, Share2, Bookmark, Play, Pause, 
-  MessageCircle, RefreshCw, Volume2, VolumeX,
-  MoreHorizontal, Flag, Download
+  Heart, Mic, Share2, Bookmark, Play, Pause, Volume2, VolumeX,
+  MoreHorizontal, Flag, Download, MessageCircle, RefreshCw, 
+  Sparkles, TrendingUp, Users, X, ChevronDown
 } from 'lucide-react';
-import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-import { triggerFeedback } from '@/utils/tamtamFeedback';
-import { cn } from '@/lib/utils';
 
-// Topic icons for visual categorization
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface VideoPost {
+  id: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  transcriptFr?: string;
+  transcriptBa?: string;
+  topic?: string;
+  topicEmoji?: string;
+  duration: number;
+  author: {
+    name: string;
+    username: string;
+    avatarUrl?: string;
+  };
+  likes: number;
+  comments: number;
+  shares: number;
+  isLiked?: boolean;
+  isSaved?: boolean;
+}
+
 const TOPIC_ICONS: Record<string, string> = {
   agriculture: '🌾',
   sante: '🩺',
@@ -23,38 +44,10 @@ const TOPIC_ICONS: Record<string, string> = {
   default: '🎬'
 };
 
-interface VideoPost {
-  id: string;
-  media_url: string;
-  audio_url?: string;
-  thumbnail_url?: string | null;
-  transcript_fr?: string | null;
-  transcript_ba?: string | null;
-  template_id?: string | null;
-  topic?: string | null;
-  duration_seconds?: number | null;
-  user?: {
-    display_name?: string;
-    avatar_url?: string;
-    username?: string;
-  };
-  likes_count?: number;
-  comments_count?: number;
-  shares_count?: number;
-  created_at: string;
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPOSANT: CARTE VIDÉO
+// ═══════════════════════════════════════════════════════════════════════════
 
-interface TamTamVideoFeedProps {
-  posts: VideoPost[];
-  onLike?: (postId: string) => void;
-  onComment?: (postId: string) => void;
-  onShare?: (postId: string) => void;
-  onRemix?: (postId: string) => void;
-  onSave?: (postId: string) => void;
-  onRespond?: (postId: string) => void;
-}
-
-// Video Card Component
 const VideoCard: React.FC<{
   post: VideoPost;
   isActive: boolean;
@@ -70,41 +63,22 @@ const VideoCard: React.FC<{
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showOptions, setShowOptions] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
+  const [isLiked, setIsLiked] = useState(post.isLiked || false);
+  const [isSaved, setIsSaved] = useState(post.isSaved || false);
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
 
-  const { speak, isSpeaking } = useFrenchTTS();
-  const topicIcon = TOPIC_ICONS[post.topic || 'default'] || TOPIC_ICONS.default;
+  const topicIcon = post.topicEmoji || TOPIC_ICONS[post.topic || 'default'] || TOPIC_ICONS.default;
 
-  // Auto-play with TTS intro when active
   useEffect(() => {
     if (isActive && videoRef.current) {
-      // Play short TTS intro
-      if (!hasPlayedIntro) {
-        const introText = post.topic 
-          ? `${post.topic}${post.user?.display_name ? ` par ${post.user.display_name}` : ''}`
-          : `Vidéo${post.user?.display_name ? ` de ${post.user.display_name}` : ''}`;
-        
-        speak(introText);
-        setHasPlayedIntro(true);
-        // Start video after brief TTS delay
-        const timer = setTimeout(() => {
-          videoRef.current?.play().catch(console.error);
-          setIsPlaying(true);
-        }, 1200);
-        return () => clearTimeout(timer);
-      } else {
-        videoRef.current.play().catch(console.error);
-        setIsPlaying(true);
-      }
+      videoRef.current.play().catch(console.error);
+      setIsPlaying(true);
     } else if (!isActive && videoRef.current) {
       videoRef.current.pause();
       setIsPlaying(false);
     }
-  }, [isActive, hasPlayedIntro, speak, post.topic, post.user]);
+  }, [isActive]);
 
-  // Video event handlers
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -137,255 +111,210 @@ const VideoCard: React.FC<{
       videoRef.current.play().catch(console.error);
       setIsPlaying(true);
     }
-    triggerFeedback('notification');
   };
 
   const toggleMute = () => {
     if (!videoRef.current) return;
     videoRef.current.muted = !isMuted;
     setIsMuted(!isMuted);
-    triggerFeedback('notification');
   };
 
   const handleDoubleTap = () => {
     if (!isLiked) {
       setIsLiked(true);
+      setShowLikeAnimation(true);
       onLike();
-      triggerFeedback('like');
-      speak('Aimé');
+      setTimeout(() => setShowLikeAnimation(false), 1000);
     }
   };
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
+    const newLikedState = !isLiked;
+    setIsLiked(newLikedState);
+    if (newLikedState) {
+      setShowLikeAnimation(true);
+      setTimeout(() => setShowLikeAnimation(false), 800);
+    }
     onLike();
-    triggerFeedback('like');
-    speak(isLiked ? 'Retiré' : 'Aimé');
-  };
-
-  const handleRespond = () => {
-    onRespond();
-    triggerFeedback('record');
-    speak('Réponds en vidéo');
-  };
-
-  const handleRemix = () => {
-    onRemix();
-    triggerFeedback('notification');
-    speak('Remixer');
-  };
-
-  const handleShare = () => {
-    onShare();
-    triggerFeedback('send');
-    speak('Partager');
   };
 
   const handleSave = () => {
     setIsSaved(!isSaved);
     onSave();
-    triggerFeedback('success');
-    speak(isSaved ? 'Retiré' : 'Enregistré');
-  };
-
-  const handleLongPress = () => {
-    setShowOptions(true);
-    triggerFeedback('notification');
   };
 
   return (
     <div className="h-screen w-full snap-start snap-always relative bg-black">
-      {/* Video */}
       <video
         ref={videoRef}
-        src={post.media_url}
-        poster={post.thumbnail_url || undefined}
+        src={post.videoUrl}
+        poster={post.thumbnailUrl}
         className="absolute inset-0 w-full h-full object-cover"
         playsInline
         loop
         muted={isMuted}
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          handleLongPress();
-        }}
       />
 
-      {/* Play/Pause overlay */}
       <AnimatePresence>
         {!isPlaying && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.5 }}
+            initial={{ opacity: 0, scale: 0.6 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            className="absolute inset-0 flex items-center justify-center bg-black/20"
+            exit={{ opacity: 0, scale: 0.6 }}
+            className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none"
           >
-            <div className="w-20 h-20 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center">
-              <Play className="w-10 h-10 text-white ml-1" fill="white" />
+            <div className="w-24 h-24 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center shadow-2xl">
+              <Play className="w-12 h-12 text-white ml-2" fill="white" />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Progress bar */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-white/20">
         <motion.div
-          className="h-full bg-white"
+          className="h-full bg-white shadow-lg"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      {/* Topic badge */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="absolute top-16 left-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-lg"
+        className="absolute top-16 left-4 px-4 py-2 rounded-full bg-black/50 backdrop-blur-xl border border-white/10 shadow-xl"
       >
-        <span className="text-white text-sm font-medium">
-          {topicIcon} {post.topic || 'Vidéo'}
+        <span className="text-white text-base font-semibold flex items-center gap-2">
+          <span className="text-2xl">{topicIcon}</span>
+          {post.topic || 'Vidéo'}
         </span>
       </motion.div>
 
-      {/* Mute button */}
       <motion.button
         whileTap={{ scale: 0.9 }}
         onClick={toggleMute}
-        className="absolute top-16 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-lg flex items-center justify-center"
+        className="absolute top-16 right-4 w-12 h-12 rounded-full bg-black/50 backdrop-blur-xl flex items-center justify-center border border-white/10 shadow-xl"
       >
         {isMuted ? (
-          <VolumeX className="w-5 h-5 text-white" />
+          <VolumeX className="w-6 h-6 text-white" />
         ) : (
-          <Volume2 className="w-5 h-5 text-white" />
+          <Volume2 className="w-6 h-6 text-white" />
         )}
       </motion.button>
 
-      {/* User info - Bottom left */}
-      <div className="absolute bottom-32 left-4 right-20">
-        <div className="flex items-center gap-3 mb-3">
-          {post.user?.avatar_url ? (
-            <img
-              src={post.user.avatar_url}
-              alt={post.user.display_name}
-              className="w-12 h-12 rounded-full border-2 border-white object-cover"
+      <div className="absolute bottom-36 left-5 right-24 z-10">
+        <div className="flex items-center gap-3 mb-4">
+          {post.author.avatarUrl ? (
+            <motion.img
+              whileHover={{ scale: 1.05 }}
+              src={post.author.avatarUrl}
+              alt={post.author.name}
+              className="w-14 h-14 rounded-full border-2 border-white object-cover shadow-lg"
             />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-xl text-white border-2 border-white">
-              {(post.user?.display_name || 'A')[0].toUpperCase()}
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl text-white border-2 border-white shadow-lg font-bold">
+              {post.author.name[0].toUpperCase()}
             </div>
           )}
           <div>
-            <p className="text-white font-semibold text-lg drop-shadow-lg">
-              {post.user?.display_name || 'Anonyme'}
+            <p className="text-white font-bold text-lg drop-shadow-2xl">
+              {post.author.name}
             </p>
-            {post.user?.username && (
-              <p className="text-white/70 text-sm">@{post.user.username}</p>
-            )}
+            <p className="text-white/80 text-sm drop-shadow-lg">@{post.author.username}</p>
           </div>
         </div>
 
-        {/* Transcript / Smart subtitles */}
-        {(post.transcript_fr || post.transcript_ba) && (
+        {(post.transcriptFr || post.transcriptBa) && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-black/40 backdrop-blur-sm rounded-xl px-4 py-2 max-w-sm"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-black/50 backdrop-blur-xl rounded-2xl px-5 py-3 max-w-md border border-white/10 shadow-2xl"
           >
-            <p className="text-white text-base line-clamp-2">
-              {post.transcript_fr || post.transcript_ba}
+            <p className="text-white text-base leading-relaxed line-clamp-3">
+              {post.transcriptFr || post.transcriptBa}
             </p>
           </motion.div>
         )}
-
-        {/* Topic pictos when no transcript */}
-        {!post.transcript_fr && !post.transcript_ba && post.topic && (
-          <div className="flex gap-2">
-            {Object.entries(TOPIC_ICONS)
-              .filter(([key]) => post.topic?.includes(key))
-              .slice(0, 3)
-              .map(([key, icon]) => (
-                <span key={key} className="text-3xl drop-shadow-lg">{icon}</span>
-              ))}
-          </div>
-        )}
       </div>
 
-      {/* Action buttons - Right column XXL */}
-      <div className="fixed right-3 bottom-36 flex flex-col gap-5 z-10">
+      <div className="absolute right-4 bottom-40 flex flex-col gap-6 z-10">
         <ActionButton
           icon={Heart}
-          label={String(post.likes_count || 0)}
+          label={String(post.likes + (isLiked ? 1 : 0))}
           isActive={isLiked}
-          activeColor="text-red-500"
           onClick={handleLike}
-          size="xl"
         />
         <ActionButton
           icon={MessageCircle}
-          label={String(post.comments_count || 0)}
+          label={String(post.comments)}
           onClick={onComment}
-          size="xl"
         />
         <ActionButton
           icon={Mic}
           label="Répondre"
-          onClick={handleRespond}
-          size="xl"
+          onClick={onRespond}
         />
         <ActionButton
           icon={RefreshCw}
           label="Remix"
-          onClick={handleRemix}
-          size="xl"
+          onClick={onRemix}
         />
         <ActionButton
           icon={Share2}
           label="Partager"
-          onClick={handleShare}
-          size="xl"
+          onClick={onShare}
         />
         <ActionButton
           icon={Bookmark}
-          label="Sauver"
+          label=""
           isActive={isSaved}
-          activeColor="text-yellow-500"
           onClick={handleSave}
-          size="xl"
+        />
+        <ActionButton
+          icon={MoreHorizontal}
+          label=""
+          onClick={() => setShowOptions(true)}
         />
       </div>
 
-      {/* Options modal */}
       <AnimatePresence>
         {showOptions && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 flex items-end z-20"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-end z-30"
             onClick={() => setShowOptions(false)}
           >
             <motion.div
               initial={{ y: 300 }}
               animate={{ y: 0 }}
               exit={{ y: 300 }}
-              className="w-full bg-card rounded-t-3xl p-6 space-y-4"
+              transition={{ type: "spring", damping: 30 }}
+              className="w-full bg-gradient-to-b from-gray-900 to-black rounded-t-3xl p-6 space-y-3 border-t-2 border-white/10"
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-4" />
+              <div className="w-16 h-1.5 bg-white/20 rounded-full mx-auto mb-6" />
               
-              <button className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-muted/50">
-                <Flag className="w-6 h-6 text-red-500" />
-                <span className="text-foreground font-medium">Signaler</span>
+              <button className="w-full flex items-center gap-4 p-5 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors">
+                <Flag className="w-7 h-7 text-red-400" />
+                <span className="text-white font-semibold text-lg">Signaler le contenu</span>
               </button>
               
-              <button className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-muted/50">
-                <Download className="w-6 h-6 text-foreground" />
-                <span className="text-foreground font-medium">Télécharger</span>
+              <button className="w-full flex items-center gap-4 p-5 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors">
+                <Download className="w-7 h-7 text-white" />
+                <span className="text-white font-semibold text-lg">Télécharger la vidéo</span>
+              </button>
+              
+              <button className="w-full flex items-center gap-4 p-5 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors">
+                <Users className="w-7 h-7 text-white" />
+                <span className="text-white font-semibold text-lg">Voir le profil</span>
               </button>
               
               <button
                 onClick={() => setShowOptions(false)}
-                className="w-full p-4 rounded-xl bg-muted text-center font-medium"
+                className="w-full p-5 rounded-2xl bg-white/10 text-center font-bold text-white text-lg mt-4 hover:bg-white/15 transition-colors"
               >
                 Annuler
               </button>
@@ -394,124 +323,184 @@ const VideoCard: React.FC<{
         )}
       </AnimatePresence>
 
-      {/* Double-tap heart animation */}
       <AnimatePresence>
-        {isLiked && (
+        {showLikeAnimation && (
           <motion.div
             initial={{ scale: 0, opacity: 1 }}
-            animate={{ scale: 1.5, opacity: 0 }}
+            animate={{ scale: 1.8, opacity: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
           >
-            <Heart className="w-32 h-32 text-red-500" fill="currentColor" />
+            <Heart className="w-40 h-40 text-red-500 drop-shadow-2xl" fill="currentColor" />
           </motion.div>
         )}
       </AnimatePresence>
+
+      <motion.div 
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center text-white/50 pointer-events-none"
+        animate={{ y: [0, 12, 0] }}
+        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+      >
+        <ChevronDown className="w-8 h-8" strokeWidth={3} />
+        <span className="text-sm font-semibold">Swipez</span>
+      </motion.div>
     </div>
   );
 };
 
-// Action button component
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPOSANT: BOUTON D'ACTION
+// ═══════════════════════════════════════════════════════════════════════════
+
 const ActionButton: React.FC<{
-  icon: typeof Heart;
+  icon: any;
   label: string;
   isActive?: boolean;
-  activeColor?: string;
   onClick: () => void;
-  size?: 'md' | 'xl';
-}> = ({ icon: Icon, label, isActive, activeColor, onClick, size = 'md' }) => (
+}> = ({ icon: Icon, label, isActive, onClick }) => (
   <motion.button
     whileTap={{ scale: 0.85 }}
     onClick={onClick}
-    className="flex flex-col items-center gap-1"
+    className="flex flex-col items-center gap-1.5"
   >
-    <div className={cn(
-      "rounded-full bg-black/30 backdrop-blur-lg flex items-center justify-center",
-      size === 'xl' ? "w-14 h-14" : "w-12 h-12",
-      isActive && "bg-white/20"
-    )}>
+    <div className={`w-16 h-16 rounded-full backdrop-blur-xl flex items-center justify-center shadow-2xl transition-all border border-white/10 ${
+      isActive 
+        ? 'bg-gradient-to-br from-red-500 to-pink-500' 
+        : 'bg-black/50 hover:bg-black/70'
+    }`}>
       <Icon
-        className={cn(
-          size === 'xl' ? "w-7 h-7" : "w-6 h-6",
-          isActive ? activeColor : "text-white"
-        )}
-        fill={isActive ? "currentColor" : "none"}
+        className={`w-8 h-8 ${isActive ? 'text-white' : 'text-white'}`}
+        fill={isActive ? "white" : "none"}
+        strokeWidth={2.5}
       />
     </div>
-    <span className="text-xs text-white/80 font-medium">{label}</span>
+    {label && (
+      <span className="text-white text-xs font-bold drop-shadow-lg">
+        {label}
+      </span>
+    )}
   </motion.button>
 );
 
-// Main Video Feed Component
-export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
-  posts,
-  onLike,
-  onComment,
-  onShare,
-  onRemix,
-  onSave,
-  onRespond
-}) => {
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPOSANT PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+export default function TamTamVideoFeed() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState<'pour_toi' | 'tendances' | 'communaute'>('pour_toi');
   const containerRef = useRef<HTMLDivElement>(null);
-  const { speak } = useFrenchTTS();
 
-  // Announce feed on mount
-  useEffect(() => {
-    speak('Feed Création. Glissez pour naviguer.');
-  }, [speak]);
+  const mockVideos: VideoPost[] = [
+    {
+      id: '1',
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      topic: 'culture',
+      topicEmoji: '🎭',
+      duration: 30,
+      author: {
+        name: 'Aïcha Kora',
+        username: 'aicha_kora',
+      },
+      transcriptFr: 'Découvrez la danse traditionnelle Bariba lors du festival annuel de Nikki ! 💃',
+      likes: 1247,
+      comments: 89,
+      shares: 234,
+    },
+    {
+      id: '2',
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+      topic: 'agriculture',
+      topicEmoji: '🌾',
+      duration: 45,
+      author: {
+        name: 'Kofi Agri',
+        username: 'kofi_agri',
+      },
+      transcriptFr: 'Nouvelle technique de culture du mil en saison sèche - résultats incroyables !',
+      likes: 892,
+      comments: 67,
+      shares: 178,
+    },
+    {
+      id: '3',
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+      topic: 'musique',
+      topicEmoji: '🎵',
+      duration: 60,
+      author: {
+        name: 'Mamadou Beat',
+        username: 'mamadou_beat',
+      },
+      transcriptFr: 'Remix moderne du chant de mariage Bariba avec des beats afro ! 🔥',
+      likes: 2341,
+      comments: 156,
+      shares: 445,
+    },
+  ];
 
-  // Handle scroll to detect current card
-  const handleScroll = useCallback(() => {
+  const handleScroll = () => {
     if (!containerRef.current) return;
     const scrollTop = containerRef.current.scrollTop;
     const cardHeight = containerRef.current.clientHeight;
     const newIndex = Math.round(scrollTop / cardHeight);
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < posts.length) {
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < mockVideos.length) {
       setCurrentIndex(newIndex);
-      triggerFeedback('notification');
     }
-  }, [currentIndex, posts.length]);
+  };
 
-  if (posts.length === 0) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center p-8 text-center bg-black">
-        <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center mb-6">
-          <Play className="w-12 h-12 text-white/60" />
-        </div>
-        <h3 className="text-xl font-semibold text-white mb-2">
-          Aucune création
-        </h3>
-        <p className="text-white/60">
-          Soyez le premier à créer une vidéo !
-        </p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [currentIndex, mockVideos.length]);
 
   return (
-    <div
-      ref={containerRef}
-      onScroll={handleScroll}
-      className="h-screen overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-black"
-      style={{ scrollSnapType: 'y mandatory' }}
-    >
-      {posts.map((post, index) => (
-        <VideoCard
-          key={post.id}
-          post={post}
-          isActive={index === currentIndex}
-          onLike={() => onLike?.(post.id)}
-          onComment={() => onComment?.(post.id)}
-          onShare={() => onShare?.(post.id)}
-          onRemix={() => onRemix?.(post.id)}
-          onSave={() => onSave?.(post.id)}
-          onRespond={() => onRespond?.(post.id)}
-        />
-      ))}
+    <div className="h-screen w-full bg-black flex flex-col">
+      <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black via-black/80 to-transparent pt-safe">
+        <div className="flex justify-center gap-8 py-6 px-4">
+          {[
+            { id: 'pour_toi' as const, label: 'Pour toi', icon: Sparkles },
+            { id: 'tendances' as const, label: 'Tendances', icon: TrendingUp },
+            { id: 'communaute' as const, label: 'Communauté', icon: Users },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all ${
+                activeTab === tab.id
+                  ? 'bg-white text-black font-bold shadow-2xl scale-105' 
+                  : 'text-white/70 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span className="text-sm font-semibold">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div 
+        ref={containerRef}
+        className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+        style={{ scrollSnapType: 'y mandatory' }}
+      >
+        {mockVideos.map((video, index) => (
+          <VideoCard
+            key={video.id}
+            post={video}
+            isActive={index === currentIndex}
+            onLike={() => console.log('Like', video.id)}
+            onComment={() => console.log('Comment', video.id)}
+            onShare={() => console.log('Share', video.id)}
+            onRemix={() => console.log('Remix', video.id)}
+            onSave={() => console.log('Save', video.id)}
+            onRespond={() => console.log('Respond', video.id)}
+          />
+        ))}
+      </div>
     </div>
   );
-};
-
-export default TamTamVideoFeed;
+}
