@@ -478,7 +478,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
       audioPreviewRef.current.play();
       setIsPlayingPreview(true);
     }
-    triggerFeedback('selection');
+    triggerFeedback('success');
   };
 
   const handleSubmit = async () => {
@@ -736,10 +736,9 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
 
                 {/* Smart Voice Recorder intégré */}
                 <div className="relative z-10">
-                  <SmartVoiceRecorder
+                <SmartVoiceRecorder
                     onRecordingComplete={handleRecordingComplete}
                     onRecordingStart={() => setIsRecording(true)}
-                    onRecordingStop={() => setIsRecording(false)}
                     language={currentLang === 'ba' ? 'bariba' : 'french'}
                   />
                 </div>
