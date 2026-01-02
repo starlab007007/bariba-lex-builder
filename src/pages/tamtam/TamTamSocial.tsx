@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { 
-  Menu, X, Home, Search, MessageCircle, Users, Zap, 
-  Heart, Share2, Bookmark, Volume2, VolumeX, Bell,
-  Play, Pause, ChevronRight, Settings, Globe, ShoppingBag,
-  User, Star, Music, MapPin, MoreHorizontal, Send, Mic,
-  Video, Radio, Headphones, TrendingUp, Plus
+  MessageCircle, Radio, Newspaper, Search, Users, Plus, 
+  Sparkles, Zap, Globe, Mic, Video, Camera, Music,
+  TrendingUp, Heart, Bell, Settings, ChevronDown,
+  Podcast, Headphones, Waves, Crown, Star
 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
@@ -14,7 +12,9 @@ import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
 import { useTamTamPolls } from '@/hooks/useTamTamPolls';
 import { useRadioFeed } from '@/hooks/useRadioFeed';
 import { useFeedAlgorithm } from '@/hooks/useFeedAlgorithm';
-import { EnhancedPost } from '@/components/tamtam/TamTamEnhancedFeedCard';
+import { TamTamEnhancedFeedCard, EnhancedPost } from '@/components/tamtam/TamTamEnhancedFeedCard';
+import { RadioVisualFeedCard, RadioVisualPost } from '@/components/tamtam/RadioVisualFeedCard';
+import { TamTamPollCard } from '@/components/tamtam/TamTamPollCard';
 import { TamTamStories } from '@/components/tamtam/TamTamStories';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
@@ -25,579 +25,437 @@ import { TamTamFriendSuggestions } from '@/components/tamtam/TamTamFriendSuggest
 import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
 import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
+import { FeedModeSelector, FeedMode } from '@/components/tamtam/FeedModeSelector';
+import { RadioMiniPlayer } from '@/components/tamtam/RadioMiniPlayer';
 import { TamTamVideoFeed } from '@/components/tamtam/TamTamVideoFeed';
 import { TamTamAudioFeed } from '@/components/tamtam/TamTamAudioFeed';
 import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
+import { PostActionType } from '@/components/tamtam/PostActionBar';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useVoiceMenu, VoiceMenuLabels } from '@/hooks/useVoiceMenu';
+import { SpeakerButton } from '@/components/tamtam/VoiceMenuItem';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📱 TAM-TAM SOCIAL - KUAISHOU/TIKTOK IMMERSIVE DESIGN
+// 🌟 TAM-TAM SOCIAL - ULTRA PREMIUM EXPERIENCE
 // ═══════════════════════════════════════════════════════════════════════════════
-// Structure exacte des captures:
-// - Header transparent flottant avec tabs (🎬 📻 🎤)
-// - Menu hamburger avec TOUTES les fonctionnalités
-// - Feed plein écran style Kuaishou
-// - Bottom nav style TikTok (Fil, Chat, +, Groupes, Direct)
+// Design: iOS 18 Liquid Glass + Afro-Futurisme + TikTok Immersive
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type FeedMode = 'creation' | 'radio' | 'mavoix';
-type BottomTab = 'fil' | 'chat' | 'groupes' | 'direct';
+// Types
+type MainTab = 'feed' | 'messages' | 'communities' | 'live';
+type FeedSubMode = 'creation' | 'radio' | 'mavoix';
+
+interface TabConfig {
+  id: MainTab;
+  icon: typeof Newspaper;
+  label: string;
+  emoji: string;
+  gradient: string;
+  activeColor: string;
+}
+
+// Configuration des onglets principaux
+const mainTabs: TabConfig[] = [
+  { 
+    id: 'feed', 
+    icon: Newspaper, 
+    label: 'Fil', 
+    emoji: '📰',
+    gradient: 'from-blue-500 via-cyan-400 to-teal-400',
+    activeColor: '#00D4FF'
+  },
+  { 
+    id: 'messages', 
+    icon: MessageCircle, 
+    label: 'Chat', 
+    emoji: '💬',
+    gradient: 'from-purple-500 via-pink-500 to-rose-400',
+    activeColor: '#FF6B9D'
+  },
+  { 
+    id: 'communities', 
+    icon: Users, 
+    label: 'Groupes', 
+    emoji: '👥',
+    gradient: 'from-amber-500 via-orange-500 to-red-400',
+    activeColor: '#FF8C42'
+  },
+  { 
+    id: 'live', 
+    icon: Radio, 
+    label: 'Direct', 
+    emoji: '🔴',
+    gradient: 'from-red-500 via-rose-500 to-pink-400',
+    activeColor: '#FF4757'
+  },
+];
+
+// Configuration des sous-modes du feed
+const feedModes: { id: FeedSubMode; icon: typeof Video; label: string; emoji: string; description: string }[] = [
+  { id: 'creation', icon: Video, label: 'Création', emoji: '🎬', description: 'Vidéos & Photos' },
+  { id: 'radio', icon: Headphones, label: 'Radio', emoji: '📻', description: 'Patrimoine Audio' },
+  { id: 'mavoix', icon: Mic, label: 'Ma Voix', emoji: '🎤', description: 'Messages Vocaux' },
+];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MENU LATÉRAL COMPLET (Hamburger)
+// COMPOSANTS UI PREMIUM
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const SideMenu: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  currentLang: string;
-  onNavigate: (path: string) => void;
-  activeBottomTab: BottomTab;
-  onBottomTabChange: (tab: BottomTab) => void;
-}> = ({ isOpen, onClose, currentLang, onNavigate, activeBottomTab, onBottomTabChange }) => {
-  
-  // Menu principal (navigation pages)
-  const mainMenuItems = [
-    { icon: '🏠', label: 'Accueil', labelBa: 'Ilé', path: '/tamtam', gradient: 'from-blue-500 to-cyan-400' },
-    { icon: '💬', label: 'Social', labelBa: 'Àwùjọ', path: '/tamtam/social', gradient: 'from-emerald-500 to-teal-400', active: true },
-    { icon: '🛒', label: 'Marché', labelBa: 'Ọjà', path: '/tamtam/market', gradient: 'from-orange-500 to-amber-400' },
-    { icon: '👤', label: 'Profil', labelBa: 'Profaili', path: '/tamtam/profile', gradient: 'from-purple-500 to-pink-400' },
-  ];
-
-  // Sous-menu social (onglets internes)
-  const socialTabs = [
-    { id: 'fil' as BottomTab, icon: Home, label: 'Fil', labelBa: 'Ìtàn', color: 'text-blue-400' },
-    { id: 'chat' as BottomTab, icon: MessageCircle, label: 'Chat', labelBa: 'Ọ̀rọ̀', color: 'text-pink-400' },
-    { id: 'groupes' as BottomTab, icon: Users, label: 'Groupes', labelBa: 'Ẹgbẹ́', color: 'text-amber-400' },
-    { id: 'direct' as BottomTab, icon: Zap, label: 'Direct', labelBa: 'Tààrà', color: 'text-red-400' },
-  ];
+// Liquid Glass Header
+const LiquidGlassHeader: React.FC<{
+  activeTab: MainTab;
+  onTabChange: (tab: MainTab) => void;
+  onSearch: () => void;
+  unreadMessages?: number;
+  liveCount?: number;
+}> = ({ activeTab, onTabChange, onSearch, unreadMessages = 0, liveCount = 0 }) => {
+  const { scrollY } = useScroll();
+  const headerOpacity = useTransform(scrollY, [0, 50], [0.85, 0.98]);
+  const headerBlur = useTransform(scrollY, [0, 50], [20, 40]);
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
-          />
-          
-          {/* Panel */}
-          <motion.div
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 w-[300px] z-50 overflow-y-auto"
-            style={{ background: 'linear-gradient(180deg, #0a0a12 0%, #12121f 50%, #0a0a12 100%)' }}
+    <motion.header 
+      className="sticky top-0 z-50 safe-area-top"
+      style={{ 
+        background: `rgba(255, 255, 255, 0.85)`,
+        backdropFilter: 'blur(40px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+      }}
+    >
+      {/* Gradient accent line */}
+      <div className="h-[2px] w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+      
+      <div className="px-4 py-3">
+        {/* Top row: Logo + Actions */}
+        <div className="flex items-center justify-between mb-3">
+          {/* Logo TAM-TAM */}
+          <motion.div 
+            className="flex items-center gap-2"
+            whileTap={{ scale: 0.95 }}
           >
-            {/* Header */}
-            <div className="sticky top-0 p-5 border-b border-white/10 bg-black/50 backdrop-blur-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <motion.div 
-                    className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/30"
-                    animate={{ rotate: [0, 5, -5, 0] }}
-                    transition={{ repeat: Infinity, duration: 3 }}
-                  >
-                    <span className="text-2xl">🥁</span>
-                  </motion.div>
-                  <div>
-                    <h2 className="text-xl font-black text-white">TAM-TAM</h2>
-                    <p className="text-[10px] text-white/40">Social Audio</p>
-                  </div>
-                </div>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={onClose}
-                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"
-                >
-                  <X className="w-5 h-5 text-white" />
-                </motion.button>
-              </div>
-            </div>
-
-            {/* Navigation Principale */}
-            <div className="p-4">
-              <p className="text-white/40 text-xs font-medium mb-3 px-2">NAVIGATION</p>
-              <div className="space-y-1">
-                {mainMenuItems.map((item, index) => (
-                  <motion.button
-                    key={item.path}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => { onNavigate(item.path); onClose(); }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
-                      item.active ? 'bg-white/10 border border-white/20' : 'hover:bg-white/5'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg`}>
-                      <span className="text-xl">{item.icon}</span>
-                    </div>
-                    <span className="text-white font-medium flex-1 text-left">
-                      {currentLang === 'ba' ? item.labelBa : item.label}
-                    </span>
-                    {item.active && (
-                      <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] font-bold">
-                        ACTIF
-                      </span>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-white/30" />
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-
-            {/* Sections Social */}
-            <div className="p-4 border-t border-white/10">
-              <p className="text-white/40 text-xs font-medium mb-3 px-2">SECTIONS SOCIAL</p>
-              <div className="grid grid-cols-2 gap-2">
-                {socialTabs.map((tab, index) => {
-                  const Icon = tab.icon;
-                  const isActive = activeBottomTab === tab.id;
-                  return (
-                    <motion.button
-                      key={tab.id}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.2 + index * 0.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => { onBottomTabChange(tab.id); onClose(); }}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all ${
-                        isActive 
-                          ? 'bg-white/10 border border-white/20' 
-                          : 'bg-white/5 hover:bg-white/10'
-                      }`}
-                    >
-                      <Icon className={`w-6 h-6 ${isActive ? tab.color : 'text-white/50'}`} />
-                      <span className={`text-xs font-medium ${isActive ? 'text-white' : 'text-white/50'}`}>
-                        {currentLang === 'ba' ? tab.labelBa : tab.label}
-                      </span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Paramètres */}
-            <div className="p-4 border-t border-white/10">
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onNavigate('/tamtam/settings')}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10"
+            <div className="relative">
+              <motion.div 
+                className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 flex items-center justify-center shadow-lg"
+                animate={{ 
+                  boxShadow: [
+                    '0 4px 20px rgba(251, 146, 60, 0.4)',
+                    '0 4px 30px rgba(251, 146, 60, 0.6)',
+                    '0 4px 20px rgba(251, 146, 60, 0.4)'
+                  ]
+                }}
+                transition={{ repeat: Infinity, duration: 2 }}
               >
-                <Settings className="w-5 h-5 text-white/50" />
-                <span className="text-white/50 text-sm">{currentLang === 'ba' ? 'Ètò' : 'Paramètres'}</span>
-              </motion.button>
+                <span className="text-xl">🥁</span>
+              </motion.div>
+              <motion.div 
+                className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+              />
             </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-white/10">
-              <div className="flex items-center justify-center gap-2">
-                <Globe className="w-4 h-4 text-white/30" />
-                <span className="text-white/30 text-xs">{currentLang === 'ba' ? 'Bàátɔ̀nú' : 'Français'}</span>
-              </div>
+            <div>
+              <h1 className="text-lg font-black bg-gradient-to-r from-amber-600 via-orange-500 to-red-500 bg-clip-text text-transparent">
+                TAM-TAM
+              </h1>
+              <p className="text-[10px] text-gray-400 -mt-0.5 font-medium">Social Audio</p>
             </div>
           </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-};
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// HEADER FLOTTANT TRANSPARENT (Style TikTok exact)
-// ═══════════════════════════════════════════════════════════════════════════════
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            {/* Live indicator */}
+            {liveCount > 0 && (
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 71, 87, 0.15) 0%, rgba(255, 107, 157, 0.15) 100%)',
+                  border: '1px solid rgba(255, 71, 87, 0.3)',
+                }}
+              >
+                <motion.span 
+                  className="w-2 h-2 rounded-full bg-red-500"
+                  animate={{ opacity: [1, 0.4, 1], scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                />
+                <span className="text-red-500 text-xs font-bold">{liveCount} LIVE</span>
+              </motion.button>
+            )}
 
-const FloatingHeader: React.FC<{
-  currentMode: FeedMode;
-  onModeChange: (mode: FeedMode) => void;
-  onMenuOpen: () => void;
-  onSearch: () => void;
-  currentLang: string;
-  liveCount?: number;
-}> = ({ currentMode, onModeChange, onMenuOpen, onSearch, currentLang, liveCount = 0 }) => {
-  
-  const feedModes = [
-    { id: 'creation' as FeedMode, label: '🎬 Création', labelBa: '🎬 Ṣíṣẹ̀dá' },
-    { id: 'radio' as FeedMode, label: '📻 Radio', labelBa: '📻 Rédíò' },
-    { id: 'mavoix' as FeedMode, label: '🎤 Ma Voix', labelBa: '🎤 Ohùn Mi' },
-  ];
-
-  return (
-    <div className="fixed top-0 left-0 right-0 z-40 safe-area-top">
-      {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-transparent pointer-events-none" />
-      
-      <div className="relative px-4 py-3 flex items-center justify-between">
-        {/* Menu Hamburger */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onMenuOpen}
-          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10"
-        >
-          <Menu className="w-5 h-5 text-white" />
-        </motion.button>
-
-        {/* Feed Mode Tabs */}
-        <div className="flex items-center gap-0">
-          {/* Live badge */}
-          {liveCount > 0 && (
-            <motion.div 
-              className="flex items-center gap-1.5 px-2.5 py-1 mr-2 rounded-full border border-red-500/30"
-              style={{ background: 'rgba(239, 68, 68, 0.15)' }}
-              animate={{ opacity: [1, 0.7, 1] }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
+            {/* Notifications */}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              className="relative w-10 h-10 rounded-full flex items-center justify-center"
+              style={{
+                background: 'rgba(0, 0, 0, 0.05)',
+              }}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-red-400 text-[10px] font-bold">LIVE</span>
-            </motion.div>
-          )}
-          
-          {feedModes.map((mode) => {
-            const isActive = currentMode === mode.id;
+              <Bell className="w-5 h-5 text-gray-600" />
+              {unreadMessages > 0 && (
+                <motion.span 
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                >
+                  {unreadMessages > 99 ? '99+' : unreadMessages}
+                </motion.span>
+              )}
+            </motion.button>
+
+            {/* Search */}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={onSearch}
+              className="w-10 h-10 rounded-full flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                border: '1px solid rgba(0, 212, 255, 0.2)',
+              }}
+            >
+              <Search className="w-5 h-5 text-cyan-600" />
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Main tabs */}
+        <div className="flex gap-1 p-1 rounded-2xl" style={{ background: 'rgba(0, 0, 0, 0.04)' }}>
+          {mainTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
             return (
               <motion.button
-                key={mode.id}
+                key={tab.id}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => onModeChange(mode.id)}
-                className="relative px-3 py-2"
+                onClick={() => onTabChange(tab.id)}
+                className="relative flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all"
+                style={isActive ? {
+                  background: `linear-gradient(135deg, ${tab.activeColor}15 0%, ${tab.activeColor}25 100%)`,
+                } : {}}
               >
-                <span className={`text-[13px] font-semibold whitespace-nowrap transition-all ${
-                  isActive ? 'text-white' : 'text-white/50'
-                }`}>
-                  {currentLang === 'ba' ? mode.labelBa : mode.label}
-                </span>
                 {isActive && (
                   <motion.div
-                    layoutId="headerActiveTab"
-                    className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-[3px] rounded-full bg-white"
-                    transition={{ type: 'spring', bounce: 0.25 }}
+                    layoutId="activeTabBg"
+                    className="absolute inset-0 rounded-xl"
+                    style={{
+                      background: `linear-gradient(135deg, ${tab.activeColor}20 0%, ${tab.activeColor}10 100%)`,
+                      border: `1px solid ${tab.activeColor}30`,
+                    }}
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                   />
                 )}
+                
+                <div className="relative z-10 flex items-center gap-1.5">
+                  <Icon 
+                    className="w-4 h-4 transition-colors" 
+                    style={{ color: isActive ? tab.activeColor : '#9CA3AF' }}
+                  />
+                  <span 
+                    className="text-sm font-semibold transition-colors"
+                    style={{ color: isActive ? tab.activeColor : '#6B7280' }}
+                  >
+                    {tab.label}
+                  </span>
+                  
+                  {/* Badges */}
+                  {tab.id === 'messages' && unreadMessages > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                      {unreadMessages}
+                    </span>
+                  )}
+                  {tab.id === 'live' && liveCount > 0 && (
+                    <motion.span 
+                      className="ml-1 w-2 h-2 rounded-full bg-red-500"
+                      animate={{ opacity: [1, 0.4, 1] }}
+                      transition={{ repeat: Infinity, duration: 1 }}
+                    />
+                  )}
+                </div>
               </motion.button>
             );
           })}
         </div>
-
-        {/* Search */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onSearch}
-          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10"
-        >
-          <Search className="w-5 h-5 text-white" />
-        </motion.button>
       </div>
-    </div>
+    </motion.header>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// BOTTOM NAVIGATION (Style TikTok exact)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const BottomNavigation: React.FC<{
-  activeTab: BottomTab;
-  onTabChange: (tab: BottomTab) => void;
-  onCreatePress: () => void;
-  currentLang: string;
-  unreadMessages?: number;
-}> = ({ activeTab, onTabChange, onCreatePress, currentLang, unreadMessages = 0 }) => {
-  
-  const tabs = [
-    { id: 'fil' as BottomTab, icon: Home, label: 'Fil', labelBa: 'Ilé' },
-    { id: 'chat' as BottomTab, icon: MessageCircle, label: 'Chat', labelBa: 'Ọ̀rọ̀' },
-    { id: 'groupes' as BottomTab, icon: Users, label: 'Groupes', labelBa: 'Ẹgbẹ́' },
-    { id: 'direct' as BottomTab, icon: Zap, label: 'Direct', labelBa: 'Tààrà' },
-  ];
-
+// Feed Mode Selector Premium
+const FeedModeSelectorPremium: React.FC<{
+  currentMode: FeedSubMode;
+  onModeChange: (mode: FeedSubMode) => void;
+}> = ({ currentMode, onModeChange }) => {
   return (
-    <motion.nav
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      className="fixed bottom-0 left-0 right-0 z-40 safe-area-bottom"
-      style={{ 
-        background: 'rgba(0, 0, 0, 0.97)', 
-        backdropFilter: 'blur(20px)',
-        borderTop: '1px solid rgba(255,255,255,0.06)'
-      }}
-    >
-      <div className="flex items-center justify-around py-1.5">
-        {/* Fil & Chat */}
-        {tabs.slice(0, 2).map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+    <div className="px-4 py-3" style={{ background: 'rgba(255, 255, 255, 0.7)' }}>
+      <div className="flex gap-2 p-1 rounded-2xl" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
+        {feedModes.map((mode) => {
+          const Icon = mode.icon;
+          const isActive = currentMode === mode.id;
+          
           return (
             <motion.button
-              key={tab.id}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => onTabChange(tab.id)}
-              className="flex flex-col items-center gap-0.5 px-5 py-1.5 relative min-w-[60px]"
+              key={mode.id}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onModeChange(mode.id)}
+              className="relative flex-1 flex flex-col items-center gap-1 py-3 rounded-xl transition-all overflow-hidden"
             >
-              <Icon 
-                className={`w-6 h-6 transition-colors ${isActive ? 'text-white' : 'text-white/40'}`} 
-                strokeWidth={isActive ? 2.5 : 1.5} 
-              />
-              <span className={`text-[10px] font-medium ${isActive ? 'text-white' : 'text-white/40'}`}>
-                {currentLang === 'ba' ? tab.labelBa : tab.label}
-              </span>
-              {tab.id === 'chat' && unreadMessages > 0 && (
-                <span className="absolute top-0 right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
-                  {unreadMessages > 99 ? '99+' : unreadMessages}
-                </span>
-              )}
-            </motion.button>
-          );
-        })}
-
-        {/* Bouton Create - Style TikTok */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onCreatePress}
-          className="relative -mt-4"
-        >
-          <div className="relative w-[52px] h-8 rounded-lg overflow-hidden shadow-xl">
-            {/* Gradient cyan gauche */}
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-cyan-500" />
-            {/* Gradient rose droite */}
-            <div 
-              className="absolute inset-0 bg-gradient-to-r from-rose-500 to-red-500" 
-              style={{ clipPath: 'polygon(40% 0, 100% 0, 100% 100%, 20% 100%)' }} 
-            />
-            {/* Plus central */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Plus className="w-5 h-5 text-white" strokeWidth={3} />
-            </div>
-          </div>
-        </motion.button>
-
-        {/* Groupes & Direct */}
-        {tabs.slice(2).map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <motion.button
-              key={tab.id}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => onTabChange(tab.id)}
-              className="flex flex-col items-center gap-0.5 px-5 py-1.5 relative min-w-[60px]"
-            >
-              {tab.id === 'direct' && (
-                <motion.span
-                  className="absolute top-0 right-3 w-2 h-2 rounded-full bg-red-500"
-                  animate={{ opacity: [1, 0.3, 1], scale: [1, 1.2, 1] }}
-                  transition={{ repeat: Infinity, duration: 1 }}
+              {isActive && (
+                <motion.div
+                  layoutId="activeFeedMode"
+                  className="absolute inset-0 rounded-xl"
+                  style={{
+                    background: mode.id === 'creation' 
+                      ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 51, 234, 0.15) 100%)'
+                      : mode.id === 'radio'
+                      ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(239, 68, 68, 0.15) 100%)'
+                      : 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%)',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                  }}
+                  transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
                 />
               )}
-              <Icon 
-                className={`w-6 h-6 transition-colors ${isActive ? 'text-white' : 'text-white/40'}`} 
-                strokeWidth={isActive ? 2.5 : 1.5} 
-              />
-              <span className={`text-[10px] font-medium ${isActive ? 'text-white' : 'text-white/40'}`}>
-                {currentLang === 'ba' ? tab.labelBa : tab.label}
-              </span>
+              
+              <div className="relative z-10 flex flex-col items-center">
+                <span className="text-2xl mb-1">{mode.emoji}</span>
+                <span className={`text-xs font-bold ${isActive ? 'text-gray-800' : 'text-gray-500'}`}>
+                  {mode.label}
+                </span>
+                <span className={`text-[10px] ${isActive ? 'text-gray-600' : 'text-gray-400'}`}>
+                  {mode.description}
+                </span>
+              </div>
+              
+              {isActive && (
+                <motion.div
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full"
+                  style={{
+                    background: mode.id === 'creation' 
+                      ? 'linear-gradient(90deg, #3B82F6, #9333EA)'
+                      : mode.id === 'radio'
+                      ? 'linear-gradient(90deg, #F59E0B, #EF4444)'
+                      : 'linear-gradient(90deg, #10B981, #06B6D4)',
+                  }}
+                  layoutId="feedModeIndicator"
+                />
+              )}
             </motion.button>
           );
         })}
-      </div>
-    </motion.nav>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// FEED CARD (Style Kuaishou)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const FeedCard: React.FC<{
-  post: any;
-  onLike: () => void;
-  onComment: () => void;
-  onShare: () => void;
-  onSave: () => void;
-  currentLang: string;
-}> = ({ post, onLike, onComment, onShare, onSave, currentLang }) => {
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-
-  return (
-    <div className="h-screen w-full snap-start snap-always relative bg-black flex items-center justify-center">
-      {/* Background */}
-      <div 
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(135deg, 
-            hsl(${(post.id?.charCodeAt(0) || 0) * 10 % 360}, 60%, 20%) 0%, 
-            hsl(${(post.id?.charCodeAt(1) || 0) * 10 % 360}, 50%, 15%) 100%)`
-        }}
-      />
-
-      {/* Contenu central */}
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="relative z-10 text-center px-12 max-w-lg"
-      >
-        <span className="text-7xl mb-6 block">{post.feeling_emoji || '🎵'}</span>
-        <p className="text-white text-lg font-medium leading-relaxed line-clamp-4">
-          {post.transcript_fr || post.transcript || 'Contenu TAM-TAM'}
-        </p>
-      </motion.div>
-
-      {/* Actions droite - Style Kuaishou */}
-      <div className="absolute right-3 bottom-28 flex flex-col items-center gap-4 z-20">
-        {/* Avatar + Follow */}
-        <motion.div whileTap={{ scale: 0.9 }} className="relative">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-orange-500 flex items-center justify-center border-2 border-white overflow-hidden">
-            {post.profile?.avatar_url ? (
-              <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-lg">👤</span>
-            )}
-          </div>
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center border-2 border-black">
-            <Plus className="w-3 h-3 text-white" strokeWidth={3} />
-          </div>
-        </motion.div>
-
-        {/* Like */}
-        <motion.button 
-          whileTap={{ scale: 0.8 }} 
-          onClick={() => { setIsLiked(!isLiked); onLike(); }}
-          className="flex flex-col items-center gap-1"
-        >
-          <div className={`w-11 h-11 rounded-full flex items-center justify-center ${
-            isLiked ? 'bg-red-500' : 'bg-black/40 backdrop-blur-sm border border-white/10'
-          }`}>
-            <Heart className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
-          </div>
-          <span className="text-white text-[11px] font-semibold">{post.reactions_count || 0}</span>
-        </motion.button>
-
-        {/* Comment */}
-        <motion.button whileTap={{ scale: 0.8 }} onClick={onComment} className="flex flex-col items-center gap-1">
-          <div className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center border border-white/10">
-            <MessageCircle className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-white text-[11px] font-semibold">{post.comments_count || 0}</span>
-        </motion.button>
-
-        {/* Favoris */}
-        <motion.button 
-          whileTap={{ scale: 0.8 }} 
-          onClick={() => { setIsSaved(!isSaved); onSave(); }}
-          className="flex flex-col items-center gap-1"
-        >
-          <div className={`w-11 h-11 rounded-full flex items-center justify-center ${
-            isSaved ? 'bg-amber-500' : 'bg-black/40 backdrop-blur-sm border border-white/10'
-          }`}>
-            <Star className={`w-6 h-6 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
-          </div>
-          <span className="text-white text-[11px] font-semibold">{isSaved ? 1 : 0}</span>
-        </motion.button>
-
-        {/* Share */}
-        <motion.button whileTap={{ scale: 0.8 }} onClick={onShare} className="flex flex-col items-center gap-1">
-          <div className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center border border-white/10">
-            <Share2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-white text-[11px] font-semibold">0</span>
-        </motion.button>
-      </div>
-
-      {/* Info bas gauche - Style TikTok */}
-      <div className="absolute left-4 bottom-24 max-w-[65%] z-20">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-white font-bold text-sm">@{post.profile?.username || 'tamtam_user'}</span>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            className="px-2.5 py-1 rounded-full bg-red-500/90 text-white text-[10px] font-bold"
-          >
-            + {currentLang === 'ba' ? 'Tẹ̀lé' : 'Suivre'}
-          </motion.button>
-        </div>
-        <p className="text-white/90 text-[13px] line-clamp-2 leading-relaxed">
-          {post.transcript_fr?.slice(0, 80) || 'Contenu audio TAM-TAM'} #Culture #Bénin
-        </p>
-        
-        {/* Musique */}
-        <div className="flex items-center gap-2 mt-2 overflow-hidden">
-          <Music className="w-3.5 h-3.5 text-white flex-shrink-0" />
-          <motion.span 
-            className="text-white/70 text-[11px] whitespace-nowrap"
-            animate={{ x: [0, -100, 0] }}
-            transition={{ repeat: Infinity, duration: 8, ease: 'linear' }}
-          >
-            🎵 Son original - TAM-TAM Radio
-          </motion.span>
-        </div>
       </div>
     </div>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SEARCH MODAL
-// ═══════════════════════════════════════════════════════════════════════════════
+// Floating Action Button Premium
+const FloatingActionButtonPremium: React.FC<{
+  onClick: () => void;
+  feedMode: FeedSubMode;
+}> = ({ onClick, feedMode }) => {
+  const getGradient = () => {
+    switch (feedMode) {
+      case 'creation': return 'from-blue-500 via-purple-500 to-pink-500';
+      case 'radio': return 'from-amber-500 via-orange-500 to-red-500';
+      case 'mavoix': return 'from-emerald-500 via-teal-500 to-cyan-500';
+    }
+  };
 
-const SearchModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  currentLang: string;
-}> = ({ isOpen, onClose, currentLang }) => (
-  <AnimatePresence>
-    {isOpen && (
+  const getIcon = () => {
+    switch (feedMode) {
+      case 'creation': return <Video className="w-7 h-7 text-white" />;
+      case 'radio': return <Music className="w-7 h-7 text-white" />;
+      case 'mavoix': return <Mic className="w-7 h-7 text-white" />;
+    }
+  };
+
+  return (
+    <motion.button
+      whileTap={{ scale: 0.9 }}
+      whileHover={{ scale: 1.05 }}
+      onClick={onClick}
+      className="fixed bottom-24 right-4 z-40"
+      initial={{ scale: 0, rotate: -180 }}
+      animate={{ scale: 1, rotate: 0 }}
+      transition={{ type: 'spring', bounce: 0.4 }}
+    >
+      {/* Glow effect */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/95 backdrop-blur-xl z-50"
+        className={`absolute inset-0 rounded-full bg-gradient-to-r ${getGradient()} blur-xl opacity-60`}
+        animate={{ 
+          scale: [1, 1.3, 1],
+          opacity: [0.4, 0.7, 0.4]
+        }}
+        transition={{ repeat: Infinity, duration: 2 }}
+      />
+      
+      {/* Button */}
+      <div className={`relative w-16 h-16 rounded-full bg-gradient-to-r ${getGradient()} flex items-center justify-center shadow-2xl`}>
+        {getIcon()}
+        
+        {/* Plus badge */}
+        <motion.div
+          className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-white shadow-lg flex items-center justify-center"
+          animate={{ rotate: [0, 90, 0] }}
+          transition={{ repeat: Infinity, duration: 3 }}
+        >
+          <Plus className="w-4 h-4 text-gray-800" strokeWidth={3} />
+        </motion.div>
+      </div>
+    </motion.button>
+  );
+};
+
+// Loading Skeleton Premium
+const LoadingSkeletonPremium: React.FC = () => (
+  <div className="flex flex-col items-center justify-center py-20 px-4">
+    <motion.div
+      className="relative w-20 h-20"
+      animate={{ rotate: 360 }}
+      transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+    >
+      {/* Outer ring */}
+      <div className="absolute inset-0 rounded-full border-4 border-gray-200" />
+      {/* Animated gradient ring */}
+      <motion.div
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: 'conic-gradient(from 0deg, transparent 0%, #3B82F6 25%, #9333EA 50%, #EC4899 75%, transparent 100%)',
+          mask: 'radial-gradient(transparent 60%, black 60%)',
+          WebkitMask: 'radial-gradient(transparent 60%, black 60%)',
+        }}
+      />
+      {/* Center emoji */}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-center"
+        animate={{ scale: [1, 1.1, 1] }}
+        transition={{ repeat: Infinity, duration: 1 }}
       >
-        <div className="p-4 pt-safe">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-            <input
-              type="text"
-              placeholder={currentLang === 'ba' ? 'Wá...' : 'Rechercher...'}
-              autoFocus
-              className="w-full bg-white/10 border border-white/20 rounded-xl pl-12 pr-12 py-3.5 text-white placeholder-white/40 focus:outline-none focus:border-white/30"
-            />
-            <motion.button whileTap={{ scale: 0.9 }} onClick={onClose} className="absolute right-4 top-1/2 -translate-y-1/2">
-              <X className="w-5 h-5 text-white/40" />
-            </motion.button>
-          </div>
-          
-          <div className="mt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-4 h-4 text-pink-400" />
-              <span className="text-white/80 text-sm font-medium">{currentLang === 'ba' ? 'Gbajúmọ̀' : 'Tendances'}</span>
-            </div>
-            <div className="space-y-1">
-              {['🎵 Musique', '📖 Contes', '🌾 Agriculture', '🩺 Santé', '🎭 Culture'].map((item, i) => (
-                <motion.button
-                  key={i}
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-white/5 text-white/80 flex items-center gap-3"
-                >
-                  <span className="text-xl">{item.split(' ')[0]}</span>
-                  <span className="text-sm">{item.split(' ').slice(1).join(' ')}</span>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <span className="text-3xl">🥁</span>
       </motion.div>
-    )}
-  </AnimatePresence>
+    </motion.div>
+    
+    <motion.p
+      className="mt-6 text-gray-500 font-medium"
+      animate={{ opacity: [0.5, 1, 0.5] }}
+      transition={{ repeat: Infinity, duration: 1.5 }}
+    >
+      Chargement du fil...
+    </motion.p>
+    
+    {/* Skeleton cards */}
+    <div className="w-full max-w-sm mt-8 space-y-4">
+      {[...Array(3)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="h-32 rounded-2xl"
+          style={{ background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)' }}
+          animate={{ backgroundPosition: ['200% 0', '-200% 0'] }}
+          transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.2 }}
+        />
+      ))}
+    </div>
+  </div>
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -605,51 +463,70 @@ const SearchModal: React.FC<{
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export default function TamTamSocial() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { t, currentLang } = useTamTamLanguage();
+  const { t } = useTamTamLanguage();
   const { announceScreen } = useAudioDescription();
   const { toast } = useToast();
+  const { speakLabel, getLabel, isSpeaking } = useVoiceMenu();
   
-  const { posts, stories, isLoading, createPost, addReaction, fetchComments, addComment, fetchPosts } = useTamTamPosts();
-  const { polls } = useTamTamPolls();
-  const { rankPosts } = useFeedAlgorithm({ prioritizeUtility: true, prioritizeCulture: true });
+  const { 
+    posts, 
+    stories, 
+    isLoading: postsLoading, 
+    createPost, 
+    addReaction, 
+    fetchComments, 
+    addComment,
+    createStory,
+    fetchPosts
+  } = useTamTamPosts();
+
+  const { polls, isLoading: pollsLoading, votePoll } = useTamTamPolls();
+  const radioFeed = useRadioFeed({ autoAdvance: true });
+  const { rankPosts, recordInteraction } = useFeedAlgorithm({ prioritizeUtility: true, prioritizeCulture: true });
 
   // États
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<BottomTab>('fil');
-  const [feedMode, setFeedMode] = useState<FeedMode>('creation');
-  const [showSearch, setShowSearch] = useState(false);
-  const [showCreator, setShowCreator] = useState(false);
+  const [activeTab, setActiveTab] = useState<MainTab>('feed');
+  const [feedMode, setFeedMode] = useState<FeedSubMode>('creation');
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [showStoryCreator, setShowStoryCreator] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
-  const [unreadMessages] = useState(3);
-  const [liveCount] = useState(2);
-
+  const [showGuidedCreator, setShowGuidedCreator] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(3);
+  const [liveCount, setLiveCount] = useState(2);
+  
   const [commentsModal, setCommentsModal] = useState<{
     isOpen: boolean;
     postId: string | null;
     comments: TamTamComment[];
     isLoading: boolean;
-  }>({ isOpen: false, postId: null, comments: [], isLoading: false });
+  }>({
+    isOpen: false,
+    postId: null,
+    comments: [],
+    isLoading: false
+  });
 
-  // Gestion navigation depuis autres pages
+  // Announce screen on mount
   useEffect(() => {
-    const state = location.state as any;
-    if (state?.tab) {
-      setActiveTab(state.tab === 'messages' ? 'chat' : state.tab === 'communities' ? 'groupes' : state.tab === 'live' ? 'direct' : 'fil');
-    }
-    if (state?.openCreator) setShowCreator(true);
-  }, [location.state]);
+    announceScreen('social');
+  }, [announceScreen]);
 
-  useEffect(() => { announceScreen('social'); }, [announceScreen]);
+  useEffect(() => {
+    if (activeTab === 'messages') announceScreen('messages');
+    else if (activeTab === 'live') announceScreen('live');
+  }, [activeTab, announceScreen]);
 
-  const handleNavigate = useCallback((path: string) => {
-    triggerFeedback('click');
-    navigate(path);
-  }, [navigate]);
+  // Handlers
+  const handleTabChange = useCallback((tabId: MainTab) => {
+    triggerFeedback('notification', { haptic: true, sound: false });
+    setActiveTab(tabId);
+  }, []);
+
+  const handleFeedModeChange = useCallback((mode: FeedSubMode) => {
+    triggerFeedback('notification', { haptic: true, sound: false });
+    setFeedMode(mode);
+  }, []);
 
   const handleOpenComments = useCallback(async (postId: string) => {
     setCommentsModal({ isOpen: true, postId, comments: [], isLoading: true });
@@ -657,140 +534,328 @@ export default function TamTamSocial() {
     setCommentsModal(prev => ({ ...prev, comments, isLoading: false }));
   }, [fetchComments]);
 
+  const handleAddComment = useCallback(async (audioBase64: string, duration: number) => {
+    if (!commentsModal.postId) return;
+
+    try {
+      const audioBlob = base64ToBlob(audioBase64, 'audio/webm');
+      const fileName = `comment_${Date.now()}.webm`;
+      
+      const { error } = await supabase.storage
+        .from('tamtam-audio')
+        .upload(fileName, audioBlob, { contentType: 'audio/webm' });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('tamtam-audio')
+        .getPublicUrl(fileName);
+
+      await addComment(commentsModal.postId, {
+        audio_url: urlData.publicUrl,
+        duration_seconds: duration
+      });
+
+      triggerFeedback('success');
+      const comments = await fetchComments(commentsModal.postId);
+      setCommentsModal(prev => ({ ...prev, comments }));
+    } catch (err: any) {
+      triggerFeedback('error');
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  }, [commentsModal.postId, addComment, fetchComments, toast]);
+
   const handleShare = useCallback((postId: string) => {
     triggerFeedback('send');
     if (navigator.share) {
-      navigator.share({ title: 'TAM-TAM', text: 'Découvrez ce contenu !', url: window.location.href });
+      navigator.share({
+        title: 'TAM-TAM',
+        text: 'Découvrez ce post sur TAM-TAM !',
+        url: window.location.href
+      });
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast({ title: "🔗 Lien copié !" });
     }
   }, [toast]);
 
-  // Posts transformés
-  const rankedPosts = useMemo(() => {
-    const enhanced = posts.map(post => ({
+  const handleReaction = useCallback((postId: string, reaction: string) => {
+    addReaction(postId, reaction);
+    triggerFeedback('success');
+  }, [addReaction]);
+
+  const base64ToBlob = (base64: string, mimeType: string): Blob => {
+    const byteCharacters = atob(base64.split(',')[1] || base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+  };
+
+  // Data transformations
+  const enhancedPosts: EnhancedPost[] = useMemo(() => 
+    posts.map(post => ({
       ...post,
       media_type: (post as any).media_type || 'audio',
+      media_url: (post as any).media_url || null,
+      thumbnail_url: (post as any).thumbnail_url || null,
       transcript_fr: (post as any).transcript_fr || (post as any).transcript || null,
+      transcript_ba: (post as any).transcript_ba || null,
       feeling_emoji: (post as any).feeling_emoji || null,
-    }));
-    return rankPosts(enhanced as EnhancedPost[]);
-  }, [posts, rankPosts]);
+    })), [posts]
+  );
+
+  const rankedPosts = useMemo(() => rankPosts(enhancedPosts), [rankPosts, enhancedPosts]);
+
+  // Update radio queue
+  useEffect(() => {
+    if (feedMode === 'radio' && rankedPosts.length > 0) {
+      radioFeed.setQueue(rankedPosts);
+    }
+  }, [feedMode, rankedPosts.length]);
+
+  const isLoading = postsLoading || pollsLoading;
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Menu Latéral */}
-      <SideMenu
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        currentLang={currentLang}
-        onNavigate={handleNavigate}
-        activeBottomTab={activeTab}
-        onBottomTabChange={setActiveTab}
-      />
-
-      {/* Header Flottant */}
-      <FloatingHeader
-        currentMode={feedMode}
-        onModeChange={setFeedMode}
-        onMenuOpen={() => setIsMenuOpen(true)}
-        onSearch={() => setShowSearch(true)}
-        currentLang={currentLang}
+    <div 
+      className="min-h-screen pb-28"
+      style={{ 
+        background: 'linear-gradient(180deg, #FAFBFF 0%, #F0F4FF 30%, #FFF5F5 60%, #FFFAF0 100%)'
+      }}
+    >
+      {/* Header Premium */}
+      <LiquidGlassHeader
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onSearch={() => setShowUserSearch(true)}
+        unreadMessages={unreadMessages}
         liveCount={liveCount}
       />
 
-      {/* Contenu principal */}
+      {/* Content */}
       <AnimatePresence mode="wait">
-        {activeTab === 'fil' && (
+        {activeTab === 'feed' && (
           <motion.div
-            key="fil"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="h-screen overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+            key="feed"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
           >
-            {isLoading ? (
-              <div className="h-screen flex items-center justify-center">
-                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-10 h-10 border-3 border-white border-t-transparent rounded-full" />
-              </div>
-            ) : rankedPosts.length > 0 ? (
-              rankedPosts.map((post) => (
-                <FeedCard
-                  key={post.id}
-                  post={post}
-                  onLike={() => addReaction(post.id, 'like')}
-                  onComment={() => handleOpenComments(post.id)}
-                  onShare={() => handleShare(post.id)}
-                  onSave={() => triggerFeedback('success')}
-                  currentLang={currentLang}
-                />
-              ))
-            ) : (
-              <div className="h-screen flex flex-col items-center justify-center px-8">
-                <span className="text-6xl mb-4">🥁</span>
-                <p className="text-white/50 text-center mb-6">{currentLang === 'ba' ? 'Kò sí àkóónú' : 'Aucun contenu'}</p>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowCreator(true)} className="px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold">
-                  {currentLang === 'ba' ? 'Ṣẹ̀dá' : 'Créer'}
-                </motion.button>
-              </div>
+            {/* Feed Mode Selector */}
+            <FeedModeSelectorPremium 
+              currentMode={feedMode} 
+              onModeChange={handleFeedModeChange} 
+            />
+
+            {/* Stories */}
+            <div 
+              className="border-b"
+              style={{ 
+                background: 'rgba(255, 255, 255, 0.8)', 
+                borderColor: 'rgba(0, 0, 0, 0.05)' 
+              }}
+            >
+              <TamTamStories 
+                stories={stories} 
+                onCreateStory={() => setShowStoryCreator(true)}
+                onCreatePost={() => setShowCreatePost(true)}
+              />
+            </div>
+
+            {/* Friend Suggestions - Only in creation mode */}
+            {feedMode === 'creation' && (
+              <TamTamFriendSuggestions 
+                onMessage={(userId) => {
+                  setActiveTab('messages');
+                }}
+                onViewProfile={(userId) => {}}
+              />
             )}
+
+            {/* Feed Content */}
+            {isLoading ? (
+              <LoadingSkeletonPremium />
+            ) : feedMode === 'creation' ? (
+              <TamTamVideoFeed
+                videos={rankedPosts
+                  .filter(p => p.media_type === 'video' || p.media_type === 'photo' || p.template_id)
+                  .map(p => ({
+                    id: p.id,
+                    videoUrl: p.media_url || p.audio_url || '',
+                    thumbnailUrl: p.thumbnail_url || undefined,
+                    transcriptFr: p.transcript_fr || undefined,
+                    transcriptBa: p.transcript_ba || undefined,
+                    topic: p.topic || undefined,
+                    topicEmoji: p.feeling_emoji || undefined,
+                    duration: p.duration_seconds || 30,
+                    author: {
+                      name: p.profile?.display_name || 'Utilisateur',
+                      username: p.profile?.username || 'user',
+                      avatarUrl: p.profile?.avatar_url || undefined,
+                    },
+                    likes: p.reactions_count || 0,
+                    comments: p.comments_count || 0,
+                    shares: 0,
+                    isLiked: false,
+                    isSaved: false,
+                  }))}
+                onLike={(id) => handleReaction(id, 'like')}
+                onComment={handleOpenComments}
+                onShare={handleShare}
+                onSave={(id) => triggerFeedback('success')}
+              />
+            ) : feedMode === 'radio' ? (
+              <TamTamAudioFeed
+                posts={rankedPosts
+                  .filter(p => p.topic === 'culture' || p.topic === 'patrimoine' || (p as any).culture_score)
+                  .map(p => ({
+                    id: p.id,
+                    audioUrl: p.audio_url || '',
+                    duration: p.duration_seconds || 60,
+                    templateId: p.template_id || 'radio',
+                    category: 'patrimoine' as const,
+                    subcategory: p.topic || 'culture',
+                    emoji: p.feeling_emoji || '📻',
+                    visualEmojis: ['🎵', '🥁', '🎶', '✨', '🌍'],
+                    gradient: 'from-amber-500 via-orange-500 to-red-500',
+                    titleFr: p.transcript_fr?.slice(0, 50) || 'Audio Patrimoine',
+                    titleBa: p.transcript_ba?.slice(0, 50) || '',
+                    transcript: p.transcript_fr || undefined,
+                    authorName: p.profile?.display_name || 'TAM-TAM Radio',
+                    authorVillage: p.location_name || 'Bénin',
+                    likes: p.reactions_count || 0,
+                    replies: p.comments_count || 0,
+                    shares: 0,
+                    isLiked: false,
+                    isSaved: false,
+                  }))}
+                onLike={(id) => handleReaction(id, 'like')}
+                onReply={(id) => setShowGuidedCreator(true)}
+                onShare={handleShare}
+                onSave={(id) => triggerFeedback('success')}
+              />
+            ) : (
+              <TamTamAudioFeed
+                posts={rankedPosts
+                  .filter(p => p.media_type === 'audio' || !p.template_id)
+                  .map(p => ({
+                    id: p.id,
+                    audioUrl: p.audio_url || '',
+                    duration: p.duration_seconds || 60,
+                    templateId: p.template_id || 'mavoix',
+                    category: 'village_voice' as const,
+                    subcategory: 'annonce',
+                    emoji: p.feeling_emoji || '🎤',
+                    visualEmojis: ['🎤', '💬', '👥', '📢', '🔊'],
+                    gradient: 'from-emerald-500 via-teal-500 to-cyan-500',
+                    titleFr: p.transcript_fr?.slice(0, 50) || 'Message Vocal',
+                    titleBa: p.transcript_ba?.slice(0, 50) || '',
+                    transcript: p.transcript_fr || undefined,
+                    authorName: p.profile?.display_name || 'Utilisateur',
+                    authorVillage: p.location_name || 'Ma communauté',
+                    likes: p.reactions_count || 0,
+                    replies: p.comments_count || 0,
+                    shares: 0,
+                    isLiked: false,
+                    isSaved: false,
+                  }))}
+                onLike={(id) => handleReaction(id, 'like')}
+                onReply={(id) => setShowGuidedCreator(true)}
+                onShare={handleShare}
+                onSave={(id) => triggerFeedback('success')}
+              />
+            )}
+
+            {/* FAB */}
+            <FloatingActionButtonPremium
+              onClick={() => setShowGuidedCreator(true)}
+              feedMode={feedMode}
+            />
           </motion.div>
         )}
 
-        {activeTab === 'chat' && (
-          <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-16 pb-16 min-h-screen bg-gray-950">
-            <TamTamMessagesHub isOpen={true} onClose={() => setActiveTab('fil')} />
+        {activeTab === 'messages' && (
+          <motion.div
+            key="messages"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="h-[calc(100vh-180px)]"
+          >
+            <TamTamMessagesHub 
+              isOpen={true}
+              onClose={() => setActiveTab('feed')}
+            />
           </motion.div>
         )}
 
-        {activeTab === 'groupes' && (
-          <motion.div key="groupes" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-16 pb-16 min-h-screen bg-gray-950">
+        {activeTab === 'communities' && (
+          <motion.div
+            key="communities"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="h-[calc(100vh-180px)]"
+          >
             <TamTamCommunities />
           </motion.div>
         )}
 
-        {activeTab === 'direct' && (
-          <motion.div key="direct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-16 pb-16 min-h-screen bg-gray-950">
+        {activeTab === 'live' && (
+          <motion.div
+            key="live"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="h-[calc(100vh-180px)]"
+          >
             <TamTamLiveList />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Bottom Navigation */}
-      <BottomNavigation
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onCreatePress={() => setShowCreator(true)}
-        currentLang={currentLang}
-        unreadMessages={unreadMessages}
-      />
-
       {/* Modals */}
-      <SearchModal isOpen={showSearch} onClose={() => setShowSearch(false)} currentLang={currentLang} />
-
       <TamTamCommentsModal
         isOpen={commentsModal.isOpen}
         onClose={() => setCommentsModal(prev => ({ ...prev, isOpen: false }))}
         comments={commentsModal.comments}
-        onAddComment={async () => {}}
+        onAddComment={handleAddComment}
         isLoading={commentsModal.isLoading}
       />
 
       <TamTamCreatePost
         isOpen={showCreatePost}
         onClose={() => setShowCreatePost(false)}
-        onSubmit={async (data) => { await createPost(data); triggerFeedback('success'); toast({ title: "✅ Publié !" }); }}
+        onSubmit={async (data) => {
+          await createPost(data);
+          triggerFeedback('success');
+          toast({ title: "✅ Publié !" });
+        }}
         onOpenPoll={() => setShowCreatePoll(true)}
       />
 
-      <TamTamVocalPoll isOpen={showCreatePoll} onClose={() => setShowCreatePoll(false)} />
-      <TamTamStoryCreator isOpen={showStoryCreator} onClose={() => setShowStoryCreator(false)} onStoryCreated={() => fetchPosts()} />
-      <TamTamUserSearch isOpen={showUserSearch} onClose={() => setShowUserSearch(false)} onMessage={() => setActiveTab('chat')} />
+      <TamTamVocalPoll
+        isOpen={showCreatePoll}
+        onClose={() => setShowCreatePoll(false)}
+      />
+
+      <TamTamStoryCreator
+        isOpen={showStoryCreator}
+        onClose={() => setShowStoryCreator(false)}
+        onStoryCreated={() => fetchPosts()}
+      />
+
+      <TamTamUserSearch
+        isOpen={showUserSearch}
+        onClose={() => setShowUserSearch(false)}
+        onMessage={(userId) => setActiveTab('messages')}
+      />
 
       <FullscreenCreator
-        isOpen={showCreator}
-        onClose={() => setShowCreator(false)}
+        isOpen={showGuidedCreator}
+        onClose={() => setShowGuidedCreator(false)}
         onComplete={async (data) => {
           await createPost({
             audio_url: data.audio_url,
@@ -802,14 +867,14 @@ export default function TamTamSocial() {
             template_id: data.template_id,
             duration_seconds: data.duration_seconds,
           });
-          toast({ title: "✅ Publié !" });
+          toast({ title: "✅ Publié avec succès !" });
           triggerFeedback('success');
           fetchPosts();
-          setShowCreator(false);
         }}
       />
     </div>
   );
 }
 
+// Export nommé pour compatibilité
 export { TamTamSocial };
