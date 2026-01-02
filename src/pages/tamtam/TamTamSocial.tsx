@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Radio, Newspaper, Search, Users, Plus } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
@@ -22,6 +22,8 @@ import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
 import { FeedModeSelector, FeedMode } from '@/components/tamtam/FeedModeSelector';
 import { RadioMiniPlayer } from '@/components/tamtam/RadioMiniPlayer';
+import { TamTamVideoFeed } from '@/components/tamtam/TamTamVideoFeed';
+import { TamTamAudioFeed } from '@/components/tamtam/TamTamAudioFeed';
 import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
 import { PostActionType } from '@/components/tamtam/PostActionBar';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
@@ -339,96 +341,76 @@ export default function TamTamSocial() {
               <Plus className="w-7 h-7 text-white" strokeWidth={2.5} />
             </motion.button>
 
-            {/* Feed - Combined posts and polls */}
-            <div className="p-4 space-y-4">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                    className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full"
-                  />
-                  <p className="mt-4 text-muted-foreground">{t('loading')}</p>
-                </div>
-              ) : feedItems.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-                    <Newspaper className="w-10 h-10 text-muted-foreground" />
-                  </div>
-                  <p className="text-foreground font-medium">{t('noData')}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Soyez le premier à publier !</p>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowCreatePost(true)}
-                    className="mt-4 px-6 py-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-xl font-medium shadow-lg shadow-primary/20"
-                  >
-                    Créer ma première publication
-                  </motion.button>
-                </div>
-              ) : (
-                feedItems
-                  .filter(item => {
-                    // In creation mode, show only multimedia content (video, photo, posts with templates)
-                    if (feedMode === 'creation') {
-                      if (item.type === 'poll') return false;
-                      const post = item.data as EnhancedPost;
-                      return post.media_type === 'video' || post.media_type === 'photo' || post.template_id;
-                    }
-                    // In radio mode, show patrimoine content (posts with topic 'culture' or 'patrimoine')
-                    if (feedMode === 'radio') {
-                      if (item.type === 'poll') return false;
-                      const post = item.data as EnhancedPost;
-                      return post.topic === 'culture' || post.topic === 'patrimoine' || post.culture_score;
-                    }
-                    // In mavoix mode, show village voice content (audio posts, local content)
-                    if (feedMode === 'mavoix') {
-                      if (item.type === 'poll') return true; // Polls are part of village voice
-                      const post = item.data as EnhancedPost;
-                      return post.media_type === 'audio' || post.location_name || !post.template_id;
-                    }
-                    return true;
-                  })
-                  .map(item => {
-                  if (item.type === 'poll') {
-                    return (
-                      <TamTamPollCard
-                        key={`poll-${item.data.id}`}
-                        poll={item.data}
-                        onVote={votePoll}
-                      />
-                    );
-                  }
-                  
-                  // Use RadioVisualFeedCard for radio mode only
-                  if (feedMode === 'radio') {
-                    return (
-                      <RadioVisualFeedCard
-                        key={`post-${item.data.id}`}
-                        post={item.data as RadioVisualPost}
-                        mode="radio"
-                        autoplayAudio={true}
-                        isCurrentInRadio={radioFeed.currentPost?.id === item.data.id}
-                        onAction={handlePostAction}
-                        onRespond={handlePostRespond}
-                        onComment={handleOpenComments}
-                        onShare={handleShare}
-                      />
-                    );
-                  }
-                  
-                  // Use TamTamEnhancedFeedCard for creation and mavoix modes
-                  return (
-                    <TamTamEnhancedFeedCard
-                      key={`post-${item.data.id}`}
-                      post={item.data}
-                      onReaction={handleReaction}
-                      onComment={handleOpenComments}
-                      onShare={handleShare}
-                    />
-                  );
-                })
-              )}
-            </div>
+            {/* Feed - Mode-specific rendering */}
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                  className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full"
+                />
+                <p className="mt-4 text-muted-foreground">{t('loading')}</p>
+              </div>
+            ) : feedMode === 'creation' ? (
+              // TikTok-style video feed for Creation mode
+              <TamTamVideoFeed
+                posts={rankedPosts
+                  .filter(p => p.media_type === 'video' || p.media_type === 'photo' || p.template_id)
+                  .map(p => ({
+                    ...p,
+                    media_url: p.media_url || p.audio_url,
+                    user: p.profile ? {
+                      display_name: p.profile.display_name || undefined,
+                      avatar_url: p.profile.avatar_url || undefined,
+                      username: p.profile.username || undefined
+                    } : undefined
+                  }))}
+                onLike={(id) => addReaction(id, 'like')}
+                onComment={handleOpenComments}
+                onShare={handleShare}
+                onRemix={(id) => setShowGuidedCreator(true)}
+                onSave={(id) => triggerFeedback('success')}
+                onRespond={(id) => setShowGuidedCreator(true)}
+              />
+            ) : feedMode === 'radio' ? (
+              // Vinyl audio feed for Radio mode
+              <TamTamAudioFeed
+                posts={rankedPosts
+                  .filter(p => p.topic === 'culture' || p.topic === 'patrimoine' || p.culture_score)
+                  .map(p => ({
+                    ...p,
+                    user: p.profile ? {
+                      display_name: p.profile.display_name || undefined,
+                      avatar_url: p.profile.avatar_url || undefined,
+                      location: p.location_name || undefined
+                    } : undefined
+                  }))}
+                mode="radio"
+                onLike={(id) => addReaction(id, 'like')}
+                onRespond={(id) => setShowGuidedCreator(true)}
+                onShare={handleShare}
+                onSave={(id) => triggerFeedback('success')}
+              />
+            ) : (
+              // Vinyl audio feed for Ma Voix mode
+              <TamTamAudioFeed
+                posts={rankedPosts
+                  .filter(p => p.media_type === 'audio' || p.location_name || !p.template_id)
+                  .map(p => ({
+                    ...p,
+                    user: p.profile ? {
+                      display_name: p.profile.display_name || undefined,
+                      avatar_url: p.profile.avatar_url || undefined,
+                      location: p.location_name || undefined
+                    } : undefined
+                  }))}
+                mode="mavoix"
+                onLike={(id) => addReaction(id, 'like')}
+                onRespond={(id) => setShowGuidedCreator(true)}
+                onShare={handleShare}
+                onSave={(id) => triggerFeedback('success')}
+              />
+            )}
           </motion.div>
         )}
 
