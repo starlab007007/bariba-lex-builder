@@ -374,6 +374,18 @@ export default function TamTamSocial() {
                       const post = item.data as EnhancedPost;
                       return post.media_type === 'video' || post.media_type === 'photo' || post.template_id;
                     }
+                    // In radio mode, show patrimoine content (posts with topic 'culture' or 'patrimoine')
+                    if (feedMode === 'radio') {
+                      if (item.type === 'poll') return false;
+                      const post = item.data as EnhancedPost;
+                      return post.topic === 'culture' || post.topic === 'patrimoine' || post.culture_score;
+                    }
+                    // In mavoix mode, show village voice content (audio posts, local content)
+                    if (feedMode === 'mavoix') {
+                      if (item.type === 'poll') return true; // Polls are part of village voice
+                      const post = item.data as EnhancedPost;
+                      return post.media_type === 'audio' || post.location_name || !post.template_id;
+                    }
                     return true;
                   })
                   .map(item => {
@@ -387,14 +399,14 @@ export default function TamTamSocial() {
                     );
                   }
                   
-                  // Use RadioVisualFeedCard for radio/learning modes
-                  if (feedMode === 'radio' || feedMode === 'learning') {
+                  // Use RadioVisualFeedCard for radio mode only
+                  if (feedMode === 'radio') {
                     return (
                       <RadioVisualFeedCard
                         key={`post-${item.data.id}`}
                         post={item.data as RadioVisualPost}
-                        mode={feedMode}
-                        autoplayAudio={feedMode === 'radio'}
+                        mode="radio"
+                        autoplayAudio={true}
                         isCurrentInRadio={radioFeed.currentPost?.id === item.data.id}
                         onAction={handlePostAction}
                         onRespond={handlePostRespond}
@@ -404,7 +416,7 @@ export default function TamTamSocial() {
                     );
                   }
                   
-                  // Use TamTamEnhancedFeedCard for creation/discovery/village modes
+                  // Use TamTamEnhancedFeedCard for creation and mavoix modes
                   return (
                     <TamTamEnhancedFeedCard
                       key={`post-${item.data.id}`}

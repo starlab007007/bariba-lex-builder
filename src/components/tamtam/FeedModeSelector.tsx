@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Radio, Sparkles, MapPin, GraduationCap, Clapperboard } from 'lucide-react';
+import { Radio, Clapperboard, Mic2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 
-export type FeedMode = 'creation' | 'radio' | 'discovery' | 'village' | 'learning';
+export type FeedMode = 'creation' | 'radio' | 'mavoix';
 
 interface FeedModeSelectorProps {
   currentMode: FeedMode;
@@ -13,9 +13,7 @@ interface FeedModeSelectorProps {
 const FEED_MODES: { id: FeedMode; icon: typeof Radio; labelFr: string; labelBa: string; color: string }[] = [
   { id: 'creation', icon: Clapperboard, labelFr: 'Création', labelBa: 'Ìṣẹ̀dá', color: 'from-violet-500 to-fuchsia-500' },
   { id: 'radio', icon: Radio, labelFr: 'Radio', labelBa: 'Rédíò', color: 'from-orange-500 to-red-500' },
-  { id: 'discovery', icon: Sparkles, labelFr: 'Découvrir', labelBa: 'Ṣàwárí', color: 'from-purple-500 to-pink-500' },
-  { id: 'village', icon: MapPin, labelFr: 'Village', labelBa: 'Ìlú', color: 'from-green-500 to-emerald-500' },
-  { id: 'learning', icon: GraduationCap, labelFr: 'Apprendre', labelBa: 'Kọ́', color: 'from-blue-500 to-cyan-500' },
+  { id: 'mavoix', icon: Mic2, labelFr: 'Ma voix', labelBa: 'Ohùn mi', color: 'from-emerald-500 to-teal-500' },
 ];
 
 export const FeedModeSelector: React.FC<FeedModeSelectorProps> = ({

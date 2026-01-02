@@ -29,6 +29,8 @@ export interface EnhancedPost {
   created_at: string | null;
   template_id?: string | null;
   topic?: string | null;
+  location_name?: string | null;
+  culture_score?: number | null;
   // Poll data
   poll_options?: { id: string; audio_url: string; votes: number; transcript?: string }[];
   poll_total_votes?: number;
