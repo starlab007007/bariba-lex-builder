@@ -33,10 +33,13 @@ interface VideoPost {
 
 interface TamTamVideoFeedProps {
   videos?: VideoPost[];
+  posts?: any[]; // Compatibilité avec l'ancien format
   onLike?: (videoId: string) => void;
   onComment?: (videoId: string) => void;
   onShare?: (videoId: string) => void;
   onSave?: (videoId: string) => void;
+  onRemix?: (videoId: string) => void;
+  onRespond?: (videoId: string) => void;
 }
 
 type FeedTab = 'pour_toi' | 'tendances' | 'communaute';
@@ -340,12 +343,37 @@ const mockVideos: VideoPost[] = [
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
-  videos = mockVideos,
+  videos,
+  posts,
   onLike = () => {},
   onComment = () => {},
   onShare = () => {},
   onSave = () => {},
+  onRemix = () => {},
+  onRespond = () => {},
 }) => {
+  // Utiliser videos ou convertir posts
+  const videoData = videos || posts?.map(p => ({
+    id: p.id || String(Math.random()),
+    videoUrl: p.media_url || p.videoUrl || p.audio_url || '',
+    thumbnailUrl: p.thumbnail_url || p.thumbnailUrl,
+    transcriptFr: p.transcript_fr || p.transcriptFr,
+    transcriptBa: p.transcript_ba || p.transcriptBa,
+    topic: p.topic,
+    topicEmoji: p.feeling_emoji || p.topicEmoji,
+    duration: p.duration_seconds || p.duration || 30,
+    author: p.user || p.author || {
+      name: p.profile?.display_name || 'Utilisateur',
+      username: p.profile?.username || 'user',
+      avatarUrl: p.profile?.avatar_url,
+    },
+    likes: p.reactions_count || p.likes || 0,
+    comments: p.comments_count || p.comments || 0,
+    shares: p.shares || 0,
+    isLiked: p.isLiked || false,
+    isSaved: p.isSaved || false,
+  })) || mockVideos;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<FeedTab>('pour_toi');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -364,14 +392,14 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
       const scrollTop = container.scrollTop;
       const cardHeight = container.clientHeight;
       const newIndex = Math.round(scrollTop / cardHeight);
-      if (newIndex !== currentIndex && newIndex >= 0 && newIndex < videos.length) {
+      if (newIndex !== currentIndex && newIndex >= 0 && newIndex < videoData.length) {
         setCurrentIndex(newIndex);
       }
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
-  }, [currentIndex, videos.length]);
+  }, [currentIndex, videoData.length]);
 
   return (
     <div className="h-screen w-full bg-black flex flex-col">
@@ -401,7 +429,7 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
         className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
         style={{ scrollSnapType: 'y mandatory' }}
       >
-        {videos.map((video, index) => (
+        {videoData.map((video, index) => (
           <VideoCard
             key={video.id}
             post={video}
@@ -410,7 +438,7 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
             onComment={() => onComment(video.id)}
             onShare={() => onShare(video.id)}
             onSave={() => onSave(video.id)}
-            onRespond={() => {}}
+            onRespond={() => onRespond(video.id)}
           />
         ))}
       </div>
