@@ -35,10 +35,12 @@ interface AudioPost {
 
 interface TamTamAudioFeedProps {
   posts?: AudioPost[];
+  mode?: 'radio' | 'mavoix';
   onLike?: (postId: string) => void;
   onReply?: (postId: string) => void;
   onShare?: (postId: string) => void;
   onSave?: (postId: string) => void;
+  onRespond?: (postId: string) => void;
 }
 
 type FeedTab = 'pour_toi' | 'autour' | 'communaute';
@@ -429,11 +431,16 @@ const mockPosts: AudioPost[] = [
 
 export const TamTamAudioFeed: React.FC<TamTamAudioFeedProps> = ({
   posts = mockPosts,
+  mode = 'radio',
   onLike = () => {},
   onReply = () => {},
   onShare = () => {},
   onSave = () => {},
+  onRespond,
 }) => {
+  // Utiliser onRespond ou onReply
+  const handleReply = onRespond || onReply;
+  
   const [activeTab, setActiveTab] = useState<FeedTab>('pour_toi');
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -493,7 +500,7 @@ export const TamTamAudioFeed: React.FC<TamTamAudioFeedProps> = ({
             post={post}
             isActive={index === activeIndex}
             onLike={() => onLike(post.id)}
-            onReply={() => onReply(post.id)}
+            onReply={() => handleReply(post.id)}
             onShare={() => onShare(post.id)}
             onSave={() => onSave(post.id)}
           />
