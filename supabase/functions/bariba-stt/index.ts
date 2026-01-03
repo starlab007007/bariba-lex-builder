@@ -76,8 +76,9 @@ async function pollForResult(
               if (data.data && Array.isArray(data.data)) {
                 return data;
               }
-            } catch (e) {
-              if (e.message?.includes('HuggingFace')) throw e;
+            } catch (e: unknown) {
+              const err = e instanceof Error ? e : new Error('Unknown error');
+              if (err.message?.includes('HuggingFace')) throw e;
               // Continue parsing for other errors
             }
           }
@@ -86,9 +87,10 @@ async function pollForResult(
       
       // Wait before next poll (increased to 800ms for more stability)
       await new Promise(r => setTimeout(r, 800));
-    } catch (e) {
-      console.log(`   Poll error: ${e.message}`);
-      if (e.message?.includes('HuggingFace')) throw e;
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error('Unknown error');
+      console.log(`   Poll error: ${err.message}`);
+      if (err.message?.includes('HuggingFace')) throw e;
     }
   }
   
@@ -140,9 +142,10 @@ async function callGradioSTT(
       const result = await pollForResult(spaceUrl, apiPrefix, sessionHash, hfToken, 30);
       if (result) return result;
     }
-  } catch (e) {
-    console.log(`   Queue error: ${e.message}`);
-    if (e.message?.includes('HuggingFace')) throw e;
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error('Unknown error');
+    console.log(`   Queue error: ${err.message}`);
+    if (err.message?.includes('HuggingFace')) throw e;
   }
 
   // Method 2: Direct call API
@@ -194,8 +197,9 @@ async function callGradioSTT(
       
       return result;
     }
-  } catch (e) {
-    console.log(`   Direct call error: ${e.message}`);
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error('Unknown error');
+    console.log(`   Direct call error: ${err.message}`);
   }
 
   throw new Error('All Gradio API methods failed');
