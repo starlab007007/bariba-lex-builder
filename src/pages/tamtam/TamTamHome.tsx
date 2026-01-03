@@ -1,227 +1,270 @@
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
-import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
-import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
-import { useVoiceMenu } from '@/hooks/useVoiceMenu';
-import { triggerFeedback } from '@/utils/tamtamFeedback';
-import { Volume2, Loader2, MessageCircle, Mic } from 'lucide-react';
-import { RaconteMoiAssistant } from '@/components/tamtam/RaconteMoiAssistant';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Home, Users, PlusCircle, ShoppingBag, User } from 'lucide-react';
 
-const services = [
-  { icon: '💬', labelKey: 'social', path: '/tamtam/social', color: 'bg-emerald-500' },
-  { icon: '🤖', labelKey: 'ia', path: '/tamtam/services', color: 'bg-blue-500' },
-  { icon: '🛒', labelKey: 'market', path: '/tamtam/market', color: 'bg-orange-500' },
-  { icon: '🆘', labelKey: 'sos', path: '/tamtam/sos', color: 'bg-red-500' },
-  { icon: '👤', labelKey: 'profile', path: '/tamtam/profile', color: 'bg-gray-500' },
-  { icon: '📖', labelKey: 'dictionary', path: '/tamtam/dictionary', color: 'bg-purple-500' },
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION BASSE - STYLE KUAISHOU/TIKTOK
+// ═══════════════════════════════════════════════════════════════
+// Fond noir opaque, bouton + central qui dépasse
+// ═══════════════════════════════════════════════════════════════
+
+type TabId = 'home' | 'social' | 'create' | 'market' | 'profile';
+
+interface Tab {
+  id: TabId;
+  icon: React.ComponentType<any>;
+  label: string;
+  emoji?: string;
+}
+
+const tabs: Tab[] = [
+  { id: 'home', icon: Home, label: 'Home', emoji: '🏠' },
+  { id: 'social', icon: Users, label: 'Social', emoji: '👥' },
+  { id: 'create', icon: PlusCircle, label: 'CREATE', emoji: '➕' },
+  { id: 'market', icon: ShoppingBag, label: 'Market', emoji: '🛒' },
+  { id: 'profile', icon: User, label: 'Moi', emoji: '👤' },
 ];
 
 export default function TamTamHome() {
-  const navigate = useNavigate();
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [speakingItemId, setSpeakingItemId] = useState<string | null>(null);
-  const { t, currentLang } = useTamTamLanguage();
-  const { announceAction } = useAudioDescription();
-  const { speakCurrentLang, stop, health } = useUnifiedAudio();
-  const { speakLabel, handleLongPress } = useVoiceMenu();
+  const [activeTab, setActiveTab] = useState<TabId>('home');
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
 
-  useEffect(() => {
-    announceAction(t('screenHome'));
-  }, [announceAction, t]);
-
-  const handleOpenAssistant = () => {
-    triggerFeedback('click');
-    setIsAssistantOpen(true);
-  };
-
-  const handleServiceClick = (path: string, labelKey: string) => {
-    triggerFeedback('click');
-    // Navigate immediately, TTS in background (non-blocking for Safari)
-    navigate(path);
-    // Fire and forget - don't await
-    speakCurrentLang(t(labelKey)).catch(e => {
-      console.warn('[TamTamHome] TTS failed silently:', e);
-    });
-  };
-
-  const handleSpeakLabel = async (labelKey: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    // If already speaking this item, stop it
-    if (speakingItemId === labelKey) {
-      stop();
-      setSpeakingItemId(null);
-      return;
-    }
-    
-    // Stop any previous speech and start new one
-    stop();
-    setSpeakingItemId(labelKey);
-    triggerFeedback('click');
-    
-    try {
-      await speakLabel(labelKey);
-    } finally {
-      setSpeakingItemId(null);
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'home':
+        return <FeedContent />;
+      case 'social':
+        return <SocialContent />;
+      case 'market':
+        return <MarketContent />;
+      case 'profile':
+        return <ProfileContent />;
+      default:
+        return <FeedContent />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4 pt-8 pb-32">
-      {/* Health status indicator */}
-      {health && (
-        <div className="absolute top-4 right-4 flex gap-1">
-          <div className={`w-2 h-2 rounded-full ${health.baribaTTS.status === 'healthy' ? 'bg-green-500' : health.baribaTTS.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'}`} title="TTS Bariba" />
-          <div className={`w-2 h-2 rounded-full ${health.frenchTTS.status === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`} title="TTS Français" />
-          <div className={`w-2 h-2 rounded-full ${health.translation.status === 'healthy' ? 'bg-green-500' : health.translation.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'}`} title="Traduction" />
-        </div>
-      )}
-
-      {/* Welcome visual with translated greeting */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-6"
-      >
-        <div className="text-4xl mb-2">👋</div>
-        <h1 className="text-xl font-bold text-tamtam-text">
-          {t('welcomeHome')}
-        </h1>
-        <p className="text-sm text-tamtam-text-muted mt-1">
-          {t('tapToSpeak')}
-        </p>
-      </motion.div>
-
-      {/* Giant central Raconte-Moi button */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", delay: 0.2 }}
-        className="flex flex-col items-center mb-6"
-      >
-        <motion.button
-          onClick={handleOpenAssistant}
-          className="relative w-40 h-40 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-xl shadow-purple-500/30 flex items-center justify-center"
-          whileTap={{ scale: 0.95 }}
-          whileHover={{ scale: 1.02 }}
-        >
-          {/* Pulse ring animation */}
+    <div className="fixed inset-0 bg-[#0B0B0B]">
+      {/* Content Area */}
+      <div className="absolute inset-0 pb-20">
+        <AnimatePresence mode="wait">
           <motion.div
-            className="absolute inset-0 rounded-full bg-purple-400/30"
-            animate={{
-              scale: [1, 1.3, 1.3],
-              opacity: [0.5, 0, 0]
-            }}
-            transition={{
-              duration: 2.5,
-              repeat: Infinity,
-              ease: "easeOut"
-            }}
-          />
-          <motion.div
-            className="absolute inset-0 rounded-full bg-purple-400/20"
-            animate={{
-              scale: [1, 1.5, 1.5],
-              opacity: [0.3, 0, 0]
-            }}
-            transition={{
-              duration: 2.5,
-              repeat: Infinity,
-              ease: "easeOut",
-              delay: 0.6
-            }}
-          />
-          
-          {/* Icon */}
-          <div className="relative z-10 flex flex-col items-center">
-            <MessageCircle className="w-16 h-16 text-white" />
-            <motion.span 
-              className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-md"
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-            >
-              <Mic className="w-4 h-4 text-white" />
-            </motion.span>
-          </div>
-        </motion.button>
-        
-        <p className="mt-4 text-sm font-medium text-purple-600">
-          🎭 Raconte-Moi
-        </p>
-        <p className="text-xs text-tamtam-text-muted">
-          {currentLang === 'ba' ? 'Olùrànlọ́wọ́ ohùn' : 'Assistant vocal IA'}
-        </p>
-      </motion.div>
+            key={activeTab}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+            className="h-full"
+          >
+            {renderContent()}
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
-      {/* Raconte-Moi Modal */}
-      <RaconteMoiAssistant 
-        isOpen={isAssistantOpen} 
-        onOpenChange={setIsAssistantOpen} 
-      />
-
-      {/* Services grid - 2x3 with translated labels */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="grid grid-cols-3 gap-4 max-w-md mx-auto"
+      {/* BOTTOM NAVIGATION - FOND NOIR OPAQUE */}
+      <nav 
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10"
+        style={{
+          backgroundColor: '#0B0B0B',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
       >
-        {services.map((service, index) => {
-          const longPressHandlers = handleLongPress(service.labelKey as any);
-          
-          return (
-            <motion.button
-              key={service.labelKey}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
-              onClick={() => handleServiceClick(service.path, service.labelKey)}
-              {...longPressHandlers}
-              className="aspect-square bg-tamtam-surface rounded-3xl shadow-tamtam-soft flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform relative"
-            >
-              {/* Icon badge */}
-              <div className={`w-14 h-14 ${service.color} rounded-2xl flex items-center justify-center`}>
-                <span className="text-2xl">{service.icon}</span>
-              </div>
-              
-              {/* Label in current language */}
-              <span className="text-xs font-medium text-tamtam-text truncate px-2">
-                {t(service.labelKey)}
-              </span>
+        <div className="flex items-end justify-around px-2 pt-2 pb-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            const isCreateButton = tab.id === 'create';
 
-              {/* Audio button - only shows spinner for THIS item */}
-              <button
-                onClick={(e) => handleSpeakLabel(service.labelKey, e)}
-                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 flex items-center justify-center"
+            if (isCreateButton) {
+              return (
+                <motion.button
+                  key={tab.id}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCreateMenu(true)}
+                  className="relative -mt-6"
+                >
+                  {/* Bouton CREATE qui DÉPASSE */}
+                  <div className="relative">
+                    {/* Glow effect */}
+                    <div className="absolute inset-0 bg-[#FF7A00] blur-xl opacity-50 rounded-full" />
+                    
+                    {/* Main button */}
+                    <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center shadow-2xl">
+                      <PlusCircle className="w-7 h-7 text-white" strokeWidth={2.5} />
+                    </div>
+                  </div>
+                  
+                  {/* Label */}
+                  <span className="block text-[10px] font-bold text-white mt-1 text-center">
+                    {tab.label}
+                  </span>
+                </motion.button>
+              );
+            }
+
+            return (
+              <motion.button
+                key={tab.id}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab(tab.id)}
+                className="flex flex-col items-center gap-1 py-2 px-3 min-w-[60px]"
               >
-                {speakingItemId === service.labelKey ? (
-                  <Loader2 className="w-3 h-3 text-tamtam-primary animate-spin" />
-                ) : (
-                  <Volume2 className="w-3 h-3 text-tamtam-primary" />
-                )}
-              </button>
-            </motion.button>
-          );
-        })}
-      </motion.div>
+                <Icon 
+                  className={`w-6 h-6 transition-colors ${
+                    isActive ? 'text-[#FF7A00]' : 'text-[#999999]'
+                  }`}
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+                <span className={`text-[10px] font-medium transition-colors ${
+                  isActive ? 'text-[#FF7A00]' : 'text-[#999999]'
+                }`}>
+                  {tab.label}
+                </span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </nav>
 
-      {/* Language indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="text-center mt-8"
-      >
-        <span className="inline-flex items-center gap-2 px-4 py-2 bg-tamtam-surface rounded-full shadow-tamtam-soft">
-          <span className="text-lg">🌐</span>
-          <span className="text-sm font-medium text-tamtam-text">
-            {currentLang === 'ba' ? 'Bàátɔ̀nú' : 'Français'}
-          </span>
-        </span>
-      </motion.div>
+      {/* Create Menu Modal */}
+      <AnimatePresence>
+        {showCreateMenu && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCreateMenu(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-[#1A1A1A] rounded-3xl p-6 w-[90vw] max-w-sm"
+            >
+              <h3 className="text-white text-lg font-bold mb-4 text-center">
+                Créer du contenu
+              </h3>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <CreateOption
+                  emoji="🎥"
+                  label="Vidéo 15s"
+                  color="from-blue-500 to-purple-500"
+                  onClick={() => {}}
+                />
+                <CreateOption
+                  emoji="🎥"
+                  label="Vidéo 60s"
+                  color="from-purple-500 to-pink-500"
+                  onClick={() => {}}
+                />
+                <CreateOption
+                  emoji="🎙️"
+                  label="Audio"
+                  color="from-orange-500 to-red-500"
+                  onClick={() => {}}
+                />
+                <CreateOption
+                  emoji="📸"
+                  label="Photo"
+                  color="from-teal-500 to-cyan-500"
+                  onClick={() => {}}
+                />
+                <CreateOption
+                  emoji="📖"
+                  label="Story"
+                  color="from-pink-500 to-rose-500"
+                  onClick={() => {}}
+                />
+                <CreateOption
+                  emoji="📊"
+                  label="Sondage"
+                  color="from-green-500 to-emerald-500"
+                  onClick={() => {}}
+                />
+              </div>
+
+              <button
+                onClick={() => setShowCreateMenu(false)}
+                className="mt-4 w-full py-3 rounded-xl bg-white/10 text-white font-medium"
+              >
+                Annuler
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════
+// COMPOSANTS HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+interface CreateOptionProps {
+  emoji: string;
+  label: string;
+  color: string;
+  onClick: () => void;
+}
+
+const CreateOption = ({ emoji, label, color, onClick }: CreateOptionProps) => (
+  <motion.button
+    whileTap={{ scale: 0.95 }}
+    onClick={onClick}
+    className="flex flex-col items-center gap-2"
+  >
+    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center text-3xl shadow-lg`}>
+      {emoji}
+    </div>
+    <span className="text-white text-xs font-medium text-center leading-tight">
+      {label}
+    </span>
+  </motion.button>
+);
+
+// Content placeholders
+const FeedContent = () => (
+  <div className="h-full bg-[#0B0B0B] text-white flex items-center justify-center">
+    <div className="text-center">
+      <div className="text-6xl mb-4">📰</div>
+      <p className="text-xl font-bold">Feed Principal</p>
+      <p className="text-sm text-[#999999] mt-2">Swipe vertical pour naviguer</p>
+    </div>
+  </div>
+);
+
+const SocialContent = () => (
+  <div className="h-full bg-[#0B0B0B] text-white flex items-center justify-center">
+    <div className="text-center">
+      <div className="text-6xl mb-4">👥</div>
+      <p className="text-xl font-bold">Social</p>
+      <p className="text-sm text-[#999999] mt-2">Vos amis et communauté</p>
+    </div>
+  </div>
+);
+
+const MarketContent = () => (
+  <div className="h-full bg-[#0B0B0B] text-white flex items-center justify-center">
+    <div className="text-center">
+      <div className="text-6xl mb-4">🛒</div>
+      <p className="text-xl font-bold">Market</p>
+      <p className="text-sm text-[#999999] mt-2">Acheter et vendre</p>
+    </div>
+  </div>
+);
+
+const ProfileContent = () => (
+  <div className="h-full bg-[#0B0B0B] text-white flex items-center justify-center">
+    <div className="text-center">
+      <div className="text-6xl mb-4">👤</div>
+      <p className="text-xl font-bold">Mon Profil</p>
+      <p className="text-sm text-[#999999] mt-2">Vos contenus et statistiques</p>
+    </div>
+  </div>
+);
