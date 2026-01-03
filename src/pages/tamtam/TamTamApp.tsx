@@ -1,16 +1,15 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useState, createContext, useContext, useCallback } from 'react';
+import { useState, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TamTamLanguageProvider, useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
-import { Home, Users, Radio, ShoppingBag, User, Settings, X, ChevronRight, LogOut, HelpCircle, Bell, Moon, Globe } from 'lucide-react';
+import { Home, Users, Radio, ShoppingBag, User, Settings, X, ChevronRight, Bell, Moon, Globe, Mic, Heart, Stethoscope, Languages, BookOpen, Calculator, Cloud, Map, Newspaper, Shield, Sparkles, Headphones, Camera, Video } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📱 TAM-TAM APP V4 - LAYOUT PRINCIPAL AVEC MENU HAMBURGER GLOBAL
+// 📱 TAM-TAM APP V6 - MENU HAMBURGER ENRICHI + SERVICES IA
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Context pour le menu hamburger global
 interface SideMenuContextType {
   isOpen: boolean;
   open: () => void;
@@ -28,7 +27,7 @@ const SideMenuContext = createContext<SideMenuContextType>({
 export const useSideMenu = () => useContext(SideMenuContext);
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SIDE MENU DRAWER - GLASSMORPHISM
+// SIDE MENU DRAWER - GLASSMORPHISM + SERVICES IA
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
@@ -42,6 +41,18 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { icon: Radio, label: 'Radio', labelBa: 'Rédíò', path: '/tamtam/radio', emoji: '📻' },
     { icon: ShoppingBag, label: 'Marché', labelBa: 'Ọjà', path: '/tamtam/market', emoji: '🛒' },
     { icon: User, label: 'Profil', labelBa: 'Èmi', path: '/tamtam/profile', emoji: '👤' },
+  ];
+
+  // Services IA
+  const aiServices = [
+    { icon: Languages, label: 'Traducteur', labelBa: 'Ìtumọ̀', emoji: '🌍', color: 'from-blue-500 to-cyan-400', desc: 'FR ↔ Yoruba ↔ Bambara' },
+    { icon: Stethoscope, label: 'Santé IA', labelBa: 'Ìlera AI', emoji: '🩺', color: 'from-emerald-500 to-teal-400', desc: 'Conseils médicaux' },
+    { icon: BookOpen, label: 'Éducation', labelBa: 'Ẹ̀kọ́', emoji: '📚', color: 'from-purple-500 to-indigo-400', desc: 'Apprendre & Quiz' },
+    { icon: Calculator, label: 'Finance', labelBa: 'Owó', emoji: '💰', color: 'from-amber-500 to-orange-400', desc: 'Calculs & Épargne' },
+    { icon: Cloud, label: 'Météo', labelBa: 'Ojú ọjọ́', emoji: '🌤️', color: 'from-sky-500 to-blue-400', desc: 'Prévisions locales' },
+    { icon: Map, label: 'Agriculture', labelBa: 'Iṣẹ́ àgbẹ̀', emoji: '🌾', color: 'from-green-500 to-lime-400', desc: 'Conseils culture' },
+    { icon: Newspaper, label: 'Actualités', labelBa: 'Ìròyìn', emoji: '📰', color: 'from-red-500 to-rose-400', desc: 'News locales' },
+    { icon: Shield, label: 'Sécurité', labelBa: 'Ààbò', emoji: '🛡️', color: 'from-gray-500 to-slate-400', desc: 'Alertes & SOS' },
   ];
 
   const handleNavigate = (path: string) => {
@@ -59,162 +70,154 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
             className="fixed inset-0 z-[100]"
-            style={{ background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(8px)' }}
+            style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)' }}
           />
 
-          {/* Drawer */}
           <motion.div
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 w-[300px] z-[101] overflow-hidden"
+            className="fixed left-0 top-0 bottom-0 w-[320px] z-[101] overflow-y-auto"
             style={{
-              background: 'linear-gradient(180deg, rgba(30, 30, 40, 0.95) 0%, rgba(15, 15, 20, 0.98) 100%)',
+              background: 'linear-gradient(180deg, rgba(20, 20, 28, 0.98) 0%, rgba(10, 10, 15, 0.99) 100%)',
               backdropFilter: 'blur(20px)',
               borderRight: '1px solid rgba(255, 255, 255, 0.1)',
             }}
           >
             {/* Header avec avatar */}
-            <div className="p-6 border-b border-white/10">
-              <div className="flex items-center justify-between mb-6">
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={onClose}
-                  className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"
-                >
-                  <X className="w-5 h-5 text-white" />
-                </motion.button>
+            <div className="p-5 border-b border-white/10">
+              <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"
-                  >
-                    <Bell className="w-5 h-5 text-white" />
+                  <span className="text-2xl">🥁</span>
+                  <span className="text-white font-black text-lg">TAM-TAM</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <motion.button whileTap={{ scale: 0.9 }} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                    <Bell className="w-4 h-4 text-white" />
                   </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"
-                  >
-                    <Moon className="w-5 h-5 text-white" />
+                  <motion.button whileTap={{ scale: 0.9 }} onClick={onClose} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                    <X className="w-5 h-5 text-white" />
                   </motion.button>
                 </div>
               </div>
 
               {/* Avatar & User Info */}
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center shadow-xl">
-                  <span className="text-3xl">👤</span>
+              <div className="flex items-center gap-4 p-3 rounded-2xl bg-white/5">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center shadow-xl">
+                  <span className="text-2xl">👤</span>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-white text-lg font-bold">Utilisateur</h3>
-                  <p className="text-white/60 text-sm">@tamtam_user</p>
-                  <div className="flex items-center gap-2 mt-1">
+                  <h3 className="text-white text-base font-bold">Utilisateur</h3>
+                  <p className="text-white/50 text-sm">@tamtam_user</p>
+                  <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[#FF7A00] text-xs font-medium">125 abonnés</span>
-                    <span className="text-white/40">•</span>
-                    <span className="text-white/60 text-xs">48 suivis</span>
+                    <span className="text-white/30">•</span>
+                    <span className="text-white/50 text-xs">48 suivis</span>
                   </div>
                 </div>
+                <ChevronRight className="w-5 h-5 text-white/30" />
               </div>
             </div>
 
-            {/* Navigation */}
-            <div className="p-4 flex-1 overflow-y-auto">
-              <p className="text-white/40 text-xs font-medium uppercase tracking-wider mb-3 px-2">Navigation</p>
+            {/* Navigation principale */}
+            <div className="p-4">
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-2 px-2">Navigation</p>
               <div className="space-y-1">
                 {navItems.map((item, index) => {
-                  const Icon = item.icon;
                   const active = isActive(item.path);
                   return (
                     <motion.button
                       key={item.path}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
+                      transition={{ delay: index * 0.03 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleNavigate(item.path)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
+                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${
                         active ? 'bg-[#FF7A00]/20 border border-[#FF7A00]/30' : 'hover:bg-white/5'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        active ? 'bg-[#FF7A00]' : 'bg-white/10'
-                      }`}>
-                        <span className="text-xl">{item.emoji}</span>
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${active ? 'bg-[#FF7A00]' : 'bg-white/10'}`}>
+                        <span className="text-lg">{item.emoji}</span>
                       </div>
-                      <span className={`font-medium flex-1 text-left ${active ? 'text-[#FF7A00]' : 'text-white'}`}>
+                      <span className={`font-medium flex-1 text-left text-sm ${active ? 'text-[#FF7A00]' : 'text-white'}`}>
                         {currentLang === 'ba' ? item.labelBa : item.label}
                       </span>
-                      {active && (
-                        <span className="px-2 py-0.5 rounded-full bg-[#FF7A00]/20 text-[#FF7A00] text-[10px] font-bold">
-                          ACTIF
-                        </span>
-                      )}
-                      <ChevronRight className={`w-4 h-4 ${active ? 'text-[#FF7A00]' : 'text-white/40'}`} />
+                      {active && <span className="px-2 py-0.5 rounded-full bg-[#FF7A00]/20 text-[#FF7A00] text-[9px] font-bold">ACTIF</span>}
                     </motion.button>
                   );
                 })}
               </div>
+            </div>
 
-              {/* Language Toggle */}
-              <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10">
-                <div className="flex items-center gap-3 mb-3">
-                  <Globe className="w-5 h-5 text-[#FF7A00]" />
-                  <span className="text-white font-medium">Langue</span>
-                </div>
-                <div className="flex gap-2">
+            {/* Services IA */}
+            <div className="p-4 border-t border-white/10">
+              <div className="flex items-center gap-2 mb-3 px-2">
+                <Sparkles className="w-4 h-4 text-[#FF7A00]" />
+                <p className="text-[#FF7A00] text-[10px] font-bold uppercase tracking-wider">Services IA</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {aiServices.map((service, index) => (
                   <motion.button
+                    key={service.label}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 + index * 0.03 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setLanguage('fr')}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                      currentLang === 'fr' ? 'bg-[#FF7A00] text-white' : 'bg-white/10 text-white/60'
-                    }`}
+                    onClick={() => { triggerFeedback('click'); onClose(); }}
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all"
                   >
-                    🇫🇷 Français
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${service.color} flex items-center justify-center`}>
+                      <span className="text-xl">{service.emoji}</span>
+                    </div>
+                    <span className="text-white text-xs font-medium">{currentLang === 'ba' ? service.labelBa : service.label}</span>
+                    <span className="text-white/40 text-[9px] text-center leading-tight">{service.desc}</span>
                   </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setLanguage('ba')}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                      currentLang === 'ba' ? 'bg-[#FF7A00] text-white' : 'bg-white/10 text-white/60'
-                    }`}
-                  >
-                    🇧🇯 Yorùbá
-                  </motion.button>
-                </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Langue */}
+            <div className="p-4 border-t border-white/10">
+              <div className="flex items-center gap-2 mb-3 px-2">
+                <Globe className="w-4 h-4 text-white/60" />
+                <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Langue</p>
+              </div>
+              <div className="flex gap-2">
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setLanguage('fr')}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    currentLang === 'fr' ? 'bg-[#FF7A00] text-white' : 'bg-white/10 text-white/60'
+                  }`}
+                >
+                  🇫🇷 Français
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setLanguage('ba')}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    currentLang === 'ba' ? 'bg-[#FF7A00] text-white' : 'bg-white/10 text-white/60'
+                  }`}
+                >
+                  🇧🇯 Yorùbá
+                </motion.button>
               </div>
             </div>
 
             {/* Footer */}
             <div className="p-4 border-t border-white/10">
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleNavigate('/tamtam/settings')}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 mb-2"
-              >
-                <Settings className="w-5 h-5 text-white/60" />
-                <span className="text-white/60">Paramètres</span>
+              <motion.button whileTap={{ scale: 0.98 }} onClick={() => handleNavigate('/tamtam/settings')} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5">
+                <Settings className="w-5 h-5 text-white/50" />
+                <span className="text-white/50 text-sm">Paramètres</span>
               </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5"
-              >
-                <HelpCircle className="w-5 h-5 text-white/60" />
-                <span className="text-white/60">Aide & Support</span>
-              </motion.button>
-            </div>
-
-            {/* Logo */}
-            <div className="p-4 flex items-center justify-center gap-2 opacity-50">
-              <span className="text-2xl">🥁</span>
-              <span className="text-white font-black">TAM-TAM</span>
             </div>
           </motion.div>
         </>
@@ -228,15 +231,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function AppContent() {
-  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // Routes fullscreen
-  const fullscreenRoutes = ['/tamtam/social', '/tamtam/home', '/tamtam/radio', '/tamtam'];
-  const isFullscreen = fullscreenRoutes.some(route => {
-    if (route === '/tamtam') return location.pathname === '/tamtam' || location.pathname === '/tamtam/';
-    return location.pathname.startsWith(route);
-  });
 
   const menuContext: SideMenuContextType = {
     isOpen: isMenuOpen,
