@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Menu, X, Home, Search, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, ChevronRight, MicOff } from 'lucide-react';
+import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, ChevronRight, RefreshCw, UserPlus } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
-import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
-import { useFeedAlgorithm } from '@/hooks/useFeedAlgorithm';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
@@ -17,11 +15,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useSideMenu } from './TamTamApp';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📱 TAM-TAM SOCIAL V5 - SWIPE FEEDS + OPTIMISATIONS
+// 📱 TAM-TAM SOCIAL V7 - SANS HEADER + TOUS BOUTONS + FIX AUDIO
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
 type BottomTab = 'fil' | 'chat' | 'groupes' | 'direct';
+
+// URL audio par défaut (silence ou placeholder)
+const DEFAULT_AUDIO_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TEMPLATES POUR DISQUES VINYLE
@@ -67,14 +68,12 @@ const CreateMenu: React.FC<{
   currentLang: string;
 }> = ({ isOpen, onClose, currentFeed, onSelectPatrimoine, onSelectMaVoix, onSelectCreateur, currentLang }) => {
   
-  // Options filtrées selon le feed actuel (pas de répétition)
   const options = useMemo(() => {
     const allOptions = [
       { id: 'patrimoine', emoji: '🏛️', label: 'Patrimoine', labelBa: 'Kpààrà', desc: 'Culture & Traditions', gradient: 'from-[#FF8C42] to-[#FF5722]', icons: '📖🎵💬🌿', action: onSelectPatrimoine },
       { id: 'mavoix', emoji: '📢', label: 'Voix du Village', labelBa: 'Kùú dɔ̀ɔ̀rɔ̀', desc: 'Annonces & Messages', gradient: 'from-[#26D9B0] to-[#00BCD4]', icons: '📢🙏🎉❓', action: onSelectMaVoix },
       { id: 'creation', emoji: '🎬', label: 'Créateur', labelBa: 'Olùṣẹ̀dá', desc: 'Vidéo, Photo, Texte', gradient: 'from-[#7C4DFF] to-[#536DFE]', icons: '🎥📸✍️🔴', action: onSelectCreateur },
     ];
-    // Filtrer l'option correspondant au feed actuel
     return allOptions.filter(opt => opt.id !== currentFeed);
   }, [currentFeed, onSelectPatrimoine, onSelectMaVoix, onSelectCreateur]);
 
@@ -137,85 +136,10 @@ const CreateMenu: React.FC<{
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// HEADER TRANSPARENT AVEC RECHERCHE VOCALE
+// FEED INDICATOR (DOTS) - En haut de l'écran
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const TransparentHeader: React.FC<{
-  onMenuOpen: () => void;
-  onSearch: () => void;
-  currentLang: string;
-}> = ({ onMenuOpen, onSearch, currentLang }) => {
-  const [isListening, setIsListening] = useState(false);
-
-  const startVoiceSearch = () => {
-    setIsListening(true);
-    triggerFeedback('notification');
-    // Simulate voice recognition
-    setTimeout(() => setIsListening(false), 3000);
-  };
-
-  return (
-    <div className="fixed top-0 left-0 right-0 z-40 safe-area-top">
-      <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-      <div className="relative px-4 py-3 flex items-center justify-between">
-        {/* Menu hamburger */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onMenuOpen}
-          className="w-11 h-11 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(10px)' }}
-        >
-          <Menu className="w-5 h-5 text-white" />
-        </motion.button>
-
-        {/* Logo central */}
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🥁</span>
-          <span className="text-white font-black text-lg">TAM-TAM</span>
-        </div>
-
-        {/* Recherche vocale */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={isListening ? () => setIsListening(false) : startVoiceSearch}
-          className={`w-11 h-11 rounded-full flex items-center justify-center ${isListening ? 'bg-[#FF7A00]' : ''}`}
-          style={isListening ? {} : { background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(10px)' }}
-          animate={isListening ? { scale: [1, 1.1, 1] } : {}}
-          transition={{ repeat: isListening ? Infinity : 0, duration: 0.5 }}
-        >
-          {isListening ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
-        </motion.button>
-      </div>
-
-      {/* Voice search indicator */}
-      <AnimatePresence>
-        {isListening && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mx-4 mb-2 p-3 rounded-xl bg-[#FF7A00]/20 border border-[#FF7A00]/30"
-          >
-            <div className="flex items-center gap-3">
-              <motion.div
-                className="w-3 h-3 rounded-full bg-[#FF7A00]"
-                animate={{ scale: [1, 1.5, 1] }}
-                transition={{ repeat: Infinity, duration: 0.5 }}
-              />
-              <span className="text-white text-sm">{currentLang === 'ba' ? 'Ń gbọ́...' : 'Écoute en cours...'}</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// FEED INDICATOR (DOTS)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const FeedIndicator: React.FC<{ currentFeed: FeedMode }> = ({ currentFeed }) => {
+const FeedIndicator: React.FC<{ currentFeed: FeedMode; onMenuOpen: () => void }> = ({ currentFeed, onMenuOpen }) => {
   const feeds: { id: FeedMode; emoji: string; label: string }[] = [
     { id: 'patrimoine', emoji: '🏛️', label: 'Patrimoine' },
     { id: 'mavoix', emoji: '📢', label: 'Ma Voix' },
@@ -223,33 +147,52 @@ const FeedIndicator: React.FC<{ currentFeed: FeedMode }> = ({ currentFeed }) => 
   ];
 
   return (
-    <div className="fixed top-20 left-0 right-0 z-30 flex justify-center">
-      <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(10px)' }}>
-        {feeds.map((feed) => {
-          const isActive = currentFeed === feed.id;
-          return (
-            <div key={feed.id} className="flex items-center gap-1">
-              {isActive ? (
-                <motion.div
-                  layoutId="feedIndicator"
-                  className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/20"
-                >
-                  <span className="text-lg">{feed.emoji}</span>
-                  <span className="text-white text-sm font-medium">{feed.label}</span>
-                </motion.div>
-              ) : (
-                <div className="w-2 h-2 rounded-full bg-white/40" />
-              )}
-            </div>
-          );
-        })}
+    <div className="fixed top-0 left-0 right-0 z-40 safe-area-top">
+      <div className="px-4 py-3 flex items-center justify-between">
+        {/* Menu hamburger */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={onMenuOpen}
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-md"
+        >
+          <Menu className="w-5 h-5 text-white" />
+        </motion.button>
+
+        {/* Feed indicator */}
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 backdrop-blur-md">
+          {feeds.map((feed) => {
+            const isActive = currentFeed === feed.id;
+            return (
+              <div key={feed.id} className="flex items-center gap-1">
+                {isActive ? (
+                  <motion.div layoutId="feedIndicator" className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20">
+                    <span className="text-base">{feed.emoji}</span>
+                    <span className="text-white text-xs font-semibold">{feed.label}</span>
+                  </motion.div>
+                ) : (
+                  <div className="w-2 h-2 rounded-full bg-white/40" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Logo */}
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-black/40 backdrop-blur-md">
+          <span className="text-lg">🥁</span>
+        </div>
+      </div>
+      
+      {/* Swipe hint */}
+      <div className="flex justify-center pb-2">
+        <span className="text-white/40 text-[10px]">← Glissez pour changer →</span>
       </div>
     </div>
   );
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// BOTTOM TAB BAR (TIKTOK STYLE)
+// BOTTOM TAB BAR
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BottomTabBar: React.FC<{
@@ -259,8 +202,6 @@ const BottomTabBar: React.FC<{
   unreadMessages?: number;
   liveCount?: number;
 }> = ({ activeTab, onTabChange, onCreatePress, unreadMessages = 0, liveCount = 0 }) => {
-  const navigate = useNavigate();
-  
   const tabs: { id: BottomTab; icon: typeof Home; label: string; badge?: number }[] = [
     { id: 'fil', icon: Home, label: 'Accueil' },
     { id: 'chat', icon: MessageCircle, label: 'Messages', badge: unreadMessages },
@@ -274,7 +215,7 @@ const BottomTabBar: React.FC<{
       animate={{ y: 0 }}
       className="fixed bottom-0 left-0 right-0 z-40"
       style={{
-        background: 'linear-gradient(180deg, rgba(11, 11, 11, 0.9) 0%, rgba(11, 11, 11, 0.98) 100%)',
+        background: 'linear-gradient(180deg, rgba(11, 11, 11, 0.95) 0%, rgba(11, 11, 11, 0.99) 100%)',
         backdropFilter: 'blur(20px)',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
         paddingBottom: 'env(safe-area-inset-bottom)',
@@ -285,12 +226,7 @@ const BottomTabBar: React.FC<{
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <motion.button
-              key={tab.id}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => onTabChange(tab.id)}
-              className="relative flex flex-col items-center gap-0.5 py-2 px-4 min-w-[60px]"
-            >
+            <motion.button key={tab.id} whileTap={{ scale: 0.9 }} onClick={() => onTabChange(tab.id)} className="relative flex flex-col items-center gap-0.5 py-2 px-4 min-w-[60px]">
               <div className="relative">
                 <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} strokeWidth={isActive ? 2.5 : 2} />
                 {tab.badge && tab.badge > 0 && (
@@ -304,25 +240,14 @@ const BottomTabBar: React.FC<{
           );
         })}
 
-        {/* Bouton CREATE central */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onCreatePress}
-          className="relative -mt-4"
-        >
+        {/* CREATE */}
+        <motion.button whileTap={{ scale: 0.9 }} onClick={onCreatePress} className="relative -mt-4">
           <div className="relative">
-            <motion.div
-              className="absolute inset-0 rounded-xl blur-lg"
-              style={{ background: 'linear-gradient(45deg, #FF7A00, #FF5500)' }}
-              animate={{ opacity: [0.5, 0.8, 0.5] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-            />
+            <motion.div className="absolute inset-0 rounded-xl blur-lg" style={{ background: 'linear-gradient(45deg, #FF7A00, #FF5500)' }} animate={{ opacity: [0.5, 0.8, 0.5] }} transition={{ repeat: Infinity, duration: 2 }} />
             <div className="relative w-14 h-10 rounded-xl overflow-hidden shadow-xl">
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-cyan-500" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#FF7A00] to-red-500" style={{ clipPath: 'polygon(30% 0, 100% 0, 100% 100%, 10% 100%)' }} />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Plus className="w-7 h-7 text-white" strokeWidth={3} />
-              </div>
+              <div className="absolute inset-0 flex items-center justify-center"><Plus className="w-7 h-7 text-white" strokeWidth={3} /></div>
             </div>
           </div>
         </motion.button>
@@ -331,21 +256,10 @@ const BottomTabBar: React.FC<{
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <motion.button
-              key={tab.id}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => onTabChange(tab.id)}
-              className="relative flex flex-col items-center gap-0.5 py-2 px-4 min-w-[60px]"
-            >
+            <motion.button key={tab.id} whileTap={{ scale: 0.9 }} onClick={() => onTabChange(tab.id)} className="relative flex flex-col items-center gap-0.5 py-2 px-4 min-w-[60px]">
               <div className="relative">
                 <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} strokeWidth={isActive ? 2.5 : 2} />
-                {tab.badge && tab.badge > 0 && (
-                  <motion.span
-                    className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-red-500"
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1 }}
-                  />
-                )}
+                {tab.badge && tab.badge > 0 && <motion.span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-red-500" animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} />}
               </div>
               <span className={`text-[10px] font-medium ${isActive ? 'text-white' : 'text-white/50'}`}>{tab.label}</span>
             </motion.button>
@@ -357,7 +271,7 @@ const BottomTabBar: React.FC<{
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// AUDIO FEED CARD (OPTIMISÉ)
+// AUDIO FEED CARD - AVEC TOUS LES BOUTONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const AudioFeedCard: React.FC<{
@@ -379,7 +293,6 @@ const AudioFeedCard: React.FC<{
   const audioRef = useRef<HTMLAudioElement>(null);
   const duration = post.duration_seconds || 60;
 
-  // Auto-play when active
   useEffect(() => {
     if (isActive && audioRef.current) {
       audioRef.current.play().catch(() => {});
@@ -390,7 +303,6 @@ const AudioFeedCard: React.FC<{
     }
   }, [isActive]);
 
-  // Progress update
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -412,197 +324,145 @@ const AudioFeedCard: React.FC<{
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    onLike();
-    triggerFeedback('notification');
-  };
-
-  const handleFollow = () => {
-    setIsFollowing(!isFollowing);
-    onFollow();
-    triggerFeedback('success');
-  };
+  const handleLike = () => { setIsLiked(!isLiked); onLike(); triggerFeedback('notification'); };
+  const handleFollow = () => { setIsFollowing(!isFollowing); onFollow(); triggerFeedback('success'); };
 
   return (
     <div className="h-screen w-full snap-start snap-always relative overflow-hidden">
-      {post.audio_url && <audio ref={audioRef} src={post.audio_url} loop preload="metadata" />}
+      <audio ref={audioRef} src={post.audio_url || DEFAULT_AUDIO_URL} loop preload="metadata" />
       
-      {/* Background gradient */}
+      {/* Background */}
       <div className={`absolute inset-0 bg-gradient-to-br ${template.bgGradient}`} />
       
       {/* Decorative emojis */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {template.decorEmojis.map((e, i) => (
-          <motion.span
-            key={i}
-            className="absolute text-5xl opacity-20"
-            style={{ left: `${5 + i * 30}%`, top: `${5 + (i % 2) * 80}%` }}
-            animate={{ y: [0, -15, 0], rotate: [0, 5, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 4 + i, delay: i * 0.3 }}
-          >
-            {e}
-          </motion.span>
+          <motion.span key={i} className="absolute text-5xl opacity-20" style={{ left: `${5 + i * 30}%`, top: `${5 + (i % 2) * 80}%` }} animate={{ y: [0, -15, 0], rotate: [0, 5, -5, 0] }} transition={{ repeat: Infinity, duration: 4 + i, delay: i * 0.3 }}>{e}</motion.span>
         ))}
       </div>
 
       {/* Main content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 pb-24">
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 pt-20 pb-24">
         
         {/* Vinyl Disk */}
         <div className="relative mb-4">
           {isPlaying && (
-            <motion.div
-              className="absolute -inset-6 rounded-full"
-              style={{ background: `radial-gradient(circle, ${template.accentColor}30 0%, transparent 70%)` }}
-              animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-            />
+            <motion.div className="absolute -inset-6 rounded-full" style={{ background: `radial-gradient(circle, ${template.accentColor}30 0%, transparent 70%)` }} animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }} transition={{ repeat: Infinity, duration: 1.5 }} />
           )}
           
-          <motion.div
-            className="relative w-48 h-48"
-            animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
-            transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
-          >
+          <motion.div className="relative w-44 h-44" animate={isPlaying ? { rotate: 360 } : { rotate: 0 }} transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}>
             <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${template.gradient} shadow-2xl`}>
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="absolute rounded-full border border-black/10" style={{ inset: `${10 + i * 7}%` }} />
-              ))}
-              <div className="absolute inset-[32%] rounded-full bg-white/90 shadow-inner flex items-center justify-center">
-                <span className="text-4xl">{template.emoji}</span>
-              </div>
+              {[...Array(10)].map((_, i) => (<div key={i} className="absolute rounded-full border border-black/10" style={{ inset: `${10 + i * 7}%` }} />))}
+              <div className="absolute inset-[32%] rounded-full bg-white/90 shadow-inner flex items-center justify-center"><span className="text-4xl">{template.emoji}</span></div>
               <div className="absolute inset-0 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 50%)' }} />
             </div>
-            
-            {/* Progress ring */}
             <svg className="absolute inset-0 w-full h-full -rotate-90">
-              <circle cx="50%" cy="50%" r="47%" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="6" />
-              <circle cx="50%" cy="50%" r="47%" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${progress * 2.95} 295`} />
+              <circle cx="50%" cy="50%" r="47%" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="5" />
+              <circle cx="50%" cy="50%" r="47%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${progress * 2.95} 295`} />
             </svg>
           </motion.div>
 
           {/* Tonearm */}
-          <motion.div
-            className="absolute -right-2 top-2 w-16 h-1.5 origin-right"
-            animate={{ rotate: isPlaying ? -28 : -45 }}
-            transition={{ type: 'spring', stiffness: 100 }}
-          >
+          <motion.div className="absolute -right-2 top-2 w-14 h-1.5 origin-right" animate={{ rotate: isPlaying ? -28 : -45 }} transition={{ type: 'spring', stiffness: 100 }}>
             <div className="w-full h-full bg-gradient-to-r from-gray-400 to-gray-300 rounded-full shadow" />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white shadow" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow" />
           </motion.div>
         </div>
 
         {/* Waveform */}
-        <div className="flex justify-center gap-0.5 mb-4 h-6">
-          {[...Array(35)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="w-1 rounded-full bg-white/50"
-              animate={isPlaying ? { height: [3, Math.random() * 24 + 4, 3] } : { height: 3 }}
-              transition={{ repeat: Infinity, duration: 0.35 + Math.random() * 0.25, delay: i * 0.015 }}
-            />
+        <div className="flex justify-center gap-0.5 mb-3 h-5">
+          {[...Array(30)].map((_, i) => (
+            <motion.div key={i} className="w-1 rounded-full bg-white/50" animate={isPlaying ? { height: [3, Math.random() * 20 + 4, 3] } : { height: 3 }} transition={{ repeat: Infinity, duration: 0.35 + Math.random() * 0.25, delay: i * 0.015 }} />
           ))}
         </div>
 
         {/* Title & Author */}
-        <h2 className="text-white text-xl font-bold text-center mb-1 px-4">
-          {post.title || post.transcript_fr?.slice(0, 35) || template.name}
-        </h2>
-        
-        <div className="flex items-center gap-2 mb-3">
+        <h2 className="text-white text-lg font-bold text-center mb-1 px-4">{post.title || post.transcript_fr?.slice(0, 35) || template.name}</h2>
+        <div className="flex items-center gap-2 mb-2">
           <span className="text-white/60 text-sm">📍 {post.profile?.display_name || 'Utilisateur'} • {post.location_name || 'Communauté'}</span>
         </div>
 
         {/* Follow button */}
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={handleFollow}
-          className={`px-5 py-2 rounded-full text-sm font-bold mb-4 ${
-            isFollowing ? 'bg-white/20 text-white border border-white/30' : 'bg-white text-gray-900'
-          }`}
-        >
+        <motion.button whileTap={{ scale: 0.95 }} onClick={handleFollow} className={`px-4 py-1.5 rounded-full text-sm font-bold mb-3 ${isFollowing ? 'bg-white/20 text-white border border-white/30' : 'bg-white text-gray-900'}`}>
           {isFollowing ? '✓ Abonné' : '+ Suivre'}
         </motion.button>
 
         {/* Transcript */}
         {post.transcript_fr && (
-          <div className="max-w-xs rounded-xl p-3 mb-4" style={{ background: 'rgba(0,0,0,0.25)' }}>
-            <p className="text-white/85 text-center text-sm leading-relaxed">"{post.transcript_fr.slice(0, 100)}..."</p>
+          <div className="max-w-xs rounded-xl p-3 mb-3" style={{ background: 'rgba(0,0,0,0.25)' }}>
+            <p className="text-white/85 text-center text-sm leading-relaxed">"{post.transcript_fr.slice(0, 80)}..."</p>
           </div>
         )}
 
         {/* Controls */}
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-2">
           <span className="text-white/60 text-xs w-10 text-right">{formatTime(currentTime)}</span>
-          <motion.button whileTap={{ scale: 0.9 }} className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
-            <SkipBack className="w-4 h-4 text-white" />
+          <motion.button whileTap={{ scale: 0.9 }} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipBack className="w-4 h-4 text-white" /></motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={togglePlay} className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-xl">
+            {isPlaying ? <Pause className="w-7 h-7 text-gray-800" /> : <Play className="w-7 h-7 text-gray-800 ml-1" />}
           </motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={togglePlay} className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-xl">
-            {isPlaying ? <Pause className="w-8 h-8 text-gray-800" /> : <Play className="w-8 h-8 text-gray-800 ml-1" />}
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
-            <SkipForward className="w-4 h-4 text-white" />
-          </motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipForward className="w-4 h-4 text-white" /></motion.button>
           <span className="text-white/60 text-xs w-10">{formatTime(duration)}</span>
         </div>
 
         {/* Speed & Volume */}
         <div className="flex items-center gap-2">
-          <motion.button whileTap={{ scale: 0.95 }} className="px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-medium">1x</motion.button>
-          <motion.button whileTap={{ scale: 0.95 }} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center">
-            <Volume2 className="w-4 h-4 text-white" />
-          </motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} className="px-3 py-1 rounded-full bg-white/15 text-white text-xs font-medium">1x</motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center"><Volume2 className="w-4 h-4 text-white" /></motion.button>
         </div>
       </div>
 
-      {/* Right side actions (COMPACT) */}
-      <div className="absolute right-3 bottom-28 flex flex-col items-center gap-4">
+      {/* RIGHT SIDE ACTIONS - TOUS LES BOUTONS */}
+      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-3">
         {/* Like */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={handleLike} className="flex flex-col items-center">
-          <div className={`w-11 h-11 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/30'}`}>
-            <Heart className={`w-5 h-5 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/30'}`}>
+            <Heart className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
           <span className="text-white text-[10px] mt-0.5 font-medium">{post.reactions_count || 0}</span>
         </motion.button>
         
-        {/* Comment (opens modal) */}
+        {/* Répondre (Comment) */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={onComment} className="flex flex-col items-center">
-          <div className="w-11 h-11 rounded-full bg-black/30 flex items-center justify-center">
-            <MessageCircle className="w-5 h-5 text-white" />
+          <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
+            <Mic className="w-6 h-6 text-white" />
           </div>
-          <span className="text-white text-[10px] mt-0.5 font-medium">{post.comments_count || 0}</span>
+          <span className="text-white text-[10px] mt-0.5">Répondre</span>
         </motion.button>
         
-        {/* Share */}
+        {/* Remix */}
+        <motion.button whileTap={{ scale: 0.85 }} className="flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
+            <RefreshCw className="w-6 h-6 text-white" />
+          </div>
+          <span className="text-white text-[10px] mt-0.5">Remix</span>
+        </motion.button>
+        
+        {/* Partager */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={onShare} className="flex flex-col items-center">
-          <div className="w-11 h-11 rounded-full bg-black/30 flex items-center justify-center">
-            <Share2 className="w-5 h-5 text-white" />
+          <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
+            <Share2 className="w-6 h-6 text-white" />
           </div>
           <span className="text-white text-[10px] mt-0.5">Partager</span>
         </motion.button>
         
-        {/* Save */}
-        <motion.button whileTap={{ scale: 0.85 }} onClick={() => setIsSaved(!isSaved)} className="flex flex-col items-center">
-          <div className={`w-11 h-11 rounded-full flex items-center justify-center ${isSaved ? 'bg-amber-500' : 'bg-black/30'}`}>
-            <Bookmark className={`w-5 h-5 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
+        {/* Sauver */}
+        <motion.button whileTap={{ scale: 0.85 }} onClick={() => { setIsSaved(!isSaved); triggerFeedback('success'); }} className="flex flex-col items-center">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isSaved ? 'bg-amber-500' : 'bg-black/30'}`}>
+            <Bookmark className={`w-6 h-6 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
           </div>
           <span className="text-white text-[10px] mt-0.5">{isSaved ? 'Sauvé' : 'Sauver'}</span>
         </motion.button>
       </div>
 
-      {/* Author avatar with follow indicator */}
-      <div className="absolute left-4 bottom-28">
+      {/* Author avatar bottom left */}
+      <div className="absolute left-4 bottom-24">
         <div className="relative">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center border-2 border-white shadow-lg">
-            <span className="text-xl">👤</span>
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center border-2 border-white shadow-lg">
+            <span className="text-lg">👤</span>
           </div>
           {!isFollowing && (
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={handleFollow}
-              className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#FF7A00] flex items-center justify-center"
-            >
+            <motion.button whileTap={{ scale: 0.9 }} onClick={handleFollow} className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#FF7A00] flex items-center justify-center">
               <Plus className="w-3 h-3 text-white" strokeWidth={3} />
             </motion.button>
           )}
@@ -613,7 +473,7 @@ const AudioFeedCard: React.FC<{
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// VIDEO FEED CARD (LAZY LOADING)
+// VIDEO FEED CARD - AVEC TOUS LES BOUTONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const VideoFeedCard: React.FC<{
@@ -624,11 +484,11 @@ const VideoFeedCard: React.FC<{
   onShare: () => void;
 }> = ({ post, isActive, onLike, onComment, onShare }) => {
   const [isLiked, setIsLiked] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Lazy load & auto-play
   useEffect(() => {
     if (isActive && videoRef.current) {
       videoRef.current.play().catch(() => {});
@@ -640,23 +500,13 @@ const VideoFeedCard: React.FC<{
   return (
     <div className="h-screen w-full snap-start snap-always relative bg-black">
       {post.media_url ? (
-        <video
-          ref={videoRef}
-          src={post.media_url}
-          loop
-          muted
-          playsInline
-          preload={isActive ? 'auto' : 'metadata'}
-          onLoadedData={() => setIsLoaded(true)}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-        />
+        <video ref={videoRef} src={post.media_url} loop muted playsInline preload={isActive ? 'auto' : 'metadata'} onLoadedData={() => setIsLoaded(true)} className={`absolute inset-0 w-full h-full object-cover transition-opacity ${isLoaded ? 'opacity-100' : 'opacity-0'}`} />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
           <span className="text-8xl">{post.feeling_emoji || '🎬'}</span>
         </div>
       )}
       
-      {/* Loading skeleton */}
       {!isLoaded && post.media_url && (
         <div className="absolute inset-0 bg-gray-900 animate-pulse flex items-center justify-center">
           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-2 border-white border-t-transparent rounded-full" />
@@ -666,15 +516,9 @@ const VideoFeedCard: React.FC<{
       {/* Bottom info */}
       <div className="absolute bottom-20 left-0 right-16 px-4 py-4" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }}>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] border-2 border-white flex items-center justify-center">
-            <span className="text-lg">👤</span>
-          </div>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] border-2 border-white flex items-center justify-center"><span className="text-lg">👤</span></div>
           <span className="text-white font-bold text-sm">@{post.profile?.username || 'creator'}</span>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsFollowing(!isFollowing)}
-            className={`px-3 py-1 rounded-full text-xs font-bold ${isFollowing ? 'bg-white/20 text-white' : 'bg-[#FF7A00] text-white'}`}
-          >
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsFollowing(!isFollowing)} className={`px-3 py-1 rounded-full text-xs font-bold ${isFollowing ? 'bg-white/20 text-white' : 'bg-[#FF7A00] text-white'}`}>
             {isFollowing ? 'Abonné' : 'Suivre'}
           </motion.button>
         </div>
@@ -682,25 +526,40 @@ const VideoFeedCard: React.FC<{
         <p className="text-white/50 text-xs">#TAMTAM #Création</p>
       </div>
 
-      {/* Right actions (COMPACT) */}
-      <div className="absolute right-3 bottom-28 flex flex-col items-center gap-4">
+      {/* RIGHT SIDE ACTIONS - TOUS LES BOUTONS */}
+      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-3">
+        {/* Like */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={() => { setIsLiked(!isLiked); onLike(); }} className="flex flex-col items-center">
-          <div className={`w-11 h-11 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/40'}`}>
-            <Heart className={`w-5 h-5 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/40'}`}>
+            <Heart className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
           <span className="text-white text-[10px] mt-0.5">{post.reactions_count || 0}</span>
         </motion.button>
+        
+        {/* Répondre */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={onComment} className="flex flex-col items-center">
-          <div className="w-11 h-11 rounded-full bg-black/40 flex items-center justify-center">
-            <MessageCircle className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-white text-[10px] mt-0.5">{post.comments_count || 0}</span>
+          <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center"><MessageCircle className="w-6 h-6 text-white" /></div>
+          <span className="text-white text-[10px] mt-0.5">Répondre</span>
         </motion.button>
+        
+        {/* Remix */}
+        <motion.button whileTap={{ scale: 0.85 }} className="flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center"><RefreshCw className="w-6 h-6 text-white" /></div>
+          <span className="text-white text-[10px] mt-0.5">Remix</span>
+        </motion.button>
+        
+        {/* Partager */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={onShare} className="flex flex-col items-center">
-          <div className="w-11 h-11 rounded-full bg-black/40 flex items-center justify-center">
-            <Share2 className="w-5 h-5 text-white" />
-          </div>
+          <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center"><Share2 className="w-6 h-6 text-white" /></div>
           <span className="text-white text-[10px] mt-0.5">Partager</span>
+        </motion.button>
+        
+        {/* Sauver */}
+        <motion.button whileTap={{ scale: 0.85 }} onClick={() => setIsSaved(!isSaved)} className="flex flex-col items-center">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isSaved ? 'bg-amber-500' : 'bg-black/40'}`}>
+            <Bookmark className={`w-6 h-6 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
+          </div>
+          <span className="text-white text-[10px] mt-0.5">{isSaved ? 'Sauvé' : 'Sauver'}</span>
         </motion.button>
       </div>
     </div>
@@ -726,10 +585,8 @@ export default function TamTamSocial() {
   const [createPostType, setCreatePostType] = useState<'patrimoine' | 'mavoix'>('patrimoine');
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; postId: string | null; comments: TamTamComment[]; isLoading: boolean }>({ isOpen: false, postId: null, comments: [], isLoading: false });
-  
-  const feedContainerRef = useRef<HTMLDivElement>(null);
 
-  // Handle horizontal swipe to change feed
+  // Handle horizontal swipe
   const handleDragEnd = useCallback((event: any, info: PanInfo) => {
     const threshold = 50;
     const feeds: FeedMode[] = ['patrimoine', 'mavoix', 'creation'];
@@ -759,36 +616,79 @@ export default function TamTamSocial() {
 
   const handleShare = useCallback((postId: string) => {
     triggerFeedback('send');
-    if (navigator.share) {
-      navigator.share({ title: 'TAM-TAM', url: window.location.href });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast({ title: "🔗 Lien copié!" });
-    }
+    if (navigator.share) navigator.share({ title: 'TAM-TAM', url: window.location.href });
+    else { navigator.clipboard.writeText(window.location.href); toast({ title: "🔗 Lien copié!" }); }
   }, [toast]);
 
-  // Filter posts by category
+  // IMPORTANT: Fonction de création avec audio_url par défaut
+  const handleCreatePost = useCallback(async (data: any) => {
+    try {
+      // S'assurer que audio_url n'est jamais null
+      const postData = {
+        ...data,
+        audio_url: data.audio_url || DEFAULT_AUDIO_URL,
+        topic: createPostType,
+      };
+      
+      await createPost(postData);
+      toast({ title: "✅ Publié!" });
+      triggerFeedback('success');
+      fetchPosts();
+      setShowCreatePost(false);
+    } catch (error) {
+      console.error('Erreur publication:', error);
+      toast({ title: "❌ Erreur", description: "Impossible de publier. Réessayez.", variant: "destructive" });
+    }
+  }, [createPost, createPostType, fetchPosts, toast]);
+
+  const handleCreatorComplete = useCallback(async (d: any) => {
+    try {
+      const postData = {
+        audio_url: d.audio_url || DEFAULT_AUDIO_URL,
+        media_type: d.media_type || 'audio',
+        media_url: d.media_url || null,
+        transcript_fr: d.transcript_fr || '',
+        transcript_ba: d.transcript_ba || '',
+        topic: d.topic || 'creation',
+        template_id: d.template_id || null,
+        duration_seconds: d.duration_seconds || 30,
+      };
+      
+      await createPost(postData);
+      toast({ title: "✅ Publié!" });
+      triggerFeedback('success');
+      fetchPosts();
+      setShowCreator(false);
+    } catch (error) {
+      console.error('Erreur publication:', error);
+      toast({ title: "❌ Erreur", description: "Impossible de publier. Réessayez.", variant: "destructive" });
+    }
+  }, [createPost, fetchPosts, toast]);
+
+  // Filter posts
   const getCurrentPosts = useMemo(() => {
+    const allPosts = posts.length > 0 ? posts : [];
     switch (feedMode) {
       case 'patrimoine':
-        return posts.filter(p => (p as any).topic === 'patrimoine' || (p as any).topic === 'culture').slice(0, 20) || posts.slice(0, 10);
+        const patrimoine = allPosts.filter(p => (p as any).topic === 'patrimoine' || (p as any).topic === 'culture');
+        return patrimoine.length > 0 ? patrimoine : allPosts.slice(0, 10);
       case 'mavoix':
-        return posts.filter(p => (p as any).topic === 'mavoix' || (p as any).topic === 'annonce').slice(0, 20) || posts.slice(0, 10);
+        const mavoix = allPosts.filter(p => (p as any).topic === 'mavoix' || (p as any).topic === 'annonce');
+        return mavoix.length > 0 ? mavoix : allPosts.slice(0, 10);
       case 'creation':
-        return posts.filter(p => (p as any).media_type === 'video' || (p as any).media_type === 'photo').slice(0, 20) || posts.slice(0, 10);
+        const creation = allPosts.filter(p => (p as any).media_type === 'video' || (p as any).media_type === 'photo');
+        return creation.length > 0 ? creation : allPosts.slice(0, 10);
     }
   }, [feedMode, posts]);
 
   return (
     <div className="fixed inset-0" style={{ background: '#0B0B0B' }}>
-      <TransparentHeader onMenuOpen={sideMenu.open} onSearch={() => {}} currentLang={currentLang} />
-      <FeedIndicator currentFeed={feedMode} />
+      <FeedIndicator currentFeed={feedMode} onMenuOpen={sideMenu.open} />
 
       <AnimatePresence mode="wait">
         {activeTab === 'fil' && (
           <motion.div
             key={feedMode}
-            ref={feedContainerRef}
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
@@ -806,97 +706,38 @@ export default function TamTamSocial() {
             ) : getCurrentPosts.length > 0 ? (
               feedMode === 'creation' ? (
                 getCurrentPosts.map((post, i) => (
-                  <VideoFeedCard
-                    key={post.id}
-                    post={post}
-                    isActive={i === currentPostIndex}
-                    onLike={() => addReaction(post.id, 'like')}
-                    onComment={() => handleOpenComments(post.id)}
-                    onShare={() => handleShare(post.id)}
-                  />
+                  <VideoFeedCard key={post.id} post={post} isActive={i === currentPostIndex} onLike={() => addReaction(post.id, 'like')} onComment={() => handleOpenComments(post.id)} onShare={() => handleShare(post.id)} />
                 ))
               ) : (
                 getCurrentPosts.map((post, i) => (
-                  <AudioFeedCard
-                    key={post.id}
-                    post={post}
-                    isActive={i === currentPostIndex}
-                    category={feedMode === 'patrimoine' ? 'patrimoine' : 'mavoix'}
-                    onLike={() => addReaction(post.id, 'like')}
-                    onComment={() => handleOpenComments(post.id)}
-                    onShare={() => handleShare(post.id)}
-                    onFollow={() => triggerFeedback('success')}
-                  />
+                  <AudioFeedCard key={post.id} post={post} isActive={i === currentPostIndex} category={feedMode === 'patrimoine' ? 'patrimoine' : 'mavoix'} onLike={() => addReaction(post.id, 'like')} onComment={() => handleOpenComments(post.id)} onShare={() => handleShare(post.id)} onFollow={() => triggerFeedback('success')} />
                 ))
               )
             ) : (
               <div className="h-screen flex flex-col items-center justify-center px-8">
                 <span className="text-7xl mb-4">{feedMode === 'patrimoine' ? '🏛️' : feedMode === 'mavoix' ? '📢' : '🎬'}</span>
                 <p className="text-white text-xl font-bold mb-2">Aucun contenu</p>
-                <p className="text-white/50 text-center mb-6">Soyez le premier à partager dans {feedMode}!</p>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowCreateMenu(true)} className="px-6 py-3 rounded-full bg-[#FF7A00] text-white font-bold">
-                  Créer
-                </motion.button>
+                <p className="text-white/50 text-center mb-6">Soyez le premier à partager!</p>
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowCreateMenu(true)} className="px-6 py-3 rounded-full bg-[#FF7A00] text-white font-bold">Créer</motion.button>
               </div>
             )}
           </motion.div>
         )}
         
-        {activeTab === 'chat' && <motion.div key="chat" className="pt-16 pb-20 h-full"><TamTamMessagesHub isOpen={true} onClose={() => setActiveTab('fil')} /></motion.div>}
-        {activeTab === 'groupes' && <motion.div key="groupes" className="pt-16 pb-20 h-full"><TamTamCommunities /></motion.div>}
-        {activeTab === 'direct' && <motion.div key="direct" className="pt-16 pb-20 h-full"><TamTamLiveList /></motion.div>}
+        {activeTab === 'chat' && <motion.div key="chat" className="pt-4 pb-20 h-full"><TamTamMessagesHub isOpen={true} onClose={() => setActiveTab('fil')} /></motion.div>}
+        {activeTab === 'groupes' && <motion.div key="groupes" className="pt-4 pb-20 h-full"><TamTamCommunities /></motion.div>}
+        {activeTab === 'direct' && <motion.div key="direct" className="pt-4 pb-20 h-full"><TamTamLiveList /></motion.div>}
       </AnimatePresence>
 
       <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} onCreatePress={() => setShowCreateMenu(true)} unreadMessages={3} liveCount={2} />
 
-      <CreateMenu
-        isOpen={showCreateMenu}
-        onClose={() => setShowCreateMenu(false)}
-        currentFeed={feedMode}
-        onSelectPatrimoine={() => { setCreatePostType('patrimoine'); setShowCreatePost(true); }}
-        onSelectMaVoix={() => { setCreatePostType('mavoix'); setShowCreatePost(true); }}
-        onSelectCreateur={() => setShowCreator(true)}
-        currentLang={currentLang}
-      />
+      <CreateMenu isOpen={showCreateMenu} onClose={() => setShowCreateMenu(false)} currentFeed={feedMode} onSelectPatrimoine={() => { setCreatePostType('patrimoine'); setShowCreatePost(true); }} onSelectMaVoix={() => { setCreatePostType('mavoix'); setShowCreatePost(true); }} onSelectCreateur={() => setShowCreator(true)} currentLang={currentLang} />
 
-      <TamTamCreatePost
-        isOpen={showCreatePost}
-        onClose={() => setShowCreatePost(false)}
-        onSubmit={async (data) => {
-          await createPost({ ...data, topic: createPostType });
-          toast({ title: "✅ Publié!" });
-          fetchPosts();
-        }}
-        onOpenPoll={() => {}}
-      />
+      <TamTamCreatePost isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onSubmit={handleCreatePost} onOpenPoll={() => {}} />
 
-      <FullscreenCreator
-        isOpen={showCreator}
-        onClose={() => setShowCreator(false)}
-        onComplete={async (d) => {
-          await createPost({
-            audio_url: d.audio_url,
-            media_type: d.media_type,
-            media_url: d.media_url,
-            transcript_fr: d.transcript_fr || '',
-            transcript_ba: d.transcript_ba || '',
-            topic: d.topic,
-            template_id: d.template_id,
-            duration_seconds: d.duration_seconds,
-          });
-          toast({ title: "✅ Publié!" });
-          fetchPosts();
-          setShowCreator(false);
-        }}
-      />
+      <FullscreenCreator isOpen={showCreator} onClose={() => setShowCreator(false)} onComplete={handleCreatorComplete} />
 
-      <TamTamCommentsModal
-        isOpen={commentsModal.isOpen}
-        onClose={() => setCommentsModal(prev => ({ ...prev, isOpen: false }))}
-        comments={commentsModal.comments}
-        onAddComment={async () => {}}
-        isLoading={commentsModal.isLoading}
-      />
+      <TamTamCommentsModal isOpen={commentsModal.isOpen} onClose={() => setCommentsModal(prev => ({ ...prev, isOpen: false }))} comments={commentsModal.comments} onAddComment={async () => {}} isLoading={commentsModal.isLoading} />
     </div>
   );
 }
