@@ -1,227 +1,323 @@
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, Search, Bell } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
-import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
-import { useVoiceMenu } from '@/hooks/useVoiceMenu';
+import { useTamTamPosts } from '@/hooks/useTamTamPosts';
+import { useFeedAlgorithm } from '@/hooks/useFeedAlgorithm';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
-import { Volume2, Loader2, MessageCircle, Mic } from 'lucide-react';
 import { RaconteMoiAssistant } from '@/components/tamtam/RaconteMoiAssistant';
-
-const services = [
-  { icon: '💬', labelKey: 'social', path: '/tamtam/social', color: 'bg-emerald-500' },
-  { icon: '🤖', labelKey: 'ia', path: '/tamtam/services', color: 'bg-blue-500' },
-  { icon: '🛒', labelKey: 'market', path: '/tamtam/market', color: 'bg-orange-500' },
-  { icon: '🆘', labelKey: 'sos', path: '/tamtam/sos', color: 'bg-red-500' },
-  { icon: '👤', labelKey: 'profile', path: '/tamtam/profile', color: 'bg-gray-500' },
-  { icon: '📖', labelKey: 'dictionary', path: '/tamtam/dictionary', color: 'bg-purple-500' },
-];
+import { SideMenuDrawer } from '@/components/tamtam/SideMenuDrawer';
+import { TransparentFeedHeader, FeedSubMode } from '@/components/tamtam/TransparentFeedHeader';
+import { BottomTabBar, BottomTabId } from '@/components/tamtam/BottomTabBar';
+import { TamTamVideoFeed } from '@/components/tamtam/TamTamVideoFeed';
+import { TamTamAudioFeed } from '@/components/tamtam/TamTamAudioFeed';
+import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
+import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
+import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
+import { TamTamUserSearch } from '@/components/tamtam/TamTamUserSearch';
+import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
+import { useToast } from '@/hooks/use-toast';
 
 export default function TamTamHome() {
   const navigate = useNavigate();
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [speakingItemId, setSpeakingItemId] = useState<string | null>(null);
   const { t, currentLang } = useTamTamLanguage();
-  const { announceAction } = useAudioDescription();
-  const { speakCurrentLang, stop, health } = useUnifiedAudio();
-  const { speakLabel, handleLongPress } = useVoiceMenu();
+  const { announceScreen } = useAudioDescription();
+  const { toast } = useToast();
+  
+  const { 
+    posts, 
+    isLoading, 
+    createPost, 
+    addReaction, 
+    fetchPosts 
+  } = useTamTamPosts();
+  
+  const { rankPosts } = useFeedAlgorithm({ prioritizeUtility: true, prioritizeCulture: true });
+
+  // States
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showCreator, setShowCreator] = useState(false);
+  const [activeTab, setActiveTab] = useState<BottomTabId>('feed');
+  const [feedMode, setFeedMode] = useState<FeedSubMode>('creation');
+  const [unreadMessages] = useState(3);
 
   useEffect(() => {
-    announceAction(t('screenHome'));
-  }, [announceAction, t]);
+    announceScreen('home');
+  }, [announceScreen]);
 
-  const handleOpenAssistant = () => {
-    triggerFeedback('click');
-    setIsAssistantOpen(true);
-  };
+  // Data transformations
+  const enhancedPosts = useMemo(() => 
+    posts.map(post => ({
+      ...post,
+      media_type: (post as any).media_type || 'audio',
+      media_url: (post as any).media_url || null,
+      thumbnail_url: (post as any).thumbnail_url || null,
+      transcript_fr: (post as any).transcript_fr || (post as any).transcript || null,
+      transcript_ba: (post as any).transcript_ba || null,
+      feeling_emoji: (post as any).feeling_emoji || null,
+      location_name: (post as any).location_name || null,
+      culture_score: (post as any).culture_score || null,
+    })), [posts]
+  );
 
-  const handleServiceClick = (path: string, labelKey: string) => {
-    triggerFeedback('click');
-    // Navigate immediately, TTS in background (non-blocking for Safari)
-    navigate(path);
-    // Fire and forget - don't await
-    speakCurrentLang(t(labelKey)).catch(e => {
-      console.warn('[TamTamHome] TTS failed silently:', e);
-    });
-  };
+  const rankedPosts = useMemo(() => rankPosts(enhancedPosts), [rankPosts, enhancedPosts]);
 
-  const handleSpeakLabel = async (labelKey: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    // If already speaking this item, stop it
-    if (speakingItemId === labelKey) {
-      stop();
-      setSpeakingItemId(null);
-      return;
+  const handleReaction = useCallback((postId: string, reaction: string) => {
+    addReaction(postId, reaction);
+    triggerFeedback('success');
+  }, [addReaction]);
+
+  const handleShare = useCallback((postId: string) => {
+    triggerFeedback('send');
+    if (navigator.share) {
+      navigator.share({
+        title: 'TAM-TAM',
+        text: 'Découvrez ce post sur TAM-TAM !',
+        url: window.location.href
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast({ title: "🔗 Lien copié !" });
     }
-    
-    // Stop any previous speech and start new one
-    stop();
-    setSpeakingItemId(labelKey);
-    triggerFeedback('click');
-    
-    try {
-      await speakLabel(labelKey);
-    } finally {
-      setSpeakingItemId(null);
-    }
+  }, [toast]);
+
+  const handleTabChange = (tab: BottomTabId) => {
+    triggerFeedback('notification', { haptic: true, sound: false });
+    setActiveTab(tab);
   };
+
+  const handleCreatePress = () => {
+    triggerFeedback('click');
+    setShowCreator(true);
+  };
+
+  // Filter posts based on feed mode
+  const getFilteredPosts = useCallback(() => {
+    if (feedMode === 'creation') {
+      return rankedPosts.filter(p => 
+        p.media_type === 'video' || p.media_type === 'photo' || p.template_id
+      );
+    } else if (feedMode === 'radio') {
+      return rankedPosts.filter(p => 
+        p.topic === 'culture' || p.topic === 'patrimoine' || p.culture_score
+      );
+    } else {
+      return rankedPosts.filter(p => 
+        p.media_type === 'audio' || !p.template_id
+      );
+    }
+  }, [rankedPosts, feedMode]);
+
+  const filteredPosts = getFilteredPosts();
 
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4 pt-8 pb-32">
-      {/* Health status indicator */}
-      {health && (
-        <div className="absolute top-4 right-4 flex gap-1">
-          <div className={`w-2 h-2 rounded-full ${health.baribaTTS.status === 'healthy' ? 'bg-green-500' : health.baribaTTS.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'}`} title="TTS Bariba" />
-          <div className={`w-2 h-2 rounded-full ${health.frenchTTS.status === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`} title="TTS Français" />
-          <div className={`w-2 h-2 rounded-full ${health.translation.status === 'healthy' ? 'bg-green-500' : health.translation.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'}`} title="Traduction" />
-        </div>
-      )}
+    <div className="fixed inset-0 bg-black overflow-hidden">
+      {/* Side Menu Drawer */}
+      <SideMenuDrawer 
+        isOpen={isMenuOpen} 
+        onClose={() => setIsMenuOpen(false)}
+      />
 
-      {/* Welcome visual with translated greeting */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-6"
+      {/* Hamburger Menu Button - Always visible */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => {
+          triggerFeedback('click');
+          setIsMenuOpen(true);
+        }}
+        className="fixed top-safe left-4 z-40 w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center"
+        style={{ top: 'max(env(safe-area-inset-top, 12px), 12px)' }}
       >
-        <div className="text-4xl mb-2">👋</div>
-        <h1 className="text-xl font-bold text-tamtam-text">
-          {t('welcomeHome')}
-        </h1>
-        <p className="text-sm text-tamtam-text-muted mt-1">
-          {t('tapToSpeak')}
-        </p>
-      </motion.div>
+        <Menu className="w-5 h-5 text-white" />
+      </motion.button>
 
-      {/* Giant central Raconte-Moi button */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", delay: 0.2 }}
-        className="flex flex-col items-center mb-6"
+      {/* Notification Button */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        whileTap={{ scale: 0.9 }}
+        className="fixed top-safe right-4 z-40 w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center"
+        style={{ top: 'max(env(safe-area-inset-top, 12px), 12px)' }}
       >
-        <motion.button
-          onClick={handleOpenAssistant}
-          className="relative w-40 h-40 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-xl shadow-purple-500/30 flex items-center justify-center"
-          whileTap={{ scale: 0.95 }}
-          whileHover={{ scale: 1.02 }}
-        >
-          {/* Pulse ring animation */}
-          <motion.div
-            className="absolute inset-0 rounded-full bg-purple-400/30"
-            animate={{
-              scale: [1, 1.3, 1.3],
-              opacity: [0.5, 0, 0]
-            }}
-            transition={{
-              duration: 2.5,
-              repeat: Infinity,
-              ease: "easeOut"
-            }}
-          />
-          <motion.div
-            className="absolute inset-0 rounded-full bg-purple-400/20"
-            animate={{
-              scale: [1, 1.5, 1.5],
-              opacity: [0.3, 0, 0]
-            }}
-            transition={{
-              duration: 2.5,
-              repeat: Infinity,
-              ease: "easeOut",
-              delay: 0.6
-            }}
-          />
-          
-          {/* Icon */}
-          <div className="relative z-10 flex flex-col items-center">
-            <MessageCircle className="w-16 h-16 text-white" />
-            <motion.span 
-              className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-md"
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-            >
-              <Mic className="w-4 h-4 text-white" />
-            </motion.span>
-          </div>
-        </motion.button>
-        
-        <p className="mt-4 text-sm font-medium text-purple-600">
-          🎭 Raconte-Moi
-        </p>
-        <p className="text-xs text-tamtam-text-muted">
-          {currentLang === 'ba' ? 'Olùrànlọ́wọ́ ohùn' : 'Assistant vocal IA'}
-        </p>
-      </motion.div>
+        <Bell className="w-5 h-5 text-white" />
+        {unreadMessages > 0 && (
+          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+            {unreadMessages}
+          </span>
+        )}
+      </motion.button>
 
-      {/* Raconte-Moi Modal */}
+      {/* Main Content */}
+      <AnimatePresence mode="wait">
+        {activeTab === 'feed' && (
+          <motion.div
+            key="feed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="h-full w-full"
+          >
+            {/* Transparent Feed Header */}
+            <TransparentFeedHeader
+              currentMode={feedMode}
+              onModeChange={setFeedMode}
+              onSearch={() => setShowSearch(true)}
+            />
+
+            {/* Feed Content */}
+            {isLoading ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                  className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full"
+                />
+              </div>
+            ) : feedMode === 'creation' ? (
+              <TamTamVideoFeed
+                videos={filteredPosts.map(p => ({
+                  id: p.id,
+                  videoUrl: p.media_url || p.audio_url || '',
+                  thumbnailUrl: p.thumbnail_url || undefined,
+                  transcriptFr: p.transcript_fr || undefined,
+                  transcriptBa: p.transcript_ba || undefined,
+                  topic: p.topic || undefined,
+                  topicEmoji: p.feeling_emoji || undefined,
+                  duration: p.duration_seconds || 30,
+                  author: {
+                    name: p.profile?.display_name || 'Utilisateur',
+                    username: p.profile?.username || 'user',
+                    avatarUrl: p.profile?.avatar_url || undefined,
+                  },
+                  likes: p.likes_count || 0,
+                  comments: p.comments_count || 0,
+                  shares: 0,
+                  isLiked: false,
+                  isSaved: false,
+                }))}
+                onLike={(id) => handleReaction(id, 'like')}
+                onComment={(id) => triggerFeedback('click')}
+                onShare={handleShare}
+                onSave={(id) => triggerFeedback('success')}
+              />
+            ) : (
+              <TamTamAudioFeed
+                posts={filteredPosts.map(p => ({
+                  id: p.id,
+                  audioUrl: p.audio_url || '',
+                  duration: p.duration_seconds || 60,
+                  templateId: p.template_id || (feedMode === 'radio' ? 'radio' : 'mavoix'),
+                  category: (feedMode === 'radio' ? 'patrimoine' : 'village_voice') as any,
+                  subcategory: p.topic || (feedMode === 'radio' ? 'culture' : 'annonce'),
+                  emoji: p.feeling_emoji || (feedMode === 'radio' ? '📻' : '🎤'),
+                  visualEmojis: feedMode === 'radio' 
+                    ? ['🎵', '🥁', '🎶', '✨', '🌍'] 
+                    : ['🎤', '💬', '👥', '📢', '🔊'],
+                  gradient: feedMode === 'radio' 
+                    ? 'from-amber-500 via-orange-500 to-red-500' 
+                    : 'from-emerald-500 via-teal-500 to-cyan-500',
+                  titleFr: p.transcript_fr?.slice(0, 50) || (feedMode === 'radio' ? 'Audio Patrimoine' : 'Message Vocal'),
+                  titleBa: p.transcript_ba?.slice(0, 50) || '',
+                  transcript: p.transcript_fr || undefined,
+                  authorName: p.profile?.display_name || (feedMode === 'radio' ? 'TAM-TAM Radio' : 'Utilisateur'),
+                  authorVillage: p.location_name || (feedMode === 'radio' ? 'Bénin' : 'Ma communauté'),
+                  likes: p.likes_count || 0,
+                  replies: p.comments_count || 0,
+                  shares: 0,
+                  isLiked: false,
+                  isSaved: false,
+                }))}
+                onLike={(id) => handleReaction(id, 'like')}
+                onReply={(id) => setShowCreator(true)}
+                onShare={handleShare}
+                onSave={(id) => triggerFeedback('success')}
+              />
+            )}
+          </motion.div>
+        )}
+
+        {activeTab === 'chat' && (
+          <motion.div
+            key="chat"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="h-full w-full pt-safe bg-white"
+          >
+            <TamTamMessagesHub onClose={() => setActiveTab('feed')} />
+          </motion.div>
+        )}
+
+        {activeTab === 'groups' && (
+          <motion.div
+            key="groups"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="h-full w-full pt-safe bg-white"
+          >
+            <TamTamCommunities />
+          </motion.div>
+        )}
+
+        {activeTab === 'direct' && (
+          <motion.div
+            key="direct"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="h-full w-full pt-safe bg-white"
+          >
+            <TamTamLiveList />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bottom Tab Bar */}
+      <BottomTabBar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onCreatePress={handleCreatePress}
+        unreadMessages={unreadMessages}
+      />
+
+      {/* Modals */}
+      <TamTamUserSearch
+        isOpen={showSearch}
+        onClose={() => setShowSearch(false)}
+        onMessage={(userId) => setActiveTab('chat')}
+      />
+
+      <FullscreenCreator
+        isOpen={showCreator}
+        onClose={() => setShowCreator(false)}
+        onComplete={async (data) => {
+          await createPost({
+            audio_url: data.audio_url,
+            media_type: data.media_type,
+            media_url: data.media_url,
+            transcript_fr: data.transcript_fr || '',
+            transcript_ba: data.transcript_ba || '',
+            topic: data.topic,
+            template_id: data.template_id,
+            duration_seconds: data.duration_seconds,
+          });
+          toast({ title: "✅ Publié avec succès !" });
+          triggerFeedback('success');
+          fetchPosts();
+        }}
+      />
+
       <RaconteMoiAssistant 
         isOpen={isAssistantOpen} 
         onOpenChange={setIsAssistantOpen} 
       />
-
-      {/* Services grid - 2x3 with translated labels */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="grid grid-cols-3 gap-4 max-w-md mx-auto"
-      >
-        {services.map((service, index) => {
-          const longPressHandlers = handleLongPress(service.labelKey as any);
-          
-          return (
-            <motion.button
-              key={service.labelKey}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
-              onClick={() => handleServiceClick(service.path, service.labelKey)}
-              {...longPressHandlers}
-              className="aspect-square bg-tamtam-surface rounded-3xl shadow-tamtam-soft flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform relative"
-            >
-              {/* Icon badge */}
-              <div className={`w-14 h-14 ${service.color} rounded-2xl flex items-center justify-center`}>
-                <span className="text-2xl">{service.icon}</span>
-              </div>
-              
-              {/* Label in current language */}
-              <span className="text-xs font-medium text-tamtam-text truncate px-2">
-                {t(service.labelKey)}
-              </span>
-
-              {/* Audio button - only shows spinner for THIS item */}
-              <button
-                onClick={(e) => handleSpeakLabel(service.labelKey, e)}
-                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 flex items-center justify-center"
-              >
-                {speakingItemId === service.labelKey ? (
-                  <Loader2 className="w-3 h-3 text-tamtam-primary animate-spin" />
-                ) : (
-                  <Volume2 className="w-3 h-3 text-tamtam-primary" />
-                )}
-              </button>
-            </motion.button>
-          );
-        })}
-      </motion.div>
-
-      {/* Language indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="text-center mt-8"
-      >
-        <span className="inline-flex items-center gap-2 px-4 py-2 bg-tamtam-surface rounded-full shadow-tamtam-soft">
-          <span className="text-lg">🌐</span>
-          <span className="text-sm font-medium text-tamtam-text">
-            {currentLang === 'ba' ? 'Bàátɔ̀nú' : 'Français'}
-          </span>
-        </span>
-      </motion.div>
     </div>
   );
 }
