@@ -110,7 +110,7 @@ export function TamTamUserCard({
         <p className="font-medium text-tamtam-text">
           {user.display_name || user.username}
         </p>
-        <p className="text-xs text-tamtam-text-muted">@{user.username}</p>
+        <p className="text-xs text-tamtam-text-muted">@{user.display_name?.toLowerCase().replace(/\s+/g, '_') || user.username}</p>
       </div>
 
       {/* Bio audio button */}
