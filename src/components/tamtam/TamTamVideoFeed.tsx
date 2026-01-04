@@ -213,7 +213,7 @@ const VideoCard: React.FC<{
           )}
           <div>
             <p className="text-white font-bold text-lg drop-shadow-2xl">{post.author.name}</p>
-            <p className="text-white/80 text-sm drop-shadow-lg">@{post.author.username}</p>
+            <p className="text-white/80 text-sm drop-shadow-lg">@{post.author.name?.toLowerCase().replace(/\s+/g, '_') || post.author.username}</p>
           </div>
         </div>
 
@@ -367,7 +367,7 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
       username: p.profile?.username || 'user',
       avatarUrl: p.profile?.avatar_url,
     },
-    likes: p.reactions_count || p.likes || 0,
+    likes: p.likes_count || p.likes || 0,
     comments: p.comments_count || p.comments || 0,
     shares: p.shares || 0,
     isLiked: p.isLiked || false,

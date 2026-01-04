@@ -304,7 +304,24 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
           <AudioWaveform isPlaying={isPlaying} barCount={50} />
         </div>
         
-        <div className="mt-6 text-center">
+        {/* Live transcription ticker between waveform and title */}
+        {isPlaying && post.transcript && (
+          <motion.div
+            className="mt-3 px-6 overflow-hidden max-w-xs"
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <motion.p
+              className="text-white/90 text-sm text-center font-medium whitespace-nowrap"
+              animate={{ x: post.transcript.length > 40 ? [0, -200, 0] : 0 }}
+              transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+            >
+              {post.transcript}
+            </motion.p>
+          </motion.div>
+        )}
+        
+        <div className="mt-4 text-center">
           <h2 className="text-2xl font-bold text-white drop-shadow-lg">{post.titleFr}</h2>
           <p className="text-white/80 mt-1 flex items-center justify-center gap-2">
             <MapPin className="w-4 h-4" />
