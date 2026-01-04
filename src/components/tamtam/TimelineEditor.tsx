@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Play, Pause, X, Check, Scissors, Trash2, 
   Zap, Volume2, Layers, ChevronRight, Wand2,
-  MonitorPlay
+  MonitorPlay, Music2, Type, Sticker, PenTool,
+  Sparkles,  LayoutTemplate, Image as ImageIcon,
+  Move, Eraser, Undo, Download, Share2
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -10,14 +12,22 @@ export interface TimelineSegment {
   id: string;
   blob: Blob;
   type: 'video' | 'image';
-  duration: number;   // Durée totale du clip original
-  startTime: number;  // Point de début dans la timeline globale
-  endTime: number;    // Point de fin dans la timeline globale
-  clipStart: number;  // Point de début interne (trim)
-  clipEnd: number;    // Point de fin interne (trim)
+  duration: number;
+  startTime: number;
+  endTime: number;
+  clipStart: number;
+  clipEnd: number;
   speed: number;
   volume: number;
-  filter?: string;    // Pour les templates
+  filter?: string;
+}
+
+interface OverlayText {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
 }
 
 interface TimelineEditorProps {
@@ -25,16 +35,15 @@ interface TimelineEditorProps {
   onSegmentsChange: (segments: TimelineSegment[]) => void;
   onClose: () => void;
   onConfirm: (segments: TimelineSegment[]) => void;
-  language?: 'fr' | 'ba'; // Français ou Bambara
+  language?: 'fr' | 'ba';
 }
 
-// --- DATA: TEMPLATES ---
-const TEMPLATES = [
-  { id: 'none', label: 'Normal', color: 'bg-gray-700' },
-  { id: 'vlog', label: 'Vlog Daily', color: 'bg-blue-500', speed: 1.0 },
-  { id: 'action', label: 'Action ⚡', color: 'bg-red-500', speed: 1.5 },
-  { id: 'vintage', label: 'Retro 80s', color: 'bg-yellow-600', filter: 'sepia' },
-  { id: 'cinematic', label: 'Cinema', color: 'bg-purple-600', filter: 'contrast' },
+// --- DATA: FILTERS & TOOLS ---
+const FILTERS = [
+  { id: 'none', label: 'Normal', class: '' },
+  { id: 'vivid', label: 'Éclatant', class: 'contrast-125 saturate-125' },
+  { id: 'vintage', label: 'Rétro', class: 'sepia-[.4] contrast-110' },
+  { id: 'bw', label: 'N&B', class: 'grayscale contrast-125' },
 ];
 
 export const TimelineEditor: React.FC<TimelineEditorProps> = ({
@@ -44,19 +53,42 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   onConfirm,
   language = 'fr'
 }) => {
-  // --- ETATS ---
+  // --- ÉTATS PRINCIPAUX ---
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
-  const [activeTool, setActiveTool] = useState<string | null>(null); // 'template', 'speed', 'volume'
+  const [showTimeline, setShowTimeline] = useState(false); // Bascule entre Mode Capture (Screenshot) et Mode Montage
   
+  // --- ÉTATS D'ÉDITION (Capture Features) ---
+  const [activeFilter, setActiveFilter] = useState('none');
+  const [overlays, setOverlays] = useState<OverlayText[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawingMode, setDrawingMode] = useState(false); // Active le canvas de dessin
+  
+  // --- REFS ---
   const videoRef = useRef<HTMLVideoElement>(null);
-  const timelineRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
 
   // Calcul de la durée totale
   const totalDuration = segments.reduce((acc, seg) => acc + (seg.endTime - seg.startTime), 0);
 
-  // --- LOGIQUE DE LECTURE ---
+  // --- INITIALISATION DU CANVAS (GRAFFITI) ---
+  useEffect(() => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#FE2C55'; // Couleur TikTok Pink
+        ctx.lineWidth = 5;
+        contextRef.current = ctx;
+      }
+    }
+  }, [drawingMode]); // Re-init quand on active le mode dessin
+
+  // --- LOGIQUE DE LECTURE VIDEO ---
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isPlaying) {
@@ -73,15 +105,12 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     return () => clearInterval(interval);
   }, [isPlaying, totalDuration]);
 
-  // Sync Video Element avec le segment courant
   const currentSegment = segments.find(
     seg => currentTime >= seg.startTime && currentTime < seg.endTime
   );
 
   useEffect(() => {
     if (videoRef.current && currentSegment) {
-      // Simuler le changement de source (dans une vraie app, gérer le buffer est complexe)
-      // Ici on assume que le blob est chargé
       const relativeTime = currentTime - currentSegment.startTime + currentSegment.clipStart;
       if (Math.abs(videoRef.current.currentTime - relativeTime) > 0.5) {
         videoRef.current.currentTime = relativeTime;
@@ -90,282 +119,257 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     }
   }, [currentTime, currentSegment]);
 
-  // --- ACTIONS D'EDITION ---
+  // --- FONCTIONS "SCREENSHOT UI" ---
 
-  // 1. SPLIT (Découper)
-  const handleSplit = () => {
-    if (!selectedSegmentId) return;
-    
-    const index = segments.findIndex(s => s.id === selectedSegmentId);
-    if (index === -1) return;
-    
-    const seg = segments[index];
-    const splitPoint = currentTime - seg.startTime; // Temps relatif dans le segment
-
-    // Sécurité: ne pas couper trop près des bords
-    if (splitPoint < 0.5 || splitPoint > (seg.endTime - seg.startTime - 0.5)) return;
-
-    const newSeg1: TimelineSegment = {
-      ...seg,
-      id: seg.id + '_a',
-      endTime: seg.startTime + splitPoint,
-      clipEnd: seg.clipStart + splitPoint
-    };
-
-    const newSeg2: TimelineSegment = {
-      ...seg,
-      id: seg.id + '_b',
-      startTime: seg.startTime + splitPoint,
-      clipStart: seg.clipStart + splitPoint
-    };
-
-    const newSegments = [...segments];
-    newSegments.splice(index, 1, newSeg1, newSeg2);
-    
-    // Recalculer les temps absolus pour la suite
-    recalculateTimeline(newSegments);
-  };
-
-  // 2. DELETE (Supprimer)
-  const handleDelete = () => {
-    if (!selectedSegmentId) return;
-    const newSegments = segments.filter(s => s.id !== selectedSegmentId);
-    recalculateTimeline(newSegments);
-    setSelectedSegmentId(null);
-  };
-
-  // 3. APPLY TEMPLATE
-  const handleApplyTemplate = (templateId: string) => {
-    const template = TEMPLATES.find(t => t.id === templateId);
-    if (!template) return;
-
-    // Appliquer à TOUS les segments ou seulement le sélectionné ?
-    // Ici : Appliquer au segment sélectionné pour la démo
-    if (selectedSegmentId) {
-      const newSegments = segments.map(s => {
-        if (s.id === selectedSegmentId) {
-          return { 
-            ...s, 
-            filter: templateId, 
-            speed: template.speed || s.speed 
-          };
-        }
-        return s;
-      });
-      recalculateTimeline(newSegments);
+  // 1. Ajouter du Texte (Subtitles)
+  const handleAddText = () => {
+    const text = prompt("Entrez votre texte :");
+    if (text) {
+      setOverlays([...overlays, { 
+        id: Date.now().toString(), 
+        text, 
+        x: 50, 
+        y: 50, 
+        color: 'white' 
+      }]);
     }
   };
 
-  // Utilitaire pour remettre d'équerre les start/end times
-  const recalculateTimeline = (segs: TimelineSegment[]) => {
-    let cursor = 0;
-    const updated = segs.map(s => {
-      const duration = (s.clipEnd - s.clipStart) / s.speed; // Ajustement vitesse
-      const newSeg = { ...s, startTime: cursor, endTime: cursor + duration };
-      cursor += duration;
-      return newSeg;
-    });
-    onSegmentsChange(updated);
+  // 2. Dessiner (Graffiti)
+  const startDrawing = ({ nativeEvent }: React.MouseEvent) => {
+    if (!drawingMode) return;
+    const { offsetX, offsetY } = nativeEvent;
+    contextRef.current?.beginPath();
+    contextRef.current?.moveTo(offsetX, offsetY);
+    setIsDrawing(true);
   };
 
-  // --- RENDER HELPERS ---
-  const getPreviewUrl = (blob: Blob) => URL.createObjectURL(blob);
+  const draw = ({ nativeEvent }: React.MouseEvent) => {
+    if (!isDrawing || !drawingMode) return;
+    const { offsetX, offsetY } = nativeEvent;
+    contextRef.current?.lineTo(offsetX, offsetY);
+    contextRef.current?.stroke();
+  };
+
+  const stopDrawing = () => {
+    contextRef.current?.closePath();
+    setIsDrawing(false);
+  };
+
+  const clearCanvas = () => {
+    if (canvasRef.current && contextRef.current) {
+      contextRef.current.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
+
+  // 3. Filtres (Enhance)
+  const toggleFilter = () => {
+    const currentIndex = FILTERS.findIndex(f => f.id === activeFilter);
+    const nextIndex = (currentIndex + 1) % FILTERS.length;
+    setActiveFilter(FILTERS[nextIndex].id);
+  };
+
+  // --- RENDU ---
+  
+  const activeFilterClass = FILTERS.find(f => f.id === activeFilter)?.class || '';
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black flex flex-col font-sans animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 z-[60] bg-black font-sans flex flex-col h-[100dvh]">
       
-      {/* --- HEADER --- */}
-      <div className="h-14 flex items-center justify-between px-4 bg-gray-900 border-b border-gray-800">
-        <button onClick={onClose} className="text-white p-2">
-          <X size={24} />
+      {/* --- TOP BAR (Comme sur le screenshot) --- */}
+      <div className="absolute top-0 left-0 right-0 z-30 pt-12 pb-4 px-4 flex justify-between items-start bg-gradient-to-b from-black/60 to-transparent">
+        <button onClick={onClose} className="text-white flex items-center gap-1 opacity-80 hover:opacity-100">
+           <span className="text-2xl font-light">×</span> 
+           <span className="text-sm font-medium">Record again</span>
         </button>
-        <span className="text-white font-bold text-sm">
-          {language === 'ba' ? 'Video Kalala' : 'Éditeur Pro'}
-        </span>
-        <button 
-          onClick={() => onConfirm(segments)} 
-          className="bg-[#FE2C55] text-white px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1"
-        >
-          <Check size={16} /> {language === 'ba' ? 'A to' : 'Sauver'}
-        </button>
+        
+        {/* Music Pill */}
+        <div className="bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-2 border border-white/10">
+          <Music2 size={14} className="text-white" />
+          <span className="text-white text-xs font-medium">Son original • Incident</span>
+          <X size={12} className="text-white/60 ml-2" />
+        </div>
+
+        {/* Settings / Menu */}
+        <div className="flex flex-col gap-4">
+           {/* Placeholder for settings menu top right if needed */}
+        </div>
       </div>
 
-      {/* --- PREVIEW AREA --- */}
-      <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+      {/* --- MAIN PREVIEW AREA --- */}
+      <div className="flex-1 relative overflow-hidden bg-gray-900 rounded-b-xl">
+        
+        {/* 1. Video Layer */}
         {currentSegment ? (
           <video
             ref={videoRef}
-            src={getPreviewUrl(currentSegment.blob)}
-            className={`max-h-full max-w-full object-contain transition-all duration-300 ${
-              currentSegment.filter === 'vintage' ? 'sepia-[.6] contrast-125' : ''
-            } ${
-              currentSegment.filter === 'cinematic' ? 'contrast-125 saturate-150' : ''
-            }`}
+            src={URL.createObjectURL(currentSegment.blob)}
+            className={`w-full h-full object-cover transition-all duration-300 ${activeFilterClass}`}
             onClick={() => setIsPlaying(!isPlaying)}
+            playsInline
+            loop={false}
+            muted={false} // Gérer le son selon besoin
           />
         ) : (
-          <div className="text-gray-500">Aucun segment</div>
+          <div className="w-full h-full flex items-center justify-center text-gray-500">
+            Aucun média
+          </div>
         )}
-        
-        {/* Play Overlay */}
-        {!isPlaying && (
-          <button 
-            onClick={() => setIsPlaying(true)}
-            className="absolute bg-white/20 backdrop-blur-sm p-4 rounded-full"
+
+        {/* 2. Canvas Layer (Graffiti) */}
+        {drawingMode && (
+           <canvas
+             ref={canvasRef}
+             onMouseDown={startDrawing}
+             onMouseMove={draw}
+             onMouseUp={stopDrawing}
+             onMouseLeave={stopDrawing}
+             className="absolute inset-0 z-20 cursor-crosshair touch-none"
+           />
+        )}
+
+        {/* 3. Text Overlays Layer */}
+        {overlays.map((ov) => (
+          <div
+            key={ov.id}
+            style={{ top: `${ov.y}%`, left: `${ov.x}%`, transform: 'translate(-50%, -50%)' }}
+            className="absolute z-20 bg-black/50 px-3 py-1 rounded text-white font-bold text-xl select-none cursor-move border border-white/20 backdrop-blur-sm"
+            // Note: Le drag & drop complet nécessiterait plus de logique, simplifié ici
           >
-            <Play className="w-8 h-8 text-white fill-current" />
-          </button>
+            {ov.text}
+          </div>
+        ))}
+
+        {/* 4. Play/Pause Overlay Centré */}
+        {!isPlaying && !drawingMode && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+            <Play className="w-16 h-16 text-white/80 fill-white/20" />
+          </div>
+        )}
+
+        {/* --- RIGHT SIDEBAR TOOLS (Comme sur le screenshot) --- */}
+        <div className="absolute right-2 top-24 bottom-32 flex flex-col gap-6 z-30 items-center">
+          
+          <RightToolButton 
+            icon={Sparkles} 
+            label="Enhance" 
+            active={activeFilter !== 'none'}
+            onClick={toggleFilter} 
+          />
+          
+          <RightToolButton 
+            icon={LayoutTemplate} 
+            label="Template" 
+            onClick={() => alert("Ouvre la bibliothèque de templates")}
+          />
+          
+          <RightToolButton 
+            icon={Scissors} 
+            label="Montage" 
+            active={showTimeline}
+            onClick={() => setShowTimeline(!showTimeline)} 
+            // C'est le pont vers votre ancien éditeur
+          />
+          
+          <RightToolButton 
+            icon={Wand2} 
+            label="Effects" 
+          />
+          
+          <RightToolButton 
+            icon={Sticker} 
+            label="Stickers" 
+            onClick={() => alert("Ouvre le panneau stickers")}
+          />
+          
+          <RightToolButton 
+            icon={Type} 
+            label="Subtitles" 
+            onClick={handleAddText} 
+          />
+
+          <RightToolButton 
+            icon={PenTool} 
+            label="Graffiti" 
+            active={drawingMode}
+            onClick={() => setDrawingMode(!drawingMode)} 
+          />
+
+          {drawingMode && (
+            <button 
+              onClick={clearCanvas}
+              className="mt-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center animate-in zoom-in"
+            >
+              <Eraser size={14} className="text-white" />
+            </button>
+          )}
+
+          <div className="mt-auto">
+             <button className="bg-gray-800/80 p-2 rounded-full rotate-180">
+                <ChevronRight size={20} className="text-white" />
+             </button>
+          </div>
+        </div>
+
+        {/* --- TIMELINE OVERLAY (Si activé via "Montage") --- */}
+        {showTimeline && (
+          <div className="absolute bottom-0 left-0 right-0 h-48 bg-black/90 border-t border-gray-800 animate-in slide-in-from-bottom z-40">
+            <div className="flex justify-between p-2 border-b border-gray-800">
+               <span className="text-white text-xs font-bold">Timeline Avancée</span>
+               <button onClick={() => setShowTimeline(false)}><X size={14} className="text-white"/></button>
+            </div>
+            {/* ... Insérer ici votre logique de Timeline (Track, Playhead, Split) ... */}
+            <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+               [Interface Timeline simplifiée ici pour découper les clips]
+            </div>
+          </div>
         )}
       </div>
 
-      {/* --- TIMELINE AREA --- */}
-      <div className="h-auto bg-gray-900 border-t border-gray-800 flex flex-col">
-        
-        {/* Time Indicator */}
-        <div className="flex justify-center py-2 text-xs text-gray-400 font-mono">
-          {Math.floor(currentTime)}s / {Math.floor(totalDuration)}s
-        </div>
-
-        {/* Tracks Container */}
-        <div className="relative h-24 overflow-x-auto overflow-y-hidden whitespace-nowrap px-[50vw] flex items-center gap-1" ref={timelineRef}>
-          {/* Central Playhead Line */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white z-20 transform -translate-x-1/2 pointer-events-none shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
-
-          {segments.map((seg) => {
-            const isActive = selectedSegmentId === seg.id;
-            const width = (seg.endTime - seg.startTime) * 20; // 20px par seconde
-            return (
-              <div
-                key={seg.id}
-                onClick={() => setSelectedSegmentId(seg.id)}
-                style={{ width: `${width}px` }}
-                className={`
-                  relative h-16 rounded-md overflow-hidden flex-shrink-0 cursor-pointer border-2 transition-all
-                  ${isActive ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-transparent'}
-                  ${seg.filter === 'vlog' ? 'bg-blue-900' : 'bg-gray-800'}
-                `}
-              >
-                {/* Thumbnails placeholder */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
-                   <MonitorPlay size={16} />
-                </div>
-                
-                {/* Info Label */}
-                <div className="absolute bottom-1 left-1 bg-black/50 px-1 rounded text-[10px] text-white">
-                  {seg.type}
-                </div>
-                {seg.filter && seg.filter !== 'none' && (
-                  <div className="absolute top-1 right-1 bg-purple-500 px-1 rounded text-[9px] text-white font-bold">
-                    ★
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* --- TOOLS PANEL (Dynamic) --- */}
-        <div className="h-40 bg-gray-950 px-4 py-4">
-          
-          {/* 1. MAIN TOOLBAR (Visible if no tool selected) */}
-          {!activeTool && (
-            <div className="flex justify-between items-start gap-4 overflow-x-auto pb-2">
-              <ToolButton 
-                icon={Scissors} label="Découper" 
-                onClick={handleSplit} disabled={!selectedSegmentId} 
-              />
-              <ToolButton 
-                icon={Wand2} label="Templates" 
-                onClick={() => setActiveTool('template')} 
-                active={activeTool === 'template'}
-              />
-              <ToolButton 
-                icon={Zap} label="Vitesse" 
-                onClick={() => setActiveTool('speed')} 
-                disabled={!selectedSegmentId}
-              />
-              <ToolButton 
-                icon={Volume2} label="Volume" 
-                onClick={() => setActiveTool('volume')} 
-                disabled={!selectedSegmentId}
-              />
-               <ToolButton 
-                icon={Trash2} label="Supprimer" 
-                onClick={handleDelete} 
-                danger disabled={!selectedSegmentId} 
-              />
-            </div>
-          )}
-
-          {/* 2. TEMPLATE SUB-MENU */}
-          {activeTool === 'template' && (
-            <div className="animate-in slide-in-from-bottom fade-in duration-200">
-               <div className="flex items-center justify-between mb-3">
-                 <span className="text-white text-sm font-bold">Choisir un Style</span>
-                 <button onClick={() => setActiveTool(null)} className="text-gray-400 text-xs">Fermer</button>
-               </div>
-               <div className="flex gap-3 overflow-x-auto pb-2">
-                 {TEMPLATES.map(t => (
-                   <button
-                    key={t.id}
-                    onClick={() => handleApplyTemplate(t.id)}
-                    className="flex flex-col items-center gap-2 min-w-[70px]"
-                   >
-                     <div className={`w-14 h-14 rounded-lg ${t.color} flex items-center justify-center shadow-lg border-2 ${currentSegment?.filter === t.id ? 'border-white' : 'border-transparent'}`}>
-                        <Wand2 className="text-white w-6 h-6" />
-                     </div>
-                     <span className="text-gray-300 text-xs">{t.label}</span>
-                   </button>
-                 ))}
-               </div>
-            </div>
-          )}
-
-           {/* 3. SPEED SUB-MENU (Exemple) */}
-           {activeTool === 'speed' && (
-             <div className="flex items-center justify-center h-full gap-4">
-               {[0.5, 1.0, 1.5, 2.0].map(sp => (
-                 <button 
-                  key={sp}
-                  onClick={() => {
-                    // Logic to update speed
-                    setActiveTool(null);
-                  }}
-                  className="bg-gray-800 text-white w-12 h-12 rounded-full font-bold text-sm hover:bg-yellow-500 hover:text-black"
-                 >
-                   {sp}x
-                 </button>
-               ))}
-               <button onClick={() => setActiveTool(null)} className="absolute right-4 text-gray-400">
-                 <X size={20}/>
-               </button>
+      {/* --- BOTTOM BAR (Footer Screenshot) --- */}
+      <div className="h-20 bg-black flex items-center justify-between px-4 z-30 pb-4">
+         {/* Bouton de gauche (Post/Story) */}
+         <div className="flex flex-col items-center justify-center w-1/3 opacity-60 hover:opacity-100 transition">
+             <div className="bg-gray-800 p-2 rounded-lg mb-1">
+               <Download size={20} className="text-white" />
              </div>
-           )}
+             <span className="text-white text-[10px] font-medium">Drafts</span>
+         </div>
 
-        </div>
+         {/* Indicateur de mode (Photo/Video/Text) */}
+         <div className="flex-1 flex justify-center gap-6">
+             <button className="text-gray-500 text-sm font-bold hover:text-white transition">Story</button>
+             <button className="text-white text-sm font-bold border-b-2 border-white pb-1">Video</button>
+             <button className="text-gray-500 text-sm font-bold hover:text-white transition">Photo</button>
+         </div>
+
+         {/* Bouton NEXT (Rose) */}
+         <div className="w-1/3 flex justify-end">
+            <button 
+              onClick={() => onConfirm(segments)}
+              className="bg-[#FE2C55] hover:bg-[#e02548] text-white px-6 py-3 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg transform active:scale-95 transition-all"
+            >
+              Next <ChevronRight size={18} />
+            </button>
+         </div>
       </div>
     </div>
   );
 };
 
-// --- PETIT COMPOSANT BOUTON ---
-const ToolButton = ({ icon: Icon, label, onClick, disabled, danger, active }: any) => (
+// --- COMPOSANT BOUTON VERTICAL (Sidebar) ---
+const RightToolButton = ({ icon: Icon, label, onClick, active }: any) => (
   <button 
     onClick={onClick}
-    disabled={disabled}
-    className={`
-      flex flex-col items-center gap-1.5 min-w-[60px] group
-      ${disabled ? 'opacity-30 grayscale' : 'opacity-100'}
-    `}
+    className="flex flex-col items-center gap-1 group relative"
   >
-    <div className={`
-      w-10 h-10 rounded-full flex items-center justify-center transition
-      ${active ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-white'}
-      ${danger ? 'group-hover:bg-red-500' : 'group-hover:bg-gray-700'}
-    `}>
-      <Icon size={18} />
+    {active && (
+      <div className="absolute -left-2 top-2 w-1 h-1 bg-[#FE2C55] rounded-full" />
+    )}
+    <div className={`p-1 drop-shadow-md transition-all ${active ? 'text-[#FE2C55]' : 'text-white'}`}>
+       <Icon size={26} strokeWidth={2} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.5))' }} />
     </div>
-    <span className={`text-[10px] ${active ? 'text-yellow-400' : 'text-gray-400'}`}>
+    <span className="text-white text-[10px] font-medium drop-shadow-md shadow-black">
       {label}
     </span>
   </button>
