@@ -1,11 +1,13 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  X, Play, Pause, RotateCcw, Check, Volume2, VolumeX, Scissors,
-  Trash2, Copy, Music, Sparkles, Type, Palette, Wand2,
-  Settings, Filter, Maximize2, Minimize2,
-  SkipBack, SkipForward, Sliders, Plus
+  X, Play, Pause, RotateCcw, Check, Volume2, Scissors,
+  Zap, Music, Sparkles, Filter, Maximize2, Minimize2, 
+  SkipBack, SkipForward, RefreshCw, Activity, Wind, Heart,
+  Glasses, Speaker, SlidersHorizontal, ArrowLeftRight
 } from 'lucide-react';
+
+// --- TYPES ---
 
 export interface TimelineSegment {
   id: string;
@@ -14,33 +16,49 @@ export interface TimelineSegment {
   duration: number;
   startTime: number;
   endTime: number;
-  thumbnail?: string;
   isMuted?: boolean;
   filter?: string;
   volume?: number;
 }
 
-interface TimelineEditorProps {
-  segments: TimelineSegment[];
-  onSegmentsChange: (segments: TimelineSegment[]) => void;
-  onClose: () => void;
-  onConfirm: (segments: TimelineSegment[]) => void;
-  language?: 'fr' | 'ba';
-}
-
-type EditTool = 'trim' | 'split' | 'filter' | 'music' | 'text' | 'sticker' | 'effects' | 'adjust' | null;
-
-interface TextOverlay {
+interface VideoBlock {
   id: string;
-  text: string;
-  x: number;
-  y: number;
-  fontSize: number;
-  color: string;
-  fontFamily: string;
-  startTime: number;
-  endTime: number;
+  type: 'HOOK_1S' | 'MESSAGE' | 'PROOF' | 'END';
+  segment: TimelineSegment;
+  energy: 'calm' | 'medium' | 'dynamic';
+  focus?: 'face' | 'product' | 'hands' | 'full';
 }
+
+interface AIBackground {
+  id: string;
+  name: string;
+  emoji: string;
+  reactivity: { voice_pulse: number; emotion_tint: number; gesture_echo: number; };
+  gradient: string;
+}
+
+interface CulturalTemplate {
+  id: string;
+  emoji: string;
+  name: string;
+  nameBa: string;
+  category: string;
+  symbols: string[];
+}
+
+// --- DATA ---
+
+const AI_BACKGROUNDS: AIBackground[] = [
+  { id: 'real_room', name: 'Maison', emoji: '🏠', reactivity: { voice_pulse: 0.3, emotion_tint: 0.5, gesture_echo: 0.2 }, gradient: 'from-amber-900/40 to-orange-800/40' },
+  { id: 'street_life', name: 'Rue/Village', emoji: '🏘️', reactivity: { voice_pulse: 0.4, emotion_tint: 0.6, gesture_echo: 0.3 }, gradient: 'from-green-900/40 to-teal-800/40' },
+  { id: 'cyber_bamako', name: 'Futur', emoji: '🔮', reactivity: { voice_pulse: 0.9, emotion_tint: 0.8, gesture_echo: 0.9 }, gradient: 'from-fuchsia-900/40 to-purple-800/40' },
+];
+
+const CULTURAL_TEMPLATES: CulturalTemplate[] = [
+  { id: 'conte', emoji: '🦁', name: 'Conte', nameBa: 'Itan', category: 'STORY', symbols: ['🦁', '🌙', '⭐'] },
+  { id: 'hero', emoji: '⚔️', name: 'Héros', nameBa: 'Akọni', category: 'STORY', symbols: ['⚔️', '👑', '🔥'] },
+  { id: 'market', emoji: '🏪', name: 'Marché', nameBa: 'Ọjọ ọja', category: 'MARKET', symbols: ['🏪', '💰', '🌾'] },
+];
 
 const FILTERS = [
   { id: 'none', name: 'Original', icon: '📷', css: 'none' },
@@ -52,11 +70,23 @@ const FILTERS = [
 ];
 
 const MUSIC_TRACKS = [
-  { id: 'm1', title: 'Afro Vibes', duration: 120 },
-  { id: 'm2', title: 'Chill Beats', duration: 90 },
-  { id: 'm3', title: 'Upbeat Dance', duration: 60 },
-  { id: 'm4', title: 'Lo-Fi Study', duration: 180 },
+  { id: 'kora_beat', name: 'Kora Trap', mood: 'Dynamic' },
+  { id: 'talking_drum', name: 'Talking Drum', mood: 'Traditional' },
+  { id: 'afro_chill', name: 'Afro Chill', mood: 'Calm' },
 ];
+
+// --- COMPONENT ---
+
+interface TimelineEditorProps {
+  segments: TimelineSegment[];
+  onSegmentsChange: (segments: TimelineSegment[]) => void;
+  onClose: () => void;
+  onConfirm: (segments: TimelineSegment[]) => void;
+  language?: 'fr' | 'ba';
+}
+
+type EditMode = 'AUTO' | 'EDITOR';
+type EditTool = 'blocks' | 'template' | 'background' | 'filter' | 'music' | 'vr' | null;
 
 export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   segments: initialSegments,
@@ -65,583 +95,360 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   onConfirm,
   language = 'fr'
 }) => {
-  const [segments, setSegments] = useState<TimelineSegment[]>(initialSegments);
-  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(segments[0]?.id || null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  // State Basics
+  const [mode, setMode] = useState<EditMode>('AUTO');
+  const [blocks, setBlocks] = useState<VideoBlock[]>([]);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<EditTool>(null);
   const [showToolbar, setShowToolbar] = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState('none');
-  const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
-  const [brightness, setBrightness] = useState(100);
-  const [contrast, setContrast] = useState(100);
-  const [saturation, setSaturation] = useState(100);
-  const [volume, setVolume] = useState(100);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const [isFullPreview, setIsFullPreview] = useState(false);
-  
+
+  // Playback State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playbackTimerRef = useRef<number | null>(null);
 
-  const totalDuration = segments.reduce((sum, s) => sum + (s.endTime - s.startTime), 0);
-  const selectedSegment = segments.find(s => s.id === selectedSegmentId);
+  // Creative Settings
+  const [selectedTemplate, setSelectedTemplate] = useState<CulturalTemplate | null>(null);
+  const [selectedBackground, setSelectedBackground] = useState<AIBackground>(AI_BACKGROUNDS[0]);
+  const [selectedFilter, setSelectedFilter] = useState('none');
+  const [selectedMusic, setSelectedMusic] = useState<string | null>(null);
+  
+  // Adjustments
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
+  const [saturation, setSaturation] = useState(100);
+  const [musicVolume, setMusicVolume] = useState(50);
+  const [voiceVolume, setVoiceVolume] = useState(100);
 
-  const tools = [
-    { id: 'trim', icon: Scissors, label: language === 'ba' ? 'Gé' : 'Découper', labelBa: 'Gé' },
-    { id: 'filter', icon: Filter, label: language === 'ba' ? 'Asa' : 'Filtres', labelBa: 'Asa' },
-    { id: 'adjust', icon: Sliders, label: language === 'ba' ? 'Satunse' : 'Ajuster', labelBa: 'Satunse' },
-    { id: 'text', icon: Type, label: language === 'ba' ? 'Ọrọ' : 'Texte', labelBa: 'Ọrọ' },
-    { id: 'music', icon: Music, label: language === 'ba' ? 'Orin' : 'Musique', labelBa: 'Orin' },
-    { id: 'effects', icon: Wand2, label: language === 'ba' ? 'Awọn ipa' : 'Effets', labelBa: 'Awọn ipa' },
-    { id: 'sticker', icon: Sparkles, label: language === 'ba' ? 'Aworan' : 'Stickers', labelBa: 'Aworan' },
-  ];
+  // VR & View Modes
+  const [isVRMode, setIsVRMode] = useState(false);
+  const [isFullPreview, setIsFullPreview] = useState(false);
+  const [aiVariants, setAiVariants] = useState<'A' | 'B' | 'C'>('A');
 
-  // Playback control
+  // Initialization
+  useEffect(() => {
+    if (initialSegments.length > 0 && blocks.length === 0) {
+      const newBlocks: VideoBlock[] = initialSegments.map((seg, idx) => ({
+        id: seg.id,
+        type: idx === 0 ? 'HOOK_1S' : idx === initialSegments.length - 1 ? 'END' : 'MESSAGE',
+        segment: seg,
+        energy: 'medium',
+        focus: 'full'
+      }));
+      setBlocks(newBlocks);
+      setSelectedBlockId(newBlocks[0]?.id || null);
+    }
+  }, [initialSegments]);
+
+  const totalDuration = blocks.reduce((sum, b) => sum + (b.segment.endTime - b.segment.startTime), 0);
+  const selectedBlock = blocks.find(b => b.id === selectedBlockId);
+
+  // Playback Logic
   useEffect(() => {
     if (isPlaying) {
       playbackTimerRef.current = window.setInterval(() => {
         setCurrentTime(prev => {
-          const next = prev + (0.1 * playbackSpeed);
-          if (next >= totalDuration) {
-            setIsPlaying(false);
-            return 0;
-          }
-          return next;
+          if (prev >= totalDuration) { setIsPlaying(false); return 0; }
+          return prev + 0.1;
         });
       }, 100);
-    } else {
-      if (playbackTimerRef.current) {
-        window.clearInterval(playbackTimerRef.current);
-      }
+    } else if (playbackTimerRef.current) {
+      window.clearInterval(playbackTimerRef.current);
     }
-    return () => {
-      if (playbackTimerRef.current) {
-        window.clearInterval(playbackTimerRef.current);
-      }
-    };
-  }, [isPlaying, totalDuration, playbackSpeed]);
-
-  // Update video element when playing
-  useEffect(() => {
-    if (videoRef.current && selectedSegment) {
-      const videoUrl = URL.createObjectURL(selectedSegment.blob);
-      videoRef.current.src = videoUrl;
-      if (isPlaying) {
-        videoRef.current.play();
-      } else {
-        videoRef.current.pause();
-      }
-      return () => URL.revokeObjectURL(videoUrl);
-    }
-  }, [selectedSegment, isPlaying]);
-
-  const togglePlay = () => setIsPlaying(!isPlaying);
+    return () => { if (playbackTimerRef.current) window.clearInterval(playbackTimerRef.current); };
+  }, [isPlaying, totalDuration]);
 
   const handleSeek = (time: number) => {
     setCurrentTime(time);
-    if (videoRef.current) {
-      videoRef.current.currentTime = time;
-    }
-  };
-
-  const handleSplitSegment = () => {
-    if (!selectedSegment) return;
-    const midPoint = (selectedSegment.startTime + selectedSegment.endTime) / 2;
-    const newSegments = [...segments];
-    const index = newSegments.findIndex(s => s.id === selectedSegmentId);
-    
-    const seg1: TimelineSegment = {
-      ...selectedSegment,
-      id: `${selectedSegment.id}_1`,
-      endTime: midPoint,
-      duration: midPoint - selectedSegment.startTime
-    };
-    const seg2: TimelineSegment = {
-      ...selectedSegment,
-      id: `${selectedSegment.id}_2`,
-      startTime: midPoint,
-      duration: selectedSegment.endTime - midPoint
-    };
-    
-    newSegments.splice(index, 1, seg1, seg2);
-    setSegments(newSegments);
-  };
-
-  const handleDeleteSegment = () => {
-    if (!selectedSegmentId) return;
-    setSegments(segments.filter(s => s.id !== selectedSegmentId));
-    setSelectedSegmentId(segments[0]?.id || null);
-  };
-
-  const handleDuplicateSegment = () => {
-    if (!selectedSegment) return;
-    const newSegment: TimelineSegment = {
-      ...selectedSegment,
-      id: `${selectedSegment.id}_copy_${Date.now()}`
-    };
-    const index = segments.findIndex(s => s.id === selectedSegmentId);
-    const newSegments = [...segments];
-    newSegments.splice(index + 1, 0, newSegment);
-    setSegments(newSegments);
-  };
-
-  const handleApplyFilter = (filterId: string) => {
-    setSelectedFilter(filterId);
-    if (!selectedSegmentId) return;
-    setSegments(segments.map(s => 
-      s.id === selectedSegmentId ? { ...s, filter: filterId } : s
-    ));
-  };
-
-  const addTextOverlay = () => {
-    const newText: TextOverlay = {
-      id: `text_${Date.now()}`,
-      text: 'Nouveau texte',
-      x: 50,
-      y: 50,
-      fontSize: 32,
-      color: '#FFFFFF',
-      fontFamily: 'Arial',
-      startTime: currentTime,
-      endTime: currentTime + 3
-    };
-    setTextOverlays([...textOverlays, newText]);
-  };
-
-  const handleConfirm = () => {
-    onSegmentsChange(segments);
-    onConfirm(segments);
+    if (videoRef.current) videoRef.current.currentTime = time;
   };
 
   const getFilterStyle = () => {
     const filter = FILTERS.find(f => f.id === selectedFilter);
-    const adjustments = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
-    return filter?.css === 'none' ? adjustments : `${filter?.css} ${adjustments}`;
+    return `${filter?.css !== 'none' ? filter?.css : ''} brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+  };
+
+  // VR Transformation Logic
+  const getVRContainerStyle = () => {
+    if (!isVRMode) return {};
+    return {
+      perspective: '1000px',
+      transformStyle: 'preserve-3d' as const,
+    };
+  };
+
+  const getVRVideoStyle = () => {
+    if (!isVRMode) return { filter: getFilterStyle() };
+    return {
+      filter: getFilterStyle(),
+      transform: 'scale(1.3)', // Fisheye simulation zoom
+      maskImage: 'radial-gradient(circle, black 60%, transparent 100%)',
+      WebkitMaskImage: 'radial-gradient(circle, black 60%, transparent 100%)'
+    };
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="flex-shrink-0 bg-gradient-to-b from-black/80 to-transparent px-4 py-3 flex items-center justify-between relative z-20">
-        <button 
-          onClick={onClose}
-          className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:bg-white/20 transition"
-        >
+    <div className="fixed inset-0 z-[100] bg-black overflow-hidden flex flex-col font-sans">
+      
+      {/* --- HEADER --- */}
+      <div className="flex-shrink-0 bg-gradient-to-b from-black/90 to-transparent px-4 py-3 flex items-center justify-between z-30">
+        <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20">
           <X className="w-5 h-5 text-white" />
         </button>
         
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowToolbar(!showToolbar)}
-            className="px-3 py-2 rounded-full bg-white/10 backdrop-blur-xl text-white text-xs flex items-center gap-1"
-          >
-            <Settings className="w-4 h-4" />
-            {showToolbar ? (language === 'ba' ? 'Fi pamọ' : 'Masquer') : (language === 'ba' ? 'Fi han' : 'Afficher')}
-          </button>
+          {/* Mode Switcher */}
+          <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-full p-1">
+            <button onClick={() => setMode('AUTO')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition ${mode === 'AUTO' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'text-white/60'}`}>
+              AUTO ⚡
+            </button>
+            <button onClick={() => setMode('EDITOR')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition ${mode === 'EDITOR' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'text-white/60'}`}>
+              PRO 🛠️
+            </button>
+          </div>
           
-          <button 
-            onClick={handleConfirm}
-            className="px-6 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold flex items-center gap-2 shadow-lg"
-          >
-            <Check className="w-5 h-5" />
-            {language === 'ba' ? 'Pari' : 'Terminer'}
+          <button onClick={() => onConfirm(blocks.map(b => b.segment))} className="px-6 py-2 rounded-full bg-white text-black font-bold flex items-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+            <Check className="w-4 h-4" /> {language === 'ba' ? 'Pari' : 'Save'}
           </button>
         </div>
       </div>
 
-      {/* Main Preview Area */}
-      <div className="flex-1 relative overflow-hidden">
-        {/* Video Preview */}
-        <div className={`absolute inset-0 flex items-center justify-center ${isFullPreview ? '' : 'px-4'}`}>
-          <div className="relative w-full h-full max-w-md max-h-full">
-            <video
-              ref={videoRef}
-              className="w-full h-full object-contain rounded-2xl"
-              style={{ filter: getFilterStyle() }}
-              muted={selectedSegment?.isMuted}
-              playsInline
-            />
-            
-            {/* Text Overlays */}
-            <AnimatePresence>
-              {textOverlays
-                .filter(t => currentTime >= t.startTime && currentTime <= t.endTime)
-                .map(text => (
-                  <motion.div
-                    key={text.id}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    style={{
-                      position: 'absolute',
-                      left: `${text.x}%`,
-                      top: `${text.y}%`,
-                      fontSize: `${text.fontSize}px`,
-                      color: text.color,
-                      fontFamily: text.fontFamily,
-                      fontWeight: 'bold',
-                      textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
-                      transform: 'translate(-50%, -50%)',
-                      pointerEvents: 'none',
-                      zIndex: 10
-                    }}
-                  >
-                    {text.text}
-                  </motion.div>
-                ))}
-            </AnimatePresence>
+      {/* --- PREVIEW AREA (VR & STANDARD) --- */}
+      <div className="flex-1 relative overflow-hidden bg-[#1a1a1a]">
+        
+        {/* Dynamic Background */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${selectedBackground.gradient} transition-colors duration-1000`} />
+        
+        {/* Animated Grid for Depth */}
+        <div className="absolute inset-0 opacity-20" style={{ 
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', 
+          backgroundSize: '50px 50px',
+          transform: isVRMode ? 'perspective(500px) rotateX(20deg)' : 'none',
+          transition: 'transform 0.5s ease'
+        }} />
 
-            {/* Playback Controls Overlay */}
-            <div className="absolute bottom-4 left-4 right-4 space-y-3">
-              {/* Progress Bar */}
-              <div className="relative">
-                <div className="h-1 bg-white/20 rounded-full overflow-hidden">
-                  <motion.div 
-                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
-                    style={{ width: `${(currentTime / totalDuration) * 100}%` }}
-                  />
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max={totalDuration}
-                  step="0.1"
-                  value={currentTime}
-                  onChange={(e) => handleSeek(parseFloat(e.target.value))}
-                  className="absolute inset-0 w-full opacity-0 cursor-pointer"
+        {/* The Video Stage */}
+        <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${isFullPreview ? '' : 'p-4 pb-32'}`}>
+          <div 
+            className={`relative transition-all duration-500 ${isVRMode ? 'w-full h-full flex gap-4 px-8 items-center' : 'w-full max-w-md aspect-[9/16]'}`}
+            style={getVRContainerStyle()}
+          >
+            {/* VR Left Eye (Only visible in VR mode) */}
+            {isVRMode && (
+              <div className="flex-1 h-3/4 rounded-[3rem] overflow-hidden border-4 border-white/20 bg-black relative shadow-2xl">
+                 <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-white/50 animate-pulse">Left Eye Render</span>
+                 </div>
+                 {/* Duplicated Video for Stereoscopic effect */}
+                 {selectedBlock && (
+                   <video src={URL.createObjectURL(selectedBlock.segment.blob)} className="w-full h-full object-cover opacity-80" muted playsInline loop />
+                 )}
+              </div>
+            )}
+
+            {/* Main/Right Eye View */}
+            <div className={`relative overflow-hidden shadow-2xl ${isVRMode ? 'flex-1 h-3/4 rounded-[3rem] border-4 border-white/20' : 'w-full h-full rounded-2xl'}`}>
+               {selectedBlock ? (
+                <video
+                  ref={videoRef}
+                  src={URL.createObjectURL(selectedBlock.segment.blob)}
+                  className="w-full h-full object-cover"
+                  style={getVRVideoStyle()}
+                  muted={selectedBlock.segment.isMuted}
+                  playsInline
                 />
-              </div>
+              ) : (
+                <div className="w-full h-full bg-black/50 flex items-center justify-center text-white/30">No Media</div>
+              )}
 
-              {/* Time Display */}
-              <div className="flex items-center justify-between text-white text-xs">
-                <span>{Math.floor(currentTime)}s</span>
-                <span>{Math.floor(totalDuration)}s</span>
-              </div>
+              {/* Cultural Symbols Layer */}
+              {selectedTemplate && !isVRMode && (
+                <div className="absolute top-0 left-0 w-full h-full pointer-events-none p-6 flex flex-wrap content-between">
+                  <div className="w-full flex justify-between">
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-4xl drop-shadow-lg">{selectedTemplate.symbols[0]}</motion.div>
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2 }} className="text-4xl drop-shadow-lg">{selectedTemplate.symbols[1]}</motion.div>
+                  </div>
+                  <div className="w-full flex justify-center">
+                     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="px-4 py-2 bg-black/40 backdrop-blur-lg rounded-xl border border-white/10">
+                        <span className="text-white font-serif italic">{language === 'ba' ? selectedTemplate.nameBa : selectedTemplate.name}</span>
+                     </motion.div>
+                  </div>
+                </div>
+              )}
 
-              {/* Control Buttons */}
-              <div className="flex items-center justify-center gap-4">
-                <button
-                  onClick={() => handleSeek(Math.max(0, currentTime - 5))}
-                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:bg-white/20 transition"
-                >
-                  <SkipBack className="w-5 h-5 text-white" />
-                </button>
-
-                <button
-                  onClick={togglePlay}
-                  className="w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg hover:scale-105 transition"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-6 h-6 text-white" />
-                  ) : (
-                    <Play className="w-6 h-6 text-white ml-1" />
-                  )}
-                </button>
-
-                <button
-                  onClick={() => handleSeek(Math.min(totalDuration, currentTime + 5))}
-                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:bg-white/20 transition"
-                >
-                  <SkipForward className="w-5 h-5 text-white" />
-                </button>
-
-                <button
-                  onClick={() => handleSeek(0)}
-                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:bg-white/20 transition"
-                >
-                  <RotateCcw className="w-5 h-5 text-white" />
-                </button>
-              </div>
+              {/* VR Overlay HUD */}
+              {isVRMode && (
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-green-500/20 to-transparent mix-blend-overlay" />
+              )}
             </div>
+
           </div>
         </div>
 
-        {/* Fullscreen Toggle */}
-        <button
-          onClick={() => setIsFullPreview(!isFullPreview)}
-          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center z-10"
-        >
-          {isFullPreview ? (
-            <Minimize2 className="w-5 h-5 text-white" />
-          ) : (
-            <Maximize2 className="w-5 h-5 text-white" />
-          )}
-        </button>
+        {/* View Controls */}
+        <div className="absolute top-20 right-4 flex flex-col gap-3">
+          <button onClick={() => setIsFullPreview(!isFullPreview)} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10">
+            {isFullPreview ? <Minimize2 className="w-5 h-5 text-white" /> : <Maximize2 className="w-5 h-5 text-white" />}
+          </button>
+          <button onClick={() => setIsVRMode(!isVRMode)} className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center border transition-all ${isVRMode ? 'bg-purple-500 border-purple-400' : 'bg-black/40 border-white/10'}`}>
+            <Glasses className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        {/* Timeline Scrubber */}
+        <div className="absolute bottom-32 left-0 right-0 px-6 z-20">
+          <div className="flex justify-between text-xs text-white/50 mb-2 font-mono">
+            <span>{currentTime.toFixed(1)}s</span>
+            <span>{totalDuration.toFixed(1)}s</span>
+          </div>
+          <div className="relative h-12 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 flex items-center overflow-hidden px-2 gap-1">
+            {blocks.map((block) => (
+              <div 
+                key={block.id}
+                onClick={() => setSelectedBlockId(block.id)}
+                className={`h-8 rounded-lg transition-all relative overflow-hidden cursor-pointer ${selectedBlockId === block.id ? 'ring-2 ring-purple-500 z-10' : 'opacity-60 hover:opacity-100'}`}
+                style={{ flex: block.segment.duration }}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-r ${block.type === 'HOOK_1S' ? 'from-red-500 to-orange-500' : 'from-blue-500 to-cyan-500'}`} />
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white uppercase tracking-wider">{block.type}</span>
+              </div>
+            ))}
+            {/* Playhead */}
+            <div 
+              className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_10px_white] z-20 pointer-events-none"
+              style={{ left: `${(currentTime / totalDuration) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Playback Controls Main */}
+        <div className="absolute bottom-40 w-full flex justify-center items-center gap-6 z-20 pointer-events-none">
+           <div className="pointer-events-auto flex gap-4 bg-black/50 backdrop-blur-xl p-2 rounded-full border border-white/10">
+              <button onClick={() => handleSeek(currentTime - 2)}><SkipBack className="w-5 h-5 text-white" /></button>
+              <button onClick={() => setIsPlaying(!isPlaying)} className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition">
+                {isPlaying ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black ml-1" />}
+              </button>
+              <button onClick={() => handleSeek(currentTime + 2)}><SkipForward className="w-5 h-5 text-white" /></button>
+           </div>
+        </div>
       </div>
 
-      {/* Bottom Toolbar */}
+      {/* --- BOTTOM TOOLBAR (EDITOR) --- */}
       <AnimatePresence>
         {showToolbar && (
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="flex-shrink-0 bg-gradient-to-t from-black via-black/95 to-transparent"
+          <motion.div 
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            className="flex-shrink-0 bg-[#0f0f0f] border-t border-white/10"
           >
-            {/* Tools Grid */}
-            <div className="px-4 pt-4 pb-2">
-              <div className="grid grid-cols-4 gap-3 mb-4">
-                {tools.map(tool => (
-                  <button
-                    key={tool.id}
-                    onClick={() => setActiveTool(activeTool === tool.id ? null : tool.id as EditTool)}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition ${
-                      activeTool === tool.id
-                        ? 'bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-purple-500/50'
-                        : 'bg-white/5 border border-white/10'
-                    }`}
-                  >
-                    <tool.icon className="w-6 h-6 text-white" />
-                    <span className="text-xs text-white font-medium">
-                      {language === 'ba' ? tool.labelBa : tool.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Tool Panels */}
-              <AnimatePresence mode="wait">
-                {activeTool === 'filter' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-white font-semibold">
-                        {language === 'ba' ? 'Awọn Asa' : 'Filtres'}
-                      </h4>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {FILTERS.map(filter => (
-                        <button
-                          key={filter.id}
-                          onClick={() => handleApplyFilter(filter.id)}
-                          className={`aspect-square rounded-xl overflow-hidden border-2 transition ${
-                            selectedFilter === filter.id
-                              ? 'border-purple-500 scale-95'
-                              : 'border-transparent hover:border-white/20'
-                          }`}
-                        >
-                          <div
-                            className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex flex-col items-center justify-center"
-                            style={{ filter: filter.css }}
-                          >
-                            <span className="text-2xl mb-1">{filter.icon}</span>
-                            <span className="text-white text-xs font-medium">{filter.name}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {activeTool === 'adjust' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4 space-y-4"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-white text-sm">
-                          {language === 'ba' ? 'Imọlẹ' : 'Luminosité'}
-                        </label>
-                        <span className="text-white/70 text-sm">{brightness}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="200"
-                        value={brightness}
-                        onChange={(e) => setBrightness(parseInt(e.target.value))}
-                        className="w-full accent-purple-500"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-white text-sm">
-                          {language === 'ba' ? 'Iyatọ' : 'Contraste'}
-                        </label>
-                        <span className="text-white/70 text-sm">{contrast}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="200"
-                        value={contrast}
-                        onChange={(e) => setContrast(parseInt(e.target.value))}
-                        className="w-full accent-purple-500"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-white text-sm">
-                          {language === 'ba' ? 'Awọ' : 'Saturation'}
-                        </label>
-                        <span className="text-white/70 text-sm">{saturation}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="200"
-                        value={saturation}
-                        onChange={(e) => setSaturation(parseInt(e.target.value))}
-                        className="w-full accent-purple-500"
-                      />
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setBrightness(100);
-                        setContrast(100);
-                        setSaturation(100);
-                      }}
-                      className="w-full py-2 rounded-xl bg-white/10 text-white text-sm"
-                    >
-                      {language === 'ba' ? 'Tun bẹrẹ' : 'Réinitialiser'}
-                    </button>
-                  </motion.div>
-                )}
-
-                {activeTool === 'text' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4"
-                  >
-                    <button
-                      onClick={addTextOverlay}
-                      className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-5 h-5" />
-                      {language === 'ba' ? 'Fi ọrọ kun' : 'Ajouter du texte'}
-                    </button>
-                    
-                    {textOverlays.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {textOverlays.map(text => (
-                          <div key={text.id} className="p-2 rounded-lg bg-white/5 text-white text-sm">
-                            {text.text}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {activeTool === 'trim' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4"
-                  >
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={handleSplitSegment}
-                        className="py-3 rounded-xl bg-white/10 text-white text-sm flex flex-col items-center gap-1"
-                      >
-                        <Scissors className="w-5 h-5" />
-                        {language === 'ba' ? 'Pin' : 'Couper'}
-                      </button>
-                      <button
-                        onClick={handleDuplicateSegment}
-                        className="py-3 rounded-xl bg-white/10 text-white text-sm flex flex-col items-center gap-1"
-                      >
-                        <Copy className="w-5 h-5" />
-                        {language === 'ba' ? 'Ẹda' : 'Dupliquer'}
-                      </button>
-                      <button
-                        onClick={handleDeleteSegment}
-                        className="py-3 rounded-xl bg-red-500/20 text-red-400 text-sm flex flex-col items-center gap-1"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                        {language === 'ba' ? 'Pa' : 'Supprimer'}
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {activeTool === 'music' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4"
-                  >
-                    <h4 className="text-white font-semibold mb-3">
-                      {language === 'ba' ? 'Orin' : 'Musique'}
-                    </h4>
-                    <div className="space-y-2">
-                      {MUSIC_TRACKS.map(track => (
-                        <button
-                          key={track.id}
-                          className="w-full p-3 rounded-xl bg-white/5 hover:bg-white/10 text-left transition"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Music className="w-5 h-5 text-purple-400" />
-                            <div className="flex-1">
-                              <div className="text-white text-sm font-medium">{track.title}</div>
-                              <div className="text-white/60 text-xs">{track.duration}s</div>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="mt-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-white text-sm flex items-center gap-2">
-                          <Volume2 className="w-4 h-4" />
-                          {language === 'ba' ? 'Iwọn ohun' : 'Volume'}
-                        </label>
-                        <span className="text-white/70 text-sm">{volume}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={volume}
-                        onChange={(e) => setVolume(parseInt(e.target.value))}
-                        className="w-full accent-purple-500"
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            {/* Tool Selection */}
+            <div className="flex items-center gap-4 px-4 py-3 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'template', icon: Sparkles, label: language === 'ba' ? 'Apeere' : 'Template' },
+                { id: 'background', icon: Activity, label: language === 'ba' ? 'Abẹlẹ' : 'Fond IA' },
+                { id: 'filter', icon: Filter, label: language === 'ba' ? 'Asa' : 'Filtre' },
+                { id: 'music', icon: Music, label: language === 'ba' ? 'Orin' : 'Son' },
+              ].map(tool => (
+                <button
+                  key={tool.id}
+                  onClick={() => setActiveTool(activeTool === tool.id ? null : tool.id as EditTool)}
+                  className={`flex flex-col items-center gap-1 min-w-[60px] p-2 rounded-xl transition ${activeTool === tool.id ? 'bg-white/10 text-purple-400' : 'text-white/60 hover:text-white'}`}
+                >
+                  <tool.icon className="w-6 h-6" />
+                  <span className="text-[10px] font-medium">{tool.label}</span>
+                </button>
+              ))}
             </div>
 
-            {/* Segment Timeline */}
-            <div className="px-4 pb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-white/60 text-xs">
-                  {segments.length} {language === 'ba' ? 'awọn ipin' : 'segments'}
-                </span>
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {segments.map((segment, idx) => (
-                  <button
-                    key={segment.id}
-                    onClick={() => setSelectedSegmentId(segment.id)}
-                    className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition ${
-                      selectedSegmentId === segment.id
-                        ? 'border-purple-500'
-                        : 'border-white/10'
-                    }`}
-                  >
-                    <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                      <span className="text-white text-xs">{idx + 1}</span>
+            {/* Dynamic Tool Panels */}
+            <div className="bg-[#141414]">
+              
+              {/* FILTER PANEL */}
+              {activeTool === 'filter' && (
+                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="p-4 space-y-4">
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {FILTERS.map(f => (
+                      <button key={f.id} onClick={() => setSelectedFilter(f.id)} className={`flex-shrink-0 flex flex-col items-center gap-2 ${selectedFilter === f.id ? 'opacity-100' : 'opacity-50'}`}>
+                        <div className={`w-14 h-14 rounded-full bg-gray-800 flex items-center justify-center text-xl border-2 ${selectedFilter === f.id ? 'border-purple-500' : 'border-transparent'}`}>{f.icon}</div>
+                        <span className="text-xs text-white">{f.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Adjustment Sliders */}
+                  <div className="grid grid-cols-1 gap-4 pt-2 border-t border-white/10">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-white w-16">Lumière</span>
+                      <input type="range" min="50" max="150" value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
                     </div>
-                  </button>
-                ))}
-              </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-white w-16">Contraste</span>
+                      <input type="range" min="50" max="150" value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* MUSIC PANEL */}
+              {activeTool === 'music' && (
+                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="p-4 space-y-4">
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {MUSIC_TRACKS.map(track => (
+                      <button key={track.id} onClick={() => setSelectedMusic(track.id)} className={`w-full flex items-center justify-between p-3 rounded-xl border transition ${selectedMusic === track.id ? 'bg-purple-500/20 border-purple-500/50' : 'bg-white/5 border-white/5'}`}>
+                        <div className="flex items-center gap-3">
+                           <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><Music className="w-4 h-4 text-white" /></div>
+                           <div className="text-left">
+                             <div className="text-sm font-bold text-white">{track.name}</div>
+                             <div className="text-xs text-white/50">{track.mood}</div>
+                           </div>
+                        </div>
+                        {selectedMusic === track.id && <div className="flex gap-0.5 items-end h-4"><div className="w-1 bg-purple-500 h-2 animate-pulse"/><div className="w-1 bg-purple-500 h-4 animate-pulse delay-75"/><div className="w-1 bg-purple-500 h-3 animate-pulse delay-150"/></div>}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Audio Mixer */}
+                  <div className="flex gap-6 pt-2 border-t border-white/10">
+                    <div className="flex-1 space-y-2">
+                       <div className="flex justify-between text-xs text-white/60"><span>Musique</span><span>{musicVolume}%</span></div>
+                       <input type="range" value={musicVolume} onChange={(e) => setMusicVolume(Number(e.target.value))} className="w-full h-1 bg-gray-700 rounded-lg accent-purple-500" />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                       <div className="flex justify-between text-xs text-white/60"><span>Voix</span><span>{voiceVolume}%</span></div>
+                       <input type="range" value={voiceVolume} onChange={(e) => setVoiceVolume(Number(e.target.value))} className="w-full h-1 bg-gray-700 rounded-lg accent-pink-500" />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* TEMPLATE PANEL (Simplified for brevity) */}
+              {activeTool === 'template' && (
+                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="p-4">
+                   <div className="grid grid-cols-2 gap-2">
+                     {CULTURAL_TEMPLATES.map(tpl => (
+                       <button key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`p-3 rounded-xl border flex items-center gap-2 ${selectedTemplate?.id === tpl.id ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 bg-white/5'}`}>
+                         <span className="text-2xl">{tpl.emoji}</span>
+                         <div className="text-left"><div className="text-sm font-bold text-white">{language === 'ba' ? tpl.nameBa : tpl.name}</div></div>
+                       </button>
+                     ))}
+                   </div>
+                </motion.div>
+              )}
+
+              {/* BACKGROUND PANEL (Simplified) */}
+              {activeTool === 'background' && (
+                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="p-4">
+                    <div className="flex gap-2 overflow-x-auto">
+                      {AI_BACKGROUNDS.map(bg => (
+                        <button key={bg.id} onClick={() => setSelectedBackground(bg)} className={`relative flex-shrink-0 w-32 h-20 rounded-lg overflow-hidden border-2 ${selectedBackground.id === bg.id ? 'border-white' : 'border-transparent'}`}>
+                          <div className={`absolute inset-0 bg-gradient-to-br ${bg.gradient}`} />
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-xl">{bg.emoji}</span>
+                            <span className="text-[10px] text-white font-bold shadow-black drop-shadow-md">{bg.name}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                 </motion.div>
+              )}
             </div>
           </motion.div>
         )}
