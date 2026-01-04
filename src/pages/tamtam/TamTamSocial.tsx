@@ -665,18 +665,45 @@ export default function TamTamSocial() {
     }
   }, [createPost, fetchPosts, toast]);
 
-  // Filter posts
+  // Filter posts - improved logic to show all posts matching the category
   const getCurrentPosts = useMemo(() => {
     const allPosts = posts.length > 0 ? posts : [];
     switch (feedMode) {
       case 'patrimoine':
-        const patrimoine = allPosts.filter(p => (p as any).topic === 'patrimoine' || (p as any).topic === 'culture');
-        return patrimoine.length > 0 ? patrimoine : allPosts.slice(0, 10);
+        // Patrimoine: audio posts with culture topics OR template-based culture content
+        const patrimoine = allPosts.filter(p => {
+          const post = p as any;
+          return post.topic === 'patrimoine' || 
+                 post.topic === 'culture' || 
+                 post.template_id?.includes('conte') ||
+                 post.template_id?.includes('chant') ||
+                 post.template_id?.includes('proverbe') ||
+                 (post.culture_score && post.culture_score > 0) ||
+                 (post.media_type === 'audio' && !post.topic);
+        });
+        return patrimoine.length > 0 ? patrimoine : allPosts.filter(p => (p as any).media_type === 'audio').slice(0, 10);
       case 'mavoix':
-        const mavoix = allPosts.filter(p => (p as any).topic === 'mavoix' || (p as any).topic === 'annonce');
-        return mavoix.length > 0 ? mavoix : allPosts.slice(0, 10);
+        // Ma Voix: village voice, announcements, questions, polls
+        const mavoix = allPosts.filter(p => {
+          const post = p as any;
+          return post.topic === 'mavoix' || 
+                 post.topic === 'annonce' ||
+                 post.topic === 'village_voice' ||
+                 post.template_id?.includes('annonce') ||
+                 post.template_id?.includes('question') ||
+                 post.template_id?.includes('merci') ||
+                 (post.media_type === 'audio' && post.topic);
+        });
+        return mavoix.length > 0 ? mavoix : allPosts.filter(p => (p as any).audio_url).slice(0, 10);
       case 'creation':
-        const creation = allPosts.filter(p => (p as any).media_type === 'video' || (p as any).media_type === 'photo');
+        // Creation: video, photo, template-based multimedia content
+        const creation = allPosts.filter(p => {
+          const post = p as any;
+          return post.media_type === 'video' || 
+                 post.media_type === 'photo' ||
+                 post.template_id ||
+                 post.media_url;
+        });
         return creation.length > 0 ? creation : allPosts.slice(0, 10);
     }
   }, [feedMode, posts]);

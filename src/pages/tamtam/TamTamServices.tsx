@@ -13,12 +13,15 @@ import { useToast } from '@/hooks/use-toast';
 import { byT5TranslationService } from '@/services/ByT5TranslationService';
 
 const services = [
-  { id: 'dictionary', icon: '📖', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelKey: 'dictionary', route: '/tamtam/dictionary' },
   { id: 'translator', icon: '🌐', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelKey: 'translator', route: '/tamtam/translator' },
-  { id: 'health', icon: '🏥', color: 'bg-green-500', bgLight: 'bg-green-50', labelKey: 'health', route: '/tamtam/health' },
-  { id: 'finance', icon: '💰', color: 'bg-yellow-500', bgLight: 'bg-yellow-50', labelKey: 'finance', route: '/tamtam/finance' },
+  { id: 'health', icon: '🩺', color: 'bg-pink-500', bgLight: 'bg-pink-50', labelKey: 'health', route: '/tamtam/health' },
+  { id: 'education', icon: '📚', color: 'bg-amber-500', bgLight: 'bg-amber-50', labelKey: 'education', route: '/tamtam/education' },
+  { id: 'finance', icon: '💰', color: 'bg-orange-500', bgLight: 'bg-orange-50', labelKey: 'finance', route: '/tamtam/finance' },
+  { id: 'meteo', icon: '⛅', color: 'bg-sky-500', bgLight: 'bg-sky-50', labelKey: 'meteo', route: '/tamtam/agriculture' },
   { id: 'agri', icon: '🌾', color: 'bg-emerald-500', bgLight: 'bg-emerald-50', labelKey: 'agriculture', route: '/tamtam/agriculture' },
-  { id: 'education', icon: '📚', color: 'bg-indigo-500', bgLight: 'bg-indigo-50', labelKey: 'education', route: '/tamtam/education' },
+  { id: 'news', icon: '📰', color: 'bg-rose-500', bgLight: 'bg-rose-50', labelKey: 'news', route: '/tamtam/social' },
+  { id: 'security', icon: '🛡️', color: 'bg-red-500', bgLight: 'bg-red-50', labelKey: 'security', route: '/tamtam/sos' },
+  { id: 'dictionary', icon: '📖', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelKey: 'dictionary', route: '/tamtam/dictionary' },
 ];
 
 interface Message {
