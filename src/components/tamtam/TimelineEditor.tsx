@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, Reorder, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Scissors, Trash2, Plus, Play, Pause, RotateCcw, 
-  ChevronLeft, ChevronRight, Sparkles, Check, X,
-  GripVertical, Volume2, VolumeX, Wand2
+  X, Play, Pause, RotateCcw, Check, Volume2, VolumeX, Scissors,
+  Trash2, Copy, Music, Sparkles, Type, Palette, Wand2,
+  Settings, Filter, Maximize2, Minimize2,
+  SkipBack, SkipForward, Sliders, Plus
 } from 'lucide-react';
-import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
-import { triggerFeedback } from '@/utils/tamtamFeedback';
 
 export interface TimelineSegment {
   id: string;
@@ -17,463 +16,637 @@ export interface TimelineSegment {
   endTime: number;
   thumbnail?: string;
   isMuted?: boolean;
-  transition?: TransitionType;
+  filter?: string;
+  volume?: number;
 }
-
-export type TransitionType = 'none' | 'fade' | 'slide' | 'zoom' | 'blur';
-
-const TRANSITIONS: { id: TransitionType; label: string; icon: string }[] = [
-  { id: 'none', label: 'Aucune', icon: '➖' },
-  { id: 'fade', label: 'Fondu', icon: '🌫️' },
-  { id: 'slide', label: 'Glisser', icon: '➡️' },
-  { id: 'zoom', label: 'Zoom', icon: '🔍' },
-  { id: 'blur', label: 'Flou', icon: '💨' },
-];
 
 interface TimelineEditorProps {
   segments: TimelineSegment[];
   onSegmentsChange: (segments: TimelineSegment[]) => void;
   onClose: () => void;
   onConfirm: (segments: TimelineSegment[]) => void;
+  language?: 'fr' | 'ba';
 }
+
+type EditTool = 'trim' | 'split' | 'filter' | 'music' | 'text' | 'sticker' | 'effects' | 'adjust' | null;
+
+interface TextOverlay {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  color: string;
+  fontFamily: string;
+  startTime: number;
+  endTime: number;
+}
+
+const FILTERS = [
+  { id: 'none', name: 'Original', icon: '📷', css: 'none' },
+  { id: 'warm', name: 'Chaud', icon: '🔥', css: 'sepia(0.3) saturate(1.4)' },
+  { id: 'cool', name: 'Froid', icon: '❄️', css: 'hue-rotate(10deg) saturate(0.9)' },
+  { id: 'vivid', name: 'Vif', icon: '🌈', css: 'saturate(1.8) contrast(1.2)' },
+  { id: 'vintage', name: 'Vintage', icon: '📻', css: 'sepia(0.5) contrast(1.1)' },
+  { id: 'bw', name: 'N&B', icon: '🎬', css: 'grayscale(1) contrast(1.2)' },
+];
+
+const MUSIC_TRACKS = [
+  { id: 'm1', title: 'Afro Vibes', duration: 120 },
+  { id: 'm2', title: 'Chill Beats', duration: 90 },
+  { id: 'm3', title: 'Upbeat Dance', duration: 60 },
+  { id: 'm4', title: 'Lo-Fi Study', duration: 180 },
+];
 
 export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   segments: initialSegments,
   onSegmentsChange,
   onClose,
-  onConfirm
+  onConfirm,
+  language = 'fr'
 }) => {
-  const { currentLang } = useTamTamLanguage();
   const [segments, setSegments] = useState<TimelineSegment[]>(initialSegments);
-  const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(segments[0]?.id || null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [showTransitions, setShowTransitions] = useState(false);
-  const [trimMode, setTrimMode] = useState<{ segmentId: string; type: 'start' | 'end' } | null>(null);
+  const [activeTool, setActiveTool] = useState<EditTool>(null);
+  const [showToolbar, setShowToolbar] = useState(true);
+  const [selectedFilter, setSelectedFilter] = useState('none');
+  const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
+  const [saturation, setSaturation] = useState(100);
+  const [volume, setVolume] = useState(100);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [isFullPreview, setIsFullPreview] = useState(false);
   
-  const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
-  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
-  const playbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playbackTimerRef = useRef<number | null>(null);
 
   const totalDuration = segments.reduce((sum, s) => sum + (s.endTime - s.startTime), 0);
+  const selectedSegment = segments.find(s => s.id === selectedSegmentId);
 
-  // Generate thumbnails for video segments
+  const tools = [
+    { id: 'trim', icon: Scissors, label: language === 'ba' ? 'Gé' : 'Découper', labelBa: 'Gé' },
+    { id: 'filter', icon: Filter, label: language === 'ba' ? 'Asa' : 'Filtres', labelBa: 'Asa' },
+    { id: 'adjust', icon: Sliders, label: language === 'ba' ? 'Satunse' : 'Ajuster', labelBa: 'Satunse' },
+    { id: 'text', icon: Type, label: language === 'ba' ? 'Ọrọ' : 'Texte', labelBa: 'Ọrọ' },
+    { id: 'music', icon: Music, label: language === 'ba' ? 'Orin' : 'Musique', labelBa: 'Orin' },
+    { id: 'effects', icon: Wand2, label: language === 'ba' ? 'Awọn ipa' : 'Effets', labelBa: 'Awọn ipa' },
+    { id: 'sticker', icon: Sparkles, label: language === 'ba' ? 'Aworan' : 'Stickers', labelBa: 'Aworan' },
+  ];
+
+  // Playback control
   useEffect(() => {
-    segments.forEach(segment => {
-      if (segment.type === 'video' && !segment.thumbnail) {
-        generateThumbnail(segment);
+    if (isPlaying) {
+      playbackTimerRef.current = window.setInterval(() => {
+        setCurrentTime(prev => {
+          const next = prev + (0.1 * playbackSpeed);
+          if (next >= totalDuration) {
+            setIsPlaying(false);
+            return 0;
+          }
+          return next;
+        });
+      }, 100);
+    } else {
+      if (playbackTimerRef.current) {
+        window.clearInterval(playbackTimerRef.current);
       }
-    });
-  }, []);
-
-  const generateThumbnail = async (segment: TimelineSegment) => {
-    const video = document.createElement('video');
-    video.src = URL.createObjectURL(segment.blob);
-    video.currentTime = 0.5;
-    
-    video.onloadeddata = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 120;
-      canvas.height = 68;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const thumbnail = canvas.toDataURL('image/jpeg', 0.5);
-        setSegments(prev => prev.map(s => 
-          s.id === segment.id ? { ...s, thumbnail } : s
-        ));
-      }
-      URL.revokeObjectURL(video.src);
-    };
-  };
-
-  const handleReorder = (newOrder: TimelineSegment[]) => {
-    setSegments(newOrder);
-    triggerFeedback('notification');
-  };
-
-  const handleDeleteSegment = (segmentId: string) => {
-    setSegments(prev => prev.filter(s => s.id !== segmentId));
-    setSelectedSegment(null);
-    triggerFeedback('notification');
-  };
-
-  const handleSplitSegment = (segmentId: string) => {
-    const segment = segments.find(s => s.id === segmentId);
-    if (!segment) return;
-
-    const midPoint = (segment.startTime + segment.endTime) / 2;
-    const newSegment1: TimelineSegment = {
-      ...segment,
-      id: `${segment.id}_1`,
-      endTime: midPoint,
-      duration: midPoint - segment.startTime
-    };
-    const newSegment2: TimelineSegment = {
-      ...segment,
-      id: `${segment.id}_2`,
-      startTime: midPoint,
-      duration: segment.endTime - midPoint
-    };
-
-    setSegments(prev => {
-      const index = prev.findIndex(s => s.id === segmentId);
-      const newSegments = [...prev];
-      newSegments.splice(index, 1, newSegment1, newSegment2);
-      return newSegments;
-    });
-    triggerFeedback('success');
-  };
-
-  const handleTrimSegment = (segmentId: string, type: 'start' | 'end', delta: number) => {
-    setSegments(prev => prev.map(s => {
-      if (s.id !== segmentId) return s;
-      
-      if (type === 'start') {
-        const newStart = Math.max(0, Math.min(s.endTime - 0.5, s.startTime + delta));
-        return { ...s, startTime: newStart, duration: s.endTime - newStart };
-      } else {
-        const newEnd = Math.max(s.startTime + 0.5, Math.min(s.duration, s.endTime + delta));
-        return { ...s, endTime: newEnd, duration: newEnd - s.startTime };
-      }
-    }));
-  };
-
-  const handleSetTransition = (segmentId: string, transition: TransitionType) => {
-    setSegments(prev => prev.map(s => 
-      s.id === segmentId ? { ...s, transition } : s
-    ));
-    setShowTransitions(false);
-    triggerFeedback('notification');
-  };
-
-  const handleToggleMute = (segmentId: string) => {
-    setSegments(prev => prev.map(s => 
-      s.id === segmentId ? { ...s, isMuted: !s.isMuted } : s
-    ));
-  };
-
-  const playPreview = () => {
-    setIsPlaying(true);
-    setCurrentTime(0);
-    
-    let elapsed = 0;
-    playbackTimerRef.current = setInterval(() => {
-      elapsed += 0.1;
-      setCurrentTime(elapsed);
-      
-      if (elapsed >= totalDuration) {
-        stopPreview();
-      }
-    }, 100);
-  };
-
-  const stopPreview = () => {
-    setIsPlaying(false);
-    if (playbackTimerRef.current) {
-      clearInterval(playbackTimerRef.current);
     }
+    return () => {
+      if (playbackTimerRef.current) {
+        window.clearInterval(playbackTimerRef.current);
+      }
+    };
+  }, [isPlaying, totalDuration, playbackSpeed]);
+
+  // Update video element when playing
+  useEffect(() => {
+    if (videoRef.current && selectedSegment) {
+      const videoUrl = URL.createObjectURL(selectedSegment.blob);
+      videoRef.current.src = videoUrl;
+      if (isPlaying) {
+        videoRef.current.play();
+      } else {
+        videoRef.current.pause();
+      }
+      return () => URL.revokeObjectURL(videoUrl);
+    }
+  }, [selectedSegment, isPlaying]);
+
+  const togglePlay = () => setIsPlaying(!isPlaying);
+
+  const handleSeek = (time: number) => {
+    setCurrentTime(time);
+    if (videoRef.current) {
+      videoRef.current.currentTime = time;
+    }
+  };
+
+  const handleSplitSegment = () => {
+    if (!selectedSegment) return;
+    const midPoint = (selectedSegment.startTime + selectedSegment.endTime) / 2;
+    const newSegments = [...segments];
+    const index = newSegments.findIndex(s => s.id === selectedSegmentId);
+    
+    const seg1: TimelineSegment = {
+      ...selectedSegment,
+      id: `${selectedSegment.id}_1`,
+      endTime: midPoint,
+      duration: midPoint - selectedSegment.startTime
+    };
+    const seg2: TimelineSegment = {
+      ...selectedSegment,
+      id: `${selectedSegment.id}_2`,
+      startTime: midPoint,
+      duration: selectedSegment.endTime - midPoint
+    };
+    
+    newSegments.splice(index, 1, seg1, seg2);
+    setSegments(newSegments);
+  };
+
+  const handleDeleteSegment = () => {
+    if (!selectedSegmentId) return;
+    setSegments(segments.filter(s => s.id !== selectedSegmentId));
+    setSelectedSegmentId(segments[0]?.id || null);
+  };
+
+  const handleDuplicateSegment = () => {
+    if (!selectedSegment) return;
+    const newSegment: TimelineSegment = {
+      ...selectedSegment,
+      id: `${selectedSegment.id}_copy_${Date.now()}`
+    };
+    const index = segments.findIndex(s => s.id === selectedSegmentId);
+    const newSegments = [...segments];
+    newSegments.splice(index + 1, 0, newSegment);
+    setSegments(newSegments);
+  };
+
+  const handleApplyFilter = (filterId: string) => {
+    setSelectedFilter(filterId);
+    if (!selectedSegmentId) return;
+    setSegments(segments.map(s => 
+      s.id === selectedSegmentId ? { ...s, filter: filterId } : s
+    ));
+  };
+
+  const addTextOverlay = () => {
+    const newText: TextOverlay = {
+      id: `text_${Date.now()}`,
+      text: 'Nouveau texte',
+      x: 50,
+      y: 50,
+      fontSize: 32,
+      color: '#FFFFFF',
+      fontFamily: 'Arial',
+      startTime: currentTime,
+      endTime: currentTime + 3
+    };
+    setTextOverlays([...textOverlays, newText]);
   };
 
   const handleConfirm = () => {
     onSegmentsChange(segments);
     onConfirm(segments);
-    triggerFeedback('success');
   };
 
-  const selectedSegmentData = segments.find(s => s.id === selectedSegment);
+  const getFilterStyle = () => {
+    const filter = FILTERS.find(f => f.id === selectedFilter);
+    const adjustments = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+    return filter?.css === 'none' ? adjustments : `${filter?.css} ${adjustments}`;
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black"
-    >
+    <div className="fixed inset-0 z-[100] bg-black overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="ios-glass-dark px-4 py-3 flex items-center justify-between">
-        <button onClick={onClose} className="p-2">
+      <div className="flex-shrink-0 bg-gradient-to-b from-black/80 to-transparent px-4 py-3 flex items-center justify-between relative z-20">
+        <button 
+          onClick={onClose}
+          className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:bg-white/20 transition"
+        >
           <X className="w-5 h-5 text-white" />
         </button>
-        <h2 className="text-white font-semibold">
-          {currentLang === 'ba' ? 'Ṣàtúnṣe' : 'Éditer'}
-        </h2>
-        <button 
-          onClick={handleConfirm}
-          className="px-4 py-2 bg-primary rounded-full text-white text-sm font-medium"
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowToolbar(!showToolbar)}
+            className="px-3 py-2 rounded-full bg-white/10 backdrop-blur-xl text-white text-xs flex items-center gap-1"
+          >
+            <Settings className="w-4 h-4" />
+            {showToolbar ? (language === 'ba' ? 'Fi pamọ' : 'Masquer') : (language === 'ba' ? 'Fi han' : 'Afficher')}
+          </button>
+          
+          <button 
+            onClick={handleConfirm}
+            className="px-6 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold flex items-center gap-2 shadow-lg"
+          >
+            <Check className="w-5 h-5" />
+            {language === 'ba' ? 'Pari' : 'Terminer'}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Preview Area */}
+      <div className="flex-1 relative overflow-hidden">
+        {/* Video Preview */}
+        <div className={`absolute inset-0 flex items-center justify-center ${isFullPreview ? '' : 'px-4'}`}>
+          <div className="relative w-full h-full max-w-md max-h-full">
+            <video
+              ref={videoRef}
+              className="w-full h-full object-contain rounded-2xl"
+              style={{ filter: getFilterStyle() }}
+              muted={selectedSegment?.isMuted}
+              playsInline
+            />
+            
+            {/* Text Overlays */}
+            <AnimatePresence>
+              {textOverlays
+                .filter(t => currentTime >= t.startTime && currentTime <= t.endTime)
+                .map(text => (
+                  <motion.div
+                    key={text.id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    style={{
+                      position: 'absolute',
+                      left: `${text.x}%`,
+                      top: `${text.y}%`,
+                      fontSize: `${text.fontSize}px`,
+                      color: text.color,
+                      fontFamily: text.fontFamily,
+                      fontWeight: 'bold',
+                      textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                      transform: 'translate(-50%, -50%)',
+                      pointerEvents: 'none',
+                      zIndex: 10
+                    }}
+                  >
+                    {text.text}
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+
+            {/* Playback Controls Overlay */}
+            <div className="absolute bottom-4 left-4 right-4 space-y-3">
+              {/* Progress Bar */}
+              <div className="relative">
+                <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                    style={{ width: `${(currentTime / totalDuration) * 100}%` }}
+                  />
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max={totalDuration}
+                  step="0.1"
+                  value={currentTime}
+                  onChange={(e) => handleSeek(parseFloat(e.target.value))}
+                  className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                />
+              </div>
+
+              {/* Time Display */}
+              <div className="flex items-center justify-between text-white text-xs">
+                <span>{Math.floor(currentTime)}s</span>
+                <span>{Math.floor(totalDuration)}s</span>
+              </div>
+
+              {/* Control Buttons */}
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => handleSeek(Math.max(0, currentTime - 5))}
+                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:bg-white/20 transition"
+                >
+                  <SkipBack className="w-5 h-5 text-white" />
+                </button>
+
+                <button
+                  onClick={togglePlay}
+                  className="w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg hover:scale-105 transition"
+                >
+                  {isPlaying ? (
+                    <Pause className="w-6 h-6 text-white" />
+                  ) : (
+                    <Play className="w-6 h-6 text-white ml-1" />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => handleSeek(Math.min(totalDuration, currentTime + 5))}
+                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:bg-white/20 transition"
+                >
+                  <SkipForward className="w-5 h-5 text-white" />
+                </button>
+
+                <button
+                  onClick={() => handleSeek(0)}
+                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center hover:bg-white/20 transition"
+                >
+                  <RotateCcw className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Fullscreen Toggle */}
+        <button
+          onClick={() => setIsFullPreview(!isFullPreview)}
+          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center z-10"
         >
-          <Check className="w-4 h-4" />
+          {isFullPreview ? (
+            <Minimize2 className="w-5 h-5 text-white" />
+          ) : (
+            <Maximize2 className="w-5 h-5 text-white" />
+          )}
         </button>
       </div>
 
-      {/* Preview Area */}
-      <div className="h-[50vh] bg-gray-900 relative flex items-center justify-center">
-        {selectedSegmentData ? (
-          <div className="relative w-full h-full">
-            {selectedSegmentData.type === 'video' && (
-              <video
-                ref={el => el && videoRefs.current.set(selectedSegmentData.id, el)}
-                src={URL.createObjectURL(selectedSegmentData.blob)}
-                className="w-full h-full object-contain"
-                muted={selectedSegmentData.isMuted}
-              />
-            )}
-            {selectedSegmentData.type === 'audio' && (
-              <div className="flex flex-col items-center justify-center h-full">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center">
-                  <Volume2 className="w-16 h-16 text-white" />
-                </div>
-                <p className="text-white/60 mt-4">Audio - {selectedSegmentData.duration.toFixed(1)}s</p>
-              </div>
-            )}
-            {selectedSegmentData.type === 'photo' && (
-              <img 
-                src={URL.createObjectURL(selectedSegmentData.blob)} 
-                className="w-full h-full object-contain"
-                alt="Photo"
-              />
-            )}
-          </div>
-        ) : (
-          <p className="text-white/40">
-            {currentLang === 'ba' ? 'Yan ìpínlẹ̀ kan' : 'Sélectionner un segment'}
-          </p>
-        )}
-
-        {/* Playback controls */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={isPlaying ? stopPreview : playPreview}
-            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center"
-          >
-            {isPlaying ? (
-              <Pause className="w-6 h-6 text-white" />
-            ) : (
-              <Play className="w-6 h-6 text-white ml-1" />
-            )}
-          </motion.button>
-        </div>
-
-        {/* Progress bar */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
-          <motion.div 
-            className="h-full bg-primary"
-            style={{ width: `${(currentTime / totalDuration) * 100}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Timeline */}
-      <div className="flex-1 bg-gray-950 p-4">
-        {/* Timeline header */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-white/60 text-sm">
-            {segments.length} segments • {totalDuration.toFixed(1)}s
-          </span>
-          <div className="flex gap-2">
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShowTransitions(!showTransitions)}
-              className={`p-2 rounded-lg ${showTransitions ? 'bg-primary' : 'bg-white/10'}`}
-            >
-              <Wand2 className="w-4 h-4 text-white" />
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Segments list - Reorderable */}
-        <Reorder.Group
-          axis="x"
-          values={segments}
-          onReorder={handleReorder}
-          className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide"
-        >
-          {segments.map((segment, index) => (
-            <React.Fragment key={segment.id}>
-              <Reorder.Item
-                value={segment}
-                className="flex-shrink-0"
-              >
-                <motion.div
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedSegment(segment.id)}
-                  className={`relative w-24 h-16 rounded-lg overflow-hidden border-2 transition-colors cursor-grab active:cursor-grabbing ${
-                    selectedSegment === segment.id 
-                      ? 'border-primary' 
-                      : 'border-transparent'
-                  }`}
-                >
-                  {/* Thumbnail or placeholder */}
-                  {segment.thumbnail ? (
-                    <img src={segment.thumbnail} className="w-full h-full object-cover" alt="" />
-                  ) : segment.type === 'video' ? (
-                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-500" />
-                  ) : segment.type === 'audio' ? (
-                    <div className="w-full h-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center">
-                      <Volume2 className="w-6 h-6 text-white" />
-                    </div>
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-orange-500 to-red-500" />
-                  )}
-
-                  {/* Duration badge */}
-                  <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-[10px] text-white">
-                    {(segment.endTime - segment.startTime).toFixed(1)}s
-                  </div>
-
-                  {/* Mute indicator */}
-                  {segment.isMuted && (
-                    <div className="absolute top-1 right-1">
-                      <VolumeX className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-
-                  {/* Grip handle */}
-                  <div className="absolute top-1 left-1 opacity-60">
-                    <GripVertical className="w-3 h-3 text-white" />
-                  </div>
-                </motion.div>
-              </Reorder.Item>
-
-              {/* Transition indicator between segments */}
-              {index < segments.length - 1 && (
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => {
-                    setSelectedSegment(segment.id);
-                    setShowTransitions(true);
-                  }}
-                  className="flex-shrink-0 w-8 h-16 flex items-center justify-center"
-                >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                    segment.transition && segment.transition !== 'none'
-                      ? 'bg-primary text-white'
-                      : 'bg-white/10 text-white/40'
-                  }`}>
-                    {TRANSITIONS.find(t => t.id === segment.transition)?.icon || '➕'}
-                  </div>
-                </motion.button>
-              )}
-            </React.Fragment>
-          ))}
-        </Reorder.Group>
-
-        {/* Segment controls */}
-        {selectedSegmentData && (
+      {/* Bottom Toolbar */}
+      <AnimatePresence>
+        {showToolbar && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-3 bg-white/5 rounded-xl space-y-3"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="flex-shrink-0 bg-gradient-to-t from-black via-black/95 to-transparent"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-white/80 text-sm">Segment {segments.findIndex(s => s.id === selectedSegment) + 1}</span>
-              <div className="flex gap-2">
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => handleToggleMute(selectedSegmentData.id)}
-                  className={`p-2 rounded-lg ${selectedSegmentData.isMuted ? 'bg-red-500/20' : 'bg-white/10'}`}
-                >
-                  {selectedSegmentData.isMuted ? (
-                    <VolumeX className="w-4 h-4 text-red-400" />
-                  ) : (
-                    <Volume2 className="w-4 h-4 text-white" />
-                  )}
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => handleSplitSegment(selectedSegmentData.id)}
-                  className="p-2 rounded-lg bg-white/10"
-                >
-                  <Scissors className="w-4 h-4 text-white" />
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => handleDeleteSegment(selectedSegmentData.id)}
-                  className="p-2 rounded-lg bg-red-500/20"
-                >
-                  <Trash2 className="w-4 h-4 text-red-400" />
-                </motion.button>
+            {/* Tools Grid */}
+            <div className="px-4 pt-4 pb-2">
+              <div className="grid grid-cols-4 gap-3 mb-4">
+                {tools.map(tool => (
+                  <button
+                    key={tool.id}
+                    onClick={() => setActiveTool(activeTool === tool.id ? null : tool.id as EditTool)}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition ${
+                      activeTool === tool.id
+                        ? 'bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-purple-500/50'
+                        : 'bg-white/5 border border-white/10'
+                    }`}
+                  >
+                    <tool.icon className="w-6 h-6 text-white" />
+                    <span className="text-xs text-white font-medium">
+                      {language === 'ba' ? tool.labelBa : tool.label}
+                    </span>
+                  </button>
+                ))}
               </div>
+
+              {/* Tool Panels */}
+              <AnimatePresence mode="wait">
+                {activeTool === 'filter' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-white font-semibold">
+                        {language === 'ba' ? 'Awọn Asa' : 'Filtres'}
+                      </h4>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {FILTERS.map(filter => (
+                        <button
+                          key={filter.id}
+                          onClick={() => handleApplyFilter(filter.id)}
+                          className={`aspect-square rounded-xl overflow-hidden border-2 transition ${
+                            selectedFilter === filter.id
+                              ? 'border-purple-500 scale-95'
+                              : 'border-transparent hover:border-white/20'
+                          }`}
+                        >
+                          <div
+                            className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex flex-col items-center justify-center"
+                            style={{ filter: filter.css }}
+                          >
+                            <span className="text-2xl mb-1">{filter.icon}</span>
+                            <span className="text-white text-xs font-medium">{filter.name}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTool === 'adjust' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4 space-y-4"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-white text-sm">
+                          {language === 'ba' ? 'Imọlẹ' : 'Luminosité'}
+                        </label>
+                        <span className="text-white/70 text-sm">{brightness}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="200"
+                        value={brightness}
+                        onChange={(e) => setBrightness(parseInt(e.target.value))}
+                        className="w-full accent-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-white text-sm">
+                          {language === 'ba' ? 'Iyatọ' : 'Contraste'}
+                        </label>
+                        <span className="text-white/70 text-sm">{contrast}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="200"
+                        value={contrast}
+                        onChange={(e) => setContrast(parseInt(e.target.value))}
+                        className="w-full accent-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-white text-sm">
+                          {language === 'ba' ? 'Awọ' : 'Saturation'}
+                        </label>
+                        <span className="text-white/70 text-sm">{saturation}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="200"
+                        value={saturation}
+                        onChange={(e) => setSaturation(parseInt(e.target.value))}
+                        className="w-full accent-purple-500"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setBrightness(100);
+                        setContrast(100);
+                        setSaturation(100);
+                      }}
+                      className="w-full py-2 rounded-xl bg-white/10 text-white text-sm"
+                    >
+                      {language === 'ba' ? 'Tun bẹrẹ' : 'Réinitialiser'}
+                    </button>
+                  </motion.div>
+                )}
+
+                {activeTool === 'text' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4"
+                  >
+                    <button
+                      onClick={addTextOverlay}
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-5 h-5" />
+                      {language === 'ba' ? 'Fi ọrọ kun' : 'Ajouter du texte'}
+                    </button>
+                    
+                    {textOverlays.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {textOverlays.map(text => (
+                          <div key={text.id} className="p-2 rounded-lg bg-white/5 text-white text-sm">
+                            {text.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {activeTool === 'trim' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4"
+                  >
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={handleSplitSegment}
+                        className="py-3 rounded-xl bg-white/10 text-white text-sm flex flex-col items-center gap-1"
+                      >
+                        <Scissors className="w-5 h-5" />
+                        {language === 'ba' ? 'Pin' : 'Couper'}
+                      </button>
+                      <button
+                        onClick={handleDuplicateSegment}
+                        className="py-3 rounded-xl bg-white/10 text-white text-sm flex flex-col items-center gap-1"
+                      >
+                        <Copy className="w-5 h-5" />
+                        {language === 'ba' ? 'Ẹda' : 'Dupliquer'}
+                      </button>
+                      <button
+                        onClick={handleDeleteSegment}
+                        className="py-3 rounded-xl bg-red-500/20 text-red-400 text-sm flex flex-col items-center gap-1"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                        {language === 'ba' ? 'Pa' : 'Supprimer'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTool === 'music' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4"
+                  >
+                    <h4 className="text-white font-semibold mb-3">
+                      {language === 'ba' ? 'Orin' : 'Musique'}
+                    </h4>
+                    <div className="space-y-2">
+                      {MUSIC_TRACKS.map(track => (
+                        <button
+                          key={track.id}
+                          className="w-full p-3 rounded-xl bg-white/5 hover:bg-white/10 text-left transition"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Music className="w-5 h-5 text-purple-400" />
+                            <div className="flex-1">
+                              <div className="text-white text-sm font-medium">{track.title}</div>
+                              <div className="text-white/60 text-xs">{track.duration}s</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-white text-sm flex items-center gap-2">
+                          <Volume2 className="w-4 h-4" />
+                          {language === 'ba' ? 'Iwọn ohun' : 'Volume'}
+                        </label>
+                        <span className="text-white/70 text-sm">{volume}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={volume}
+                        onChange={(e) => setVolume(parseInt(e.target.value))}
+                        className="w-full accent-purple-500"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Trim controls */}
-            <div className="flex items-center gap-3">
-              <span className="text-white/60 text-xs w-12">Début</span>
-              <input
-                type="range"
-                min={0}
-                max={selectedSegmentData.endTime - 0.5}
-                step={0.1}
-                value={selectedSegmentData.startTime}
-                onChange={(e) => {
-                  const newStart = parseFloat(e.target.value);
-                  setSegments(prev => prev.map(s => 
-                    s.id === selectedSegmentData.id 
-                      ? { ...s, startTime: newStart }
-                      : s
-                  ));
-                }}
-                className="flex-1 accent-primary"
-              />
-              <span className="text-white/60 text-xs w-10">{selectedSegmentData.startTime.toFixed(1)}s</span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-white/60 text-xs w-12">Fin</span>
-              <input
-                type="range"
-                min={selectedSegmentData.startTime + 0.5}
-                max={selectedSegmentData.duration}
-                step={0.1}
-                value={selectedSegmentData.endTime}
-                onChange={(e) => {
-                  const newEnd = parseFloat(e.target.value);
-                  setSegments(prev => prev.map(s => 
-                    s.id === selectedSegmentData.id 
-                      ? { ...s, endTime: newEnd }
-                      : s
-                  ));
-                }}
-                className="flex-1 accent-primary"
-              />
-              <span className="text-white/60 text-xs w-10">{selectedSegmentData.endTime.toFixed(1)}s</span>
+            {/* Segment Timeline */}
+            <div className="px-4 pb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-white/60 text-xs">
+                  {segments.length} {language === 'ba' ? 'awọn ipin' : 'segments'}
+                </span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {segments.map((segment, idx) => (
+                  <button
+                    key={segment.id}
+                    onClick={() => setSelectedSegmentId(segment.id)}
+                    className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition ${
+                      selectedSegmentId === segment.id
+                        ? 'border-purple-500'
+                        : 'border-white/10'
+                    }`}
+                  >
+                    <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                      <span className="text-white text-xs">{idx + 1}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
-
-        {/* Transition selector */}
-        <AnimatePresence>
-          {showTransitions && selectedSegment && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="mt-4 p-3 bg-white/5 rounded-xl"
-            >
-              <p className="text-white/60 text-sm mb-3">Transition</p>
-              <div className="flex gap-2 flex-wrap">
-                {TRANSITIONS.map(transition => (
-                  <motion.button
-                    key={transition.id}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => handleSetTransition(selectedSegment, transition.id)}
-                    className={`px-3 py-2 rounded-lg flex items-center gap-2 ${
-                      selectedSegmentData?.transition === transition.id
-                        ? 'bg-primary text-white'
-                        : 'bg-white/10 text-white/80'
-                    }`}
-                  >
-                    <span>{transition.icon}</span>
-                    <span className="text-sm">{transition.label}</span>
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+      </AnimatePresence>
+    </div>
   );
 };
 
