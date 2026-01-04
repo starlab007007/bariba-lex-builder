@@ -64,7 +64,7 @@ const translations: TranslationDict = {
   
   // Services IA
   translator: { fr: "Traducteur", ba: "Tùnkɔ̀" },
-  health: { fr: "Santé", ba: "Àlàfíà" },
+  health: { fr: "Santé IA", ba: "Àlàfíà" },
   finance: { fr: "Finance", ba: "Sìká" },
   agriculture: { fr: "Agriculture", ba: "Àgbè" },
   education: { fr: "Éducation", ba: "Kíkɔ́" },
@@ -72,6 +72,9 @@ const translations: TranslationDict = {
   healthDiagnosis: { fr: "Diagnostic santé", ba: "Àyẹ̀wò àlàfíà" },
   financeAdvice: { fr: "Conseil finance", ba: "Ìmọ̀ràn owó" },
   cropAdvice: { fr: "Conseil culture", ba: "Ìmọ̀ràn àgbè" },
+  meteo: { fr: "Météo", ba: "Ọjọ́ oṣù" },
+  news: { fr: "Actualités", ba: "Ìròyìn" },
+  security: { fr: "Sécurité", ba: "Ààbò" },
   
   // SOS / Urgence
   emergency: { fr: "Urgence", ba: "Kpákpá" },
