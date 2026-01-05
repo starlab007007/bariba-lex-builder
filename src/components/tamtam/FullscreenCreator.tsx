@@ -9,8 +9,6 @@ import {
   FlashlightOff,
   Timer,
   Gauge,
-  Maximize2,
-  Minimize2,
   Sparkles,
   Wand2,
   Image as ImageIcon,
@@ -21,12 +19,14 @@ import {
   Eye,
   Lightbulb,
   Hash,
-  Check,
-  AlertTriangle,
-  Loader2,
   Scissors,
   Send,
   Undo2,
+  MoreHorizontal,
+  LayoutGrid,
+  Check,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import TimelineEditorKuaishou, { TimelineSegment } from "./TimelineEditor";
@@ -49,23 +49,16 @@ type RecommendedFilter =
 export type CreatorOutputPayload = {
   media_type: "video" | "photo" | "audio" | "text";
   media_blob?: Blob;
-  media_url?: string; // si tu uploades et obtiens une URL
+  media_url?: string;
   text_content?: string;
-
   is_story?: boolean;
   top_tab?: TopTab;
-
-  // “IA / AR / UX”
   template_id?: string;
   theme_id?: string;
   filter_applied?: string;
   challenge?: string;
   music_title?: string;
-
-  // durations
   duration_seconds?: number;
-
-  // meta
   meta?: Record<string, any>;
 };
 
@@ -76,6 +69,9 @@ interface FullscreenCreatorProps {
   language?: "fr" | "ba";
 }
 
+/** =========================
+ * DATA
+ * ========================= */
 const FILTERS: { id: RecommendedFilter; label: string; css: string }[] = [
   { id: "none", label: "Original", css: "none" },
   { id: "beauty", label: "Beauté", css: "brightness(1.05) contrast(0.95) saturate(1.1) blur(0.3px)" },
@@ -92,6 +88,10 @@ const LENGTHS: LengthPreset[] = [15, 30, 60];
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
+}
+
+function randomId(prefix = "id") {
+  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
 async function getBlobDurationSec(blob: Blob): Promise<number> {
@@ -111,90 +111,71 @@ async function getBlobDurationSec(blob: Blob): Promise<number> {
   }
 }
 
-function randomId(prefix = "id") {
-  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
+/** =========================
+ * COMPONENT
+ * ========================= */
 export default function FullscreenCreator({
   isOpen,
   onClose,
   onComplete,
   language = "fr",
 }: FullscreenCreatorProps) {
-  /** =========================
-   * UX: stages
-   * ========================= */
+  /** stage */
   const [stage, setStage] = useState<"capture" | "preview">("capture");
   const [editorOpen, setEditorOpen] = useState(false);
 
-  /** =========================
-   * Tabs & modes
-   * ========================= */
+  /** HUD & drawers */
+  const [hudVisible, setHudVisible] = useState(true); // tap to hide
+  const [drawerOpen, setDrawerOpen] = useState(false); // swipe up or ⋯
+  const [toast, setToast] = useState<string | null>(null);
+
+  /** Tabs & modes */
   const [topTab, setTopTab] = useState<TopTab>("Video");
   const [mode, setMode] = useState<CaptureMode>("Video");
 
-  /** =========================
-   * Camera controls (right bar)
-   * ========================= */
-  const [frontCamera, setFrontCamera] = useState(true); // Switch
-  const [flashOn, setFlashOn] = useState(false); // Flash (web: simulation)
-  const [timerSec, setTimerSec] = useState<0 | 3 | 5 | 10>(0); // Timer
-  const [speed, setSpeed] = useState<SpeedPreset>(1); // Speed
-  const [length, setLength] = useState<LengthPreset>(30); // Length
+  /** camera controls */
+  const [frontCamera, setFrontCamera] = useState(true);
+  const [flashOn, setFlashOn] = useState(false); // web: simulation only
+  const [timerSec, setTimerSec] = useState<0 | 3 | 5 | 10>(0);
+  const [speed, setSpeed] = useState<SpeedPreset>(1);
+  const [length, setLength] = useState<LengthPreset>(30);
   const [isRecording, setIsRecording] = useState(false);
 
-  /** =========================
-   * Panels: Assistance créative
-   * ========================= */
-  const [showAssist, setShowAssist] = useState(true);
+  /** creative assistant */
   const [challenge, setChallenge] = useState<string | null>(null);
   const [recommendedFilterOn, setRecommendedFilterOn] = useState(true);
+  const [assistOpen, setAssistOpen] = useState(false);
 
-  /** =========================
-   * Beauté / Magic / Effects / Stickers / Graffiti
-   * ========================= */
+  /** beauty / magic / fx */
   const [beautifyOn, setBeautifyOn] = useState(true);
   const [magicOn, setMagicOn] = useState(true);
-  const [effectsOn, setEffectsOn] = useState(false);
   const [stickersOn, setStickersOn] = useState(false);
   const [graffitiOn, setGraffitiOn] = useState(false);
+  const [effectsOn, setEffectsOn] = useState(false);
 
-  /** =========================
-   * Canvas (stratégique)
-   * ========================= */
+  /** canvas */
   const [canvasRatio, setCanvasRatio] = useState<"9:16" | "1:1" | "16:9">("9:16");
   const [canvasBackground, setCanvasBackground] = useState<"none" | "blur" | "gradient">("none");
 
-  /** =========================
-   * Audio/Music
-   * ========================= */
+  /** music */
   const [musicOpen, setMusicOpen] = useState(false);
-  const [selectedMusic, setSelectedMusic] = useState<{ id: string; title: string; emoji: string } | null>(null);
   const [pureMusic, setPureMusic] = useState(false);
+  const [selectedMusic, setSelectedMusic] = useState<{ id: string; title: string; emoji: string } | null>(null);
 
-  /** =========================
-   * Text (no camera)
-   * ========================= */
+  /** text */
   const [textDraft, setTextDraft] = useState("");
 
-  /** =========================
-   * Preview / segments
-   * ========================= */
+  /** preview */
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [previewUrl, setPreviewUrl] = useState("");
   const [previewType, setPreviewType] = useState<"video" | "photo" | "audio" | "text">("video");
   const [previewDuration, setPreviewDuration] = useState<number>(0);
   const [segments, setSegments] = useState<TimelineSegment[]>([]);
 
-  /** =========================
-   * Fullscreen display (anti-zoom)
-   * contain = pas de crop; cover = fill (recadrage)
-   * ========================= */
-  const [fullMode, setFullMode] = useState(false); // ✅ par défaut: contain = pas “zoom”
+  /** display fit */
+  const [fullMode, setFullMode] = useState(false); // contain by default
 
-  /** =========================
-   * Camera / Recorder refs
-   * ========================= */
+  /** refs */
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -203,13 +184,11 @@ export default function FullscreenCreator({
   const timerIntervalRef = useRef<number | null>(null);
 
   const [loadingCamera, setLoadingCamera] = useState(false);
-  const [cameraError, setCameraError] = useState<string>("");
+  const [cameraError, setCameraError] = useState("");
 
-  /** =========================
-   * Filters (swipe)
-   * ========================= */
+  /** filter swipe */
   const [filterId, setFilterId] = useState<RecommendedFilter>("none");
-  const swipeRef = useRef<{ x0: number; active: boolean } | null>(null);
+  const swipeRef = useRef<{ x0: number; y0: number; active: boolean } | null>(null);
 
   const filterCss = useMemo(() => {
     const base = FILTERS.find((f) => f.id === filterId)?.css ?? "none";
@@ -218,53 +197,7 @@ export default function FullscreenCreator({
     return base;
   }, [filterId, beautifyOn]);
 
-  const setNextFilter = useCallback(
-    (dir: -1 | 1) => {
-      const idx = FILTERS.findIndex((f) => f.id === filterId);
-      const next = clamp(idx + dir, 0, FILTERS.length - 1);
-      setFilterId(FILTERS[next].id);
-    },
-    [filterId]
-  );
-
-  const onPreviewPointerDown = useCallback((e: React.PointerEvent) => {
-    swipeRef.current = { x0: e.clientX, active: true };
-  }, []);
-
-  const onPreviewPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!swipeRef.current?.active) return;
-      const dx = e.clientX - swipeRef.current.x0;
-      if (Math.abs(dx) > 50) {
-        swipeRef.current.active = false;
-        setNextFilter(dx > 0 ? 1 : -1);
-      }
-    },
-    [setNextFilter]
-  );
-
-  const onPreviewPointerUp = useCallback(() => {
-    if (swipeRef.current) swipeRef.current.active = false;
-  }, []);
-
-  /** =========================
-   * Recommended filter (IA proactive)
-   * ========================= */
-  useEffect(() => {
-    if (!recommendedFilterOn) return;
-    if (topTab === "Story") setFilterId("warm");
-    else if (topTab === "AI") setFilterId("vivid");
-    else if (topTab === "LIVE") setFilterId("none");
-    else {
-      if (mode === "Photo") setFilterId("beauty");
-      else if (mode === "Text") setFilterId("none");
-      else setFilterId("vivid");
-    }
-  }, [recommendedFilterOn, topTab, mode]);
-
-  /** =========================
-   * Assist text (Inspiring / Shot tips / Cover tips)
-   * ========================= */
+  /** Assist text */
   const assist = useMemo(() => {
     const inspiring =
       topTab === "Story"
@@ -287,9 +220,20 @@ export default function FullscreenCreator({
     return { inspiring, shotTips, coverTips };
   }, [topTab, challenge]);
 
-  /** =========================
-   * Music sheet data (demo)
-   * ========================= */
+  /** recommended filter (IA) */
+  useEffect(() => {
+    if (!recommendedFilterOn) return;
+    if (topTab === "Story") setFilterId("warm");
+    else if (topTab === "AI") setFilterId("vivid");
+    else if (topTab === "LIVE") setFilterId("none");
+    else {
+      if (mode === "Photo") setFilterId("beauty");
+      else if (mode === "Text") setFilterId("none");
+      else setFilterId("vivid");
+    }
+  }, [recommendedFilterOn, topTab, mode]);
+
+  /** music list demo */
   const MUSIC = useMemo(
     () => [
       { id: "m1", emoji: "🎵", title: "Afro Vibes", group: "Trending" },
@@ -301,9 +245,7 @@ export default function FullscreenCreator({
     []
   );
 
-  /** =========================
-   * Camera start/stop
-   * ========================= */
+  /** camera start/stop */
   const stopCamera = useCallback(() => {
     try {
       if (videoRef.current) videoRef.current.srcObject = null;
@@ -320,16 +262,17 @@ export default function FullscreenCreator({
     try {
       stopCamera();
 
+      const needsVideo = topTab !== "AI" && mode !== "Text" && !pureMusic;
       const constraints: MediaStreamConstraints = {
         audio: mode === "Video" || pureMusic ? true : false,
-        video: topTab === "AI" || mode === "Text"
-          ? false
-          : {
+        video: needsVideo
+          ? {
               facingMode: { ideal: frontCamera ? "user" : "environment" },
               width: { ideal: 1280 },
               height: { ideal: 720 },
               aspectRatio: { ideal: canvasRatio === "9:16" ? 9 / 16 : canvasRatio === "1:1" ? 1 : 16 / 9 },
-            },
+            }
+          : false,
       };
 
       if (!constraints.video) return;
@@ -349,10 +292,8 @@ export default function FullscreenCreator({
     }
   }, [stopCamera, topTab, mode, pureMusic, frontCamera, canvasRatio, language]);
 
-  /** =========================
-   * Countdown (Timer)
-   * ========================= */
-  const [countdown, setCountdown] = useState<number>(0);
+  /** countdown */
+  const [countdown, setCountdown] = useState(0);
 
   const runCountdownThen = useCallback(
     async (fn: () => Promise<void> | void) => {
@@ -382,9 +323,7 @@ export default function FullscreenCreator({
     [timerSec]
   );
 
-  /** =========================
-   * Capture helpers
-   * ========================= */
+  /** preview helpers */
   const cleanupPreviewUrl = useCallback(() => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl("");
@@ -397,10 +336,17 @@ export default function FullscreenCreator({
       setPreviewBlob(blob);
       setPreviewUrl(url);
       setPreviewType(type);
-      const dur = typeof durationSec === "number" ? durationSec : type === "video" ? await getBlobDurationSec(blob) : type === "audio" ? (durationSec ?? 0) : 0;
+      const dur =
+        typeof durationSec === "number"
+          ? durationSec
+          : type === "video"
+          ? await getBlobDurationSec(blob)
+          : type === "audio"
+          ? durationSec ?? 0
+          : 0;
+
       setPreviewDuration(dur);
 
-      // segments for TimelineEditor
       const seg: TimelineSegment = {
         id: randomId("seg"),
         blob,
@@ -415,6 +361,9 @@ export default function FullscreenCreator({
       setSegments([seg]);
 
       setStage("preview");
+      setDrawerOpen(false);
+      setAssistOpen(false);
+      setHudVisible(true);
     },
     [cleanupPreviewUrl, filterId]
   );
@@ -430,11 +379,11 @@ export default function FullscreenCreator({
     setPreviewType("video");
     setSegments([]);
     cleanupPreviewUrl();
+    setDrawerOpen(false);
+    setAssistOpen(false);
   }, [cleanupPreviewUrl]);
 
-  /** =========================
-   * Take Photo
-   * ========================= */
+  /** take photo */
   const takePhoto = useCallback(async () => {
     if (!streamRef.current || !videoRef.current) return;
 
@@ -449,7 +398,7 @@ export default function FullscreenCreator({
     ctx.filter = filterCss === "none" ? "none" : filterCss;
     if (flashOn) ctx.filter = `${ctx.filter} brightness(1.15)`;
 
-    // Mirror selfie preview only; save non-mirrored by flipping canvas for user cam
+    // Save non-mirrored
     if (frontCamera) {
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
@@ -464,9 +413,7 @@ export default function FullscreenCreator({
     await toPreview(blob, "photo", 0);
   }, [filterCss, flashOn, frontCamera, toPreview]);
 
-  /** =========================
-   * Record Video/Audio
-   * ========================= */
+  /** record video/audio */
   const stopRecording = useCallback(() => {
     const r = recorderRef.current;
     if (!r) return;
@@ -484,12 +431,14 @@ export default function FullscreenCreator({
 
     const isAudioOnly = pureMusic;
     const preferred = isAudioOnly
-      ? (MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm")
-      : (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-          ? "video/webm;codecs=vp9,opus"
-          : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-          ? "video/webm;codecs=vp8,opus"
-          : "video/webm");
+      ? MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm"
+      : MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+      ? "video/webm;codecs=vp9,opus"
+      : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+      ? "video/webm;codecs=vp8,opus"
+      : "video/webm";
 
     const recorder = new MediaRecorder(streamRef.current, { mimeType: preferred });
     recorderRef.current = recorder;
@@ -501,14 +450,15 @@ export default function FullscreenCreator({
     recorder.onstop = async () => {
       setIsRecording(false);
       const durationSec = Math.max(0.1, (Date.now() - recordStartRef.current) / 1000);
-      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || (isAudioOnly ? "audio/webm" : "video/webm") });
+      const blob = new Blob(chunksRef.current, {
+        type: recorder.mimeType || (isAudioOnly ? "audio/webm" : "video/webm"),
+      });
       await toPreview(blob, isAudioOnly ? "audio" : "video", durationSec);
     };
 
     setIsRecording(true);
     recorder.start(200);
 
-    // auto stop based on Length
     window.setTimeout(() => {
       try {
         if (recorderRef.current && recorderRef.current.state === "recording") recorderRef.current.stop();
@@ -516,12 +466,9 @@ export default function FullscreenCreator({
     }, length * 1000);
   }, [isRecording, length, pureMusic, toPreview]);
 
-  /** =========================
-   * Capture CTA
-   * ========================= */
+  /** capture action */
   const handleCapture = useCallback(async () => {
     if (topTab === "AI") {
-      // AI: on passe en preview “text” + meta template/theme (placeholder)
       cleanupPreviewUrl();
       setPreviewBlob(null);
       setPreviewType("text");
@@ -529,6 +476,8 @@ export default function FullscreenCreator({
       setPreviewDuration(0);
       setSegments([]);
       setStage("preview");
+      setDrawerOpen(false);
+      setAssistOpen(false);
       return;
     }
 
@@ -540,6 +489,8 @@ export default function FullscreenCreator({
       setPreviewDuration(0);
       setSegments([]);
       setStage("preview");
+      setDrawerOpen(false);
+      setAssistOpen(false);
       return;
     }
 
@@ -565,9 +516,7 @@ export default function FullscreenCreator({
     });
   }, [cleanupPreviewUrl, isRecording, mode, runCountdownThen, startRecording, stopRecording, takePhoto, topTab]);
 
-  /** =========================
-   * Publish (preview → onComplete)
-   * ========================= */
+  /** publish */
   const publish = useCallback(async () => {
     const payload: CreatorOutputPayload = {
       media_type: previewType,
@@ -603,7 +552,6 @@ export default function FullscreenCreator({
       resetToCapture();
     } catch (e) {
       console.error(e);
-      // tu peux afficher un toast si tu as un système de notification
       alert(language === "ba" ? "Bà yà nɔ̀ŋ" : "Échec publication. Réessaie.");
     }
   }, [
@@ -635,17 +583,18 @@ export default function FullscreenCreator({
     topTab,
   ]);
 
-  /** =========================
-   * Effects: open / close
-   * ========================= */
+  /** lifecycle */
   useEffect(() => {
     if (!isOpen) {
       stopCamera();
       return;
     }
-    // Reset open
+
     setStage("capture");
     setEditorOpen(false);
+    setHudVisible(true);
+    setDrawerOpen(false);
+    setAssistOpen(false);
     setTopTab("Video");
     setMode("Video");
     setFrontCamera(true);
@@ -654,7 +603,6 @@ export default function FullscreenCreator({
     setSpeed(1);
     setLength(30);
     setIsRecording(false);
-    setShowAssist(true);
     setChallenge(null);
     setRecommendedFilterOn(true);
     setBeautifyOn(true);
@@ -685,59 +633,53 @@ export default function FullscreenCreator({
     return () => stopCamera();
   }, [isOpen, mode, startCamera, stage, stopCamera, topTab]);
 
-  /** =========================
-   * UI helpers
-   * ========================= */
-  const RightBtn: React.FC<{
-    icon: React.ReactNode;
-    label: string;
-    active?: boolean;
-    badge?: string;
-    onClick: () => void;
-    disabled?: boolean;
-  }> = ({ icon, label, active, badge, onClick, disabled }) => (
-    <button
-      onClick={onClick}
-      type="button"
-      disabled={disabled}
-      className={cn(
-        "relative w-12 h-12 rounded-2xl flex items-center justify-center",
-        "bg-black/35 border border-white/10 backdrop-blur",
-        "hover:bg-black/45",
-        active ? "ring-2 ring-white/30" : "",
-        disabled ? "opacity-40 cursor-not-allowed" : ""
-      )}
-      title={label}
-    >
-      {icon}
-      {badge ? (
-        <span className="absolute -top-1 -right-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/90 text-white">
-          {badge}
-        </span>
-      ) : null}
-    </button>
-  );
+  /** toast helper */
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 900);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
-  const ModeBtn: React.FC<{
-    m: CaptureMode;
-    icon: React.ReactNode;
-    label: string;
-    active: boolean;
-    onClick: () => void;
-  }> = ({ icon, label, active, onClick }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "h-12 px-3 rounded-2xl border text-xs flex flex-col items-center justify-center gap-1",
-        active ? "bg-white/15 border-white/25 text-white" : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10"
-      )}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
+  /** gestures: tap hide HUD, swipe up open drawer, swipe left/right change filter */
+  const onSurfacePointerDown = useCallback((e: React.PointerEvent) => {
+    swipeRef.current = { x0: e.clientX, y0: e.clientY, active: true };
+  }, []);
 
+  const onSurfacePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!swipeRef.current?.active) return;
+    const dx = e.clientX - swipeRef.current.x0;
+    const dy = e.clientY - swipeRef.current.y0;
+
+    // swipe up => drawer
+    if (dy < -70 && Math.abs(dx) < 60) {
+      swipeRef.current.active = false;
+      setDrawerOpen(true);
+      setHudVisible(true);
+      return;
+    }
+
+    // swipe left/right => filter
+    if (Math.abs(dx) > 60 && Math.abs(dy) < 60 && stage === "capture") {
+      swipeRef.current.active = false;
+      const idx = FILTERS.findIndex((f) => f.id === filterId);
+      const next = clamp(idx + (dx > 0 ? 1 : -1), 0, FILTERS.length - 1);
+      setFilterId(FILTERS[next].id);
+      setToast(`Filtre: ${FILTERS[next].label}`);
+    }
+  }, [filterId, stage]);
+
+  const onSurfacePointerUp = useCallback(() => {
+    if (swipeRef.current) swipeRef.current.active = false;
+  }, []);
+
+  const toggleHud = useCallback(() => {
+    setHudVisible((v) => !v);
+    setAssistOpen(false);
+    // on garde le drawer fermé si on cache HUD
+    setDrawerOpen(false);
+  }, []);
+
+  /** UI atoms */
   const TopTabBtn: React.FC<{ tab: TopTab; active: boolean; onClick: () => void }> = ({ tab, active, onClick }) => (
     <button
       type="button"
@@ -751,512 +693,710 @@ export default function FullscreenCreator({
     </button>
   );
 
+  const RightBtn: React.FC<{
+    icon: React.ReactNode;
+    onClick: () => void;
+    active?: boolean;
+    badge?: string;
+    title: string;
+    disabled?: boolean;
+  }> = ({ icon, onClick, active, badge, title, disabled }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={cn(
+        "relative w-12 h-12 rounded-2xl flex items-center justify-center",
+        "bg-black/35 border border-white/10 backdrop-blur",
+        "hover:bg-black/45",
+        active ? "ring-2 ring-white/25" : "",
+        disabled ? "opacity-40 cursor-not-allowed" : ""
+      )}
+    >
+      {icon}
+      {badge ? (
+        <span className="absolute -top-1 -right-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/90 text-white">
+          {badge}
+        </span>
+      ) : null}
+    </button>
+  );
+
+  const ModeChip: React.FC<{
+    label: string;
+    icon: React.ReactNode;
+    active: boolean;
+    onClick: () => void;
+  }> = ({ label, icon, active, onClick }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "h-11 px-3 rounded-2xl border text-xs flex items-center gap-2",
+        active ? "bg-white/15 border-white/25 text-white" : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10"
+      )}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+
   if (!isOpen) return null;
+
+  const surfaceStyle: React.CSSProperties =
+    stage === "capture"
+      ? {
+          objectFit: fullMode ? "cover" : "contain",
+          backgroundColor: "black",
+          transform: frontCamera ? "scaleX(-1)" : undefined,
+          filter: filterCss,
+        }
+      : { objectFit: "contain", backgroundColor: "black" };
+
+  const isCameraStage = stage === "capture" && topTab !== "AI" && mode !== "Text";
 
   return (
     <div className="fixed inset-0 z-[90] bg-black">
-      {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              resetToCapture();
-            }}
-            className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-            title="Fermer"
-          >
-            <X className="h-5 w-5" />
-          </button>
-
-          <div className="text-white">
-            <div className="text-sm font-semibold flex items-center gap-2">
-              <span>Création</span>
-              {pureMusic ? (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 border border-white/10">Pure Music</span>
-              ) : null}
-              {challenge ? (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/80 text-white flex items-center gap-1">
-                  <Flame className="h-3.5 w-3.5" /> {challenge}
-                </span>
-              ) : null}
-            </div>
-            <div className="text-xs text-white/60">
-              {stage === "capture"
-                ? "Capture plein écran (avant montage) · swipe ⇆ pour changer de filtre"
-                : "Preview · Éditer (Timeline) · Publier"}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <TopTabBtn tab="Video" active={topTab === "Video"} onClick={() => setTopTab("Video")} />
-            <TopTabBtn tab="Story" active={topTab === "Story"} onClick={() => setTopTab("Story")} />
-            <TopTabBtn tab="AI" active={topTab === "AI"} onClick={() => setTopTab("AI")} />
-            <TopTabBtn tab="LIVE" active={topTab === "LIVE"} onClick={() => setTopTab("LIVE")} />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setFullMode((f) => !f)}
-            className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-            title={fullMode ? "Contain (pas de crop)" : "Cover (fill)"}
-          >
-            {fullMode ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Main area */}
-      <div className="absolute inset-0 pt-16 pb-28 flex items-center justify-center">
-        <div
-          className={cn(
-            "relative h-full w-full max-w-[520px]",
-            "rounded-[28px] overflow-hidden border border-white/10",
-            "bg-gradient-to-b from-black/60 to-black/80"
-          )}
-          onPointerDown={onPreviewPointerDown}
-          onPointerMove={onPreviewPointerMove}
-          onPointerUp={onPreviewPointerUp}
-        >
-          {/* Content */}
-          <div className="absolute inset-0">
-            {stage === "capture" ? (
-              <>
-                {(topTab === "AI" || mode === "Text") ? (
-                  <div className="h-full w-full flex items-center justify-center p-6">
-                    <div className="w-full rounded-3xl bg-white/5 border border-white/10 p-4">
-                      <div className="text-white font-semibold flex items-center gap-2">
-                        <Wand2 className="h-4 w-4" /> Magic (IA / AR)
-                      </div>
-                      <div className="text-xs text-white/70 mt-1">
-                        Templates & thèmes prédéfinis (Kuaishou-like) — prêt pour brancher tes composants IA.
-                      </div>
-
-                      {mode === "Text" ? (
-                        <div className="mt-3">
-                          <div className="text-xs text-white/70 mb-2 flex items-center gap-2">
-                            <TypeIcon className="h-4 w-4" /> Texte (sans caméra)
-                          </div>
-                          <textarea
-                            value={textDraft}
-                            onChange={(e) => setTextDraft(e.target.value)}
-                            className="w-full h-40 rounded-2xl bg-black/40 border border-white/10 text-white p-3 text-sm outline-none"
-                            placeholder="Écris un message simple (on peut remplacer par dictée + pictos)."
-                          />
-                        </div>
-                      ) : (
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setMusicOpen(true)}
-                            className="h-10 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                          >
-                            <Radio className="h-4 w-4" /> Music
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowAssist((s) => !s)}
-                            className="h-10 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                          >
-                            <Eye className="h-4 w-4" /> Inspiring
-                          </button>
-                        </div>
-                      )}
-
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white/80">
-                          <div className="font-semibold text-white">Templates</div>
-                          <div className="mt-1 opacity-80">Transformation · Transition · Dance · Romance · Family · Text</div>
-                        </div>
-                        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white/80">
-                          <div className="font-semibold text-white">Thèmes</div>
-                          <div className="mt-1 opacity-80">Nostalgie · Mariage · Vlog · Fun · Cinématique</div>
-                        </div>
-                      </div>
-                    </div>
+      {/* Surface (tap to toggle HUD) */}
+      <div
+        className="absolute inset-0"
+        onClick={() => {
+          // tap on surface toggles HUD (but not when clicking buttons)
+          // buttons stopPropagation automatically via onClick
+          toggleHud();
+        }}
+        onPointerDown={onSurfacePointerDown}
+        onPointerMove={onSurfacePointerMove}
+        onPointerUp={onSurfacePointerUp}
+      >
+        {/* CAPTURE surface */}
+        {stage === "capture" ? (
+          <>
+            {topTab === "AI" || mode === "Text" ? (
+              <div className="absolute inset-0 flex items-center justify-center p-6">
+                <div
+                  className="w-full max-w-[560px] rounded-3xl bg-white/5 border border-white/10 p-4 text-white"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="font-semibold flex items-center gap-2">
+                    <Wand2 className="h-4 w-4" /> Magic (IA / AR)
                   </div>
-                ) : (
-                  <>
-                    {/* Camera preview */}
-                    <video
-                      ref={videoRef}
-                      playsInline
-                      muted
-                      className="h-full w-full"
-                      style={{
-                        objectFit: fullMode ? "cover" : "contain", // ✅ contain = pas crop / pas “zoom”
-                        backgroundColor: "black",
-                        transform: frontCamera ? "scaleX(-1)" : undefined,
-                        filter: filterCss,
+                  <div className="text-xs text-white/70 mt-1">
+                    Mode création assistée (templates + thèmes). UI allégée.
+                  </div>
+
+                  {mode === "Text" ? (
+                    <div className="mt-3">
+                      <div className="text-xs text-white/70 mb-2 flex items-center gap-2">
+                        <TypeIcon className="h-4 w-4" /> Texte (sans caméra)
+                      </div>
+                      <textarea
+                        value={textDraft}
+                        onChange={(e) => setTextDraft(e.target.value)}
+                        className="w-full h-40 rounded-2xl bg-black/40 border border-white/10 text-white p-3 text-sm outline-none"
+                        placeholder="Écris un message simple (on ajoutera dictée vocale)."
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMusicOpen(true);
                       }}
-                    />
-
-                    {loadingCamera ? (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                        <div className="text-white flex items-center gap-2">
-                          <Loader2 className="h-5 w-5 animate-spin" /> Ouverture caméra…
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {cameraError ? (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 p-6">
-                        <div className="w-full rounded-3xl bg-white/5 border border-white/10 p-4 text-white">
-                          <div className="font-semibold flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5" /> Caméra indisponible
-                          </div>
-                          <div className="text-xs text-white/70 mt-2">{cameraError}</div>
-                          <button
-                            type="button"
-                            onClick={startCamera}
-                            className="mt-3 h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm"
-                          >
-                            Réessayer
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </>
-                )}
-              </>
+                      className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
+                    >
+                      <Radio className="h-4 w-4" /> Music
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDrawerOpen(true)}
+                      className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
+                    >
+                      <LayoutGrid className="h-4 w-4" /> Outils
+                    </button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <>
-                {/* PREVIEW */}
-                {previewType === "video" ? (
-                  <video
-                    src={previewUrl}
-                    className="h-full w-full"
-                    style={{ objectFit: "contain", backgroundColor: "black" }}
-                    controls
-                    playsInline
-                  />
-                ) : previewType === "photo" ? (
-                  <img src={previewUrl} className="h-full w-full object-contain bg-black" alt="preview" />
-                ) : previewType === "audio" ? (
-                  <div className="h-full w-full flex items-center justify-center bg-black p-6">
-                    <div className="w-full rounded-3xl bg-white/5 border border-white/10 p-4 text-white">
+                <video ref={videoRef} playsInline muted className="absolute inset-0 w-full h-full" style={surfaceStyle} />
+
+                {loadingCamera ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <div className="text-white flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <Loader2 className="h-5 w-5 animate-spin" /> Ouverture caméra…
+                    </div>
+                  </div>
+                ) : null}
+
+                {cameraError ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 p-6">
+                    <div
+                      className="w-full max-w-[520px] rounded-3xl bg-white/5 border border-white/10 p-4 text-white"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="font-semibold flex items-center gap-2">
-                        <Radio className="h-4 w-4" /> Audio (Pure Music)
+                        <AlertTriangle className="h-5 w-5" /> Caméra indisponible
                       </div>
-                      <div className="text-xs text-white/70 mt-1">{selectedMusic ? `Musique: ${selectedMusic.title}` : "Aucune musique sélectionnée"}</div>
-                      <audio src={previewUrl} controls className="w-full mt-3" />
+                      <div className="text-xs text-white/70 mt-2">{cameraError}</div>
+                      <button
+                        type="button"
+                        onClick={() => startCamera()}
+                        className="mt-3 h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm"
+                      >
+                        Réessayer
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {/* PREVIEW surface */}
+            {previewType === "video" ? (
+              <video
+                src={previewUrl}
+                className="absolute inset-0 w-full h-full"
+                style={surfaceStyle}
+                controls
+                playsInline
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : previewType === "photo" ? (
+              <img
+                src={previewUrl}
+                className="absolute inset-0 w-full h-full object-contain bg-black"
+                alt="preview"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : previewType === "audio" ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-black p-6">
+                <div
+                  className="w-full max-w-[520px] rounded-3xl bg-white/5 border border-white/10 p-4 text-white"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="font-semibold flex items-center gap-2">
+                    <Radio className="h-4 w-4" /> Audio (Pure Music)
+                  </div>
+                  <div className="text-xs text-white/70 mt-1">
+                    {selectedMusic ? `Musique: ${selectedMusic.title}` : "Aucune musique sélectionnée"}
+                  </div>
+                  <audio src={previewUrl} controls className="w-full mt-3" />
+                </div>
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-black p-6">
+                <div
+                  className="w-full max-w-[520px] rounded-3xl bg-white/5 border border-white/10 p-4 text-white"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="font-semibold flex items-center gap-2">
+                    <TypeIcon className="h-4 w-4" /> Texte
+                  </div>
+                  <div className="text-xs text-white/70 mt-2">{textDraft.trim() || "Texte (vide)"}</div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Countdown */}
+        <AnimatePresence>
+          {countdown > 0 ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              className="absolute inset-0 flex items-center justify-center bg-black/35"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-white text-7xl font-extrabold drop-shadow">{countdown}</div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        {/* Toast */}
+        <AnimatePresence>
+          {toast ? (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/55 border border-white/10 text-white text-xs backdrop-blur"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {toast}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+
+      {/* HUD (minimal, clean) */}
+      <AnimatePresence>
+        {hudVisible ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 pointer-events-none"
+          >
+            {/* Top minimal bar */}
+            <div className="absolute top-0 left-0 right-0 z-20 p-3 flex items-center justify-between pointer-events-auto">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                    resetToCapture();
+                  }}
+                  className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
+                  title="Fermer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+
+                {/* Tabs compact */}
+                <div className="hidden sm:flex items-center gap-2">
+                  <TopTabBtn tab="Video" active={topTab === "Video"} onClick={() => setTopTab("Video")} />
+                  <TopTabBtn tab="Story" active={topTab === "Story"} onClick={() => setTopTab("Story")} />
+                  <TopTabBtn tab="AI" active={topTab === "AI"} onClick={() => setTopTab("AI")} />
+                  <TopTabBtn tab="LIVE" active={topTab === "LIVE"} onClick={() => setTopTab("LIVE")} />
+                </div>
+
+                {/* On mobile: show current tab pill */}
+                <div className="sm:hidden text-white text-sm font-semibold px-3 py-1.5 rounded-full bg-white/10 border border-white/10">
+                  {topTab}
+                </div>
+
+                {challenge ? (
+                  <span className="text-xs px-2 py-1 rounded-full bg-orange-500/80 text-white flex items-center gap-1">
+                    <Flame className="h-3.5 w-3.5" /> {challenge}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDrawerOpen(true);
+                  }}
+                  className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
+                  title="Outils (swipe ↑)"
+                >
+                  <MoreHorizontal className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Right rail (ONLY essentials) */}
+            <div className="absolute right-3 top-20 z-20 flex flex-col gap-2 pointer-events-auto">
+              <RightBtn
+                icon={<Repeat2 className="h-5 w-5 text-white" />}
+                title="Switch"
+                onClick={(e: any) => {
+                  e?.stopPropagation?.();
+                  setFrontCamera((v) => !v);
+                }}
+                disabled={!isCameraStage}
+              />
+              <RightBtn
+                icon={flashOn ? <Flashlight className="h-5 w-5 text-white" /> : <FlashlightOff className="h-5 w-5 text-white/80" />}
+                title="Flash"
+                active={flashOn}
+                onClick={(e: any) => {
+                  e?.stopPropagation?.();
+                  setFlashOn((v) => !v);
+                }}
+                disabled={!isCameraStage}
+              />
+              <RightBtn
+                icon={<Timer className="h-5 w-5 text-white" />}
+                title="Timer"
+                badge={timerSec ? `${timerSec}s` : undefined}
+                active={!!timerSec}
+                onClick={(e: any) => {
+                  e?.stopPropagation?.();
+                  setTimerSec((s) => (s === 0 ? 3 : s === 3 ? 5 : s === 5 ? 10 : 0));
+                }}
+                disabled={stage !== "capture"}
+              />
+              <RightBtn
+                icon={<Gauge className="h-5 w-5 text-white" />}
+                title="Speed"
+                badge={`${speed}x`}
+                onClick={(e: any) => {
+                  e?.stopPropagation?.();
+                  setSpeed((sp) => (sp === 0.5 ? 1 : sp === 1 ? 1.5 : sp === 1.5 ? 2 : 0.5));
+                }}
+                disabled={stage !== "capture"}
+              />
+            </div>
+
+            {/* Bottom clean bar */}
+            <div className="absolute left-0 right-0 bottom-0 z-20 p-3 pointer-events-auto">
+              <div className="mx-auto max-w-[820px] rounded-3xl bg-black/45 border border-white/10 backdrop-blur p-3">
+                {stage === "capture" ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                      <ModeChip
+                        label="Burst"
+                        icon={<span className="text-white/90">📸</span>}
+                        active={mode === "Burst"}
+                        onClick={() => setMode("Burst")}
+                      />
+                      <ModeChip
+                        label="Photo"
+                        icon={<ImageIcon className="h-4 w-4 text-white" />}
+                        active={mode === "Photo"}
+                        onClick={() => setMode("Photo")}
+                      />
+                      <ModeChip
+                        label="Vidéo"
+                        icon={<VideoIcon className="h-4 w-4 text-white" />}
+                        active={mode === "Video"}
+                        onClick={() => setMode("Video")}
+                      />
+                      <ModeChip
+                        label="Texte"
+                        icon={<TypeIcon className="h-4 w-4 text-white" />}
+                        active={mode === "Text"}
+                        onClick={() => setMode("Text")}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMusicOpen(true);
+                        }}
+                        className="h-11 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+                      >
+                        <Radio className="h-4 w-4" />
+                        Music
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPureMusic((v) => !v);
+                        }}
+                        className={cn(
+                          "h-11 px-3 rounded-2xl border text-white text-sm flex items-center gap-2",
+                          pureMusic ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
+                        )}
+                        title="Pure Music"
+                      >
+                        <Radio className="h-4 w-4" />
+                        Pure
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCapture();
+                        }}
+                        className={cn(
+                          "h-11 px-4 rounded-2xl text-white font-semibold flex items-center gap-2",
+                          isRecording ? "bg-red-500/85 hover:bg-red-500" : "bg-orange-500/90 hover:bg-orange-500"
+                        )}
+                      >
+                        {mode === "Video" ? (
+                          <>
+                            <div className={cn("h-3 w-3 rounded-full", isRecording ? "bg-white" : "bg-white/90")} />
+                            {isRecording ? "Stop" : "Rec"}
+                          </>
+                        ) : mode === "Text" ? (
+                          <>
+                            <Check className="h-4 w-4" /> Valider
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="h-4 w-4" /> Capturer
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-black p-6">
-                    <div className="w-full rounded-3xl bg-white/5 border border-white/10 p-4 text-white">
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetToCapture();
+                      }}
+                      className="h-11 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                      Refaire
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditorOpen(true);
+                      }}
+                      className="h-11 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+                      disabled={previewType === "text" && !textDraft.trim()}
+                    >
+                      <Scissors className="h-4 w-4" />
+                      Éditer
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        publish();
+                      }}
+                      className="h-11 px-4 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white text-sm font-semibold flex items-center gap-2"
+                    >
+                      <Send className="h-4 w-4" />
+                      Publier
+                    </button>
+                  </div>
+                )}
+
+                {/* micro status line (clean) */}
+                <div className="mt-2 text-[11px] text-white/60 flex items-center justify-between">
+                  <div>
+                    {FILTERS.find((f) => f.id === filterId)?.label ?? "—"} · {speed}x · {length}s · {timerSec ? `${timerSec}s` : "Timer off"}
+                  </div>
+                  <div className="text-white/45">Swipe ↑ outils · Tap écran: hide HUD · Swipe ⇆ filtre</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Mini assistant card (optional) */}
+            <AnimatePresence>
+              {assistOpen ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute left-3 right-3 bottom-28 z-20 pointer-events-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mx-auto max-w-[820px] rounded-3xl bg-black/55 border border-white/10 backdrop-blur p-3 text-white">
+                    <div className="flex items-center justify-between">
                       <div className="font-semibold flex items-center gap-2">
-                        <TypeIcon className="h-4 w-4" /> Texte
+                        <Eye className="h-4 w-4" /> Assistance
                       </div>
-                      <div className="text-xs text-white/70 mt-2">{textDraft.trim() || "Texte (vide)"}</div>
-                      <div className="mt-3 text-xs text-white/60">
-                        Tips: pour non-lettrés, ajoute dictée vocale + stickers/pictos.
+                      <button
+                        type="button"
+                        onClick={() => setAssistOpen(false)}
+                        className="h-9 w-9 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="mt-2 grid gap-2">
+                      <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-sm">
+                        <div className="text-xs text-white/70 flex items-center gap-2">
+                          <Eye className="h-3.5 w-3.5" /> Inspiring
+                        </div>
+                        <div className="mt-1">{assist.inspiring}</div>
+                      </div>
+                      <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-sm">
+                        <div className="text-xs text-white/70 flex items-center gap-2">
+                          <Lightbulb className="h-3.5 w-3.5" /> Shot tips
+                        </div>
+                        <div className="mt-1">{assist.shotTips}</div>
+                      </div>
+                      <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-sm">
+                        <div className="text-xs text-white/70 flex items-center gap-2">
+                          <Hash className="h-3.5 w-3.5" /> Cover tips
+                        </div>
+                        <div className="mt-1">{assist.coverTips}</div>
                       </div>
                     </div>
                   </div>
-                )}
-              </>
-            )}
-          </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
-          {/* Assist overlays (capture only) */}
-          <AnimatePresence>
-            {stage === "capture" && showAssist && topTab !== "AI" ? (
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 12 }}
-                className="absolute bottom-4 left-4 right-4 space-y-2"
-              >
-                <div className="rounded-2xl bg-black/40 border border-white/10 p-3 text-white text-sm">
-                  <div className="text-xs text-white/70 flex items-center gap-2">
-                    <Eye className="h-3.5 w-3.5" /> Inspiring
-                  </div>
-                  <div className="mt-1">{assist.inspiring}</div>
+      {/* Drawer (Swipe ↑) : all secondary features */}
+      <AnimatePresence>
+        {drawerOpen ? (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            className="absolute inset-0 z-[92] bg-black/55 backdrop-blur flex items-end"
+            onClick={() => setDrawerOpen(false)}
+          >
+            <div
+              className="w-full rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-white font-semibold flex items-center gap-2">
+                  <LayoutGrid className="h-4 w-4" /> Outils
                 </div>
-                <div className="rounded-2xl bg-black/40 border border-white/10 p-3 text-white text-sm">
-                  <div className="text-xs text-white/70 flex items-center gap-2">
-                    <Lightbulb className="h-3.5 w-3.5" /> Shot tips
-                  </div>
-                  <div className="mt-1">{assist.shotTips}</div>
-                </div>
-                <div className="rounded-2xl bg-black/40 border border-white/10 p-3 text-white text-sm">
-                  <div className="text-xs text-white/70 flex items-center gap-2">
-                    <Hash className="h-3.5 w-3.5" /> Cover tips
-                  </div>
-                  <div className="mt-1">{assist.coverTips}</div>
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-
-          {/* Countdown */}
-          <AnimatePresence>
-            {countdown > 0 ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute inset-0 flex items-center justify-center bg-black/40"
-              >
-                <div className="text-white text-7xl font-extrabold drop-shadow">{countdown}</div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-
-          {/* Filter badge / Music badge */}
-          <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white text-xs">
-              Filtre: {FILTERS.find((f) => f.id === filterId)?.label ?? "—"} (swipe ⇆)
-            </span>
-            {selectedMusic ? (
-              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white text-xs">
-                {selectedMusic.emoji} {selectedMusic.title}
-              </span>
-            ) : null}
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white text-xs">
-              Canvas: {canvasRatio} · {canvasBackground}
-            </span>
-          </div>
-
-          {/* Right sidebar */}
-          <div className="absolute top-3 right-3 flex flex-col gap-2">
-            {/* Capture controls */}
-            <RightBtn
-              icon={<Repeat2 className="h-5 w-5 text-white" />}
-              label="Switch"
-              onClick={() => setFrontCamera((v) => !v)}
-              disabled={stage !== "capture" || topTab === "AI" || mode === "Text"}
-            />
-
-            <RightBtn
-              icon={flashOn ? <Flashlight className="h-5 w-5 text-white" /> : <FlashlightOff className="h-5 w-5 text-white/80" />}
-              label="Flash"
-              active={flashOn}
-              onClick={() => setFlashOn((v) => !v)}
-              disabled={stage !== "capture" || topTab === "AI" || mode === "Text"}
-            />
-
-            <RightBtn
-              icon={<Timer className="h-5 w-5 text-white" />}
-              label="Timer"
-              badge={timerSec ? `${timerSec}s` : undefined}
-              active={!!timerSec}
-              onClick={() => setTimerSec((s) => (s === 0 ? 3 : s === 3 ? 5 : s === 5 ? 10 : 0))}
-              disabled={stage !== "capture"}
-            />
-
-            <RightBtn
-              icon={<Gauge className="h-5 w-5 text-white" />}
-              label="Speed"
-              badge={`${speed}x`}
-              onClick={() => setSpeed((sp) => (sp === 0.5 ? 1 : sp === 1 ? 1.5 : sp === 1.5 ? 2 : 0.5))}
-              disabled={stage !== "capture"}
-            />
-
-            <RightBtn
-              icon={<Camera className="h-5 w-5 text-white" />}
-              label="Length"
-              badge={`${length}s`}
-              onClick={() => setLength((l) => (l === 15 ? 30 : l === 30 ? 60 : 15))}
-              disabled={stage !== "capture"}
-            />
-
-            <RightBtn
-              icon={<div className={cn("h-3.5 w-3.5 rounded-full", isRecording ? "bg-red-500" : "bg-white/40")} />}
-              label="Recording"
-              active={isRecording}
-              onClick={() => {
-                if (stage === "capture" && mode === "Video") handleCapture();
-              }}
-              disabled={stage !== "capture" || mode !== "Video"}
-            />
-
-            <div className="h-px bg-white/10 my-1" />
-
-            {/* Assistance créative */}
-            <RightBtn icon={<Eye className="h-5 w-5 text-white" />} label="Inspiring" active={showAssist} onClick={() => setShowAssist((v) => !v)} />
-            <RightBtn
-              icon={<Flame className="h-5 w-5 text-white" />}
-              label="Challenge"
-              badge={challenge ? "ON" : undefined}
-              active={!!challenge}
-              onClick={() => setChallenge((c) => (c ? null : "#DanceChallenge"))}
-            />
-            <RightBtn
-              icon={<Sparkles className="h-5 w-5 text-white" />}
-              label="Recommended filter"
-              active={recommendedFilterOn}
-              onClick={() => setRecommendedFilterOn((v) => !v)}
-            />
-
-            <div className="h-px bg-white/10 my-1" />
-
-            {/* Beauté, AR & Effets */}
-            <RightBtn icon={<Sparkles className="h-5 w-5 text-white" />} label="Beautify" active={beautifyOn} onClick={() => setBeautifyOn((v) => !v)} />
-            <RightBtn icon={<Wand2 className="h-5 w-5 text-white" />} label="Magic" active={magicOn} onClick={() => setMagicOn((v) => !v)} />
-            <RightBtn icon={<span className="text-white text-lg">😄</span>} label="Stickers" active={stickersOn} onClick={() => setStickersOn((v) => !v)} />
-            <RightBtn icon={<span className="text-white text-lg">✍️</span>} label="Graffiti" active={graffitiOn} onClick={() => setGraffitiOn((v) => !v)} />
-            <RightBtn icon={<span className="text-white text-lg">✨</span>} label="Effects" active={effectsOn} onClick={() => setEffectsOn((v) => !v)} />
-
-            <div className="h-px bg-white/10 my-1" />
-
-            {/* Canvas quick controls (stratégique) */}
-            <RightBtn
-              icon={<span className="text-white text-xs font-bold">{canvasRatio}</span>}
-              label="Canvas Ratio"
-              onClick={() => setCanvasRatio((r) => (r === "9:16" ? "1:1" : r === "1:1" ? "16:9" : "9:16"))}
-            />
-            <RightBtn
-              icon={<span className="text-white text-lg">🖼️</span>}
-              label="Background"
-              badge={canvasBackground !== "none" ? "ON" : undefined}
-              active={canvasBackground !== "none"}
-              onClick={() => setCanvasBackground((b) => (b === "none" ? "blur" : b === "blur" ? "gradient" : "none"))}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom bar */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4">
-        <div className="mx-auto max-w-[740px]">
-          <div className="rounded-3xl bg-black/45 border border-white/10 backdrop-blur p-3">
-            {stage === "capture" ? (
-              <div className="flex items-center justify-between gap-3">
-                {/* Modes */}
-                <div className="flex items-center gap-2">
-                  <ModeBtn
-                    m="Burst"
-                    icon={<div className="text-white/90">📸</div>}
-                    label="Burst"
-                    active={mode === "Burst"}
-                    onClick={() => setMode("Burst")}
-                  />
-                  <ModeBtn
-                    m="Photo"
-                    icon={<ImageIcon className="h-4 w-4 text-white" />}
-                    label="Photo"
-                    active={mode === "Photo"}
-                    onClick={() => setMode("Photo")}
-                  />
-                  <ModeBtn
-                    m="Video"
-                    icon={<VideoIcon className="h-4 w-4 text-white" />}
-                    label="Vidéo"
-                    active={mode === "Video"}
-                    onClick={() => setMode("Video")}
-                  />
-                  <ModeBtn
-                    m="Text"
-                    icon={<TypeIcon className="h-4 w-4 text-white" />}
-                    label="Texte"
-                    active={mode === "Text"}
-                    onClick={() => setMode("Text")}
-                  />
-                </div>
-
-                {/* Music / Pure music */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMusicOpen(true)}
-                    className="h-12 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
-                  >
-                    <Radio className="h-4 w-4" />
-                    Music
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPureMusic((v) => !v)}
-                    className={cn(
-                      "h-12 px-3 rounded-2xl border text-white text-sm flex items-center gap-2",
-                      pureMusic ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
-                    )}
-                    title="Pure Music (audio-first)"
-                  >
-                    <Radio className="h-4 w-4" />
-                    Pure
-                  </button>
-                </div>
-
-                {/* Capture CTA */}
                 <button
                   type="button"
-                  onClick={handleCapture}
+                  onClick={() => setDrawerOpen(false)}
+                  className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAssistOpen(true)}
+                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
+                >
+                  <Eye className="h-4 w-4" /> Inspiring
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setChallenge((c) => (c ? null : "#DanceChallenge"))}
                   className={cn(
-                    "h-12 px-4 rounded-2xl text-white font-semibold flex items-center gap-2",
-                    isRecording ? "bg-red-500/80 hover:bg-red-500" : "bg-orange-500/90 hover:bg-orange-500"
+                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
+                    challenge ? "bg-orange-500/25 border-orange-500/40" : "bg-white/10 border-white/10"
                   )}
                 >
-                  {mode === "Video" ? (
-                    <>
-                      <div className={cn("h-3 w-3 rounded-full", isRecording ? "bg-white" : "bg-white/90")} />
-                      {isRecording ? "Stop" : "Rec"}
-                    </>
-                  ) : mode === "Text" ? (
-                    <>
-                      <Check className="h-4 w-4" /> Valider
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="h-4 w-4" /> Capturer
-                    </>
+                  <Flame className="h-4 w-4" /> Challenge
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRecommendedFilterOn((v) => !v)}
+                  className={cn(
+                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
+                    recommendedFilterOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
                   )}
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={resetToCapture}
-                  className="h-12 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
                 >
-                  <Undo2 className="h-4 w-4" />
-                  Refaire
+                  <Sparkles className="h-4 w-4" /> Auto filtre
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setEditorOpen(true)}
-                  className="h-12 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
-                  disabled={previewType === "text" && !textDraft.trim()}
+                  onClick={() => setMusicOpen(true)}
+                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
                 >
-                  <Scissors className="h-4 w-4" />
-                  Éditer (Timeline)
+                  <Radio className="h-4 w-4" /> Music
                 </button>
 
                 <button
                   type="button"
-                  onClick={publish}
-                  className="h-12 px-4 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white text-sm font-semibold flex items-center gap-2"
+                  onClick={() => setBeautifyOn((v) => !v)}
+                  className={cn(
+                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
+                    beautifyOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
+                  )}
                 >
-                  <Send className="h-4 w-4" />
-                  Publier
+                  <Sparkles className="h-4 w-4" /> Beautify
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMagicOn((v) => !v)}
+                  className={cn(
+                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
+                    magicOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
+                  )}
+                >
+                  <Wand2 className="h-4 w-4" /> Magic
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStickersOn((v) => !v)}
+                  className={cn(
+                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
+                    stickersOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
+                  )}
+                >
+                  😀 Stickers
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGraffitiOn((v) => !v)}
+                  className={cn(
+                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
+                    graffitiOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
+                  )}
+                >
+                  ✍️ Graffiti
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEffectsOn((v) => !v)}
+                  className={cn(
+                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
+                    effectsOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
+                  )}
+                >
+                  ✨ Effects
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCanvasRatio((r) => (r === "9:16" ? "1:1" : r === "1:1" ? "16:9" : "9:16"))}
+                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
+                >
+                  <LayoutGrid className="h-4 w-4" /> Ratio: {canvasRatio}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCanvasBackground((b) => (b === "none" ? "blur" : b === "blur" ? "gradient" : "none"))}
+                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
+                >
+                  🖼️ Fond: {canvasBackground}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFullMode((v) => !v)}
+                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
+                >
+                  📐 Fit: {fullMode ? "cover" : "contain"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLength((l) => (l === 15 ? 30 : l === 30 ? 60 : 15))}
+                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
+                >
+                  ⏱️ Durée: {length}s
                 </button>
               </div>
-            )}
 
-            <div className="mt-2 text-xs text-white/60 flex items-center justify-between">
-              <div>
-                Speed: <span className="text-white/80">{speed}x</span> · Length: <span className="text-white/80">{length}s</span> · Timer:{" "}
-                <span className="text-white/80">{timerSec ? `${timerSec}s` : "Off"}</span>
-              </div>
-              <div className="text-white/50">
-                Flash (web): simulation · objectFit: {fullMode ? "cover" : "contain"}
+              <div className="mt-3 text-xs text-white/60">
+                Astuce: **Swipe ↑** ouvre ces outils. **Tap écran** cache/affiche le HUD. **Swipe ⇆** change le filtre.
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/* TimelineEditor overlay */}
       <AnimatePresence>
-        {editorOpen && segments.length > 0 && (
+        {editorOpen && segments.length > 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1271,20 +1411,16 @@ export default function FullscreenCreator({
                 setSegments(finalSegs);
                 const first = finalSegs[0];
                 if (first?.blob) {
-                  if (first.type === "video") {
-                    await toPreview(first.blob, "video");
-                  } else if (first.type === "photo") {
-                    await toPreview(first.blob, "photo");
-                  } else if (first.type === "audio") {
-                    await toPreview(first.blob, "audio", first.duration);
-                  }
+                  if (first.type === "video") await toPreview(first.blob, "video");
+                  if (first.type === "photo") await toPreview(first.blob, "photo");
+                  if (first.type === "audio") await toPreview(first.blob, "audio", first.duration);
                 }
                 setEditorOpen(false);
               }}
               language={language}
             />
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
 
       {/* Music bottom sheet */}
@@ -1322,7 +1458,10 @@ export default function FullscreenCreator({
                       <button
                         key={m.id}
                         type="button"
-                        onClick={() => setSelectedMusic({ id: m.id, title: m.title, emoji: m.emoji })}
+                        onClick={() => {
+                          setSelectedMusic({ id: m.id, title: m.title, emoji: m.emoji });
+                          setToast(`Music: ${m.title}`);
+                        }}
                         className={cn(
                           "w-full text-left rounded-2xl p-3 border",
                           selectedMusic?.id === m.id ? "bg-white/15 border-white/25" : "bg-white/5 border-white/10 hover:bg-white/10"
@@ -1343,7 +1482,10 @@ export default function FullscreenCreator({
                       <button
                         key={m.id}
                         type="button"
-                        onClick={() => setSelectedMusic({ id: m.id, title: m.title, emoji: m.emoji })}
+                        onClick={() => {
+                          setSelectedMusic({ id: m.id, title: m.title, emoji: m.emoji });
+                          setToast(`Music: ${m.title}`);
+                        }}
                         className={cn(
                           "w-full text-left rounded-2xl p-3 border",
                           selectedMusic?.id === m.id ? "bg-white/15 border-white/25" : "bg-white/5 border-white/10 hover:bg-white/10"
@@ -1373,10 +1515,6 @@ export default function FullscreenCreator({
                 >
                   OK
                 </button>
-              </div>
-
-              <div className="mt-2 text-xs text-white/60">
-                UX: Music · Trending · Collect · History · Pure Music.
               </div>
             </div>
           </motion.div>
