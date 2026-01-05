@@ -11,7 +11,6 @@ export interface TamTamCreatePostProps {
   isOpen: boolean;
   onClose: () => void;
 
-  // Hub audio : callback pour publier un contenu audio
   onSubmitAudio?: (payload: {
     audio_blob: Blob;
     template_id: string;
@@ -20,7 +19,6 @@ export interface TamTamCreatePostProps {
     tags?: string[];
   }) => Promise<void>;
 
-  // Nouveau : publier depuis le Creator vidéo/photo/text
   onSubmitCreator?: (payload: CreatorOutputPayload) => Promise<void>;
 }
 
@@ -59,11 +57,8 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   onSubmitCreator,
 }) => {
   const [step, setStep] = useState<CreateStep>("hub");
-
-  // Video creator modal
   const [creatorOpen, setCreatorOpen] = useState(false);
 
-  // Audio hub
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(AUDIO_TEMPLATES[0].id);
   const selectedTemplate = useMemo(
     () => AUDIO_TEMPLATES.find((t) => t.id === selectedTemplateId) ?? AUDIO_TEMPLATES[0],
@@ -100,6 +95,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     setAudioUrl("");
 
     setPublishing(false);
+    setCreatorOpen(false);
   };
 
   const startAudioRecording = async () => {
@@ -169,12 +165,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
           tags: ["audio", "tamtam", selectedTemplateId],
         });
       } else {
-        console.log("[TamTamCreatePost] Publish audio:", {
-          template_id: selectedTemplateId,
-          topic,
-          duration: recSec,
-          blob: audioBlob,
-        });
+        console.log("[TamTamCreatePost] Publish audio:", { template_id: selectedTemplateId, topic, duration: recSec, blob: audioBlob });
       }
 
       onClose();
@@ -193,11 +184,10 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur">
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <div className="w-full max-w-[920px] rounded-[28px] overflow-hidden border border-white/10 bg-[#0b0b0e]">
-          {/* Header */}
           <div className="px-4 py-3 flex items-center justify-between border-b border-white/10">
             <div className="text-white">
               <div className="font-semibold">Créer un post</div>
-              <div className="text-xs text-white/60">Hub audio + accès vidéo/story/template/live</div>
+              <div className="text-xs text-white/60">Hub audio + accès vidéo/photo/texte</div>
             </div>
 
             <button
@@ -213,9 +203,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
             </button>
           </div>
 
-          {/* Body */}
           <div className="p-4">
-            {/* Access video creator */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <motion.button
                 whileTap={{ scale: 0.98 }}
@@ -223,233 +211,136 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
                 className="w-full p-4 rounded-2xl bg-white/10 border border-white/15 text-white flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 flex items-center justify-center">
-                    <Camera className="w-5 h-5" />
+                  <div className="h-11 w-11 rounded-2xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
+                    <Camera className="h-5 w-5 text-orange-300" />
                   </div>
                   <div className="text-left">
-                    <div className="font-semibold">Vidéo / Story / Template / Live</div>
-                    <div className="text-xs text-white/70">Capture plein écran + montage (Kuaishou-like)</div>
+                    <div className="font-semibold">Créateur (Vidéo / Photo / Texte)</div>
+                    <div className="text-xs text-white/60">Capture plein écran → édition → publier</div>
                   </div>
                 </div>
-                <Sparkles className="w-5 h-5 opacity-80" />
+                <Sparkles className="h-5 w-5 text-white/70" />
               </motion.button>
 
-              <div className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 text-white">
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white">
                 <div className="font-semibold flex items-center gap-2">
-                  <Radio className="w-4 h-4" /> Audio-first
+                  <Radio className="h-4 w-4" /> Audio (Voix du village)
                 </div>
-                <div className="text-xs text-white/70 mt-1">
-                  Sélectionne un template, enregistre la voix, puis publie.
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={startAudioRecording}
-                    className="h-10 px-3 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white text-sm font-semibold flex items-center gap-2"
-                  >
-                    <Mic className="w-4 h-4" /> Enregistrer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStep("hub")}
-                    className="h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm"
-                  >
-                    Choisir template
-                  </button>
-                </div>
+                <div className="text-xs text-white/60 mt-1">Choisis un template puis enregistre.</div>
               </div>
             </div>
 
-            {/* Audio templates */}
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="md:col-span-2 rounded-2xl bg-white/5 border border-white/10 p-3">
-                <div className="text-white font-semibold">Templates audio</div>
-                <div className="text-xs text-white/60">Basé sur tes catégories</div>
-
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[320px] overflow-auto pr-1">
-                  {AUDIO_TEMPLATES.map((t) => {
-                    const active = t.id === selectedTemplateId;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setSelectedTemplateId(t.id)}
-                        className={cn(
-                          "w-full text-left rounded-2xl p-3 border transition",
-                          active ? "bg-white/15 border-white/25" : "bg-white/5 border-white/10 hover:bg-white/10"
-                        )}
-                      >
-                        <div className="text-white font-semibold">
-                          {t.emoji} {t.title}
-                        </div>
-                        <div className="text-xs text-white/70 mt-1">{t.desc}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
-                <div className="font-semibold">Détails</div>
-
-                <div className="mt-3">
-                  <div className="text-xs text-white/70 mb-1">Sujet / Objet</div>
-                  <input
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    className="w-full h-11 rounded-2xl bg-black/40 border border-white/10 text-white px-3 outline-none text-sm"
-                    placeholder={`Ex: ${selectedTemplate.title}`}
-                  />
-                </div>
-
-                <div className="mt-3 flex gap-2">
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+              {AUDIO_TEMPLATES.map((t) => {
+                const active = t.id === selectedTemplateId;
+                return (
                   <button
+                    key={t.id}
                     type="button"
-                    onClick={startAudioRecording}
-                    className="flex-1 h-11 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white text-sm font-semibold flex items-center justify-center gap-2"
+                    onClick={() => setSelectedTemplateId(t.id)}
+                    className={cn(
+                      "p-3 rounded-2xl border text-left",
+                      active ? "bg-white/12 border-white/25" : "bg-white/5 border-white/10 hover:bg-white/10"
+                    )}
                   >
-                    <Mic className="w-4 h-4" /> Enregistrer
+                    <div className="text-white font-semibold text-sm flex items-center gap-2">
+                      <span className="text-lg">{t.emoji}</span> {t.title}
+                    </div>
+                    <div className="text-xs text-white/60">{t.desc}</div>
                   </button>
-                  {audioBlob ? (
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="Sujet (optionnel)…"
+                className="flex-1 h-11 px-4 rounded-2xl bg-black/40 border border-white/10 text-white outline-none"
+              />
+              {step === "hub" && (
+                <button
+                  type="button"
+                  onClick={startAudioRecording}
+                  className="h-11 px-4 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white font-semibold flex items-center gap-2"
+                >
+                  <Mic className="h-4 w-4" /> Enregistrer
+                </button>
+              )}
+            </div>
+
+            <AnimatePresence>
+              {step === "audioRecord" && (
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 p-4 rounded-2xl bg-white/5 border border-white/10 text-white">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold">Enregistrement… {fmtTime(recSec)}</div>
                     <button
                       type="button"
-                      onClick={() => setStep("audioPreview")}
-                      className="h-11 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+                      onClick={stopAudioRecording}
+                      className="h-11 px-4 rounded-2xl bg-red-500/90 hover:bg-red-500 text-white font-semibold flex items-center gap-2"
                     >
-                      <Play className="w-4 h-4" /> Preview
+                      <Square className="h-4 w-4" /> Stop
                     </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-
-            {/* Audio record / preview modals */}
-            <AnimatePresence>
-              {step === "audioRecord" ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  className="fixed inset-0 z-[85] bg-black/70 backdrop-blur flex items-center justify-center p-4"
-                >
-                  <div className="w-full max-w-[560px] rounded-[28px] bg-[#0b0b0e] border border-white/10 p-4 text-white">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold flex items-center gap-2">
-                          <Mic className="w-4 h-4" /> Enregistrement audio
-                        </div>
-                        <div className="text-xs text-white/60">
-                          Template: {selectedTemplate.emoji} {selectedTemplate.title}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          stopAudioRecording();
-                          setStep("hub");
-                        }}
-                        className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="mt-4 rounded-3xl bg-black/40 border border-white/10 p-4 flex items-center justify-between">
-                      <div>
-                        <div className="text-xs text-white/60">Durée</div>
-                        <div className="text-2xl font-extrabold">{fmtTime(recSec)}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={stopAudioRecording}
-                        className="h-12 px-4 rounded-2xl bg-red-500/90 hover:bg-red-500 text-white font-semibold flex items-center gap-2"
-                      >
-                        <Square className="w-4 h-4" /> Stop
-                      </button>
-                    </div>
-
-                    <div className="mt-3 text-xs text-white/60">
-                      Tips: phrases courtes, 1 idée à la fois.
-                    </div>
                   </div>
                 </motion.div>
-              ) : null}
+              )}
 
-              {step === "audioPreview" ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  className="fixed inset-0 z-[85] bg-black/70 backdrop-blur flex items-center justify-center p-4"
-                >
-                  <div className="w-full max-w-[560px] rounded-[28px] bg-[#0b0b0e] border border-white/10 p-4 text-white">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold flex items-center gap-2">
-                          <Play className="w-4 h-4" /> Preview audio
-                        </div>
-                        <div className="text-xs text-white/60">
-                          {selectedTemplate.emoji} {selectedTemplate.title} · {fmtTime(recSec)}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setStep("hub")}
-                        className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+              {step === "audioPreview" && (
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 p-4 rounded-2xl bg-white/5 border border-white/10 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold">Preview audio · {selectedTemplate.title}</div>
+                      <div className="text-xs text-white/60">{fmtTime(recSec)}</div>
                     </div>
+                    <button type="button" onClick={resetAll} className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
 
-                    <div className="mt-4 rounded-3xl bg-black/40 border border-white/10 p-4">
-                      {audioUrl ? <audio src={audioUrl} controls className="w-full" /> : null}
-                    </div>
+                  <div className="mt-3 rounded-2xl bg-black/30 border border-white/10 p-3">
+                    {audioUrl ? <audio src={audioUrl} controls className="w-full" /> : null}
+                  </div>
 
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAudioBlob(null);
-                          if (audioUrl) URL.revokeObjectURL(audioUrl);
-                          setAudioUrl("");
-                          setStep("hub");
-                        }}
-                        className="h-11 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm"
-                      >
-                        Refaire
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={!audioBlob || publishing}
-                        onClick={publishAudio}
-                        className={cn(
-                          "flex-1 h-11 px-4 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-2",
-                          publishing ? "bg-white/10 border border-white/10" : "bg-orange-500/90 hover:bg-orange-500"
-                        )}
-                      >
-                        {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        Publier
-                      </button>
-                    </div>
+                  <div className="mt-3 flex gap-2">
+                    <button type="button" onClick={resetAll} className="h-11 px-4 rounded-2xl bg-white/10 border border-white/10 text-white">
+                      Refaire
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!audioBlob || publishing}
+                      onClick={publishAudio}
+                      className={cn(
+                        "flex-1 h-11 px-4 rounded-2xl text-white font-semibold flex items-center justify-center gap-2",
+                        publishing ? "bg-white/10 border border-white/10" : "bg-orange-500/90 hover:bg-orange-500"
+                      )}
+                    >
+                      {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      Publier
+                    </button>
                   </div>
                 </motion.div>
-              ) : null}
+              )}
             </AnimatePresence>
           </div>
         </div>
       </div>
 
-      {/* FullscreenCreator (video/photo/text) */}
+      {/* Creator video/photo/text */}
       <FullscreenCreator
         isOpen={creatorOpen}
         onClose={() => setCreatorOpen(false)}
         onComplete={async (payload) => {
-          if (onSubmitCreator) await onSubmitCreator(payload);
-          else console.log("[TamTamCreatePost] Publish creator:", payload);
-          setCreatorOpen(false);
-          onClose();
-          resetAll();
+          try {
+            if (onSubmitCreator) await onSubmitCreator(payload);
+            else console.log("[TamTamCreatePost] Publish creator:", payload);
+            setCreatorOpen(false);
+            onClose();
+            resetAll();
+          } catch (e) {
+            console.error(e);
+            alert("Échec publication (creator).");
+          }
         }}
         language="fr"
       />
@@ -457,5 +348,4 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   );
 };
 
-// ✅ garde aussi un default export (pratique ailleurs)
 export default TamTamCreatePost;
