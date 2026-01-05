@@ -1,596 +1,1387 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+// src/components/tamtam/FullscreenCreator.tsx
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  X, Music, Repeat2, Timer, Flame, Eye, Sparkles, Gauge, Expand, Zap, ChevronDown,
-  Image as ImageIcon, Type as TypeIcon, Wand2, Send, MessageCircle,
-  Radio, Camera, Play, Pause, RotateCcw, Check, AlertCircle, Loader2, Globe,
-  Volume2, VolumeX, HelpCircle, Mic,
-} from 'lucide-react';
+  X,
+  Camera,
+  Repeat2,
+  Flashlight,
+  FlashlightOff,
+  Timer,
+  Gauge,
+  Maximize2,
+  Minimize2,
+  Sparkles,
+  Wand2,
+  Image as ImageIcon,
+  Video as VideoIcon,
+  Type as TypeIcon,
+  Radio,
+  Flame,
+  Eye,
+  Lightbulb,
+  Hash,
+  Check,
+  AlertTriangle,
+  Loader2,
+  Scissors,
+  Send,
+  Undo2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import TimelineEditorKuaishou, { TimelineSegment } from "./TimelineEditor";
 
-import { DynamicAITemplates, AITemplate, AIGenType } from './DynamicAITemplates';
-import VideoFiltersPanel, { VIDEO_FILTERS, VideoFilter, useVideoFilter, scaleCssFilter } from './VideoFilters';
+type TopTab = "Video" | "Story" | "AI" | "LIVE";
+type CaptureMode = "Burst" | "Photo" | "Video" | "Text";
+type SpeedPreset = 0.5 | 1 | 1.5 | 2;
+type LengthPreset = 15 | 30 | 60;
 
-type TopTab = 'video' | 'story' | 'template' | 'live';
-type CaptureMode = 'burst' | 'photo' | 'video' | 'text';
+type RecommendedFilter =
+  | "none"
+  | "beauty"
+  | "warm"
+  | "cool"
+  | "vivid"
+  | "vintage"
+  | "bw"
+  | "dramatic";
+
+export type CreatorOutputPayload = {
+  media_type: "video" | "photo" | "audio" | "text";
+  media_blob?: Blob;
+  media_url?: string; // si tu uploades et obtiens une URL
+  text_content?: string;
+
+  is_story?: boolean;
+  top_tab?: TopTab;
+
+  // “IA / AR / UX”
+  template_id?: string;
+  theme_id?: string;
+  filter_applied?: string;
+  challenge?: string;
+  music_title?: string;
+
+  // durations
+  duration_seconds?: number;
+
+  // meta
+  meta?: Record<string, any>;
+};
 
 interface FullscreenCreatorProps {
-  isOpen?: boolean;
-  onClose?: () => void;
-  onComplete?: (data: {
-    audio_url: string;
-    media_type: 'audio' | 'video' | 'photo' | 'text';
-    media_url?: string;
-    transcript_fr?: string;
-    transcript_ba?: string;
-    template_id: string;
-    topic: string;
-    duration_seconds: number;
-    text_content?: string;
-    tags?: string[];
-    challenge?: string;
-    music_title?: string;
-    is_story?: boolean;
-    filter_applied?: string;
-  }) => Promise<void>;
-  language?: 'fr' | 'ba';
-  enableVoiceGuidance?: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete?: (payload: CreatorOutputPayload) => Promise<void> | void;
+  language?: "fr" | "ba";
 }
 
-type MusicChoice = { id: string; title: string; url?: string; artist?: string; duration?: number };
-type GradientTheme = 'purpleBlue' | 'orangePink' | 'greenCyan' | 'pinkPurple';
+const FILTERS: { id: RecommendedFilter; label: string; css: string }[] = [
+  { id: "none", label: "Original", css: "none" },
+  { id: "beauty", label: "Beauté", css: "brightness(1.05) contrast(0.95) saturate(1.1) blur(0.3px)" },
+  { id: "warm", label: "Chaud", css: "sepia(0.3) saturate(1.4) brightness(1.05)" },
+  { id: "cool", label: "Froid", css: "hue-rotate(10deg) saturate(0.9) brightness(1.05)" },
+  { id: "vivid", label: "Vif", css: "saturate(1.8) contrast(1.2) brightness(1.05)" },
+  { id: "vintage", label: "Vintage", css: "sepia(0.5) contrast(1.1) brightness(0.95)" },
+  { id: "bw", label: "N&B", css: "grayscale(1) contrast(1.2) brightness(1.05)" },
+  { id: "dramatic", label: "Dramatique", css: "contrast(1.4) brightness(0.9) saturate(0.8)" },
+];
 
-const VOICE_MESSAGES = {
-  fr: { welcome: "Bienvenue. Appuyez sur le bouton pour enregistrer.", recording: "Enregistrement.", stopped: "Termine.", published: "Publication.", error: "Erreur." },
-  ba: { welcome: "E ku abo. Te bọtini lati gba.", recording: "Igbasile.", stopped: "Pari.", published: "Firansẹ.", error: "Asise." },
-};
+const SPEEDS: SpeedPreset[] = [0.5, 1, 1.5, 2];
+const LENGTHS: LengthPreset[] = [15, 30, 60];
 
-function nowKey() { return new Date().toISOString().replace(/[:.]/g, '-'); }
-
-function pickMimeType(kind: 'video' | 'audio') {
-  const candidates = kind === 'video' ? ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'] : ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
-  return candidates.find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(t)) || '';
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
 }
 
-async function uploadToSupabaseStorage(blob: Blob, ext: string, folder: string): Promise<string> {
+async function getBlobDurationSec(blob: Blob): Promise<number> {
+  const url = URL.createObjectURL(blob);
   try {
-    const { supabase } = await import('@/integrations/supabase/client');
-    const bucket = 'tamtam-media';
-    const name = `${folder}/${nowKey()}-${crypto.randomUUID()}.${ext}`;
-    const contentType = blob.type || (ext === 'webm' ? 'video/webm' : ext === 'png' ? 'image/png' : 'application/octet-stream');
-    const { error } = await supabase.storage.from(bucket).upload(name, blob, { upsert: true, contentType });
-    if (error) throw error;
-    const { data } = supabase.storage.from(bucket).getPublicUrl(name);
-    return data.publicUrl;
-  } catch (e) { console.error('[Upload Error]', e); throw e; }
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.src = url;
+    await new Promise<void>((res, rej) => {
+      v.onloadedmetadata = () => res();
+      v.onerror = () => rej(new Error("metadata error"));
+    });
+    const d = Number.isFinite(v.duration) ? v.duration : 0;
+    return Math.max(0, d || 0);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
-// Generate silent WAV audio for posts without audio (photo/text posts)
-function generateSilentAudioBlob(durationSeconds: number): Blob {
-  const sampleRate = 44100;
-  const numChannels = 1;
-  const bitsPerSample = 16;
-  const numSamples = sampleRate * durationSeconds;
-  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-  const blockAlign = numChannels * (bitsPerSample / 8);
-  const dataSize = numSamples * numChannels * (bitsPerSample / 8);
-  const bufferSize = 44 + dataSize;
-  
-  const buffer = new ArrayBuffer(bufferSize);
-  const view = new DataView(buffer);
-  
-  // RIFF header
-  const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-  };
-  
-  writeString(0, 'RIFF');
-  view.setUint32(4, bufferSize - 8, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitsPerSample, true);
-  writeString(36, 'data');
-  view.setUint32(40, dataSize, true);
-  
-  // Silent audio data (all zeros)
-  for (let i = 44; i < bufferSize; i++) view.setUint8(i, 0);
-  
-  return new Blob([buffer], { type: 'audio/wav' });
+function randomId(prefix = "id") {
+  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-async function renderStoryTextToImage(text: string, gradient: GradientTheme): Promise<Blob> {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1080; canvas.height = 1920;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('No canvas ctx');
-  const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  if (gradient === 'purpleBlue') { g.addColorStop(0, '#7c3aed'); g.addColorStop(1, '#0ea5e9'); }
-  else if (gradient === 'orangePink') { g.addColorStop(0, '#fb7185'); g.addColorStop(1, '#fb923c'); }
-  else if (gradient === 'pinkPurple') { g.addColorStop(0, '#ec4899'); g.addColorStop(1, '#8b5cf6'); }
-  else { g.addColorStop(0, '#22c55e'); g.addColorStop(1, '#06b6d4'); }
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.font = '700 64px system-ui, -apple-system, sans-serif';
-  const maxWidth = 920; const x = 80; let y = 280;
-  const words = text.split(/\s+/); let line = ''; const lines: string[] = [];
-  for (const w of words) { const test = line ? `${line} ${w}` : w; if (ctx.measureText(test).width > maxWidth) { if (line) lines.push(line); line = w; } else { line = test; } }
-  if (line) lines.push(line);
-  for (const l of lines.slice(0, 10)) { ctx.fillText(l, x, y); y += 84; }
-  return await new Promise<Blob>((resolve, reject) => { canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png', 1); });
-}
+export default function FullscreenCreator({
+  isOpen,
+  onClose,
+  onComplete,
+  language = "fr",
+}: FullscreenCreatorProps) {
+  /** =========================
+   * UX: stages
+   * ========================= */
+  const [stage, setStage] = useState<"capture" | "preview">("capture");
+  const [editorOpen, setEditorOpen] = useState(false);
 
-async function tryToggleTorch(stream: MediaStream | null, enabled: boolean) {
-  try { const track = stream?.getVideoTracks?.()[0]; await track?.applyConstraints?.({ advanced: [{ torch: enabled } as MediaTrackConstraintSet] }); return true; } catch { return false; }
-}
+  /** =========================
+   * Tabs & modes
+   * ========================= */
+  const [topTab, setTopTab] = useState<TopTab>("Video");
+  const [mode, setMode] = useState<CaptureMode>("Video");
 
-function speak(text: string, lang: 'fr' | 'ba' = 'fr') {
-  if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(text); u.lang = lang === 'ba' ? 'yo-NG' : 'fr-FR'; u.rate = 0.9; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }
-}
+  /** =========================
+   * Camera controls (right bar)
+   * ========================= */
+  const [frontCamera, setFrontCamera] = useState(true); // Switch
+  const [flashOn, setFlashOn] = useState(false); // Flash (web: simulation)
+  const [timerSec, setTimerSec] = useState<0 | 3 | 5 | 10>(0); // Timer
+  const [speed, setSpeed] = useState<SpeedPreset>(1); // Speed
+  const [length, setLength] = useState<LengthPreset>(30); // Length
+  const [isRecording, setIsRecording] = useState(false);
 
-interface BottomSheetProps { isOpen: boolean; onClose: () => void; title: string; titleBa?: string; icon?: React.ReactNode; children: React.ReactNode; maxHeight?: string; language?: 'fr' | 'ba'; }
+  /** =========================
+   * Panels: Assistance créative
+   * ========================= */
+  const [showAssist, setShowAssist] = useState(true);
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [recommendedFilterOn, setRecommendedFilterOn] = useState(true);
 
-const BottomSheet: React.FC<BottomSheetProps> = ({ isOpen, onClose, title, titleBa, icon, children, maxHeight = '70vh', language = 'fr' }) => {
-  const handleDragEnd = useCallback((_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => { if (info.velocity.y > 500 || info.offset.y > 150) onClose(); }, [onClose]);
-  const displayTitle = language === 'ba' && titleBa ? titleBa : title;
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div className="fixed inset-0 z-[95] bg-black/70" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-          <motion.div className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-black/95 backdrop-blur-xl border-t border-white/10 overflow-hidden flex flex-col" style={{ maxHeight }}
-            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            drag="y" dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.5 }} onDragEnd={handleDragEnd} onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing"><div className="w-10 h-1 bg-white/30 rounded-full" /></div>
-            <div className="px-4 pb-3 flex items-center justify-between flex-shrink-0">
-              <div className="text-white font-semibold text-lg flex items-center gap-2">{icon}{displayTitle}</div>
-              <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"><X className="w-5 h-5 text-white" /></button>
-            </div>
-            <div className="px-4 pb-4 overflow-y-auto flex-1 scroll-smooth snap-y snap-mandatory overscroll-contain">{children}</div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
+  /** =========================
+   * Beauté / Magic / Effects / Stickers / Graffiti
+   * ========================= */
+  const [beautifyOn, setBeautifyOn] = useState(true);
+  const [magicOn, setMagicOn] = useState(true);
+  const [effectsOn, setEffectsOn] = useState(false);
+  const [stickersOn, setStickersOn] = useState(false);
+  const [graffitiOn, setGraffitiOn] = useState(false);
 
-interface RightButtonProps { icon: React.ReactNode; label: string; labelBa?: string; onClick: () => void; active?: boolean; hidden?: boolean; language?: 'fr' | 'ba'; voiceEnabled?: boolean; }
+  /** =========================
+   * Canvas (stratégique)
+   * ========================= */
+  const [canvasRatio, setCanvasRatio] = useState<"9:16" | "1:1" | "16:9">("9:16");
+  const [canvasBackground, setCanvasBackground] = useState<"none" | "blur" | "gradient">("none");
 
-const RightButton: React.FC<RightButtonProps> = ({ icon, label, labelBa, onClick, active, hidden, language = 'fr', voiceEnabled }) => {
-  if (hidden) return null;
-  const displayLabel = language === 'ba' && labelBa ? labelBa : label;
-  const handleClick = () => { if (voiceEnabled) speak(displayLabel, language); onClick(); };
-  return (
-    <motion.button onClick={handleClick} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-      className={`flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition ${active ? 'bg-white/20 text-white' : 'bg-transparent text-white/85 hover:bg-white/10'}`} aria-pressed={active} aria-label={displayLabel}>
-      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${active ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg' : 'bg-black/25 border border-white/10'}`}>{icon}</div>
-      <span className="text-[11px] font-medium">{displayLabel}</span>
-    </motion.button>
-  );
-};
+  /** =========================
+   * Audio/Music
+   * ========================= */
+  const [musicOpen, setMusicOpen] = useState(false);
+  const [selectedMusic, setSelectedMusic] = useState<{ id: string; title: string; emoji: string } | null>(null);
+  const [pureMusic, setPureMusic] = useState(false);
 
-export const FullscreenCreator: React.FC<FullscreenCreatorProps> = ({ isOpen = true, onClose, onComplete, language = 'fr', enableVoiceGuidance = false }) => {
-  const { currentFilter, setCurrentFilter } = useVideoFilter();
+  /** =========================
+   * Text (no camera)
+   * ========================= */
+  const [textDraft, setTextDraft] = useState("");
+
+  /** =========================
+   * Preview / segments
+   * ========================= */
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [previewType, setPreviewType] = useState<"video" | "photo" | "audio" | "text">("video");
+  const [previewDuration, setPreviewDuration] = useState<number>(0);
+  const [segments, setSegments] = useState<TimelineSegment[]>([]);
+
+  /** =========================
+   * Fullscreen display (anti-zoom)
+   * contain = pas de crop; cover = fill (recadrage)
+   * ========================= */
+  const [fullMode, setFullMode] = useState(false); // ✅ par défaut: contain = pas “zoom”
+
+  /** =========================
+   * Camera / Recorder refs
+   * ========================= */
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const burstTimerRef = useRef<number | null>(null);
-  const recordingStartTime = useRef<number>(0);
+  const chunksRef = useRef<BlobPart[]>([]);
+  const recordStartRef = useRef<number>(0);
+  const timerIntervalRef = useRef<number | null>(null);
 
-  const [topTab, setTopTab] = useState<TopTab>('video');
-  const [mode, setMode] = useState<CaptureMode>('video');
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [countdown, setCountdown] = useState<number>(0);
-  const [cameraError, setCameraError] = useState<string>('');
-  const [timerSeconds, setTimerSeconds] = useState<0 | 3 | 10>(0);
-  const [speed, setSpeed] = useState<number>(1);
-  const [fullMode, setFullMode] = useState<boolean>(true);
-  const [flashOn, setFlashOn] = useState<boolean>(false);
-  const [livePhotoOn, setLivePhotoOn] = useState<boolean>(false);
-  const [rightExpanded, setRightExpanded] = useState<boolean>(true);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [magicOpen, setMagicOpen] = useState(false);
-  const [timerPanel, setTimerPanel] = useState(false);
-  const [speedPanel, setSpeedPanel] = useState(false);
-  const [challengePanel, setChallengePanel] = useState(false);
-  const [inspiringPanel, setInspiringPanel] = useState(false);
-  const [musicPanel, setMusicPanel] = useState(false);
-  const [helpPanel, setHelpPanel] = useState(false);
-  const [topic, setTopic] = useState<string>('');
-  const [challenge, setChallenge] = useState<string>('');
-  const [tags, setTags] = useState<string[]>([]);
-  const [music, setMusic] = useState<MusicChoice | null>(null);
-  const [durationPick, setDurationPick] = useState<60 | 300>(60);
-  const [storyGradient, setStoryGradient] = useState<GradientTheme>('purpleBlue');
-  const [textContent, setTextContent] = useState<string>('');
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [previewType, setPreviewType] = useState<'video' | 'photo' | 'text' | ''>('');
-  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [livePanelOpen, setLivePanelOpen] = useState(false);
-  const [liveSessionId, setLiveSessionId] = useState<string>('');
-  const [liveMessages, setLiveMessages] = useState<Array<{ id: number; message: string; display_name?: string }>>([]);
-  const [liveInput, setLiveInput] = useState('');
-  const [liveViewers, setLiveViewers] = useState<number>(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [burstCount, setBurstCount] = useState(0);
-  const [voiceEnabled, setVoiceEnabled] = useState(enableVoiceGuidance);
+  const [loadingCamera, setLoadingCamera] = useState(false);
+  const [cameraError, setCameraError] = useState<string>("");
 
-  const MUSIC_LIST: MusicChoice[] = useMemo(() => [
-    { id: 'm1', title: 'Afro Chill', artist: 'TamTam Beats', duration: 120 },
-    { id: 'm2', title: 'Drum Groove', artist: 'TamTam Studio', duration: 90 },
-    { id: 'm3', title: 'Story Piano', artist: 'TamTam Music', duration: 60 },
-    { id: 'm4', title: 'Viral Dance', artist: 'Trending Sounds', duration: 45 },
-    { id: 'm5', title: 'Lo-Fi Vibes', artist: 'Chill Zone', duration: 180 },
-  ], []);
+  /** =========================
+   * Filters (swipe)
+   * ========================= */
+  const [filterId, setFilterId] = useState<RecommendedFilter>("none");
+  const swipeRef = useRef<{ x0: number; active: boolean } | null>(null);
 
-  const CHALLENGES = useMemo(() => ['#DanceChallenge', '#BeforeAfter', '#LearnIn60s', '#MoodStory', '#VillageNews', '#DailyVlog', '#CookingTime', '#Fashion2025'], []);
+  const filterCss = useMemo(() => {
+    const base = FILTERS.find((f) => f.id === filterId)?.css ?? "none";
+    if (beautifyOn && base === "none") return "brightness(1.03) saturate(1.05) blur(0.25px)";
+    if (beautifyOn) return `${base} blur(0.15px)`;
+    return base;
+  }, [filterId, beautifyOn]);
 
-  const INSPIRING = useMemo(() => [
-    language === 'ba' ? 'Salaye ohun to gbọni' : 'Explique une astuce',
-    language === 'ba' ? 'Siwaju/Lẹyin ayipada' : 'Avant/Apres',
-    language === 'ba' ? 'Itan die' : 'Histoire courte',
-    language === 'ba' ? 'Asise 3 to tobi' : 'Top 3 erreurs',
-    language === 'ba' ? 'Imọran ọjọọjọ' : 'Conseil du jour',
-  ], [language]);
+  const setNextFilter = useCallback(
+    (dir: -1 | 1) => {
+      const idx = FILTERS.findIndex((f) => f.id === filterId);
+      const next = clamp(idx + dir, 0, FILTERS.length - 1);
+      setFilterId(FILTERS[next].id);
+    },
+    [filterId]
+  );
 
-  const announceVoice = useCallback((key: keyof typeof VOICE_MESSAGES['fr']) => {
-    if (voiceEnabled) { const msg = language === 'ba' ? VOICE_MESSAGES.ba[key] : VOICE_MESSAGES.fr[key]; speak(msg, language); }
-  }, [voiceEnabled, language]);
-
-  useEffect(() => { if (isOpen && voiceEnabled) { setTimeout(() => announceVoice('welcome'), 500); } }, [isOpen, voiceEnabled, announceVoice]);
-
-  useEffect(() => {
-    let interval: number | undefined;
-    if (isRecording) { interval = window.setInterval(() => setRecordingDuration(Date.now() - recordingStartTime.current), 100); }
-    else { setRecordingDuration(0); }
-    return () => { if (interval) window.clearInterval(interval); };
-  }, [isRecording]);
-
-  const stopStream = useCallback(() => {
-    try { recorderRef.current?.stop(); } catch { /* ignore */ }
-    recorderRef.current = null;
-    if (streamRef.current) { for (const t of streamRef.current.getTracks()) t.stop(); }
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    setCameraError('');
+  const onPreviewPointerDown = useCallback((e: React.PointerEvent) => {
+    swipeRef.current = { x0: e.clientX, active: true };
   }, []);
 
-  const startStream = useCallback(async () => {
-    stopStream(); setCameraError('');
+  const onPreviewPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!swipeRef.current?.active) return;
+      const dx = e.clientX - swipeRef.current.x0;
+      if (Math.abs(dx) > 50) {
+        swipeRef.current.active = false;
+        setNextFilter(dx > 0 ? 1 : -1);
+      }
+    },
+    [setNextFilter]
+  );
+
+  const onPreviewPointerUp = useCallback(() => {
+    if (swipeRef.current) swipeRef.current.active = false;
+  }, []);
+
+  /** =========================
+   * Recommended filter (IA proactive)
+   * ========================= */
+  useEffect(() => {
+    if (!recommendedFilterOn) return;
+    if (topTab === "Story") setFilterId("warm");
+    else if (topTab === "AI") setFilterId("vivid");
+    else if (topTab === "LIVE") setFilterId("none");
+    else {
+      if (mode === "Photo") setFilterId("beauty");
+      else if (mode === "Text") setFilterId("none");
+      else setFilterId("vivid");
+    }
+  }, [recommendedFilterOn, topTab, mode]);
+
+  /** =========================
+   * Assist text (Inspiring / Shot tips / Cover tips)
+   * ========================= */
+  const assist = useMemo(() => {
+    const inspiring =
+      topTab === "Story"
+        ? "Idée: 1 phrase simple + 1 action claire."
+        : topTab === "AI"
+        ? "Idée: choisis un template, l’IA propose filtre + musique + hook."
+        : topTab === "LIVE"
+        ? "Idée: annonce courte + promesse + appel à s’abonner."
+        : "Idée: Hook 1s + preuve + appel à l’action.";
+
+    const shotTips =
+      challenge?.includes("Market")
+        ? "Shot tips: 3 plans (produit → prix → bénéfice)."
+        : challenge?.includes("Dance")
+        ? "Shot tips: cadre plein corps + lumière face."
+        : "Shot tips: 1 action par plan, gestes clairs.";
+
+    const coverTips = topTab === "Story" ? "Cover tips: 3 mots max, contraste fort." : "Cover tips: visage/objet centré + titre ultra court.";
+
+    return { inspiring, shotTips, coverTips };
+  }, [topTab, challenge]);
+
+  /** =========================
+   * Music sheet data (demo)
+   * ========================= */
+  const MUSIC = useMemo(
+    () => [
+      { id: "m1", emoji: "🎵", title: "Afro Vibes", group: "Trending" },
+      { id: "m2", emoji: "🥁", title: "Drum Groove", group: "Trending" },
+      { id: "m3", emoji: "🎹", title: "Chill Beats", group: "History" },
+      { id: "m4", emoji: "🎸", title: "Upbeat Dance", group: "Trending" },
+      { id: "m5", emoji: "🎺", title: "Traditional", group: "Collect" },
+    ],
+    []
+  );
+
+  /** =========================
+   * Camera start/stop
+   * ========================= */
+  const stopCamera = useCallback(() => {
     try {
-      const constraints: MediaStreamConstraints = { video: { facingMode, width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: topTab === 'live' || mode === 'video' };
+      if (videoRef.current) videoRef.current.srcObject = null;
+    } catch {}
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    setCameraError("");
+    setLoadingCamera(true);
+    try {
+      stopCamera();
+
+      const constraints: MediaStreamConstraints = {
+        audio: mode === "Video" || pureMusic ? true : false,
+        video: topTab === "AI" || mode === "Text"
+          ? false
+          : {
+              facingMode: { ideal: frontCamera ? "user" : "environment" },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              aspectRatio: { ideal: canvasRatio === "9:16" ? 9 / 16 : canvasRatio === "1:1" ? 1 : 16 / 9 },
+            },
+      };
+
+      if (!constraints.video) return;
+
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play().catch(() => { /* ignore */ }); }
-      if (flashOn) await tryToggleTorch(stream, true);
-    } catch { setCameraError(language === 'ba' ? 'Ko le wo kamera.' : "Impossible d'acceder a la camera."); }
-  }, [facingMode, flashOn, language, mode, stopStream, topTab]);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+    } catch (e: any) {
+      console.error(e);
+      setCameraError(language === "ba" ? "Kamɛra kɔ̀ rɛ" : "Impossible d’accéder à la caméra/micro.");
+    } finally {
+      setLoadingCamera(false);
+    }
+  }, [stopCamera, topTab, mode, pureMusic, frontCamera, canvasRatio, language]);
+
+  /** =========================
+   * Countdown (Timer)
+   * ========================= */
+  const [countdown, setCountdown] = useState<number>(0);
+
+  const runCountdownThen = useCallback(
+    async (fn: () => Promise<void> | void) => {
+      if (!timerSec) {
+        await fn();
+        return;
+      }
+      setCountdown(timerSec);
+      return new Promise<void>((resolve) => {
+        const start = Date.now();
+        timerIntervalRef.current = window.setInterval(async () => {
+          const elapsed = Math.floor((Date.now() - start) / 1000);
+          const left = timerSec - elapsed;
+          setCountdown(Math.max(0, left));
+          if (left <= 0) {
+            if (timerIntervalRef.current) {
+              window.clearInterval(timerIntervalRef.current);
+              timerIntervalRef.current = null;
+            }
+            setCountdown(0);
+            await fn();
+            resolve();
+          }
+        }, 200);
+      });
+    },
+    [timerSec]
+  );
+
+  /** =========================
+   * Capture helpers
+   * ========================= */
+  const cleanupPreviewUrl = useCallback(() => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl("");
+  }, [previewUrl]);
+
+  const toPreview = useCallback(
+    async (blob: Blob, type: "video" | "photo" | "audio", durationSec?: number) => {
+      cleanupPreviewUrl();
+      const url = URL.createObjectURL(blob);
+      setPreviewBlob(blob);
+      setPreviewUrl(url);
+      setPreviewType(type);
+      const dur = typeof durationSec === "number" ? durationSec : type === "video" ? await getBlobDurationSec(blob) : type === "audio" ? (durationSec ?? 0) : 0;
+      setPreviewDuration(dur);
+
+      // segments for TimelineEditor
+      const seg: TimelineSegment = {
+        id: randomId("seg"),
+        blob,
+        type: type === "photo" ? "photo" : type === "audio" ? "audio" : "video",
+        duration: type === "photo" ? 5 : Math.max(0.1, dur || (type === "audio" ? 10 : 5)),
+        startTime: 0,
+        endTime: type === "photo" ? 5 : Math.max(0.1, dur || (type === "audio" ? 10 : 5)),
+        isMuted: false,
+        volume: 100,
+        filter: filterId,
+      };
+      setSegments([seg]);
+
+      setStage("preview");
+    },
+    [cleanupPreviewUrl, filterId]
+  );
+
+  const resetToCapture = useCallback(() => {
+    setStage("capture");
+    setEditorOpen(false);
+    setIsRecording(false);
+    setCountdown(0);
+    setTextDraft("");
+    setPreviewBlob(null);
+    setPreviewDuration(0);
+    setPreviewType("video");
+    setSegments([]);
+    cleanupPreviewUrl();
+  }, [cleanupPreviewUrl]);
+
+  /** =========================
+   * Take Photo
+   * ========================= */
+  const takePhoto = useCallback(async () => {
+    if (!streamRef.current || !videoRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1080;
+    canvas.height = video.videoHeight || 1920;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.filter = filterCss === "none" ? "none" : filterCss;
+    if (flashOn) ctx.filter = `${ctx.filter} brightness(1.15)`;
+
+    // Mirror selfie preview only; save non-mirrored by flipping canvas for user cam
+    if (frontCamera) {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const blob: Blob = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b || new Blob()), "image/jpeg", 0.92)
+    );
+
+    await toPreview(blob, "photo", 0);
+  }, [filterCss, flashOn, frontCamera, toPreview]);
+
+  /** =========================
+   * Record Video/Audio
+   * ========================= */
+  const stopRecording = useCallback(() => {
+    const r = recorderRef.current;
+    if (!r) return;
+    try {
+      if (r.state !== "inactive") r.stop();
+    } catch {}
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    if (!streamRef.current) return;
+    if (isRecording) return;
+
+    chunksRef.current = [];
+    recordStartRef.current = Date.now();
+
+    const isAudioOnly = pureMusic;
+    const preferred = isAudioOnly
+      ? (MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm")
+      : (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+          ? "video/webm;codecs=vp9,opus"
+          : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+          ? "video/webm;codecs=vp8,opus"
+          : "video/webm");
+
+    const recorder = new MediaRecorder(streamRef.current, { mimeType: preferred });
+    recorderRef.current = recorder;
+
+    recorder.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
+    };
+
+    recorder.onstop = async () => {
+      setIsRecording(false);
+      const durationSec = Math.max(0.1, (Date.now() - recordStartRef.current) / 1000);
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || (isAudioOnly ? "audio/webm" : "video/webm") });
+      await toPreview(blob, isAudioOnly ? "audio" : "video", durationSec);
+    };
+
+    setIsRecording(true);
+    recorder.start(200);
+
+    // auto stop based on Length
+    window.setTimeout(() => {
+      try {
+        if (recorderRef.current && recorderRef.current.state === "recording") recorderRef.current.stop();
+      } catch {}
+    }, length * 1000);
+  }, [isRecording, length, pureMusic, toPreview]);
+
+  /** =========================
+   * Capture CTA
+   * ========================= */
+  const handleCapture = useCallback(async () => {
+    if (topTab === "AI") {
+      // AI: on passe en preview “text” + meta template/theme (placeholder)
+      cleanupPreviewUrl();
+      setPreviewBlob(null);
+      setPreviewType("text");
+      setPreviewUrl("");
+      setPreviewDuration(0);
+      setSegments([]);
+      setStage("preview");
+      return;
+    }
+
+    if (mode === "Text") {
+      cleanupPreviewUrl();
+      setPreviewBlob(null);
+      setPreviewType("text");
+      setPreviewUrl("");
+      setPreviewDuration(0);
+      setSegments([]);
+      setStage("preview");
+      return;
+    }
+
+    if (mode === "Photo" || mode === "Burst") {
+      await runCountdownThen(async () => {
+        if (mode === "Burst") {
+          for (let i = 0; i < 3; i++) {
+            // eslint-disable-next-line no-await-in-loop
+            await takePhoto();
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => setTimeout(r, 180));
+          }
+        } else {
+          await takePhoto();
+        }
+      });
+      return;
+    }
+
+    await runCountdownThen(async () => {
+      if (isRecording) stopRecording();
+      else await startRecording();
+    });
+  }, [cleanupPreviewUrl, isRecording, mode, runCountdownThen, startRecording, stopRecording, takePhoto, topTab]);
+
+  /** =========================
+   * Publish (preview → onComplete)
+   * ========================= */
+  const publish = useCallback(async () => {
+    const payload: CreatorOutputPayload = {
+      media_type: previewType,
+      media_blob: previewBlob ?? undefined,
+      text_content: previewType === "text" ? (textDraft.trim() || "Texte (vide)") : undefined,
+      is_story: topTab === "Story",
+      top_tab: topTab,
+      filter_applied: filterId,
+      challenge: challenge ?? undefined,
+      music_title: selectedMusic?.title ?? undefined,
+      duration_seconds: previewDuration || (previewType === "photo" ? 0 : undefined),
+      meta: {
+        mode,
+        speed,
+        length,
+        timerSec,
+        flashOn,
+        frontCamera,
+        beautifyOn,
+        magicOn,
+        effectsOn,
+        stickersOn,
+        graffitiOn,
+        canvasRatio,
+        canvasBackground,
+        recommendedFilterOn,
+      },
+    };
+
+    try {
+      if (onComplete) await onComplete(payload);
+      onClose();
+      resetToCapture();
+    } catch (e) {
+      console.error(e);
+      // tu peux afficher un toast si tu as un système de notification
+      alert(language === "ba" ? "Bà yà nɔ̀ŋ" : "Échec publication. Réessaie.");
+    }
+  }, [
+    beautifyOn,
+    canvasBackground,
+    canvasRatio,
+    challenge,
+    effectsOn,
+    filterId,
+    flashOn,
+    frontCamera,
+    graffitiOn,
+    language,
+    length,
+    magicOn,
+    mode,
+    onClose,
+    onComplete,
+    previewBlob,
+    previewDuration,
+    previewType,
+    recommendedFilterOn,
+    resetToCapture,
+    selectedMusic?.title,
+    speed,
+    stickersOn,
+    textDraft,
+    timerSec,
+    topTab,
+  ]);
+
+  /** =========================
+   * Effects: open / close
+   * ========================= */
+  useEffect(() => {
+    if (!isOpen) {
+      stopCamera();
+      return;
+    }
+    // Reset open
+    setStage("capture");
+    setEditorOpen(false);
+    setTopTab("Video");
+    setMode("Video");
+    setFrontCamera(true);
+    setFlashOn(false);
+    setTimerSec(0);
+    setSpeed(1);
+    setLength(30);
+    setIsRecording(false);
+    setShowAssist(true);
+    setChallenge(null);
+    setRecommendedFilterOn(true);
+    setBeautifyOn(true);
+    setMagicOn(true);
+    setEffectsOn(false);
+    setStickersOn(false);
+    setGraffitiOn(false);
+    setCanvasRatio("9:16");
+    setCanvasBackground("none");
+    setSelectedMusic(null);
+    setPureMusic(false);
+    setTextDraft("");
+    setPreviewBlob(null);
+    setPreviewDuration(0);
+    setPreviewType("video");
+    setSegments([]);
+    cleanupPreviewUrl();
+  }, [cleanupPreviewUrl, isOpen, stopCamera]);
 
   useEffect(() => {
     if (!isOpen) return;
-    if (topTab === 'template') return;
-    startStream();
-    return () => { stopStream(); if (previewUrl) URL.revokeObjectURL(previewUrl); };
-  }, [isOpen, topTab, facingMode, startStream, stopStream, previewUrl]);
-
-  useEffect(() => { return () => { if (burstTimerRef.current) window.clearInterval(burstTimerRef.current); }; }, []);
-
-  const handleClose = useCallback(() => { stopStream(); onClose?.(); }, [onClose, stopStream]);
-
-  const capturePhotoBlob = useCallback(async (): Promise<Blob> => {
-    const v = videoRef.current;
-    if (!v) throw new Error('No video');
-    const canvas = document.createElement('canvas');
-    canvas.width = v.videoWidth || 1080; canvas.height = v.videoHeight || 1920;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('No ctx');
-    if (currentFilter && currentFilter.id !== 'none') { ctx.filter = scaleCssFilter(currentFilter.cssFilter, currentFilter.intensity); }
-    ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-    return await new Promise<Blob>((resolve, reject) => { canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png', 1); });
-  }, [currentFilter]);
-
-  const startMediaRecorder = useCallback(async () => {
-    if (!streamRef.current) throw new Error('No stream');
-    chunksRef.current = [];
-    const mimeType = pickMimeType('video');
-    const rec = new MediaRecorder(streamRef.current, mimeType ? { mimeType } : undefined);
-    recorderRef.current = rec;
-    rec.ondataavailable = (e) => { if (e.data?.size > 0) chunksRef.current.push(e.data); };
-    rec.start(300);
-    recordingStartTime.current = Date.now();
-    setIsRecording(true);
-    announceVoice('recording');
-  }, [announceVoice]);
-
-  const stopRecorderGetBlob = useCallback(async (): Promise<Blob> => {
-    return await new Promise<Blob>((resolve) => {
-      const rec = recorderRef.current;
-      if (!rec) { resolve(new Blob([], { type: 'video/webm' })); return; }
-      const finalize = () => { resolve(new Blob(chunksRef.current, { type: rec.mimeType || 'video/webm' })); };
-      rec.addEventListener('stop', finalize, { once: true });
-      try { rec.stop(); } catch { finalize(); }
-      finally { recorderRef.current = null; setIsRecording(false); }
-    });
-  }, []);
-
-  const doCountdownThen = useCallback(async (fn: () => Promise<void>) => {
-    if (timerSeconds === 0) return fn();
-    setCountdown(timerSeconds);
-    let remaining = timerSeconds;
-    while (remaining > 0) { await new Promise(r => setTimeout(r, 1000)); remaining--; setCountdown(remaining); }
-    return fn();
-  }, [timerSeconds]);
-
-  const beginCapture = useCallback(async () => {
-    if (!isOpen) return;
-    if (mode === 'video') { await doCountdownThen(async () => { await startMediaRecorder(); }); return; }
-    if (mode === 'photo') {
-      await doCountdownThen(async () => {
-        if (livePhotoOn) { await startMediaRecorder(); await new Promise(r => setTimeout(r, 2000)); const blob = await stopRecorderGetBlob(); setPreviewBlob(blob); setPreviewUrl(URL.createObjectURL(blob)); setPreviewType('video'); }
-        else { const blob = await capturePhotoBlob(); setPreviewBlob(blob); setPreviewUrl(URL.createObjectURL(blob)); setPreviewType('photo'); }
-        announceVoice('stopped');
-      });
+    const needsCamera = topTab !== "AI" && mode !== "Text" && stage === "capture";
+    if (!needsCamera) {
+      stopCamera();
       return;
     }
-    if (mode === 'burst') {
-      await doCountdownThen(async () => {
-        const photos: Blob[] = []; let count = 0; setBurstCount(0);
-        burstTimerRef.current = window.setInterval(async () => {
-          try { const b = await capturePhotoBlob(); photos.push(b); count++; setBurstCount(count);
-            if (count >= 8) { if (burstTimerRef.current) window.clearInterval(burstTimerRef.current); const last = photos[photos.length - 1]; setPreviewBlob(last); setPreviewUrl(URL.createObjectURL(last)); setPreviewType('photo'); setBurstCount(0); announceVoice('stopped'); }
-          } catch { /* ignore */ }
-        }, 250);
-      });
-      return;
-    }
-    if (mode === 'text') { const blob = await renderStoryTextToImage(textContent || ' ', storyGradient); setPreviewBlob(blob); setPreviewUrl(URL.createObjectURL(blob)); setPreviewType('photo'); announceVoice('stopped'); }
-  }, [capturePhotoBlob, doCountdownThen, isOpen, livePhotoOn, mode, startMediaRecorder, stopRecorderGetBlob, storyGradient, textContent, announceVoice]);
+    startCamera();
+    return () => stopCamera();
+  }, [isOpen, mode, startCamera, stage, stopCamera, topTab]);
 
-  const endVideoCapture = useCallback(async () => { const blob = await stopRecorderGetBlob(); setPreviewBlob(blob); setPreviewUrl(URL.createObjectURL(blob)); setPreviewType('video'); announceVoice('stopped'); }, [stopRecorderGetBlob, announceVoice]);
+  /** =========================
+   * UI helpers
+   * ========================= */
+  const RightBtn: React.FC<{
+    icon: React.ReactNode;
+    label: string;
+    active?: boolean;
+    badge?: string;
+    onClick: () => void;
+    disabled?: boolean;
+  }> = ({ icon, label, active, badge, onClick, disabled }) => (
+    <button
+      onClick={onClick}
+      type="button"
+      disabled={disabled}
+      className={cn(
+        "relative w-12 h-12 rounded-2xl flex items-center justify-center",
+        "bg-black/35 border border-white/10 backdrop-blur",
+        "hover:bg-black/45",
+        active ? "ring-2 ring-white/30" : "",
+        disabled ? "opacity-40 cursor-not-allowed" : ""
+      )}
+      title={label}
+    >
+      {icon}
+      {badge ? (
+        <span className="absolute -top-1 -right-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/90 text-white">
+          {badge}
+        </span>
+      ) : null}
+    </button>
+  );
 
-  const clearPreview = useCallback(() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(''); setPreviewType(''); setPreviewBlob(null); }, [previewUrl]);
+  const ModeBtn: React.FC<{
+    m: CaptureMode;
+    icon: React.ReactNode;
+    label: string;
+    active: boolean;
+    onClick: () => void;
+  }> = ({ icon, label, active, onClick }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "h-12 px-3 rounded-2xl border text-xs flex flex-col items-center justify-center gap-1",
+        active ? "bg-white/15 border-white/25 text-white" : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10"
+      )}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
 
-  const submit = useCallback(async () => {
-    if (!previewBlob) return;
-    setIsSubmitting(true); announceVoice('published');
-    try {
-      let mediaUrl = ''; 
-      const mediaType = previewType === 'video' ? 'video' : (mode === 'text' ? 'text' : 'photo');
-      mediaUrl = await uploadToSupabaseStorage(previewBlob, mediaType === 'video' ? 'webm' : 'png', mediaType === 'video' ? 'videos' : 'photos');
-      
-      const isStory = topTab === 'story'; 
-      const seconds = mode === 'video' ? Math.floor(recordingDuration / 1000) || durationPick : isStory ? 15 : 5;
-      
-      // For photo/text posts, generate silent audio to ensure audio_url is valid
-      let audioUrl = mediaType === 'video' ? mediaUrl : '';
-      if (!audioUrl && (mediaType === 'photo' || mediaType === 'text')) {
-        const silentAudio = generateSilentAudioBlob(seconds);
-        audioUrl = await uploadToSupabaseStorage(silentAudio, 'wav', 'audio');
-      }
-      
-      const payload = { 
-        audio_url: audioUrl, 
-        media_type: mediaType as 'video' | 'photo' | 'text', 
-        media_url: mediaUrl, 
-        transcript_fr: '', 
-        transcript_ba: '', 
-        template_id: 'kuaishou-core', 
-        topic: topic || challenge || (isStory ? 'story' : 'post'), 
-        duration_seconds: seconds, 
-        text_content: mode === 'text' ? textContent : undefined, 
-        tags, 
-        challenge, 
-        music_title: music?.title, 
-        is_story: isStory, 
-        filter_applied: currentFilter?.id 
-      };
-      if (onComplete) await onComplete(payload);
-      clearPreview(); handleClose();
-    } catch { announceVoice('error'); alert(language === 'ba' ? 'Asise' : 'Erreur'); }
-    finally { setIsSubmitting(false); }
-  }, [challenge, clearPreview, currentFilter, durationPick, handleClose, language, mode, music?.title, onComplete, previewBlob, previewType, recordingDuration, tags, textContent, topTab, topic, announceVoice]);
-
-  const doSwitch = useCallback(() => { setFacingMode(p => p === 'environment' ? 'user' : 'environment'); }, []);
-  const toggleFlash = useCallback(async () => { setFlashOn(!flashOn); await tryToggleTorch(streamRef.current, !flashOn); }, [flashOn]);
-
-  const onGenerated = useCallback((p: { type: AIGenType; content: string }) => {
-    if (p.type === 'hashtags') { setTags(prev => [...new Set([...prev, ...p.content.split(/\s+/).filter(x => x.startsWith('#')).slice(0, 18)])]); }
-    else if (p.type === 'hook' || p.type === 'title') { setTopic(p.content.split('\n')[0]?.slice(0, 80) || topic); }
-    else if (p.type === 'caption' || p.type === 'script') { setTextContent(p.content); }
-  }, [topic]);
-
-  const onApplyTemplate = useCallback((t: AITemplate) => { setMagicOpen(false); if (!topic) setTopic(t.title); }, [topic]);
-
-  const createLive = useCallback(async () => {
-    // LIVE feature coming soon - tables not yet available
-    console.log('LIVE feature coming soon');
-    alert(language === 'ba' ? 'LIVE n bɔ laipe!' : 'Fonctionnalité LIVE bientôt disponible!');
-  }, [language]);
-
-  const sendLive = useCallback(async () => {
-    // LIVE messages feature coming soon
-    if (!liveInput.trim()) return;
-    console.log('LIVE message:', liveInput);
-    setLiveInput('');
-  }, [liveInput]);
+  const TopTabBtn: React.FC<{ tab: TopTab; active: boolean; onClick: () => void }> = ({ tab, active, onClick }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "h-9 px-3 rounded-2xl border text-xs",
+        active ? "bg-white/15 border-white/25 text-white" : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10"
+      )}
+    >
+      {tab}
+    </button>
+  );
 
   if (!isOpen) return null;
 
-  const isStory = topTab === 'story';
-  const recordDurationText = `${Math.floor(recordingDuration / 60000)}:${Math.floor((recordingDuration % 60000) / 1000).toString().padStart(2, '0')}`;
-
   return (
-    <div className="fixed inset-0 z-[70] bg-black text-white overflow-hidden">
-      {topTab !== 'template' && (
-        <div className="absolute inset-0">
-          <video ref={videoRef} playsInline muted className="w-full h-full" style={{ objectFit: fullMode ? 'cover' : 'contain', filter: currentFilter?.id !== 'none' ? scaleCssFilter(currentFilter!.cssFilter, currentFilter!.intensity) : 'none' }} />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
-        </div>
-      )}
-      {topTab === 'template' && (<div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-black to-pink-900" />)}
-      {cameraError && topTab !== 'template' && (<div className="absolute top-20 left-4 right-4 p-4 rounded-2xl bg-red-500/20 border border-red-500/30 backdrop-blur-xl z-20"><div className="flex items-center gap-3"><AlertCircle className="w-5 h-5 text-red-400" /><p className="text-sm">{cameraError}</p></div></div>)}
-
-      <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-10">
-        <button onClick={handleClose} className="w-10 h-10 rounded-full bg-black/40 border border-white/10 backdrop-blur-xl flex items-center justify-center"><X className="w-5 h-5" /></button>
-        <button onClick={() => setMusicPanel(true)} className="px-4 py-2 rounded-full bg-black/40 border border-white/10 backdrop-blur-xl flex items-center gap-2"><Music className="w-4 h-4" /><span className="text-sm truncate max-w-[100px]">{music?.title ?? (language === 'ba' ? 'Orin' : 'Musique')}</span></button>
+    <div className="fixed inset-0 z-[90] bg-black">
+      {/* Top bar */}
+      <div className="absolute top-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button onClick={() => setVoiceEnabled(!voiceEnabled)} className={`w-10 h-10 rounded-full backdrop-blur-xl flex items-center justify-center border ${voiceEnabled ? 'bg-purple-500/40 border-purple-500/50' : 'bg-black/40 border-white/10'}`}>{voiceEnabled ? <Volume2 className="w-5 h-5 text-purple-300" /> : <VolumeX className="w-5 h-5 text-white/60" />}</button>
-          <button onClick={() => setHelpPanel(true)} className="w-10 h-10 rounded-full bg-black/40 border border-white/10 backdrop-blur-xl flex items-center justify-center"><HelpCircle className="w-5 h-5 text-white/60" /></button>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              resetToCapture();
+            }}
+            className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
+            title="Fermer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div className="text-white">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <span>Création</span>
+              {pureMusic ? (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 border border-white/10">Pure Music</span>
+              ) : null}
+              {challenge ? (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/80 text-white flex items-center gap-1">
+                  <Flame className="h-3.5 w-3.5" /> {challenge}
+                </span>
+              ) : null}
+            </div>
+            <div className="text-xs text-white/60">
+              {stage === "capture"
+                ? "Capture plein écran (avant montage) · swipe ⇆ pour changer de filtre"
+                : "Preview · Éditer (Timeline) · Publier"}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <TopTabBtn tab="Video" active={topTab === "Video"} onClick={() => setTopTab("Video")} />
+            <TopTabBtn tab="Story" active={topTab === "Story"} onClick={() => setTopTab("Story")} />
+            <TopTabBtn tab="AI" active={topTab === "AI"} onClick={() => setTopTab("AI")} />
+            <TopTabBtn tab="LIVE" active={topTab === "LIVE"} onClick={() => setTopTab("LIVE")} />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setFullMode((f) => !f)}
+            className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
+            title={fullMode ? "Contain (pas de crop)" : "Cover (fill)"}
+          >
+            {fullMode ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+          </button>
         </div>
       </div>
 
-      {isRecording && (<motion.div className="absolute top-20 left-4 px-4 py-2 rounded-full bg-red-500/90 backdrop-blur-xl flex items-center gap-3 z-10" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><motion.div className="w-3 h-3 rounded-full bg-white" animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1, repeat: Infinity }} /><span className="font-mono text-sm">{recordDurationText}</span></motion.div>)}
-      {burstCount > 0 && (<div className="absolute top-20 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full bg-purple-500/90 backdrop-blur-xl z-10"><span className="font-bold text-lg">{burstCount}/8</span></div>)}
-      <AnimatePresence>{countdown > 0 && (<motion.div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><motion.div className="text-9xl font-extrabold drop-shadow-2xl" initial={{ scale: 0 }} animate={{ scale: [0, 1.2, 1] }}>{countdown}</motion.div></motion.div>)}</AnimatePresence>
+      {/* Main area */}
+      <div className="absolute inset-0 pt-16 pb-28 flex items-center justify-center">
+        <div
+          className={cn(
+            "relative h-full w-full max-w-[520px]",
+            "rounded-[28px] overflow-hidden border border-white/10",
+            "bg-gradient-to-b from-black/60 to-black/80"
+          )}
+          onPointerDown={onPreviewPointerDown}
+          onPointerMove={onPreviewPointerMove}
+          onPointerUp={onPreviewPointerUp}
+        >
+          {/* Content */}
+          <div className="absolute inset-0">
+            {stage === "capture" ? (
+              <>
+                {(topTab === "AI" || mode === "Text") ? (
+                  <div className="h-full w-full flex items-center justify-center p-6">
+                    <div className="w-full rounded-3xl bg-white/5 border border-white/10 p-4">
+                      <div className="text-white font-semibold flex items-center gap-2">
+                        <Wand2 className="h-4 w-4" /> Magic (IA / AR)
+                      </div>
+                      <div className="text-xs text-white/70 mt-1">
+                        Templates & thèmes prédéfinis (Kuaishou-like) — prêt pour brancher tes composants IA.
+                      </div>
 
-      <div className="absolute right-3 top-24 z-10 flex flex-col gap-2 items-center max-h-[60vh] overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-        <RightButton icon={<Repeat2 className="w-5 h-5" />} label="Switch" labelBa="Yipada" onClick={doSwitch} language={language} voiceEnabled={voiceEnabled} />
-        <RightButton icon={<Timer className="w-5 h-5" />} label="Timer" labelBa="Akoko" onClick={() => setTimerPanel(true)} active={timerSeconds !== 0} language={language} voiceEnabled={voiceEnabled} />
-        <RightButton icon={<Flame className="w-5 h-5" />} label="Challenge" labelBa="Idije" onClick={() => setChallengePanel(true)} active={!!challenge} language={language} voiceEnabled={voiceEnabled} />
-        <RightButton icon={<Eye className="w-5 h-5" />} label="Idees" labelBa="Imọran" onClick={() => setInspiringPanel(true)} language={language} voiceEnabled={voiceEnabled} />
-        <RightButton icon={<Sparkles className="w-5 h-5" />} label="Filtres" labelBa="Asa" onClick={() => setFiltersOpen(true)} active={currentFilter?.id !== 'none'} language={language} voiceEnabled={voiceEnabled} />
-        <RightButton icon={<Gauge className="w-5 h-5" />} label="Vitesse" labelBa="Iyara" onClick={() => setSpeedPanel(true)} active={speed !== 1} hidden={!rightExpanded} language={language} voiceEnabled={voiceEnabled} />
-        <RightButton icon={<Expand className="w-5 h-5" />} label="Full" onClick={() => setFullMode(p => !p)} active={fullMode} hidden={!rightExpanded} language={language} voiceEnabled={voiceEnabled} />
-        <RightButton icon={<Zap className="w-5 h-5" />} label="Flash" onClick={toggleFlash} active={flashOn} hidden={!rightExpanded} language={language} voiceEnabled={voiceEnabled} />
-        <button onClick={() => setRightExpanded(p => !p)} className="w-10 h-10 rounded-full bg-black/40 border border-white/10 flex items-center justify-center mt-2"><ChevronDown className={`w-5 h-5 transition-transform ${rightExpanded ? '' : '-rotate-90'}`} /></button>
+                      {mode === "Text" ? (
+                        <div className="mt-3">
+                          <div className="text-xs text-white/70 mb-2 flex items-center gap-2">
+                            <TypeIcon className="h-4 w-4" /> Texte (sans caméra)
+                          </div>
+                          <textarea
+                            value={textDraft}
+                            onChange={(e) => setTextDraft(e.target.value)}
+                            className="w-full h-40 rounded-2xl bg-black/40 border border-white/10 text-white p-3 text-sm outline-none"
+                            placeholder="Écris un message simple (on peut remplacer par dictée + pictos)."
+                          />
+                        </div>
+                      ) : (
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setMusicOpen(true)}
+                            className="h-10 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
+                          >
+                            <Radio className="h-4 w-4" /> Music
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowAssist((s) => !s)}
+                            className="h-10 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
+                          >
+                            <Eye className="h-4 w-4" /> Inspiring
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white/80">
+                          <div className="font-semibold text-white">Templates</div>
+                          <div className="mt-1 opacity-80">Transformation · Transition · Dance · Romance · Family · Text</div>
+                        </div>
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white/80">
+                          <div className="font-semibold text-white">Thèmes</div>
+                          <div className="mt-1 opacity-80">Nostalgie · Mariage · Vlog · Fun · Cinématique</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Camera preview */}
+                    <video
+                      ref={videoRef}
+                      playsInline
+                      muted
+                      className="h-full w-full"
+                      style={{
+                        objectFit: fullMode ? "cover" : "contain", // ✅ contain = pas crop / pas “zoom”
+                        backgroundColor: "black",
+                        transform: frontCamera ? "scaleX(-1)" : undefined,
+                        filter: filterCss,
+                      }}
+                    />
+
+                    {loadingCamera ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <div className="text-white flex items-center gap-2">
+                          <Loader2 className="h-5 w-5 animate-spin" /> Ouverture caméra…
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {cameraError ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 p-6">
+                        <div className="w-full rounded-3xl bg-white/5 border border-white/10 p-4 text-white">
+                          <div className="font-semibold flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5" /> Caméra indisponible
+                          </div>
+                          <div className="text-xs text-white/70 mt-2">{cameraError}</div>
+                          <button
+                            type="button"
+                            onClick={startCamera}
+                            className="mt-3 h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm"
+                          >
+                            Réessayer
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                {/* PREVIEW */}
+                {previewType === "video" ? (
+                  <video
+                    src={previewUrl}
+                    className="h-full w-full"
+                    style={{ objectFit: "contain", backgroundColor: "black" }}
+                    controls
+                    playsInline
+                  />
+                ) : previewType === "photo" ? (
+                  <img src={previewUrl} className="h-full w-full object-contain bg-black" alt="preview" />
+                ) : previewType === "audio" ? (
+                  <div className="h-full w-full flex items-center justify-center bg-black p-6">
+                    <div className="w-full rounded-3xl bg-white/5 border border-white/10 p-4 text-white">
+                      <div className="font-semibold flex items-center gap-2">
+                        <Radio className="h-4 w-4" /> Audio (Pure Music)
+                      </div>
+                      <div className="text-xs text-white/70 mt-1">{selectedMusic ? `Musique: ${selectedMusic.title}` : "Aucune musique sélectionnée"}</div>
+                      <audio src={previewUrl} controls className="w-full mt-3" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-black p-6">
+                    <div className="w-full rounded-3xl bg-white/5 border border-white/10 p-4 text-white">
+                      <div className="font-semibold flex items-center gap-2">
+                        <TypeIcon className="h-4 w-4" /> Texte
+                      </div>
+                      <div className="text-xs text-white/70 mt-2">{textDraft.trim() || "Texte (vide)"}</div>
+                      <div className="mt-3 text-xs text-white/60">
+                        Tips: pour non-lettrés, ajoute dictée vocale + stickers/pictos.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Assist overlays (capture only) */}
+          <AnimatePresence>
+            {stage === "capture" && showAssist && topTab !== "AI" ? (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
+                className="absolute bottom-4 left-4 right-4 space-y-2"
+              >
+                <div className="rounded-2xl bg-black/40 border border-white/10 p-3 text-white text-sm">
+                  <div className="text-xs text-white/70 flex items-center gap-2">
+                    <Eye className="h-3.5 w-3.5" /> Inspiring
+                  </div>
+                  <div className="mt-1">{assist.inspiring}</div>
+                </div>
+                <div className="rounded-2xl bg-black/40 border border-white/10 p-3 text-white text-sm">
+                  <div className="text-xs text-white/70 flex items-center gap-2">
+                    <Lightbulb className="h-3.5 w-3.5" /> Shot tips
+                  </div>
+                  <div className="mt-1">{assist.shotTips}</div>
+                </div>
+                <div className="rounded-2xl bg-black/40 border border-white/10 p-3 text-white text-sm">
+                  <div className="text-xs text-white/70 flex items-center gap-2">
+                    <Hash className="h-3.5 w-3.5" /> Cover tips
+                  </div>
+                  <div className="mt-1">{assist.coverTips}</div>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Countdown */}
+          <AnimatePresence>
+            {countdown > 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="absolute inset-0 flex items-center justify-center bg-black/40"
+              >
+                <div className="text-white text-7xl font-extrabold drop-shadow">{countdown}</div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Filter badge / Music badge */}
+          <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white text-xs">
+              Filtre: {FILTERS.find((f) => f.id === filterId)?.label ?? "—"} (swipe ⇆)
+            </span>
+            {selectedMusic ? (
+              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white text-xs">
+                {selectedMusic.emoji} {selectedMusic.title}
+              </span>
+            ) : null}
+            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white text-xs">
+              Canvas: {canvasRatio} · {canvasBackground}
+            </span>
+          </div>
+
+          {/* Right sidebar */}
+          <div className="absolute top-3 right-3 flex flex-col gap-2">
+            {/* Capture controls */}
+            <RightBtn
+              icon={<Repeat2 className="h-5 w-5 text-white" />}
+              label="Switch"
+              onClick={() => setFrontCamera((v) => !v)}
+              disabled={stage !== "capture" || topTab === "AI" || mode === "Text"}
+            />
+
+            <RightBtn
+              icon={flashOn ? <Flashlight className="h-5 w-5 text-white" /> : <FlashlightOff className="h-5 w-5 text-white/80" />}
+              label="Flash"
+              active={flashOn}
+              onClick={() => setFlashOn((v) => !v)}
+              disabled={stage !== "capture" || topTab === "AI" || mode === "Text"}
+            />
+
+            <RightBtn
+              icon={<Timer className="h-5 w-5 text-white" />}
+              label="Timer"
+              badge={timerSec ? `${timerSec}s` : undefined}
+              active={!!timerSec}
+              onClick={() => setTimerSec((s) => (s === 0 ? 3 : s === 3 ? 5 : s === 5 ? 10 : 0))}
+              disabled={stage !== "capture"}
+            />
+
+            <RightBtn
+              icon={<Gauge className="h-5 w-5 text-white" />}
+              label="Speed"
+              badge={`${speed}x`}
+              onClick={() => setSpeed((sp) => (sp === 0.5 ? 1 : sp === 1 ? 1.5 : sp === 1.5 ? 2 : 0.5))}
+              disabled={stage !== "capture"}
+            />
+
+            <RightBtn
+              icon={<Camera className="h-5 w-5 text-white" />}
+              label="Length"
+              badge={`${length}s`}
+              onClick={() => setLength((l) => (l === 15 ? 30 : l === 30 ? 60 : 15))}
+              disabled={stage !== "capture"}
+            />
+
+            <RightBtn
+              icon={<div className={cn("h-3.5 w-3.5 rounded-full", isRecording ? "bg-red-500" : "bg-white/40")} />}
+              label="Recording"
+              active={isRecording}
+              onClick={() => {
+                if (stage === "capture" && mode === "Video") handleCapture();
+              }}
+              disabled={stage !== "capture" || mode !== "Video"}
+            />
+
+            <div className="h-px bg-white/10 my-1" />
+
+            {/* Assistance créative */}
+            <RightBtn icon={<Eye className="h-5 w-5 text-white" />} label="Inspiring" active={showAssist} onClick={() => setShowAssist((v) => !v)} />
+            <RightBtn
+              icon={<Flame className="h-5 w-5 text-white" />}
+              label="Challenge"
+              badge={challenge ? "ON" : undefined}
+              active={!!challenge}
+              onClick={() => setChallenge((c) => (c ? null : "#DanceChallenge"))}
+            />
+            <RightBtn
+              icon={<Sparkles className="h-5 w-5 text-white" />}
+              label="Recommended filter"
+              active={recommendedFilterOn}
+              onClick={() => setRecommendedFilterOn((v) => !v)}
+            />
+
+            <div className="h-px bg-white/10 my-1" />
+
+            {/* Beauté, AR & Effets */}
+            <RightBtn icon={<Sparkles className="h-5 w-5 text-white" />} label="Beautify" active={beautifyOn} onClick={() => setBeautifyOn((v) => !v)} />
+            <RightBtn icon={<Wand2 className="h-5 w-5 text-white" />} label="Magic" active={magicOn} onClick={() => setMagicOn((v) => !v)} />
+            <RightBtn icon={<span className="text-white text-lg">😄</span>} label="Stickers" active={stickersOn} onClick={() => setStickersOn((v) => !v)} />
+            <RightBtn icon={<span className="text-white text-lg">✍️</span>} label="Graffiti" active={graffitiOn} onClick={() => setGraffitiOn((v) => !v)} />
+            <RightBtn icon={<span className="text-white text-lg">✨</span>} label="Effects" active={effectsOn} onClick={() => setEffectsOn((v) => !v)} />
+
+            <div className="h-px bg-white/10 my-1" />
+
+            {/* Canvas quick controls (stratégique) */}
+            <RightBtn
+              icon={<span className="text-white text-xs font-bold">{canvasRatio}</span>}
+              label="Canvas Ratio"
+              onClick={() => setCanvasRatio((r) => (r === "9:16" ? "1:1" : r === "1:1" ? "16:9" : "9:16"))}
+            />
+            <RightBtn
+              icon={<span className="text-white text-lg">🖼️</span>}
+              label="Background"
+              badge={canvasBackground !== "none" ? "ON" : undefined}
+              active={canvasBackground !== "none"}
+              onClick={() => setCanvasBackground((b) => (b === "none" ? "blur" : b === "blur" ? "gradient" : "none"))}
+            />
+          </div>
+        </div>
       </div>
 
-      <AnimatePresence>
-        {!!previewUrl && (
-          <motion.div className="absolute inset-0 z-[60] bg-black/95 flex flex-col" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="flex items-center justify-between p-4">
-              <button onClick={clearPreview} className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 flex items-center gap-2"><RotateCcw className="w-4 h-4" /><span>{language === 'ba' ? 'Tun se' : 'Reprendre'}</span></button>
-              <div className="text-white/70 text-sm font-medium">{isStory ? (language === 'ba' ? 'Itan' : 'Story') : language === 'ba' ? 'Agbejade' : 'Apercu'}</div>
-              <button onClick={submit} disabled={isSubmitting} className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium disabled:opacity-50 flex items-center gap-2 shadow-lg">{isSubmitting ? (<><Loader2 className="w-4 h-4 animate-spin" /><span>{language === 'ba' ? 'N se...' : 'Envoi...'}</span></>) : (<><Check className="w-4 h-4" /><span>{language === 'ba' ? 'Firansẹ' : 'Publier'}</span></>)}</button>
+      {/* Bottom bar */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4">
+        <div className="mx-auto max-w-[740px]">
+          <div className="rounded-3xl bg-black/45 border border-white/10 backdrop-blur p-3">
+            {stage === "capture" ? (
+              <div className="flex items-center justify-between gap-3">
+                {/* Modes */}
+                <div className="flex items-center gap-2">
+                  <ModeBtn
+                    m="Burst"
+                    icon={<div className="text-white/90">📸</div>}
+                    label="Burst"
+                    active={mode === "Burst"}
+                    onClick={() => setMode("Burst")}
+                  />
+                  <ModeBtn
+                    m="Photo"
+                    icon={<ImageIcon className="h-4 w-4 text-white" />}
+                    label="Photo"
+                    active={mode === "Photo"}
+                    onClick={() => setMode("Photo")}
+                  />
+                  <ModeBtn
+                    m="Video"
+                    icon={<VideoIcon className="h-4 w-4 text-white" />}
+                    label="Vidéo"
+                    active={mode === "Video"}
+                    onClick={() => setMode("Video")}
+                  />
+                  <ModeBtn
+                    m="Text"
+                    icon={<TypeIcon className="h-4 w-4 text-white" />}
+                    label="Texte"
+                    active={mode === "Text"}
+                    onClick={() => setMode("Text")}
+                  />
+                </div>
+
+                {/* Music / Pure music */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMusicOpen(true)}
+                    className="h-12 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+                  >
+                    <Radio className="h-4 w-4" />
+                    Music
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPureMusic((v) => !v)}
+                    className={cn(
+                      "h-12 px-3 rounded-2xl border text-white text-sm flex items-center gap-2",
+                      pureMusic ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
+                    )}
+                    title="Pure Music (audio-first)"
+                  >
+                    <Radio className="h-4 w-4" />
+                    Pure
+                  </button>
+                </div>
+
+                {/* Capture CTA */}
+                <button
+                  type="button"
+                  onClick={handleCapture}
+                  className={cn(
+                    "h-12 px-4 rounded-2xl text-white font-semibold flex items-center gap-2",
+                    isRecording ? "bg-red-500/80 hover:bg-red-500" : "bg-orange-500/90 hover:bg-orange-500"
+                  )}
+                >
+                  {mode === "Video" ? (
+                    <>
+                      <div className={cn("h-3 w-3 rounded-full", isRecording ? "bg-white" : "bg-white/90")} />
+                      {isRecording ? "Stop" : "Rec"}
+                    </>
+                  ) : mode === "Text" ? (
+                    <>
+                      <Check className="h-4 w-4" /> Valider
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="h-4 w-4" /> Capturer
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={resetToCapture}
+                  className="h-12 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+                >
+                  <Undo2 className="h-4 w-4" />
+                  Refaire
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditorOpen(true)}
+                  className="h-12 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+                  disabled={previewType === "text" && !textDraft.trim()}
+                >
+                  <Scissors className="h-4 w-4" />
+                  Éditer (Timeline)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={publish}
+                  className="h-12 px-4 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white text-sm font-semibold flex items-center gap-2"
+                >
+                  <Send className="h-4 w-4" />
+                  Publier
+                </button>
+              </div>
+            )}
+
+            <div className="mt-2 text-xs text-white/60 flex items-center justify-between">
+              <div>
+                Speed: <span className="text-white/80">{speed}x</span> · Length: <span className="text-white/80">{length}s</span> · Timer:{" "}
+                <span className="text-white/80">{timerSec ? `${timerSec}s` : "Off"}</span>
+              </div>
+              <div className="text-white/50">
+                Flash (web): simulation · objectFit: {fullMode ? "cover" : "contain"}
+              </div>
             </div>
-            <div className="flex-1 flex items-center justify-center px-4 pb-6">{previewType === 'video' ? (<video src={previewUrl} controls autoPlay loop className="max-h-[80vh] w-full rounded-2xl bg-black shadow-2xl" />) : (<img src={previewUrl} className="max-h-[80vh] w-full object-contain rounded-2xl bg-black shadow-2xl" alt="preview" />)}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* TimelineEditor overlay */}
+      <AnimatePresence>
+        {editorOpen && segments.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[95] bg-black"
+          >
+            <TimelineEditorKuaishou
+              segments={segments}
+              onSegmentsChange={setSegments}
+              onClose={() => setEditorOpen(false)}
+              onConfirm={async (finalSegs) => {
+                setSegments(finalSegs);
+                const first = finalSegs[0];
+                if (first?.blob) {
+                  if (first.type === "video") {
+                    await toPreview(first.blob, "video");
+                  } else if (first.type === "photo") {
+                    await toPreview(first.blob, "photo");
+                  } else if (first.type === "audio") {
+                    await toPreview(first.blob, "audio", first.duration);
+                  }
+                }
+                setEditorOpen(false);
+              }}
+              language={language}
+            />
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="absolute bottom-0 left-0 right-0 z-10 pb-6">
-        <div className="mx-auto max-w-md px-4">
-          <div className="rounded-2xl bg-black/40 border border-white/10 backdrop-blur-xl p-2 flex overflow-x-auto snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
-            {(['video', 'story', 'template', 'live'] as TopTab[]).map((t) => (<button key={t} onClick={() => { setTopTab(t); if (t === 'live') setMode('video'); if (t === 'template') stopStream(); }} className={`flex-1 py-2 rounded-xl text-sm font-semibold snap-start whitespace-nowrap ${topTab === t ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' : 'text-white/70'}`}>{t === 'video' ? (language === 'ba' ? 'Fidio' : 'Video') : t === 'story' ? (language === 'ba' ? 'Itan' : 'Story') : t === 'template' ? 'AI' : 'LIVE'}</button>))}
-          </div>
-        </div>
-
-        {topTab === 'template' && (
-          <div className="mx-auto max-w-md px-4 mt-4 space-y-3">
-            <button onClick={() => setMagicOpen(true)} className="w-full rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3"><div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center"><Wand2 className="w-6 h-6" /></div><div className="text-left"><div className="font-semibold">{language === 'ba' ? 'AI Awọn Apẹẹrẹ' : 'AI Templates & Magic'}</div><div className="text-xs text-white/60">{language === 'ba' ? 'Awọn apẹẹrẹ, hashtags' : 'Templates, hashtags, scripts'}</div></div></div>
-              <ChevronDown className="w-5 h-5 text-white/70 -rotate-90" />
-            </button>
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-              <div className="text-white/70 text-sm mb-3 flex items-center gap-2"><Globe className="w-4 h-4" />{language === 'ba' ? 'Awọn koko' : 'Sujets tendance'}</div>
-              <div className="flex flex-wrap gap-2">{INSPIRING.slice(0, 4).map((s, i) => (<button key={i} onClick={() => { setTopic(s); setTopTab('video'); }} className="px-3 py-2 rounded-full bg-white/10 text-white/80 text-xs">{s.length > 25 ? `${s.slice(0, 25)}...` : s}</button>))}</div>
-            </div>
-          </div>
-        )}
-
-        {topTab === 'live' && (
-          <div className="mx-auto max-w-md px-4 mt-3">
-            <div className="rounded-2xl bg-black/40 border border-red-500/30 p-4">
-              <div className="flex items-center justify-between mb-3"><div className="flex items-center gap-2"><motion.div className="w-3 h-3 rounded-full bg-red-500" animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1.5, repeat: Infinity }} /><Radio className="w-5 h-5 text-red-400" /><span className="font-semibold">LIVE</span></div><div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/10"><Eye className="w-4 h-4" /><span className="text-xs">{liveViewers}</span></div></div>
-              <div className="flex gap-2"><button onClick={createLive} disabled={!!liveSessionId} className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 font-semibold disabled:opacity-50">{language === 'ba' ? 'Bẹrẹ' : 'Demarrer'}</button><button onClick={() => setLivePanelOpen(true)} disabled={!liveSessionId} className="flex-1 py-2.5 rounded-xl bg-white/10 font-semibold disabled:opacity-50">Chat</button></div>
-            </div>
-          </div>
-        )}
-
-        {topTab !== 'template' && (
-          <>
-            {(mode === 'video' || topTab === 'live') && (<div className="flex justify-center gap-3 mb-3 mt-4">{[300, 60].map((dur) => (<button key={dur} onClick={() => setDurationPick(dur as 60 | 300)} className={`px-4 py-2 rounded-full text-sm font-medium ${durationPick === dur ? 'bg-white text-black' : 'bg-black/30 border border-white/10 text-white/80'}`}>{dur === 300 ? '5 min' : '1 min'}</button>))}</div>)}
-            <div className="flex justify-center gap-6 mb-3 text-sm font-semibold">{(['burst', 'photo', 'video', 'text'] as CaptureMode[]).map((m) => (<button key={m} onClick={() => setMode(m)} className={`px-3 py-1.5 rounded-full ${mode === m ? 'bg-white text-black' : 'text-white/75'}`}>{m === 'burst' ? (language === 'ba' ? 'Pupọ' : 'Rafale') : m === 'photo' ? (language === 'ba' ? 'Aworan' : 'Photo') : m === 'video' ? (language === 'ba' ? 'Fidio' : 'Video') : (language === 'ba' ? 'Ọrọ' : 'Texte')}</button>))}</div>
-            <div className="mx-auto max-w-md px-10 flex items-end justify-between">
-              <button onClick={() => setMagicOpen(true)} className="flex flex-col items-center gap-1.5"><div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-purple-500/30 flex items-center justify-center"><Wand2 className="w-6 h-6" /></div><span className="text-xs">Magic</span></button>
-              <div className="flex flex-col items-center gap-2">
-                <button onClick={isRecording ? endVideoCapture : beginCapture} disabled={countdown > 0} className={`w-20 h-20 rounded-full border-4 flex items-center justify-center shadow-2xl ${isRecording ? 'border-red-500 bg-red-500/40' : 'border-white/90 bg-gradient-to-tr from-purple-500/80 to-pink-500/80'}`}>{mode === 'photo' || mode === 'burst' ? <Camera className="w-8 h-8" /> : mode === 'text' ? <TypeIcon className="w-8 h-8" /> : isRecording ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}</button>
-                {mode === 'photo' && (<button onClick={() => setLivePhotoOn(p => !p)} className={`text-xs px-3 py-1 rounded-full border ${livePhotoOn ? 'bg-white text-black' : 'bg-black/30 text-white/80'}`}>Livephoto {livePhotoOn ? 'ON' : 'OFF'}</button>)}
+      {/* Music bottom sheet */}
+      <AnimatePresence>
+        {musicOpen ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute inset-0 z-[98] bg-black/70 backdrop-blur flex items-end"
+            onClick={() => setMusicOpen(false)}
+          >
+            <div
+              className="w-full rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-white font-semibold flex items-center gap-2">
+                  <Radio className="h-4 w-4" /> Music
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMusicOpen(false)}
+                  className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <label className="flex flex-col items-center gap-1.5 cursor-pointer"><div className="w-14 h-14 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-center"><ImageIcon className="w-6 h-6" /></div><span className="text-xs">{language === 'ba' ? 'Album' : 'Albums'}</span><input type="file" accept="video/*,image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; setPreviewBlob(file); setPreviewUrl(URL.createObjectURL(file)); setPreviewType(file.type.startsWith('video') ? 'video' : 'photo'); }} /></label>
-            </div>
-            {mode === 'text' && (
-              <div className="mx-auto max-w-md px-4 mt-4">
-                <div className={`rounded-2xl border border-white/20 p-4 bg-gradient-to-br ${storyGradient === 'purpleBlue' ? 'from-purple-500/40 to-sky-500/40' : storyGradient === 'orangePink' ? 'from-rose-500/40 to-orange-500/40' : 'from-green-500/40 to-cyan-500/40'}`}>
-                  <textarea value={textContent} onChange={(e) => setTextContent(e.target.value)} placeholder={language === 'ba' ? 'Kọ nibi...' : 'Ecris ici...'} className="w-full min-h-[80px] rounded-xl bg-black/30 border border-white/20 p-3 text-white outline-none" />
-                  <div className="mt-3 grid grid-cols-4 gap-2">{(['purpleBlue', 'orangePink', 'greenCyan', 'pinkPurple'] as GradientTheme[]).map((gr) => (<button key={gr} onClick={() => setStoryGradient(gr)} className={`aspect-square rounded-lg ${storyGradient === gr ? 'ring-2 ring-white' : ''}`} style={{ background: gr === 'purpleBlue' ? 'linear-gradient(135deg, #7c3aed, #0ea5e9)' : gr === 'orangePink' ? 'linear-gradient(135deg, #fb7185, #fb923c)' : gr === 'greenCyan' ? 'linear-gradient(135deg, #22c55e, #06b6d4)' : 'linear-gradient(135deg, #ec4899, #8b5cf6)' }} />))}</div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                  <div className="text-xs text-white/70 mb-2">Trending</div>
+                  <div className="space-y-2">
+                    {MUSIC.filter((m) => m.group === "Trending").map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedMusic({ id: m.id, title: m.title, emoji: m.emoji })}
+                        className={cn(
+                          "w-full text-left rounded-2xl p-3 border",
+                          selectedMusic?.id === m.id ? "bg-white/15 border-white/25" : "bg-white/5 border-white/10 hover:bg-white/10"
+                        )}
+                      >
+                        <div className="text-white text-sm font-semibold">
+                          {m.emoji} {m.title}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                  <div className="text-xs text-white/70 mb-2">Collect / History</div>
+                  <div className="space-y-2">
+                    {MUSIC.filter((m) => m.group !== "Trending").map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedMusic({ id: m.id, title: m.title, emoji: m.emoji })}
+                        className={cn(
+                          "w-full text-left rounded-2xl p-3 border",
+                          selectedMusic?.id === m.id ? "bg-white/15 border-white/25" : "bg-white/5 border-white/10 hover:bg-white/10"
+                        )}
+                      >
+                        <div className="text-white text-sm font-semibold">
+                          {m.emoji} {m.title}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            )}
-            <div className="mx-auto max-w-md px-4 mt-3">
-              <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={language === 'ba' ? 'Koko...' : 'Sujet / idee...'} className="w-full px-4 py-3 rounded-2xl bg-black/40 border border-white/10 text-white placeholder:text-white/40 outline-none" />
-              {(challenge || tags.length > 0) && (<div className="mt-2 flex flex-wrap gap-2">{challenge && <span className="text-xs px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-white">{challenge}</span>}{tags.slice(0, 5).map((t, i) => <span key={i} className="text-xs px-3 py-1 rounded-full bg-white/10 text-white/80">{t}</span>)}</div>)}
+
+              <div className="mt-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setSelectedMusic(null)}
+                  className="h-11 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm"
+                >
+                  Retirer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMusicOpen(false)}
+                  className="h-11 px-4 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white text-sm font-semibold"
+                >
+                  OK
+                </button>
+              </div>
+
+              <div className="mt-2 text-xs text-white/60">
+                UX: Music · Trending · Collect · History · Pure Music.
+              </div>
             </div>
-          </>
-        )}
-      </div>
-
-      <VideoFiltersPanel isOpen={filtersOpen} onClose={() => setFiltersOpen(false)} onSelectFilter={setCurrentFilter} currentFilter={currentFilter} language={language} />
-      <DynamicAITemplates isOpen={magicOpen} onClose={() => setMagicOpen(false)} topic={topic || challenge || ' '} language={language} onApplyTemplate={onApplyTemplate} onGenerated={onGenerated} />
-
-      <BottomSheet isOpen={timerPanel} onClose={() => setTimerPanel(false)} title="Minuterie" titleBa="Akoko" icon={<Timer className="w-5 h-5 text-purple-400" />} language={language}>
-        <div className="grid grid-cols-3 gap-3">{([0, 3, 10] as const).map((t) => (<button key={t} onClick={() => { setTimerSeconds(t); setTimerPanel(false); }} className={`py-4 rounded-2xl border font-semibold ${timerSeconds === t ? 'bg-white text-black border-white' : 'bg-white/10 border-white/10 text-white'}`}>{t === 0 ? (language === 'ba' ? 'Ko si' : 'Off') : `${t}s`}</button>))}</div>
-      </BottomSheet>
-
-      <BottomSheet isOpen={speedPanel} onClose={() => setSpeedPanel(false)} title="Vitesse" titleBa="Iyara" icon={<Gauge className="w-5 h-5 text-purple-400" />} language={language}>
-        <div className="grid grid-cols-3 gap-3">{[0.5, 1, 2].map((s) => (<button key={s} onClick={() => { setSpeed(s); setSpeedPanel(false); }} className={`py-4 rounded-2xl border font-semibold ${speed === s ? 'bg-white text-black border-white' : 'bg-white/10 border-white/10 text-white'}`}>{s}x</button>))}</div>
-      </BottomSheet>
-
-      <BottomSheet isOpen={challengePanel} onClose={() => setChallengePanel(false)} title="Challenges" titleBa="Awọn idije" icon={<Flame className="w-5 h-5 text-orange-400" />} language={language}>
-        <div className="flex flex-wrap gap-2 mb-3">{CHALLENGES.map((c) => (<button key={c} onClick={() => { setChallenge(c); setChallengePanel(false); }} className={`px-4 py-2 rounded-full border font-medium ${challenge === c ? 'bg-white text-black border-white' : 'bg-white/10 border-white/10 text-white'}`}>{c}</button>))}</div>
-        <button onClick={() => { setChallenge(''); setChallengePanel(false); }} className="w-full py-3 rounded-2xl bg-white/10 border border-white/10 text-white font-medium">{language === 'ba' ? 'Pare' : 'Effacer'}</button>
-      </BottomSheet>
-
-      <BottomSheet isOpen={inspiringPanel} onClose={() => setInspiringPanel(false)} title="Idees" titleBa="Awọn imọran" icon={<Eye className="w-5 h-5 text-purple-400" />} language={language}>
-        <div className="space-y-2">{INSPIRING.map((s, i) => (<button key={i} onClick={() => { setTopic(s); setInspiringPanel(false); setMagicOpen(true); }} className="w-full text-left px-4 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center text-sm font-bold">{i + 1}</div><span className="text-sm">{s}</span></div></button>))}</div>
-      </BottomSheet>
-
-      <BottomSheet isOpen={musicPanel} onClose={() => setMusicPanel(false)} title="Musique" titleBa="Orin" icon={<Music className="w-5 h-5 text-pink-400" />} language={language} maxHeight="60vh">
-        <div className="space-y-2">
-          {MUSIC_LIST.map((m) => (<button key={m.id} onClick={() => { setMusic(m); setMusicPanel(false); }} className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border ${music?.id === m.id ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/30' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}><div className="flex items-center gap-3"><Music className="w-5 h-5 text-white/70" /><div className="text-left"><div className="text-white font-medium">{m.title}</div><div className="text-xs text-white/60">{m.artist}</div></div></div>{music?.id === m.id && <Check className="w-5 h-5 text-white" />}</button>))}
-          <button onClick={() => { setMusic(null); setMusicPanel(false); }} className="w-full py-3 rounded-2xl bg-white/10 border border-white/10 text-white font-medium mt-2">{language === 'ba' ? 'Ko si orin' : 'Aucune musique'}</button>
-        </div>
-      </BottomSheet>
-
-      <BottomSheet isOpen={helpPanel} onClose={() => setHelpPanel(false)} title="Aide" titleBa="Iranlọwọ" icon={<HelpCircle className="w-5 h-5 text-blue-400" />} language={language}>
-        <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-            <h4 className="font-semibold mb-2">{language === 'ba' ? 'Bi o se le lo' : 'Comment utiliser'}</h4>
-            <ul className="text-sm text-white/80 space-y-2">
-              <li>- {language === 'ba' ? 'Te bọtini yika lati gba fidio/aworan' : 'Appuyez sur le bouton rond pour capturer'}</li>
-              <li>- {language === 'ba' ? 'Lo awọn asa lati se ẹwa fidio rẹ' : 'Utilisez les filtres pour embellir'}</li>
-              <li>- {language === 'ba' ? 'Fi orin kun si ise rẹ' : 'Ajoutez de la musique a votre creation'}</li>
-              <li>- {language === 'ba' ? 'Lo AI lati sẹda akọle' : "Utilisez l'IA pour generer des idees"}</li>
-            </ul>
-          </div>
-          <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
-            <h4 className="font-semibold mb-2 flex items-center gap-2"><Volume2 className="w-4 h-4 text-blue-400" />{language === 'ba' ? 'Iranlọwọ Ohun' : 'Aide Vocale'}</h4>
-            <p className="text-sm text-white/80">{language === 'ba' ? 'Mu bọtini ohun sise lati gbọ itọni. O dara fun awọn ti ko le ka.' : 'Activez le bouton audio pour entendre les instructions. Ideal pour ceux qui ne peuvent pas lire.'}</p>
-          </div>
-          <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20">
-            <h4 className="font-semibold mb-2 flex items-center gap-2"><Mic className="w-4 h-4 text-green-400" />{language === 'ba' ? 'Ase Ohun' : 'Commandes Vocales'}</h4>
-            <p className="text-sm text-white/80 mb-2">{language === 'ba' ? 'Sọ awọn ọrọ wọnyi:' : 'Dites ces mots:'}</p>
-            <div className="flex flex-wrap gap-2">{['Enregistrer', 'Stop', 'Publier', 'Filtre', 'Musique'].map((cmd) => (<span key={cmd} className="text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-300">{cmd}</span>))}</div>
-          </div>
-        </div>
-      </BottomSheet>
-
-      <BottomSheet isOpen={livePanelOpen} onClose={() => setLivePanelOpen(false)} title="Chat LIVE" titleBa="Ifọrọwanilẹnuwọ" icon={<MessageCircle className="w-5 h-5 text-red-400" />} language={language} maxHeight="75vh">
-        <div className="flex items-center gap-2 mb-3"><Eye className="w-3 h-3 text-white/70" /><span className="text-xs text-white">{liveViewers} {language === 'ba' ? 'oluwò' : 'viewers'}</span></div>
-        <div className="rounded-2xl bg-black/30 border border-white/10 p-3 h-[35vh] overflow-y-auto mb-3 space-y-2">
-          {liveMessages.length === 0 ? (<div className="text-white/50 text-sm text-center py-8">{language === 'ba' ? 'Ko si ifọrọwanilẹnuwọ' : 'Aucun message'}</div>) : (liveMessages.map((m) => (<div key={m.id} className="text-sm bg-white/5 rounded-lg p-2 border border-white/5"><span className="text-purple-400 font-medium text-xs mr-2">{m.display_name ?? 'viewer'}:</span><span className="text-white">{m.message}</span></div>)))}
-        </div>
-        <div className="flex gap-2"><input value={liveInput} onChange={(e) => setLiveInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendLive()} placeholder={language === 'ba' ? 'Kọ...' : 'Ecris...'} className="flex-1 px-4 py-3 rounded-2xl bg-black/40 border border-white/10 text-white outline-none" /><button onClick={sendLive} disabled={!liveInput.trim()} className="w-12 h-12 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center disabled:opacity-50"><Send className="w-5 h-5 text-white" /></button></div>
-      </BottomSheet>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
-};
-
-export default FullscreenCreator;
+}
