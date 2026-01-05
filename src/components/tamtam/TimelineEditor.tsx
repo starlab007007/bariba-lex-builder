@@ -5,25 +5,25 @@ import {
   X,
   Check,
   Loader2,
-  Scissors,
   Sparkles,
   Subtitles,
-  Wand2,
   LayoutGrid,
   Sticker,
   Pencil,
   Film,
   Flame,
   Music,
-  Crop,
-  Move,
   Undo2,
   Redo2,
+  Scissors,
+  Crop,
   MoreHorizontal,
   EyeOff,
   Eye,
   Volume2,
   VolumeX,
+  Move,
+  Wand2,
   Type,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,14 +50,13 @@ interface TimelineEditorProps {
   language?: "fr" | "ba";
 }
 
-/**
- * Kuaishou-like Timeline Editor
- * - Fullscreen preview
- * - Minimal HUD by default
- * - Right rail essentials only
- * - Drawers for extended panels (Canvas/Effects/Stickers/Subtitles/Graffiti/Challenge)
- * - Tap to hide HUD, swipe up to open tools
- */
+type DrawerPanel = "none" | "stickers" | "subtitles" | "graffiti" | "challenge" | "music" | "magic" | "text";
+type SidePanel = "none" | "canvasLeft" | "effectsRight";
+
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
+}
+
 export default function TimelineEditor({
   segments,
   onSegmentsChange,
@@ -66,45 +65,40 @@ export default function TimelineEditor({
   language = "fr",
 }: TimelineEditorProps) {
   const [hudVisible, setHudVisible] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // side panels inside drawer
-  const [panel, setPanel] = useState<
-    "none" | "enhance" | "canvas" | "subtitles" | "effects" | "stickers" | "graffiti" | "challenge" | "music"
-  >("none");
+  // drawer bottom (secondary)
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerPanel, setDrawerPanel] = useState<DrawerPanel>("none");
+
+  // side panels (premium)
+  const [sidePanel, setSidePanel] = useState<SidePanel>("none");
 
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  // timeline UI
   const [activeSegId, setActiveSegId] = useState<string>(segments[0]?.id ?? "");
   const activeSeg = useMemo(() => segments.find((s) => s.id === activeSegId) ?? segments[0], [segments, activeSegId]);
 
-  // preview
   const [previewUrl, setPreviewUrl] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // lightweight “history”
+  // lightweight history
   const [undoStack, setUndoStack] = useState<TimelineSegment[][]>([]);
   const [redoStack, setRedoStack] = useState<TimelineSegment[][]>([]);
 
   const pushHistory = (next: TimelineSegment[]) => {
-    setUndoStack((s) => [...s.slice(-10), segments.map((x) => ({ ...x }))]); // keep last 10
+    setUndoStack((s) => [...s.slice(-10), segments.map((x) => ({ ...x }))]);
     setRedoStack([]);
     onSegmentsChange(next);
   };
 
   useEffect(() => {
-    // maintain active segment
     if (!segments.length) return;
-    if (!activeSegId || !segments.some((s) => s.id === activeSegId)) {
-      setActiveSegId(segments[0].id);
-    }
+    if (!activeSegId || !segments.some((s) => s.id === activeSegId)) setActiveSegId(segments[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments.length]);
 
   useEffect(() => {
-    // create preview url for active segment
     if (!activeSeg?.blob) return;
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     const url = URL.createObjectURL(activeSeg.blob);
@@ -123,11 +117,16 @@ export default function TimelineEditor({
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  /** gestures */
-  const swipeRef = useRef<{ x0: number; y0: number; active: boolean } | null>(null);
+  /** ====== gestures ====== */
+  const swipeRef = useRef<{ x0: number; y0: number; active: boolean; edge?: "left" | "right" | "center" } | null>(
+    null
+  );
 
   const onSurfacePointerDown = (e: React.PointerEvent) => {
-    swipeRef.current = { x0: e.clientX, y0: e.clientY, active: true };
+    const w = window.innerWidth || 390;
+    const x = e.clientX;
+    const edge = x < 24 ? "left" : x > w - 24 ? "right" : "center"; // edge-swipe like native apps
+    swipeRef.current = { x0: e.clientX, y0: e.clientY, active: true, edge };
   };
 
   const onSurfacePointerMove = (e: React.PointerEvent) => {
@@ -135,12 +134,34 @@ export default function TimelineEditor({
     const dx = e.clientX - swipeRef.current.x0;
     const dy = e.clientY - swipeRef.current.y0;
 
-    // swipe up to open drawer
-    if (dy < -70 && Math.abs(dx) < 60) {
+    // swipe up => bottom drawer tools
+    if (dy < -70 && Math.abs(dx) < 70) {
       swipeRef.current.active = false;
       setDrawerOpen(true);
+      setDrawerPanel("none");
       setHudVisible(true);
-      setPanel("none");
+      // close side panels when opening drawer
+      setSidePanel("none");
+      return;
+    }
+
+    // edge swipe right (from left edge) => open Canvas left
+    if (swipeRef.current.edge === "left" && dx > 80 && Math.abs(dy) < 70) {
+      swipeRef.current.active = false;
+      setSidePanel((p) => (p === "canvasLeft" ? "none" : "canvasLeft"));
+      setDrawerOpen(false);
+      setDrawerPanel("none");
+      setHudVisible(true);
+      return;
+    }
+
+    // edge swipe left (from right edge) => open Effects right
+    if (swipeRef.current.edge === "right" && dx < -80 && Math.abs(dy) < 70) {
+      swipeRef.current.active = false;
+      setSidePanel((p) => (p === "effectsRight" ? "none" : "effectsRight"));
+      setDrawerOpen(false);
+      setDrawerPanel("none");
+      setHudVisible(true);
       return;
     }
   };
@@ -152,66 +173,11 @@ export default function TimelineEditor({
   const toggleHud = () => {
     setHudVisible((v) => !v);
     setDrawerOpen(false);
-    setPanel("none");
+    setDrawerPanel("none");
+    setSidePanel("none");
   };
 
-  /** minimal actions */
-  const toggleMute = () => {
-    if (!activeSeg) return;
-    const next = segments.map((s) =>
-      s.id === activeSeg.id ? { ...s, isMuted: !s.isMuted, volume: s.isMuted ? 100 : 0 } : s
-    );
-    pushHistory(next);
-    setToast(activeSeg.isMuted ? "Son ON" : "Son OFF");
-  };
-
-  const setVolume = (vol: number) => {
-    if (!activeSeg) return;
-    const v = Math.max(0, Math.min(100, vol));
-    const next = segments.map((s) => (s.id === activeSeg.id ? { ...s, volume: v, isMuted: v === 0 } : s));
-    pushHistory(next);
-  };
-
-  const trimActive = (seconds: number) => {
-    if (!activeSeg) return;
-    const dur = Math.max(0.5, activeSeg.duration);
-    const newDur = Math.max(0.5, Math.min(dur, dur - seconds));
-    const next = segments.map((s) =>
-      s.id === activeSeg.id ? { ...s, duration: newDur, endTime: s.startTime + newDur } : s
-    );
-    pushHistory(next);
-    setToast("Trim OK");
-  };
-
-  const splitActive = () => {
-    if (!activeSeg) return;
-    const dur = Math.max(1, activeSeg.duration);
-    if (dur < 2) return setToast("Trop court");
-    const aDur = Math.floor(dur / 2);
-    const bDur = dur - aDur;
-
-    const idx = segments.findIndex((s) => s.id === activeSeg.id);
-    const a: TimelineSegment = {
-      ...activeSeg,
-      id: `${activeSeg.id}_a`,
-      duration: aDur,
-      startTime: 0,
-      endTime: aDur,
-    };
-    const b: TimelineSegment = {
-      ...activeSeg,
-      id: `${activeSeg.id}_b`,
-      duration: bDur,
-      startTime: 0,
-      endTime: bDur,
-    };
-
-    const next = [...segments.slice(0, idx), a, b, ...segments.slice(idx + 1)];
-    pushHistory(next);
-    setActiveSegId(a.id);
-    setToast("Split OK");
-  };
-
+  /** ====== actions ====== */
   const doUndo = () => {
     setUndoStack((stk) => {
       if (!stk.length) return stk;
@@ -234,31 +200,61 @@ export default function TimelineEditor({
     });
   };
 
-  const applyEnhance = () => {
-    // Placeholder: in real pipeline apply actual filter/enhancement.
-    setToast("Enhance ✓");
+  const toggleMute = () => {
+    if (!activeSeg) return;
+    const next = segments.map((s) =>
+      s.id === activeSeg.id ? { ...s, isMuted: !s.isMuted, volume: s.isMuted ? 100 : 0 } : s
+    );
+    pushHistory(next);
+    setToast(activeSeg.isMuted ? "Son ON" : "Son OFF");
   };
 
-  const applyEffectPreset = (name: string) => {
-    setToast(`Effect: ${name}`);
+  const setVolume = (vol: number) => {
+    if (!activeSeg) return;
+    const v = clamp(vol, 0, 100);
+    const next = segments.map((s) => (s.id === activeSeg.id ? { ...s, volume: v, isMuted: v === 0 } : s));
+    pushHistory(next);
   };
 
-  const applyCanvasRatio = (ratio: "9:16" | "1:1" | "16:9") => {
-    // Stored in meta elsewhere; here we just toast.
-    setToast(`Canvas: ${ratio}`);
+  const splitActive = () => {
+    if (!activeSeg) return;
+    const dur = Math.max(1, activeSeg.duration);
+    if (dur < 2) return setToast("Trop court");
+    const aDur = Math.floor(dur / 2);
+    const bDur = dur - aDur;
+
+    const idx = segments.findIndex((s) => s.id === activeSeg.id);
+    const a: TimelineSegment = { ...activeSeg, id: `${activeSeg.id}_a`, duration: aDur, startTime: 0, endTime: aDur };
+    const b: TimelineSegment = { ...activeSeg, id: `${activeSeg.id}_b`, duration: bDur, startTime: 0, endTime: bDur };
+    const next = [...segments.slice(0, idx), a, b, ...segments.slice(idx + 1)];
+    pushHistory(next);
+    setActiveSegId(a.id);
+    setToast("Split ✓");
   };
 
-  const applySubtitlePreset = (name: string) => {
-    setToast(`Subtitles: ${name}`);
+  const trimActive = (seconds: number) => {
+    if (!activeSeg) return;
+    const dur = Math.max(0.5, activeSeg.duration);
+    const newDur = Math.max(0.5, Math.min(dur, dur - seconds));
+    const next = segments.map((s) => (s.id === activeSeg.id ? { ...s, duration: newDur, endTime: newDur } : s));
+    pushHistory(next);
+    setToast("Trim ✓");
   };
 
-  const applySticker = (name: string) => {
-    setToast(`Sticker: ${name}`);
-  };
+  const applyEnhance = () => setToast("Enhance ✓");
 
-  const applyChallenge = (name: string) => {
-    setToast(`Challenge: ${name}`);
-  };
+  /** Side panel actions */
+  const applyCanvas = (ratio: "9:16" | "1:1" | "16:9") => setToast(`Canvas: ${ratio}`);
+  const applyBackground = (bg: "none" | "blur" | "gradient") => setToast(`BG: ${bg}`);
+  const applyReframe = () => setToast("Reframe ✓");
+
+  const applyEffect = (name: string) => setToast(`Effect: ${name}`);
+
+  /** Drawer actions */
+  const applySubtitle = (name: string) => setToast(`Subtitles: ${name}`);
+  const applySticker = (name: string) => setToast(`Sticker: ${name}`);
+  const applyChallenge = (name: string) => setToast(`Challenge: ${name}`);
+  const applyMusic = (name: string) => setToast(`Music: ${name}`);
 
   const confirm = async () => {
     try {
@@ -308,7 +304,7 @@ export default function TimelineEditor({
               </div>
               <audio src={previewUrl} className="w-full mt-3" controls />
               <div className="mt-2 text-xs text-white/60">
-                Swipe ↑ pour outils · Tap écran pour cacher/afficher HUD
+                Edge-swipe: Canvas (gauche) / Effects (droite) · Swipe ↑ : Outils · Tap : hide HUD
               </div>
             </div>
           </div>
@@ -329,6 +325,94 @@ export default function TimelineEditor({
           ) : null}
         </AnimatePresence>
       </div>
+
+      {/* Side panel LEFT (Canvas) */}
+      <AnimatePresence>
+        {sidePanel === "canvasLeft" ? (
+          <motion.div
+            initial={{ x: -360, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -360, opacity: 0 }}
+            transition={{ type: "spring", damping: 26, stiffness: 260 }}
+            className="absolute left-0 top-0 bottom-0 w-[320px] z-[92] bg-[#0b0b0e]/95 border-r border-white/10 backdrop-blur"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-3 flex items-center justify-between border-b border-white/10">
+              <div className="text-white font-semibold flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4" /> Canvas
+              </div>
+              <button
+                type="button"
+                onClick={() => setSidePanel("none")}
+                className="h-9 w-9 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-3 text-white">
+              <div className="text-xs text-white/60">Ratio</div>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                <SideBtn label="9:16" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => applyCanvas("9:16")} />
+                <SideBtn label="1:1" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => applyCanvas("1:1")} />
+                <SideBtn label="16:9" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => applyCanvas("16:9")} />
+              </div>
+
+              <div className="mt-4 text-xs text-white/60">Background</div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <SideBtn label="None" icon={<Move className="h-4 w-4" />} onClick={() => applyBackground("none")} />
+                <SideBtn label="Blur" icon={<Move className="h-4 w-4" />} onClick={() => applyBackground("blur")} />
+                <SideBtn label="Gradient" icon={<Move className="h-4 w-4" />} onClick={() => applyBackground("gradient")} />
+                <SideBtn label="Reframe" icon={<Crop className="h-4 w-4" />} onClick={() => applyReframe()} />
+              </div>
+
+              <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-3 text-xs text-white/70">
+                Astuce: **edge swipe depuis gauche** ouvre/ferme Canvas.
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* Side panel RIGHT (Effects) */}
+      <AnimatePresence>
+        {sidePanel === "effectsRight" ? (
+          <motion.div
+            initial={{ x: 360, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 360, opacity: 0 }}
+            transition={{ type: "spring", damping: 26, stiffness: 260 }}
+            className="absolute right-0 top-0 bottom-0 w-[320px] z-[92] bg-[#0b0b0e]/95 border-l border-white/10 backdrop-blur"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-3 flex items-center justify-between border-b border-white/10">
+              <div className="text-white font-semibold flex items-center gap-2">
+                <Film className="h-4 w-4" /> Effects
+              </div>
+              <button
+                type="button"
+                onClick={() => setSidePanel("none")}
+                className="h-9 w-9 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-3 text-white">
+              <div className="text-xs text-white/60">Presets</div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {["Cinematic", "Vlog", "Vivid", "Vintage", "BW", "Dramatic", "Warm", "Cool"].map((p) => (
+                  <SideBtn key={p} label={p} icon={<Film className="h-4 w-4" />} onClick={() => applyEffect(p)} />
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-3 text-xs text-white/70">
+                Astuce: **edge swipe depuis droite** ouvre/ferme Effects.
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/* HUD Clean */}
       <AnimatePresence>
@@ -351,7 +435,7 @@ export default function TimelineEditor({
 
                 <div className="text-white">
                   <div className="font-semibold text-sm">Édition</div>
-                  <div className="text-[11px] text-white/60">Post-capture · Timeline</div>
+                  <div className="text-[11px] text-white/60">Swipe bords: Canvas/Effects · Swipe ↑ : Outils</div>
                 </div>
               </div>
 
@@ -360,13 +444,12 @@ export default function TimelineEditor({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setDrawerOpen(true);
-                    setPanel("none");
+                    applyEnhance();
                   }}
-                  className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-                  title="Outils (swipe ↑)"
+                  className="h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+                  title="Enhance"
                 >
-                  <MoreHorizontal className="h-5 w-5" />
+                  <Sparkles className="h-4 w-4" /> Enhance
                 </button>
 
                 <button
@@ -387,89 +470,72 @@ export default function TimelineEditor({
               </div>
             </div>
 
-            {/* Right rail (essentials only) */}
+            {/* Right mini rail (very small) */}
             <div className="absolute right-3 top-20 z-20 flex flex-col gap-2 pointer-events-auto">
-              <button
-                type="button"
+              <MiniBtn
+                title="Canvas (edge swipe gauche)"
+                icon={<LayoutGrid className="h-5 w-5 text-white" />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  applyEnhance();
+                  setSidePanel((p) => (p === "canvasLeft" ? "none" : "canvasLeft"));
+                  setDrawerOpen(false);
                 }}
-                className="w-12 h-12 rounded-2xl bg-black/35 border border-white/10 backdrop-blur flex items-center justify-center hover:bg-black/45"
-                title="Enhance"
-              >
-                <Sparkles className="h-5 w-5 text-white" />
-              </button>
-
-              <button
-                type="button"
+                active={sidePanel === "canvasLeft"}
+              />
+              <MiniBtn
+                title="Effects (edge swipe droite)"
+                icon={<Film className="h-5 w-5 text-white" />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setDrawerOpen(true);
-                  setPanel("subtitles");
+                  setSidePanel((p) => (p === "effectsRight" ? "none" : "effectsRight"));
+                  setDrawerOpen(false);
                 }}
-                className="w-12 h-12 rounded-2xl bg-black/35 border border-white/10 backdrop-blur flex items-center justify-center hover:bg-black/45"
+                active={sidePanel === "effectsRight"}
+              />
+              <MiniBtn
                 title="Subtitles"
-              >
-                <Subtitles className="h-5 w-5 text-white" />
-              </button>
-
-              <button
-                type="button"
+                icon={<Subtitles className="h-5 w-5 text-white" />}
                 onClick={(e) => {
                   e.stopPropagation();
                   setDrawerOpen(true);
-                  setPanel("effects");
+                  setDrawerPanel("subtitles");
+                  setSidePanel("none");
                 }}
-                className="w-12 h-12 rounded-2xl bg-black/35 border border-white/10 backdrop-blur flex items-center justify-center hover:bg-black/45"
-                title="Effects"
-              >
-                <Film className="h-5 w-5 text-white" />
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDrawerOpen(true);
-                  setPanel("canvas");
-                }}
-                className="w-12 h-12 rounded-2xl bg-black/35 border border-white/10 backdrop-blur flex items-center justify-center hover:bg-black/45"
-                title="Canvas"
-              >
-                <LayoutGrid className="h-5 w-5 text-white" />
-              </button>
-
-              <button
-                type="button"
+              />
+              <MiniBtn
+                title="Mute"
+                icon={activeSeg?.isMuted ? <VolumeX className="h-5 w-5 text-white" /> : <Volume2 className="h-5 w-5 text-white" />}
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMute();
                 }}
-                className="w-12 h-12 rounded-2xl bg-black/35 border border-white/10 backdrop-blur flex items-center justify-center hover:bg-black/45"
-                title="Mute"
                 disabled={activeSeg?.type !== "video" && activeSeg?.type !== "audio"}
-              >
-                {activeSeg?.isMuted ? <VolumeX className="h-5 w-5 text-white" /> : <Volume2 className="h-5 w-5 text-white" />}
-              </button>
-
-              <button
-                type="button"
+              />
+              <MiniBtn
+                title="Outils (swipe ↑)"
+                icon={<MoreHorizontal className="h-5 w-5 text-white" />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDrawerOpen(true);
+                  setDrawerPanel("none");
+                  setSidePanel("none");
+                }}
+              />
+              <MiniBtn
+                title="Hide HUD"
+                icon={<EyeOff className="h-5 w-5 text-white" />}
                 onClick={(e) => {
                   e.stopPropagation();
                   setHudVisible(false);
+                  setDrawerOpen(false);
+                  setSidePanel("none");
                 }}
-                className="w-12 h-12 rounded-2xl bg-black/35 border border-white/10 backdrop-blur flex items-center justify-center hover:bg-black/45"
-                title="Hide HUD"
-              >
-                <EyeOff className="h-5 w-5 text-white" />
-              </button>
+              />
             </div>
 
             {/* Bottom timeline compact */}
             <div className="absolute left-0 right-0 bottom-0 z-20 p-3 pointer-events-auto">
-              <div className="mx-auto max-w-[920px] rounded-3xl bg-black/45 border border-white/10 backdrop-blur p-3">
-                {/* Timeline strip */}
+              <div className="mx-auto max-w-[960px] rounded-3xl bg-black/45 border border-white/10 backdrop-blur p-3">
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                   {segments.map((s) => {
                     const active = s.id === activeSeg?.id;
@@ -485,7 +551,6 @@ export default function TimelineEditor({
                           "min-w-[120px] h-12 px-3 rounded-2xl border text-left",
                           active ? "bg-white/15 border-white/25 text-white" : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10"
                         )}
-                        title={s.type}
                       >
                         <div className="text-xs font-semibold">
                           {s.type === "video" ? "🎬 Vidéo" : s.type === "photo" ? "🖼️ Photo" : "🎧 Audio"}
@@ -496,58 +561,12 @@ export default function TimelineEditor({
                   })}
                 </div>
 
-                {/* mini controls row */}
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        doUndo();
-                      }}
-                      disabled={!undoStack.length}
-                      className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center disabled:opacity-40"
-                      title="Undo"
-                    >
-                      <Undo2 className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        doRedo();
-                      }}
-                      disabled={!redoStack.length}
-                      className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center disabled:opacity-40"
-                      title="Redo"
-                    >
-                      <Redo2 className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        splitActive();
-                      }}
-                      className="h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
-                      title="Split"
-                    >
-                      <Scissors className="h-4 w-4" /> Split
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        trimActive(1);
-                      }}
-                      className="h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
-                      title="Trim -1s"
-                    >
-                      <Crop className="h-4 w-4" /> Trim
-                    </button>
+                    <IconBtn title="Undo" onClick={doUndo} disabled={!undoStack.length} icon={<Undo2 className="h-4 w-4" />} />
+                    <IconBtn title="Redo" onClick={doRedo} disabled={!redoStack.length} icon={<Redo2 className="h-4 w-4" />} />
+                    <TextBtn title="Split" onClick={splitActive} icon={<Scissors className="h-4 w-4" />} label="Split" />
+                    <TextBtn title="Trim -1s" onClick={() => trimActive(1)} icon={<Crop className="h-4 w-4" />} label="Trim" />
 
                     {(activeSeg?.type === "video" || activeSeg?.type === "audio") && (
                       <div className="hidden sm:flex items-center gap-2 ml-2">
@@ -572,26 +591,38 @@ export default function TimelineEditor({
                     onClick={(e) => {
                       e.stopPropagation();
                       setDrawerOpen(true);
-                      setPanel("none");
+                      setDrawerPanel("none");
+                      setSidePanel("none");
                     }}
                     className="h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
-                    title="Plus d’outils"
                   >
                     <MoreHorizontal className="h-4 w-4" /> Outils
                   </button>
                 </div>
 
                 <div className="mt-2 text-[11px] text-white/60 flex items-center justify-between">
-                  <div>Tap écran: hide HUD · Swipe ↑: outils</div>
+                  <div>
+                    Edge swipe: <span className="text-white/70">Canvas</span> (gauche) / <span className="text-white/70">Effects</span> (droite) · Swipe ↑ : Outils
+                  </div>
                   <div className="text-white/45">{activeSeg?.type?.toUpperCase() ?? ""}</div>
                 </div>
               </div>
             </div>
           </motion.div>
-        ) : null}
+        ) : (
+          <div className="absolute top-3 right-3 z-30 pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setHudVisible(true)}
+              className="h-11 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+            >
+              <Eye className="h-4 w-4" /> Afficher HUD
+            </button>
+          </div>
+        )}
       </AnimatePresence>
 
-      {/* Drawer (secondary panels) */}
+      {/* Bottom drawer tools (Swipe ↑) */}
       <AnimatePresence>
         {drawerOpen ? (
           <motion.div
@@ -601,7 +632,7 @@ export default function TimelineEditor({
             className="absolute inset-0 z-[95] bg-black/60 backdrop-blur flex items-end"
             onClick={() => {
               setDrawerOpen(false);
-              setPanel("none");
+              setDrawerPanel("none");
             }}
           >
             <div
@@ -610,13 +641,13 @@ export default function TimelineEditor({
             >
               <div className="flex items-center justify-between">
                 <div className="text-white font-semibold flex items-center gap-2">
-                  <LayoutGrid className="h-4 w-4" /> Outils post-capture
+                  <LayoutGrid className="h-4 w-4" /> Outils
                 </div>
                 <button
                   type="button"
                   onClick={() => {
                     setDrawerOpen(false);
-                    setPanel("none");
+                    setDrawerPanel("none");
                   }}
                   className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
                 >
@@ -624,147 +655,84 @@ export default function TimelineEditor({
                 </button>
               </div>
 
-              {/* Panel selector */}
               <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2">
-                <PanelBtn label="Canvas" icon={<LayoutGrid className="h-4 w-4" />} active={panel === "canvas"} onClick={() => setPanel("canvas")} />
-                <PanelBtn label="Effects" icon={<Film className="h-4 w-4" />} active={panel === "effects"} onClick={() => setPanel("effects")} />
-                <PanelBtn label="Stickers" icon={<Sticker className="h-4 w-4" />} active={panel === "stickers"} onClick={() => setPanel("stickers")} />
-                <PanelBtn label="Subtitles" icon={<Subtitles className="h-4 w-4" />} active={panel === "subtitles"} onClick={() => setPanel("subtitles")} />
-                <PanelBtn label="Graffiti" icon={<Pencil className="h-4 w-4" />} active={panel === "graffiti"} onClick={() => setPanel("graffiti")} />
-                <PanelBtn label="Challenge" icon={<Flame className="h-4 w-4" />} active={panel === "challenge"} onClick={() => setPanel("challenge")} />
+                <DrawerTab label="Stickers" icon={<Sticker className="h-4 w-4" />} active={drawerPanel === "stickers"} onClick={() => setDrawerPanel("stickers")} />
+                <DrawerTab label="Subtitles" icon={<Subtitles className="h-4 w-4" />} active={drawerPanel === "subtitles"} onClick={() => setDrawerPanel("subtitles")} />
+                <DrawerTab label="Graffiti" icon={<Pencil className="h-4 w-4" />} active={drawerPanel === "graffiti"} onClick={() => setDrawerPanel("graffiti")} />
+                <DrawerTab label="Challenge" icon={<Flame className="h-4 w-4" />} active={drawerPanel === "challenge"} onClick={() => setDrawerPanel("challenge")} />
+                <DrawerTab label="Music" icon={<Music className="h-4 w-4" />} active={drawerPanel === "music"} onClick={() => setDrawerPanel("music")} />
+                <DrawerTab label="Magic" icon={<Wand2 className="h-4 w-4" />} active={drawerPanel === "magic"} onClick={() => setDrawerPanel("magic")} />
               </div>
 
-              {/* Panel content */}
               <div className="mt-3">
-                {panel === "none" ? (
+                {drawerPanel === "none" ? (
                   <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
                     <div className="text-sm font-semibold flex items-center gap-2">
-                      <Eye className="h-4 w-4" /> Mode clean
+                      <Eye className="h-4 w-4" /> Mode premium
                     </div>
                     <div className="text-xs text-white/70 mt-1">
-                      Ici on met tous les outils secondaires pour garder l’écran principal clair.
+                      Canvas et Effects sont en **panneaux latéraux** (edge-swipe). Ici: stickers, sous-titres, etc.
                     </div>
 
                     <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <QuickBtn label="Texte overlay" icon={<Type className="h-4 w-4" />} onClick={() => setToast("Text overlay (todo)")} />
                       <QuickBtn label="Enhance" icon={<Sparkles className="h-4 w-4" />} onClick={applyEnhance} />
                       <QuickBtn label="Magic" icon={<Wand2 className="h-4 w-4" />} onClick={() => setToast("Magic ✓")} />
-                      <QuickBtn label="Music" icon={<Music className="h-4 w-4" />} onClick={() => setPanel("music")} />
-                      <QuickBtn label="Texte" icon={<Type className="h-4 w-4" />} onClick={() => setToast("Text overlay (todo)")} />
+                      <QuickBtn label="Close" icon={<X className="h-4 w-4" />} onClick={() => setDrawerOpen(false)} />
                     </div>
                   </div>
                 ) : null}
 
-                {panel === "canvas" ? (
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
-                    <div className="font-semibold flex items-center gap-2">
-                      <LayoutGrid className="h-4 w-4" /> Canvas
-                    </div>
-                    <div className="text-xs text-white/70 mt-1">Ratio + background + reframe.</div>
-
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      <QuickBtn label="9:16" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => applyCanvasRatio("9:16")} />
-                      <QuickBtn label="1:1" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => applyCanvasRatio("1:1")} />
-                      <QuickBtn label="16:9" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => applyCanvasRatio("16:9")} />
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <QuickBtn label="Background: none" icon={<Move className="h-4 w-4" />} onClick={() => setToast("BG: none")} />
-                      <QuickBtn label="Background: blur" icon={<Move className="h-4 w-4" />} onClick={() => setToast("BG: blur")} />
-                    </div>
-                  </div>
+                {drawerPanel === "stickers" ? (
+                  <PanelCard title="Stickers" desc="AR assets / emojis / tags.">
+                    {["😀 Emoji", "🔥 Badge", "💬 Bubble", "✨ Sparkle"].map((s) => (
+                      <QuickBtn key={s} label={s} icon={<Sticker className="h-4 w-4" />} onClick={() => applySticker(s)} />
+                    ))}
+                  </PanelCard>
                 ) : null}
 
-                {panel === "effects" ? (
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
-                    <div className="font-semibold flex items-center gap-2">
-                      <Film className="h-4 w-4" /> Effects
-                    </div>
-                    <div className="text-xs text-white/70 mt-1">Presets (preview temps réel à brancher).</div>
-
-                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {["Cinematic", "Vlog", "Vivid", "Vintage", "BW", "Dramatic"].map((e) => (
-                        <QuickBtn key={e} label={e} icon={<Film className="h-4 w-4" />} onClick={() => applyEffectPreset(e)} />
-                      ))}
-                    </div>
-                  </div>
+                {drawerPanel === "subtitles" ? (
+                  <PanelCard title="Subtitles" desc="Accessibilité + créateurs peu lettrés.">
+                    {["Auto", "Bold", "Karaoke"].map((s) => (
+                      <QuickBtn key={s} label={s} icon={<Subtitles className="h-4 w-4" />} onClick={() => applySubtitle(s)} />
+                    ))}
+                  </PanelCard>
                 ) : null}
 
-                {panel === "subtitles" ? (
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
-                    <div className="font-semibold flex items-center gap-2">
-                      <Subtitles className="h-4 w-4" /> Subtitles
-                    </div>
-                    <div className="text-xs text-white/70 mt-1">Accessibilité + créateurs peu lettrés.</div>
-
-                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {["Auto", "Kuaishou bold", "Karaoke"].map((s) => (
-                        <QuickBtn key={s} label={s} icon={<Subtitles className="h-4 w-4" />} onClick={() => applySubtitlePreset(s)} />
-                      ))}
-                    </div>
-                  </div>
+                {drawerPanel === "graffiti" ? (
+                  <PanelCard title="Graffiti" desc="Canvas overlay (à brancher).">
+                    {["Activer", "Effacer", "Couleur", "Taille"].map((s) => (
+                      <QuickBtn key={s} label={s} icon={<Pencil className="h-4 w-4" />} onClick={() => setToast(`Graffiti: ${s}`)} />
+                    ))}
+                  </PanelCard>
                 ) : null}
 
-                {panel === "stickers" ? (
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
-                    <div className="font-semibold flex items-center gap-2">
-                      <Sticker className="h-4 w-4" /> Stickers
-                    </div>
-                    <div className="text-xs text-white/70 mt-1">AR assets / emojis / tags.</div>
-
-                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {["😀 Emoji", "🔥 Badge", "💬 Bubble", "✨ Sparkle"].map((s) => (
-                        <QuickBtn key={s} label={s} icon={<Sticker className="h-4 w-4" />} onClick={() => applySticker(s)} />
-                      ))}
-                    </div>
-                  </div>
+                {drawerPanel === "challenge" ? (
+                  <PanelCard title="Challenge" desc="Distribution / viral.">
+                    {["#DanceChallenge", "#MarketDay", "#StoryTime", "#BeforeAfter", "#Comedy"].map((c) => (
+                      <QuickBtn key={c} label={c} icon={<Flame className="h-4 w-4" />} onClick={() => applyChallenge(c)} />
+                    ))}
+                  </PanelCard>
                 ) : null}
 
-                {panel === "graffiti" ? (
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
-                    <div className="font-semibold flex items-center gap-2">
-                      <Pencil className="h-4 w-4" /> Graffiti
-                    </div>
-                    <div className="text-xs text-white/70 mt-1">Canvas overlay (à brancher).</div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <QuickBtn label="Activer" icon={<Pencil className="h-4 w-4" />} onClick={() => setToast("Graffiti ON")} />
-                      <QuickBtn label="Effacer" icon={<Pencil className="h-4 w-4" />} onClick={() => setToast("Clear")} />
-                    </div>
-                  </div>
+                {drawerPanel === "music" ? (
+                  <PanelCard title="Music" desc="Sélection (UI).">
+                    {["Afro Vibes", "Drum Groove", "Chill Beats", "Upbeat Dance"].map((m) => (
+                      <QuickBtn key={m} label={m} icon={<Music className="h-4 w-4" />} onClick={() => applyMusic(m)} />
+                    ))}
+                  </PanelCard>
                 ) : null}
 
-                {panel === "challenge" ? (
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
-                    <div className="font-semibold flex items-center gap-2">
-                      <Flame className="h-4 w-4" /> Challenge
-                    </div>
-                    <div className="text-xs text-white/70 mt-1">Distribution / viral.</div>
-
-                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {["#DanceChallenge", "#MarketDay", "#StoryTime", "#BeforeAfter", "#Comedy"].map((c) => (
-                        <QuickBtn key={c} label={c} icon={<Flame className="h-4 w-4" />} onClick={() => applyChallenge(c)} />
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {panel === "music" ? (
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
-                    <div className="font-semibold flex items-center gap-2">
-                      <Music className="h-4 w-4" /> Music
-                    </div>
-                    <div className="text-xs text-white/70 mt-1">Sélection (UI) — pipeline audio à brancher.</div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      {["Afro Vibes", "Drum Groove", "Chill Beats", "Upbeat Dance"].map((m) => (
-                        <QuickBtn key={m} label={m} icon={<Music className="h-4 w-4" />} onClick={() => setToast(`Music: ${m}`)} />
-                      ))}
-                    </div>
-                  </div>
+                {drawerPanel === "magic" ? (
+                  <PanelCard title="Magic" desc="IA/AR (placeholder).">
+                    {["Face recognition", "Emoji face", "Object tracking", "Auto recommend"].map((m) => (
+                      <QuickBtn key={m} label={m} icon={<Wand2 className="h-4 w-4" />} onClick={() => setToast(`Magic: ${m}`)} />
+                    ))}
+                  </PanelCard>
                 ) : null}
               </div>
 
-              <div className="mt-3 text-xs text-white/60">Swipe ↑ ouvre. Tap dehors ferme. Tap écran cache HUD.</div>
+              <div className="mt-3 text-xs text-white/60">Swipe ↑ ouvre. Tap dehors ferme. Edge swipe = Canvas/Effects.</div>
             </div>
           </motion.div>
         ) : null}
@@ -773,8 +741,83 @@ export default function TimelineEditor({
   );
 }
 
-/** UI helpers */
-function PanelBtn({
+/** ===== UI atoms ===== */
+
+function MiniBtn({
+  title,
+  icon,
+  onClick,
+  active,
+  disabled,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  onClick: (e: any) => void;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "w-12 h-12 rounded-2xl flex items-center justify-center",
+        "bg-black/35 border border-white/10 backdrop-blur hover:bg-black/45",
+        active ? "ring-2 ring-white/25" : "",
+        disabled ? "opacity-40 cursor-not-allowed" : ""
+      )}
+    >
+      {icon}
+    </button>
+  );
+}
+
+function IconBtn({ title, onClick, disabled, icon }: { title: string; onClick: () => void; disabled?: boolean; icon: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      disabled={disabled}
+      className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center disabled:opacity-40"
+    >
+      {icon}
+    </button>
+  );
+}
+
+function TextBtn({
+  title,
+  onClick,
+  icon,
+  label,
+}: {
+  title: string;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
+    >
+      {icon} {label}
+    </button>
+  );
+}
+
+function DrawerTab({
   label,
   icon,
   active,
@@ -801,6 +844,39 @@ function PanelBtn({
 }
 
 function QuickBtn({ label, icon, onClick }: { label: string; icon: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-xs flex items-center justify-center gap-2 hover:bg-white/15"
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function PanelCard({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
+      <div className="font-semibold flex items-center gap-2">
+        <LayoutGrid className="h-4 w-4" /> {title}
+      </div>
+      <div className="text-xs text-white/70 mt-1">{desc}</div>
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">{children}</div>
+    </div>
+  );
+}
+
+function SideBtn({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
