@@ -1,20 +1,9 @@
 // src/components/tamtam/TamTamCreatePost.tsx
 import React, { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  X,
-  Mic,
-  Square,
-  Play,
-  Pause,
-  Radio,
-  Sparkles,
-  Camera,
-  Check,
-  Loader2,
-} from "lucide-react";
+import { X, Mic, Square, Play, Radio, Sparkles, Camera, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import FullscreenCreator, { CreatorOutputPayload } from "./FullscreenCreator";
+import FullscreenCreator, { type CreatorOutputPayload } from "./FullscreenCreator";
 
 type CreateStep = "hub" | "audioRecord" | "audioPreview";
 
@@ -22,10 +11,7 @@ export interface TamTamCreatePostProps {
   isOpen: boolean;
   onClose: () => void;
 
-  /**
-   * Hub audio (comme avant) : callback pour publier un contenu audio.
-   * Si tu as déjà ton endpoint, branche ici.
-   */
+  // Hub audio : callback pour publier un contenu audio
   onSubmitAudio?: (payload: {
     audio_blob: Blob;
     template_id: string;
@@ -34,10 +20,7 @@ export interface TamTamCreatePostProps {
     tags?: string[];
   }) => Promise<void>;
 
-  /**
-   * Nouveau : publier depuis le Creator vidéo/photo/text (FullscreenCreator).
-   * Si non fourni, ça log en console.
-   */
+  // Nouveau : publier depuis le Creator vidéo/photo/text
   onSubmitCreator?: (payload: CreatorOutputPayload) => Promise<void>;
 }
 
@@ -68,23 +51,25 @@ function fmtTime(sec: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function TamTamCreatePost({
+// ✅ IMPORTANT : export nommé attendu par TamTamHome.tsx
+export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
   isOpen,
   onClose,
   onSubmitAudio,
   onSubmitCreator,
-}: TamTamCreatePostProps) {
+}) => {
   const [step, setStep] = useState<CreateStep>("hub");
 
-  /** VIDEO creator modal */
+  // Video creator modal
   const [creatorOpen, setCreatorOpen] = useState(false);
 
-  /** AUDIO hub */
+  // Audio hub
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(AUDIO_TEMPLATES[0].id);
   const selectedTemplate = useMemo(
     () => AUDIO_TEMPLATES.find((t) => t.id === selectedTemplateId) ?? AUDIO_TEMPLATES[0],
     [selectedTemplateId]
   );
+
   const [topic, setTopic] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -103,13 +88,17 @@ export default function TamTamCreatePost({
     setTopic("");
     setIsRecording(false);
     setRecSec(0);
+
     if (tickRef.current) window.clearInterval(tickRef.current);
     tickRef.current = null;
+
     chunksRef.current = [];
     mediaRecorderRef.current = null;
+
     setAudioBlob(null);
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl("");
+
     setPublishing(false);
   };
 
@@ -118,6 +107,7 @@ export default function TamTamCreatePost({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
       const mr = new MediaRecorder(stream, { mimeType: mime });
+
       mediaRecorderRef.current = mr;
       chunksRef.current = [];
       startTsRef.current = Date.now();
@@ -129,10 +119,10 @@ export default function TamTamCreatePost({
       mr.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+
         setAudioBlob(blob);
         if (audioUrl) URL.revokeObjectURL(audioUrl);
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
+        setAudioUrl(URL.createObjectURL(blob));
 
         const durationSec = Math.max(1, Math.round((Date.now() - startTsRef.current) / 1000));
         setRecSec(durationSec);
@@ -179,7 +169,6 @@ export default function TamTamCreatePost({
           tags: ["audio", "tamtam", selectedTemplateId],
         });
       } else {
-        // fallback
         console.log("[TamTamCreatePost] Publish audio:", {
           template_id: selectedTemplateId,
           topic,
@@ -187,6 +176,7 @@ export default function TamTamCreatePost({
           blob: audioBlob,
         });
       }
+
       onClose();
       resetAll();
     } catch (e) {
@@ -238,9 +228,7 @@ export default function TamTamCreatePost({
                   </div>
                   <div className="text-left">
                     <div className="font-semibold">Vidéo / Story / Template / Live</div>
-                    <div className="text-xs text-white/70">
-                      Capture plein écran + montage (Kuaishou-like)
-                    </div>
+                    <div className="text-xs text-white/70">Capture plein écran + montage (Kuaishou-like)</div>
                   </div>
                 </div>
                 <Sparkles className="w-5 h-5 opacity-80" />
@@ -248,7 +236,7 @@ export default function TamTamCreatePost({
 
               <div className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 text-white">
                 <div className="font-semibold flex items-center gap-2">
-                  <Radio className="w-4 h-4" /> Audio-first (Karaoke / Voice)
+                  <Radio className="w-4 h-4" /> Audio-first
                 </div>
                 <div className="text-xs text-white/70 mt-1">
                   Sélectionne un template, enregistre la voix, puis publie.
@@ -276,7 +264,7 @@ export default function TamTamCreatePost({
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-2 rounded-2xl bg-white/5 border border-white/10 p-3">
                 <div className="text-white font-semibold">Templates audio</div>
-                <div className="text-xs text-white/60">Basé sur tes catégories (conte, annonce, alerte, etc.)</div>
+                <div className="text-xs text-white/60">Basé sur tes catégories</div>
 
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[320px] overflow-auto pr-1">
                   {AUDIO_TEMPLATES.map((t) => {
@@ -303,7 +291,6 @@ export default function TamTamCreatePost({
 
               <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-white">
                 <div className="font-semibold">Détails</div>
-                <div className="text-xs text-white/60">Pour guider l’utilisateur (peu lettré)</div>
 
                 <div className="mt-3">
                   <div className="text-xs text-white/70 mb-1">Sujet / Objet</div>
@@ -313,12 +300,6 @@ export default function TamTamCreatePost({
                     className="w-full h-11 rounded-2xl bg-black/40 border border-white/10 text-white px-3 outline-none text-sm"
                     placeholder={`Ex: ${selectedTemplate.title}`}
                   />
-                </div>
-
-                <div className="mt-3 rounded-2xl bg-black/30 border border-white/10 p-3">
-                  <div className="text-xs text-white/60">Template</div>
-                  <div className="font-semibold mt-1">{selectedTemplate.emoji} {selectedTemplate.title}</div>
-                  <div className="text-xs text-white/70 mt-1">{selectedTemplate.desc}</div>
                 </div>
 
                 <div className="mt-3 flex gap-2">
@@ -342,7 +323,7 @@ export default function TamTamCreatePost({
               </div>
             </div>
 
-            {/* Audio record / preview modals inside hub */}
+            {/* Audio record / preview modals */}
             <AnimatePresence>
               {step === "audioRecord" ? (
                 <motion.div
@@ -388,7 +369,7 @@ export default function TamTamCreatePost({
                     </div>
 
                     <div className="mt-3 text-xs text-white/60">
-                      Tips: parle lentement, phrases courtes, 1 idée à la fois.
+                      Tips: phrases courtes, 1 idée à la fois.
                     </div>
                   </div>
                 </motion.div>
@@ -464,11 +445,8 @@ export default function TamTamCreatePost({
         isOpen={creatorOpen}
         onClose={() => setCreatorOpen(false)}
         onComplete={async (payload) => {
-          if (onSubmitCreator) {
-            await onSubmitCreator(payload);
-          } else {
-            console.log("[TamTamCreatePost] Publish creator:", payload);
-          }
+          if (onSubmitCreator) await onSubmitCreator(payload);
+          else console.log("[TamTamCreatePost] Publish creator:", payload);
           setCreatorOpen(false);
           onClose();
           resetAll();
@@ -477,4 +455,7 @@ export default function TamTamCreatePost({
       />
     </div>
   );
-}
+};
+
+// ✅ garde aussi un default export (pratique ailleurs)
+export default TamTamCreatePost;
