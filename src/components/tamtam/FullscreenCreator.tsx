@@ -890,6 +890,12 @@ export default function FullscreenCreator({
               onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
               active={drawer === "magic" || effects.arEffects.length > 0}
             />
+            <RailButton
+              icon={<Layers className="h-5 w-5" />}
+              label="Template"
+              onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
+              active={drawer === "template" || effects.templateId !== 'free'}
+            />
           </div>
 
           {/* ===== VIDEO RECORDING TIMER WITH NEEDLE ===== */}
@@ -1011,7 +1017,6 @@ export default function FullscreenCreator({
                 { id: "60s", label: "60s" },
                 { id: "story", label: "Story" },
                 { id: "album", label: "Album" },
-                { id: "template", label: "Template" },
               ] as { id: TopTab; label: string }[]).map((tab) => (
                 <button
                   key={tab.id}
