@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mic, Volume2, VolumeX, Sparkles } from "lucide-react";
+import { X, Mic, Volume2, VolumeX, Sparkles, Eye, Check, Play, Pause } from "lucide-react";
 import {
   ADVANCED_TEMPLATES,
   TEMPLATE_COLLECTIONS,
   getTemplatesByCollection,
   AdvancedTemplate,
-  TemplateFamily,
+  NEUTRAL_TEMPLATE,
 } from "./AdvancedTemplateData";
 import TemplatePreviewPlayer from "./TemplatePreviewPlayer";
 import { useFrenchTTS } from "@/hooks/useFrenchTTS";
@@ -215,12 +215,13 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
     }
   }, [isListening, startListening, stopListening, triggerHaptic, speak, language]);
 
-  // Get displayed templates
+  // Get displayed templates - includes "Sans Template" option
   const getDisplayedTemplates = (): AdvancedTemplate[] => {
     if (selectedCollection) {
       return getTemplatesByCollection(selectedCollection);
     }
-    return ADVANCED_TEMPLATES;
+    // Include neutral template at the beginning
+    return [NEUTRAL_TEMPLATE, ...ADVANCED_TEMPLATES];
   };
 
   // Find template by AI suggestion ID
@@ -454,6 +455,8 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                       template={template}
                       isFocused={focusedTemplate?.id === template.id}
                       isSpeaking={isSpeaking && lastSpokenTemplate.current === template.id}
+                      isNeutral={template.id === 'none'}
+                      onQuickSelect={() => handleSelectTemplate(template)}
                       onOpenPreview={() => openPreview(template)}
                       onLongPressStart={() => handleLongPressStart(template)}
                       onLongPressEnd={handleLongPressEnd}
@@ -574,7 +577,9 @@ interface XXLTemplateCardProps {
   template: AdvancedTemplate;
   isFocused: boolean;
   isSpeaking: boolean;
+  isNeutral?: boolean;
   audioEnabled: boolean;
+  onQuickSelect: () => void;
   onOpenPreview: () => void;
   onLongPressStart: () => void;
   onLongPressEnd: () => void;
@@ -584,7 +589,9 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
   template, 
   isFocused,
   isSpeaking,
+  isNeutral,
   audioEnabled,
+  onQuickSelect,
   onOpenPreview,
   onLongPressStart,
   onLongPressEnd
@@ -599,15 +606,45 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
     return features.slice(0, 4);
   };
 
+  // Neutral template gets special quick-select behavior
+  if (isNeutral) {
+    return (
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={onQuickSelect}
+        className="relative overflow-hidden rounded-3xl p-5 text-left transition-all min-h-[180px] border-2 border-dashed border-white/30 bg-gradient-to-br from-gray-700/50 to-gray-900/50"
+      >
+        <div className="relative z-10 flex flex-col h-full items-center justify-center">
+          <motion.div 
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="text-6xl mb-3 opacity-60"
+          >
+            {template.emoji}
+          </motion.div>
+          <h3 className="font-bold text-white text-lg text-center mb-1">
+            {template.label_fr}
+          </h3>
+          <p className="text-white/50 text-sm text-center">
+            {template.description_fr}
+          </p>
+          <div className="mt-4 px-4 py-2 rounded-full bg-white/10 flex items-center gap-2">
+            <Check className="h-4 w-4 text-white/70" />
+            <span className="text-white/70 text-sm">Sélectionner</span>
+          </div>
+        </div>
+      </motion.button>
+    );
+  }
+
   return (
-    <motion.button
-      whileTap={{ scale: 0.95 }}
+    <motion.div
+      whileTap={{ scale: 0.97 }}
       onTouchStart={onLongPressStart}
       onTouchEnd={onLongPressEnd}
       onMouseDown={onLongPressStart}
       onMouseUp={onLongPressEnd}
       onMouseLeave={onLongPressEnd}
-      onClick={onOpenPreview}
       className={cn(
         "relative overflow-hidden rounded-3xl p-5 text-left transition-all min-h-[180px]",
         isFocused && "ring-4 ring-white shadow-2xl",
@@ -654,6 +691,30 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
             <span key={i} className="text-lg bg-black/20 rounded-full px-2 py-0.5">{icon}</span>
           ))}
         </div>
+
+        {/* Action Buttons Row */}
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenPreview();
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all"
+          >
+            <Eye className="h-4 w-4 text-white/80" />
+            <span className="text-white/80 text-xs font-medium">Aperçu</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickSelect();
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/90 hover:bg-white transition-all"
+          >
+            <Check className="h-4 w-4 text-black" />
+            <span className="text-black text-xs font-bold">Utiliser</span>
+          </button>
+        </div>
       </div>
 
       {/* Audio Indicator */}
@@ -674,11 +735,11 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
 
       {/* Long Press Hint */}
       {!isFocused && (
-        <div className="absolute bottom-3 right-3 text-white/30 text-xs">
+        <div className="absolute bottom-3 left-3 text-white/30 text-xs">
           Appui long = écouter
         </div>
       )}
-    </motion.button>
+    </motion.div>
   );
 };
 

@@ -1158,15 +1158,16 @@ export default function FullscreenCreator({
                 style={{
                   filter: cssFilter,
                   transform: facing === "user" ? "scaleX(-1)" : "none",
-                  opacity: activeAdvancedTemplate ? 0 : 1,
+                  // Show video directly when no template or neutral template selected
+                  opacity: activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' ? 0 : 1,
                 }}
                 playsInline
                 muted
                 autoPlay
               />
 
-              {/* When an advanced template is active, we render a canvas that shows the realtime processed preview */}
-              {activeAdvancedTemplate && (
+              {/* When an advanced template (non-neutral) is active, we render a canvas that shows the realtime processed preview */}
+              {activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' && (
                 <canvas
                   ref={liveCanvasRef}
                   className="absolute inset-0 w-full h-full pointer-events-none"
@@ -1211,8 +1212,8 @@ export default function FullscreenCreator({
         {/* Template overlay */}
         <TemplateOverlay templateId={effects.templateId} />
 
-        {/* Advanced template realtime effects */}
-        {activeAdvancedTemplate && !hasCapture && (
+        {/* Advanced template realtime effects - skip for neutral template */}
+        {activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' && !hasCapture && (
           <LiveTemplateEffect
             template={activeAdvancedTemplate}
             videoRef={videoRef}
@@ -1222,6 +1223,34 @@ export default function FullscreenCreator({
             currentStep={templateCapturedInputs}
           />
         )}
+
+        {/* Active Template Indicator Badge */}
+        <AnimatePresence>
+          {activeAdvancedTemplate && !hasCapture && !isRecording && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-20 left-4 z-40"
+            >
+              <button
+                onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-xl border transition-all",
+                  activeAdvancedTemplate.id === 'none'
+                    ? "bg-black/40 border-white/20"
+                    : `bg-gradient-to-r ${activeAdvancedTemplate.color} border-white/30`
+                )}
+              >
+                <span className="text-xl">{activeAdvancedTemplate.emoji}</span>
+                <span className="text-white text-sm font-medium max-w-[100px] truncate">
+                  {activeAdvancedTemplate.label_fr}
+                </span>
+                <span className="text-white/60 text-xs">✏️</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* AR Effects Layer */}
         <AREffectsLayer activeEffects={effects.arEffects} />
@@ -1434,7 +1463,7 @@ export default function FullscreenCreator({
         </AnimatePresence>
 
         {/* ===== ADVANCED TEMPLATE CAPTURE OVERLAY ===== */}
-        {activeAdvancedTemplate && !hasCapture && (
+        {activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' && !hasCapture && (
           <TemplateCaptureOverlay
             template={activeAdvancedTemplate}
             isRecording={isRecording}

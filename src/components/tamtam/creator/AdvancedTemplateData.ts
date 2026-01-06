@@ -64,6 +64,28 @@ export interface AdvancedTemplate {
 }
 
 // ============================================================
+// OPTION NEUTRE - Sans Template
+// ============================================================
+
+export const NEUTRAL_TEMPLATE: AdvancedTemplate = {
+  id: 'none',
+  emoji: '📷',
+  label_fr: 'Sans Template',
+  label_ba: 'Kↄnↄ',
+  description_fr: 'Créer librement sans effets IA',
+  description_ba: 'I ka baara i yɛrɛ la',
+  family: 'grand_public',
+  collection: null,
+  inputs: [{ type: 'video', minCount: 1, maxCount: 1 }],
+  supportedDurations: ['15s', '30s', '45s', '60s', '90s', '120s'],
+  outputRatios: ['9:16', '1:1', '16:9'],
+  features: {},
+  previewAnimation: undefined,
+  color: 'from-gray-600 to-gray-800',
+  voiceInstructions: []
+};
+
+// ============================================================
 // A) 8 Templates Grand Public
 // ============================================================
 
@@ -661,6 +683,7 @@ export const TEMPLATE_COLLECTIONS: TemplateCollection[] = [
 // ============================================================
 
 export const getTemplateById = (id: string): AdvancedTemplate | undefined => {
+  if (id === 'none') return NEUTRAL_TEMPLATE;
   return ADVANCED_TEMPLATES.find(t => t.id === id);
 };
 
