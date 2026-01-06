@@ -54,6 +54,8 @@ import { AREffectsLayer, ShotTipOverlay } from "./creator/AREffectsLayer";
 import { GraphicsDrawer, getGraphicsStyles, getGraphicsClasses } from "./creator/GraphicsDrawer";
 import { MagicDrawer } from "./creator/MagicDrawer";
 import { TemplateOverlay, TemplateCarousel } from "./creator/TemplateOverlay";
+import AdvancedTemplateDrawer from "./creator/AdvancedTemplateDrawer";
+import { AdvancedTemplate, durationToSeconds } from "./creator/AdvancedTemplateData";
 
 export type CreatorOutputPayload = {
   segments: TimelineSegment[];
@@ -1173,72 +1175,41 @@ export default function FullscreenCreator({
             }}
           />
 
-          {/* Template Drawer */}
-          <AnimatePresence>
-            {drawer === "template" && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 z-[120] bg-black/50 backdrop-blur-sm"
-                onClick={() => setDrawer("none")}
-              >
-                <motion.div
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                  className="absolute left-0 right-0 bottom-0 rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4 max-h-[70vh] overflow-auto"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-                  <div className="font-semibold mb-4 flex items-center gap-2">
-                    <Sparkles className="h-5 w-5" /> Templates
-                  </div>
-                  
-                  {/* Group by category */}
-                  {Object.entries(
-                    CULTURAL_TEMPLATES.reduce((acc, tpl) => {
-                      if (!acc[tpl.category]) acc[tpl.category] = [];
-                      acc[tpl.category].push(tpl);
-                      return acc;
-                    }, {} as Record<string, typeof CULTURAL_TEMPLATES>)
-                  ).map(([category, templates]) => (
-                    <div key={category} className="mb-4">
-                      <div className="text-xs text-white/50 uppercase mb-2">{category}</div>
-                      <div className="space-y-2">
-                        {templates.map((tpl) => (
-                          <button
-                            key={tpl.id}
-                            onClick={() => {
-                              updateEffects({ templateId: tpl.id });
-                              setDrawer("none");
-                              setToast(`${tpl.emoji} ${tpl.label}`);
-                            }}
-                            className={cn(
-                              "w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left",
-                              effects.templateId === tpl.id
-                                ? "bg-white/20 border border-white/30"
-                                : "bg-white/5 border border-white/10 hover:bg-white/10"
-                            )}
-                          >
-                            <span className="text-2xl">{tpl.emoji}</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm">{tpl.label}</div>
-                              <div className="text-xs text-white/50 truncate">{tpl.voicePrompt || `${tpl.suggestedDuration}s • ${tpl.suggestedMode}`}</div>
-                            </div>
-                            {effects.templateId === tpl.id && (
-                              <div className="w-2 h-2 rounded-full bg-white" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Advanced Template Drawer - 24 Templates IA */}
+          <AdvancedTemplateDrawer
+            isOpen={drawer === "template"}
+            onClose={() => setDrawer("none")}
+            onSelectTemplate={(template: AdvancedTemplate) => {
+              // Configure le mode et la durée selon le template
+              const firstDuration = template.supportedDurations[0];
+              const durationSec = durationToSeconds(firstDuration);
+              
+              // Set appropriate length
+              if (durationSec <= 15) setLengthSec(15);
+              else if (durationSec <= 30) setLengthSec(30);
+              else if (durationSec <= 60) setLengthSec(60);
+              else setLengthSec(180);
+              
+              // Set mode based on inputs
+              const hasVideo = template.inputs.some(i => i.type === 'video');
+              const hasPhotoOnly = template.inputs.every(i => i.type === 'photo' || i.type === 'audio');
+              const hasAudioOnly = template.inputs.every(i => i.type === 'audio');
+              
+              if (hasAudioOnly) {
+                // Audio template - stay in video mode but could add audio recording
+                setMode("video");
+              } else if (hasPhotoOnly && !hasVideo) {
+                setMode("photo");
+              } else {
+                setMode("video");
+              }
+              
+              // Store template id in effects
+              updateEffects({ templateId: template.id });
+              setDrawer("none");
+              setToast(`${template.emoji} ${template.label_fr}`);
+            }}
+          />
 
           {/* Sticker Picker */}
           <AnimatePresence>
