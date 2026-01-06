@@ -242,11 +242,24 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
           <p className="font-semibold text-gray-800">
             {post.profile?.display_name || post.profile?.username || 'Utilisateur'}
           </p>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            {getMediaIcon()}
-            <span>
-              {post.created_at && formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: fr })}
-            </span>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              {getMediaIcon()}
+              <span>
+                {post.created_at && formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: fr })}
+              </span>
+            </div>
+            {post.created_at && (
+              <span className="text-xs text-gray-400">
+                {new Date(post.created_at).toLocaleDateString('fr-FR', { 
+                  day: 'numeric', 
+                  month: 'short', 
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            )}
           </div>
         </div>
         {post.feeling_emoji && (

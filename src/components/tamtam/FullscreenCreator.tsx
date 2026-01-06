@@ -1868,7 +1868,7 @@ export default function FullscreenCreator({
                 )}
 
                 <button
-                  onClick={() => setShowPublish(true)}
+                  onClick={publish}
                   className="flex flex-col items-center gap-1"
                 >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center border border-white/20">
