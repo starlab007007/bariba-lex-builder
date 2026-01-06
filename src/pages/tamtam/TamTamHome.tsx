@@ -359,7 +359,7 @@ export default function TamTamHome() {
         currentLang={currentLang}
       />
 
-      <TamTamCreatePost isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onSubmitAudio={handleCreatePost} />
+      <TamTamCreatePost isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onSubmit={handleCreatePost} />
 
       <FullscreenCreator open={showCreator} onClose={() => setShowCreator(false)} onPublish={handleCreatorComplete} />
     </div>

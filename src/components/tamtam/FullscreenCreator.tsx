@@ -583,6 +583,29 @@ export default function FullscreenCreator({
     };
   }, [hasCapture, previewUrl]); // FIXED: Removed isPlaying from dependencies
 
+  // ============= HANDLERS (defined before early return to maintain hook order) =============
+  
+  const togglePlayPause = useCallback(() => {
+    const video = previewVideoRef.current;
+    if (!video || capturedType !== 'video') return;
+    
+    if (isPlaying) {
+      video.pause();
+      setIsPlaying(false);
+    } else {
+      // FIXED: Unmute if needed for manual play
+      video.muted = false;
+      video.play().then(() => {
+        setIsPlaying(true);
+      }).catch((err) => {
+        console.warn('Play failed:', err);
+        // Retry with muted
+        video.muted = true;
+        video.play().then(() => setIsPlaying(true)).catch(() => {});
+      });
+    }
+  }, [isPlaying, capturedType]);
+
   // ⚠️ CRITICAL: Early return MUST be AFTER all hooks
   if (!open) return null;
 
@@ -843,25 +866,7 @@ export default function FullscreenCreator({
     }
   };
 
-  const togglePlayPause = useCallback(() => {
-    const video = previewVideoRef.current;
-    if (!video || capturedType !== 'video') return;
-    
-    if (isPlaying) {
-      video.pause();
-      setIsPlaying(false);
-    } else {
-      // FIXED: Unmute for manual play, with fallback to muted if blocked
-      video.muted = false;
-      video.play().then(() => {
-        setIsPlaying(true);
-      }).catch((err) => {
-        console.warn('Play failed, retrying muted:', err);
-        video.muted = true;
-        video.play().then(() => setIsPlaying(true)).catch(() => {});
-      });
-    }
-  }, [isPlaying, capturedType]);
+  // togglePlayPause is defined earlier (before early return) to maintain hook order
 
   // ============= PUBLISH =============
   const publish = async () => {
