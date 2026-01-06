@@ -291,20 +291,20 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="absolute inset-0 flex flex-col"
           >
-            {/* Header - XXL Touch Targets */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
-              <div className="flex items-center gap-3">
+            {/* Header - Compact Mobile */}
+            <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-b border-white/10 safe-area-inset-top">
+              <div className="flex items-center gap-2">
                 <motion.div 
                   animate={{ rotate: [0, 10, -10, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className="text-3xl"
+                  className="text-xl sm:text-2xl"
                 >
                   ✨
                 </motion.div>
-                <h2 className="text-xl font-bold text-white">Templates IA</h2>
+                <h2 className="text-base sm:text-lg font-bold text-white">Templates IA</h2>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {/* Audio Toggle */}
                 <button
                   onClick={() => {
@@ -316,30 +316,30 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                     }
                   }}
                   className={cn(
-                    "w-12 h-12 flex items-center justify-center rounded-full transition-all",
+                    "w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full transition-all",
                     audioEnabled ? "bg-green-500/30 text-green-400" : "bg-white/10 text-white/50"
                   )}
                 >
-                  {audioEnabled ? <Volume2 className="h-6 w-6" /> : <VolumeX className="h-6 w-6" />}
+                  {audioEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
                 </button>
                 
                 {/* Close Button */}
                 <button
                   onClick={onClose}
-                  className="w-12 h-12 flex items-center justify-center rounded-full bg-white/10 text-white"
+                  className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-white/10 text-white"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
-            {/* Voice Search - XXL Button */}
-            <div className="px-4 py-4">
+            {/* Voice Search - Responsive */}
+            <div className="px-3 sm:px-4 py-3">
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={toggleVoiceMode}
                 className={cn(
-                  "w-full flex items-center justify-center gap-4 py-6 rounded-2xl transition-all",
+                  "w-full flex items-center justify-center gap-2 sm:gap-3 py-4 sm:py-5 rounded-xl sm:rounded-2xl transition-all",
                   isListening 
                     ? "bg-gradient-to-r from-red-500 to-orange-500 animate-pulse" 
                     : "bg-gradient-to-r from-amber-500 to-orange-500"
@@ -349,9 +349,9 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                   animate={isListening ? { scale: [1, 1.2, 1] } : {}}
                   transition={{ duration: 0.5, repeat: Infinity }}
                 >
-                  <Mic className="h-10 w-10 text-white" />
+                  <Mic className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
                 </motion.div>
-                <span className="text-white text-xl font-bold">
+                <span className="text-white text-sm sm:text-base font-bold">
                   {isListening ? "J'écoute..." : "🎤 Dis-moi ce que tu veux créer"}
                 </span>
               </motion.button>
@@ -361,21 +361,21 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 p-3 rounded-xl bg-white/10 text-white/80 text-center"
+                  className="mt-2 p-2.5 rounded-lg bg-white/10 text-white/80 text-center text-sm"
                 >
                   "{transcript}"
                 </motion.div>
               )}
             </div>
 
-            {/* AI Suggestions - XXL Cards */}
+            {/* AI Suggestions - Horizontal Scroll */}
             {aiSuggestions.length > 0 && (
-              <div className="px-4 mb-4">
-                <h3 className="text-white/60 text-sm mb-2 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
+              <div className="px-3 sm:px-4 mb-3">
+                <h3 className="text-white/60 text-xs sm:text-sm mb-2 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
                   Suggestions IA pour toi
                 </h3>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3 sm:-mx-4 sm:px-4">
                   {aiSuggestions.map((suggestion) => {
                     const template = findTemplateById(suggestion.id);
                     if (!template) return null;
@@ -391,14 +391,14 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                         onMouseUp={handleLongPressEnd}
                         onMouseLeave={handleLongPressEnd}
                         className={cn(
-                          "flex-shrink-0 flex flex-col items-center p-4 rounded-2xl min-w-[140px] transition-all",
+                          "flex-shrink-0 flex flex-col items-start p-3 rounded-xl min-w-[130px] sm:min-w-[150px] transition-all",
                           `bg-gradient-to-br ${template.color}`,
-                          focusedTemplate?.id === template.id && "ring-4 ring-white"
+                          focusedTemplate?.id === template.id && "ring-2 ring-white"
                         )}
                       >
-                        <span className="text-5xl mb-2">{template.emoji}</span>
-                        <span className="text-white font-bold text-sm text-center">{template.label_fr}</span>
-                        <span className="text-white/70 text-xs mt-1 text-center line-clamp-2">
+                        <span className="text-3xl sm:text-4xl mb-1.5">{template.emoji}</span>
+                        <span className="text-white font-bold text-xs sm:text-sm text-left leading-tight">{template.label_fr}</span>
+                        <span className="text-white/70 text-[10px] sm:text-xs mt-0.5 text-left line-clamp-2 leading-tight">
                           {suggestion.reason_fr}
                         </span>
                       </motion.button>
@@ -408,18 +408,18 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
               </div>
             )}
 
-            {/* Collection Tabs - XXL */}
-            <div className="flex gap-3 px-4 pb-3 overflow-x-auto scrollbar-hide">
+            {/* Collection Tabs - Compact */}
+            <div className="flex gap-2 px-3 sm:px-4 pb-2 overflow-x-auto scrollbar-hide -mx-3 sm:-mx-0">
               <button
                 onClick={() => setSelectedCollection(null)}
                 className={cn(
-                  "flex items-center gap-2 px-5 py-3 rounded-full text-base font-bold whitespace-nowrap transition-all",
+                  "flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all",
                   !selectedCollection
                     ? 'bg-white text-black'
                     : 'bg-white/10 text-white/70'
                 )}
               >
-                <span className="text-2xl">📋</span>
+                <span className="text-lg sm:text-xl">📋</span>
                 <span>Tous</span>
               </button>
               
@@ -434,21 +434,21 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                     triggerHaptic([30]);
                   }}
                   className={cn(
-                    "flex items-center gap-2 px-5 py-3 rounded-full text-base font-bold whitespace-nowrap transition-all",
+                    "flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all",
                     selectedCollection === collection.id
                       ? `bg-gradient-to-r ${collection.color} text-white`
                       : 'bg-white/10 text-white/70'
                   )}
                 >
-                  <span className="text-2xl">{collection.emoji}</span>
-                  <span>{collection.name_fr}</span>
+                  <span className="text-lg sm:text-xl">{collection.emoji}</span>
+                  <span className="hidden sm:inline">{collection.name_fr}</span>
                 </button>
               ))}
             </div>
 
-            {/* Templates Grid - XXL Cards (2 columns) */}
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+            {/* Templates Grid - Responsive */}
+            <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
                 {getDisplayedTemplates().map((template) => (
                     <XXLTemplateCard
                       key={template.id}
@@ -467,7 +467,7 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
             </div>
 
             {/* Bottom Safe Area */}
-            <div className="h-8 bg-gradient-to-t from-black to-transparent" />
+            <div className="h-6 sm:h-8 bg-gradient-to-t from-black to-transparent safe-area-inset-bottom" />
 
             {/* ===== PREVIEW MODAL (Audio/Video + Visual + Storyboard) ===== */}
             <AnimatePresence>
@@ -476,7 +476,7 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-[70] bg-black/80 backdrop-blur-md"
+                  className="absolute inset-0 z-[70] bg-black/90 backdrop-blur-md"
                   onClick={() => setPreviewTemplate(null)}
                 >
                   <motion.div
@@ -484,11 +484,11 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                     animate={{ y: 0, scale: 1, opacity: 1 }}
                     exit={{ y: 30, scale: 0.98, opacity: 0 }}
                     transition={{ type: 'spring', damping: 25, stiffness: 260 }}
-                    className="absolute inset-x-4 top-16 bottom-10 rounded-3xl overflow-hidden bg-black/60 border border-white/10"
+                    className="absolute inset-x-2 sm:inset-x-4 top-12 sm:top-14 bottom-6 sm:bottom-8 rounded-2xl sm:rounded-3xl overflow-hidden bg-black/60 border border-white/10"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Visual preview banner (AI-generated) */}
-                    <div className="relative h-40 overflow-hidden">
+                    <div className="relative h-32 sm:h-40 overflow-hidden">
                       {previewImageUrl ? (
                         <img
                           src={previewImageUrl}
@@ -503,20 +503,20 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
 
                       {isLoadingPreview && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-10 h-10 border-4 border-white/40 border-t-white rounded-full animate-spin" />
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 border-3 sm:border-4 border-white/40 border-t-white rounded-full animate-spin" />
                         </div>
                       )}
 
                       <button
                         onClick={() => setPreviewTemplate(null)}
-                        className="absolute top-3 right-3 w-12 h-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center"
+                        className="absolute top-2 right-2 sm:top-3 sm:right-3 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center"
                         aria-label="Fermer la prévisualisation"
                       >
-                        <X className="h-6 w-6 text-white" />
+                        <X className="h-5 w-5 text-white" />
                       </button>
                     </div>
 
-                    <div className="p-4 overflow-y-auto h-[calc(100%-10rem)]">
+                    <div className="p-3 sm:p-4 overflow-y-auto h-[calc(100%-8rem)] sm:h-[calc(100%-10rem)]">
                       <TemplatePreviewPlayer
                         template={previewTemplate}
                         isActive={true}
@@ -527,9 +527,9 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
 
                       {/* Storyboard (simple + vocal) */}
                       {previewStoryboard?.scenes?.length > 0 && (
-                        <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="text-white/70 text-sm font-medium">📖 Guide (audio)</div>
+                        <div className="mt-3 sm:mt-4 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 p-3 sm:p-4">
+                          <div className="flex items-center justify-between mb-2 sm:mb-3">
+                            <div className="text-white/70 text-xs sm:text-sm font-medium">📖 Guide (audio)</div>
                             <button
                               onClick={() => {
                                 const first = previewStoryboard.scenes?.[0];
@@ -538,20 +538,20 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                                   : first?.instruction_vocale_fr;
                                 if (text) speak(text);
                               }}
-                              className="px-4 py-2 rounded-full bg-white text-black font-semibold"
+                              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white text-black text-xs sm:text-sm font-semibold"
                             >
                               🔊 Écouter
                             </button>
                           </div>
 
-                          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-hide">
                             {previewStoryboard.scenes.map((s: any, idx: number) => (
                               <div
                                 key={idx}
-                                className="flex-shrink-0 w-16 h-16 rounded-2xl bg-black/30 border border-white/10 flex items-center justify-center"
+                                className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-black/30 border border-white/10 flex items-center justify-center"
                                 title={s?.visual_hint}
                               >
-                                <span className="text-2xl">{s?.emoji || '🎬'}</span>
+                                <span className="text-lg sm:text-xl">{s?.emoji || '🎬'}</span>
                               </div>
                             ))}
                           </div>
@@ -603,7 +603,7 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
     if (template.features.translation) features.push('🌍');
     if (template.features.audioEnhance) features.push('🔊');
     if (template.features.stabilization) features.push('📹');
-    return features.slice(0, 4);
+    return features.slice(0, 3);
   };
 
   // Neutral template gets special quick-select behavior
@@ -612,25 +612,25 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={onQuickSelect}
-        className="relative overflow-hidden rounded-3xl p-5 text-left transition-all min-h-[180px] border-2 border-dashed border-white/30 bg-gradient-to-br from-gray-700/50 to-gray-900/50"
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-left transition-all min-h-[140px] sm:min-h-[160px] border-2 border-dashed border-white/30 bg-gradient-to-br from-gray-700/50 to-gray-900/50"
       >
         <div className="relative z-10 flex flex-col h-full items-center justify-center">
           <motion.div 
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="text-6xl mb-3 opacity-60"
+            className="text-4xl sm:text-5xl mb-2 opacity-60"
           >
             {template.emoji}
           </motion.div>
-          <h3 className="font-bold text-white text-lg text-center mb-1">
+          <h3 className="font-bold text-white text-sm sm:text-base text-center mb-0.5">
             {template.label_fr}
           </h3>
-          <p className="text-white/50 text-sm text-center">
+          <p className="text-white/50 text-[10px] sm:text-xs text-center line-clamp-2">
             {template.description_fr}
           </p>
-          <div className="mt-4 px-4 py-2 rounded-full bg-white/10 flex items-center gap-2">
-            <Check className="h-4 w-4 text-white/70" />
-            <span className="text-white/70 text-sm">Sélectionner</span>
+          <div className="mt-2 sm:mt-3 px-3 py-1.5 rounded-full bg-white/10 flex items-center gap-1.5">
+            <Check className="h-3 w-3 text-white/70" />
+            <span className="text-white/70 text-[10px] sm:text-xs">Sélectionner</span>
           </div>
         </div>
       </motion.button>
@@ -646,9 +646,9 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
       onMouseUp={onLongPressEnd}
       onMouseLeave={onLongPressEnd}
       className={cn(
-        "relative overflow-hidden rounded-3xl p-5 text-left transition-all min-h-[180px]",
-        isFocused && "ring-4 ring-white shadow-2xl",
-        isSpeaking && "ring-4 ring-green-400"
+        "relative overflow-hidden rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-left transition-all min-h-[155px] sm:min-h-[175px]",
+        isFocused && "ring-2 sm:ring-3 ring-white shadow-xl",
+        isSpeaking && "ring-2 sm:ring-3 ring-green-400"
       )}
     >
       {/* Background Gradient */}
@@ -666,79 +666,75 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
 
       {/* Content */}
       <div className="relative z-10 flex flex-col h-full">
-        {/* Giant Emoji */}
-        <motion.div 
-          animate={isFocused ? { scale: [1, 1.1, 1] } : {}}
-          transition={{ duration: 0.5 }}
-          className="text-6xl mb-3"
-        >
-          {template.emoji}
-        </motion.div>
+        {/* Emoji + Audio indicator row */}
+        <div className="flex items-start justify-between mb-1.5">
+          <motion.div 
+            animate={isFocused ? { scale: [1, 1.1, 1] } : {}}
+            transition={{ duration: 0.5 }}
+            className="text-3xl sm:text-4xl"
+          >
+            {template.emoji}
+          </motion.div>
+          
+          {/* Audio Indicator - Moved here for better visibility */}
+          {audioEnabled && (
+            <div className="flex items-center gap-1">
+              {isSpeaking ? (
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 0.5, repeat: Infinity }}
+                  className="bg-green-500/30 rounded-full p-1"
+                >
+                  <Volume2 className="h-3.5 w-3.5 text-white" />
+                </motion.div>
+              ) : (
+                <Volume2 className="h-3 w-3 text-white/30" />
+              )}
+            </div>
+          )}
+        </div>
         
         {/* Label */}
-        <h3 className="font-bold text-white text-lg leading-tight mb-1">
+        <h3 className="font-bold text-white text-xs sm:text-sm leading-tight mb-0.5">
           {template.label_fr}
         </h3>
         
         {/* Description - Truncated */}
-        <p className="text-white/70 text-sm line-clamp-2 mb-3 flex-grow">
+        <p className="text-white/70 text-[10px] sm:text-xs line-clamp-2 mb-2 flex-grow leading-snug">
           {template.description_fr}
         </p>
 
-        {/* Features Row */}
-        <div className="flex items-center gap-1.5">
+        {/* Features Row - Compact */}
+        <div className="flex items-center gap-1 mb-2">
           {getFeatureIcons().map((icon, i) => (
-            <span key={i} className="text-lg bg-black/20 rounded-full px-2 py-0.5">{icon}</span>
+            <span key={i} className="text-xs sm:text-sm bg-black/20 rounded-full px-1.5 py-0.5">{icon}</span>
           ))}
         </div>
 
-        {/* Action Buttons Row */}
-        <div className="flex gap-2 mt-3">
+        {/* Action Buttons Row - Stacked on very small screens */}
+        <div className="flex gap-1.5">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onOpenPreview();
             }}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all"
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-white/10 backdrop-blur-sm active:bg-white/20 transition-all"
           >
-            <Eye className="h-4 w-4 text-white/80" />
-            <span className="text-white/80 text-xs font-medium">Aperçu</span>
+            <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white/80" />
+            <span className="text-white/80 text-[10px] sm:text-xs font-medium">Aperçu</span>
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onQuickSelect();
             }}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/90 hover:bg-white transition-all"
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-white/90 active:bg-white transition-all"
           >
-            <Check className="h-4 w-4 text-black" />
-            <span className="text-black text-xs font-bold">Utiliser</span>
+            <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black" />
+            <span className="text-black text-[10px] sm:text-xs font-bold">Utiliser</span>
           </button>
         </div>
       </div>
-
-      {/* Audio Indicator */}
-      {audioEnabled && (
-        <div className="absolute top-3 right-3">
-          {isSpeaking ? (
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 0.5, repeat: Infinity }}
-            >
-              <Volume2 className="h-5 w-5 text-white" />
-            </motion.div>
-          ) : (
-            <Volume2 className="h-5 w-5 text-white/40" />
-          )}
-        </div>
-      )}
-
-      {/* Long Press Hint */}
-      {!isFocused && (
-        <div className="absolute bottom-3 left-3 text-white/30 text-xs">
-          Appui long = écouter
-        </div>
-      )}
     </motion.div>
   );
 };
