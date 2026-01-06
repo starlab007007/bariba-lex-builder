@@ -7,3 +7,6 @@ export * from './AREffectsLayer';
 export * from './GraphicsDrawer';
 export * from './MagicDrawer';
 export * from './TemplateOverlay';
+export { default as MiniTimeline } from './MiniTimeline';
+export type { MiniTimelineSegment } from './MiniTimeline';
+export { default as EditingToolbar } from './EditingToolbar';
