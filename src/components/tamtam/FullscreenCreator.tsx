@@ -1,6 +1,7 @@
 // src/components/tamtam/FullscreenCreator.tsx
-// Kuaishou-style premium interface
-import React, { useEffect, useMemo, useRef, useState } from "react";
+// Kuaishou-style premium interface with FULL integration of all modules
+
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X,
@@ -9,14 +10,10 @@ import {
   Timer,
   Gauge,
   Sparkles,
-  Eye,
   Flame,
   Wand2,
   Music,
   Camera as CameraIcon,
-  Type as TypeIcon,
-  Image as ImageIcon,
-  Video as VideoIcon,
   Send,
   AlertCircle,
   Film,
@@ -26,6 +23,9 @@ import {
   Layers,
   SunMedium,
   FolderOpen,
+  Sticker,
+  Type,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +37,24 @@ import {
   scaleCssFilter,
 } from "./VideoFilters";
 
+// Import all creator modules
+import {
+  CULTURAL_TEMPLATES,
+  GRAPHICS_ITEMS,
+  AR_EFFECTS,
+  CHALLENGES,
+  SHOT_TIPS,
+  CaptureEffects,
+  DEFAULT_EFFECTS,
+  getTemplateById,
+  Sticker as StickerType,
+} from "./creator/CreatorEffectsData";
+import { StickerLayer, StickerPicker } from "./creator/StickerLayer";
+import { AREffectsLayer, ShotTipOverlay } from "./creator/AREffectsLayer";
+import { GraphicsDrawer, getGraphicsStyles, getGraphicsClasses } from "./creator/GraphicsDrawer";
+import { MagicDrawer } from "./creator/MagicDrawer";
+import { TemplateOverlay, TemplateCarousel } from "./creator/TemplateOverlay";
+
 export type CreatorOutputPayload = {
   segments: TimelineSegment[];
   caption: string;
@@ -44,24 +62,15 @@ export type CreatorOutputPayload = {
   mode: CaptureMode;
   canvasRatio: CanvasRatio;
   selectedFilterId?: string;
+  effects?: CaptureEffects;
+  challengeHashtag?: string;
 };
 
 type TopTab = "graphics" | "video" | "story" | "template" | "live";
 type CaptureMode = "burst" | "photo" | "video" | "text";
 type CreatorStep = "capture" | "preview" | "editor" | "publish";
 type CanvasRatio = "9:16" | "1:1" | "16:9";
-type DrawerType = "none" | "beautify" | "length" | "challenge" | "templates" | "magic";
-
-// Cultural templates
-const TEMPLATES = [
-  { id: "free", emoji: "🎬", label: "Libre" },
-  { id: "conte", emoji: "🦁", label: "Conte" },
-  { id: "sagesse", emoji: "🧓", label: "Sagesse" },
-  { id: "marche", emoji: "🛒", label: "Marché" },
-  { id: "conseil", emoji: "🌾", label: "Conseil" },
-  { id: "recette", emoji: "🍲", label: "Recette" },
-  { id: "danse", emoji: "💃", label: "Danse" },
-];
+type DrawerType = "none" | "beautify" | "length" | "magic" | "graphics" | "stickers";
 
 export interface FullscreenCreatorProps {
   open?: boolean;
@@ -94,7 +103,11 @@ function pickMimeType(): string | undefined {
   return undefined;
 }
 
-async function capturePhotoFromVideo(videoEl: HTMLVideoElement, ratio: CanvasRatio): Promise<Blob> {
+async function capturePhotoFromVideo(
+  videoEl: HTMLVideoElement, 
+  ratio: CanvasRatio,
+  effects: CaptureEffects
+): Promise<Blob> {
   const w = videoEl.videoWidth || 1080;
   const h = videoEl.videoHeight || 1920;
   const target = (() => {
@@ -119,7 +132,42 @@ async function capturePhotoFromVideo(videoEl: HTMLVideoElement, ratio: CanvasRat
     sh = Math.round(w / dstAR);
     sy = Math.round((h - sh) / 2);
   }
+
+  // Apply filter
+  const filter = VIDEO_FILTERS.find(f => f.id === effects.filterId);
+  if (filter && filter.id !== 'none') {
+    ctx.filter = scaleCssFilter(filter.cssFilter, effects.filterIntensity);
+  }
+
   ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, target.tw, target.th);
+
+  // Apply template overlay gradient
+  const template = getTemplateById(effects.templateId);
+  if (template?.overlayGradient) {
+    ctx.save();
+    const gradient = ctx.createLinearGradient(0, 0, 0, target.th);
+    gradient.addColorStop(0, 'rgba(0,0,0,0.3)');
+    gradient.addColorStop(0.5, 'rgba(0,0,0,0)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, target.tw, target.th);
+    ctx.restore();
+  }
+
+  // Draw stickers
+  for (const sticker of effects.stickers) {
+    ctx.save();
+    const x = (sticker.position.x / 100) * target.tw;
+    const y = (sticker.position.y / 100) * target.th;
+    ctx.translate(x, y);
+    ctx.rotate((sticker.rotation * Math.PI) / 180);
+    ctx.scale(sticker.scale, sticker.scale);
+    ctx.font = '60px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(sticker.content, 0, 0);
+    ctx.restore();
+  }
 
   const blob: Blob = await new Promise((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Photo blob failed"))), "image/jpeg", 0.92);
@@ -127,7 +175,7 @@ async function capturePhotoFromVideo(videoEl: HTMLVideoElement, ratio: CanvasRat
   return blob;
 }
 
-async function renderTextToImage(text: string, ratio: CanvasRatio): Promise<Blob> {
+async function renderTextToImage(text: string, ratio: CanvasRatio, effects: CaptureEffects): Promise<Blob> {
   const size = (() => {
     if (ratio === "1:1") return { w: 1080, h: 1080 };
     if (ratio === "16:9") return { w: 1920, h: 1080 };
@@ -140,11 +188,23 @@ async function renderTextToImage(text: string, ratio: CanvasRatio): Promise<Blob
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No canvas ctx");
 
+  // Background with template gradient
+  const template = getTemplateById(effects.templateId);
   const g = ctx.createLinearGradient(0, 0, size.w, size.h);
   g.addColorStop(0, "#0f172a");
   g.addColorStop(1, "#111827");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size.w, size.h);
+
+  // Template overlay
+  if (template?.overlayGradient) {
+    const overlay = ctx.createLinearGradient(0, 0, 0, size.h);
+    overlay.addColorStop(0, 'rgba(139,69,19,0.3)');
+    overlay.addColorStop(0.5, 'rgba(0,0,0,0)');
+    overlay.addColorStop(1, 'rgba(139,69,19,0.4)');
+    ctx.fillStyle = overlay;
+    ctx.fillRect(0, 0, size.w, size.h);
+  }
 
   ctx.fillStyle = "rgba(255,255,255,0.92)";
   ctx.font = "700 72px Inter, system-ui, -apple-system, Segoe UI, Roboto";
@@ -173,6 +233,21 @@ async function renderTextToImage(text: string, ratio: CanvasRatio): Promise<Blob
   for (const line of lines) {
     ctx.fillText(line, size.w / 2, y);
     y += lineH;
+  }
+
+  // Draw stickers
+  for (const sticker of effects.stickers) {
+    ctx.save();
+    const x = (sticker.position.x / 100) * size.w;
+    const sy = (sticker.position.y / 100) * size.h;
+    ctx.translate(x, sy);
+    ctx.rotate((sticker.rotation * Math.PI) / 180);
+    ctx.scale(sticker.scale, sticker.scale);
+    ctx.font = '60px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(sticker.content, 0, 0);
+    ctx.restore();
   }
 
   const blob: Blob = await new Promise((resolve, reject) => {
@@ -214,7 +289,7 @@ export default function FullscreenCreator({
   onClose,
   onPublish,
 }: FullscreenCreatorProps) {
-  // All hooks must be declared before any early return
+  // Core state
   const [step, setStep] = useState<CreatorStep>("capture");
   const [topTab, setTopTab] = useState<TopTab>("video");
   const [mode, setMode] = useState<CaptureMode>("video");
@@ -232,27 +307,47 @@ export default function FullscreenCreator({
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Filters
-  const [filterId, setFilterId] = useState<string>("original");
-  const [filterIntensity, setFilterIntensity] = useState(100);
+  // ============= EFFECTS STATE (FULL INTEGRATION) =============
+  const [effects, setEffects] = useState<CaptureEffects>({ ...DEFAULT_EFFECTS });
+
+  // Quick accessors
+  const updateEffects = useCallback((updates: Partial<CaptureEffects>) => {
+    setEffects(prev => ({ ...prev, ...updates }));
+  }, []);
+
+  // Template selection
+  const selectedTemplate = useMemo(() => getTemplateById(effects.templateId), [effects.templateId]);
+
+  // Filter
   const filter = useMemo<VideoFilter | undefined>(
-    () => VIDEO_FILTERS.find((f) => f.id === filterId) ?? VIDEO_FILTERS[0],
-    [filterId]
+    () => VIDEO_FILTERS.find((f) => f.id === effects.filterId) ?? VIDEO_FILTERS[0],
+    [effects.filterId]
   );
   const cssFilter = useMemo(() => {
     const base = filter?.cssFilter ?? "none";
-    return scaleCssFilter(base, filterIntensity);
-  }, [filter?.cssFilter, filterIntensity]);
-
-  // Templates
-  const [selectedTemplate, setSelectedTemplate] = useState("free");
+    let result = scaleCssFilter(base, effects.filterIntensity);
+    
+    // Add AR face filters
+    effects.arEffects.forEach(arId => {
+      const ar = AR_EFFECTS.find(e => e.id === arId);
+      if (ar?.type === 'face' && ar.cssFilter) {
+        result = result === 'none' ? ar.cssFilter : `${result} ${ar.cssFilter}`;
+      }
+    });
+    
+    return result;
+  }, [filter?.cssFilter, effects.filterIntensity, effects.arEffects]);
 
   // Music
   const [musicTrack, setMusicTrack] = useState<string | null>(null);
 
+  // Sticker picker
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+
   // Stream/recorder refs
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const gestureRef = useRef<{ x0: number; y0: number; active: boolean } | null>(null);
@@ -268,20 +363,24 @@ export default function FullscreenCreator({
   // Publish
   const [caption, setCaption] = useState("");
 
-  // Derived
-  const modeLabel = useMemo(() => {
-    if (mode === "burst") return "Burst";
-    if (mode === "photo") return "Photo";
-    if (mode === "video") return "Vidéo";
-    return "Texte";
-  }, [mode]);
-
   // Clean toast
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 1200);
+    const t = window.setTimeout(() => setToast(null), 1500);
     return () => window.clearTimeout(t);
   }, [toast]);
+
+  // Auto-apply template settings
+  useEffect(() => {
+    if (selectedTemplate && selectedTemplate.id !== 'free') {
+      setLengthSec(selectedTemplate.suggestedDuration as 15 | 30 | 60 | 180 | 600);
+      setMode(selectedTemplate.suggestedMode as CaptureMode);
+      setCanvasRatio(selectedTemplate.suggestedRatio);
+      if (selectedTemplate.autoFilter) {
+        updateEffects({ filterId: selectedTemplate.autoFilter });
+      }
+    }
+  }, [selectedTemplate, updateEffects]);
 
   // Camera bootstrap
   const stopStream = () => {
@@ -392,7 +491,7 @@ export default function FullscreenCreator({
       try {
         await runTimerIfNeeded();
         stopStream();
-        const b = await renderTextToImage(caption || "Texte", canvasRatio);
+        const b = await renderTextToImage(caption || "Texte", canvasRatio, effects);
         setCapturedType("photo");
         setCapturedBlob(b);
         setStep("preview");
@@ -404,11 +503,11 @@ export default function FullscreenCreator({
       }
     }
 
-    if (mode === "photo") {
+    if (mode === "photo" || mode === "burst") {
       try {
         await runTimerIfNeeded();
         if (!videoRef.current) throw new Error("Preview not ready");
-        const b = await capturePhotoFromVideo(videoRef.current, canvasRatio);
+        const b = await capturePhotoFromVideo(videoRef.current, canvasRatio, effects);
         setCapturedType("photo");
         setCapturedBlob(b);
         setStep("preview");
@@ -456,7 +555,7 @@ export default function FullscreenCreator({
       endTime: duration,
       isMuted: false,
       volume: 100,
-      filter: filterId,
+      filter: effects.filterId,
     };
     setSegments([seg]);
     setStep("editor");
@@ -480,8 +579,22 @@ export default function FullscreenCreator({
     try {
       setError(null);
       if (!segments.length) throw new Error("Aucun contenu à publier.");
+      
+      // Get challenge hashtag if selected
+      const challenge = effects.challengeId ? CHALLENGES.find(c => c.id === effects.challengeId) : null;
+      const finalCaption = challenge ? `${caption} ${challenge.hashtag}`.trim() : caption;
+      
       if (onPublish) {
-        await onPublish({ segments, caption, topTab, mode, canvasRatio, selectedFilterId: filterId });
+        await onPublish({ 
+          segments, 
+          caption: finalCaption, 
+          topTab, 
+          mode, 
+          canvasRatio, 
+          selectedFilterId: effects.filterId,
+          effects,
+          challengeHashtag: challenge?.hashtag,
+        });
       }
       setToast("Publié ✓");
       onClose?.();
@@ -499,19 +612,36 @@ export default function FullscreenCreator({
     if (!gestureRef.current?.active) return;
     const dx = e.clientX - gestureRef.current.x0;
     const dy = e.clientY - gestureRef.current.y0;
-    // Swipe left/right to change filter
     if (step === "capture" && Math.abs(dy) < 60 && Math.abs(dx) > 90) {
       gestureRef.current.active = false;
-      const idx = VIDEO_FILTERS.findIndex((f) => f.id === filterId);
+      const idx = VIDEO_FILTERS.findIndex((f) => f.id === effects.filterId);
       const dir = dx < 0 ? 1 : -1;
       const next = clamp(idx + dir, 0, VIDEO_FILTERS.length - 1);
-      setFilterId(VIDEO_FILTERS[next].id);
+      updateEffects({ filterId: VIDEO_FILTERS[next].id });
       setToast(VIDEO_FILTERS[next].name);
     }
   };
 
   const onSurfaceUp = () => {
     if (gestureRef.current) gestureRef.current.active = false;
+  };
+
+  // Sticker management
+  const addSticker = (sticker: Omit<StickerType, 'id'>) => {
+    const newSticker: StickerType = {
+      ...sticker,
+      id: `sticker-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
+    updateEffects({ stickers: [...effects.stickers, newSticker] });
+  };
+
+  // AR toggle
+  const toggleAREffect = (id: string) => {
+    const current = effects.arEffects;
+    const newEffects = current.includes(id)
+      ? current.filter(e => e !== id)
+      : [...current, id];
+    updateEffects({ arEffects: newEffects });
   };
 
   // Length options
@@ -523,27 +653,61 @@ export default function FullscreenCreator({
     { value: 600, label: "10min" },
   ];
 
+  // Graphics styles for preview
+  const graphicsStyles = useMemo(() => 
+    getGraphicsStyles(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
+    [effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId]
+  );
+
+  const graphicsClasses = useMemo(() =>
+    getGraphicsClasses(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
+    [effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId]
+  );
+
   return (
     <div className="fixed inset-0 z-[100] bg-black text-white select-none">
       {/* ============ CAPTURE STEP ============ */}
       {step === "capture" && (
         <div
+          ref={containerRef}
           className="absolute inset-0"
           onPointerDown={onSurfaceDown}
           onPointerMove={onSurfaceMove}
           onPointerUp={onSurfaceUp}
         >
-          {/* Camera preview */}
-          <video
-            ref={videoRef}
-            className="absolute inset-0 w-full h-full object-cover bg-black"
-            style={{
-              filter: cssFilter,
-              transform: facing === "user" ? "scaleX(-1)" : "none",
-            }}
-            playsInline
-            muted
-            autoPlay
+          {/* Camera preview with all effects applied */}
+          <div 
+            className={cn("absolute inset-0", graphicsClasses)}
+            style={graphicsStyles}
+          >
+            <video
+              ref={videoRef}
+              className="absolute inset-0 w-full h-full object-cover bg-black"
+              style={{
+                filter: cssFilter,
+                transform: facing === "user" ? "scaleX(-1)" : "none",
+              }}
+              playsInline
+              muted
+              autoPlay
+            />
+          </div>
+
+          {/* Template overlay */}
+          <TemplateOverlay templateId={effects.templateId} />
+
+          {/* AR Effects Layer */}
+          <AREffectsLayer activeEffects={effects.arEffects} />
+
+          {/* Shot Tip Overlay */}
+          <ShotTipOverlay tipId={effects.shotTipId} />
+
+          {/* Stickers Layer */}
+          <StickerLayer
+            stickers={effects.stickers}
+            onStickersChange={(stickers) => updateEffects({ stickers })}
+            isEditing={true}
+            containerRef={containerRef}
           />
 
           {/* Flash simulation */}
@@ -558,10 +722,9 @@ export default function FullscreenCreator({
             )}
           </AnimatePresence>
 
-          {/* ===== TOP BAR (Kuaishou style) ===== */}
+          {/* ===== TOP BAR ===== */}
           <div className="absolute top-0 left-0 right-0 z-30 safe-area-top">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
-              {/* Close */}
               <button
                 onClick={() => onClose?.()}
                 className="h-11 w-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
@@ -569,7 +732,6 @@ export default function FullscreenCreator({
                 <X className="h-5 w-5" />
               </button>
 
-              {/* Music pill */}
               {musicTrack ? (
                 <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl rounded-full px-4 py-2">
                   <Music className="h-4 w-4" />
@@ -580,15 +742,14 @@ export default function FullscreenCreator({
                 </div>
               ) : (
                 <button
-                  onClick={() => setToast("Music picker (soon)")}
+                  onClick={() => setToast("Music picker")}
                   className="flex items-center gap-2 bg-black/40 backdrop-blur-xl rounded-full px-4 py-2"
                 >
                   <Music className="h-4 w-4" />
-                  <span className="text-sm">Add music</span>
+                  <span className="text-sm">Musique</span>
                 </button>
               )}
 
-              {/* Switch camera */}
               <button
                 onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
                 className="h-11 w-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
@@ -598,8 +759,8 @@ export default function FullscreenCreator({
             </div>
           </div>
 
-          {/* ===== RIGHT RAIL (Kuaishou style) ===== */}
-          <div className="absolute right-3 top-24 bottom-60 z-30 flex flex-col items-center justify-center gap-4">
+          {/* ===== RIGHT RAIL ===== */}
+          <div className="absolute right-3 top-24 bottom-60 z-30 flex flex-col items-center justify-center gap-3">
             <RailButton
               icon={<RotateCcw className="h-5 w-5" />}
               label="Switch"
@@ -619,13 +780,19 @@ export default function FullscreenCreator({
               icon={<SunMedium className="h-5 w-5" />}
               label="Beautify"
               onClick={() => setDrawer(drawer === "beautify" ? "none" : "beautify")}
-              active={drawer === "beautify"}
+              active={drawer === "beautify" || effects.filterId !== 'none'}
             />
             <RailButton
-              icon={<span className="text-xs font-bold">{lengthSec < 60 ? `${lengthSec}s` : `${lengthSec / 60}m`}</span>}
-              label="Length"
-              onClick={() => setDrawer(drawer === "length" ? "none" : "length")}
-              active={drawer === "length"}
+              icon={<Layers className="h-5 w-5" />}
+              label="Graphics"
+              onClick={() => setDrawer(drawer === "graphics" ? "none" : "graphics")}
+              active={drawer === "graphics" || !!effects.frameId || !!effects.borderId}
+            />
+            <RailButton
+              icon={<Sticker className="h-5 w-5" />}
+              label="Stickers"
+              onClick={() => setShowStickerPicker(true)}
+              active={effects.stickers.length > 0}
             />
             <RailButton
               icon={<Gauge className="h-5 w-5" />}
@@ -644,37 +811,18 @@ export default function FullscreenCreator({
             />
             <RailButton
               icon={<ChevronUp className="h-5 w-5" />}
-              label="More"
+              label="Magic"
               onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
+              active={drawer === "magic" || effects.arEffects.length > 0}
             />
           </div>
 
           {/* ===== TEMPLATE CAROUSEL ===== */}
           <div className="absolute left-0 right-0 bottom-52 z-20 px-4">
-            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-              {TEMPLATES.map((tpl) => (
-                <button
-                  key={tpl.id}
-                  onClick={() => setSelectedTemplate(tpl.id)}
-                  className={cn(
-                    "flex-shrink-0 flex flex-col items-center gap-1 transition-transform",
-                    selectedTemplate === tpl.id ? "scale-110" : ""
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "w-14 h-14 rounded-full flex items-center justify-center text-2xl border-2 transition-all",
-                      selectedTemplate === tpl.id
-                        ? "border-white bg-white/20 shadow-lg shadow-white/20"
-                        : "border-white/30 bg-black/30"
-                    )}
-                  >
-                    {tpl.emoji}
-                  </div>
-                  <span className="text-[10px] text-white/80">{tpl.label}</span>
-                </button>
-              ))}
-            </div>
+            <TemplateCarousel
+              selectedId={effects.templateId}
+              onSelect={(id) => updateEffects({ templateId: id })}
+            />
           </div>
 
           {/* ===== MODE PILL SELECTOR ===== */}
@@ -700,18 +848,21 @@ export default function FullscreenCreator({
           {/* ===== BOTTOM ACTIONS BAR ===== */}
           <div className="absolute left-0 right-0 bottom-20 z-20 px-6">
             <div className="flex items-center justify-between max-w-sm mx-auto">
-              {/* Magic */}
               <button
                 onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
                 className="flex flex-col items-center gap-1"
               >
-                <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10">
+                <div className={cn(
+                  "w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-all",
+                  effects.arEffects.length > 0 || effects.challengeId
+                    ? "bg-white/20 border-white"
+                    : "bg-black/40 border-white/10"
+                )}>
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <span className="text-[10px] text-white/80">Magic</span>
               </button>
 
-              {/* Capture button */}
               <button
                 onClick={onPressCapture}
                 className={cn(
@@ -728,9 +879,8 @@ export default function FullscreenCreator({
                 )}
               </button>
 
-              {/* Albums */}
               <button
-                onClick={() => setToast("Albums (soon)")}
+                onClick={() => setToast("Albums")}
                 className="flex flex-col items-center gap-1"
               >
                 <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10">
@@ -746,14 +896,18 @@ export default function FullscreenCreator({
             <div className="flex items-center justify-around py-3 bg-black/60 backdrop-blur-xl border-t border-white/10">
               {([
                 { id: "graphics", icon: <Layers className="h-5 w-5" />, label: "Graphics" },
-                { id: "video", icon: <VideoIcon className="h-5 w-5" />, label: "Video" },
+                { id: "video", icon: <CameraIcon className="h-5 w-5" />, label: "Video" },
                 { id: "story", icon: <BookOpen className="h-5 w-5" />, label: "Story" },
                 { id: "template", icon: <Sparkles className="h-5 w-5" />, label: "Template" },
                 { id: "live", icon: <Radio className="h-5 w-5" />, label: "Live" },
               ] as { id: TopTab; icon: React.ReactNode; label: string }[]).map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setTopTab(tab.id)}
+                  onClick={() => {
+                    setTopTab(tab.id);
+                    if (tab.id === 'graphics') setDrawer('graphics');
+                    else if (tab.id === 'template') setDrawer('none');
+                  }}
                   className={cn(
                     "flex flex-col items-center gap-1 transition-all",
                     topTab === tab.id ? "text-white" : "text-white/50"
@@ -771,7 +925,7 @@ export default function FullscreenCreator({
 
           {/* ===== DRAWERS ===== */}
           <AnimatePresence>
-            {drawer !== "none" && (
+            {drawer === "beautify" && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -788,86 +942,123 @@ export default function FullscreenCreator({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-
-                  {/* Beautify drawer */}
-                  {drawer === "beautify" && (
-                    <div>
-                      <div className="font-semibold mb-4 flex items-center gap-2">
-                        <SunMedium className="h-5 w-5" /> Beautify
-                      </div>
-                      <VideoFiltersInlinePanel
-                        selectedId={filterId}
-                        onSelect={setFilterId}
-                        showIntensity
-                        intensity={filterIntensity}
-                        onIntensityChange={setFilterIntensity}
-                      />
-                    </div>
-                  )}
-
-                  {/* Length drawer */}
-                  {drawer === "length" && (
-                    <div>
-                      <div className="font-semibold mb-4 flex items-center gap-2">
-                        <Timer className="h-5 w-5" /> Length & Speed
-                      </div>
-                      <div className="mb-4">
-                        <div className="text-xs text-white/60 mb-2">Duration</div>
-                        <div className="flex gap-2 flex-wrap">
-                          {lengthOptions.map((opt) => (
-                            <button
-                              key={opt.value}
-                              onClick={() => setLengthSec(opt.value as 15 | 30 | 60 | 180 | 600)}
-                              className={cn(
-                                "h-10 px-4 rounded-full border text-sm",
-                                lengthSec === opt.value
-                                  ? "bg-white text-black border-white"
-                                  : "bg-white/10 border-white/20 text-white/80"
-                              )}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-white/60 mb-2">Speed</div>
-                        <div className="flex gap-2">
-                          {[0.5, 1, 2].map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => setSpeed(s as 0.5 | 1 | 2)}
-                              className={cn(
-                                "h-10 px-4 rounded-full border text-sm",
-                                speed === s
-                                  ? "bg-white text-black border-white"
-                                  : "bg-white/10 border-white/20 text-white/80"
-                              )}
-                            >
-                              {s}x
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Magic drawer */}
-                  {drawer === "magic" && (
-                    <div>
-                      <div className="font-semibold mb-4 flex items-center gap-2">
-                        <Wand2 className="h-5 w-5" /> Magic & AI
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <DrawerCard icon={<Eye className="h-5 w-5" />} label="Inspiring" onClick={() => setToast("Inspiring ideas")} />
-                        <DrawerCard icon={<Sparkles className="h-5 w-5" />} label="Shot tips" onClick={() => setToast("Shot tips")} />
-                        <DrawerCard icon={<Flame className="h-5 w-5" />} label="Challenge" onClick={() => setToast("Challenges")} />
-                        <DrawerCard icon={<Wand2 className="h-5 w-5" />} label="AR Effects" onClick={() => setToast("AR Effects")} />
-                      </div>
-                    </div>
-                  )}
+                  <div className="font-semibold mb-4 flex items-center gap-2">
+                    <SunMedium className="h-5 w-5" /> Beautify & Filtres
+                  </div>
+                  <VideoFiltersInlinePanel
+                    selectedId={effects.filterId}
+                    onSelect={(id) => updateEffects({ filterId: id })}
+                    showIntensity
+                    intensity={effects.filterIntensity}
+                    onIntensityChange={(v) => updateEffects({ filterIntensity: v })}
+                  />
                 </motion.div>
               </motion.div>
+            )}
+
+            {drawer === "length" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[120] bg-black/50 backdrop-blur-sm"
+                onClick={() => setDrawer("none")}
+              >
+                <motion.div
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                  className="absolute left-0 right-0 bottom-0 rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+                  <div className="font-semibold mb-4 flex items-center gap-2">
+                    <Timer className="h-5 w-5" /> Durée & Vitesse
+                  </div>
+                  <div className="mb-4">
+                    <div className="text-xs text-white/60 mb-2">Durée</div>
+                    <div className="flex gap-2 flex-wrap">
+                      {lengthOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setLengthSec(opt.value as 15 | 30 | 60 | 180 | 600)}
+                          className={cn(
+                            "h-10 px-4 rounded-full border text-sm",
+                            lengthSec === opt.value
+                              ? "bg-white text-black border-white"
+                              : "bg-white/10 border-white/20 text-white/80"
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-white/60 mb-2">Vitesse</div>
+                    <div className="flex gap-2">
+                      {[0.5, 1, 2].map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setSpeed(s as 0.5 | 1 | 2)}
+                          className={cn(
+                            "h-10 px-4 rounded-full border text-sm",
+                            speed === s
+                              ? "bg-white text-black border-white"
+                              : "bg-white/10 border-white/20 text-white/80"
+                          )}
+                        >
+                          {s}x
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Graphics Drawer */}
+          <GraphicsDrawer
+            isOpen={drawer === "graphics"}
+            onClose={() => setDrawer("none")}
+            selectedFrame={effects.frameId}
+            selectedBorder={effects.borderId}
+            selectedOverlay={effects.overlayId}
+            selectedBackground={effects.backgroundId}
+            selectedTextStyle={undefined}
+            onSelectFrame={(id) => updateEffects({ frameId: id })}
+            onSelectBorder={(id) => updateEffects({ borderId: id })}
+            onSelectOverlay={(id) => updateEffects({ overlayId: id })}
+            onSelectBackground={(id) => updateEffects({ backgroundId: id })}
+            onSelectTextStyle={() => {}}
+          />
+
+          {/* Magic Drawer */}
+          <MagicDrawer
+            isOpen={drawer === "magic"}
+            onClose={() => setDrawer("none")}
+            selectedShotTip={effects.shotTipId}
+            onSelectShotTip={(id) => updateEffects({ shotTipId: id })}
+            selectedChallenge={effects.challengeId}
+            onSelectChallenge={(id) => updateEffects({ challengeId: id })}
+            activeAREffects={effects.arEffects}
+            onToggleAREffect={toggleAREffect}
+            onSelectIdea={(idea) => {
+              setToast(`💡 ${idea.label}`);
+              setDrawer("none");
+            }}
+          />
+
+          {/* Sticker Picker */}
+          <AnimatePresence>
+            {showStickerPicker && (
+              <StickerPicker
+                isOpen={showStickerPicker}
+                onClose={() => setShowStickerPicker(false)}
+                onAddSticker={addSticker}
+              />
             )}
           </AnimatePresence>
 
@@ -920,13 +1111,51 @@ export default function FullscreenCreator({
             </button>
           </div>
 
+          {/* Preview with effects */}
           <div className="absolute inset-0 flex items-center justify-center">
-            {capturedType === "video" ? (
-              <video src={previewUrl} className="w-full h-full object-contain" controls playsInline />
-            ) : (
-              <img src={previewUrl} className="w-full h-full object-contain" alt="preview" />
-            )}
+            <div 
+              className={cn("relative w-full h-full", graphicsClasses)}
+              style={graphicsStyles}
+            >
+              {capturedType === "video" ? (
+                <video 
+                  src={previewUrl} 
+                  className="w-full h-full object-contain" 
+                  style={{ filter: cssFilter }}
+                  controls 
+                  playsInline 
+                />
+              ) : (
+                <img 
+                  src={previewUrl} 
+                  className="w-full h-full object-contain" 
+                  alt="preview" 
+                />
+              )}
+              
+              {/* Template overlay on preview */}
+              <TemplateOverlay templateId={effects.templateId} />
+              
+              {/* AR effects on preview */}
+              <AREffectsLayer activeEffects={effects.arEffects} />
+              
+              {/* Stickers on preview */}
+              <StickerLayer
+                stickers={effects.stickers}
+                onStickersChange={(stickers) => updateEffects({ stickers })}
+                isEditing={true}
+              />
+            </div>
           </div>
+
+          {/* Challenge badge */}
+          {effects.challengeId && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500/80 to-red-500/80 backdrop-blur-sm border border-white/20 z-30">
+              <span className="text-sm font-medium">
+                {CHALLENGES.find(c => c.id === effects.challengeId)?.hashtag}
+              </span>
+            </div>
+          )}
 
           <div className="absolute left-0 right-0 bottom-0 p-4 z-20 safe-area-bottom">
             <button
@@ -971,13 +1200,21 @@ export default function FullscreenCreator({
           <div className="absolute inset-0 flex items-center justify-center p-6 pt-20">
             <div className="w-full max-w-lg">
               <div className="rounded-3xl bg-white/5 border border-white/10 p-4 backdrop-blur-xl">
-                <div className="text-white font-semibold text-lg">Publier</div>
+                <div className="text-white font-semibold text-lg flex items-center gap-2">
+                  Publier
+                  {selectedTemplate.id !== 'free' && (
+                    <span className="text-sm px-2 py-0.5 rounded-full bg-white/10">
+                      {selectedTemplate.emoji} {selectedTemplate.label}
+                    </span>
+                  )}
+                </div>
 
-                <div className="mt-4 rounded-2xl bg-black/40 border border-white/10 p-2 aspect-[9/16] max-h-[200px] overflow-hidden">
+                <div className="mt-4 rounded-2xl bg-black/40 border border-white/10 p-2 aspect-[9/16] max-h-[200px] overflow-hidden relative">
                   {segments[0]?.type === "video" ? (
                     <video
                       src={URL.createObjectURL(segments[0].blob)}
                       className="w-full h-full object-contain rounded-xl"
+                      style={{ filter: cssFilter }}
                       playsInline
                     />
                   ) : segments[0] ? (
@@ -987,7 +1224,24 @@ export default function FullscreenCreator({
                       alt="thumb"
                     />
                   ) : null}
+                  
+                  {/* Template badge on thumbnail */}
+                  {selectedTemplate.id !== 'free' && (
+                    <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-xs">
+                      {selectedTemplate.emoji}
+                    </div>
+                  )}
                 </div>
+
+                {/* Challenge badge */}
+                {effects.challengeId && (
+                  <div className="mt-3 px-3 py-2 rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 flex items-center gap-2">
+                    <Flame className="h-4 w-4 text-orange-400" />
+                    <span className="text-sm text-orange-300">
+                      {CHALLENGES.find(c => c.id === effects.challengeId)?.hashtag}
+                    </span>
+                  </div>
+                )}
 
                 <textarea
                   value={caption}
@@ -1048,7 +1302,7 @@ function RailButton({
     <button onClick={onClick} className="flex flex-col items-center gap-1">
       <div
         className={cn(
-          "w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-xl transition-all",
+          "w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl transition-all",
           active
             ? "bg-white/30 border-2 border-white"
             : "bg-black/40 border border-white/10"
@@ -1057,26 +1311,6 @@ function RailButton({
         {icon}
       </div>
       <span className="text-[10px] text-white/80">{label}</span>
-    </button>
-  );
-}
-
-function DrawerCard({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="h-20 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-2 hover:bg-white/10 transition-colors"
-    >
-      {icon}
-      <span className="text-xs text-white/80">{label}</span>
     </button>
   );
 }
