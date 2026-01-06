@@ -54,7 +54,7 @@ const App = () => (
             
             {/* TAM-TAM Platform Routes - 8 optimized screens */}
             <Route path="/tamtam" element={<TamTamApp />}>
-              <Route index element={<TamTamHome />} />
+              <Route index element={<TamTamSocial />} />
               <Route path="auth" element={<TamTamPhoneAuth />} />
               <Route path="home" element={<TamTamHome />} />
               <Route path="social" element={<TamTamSocial />} />

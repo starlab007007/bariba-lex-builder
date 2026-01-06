@@ -3,11 +3,11 @@ import { useState, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TamTamLanguageProvider, useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
-import { Home, Users, Radio, ShoppingBag, User, Settings, X, ChevronRight, Bell, Moon, Globe, Mic, Heart, Stethoscope, Languages, BookOpen, Calculator, Cloud, Map, Newspaper, Shield, Sparkles, Headphones, Camera, Video } from 'lucide-react';
+import { Home, User, Settings, X, Bell, Globe, BookOpen, Languages } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📱 TAM-TAM APP V6 - MENU HAMBURGER ENRICHI + SERVICES IA
+// 📱 TAM-TAM APP V7 - MENU SIMPLIFIÉ
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface SideMenuContextType {
@@ -27,7 +27,7 @@ const SideMenuContext = createContext<SideMenuContextType>({
 export const useSideMenu = () => useContext(SideMenuContext);
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SIDE MENU DRAWER - GLASSMORPHISM + SERVICES IA
+// SIDE MENU DRAWER - SIMPLIFIÉ
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
@@ -35,24 +35,30 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   const location = useLocation();
   const { currentLang, setLanguage } = useTamTamLanguage();
 
+  // Navigation simplifiée : Accueil + Profil uniquement
   const navItems = [
-    { icon: Home, label: 'Accueil', labelBa: 'Ilé', path: '/tamtam', emoji: '🏠' },
-    { icon: Users, label: 'Social', labelBa: 'Àwùjọ', path: '/tamtam/social', emoji: '💬' },
-    { icon: Radio, label: 'Radio', labelBa: 'Rédíò', path: '/tamtam/radio', emoji: '📻' },
-    { icon: ShoppingBag, label: 'Marché', labelBa: 'Ọjà', path: '/tamtam/market', emoji: '🛒' },
+    { icon: Home, label: 'Accueil', labelBa: 'Ilé', path: '/tamtam/social', emoji: '🏠' },
     { icon: User, label: 'Profil', labelBa: 'Èmi', path: '/tamtam/profile', emoji: '👤' },
   ];
 
-  // Services IA
-  const aiServices = [
-    { icon: Languages, label: 'Traducteur', labelBa: 'Ìtumọ̀', emoji: '🌍', color: 'from-blue-500 to-cyan-400', desc: 'FR ↔ Yoruba ↔ Bambara' },
-    { icon: Stethoscope, label: 'Santé IA', labelBa: 'Ìlera AI', emoji: '🩺', color: 'from-emerald-500 to-teal-400', desc: 'Conseils médicaux' },
-    { icon: BookOpen, label: 'Éducation', labelBa: 'Ẹ̀kọ́', emoji: '📚', color: 'from-purple-500 to-indigo-400', desc: 'Apprendre & Quiz' },
-    { icon: Calculator, label: 'Finance', labelBa: 'Owó', emoji: '💰', color: 'from-amber-500 to-orange-400', desc: 'Calculs & Épargne' },
-    { icon: Cloud, label: 'Météo', labelBa: 'Ojú ọjọ́', emoji: '🌤️', color: 'from-sky-500 to-blue-400', desc: 'Prévisions locales' },
-    { icon: Map, label: 'Agriculture', labelBa: 'Iṣẹ́ àgbẹ̀', emoji: '🌾', color: 'from-green-500 to-lime-400', desc: 'Conseils culture' },
-    { icon: Newspaper, label: 'Actualités', labelBa: 'Ìròyìn', emoji: '📰', color: 'from-red-500 to-rose-400', desc: 'News locales' },
-    { icon: Shield, label: 'Sécurité', labelBa: 'Ààbò', emoji: '🛡️', color: 'from-gray-500 to-slate-400', desc: 'Alertes & SOS' },
+  // Outils : Dictionnaire + Traducteur
+  const toolsItems = [
+    { 
+      emoji: '📖', 
+      label: 'Dictionnaire', 
+      labelBa: 'Ìwé ọ̀rọ̀', 
+      path: '/tamtam/dictionary', 
+      gradient: 'from-emerald-500 to-teal-400',
+      desc: 'FR ↔ Bariba'
+    },
+    { 
+      emoji: '🌍', 
+      label: 'Traducteur', 
+      labelBa: 'Ìtumọ̀', 
+      path: '/tamtam/translator', 
+      gradient: 'from-blue-500 to-cyan-400',
+      desc: 'Voix & Texte'
+    },
   ];
 
   const handleNavigate = (path: string) => {
@@ -62,7 +68,9 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   };
 
   const isActive = (path: string) => {
-    if (path === '/tamtam') return location.pathname === '/tamtam' || location.pathname === '/tamtam/';
+    if (path === '/tamtam/social') {
+      return location.pathname === '/tamtam' || location.pathname === '/tamtam/' || location.pathname === '/tamtam/social';
+    }
     return location.pathname.startsWith(path);
   };
 
@@ -84,16 +92,16 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 w-[320px] z-[101] overflow-y-auto"
+            className="fixed left-0 top-0 bottom-0 w-[300px] z-[101] overflow-y-auto"
             style={{
               background: 'linear-gradient(180deg, rgba(20, 20, 28, 0.98) 0%, rgba(10, 10, 15, 0.99) 100%)',
               backdropFilter: 'blur(20px)',
               borderRight: '1px solid rgba(255, 255, 255, 0.1)',
             }}
           >
-            {/* Header avec avatar */}
+            {/* Header */}
             <div className="p-5 border-b border-white/10">
-              <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🥁</span>
                   <span className="text-white font-black text-lg">TAM-TAM</span>
@@ -106,23 +114,6 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                     <X className="w-5 h-5 text-white" />
                   </motion.button>
                 </div>
-              </div>
-
-              {/* Avatar & User Info */}
-              <div className="flex items-center gap-4 p-3 rounded-2xl bg-white/5">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center shadow-xl">
-                  <span className="text-2xl">👤</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-white text-base font-bold">Utilisateur</h3>
-                  <p className="text-white/50 text-sm">@tamtam_user</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[#FF7A00] text-xs font-medium">125 abonnés</span>
-                    <span className="text-white/30">•</span>
-                    <span className="text-white/50 text-xs">48 suivis</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-white/30" />
               </div>
             </div>
 
@@ -157,28 +148,28 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
               </div>
             </div>
 
-            {/* Services IA */}
+            {/* Outils : Dictionnaire + Traducteur */}
             <div className="p-4 border-t border-white/10">
               <div className="flex items-center gap-2 mb-3 px-2">
-                <Sparkles className="w-4 h-4 text-[#FF7A00]" />
-                <p className="text-[#FF7A00] text-[10px] font-bold uppercase tracking-wider">Services IA</p>
+                <BookOpen className="w-4 h-4 text-[#FF7A00]" />
+                <p className="text-[#FF7A00] text-[10px] font-bold uppercase tracking-wider">Outils</p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {aiServices.map((service, index) => (
+              <div className="grid grid-cols-2 gap-3">
+                {toolsItems.map((tool, index) => (
                   <motion.button
-                    key={service.label}
+                    key={tool.label}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 + index * 0.03 }}
+                    transition={{ delay: 0.1 + index * 0.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => { triggerFeedback('click'); onClose(); }}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all"
+                    onClick={() => handleNavigate(tool.path)}
+                    className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-all border border-white/5 hover:border-white/10"
                   >
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${service.color} flex items-center justify-center`}>
-                      <span className="text-xl">{service.emoji}</span>
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center shadow-lg`}>
+                      <span className="text-3xl">{tool.emoji}</span>
                     </div>
-                    <span className="text-white text-xs font-medium">{currentLang === 'ba' ? service.labelBa : service.label}</span>
-                    <span className="text-white/40 text-[9px] text-center leading-tight">{service.desc}</span>
+                    <span className="text-white text-sm font-semibold">{currentLang === 'ba' ? tool.labelBa : tool.label}</span>
+                    <span className="text-white/40 text-[10px] text-center">{tool.desc}</span>
                   </motion.button>
                 ))}
               </div>
@@ -207,7 +198,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                     currentLang === 'ba' ? 'bg-[#FF7A00] text-white' : 'bg-white/10 text-white/60'
                   }`}
                 >
-                  🇧🇯 Yorùbá
+                  🇧🇯 Bariba
                 </motion.button>
               </div>
             </div>
