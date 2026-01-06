@@ -400,6 +400,7 @@ export default function FullscreenCreator({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const liveCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
@@ -736,6 +737,58 @@ export default function FullscreenCreator({
       video.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, [hasCapture, previewUrl, capturedType]);
+
+  // CRITICAL FIX: Draw decoded video frames to a canvas in edit mode.
+  // This avoids black-screen compositor bugs where <video> renders black on some devices.
+  useEffect(() => {
+    if (!hasCapture || capturedType !== 'video' || previewError) return;
+    const video = previewVideoRef.current;
+    const canvas = previewCanvasRef.current;
+    const container = containerRef.current;
+    if (!video || !canvas || !container) return;
+
+    let raf: number | null = null;
+
+    const draw = () => {
+      try {
+        if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+          const dpr = window.devicePixelRatio || 1;
+          const rect = container.getBoundingClientRect();
+          const cw = Math.max(1, Math.floor(rect.width * dpr));
+          const ch = Math.max(1, Math.floor(rect.height * dpr));
+
+          if (canvas.width !== cw || canvas.height !== ch) {
+            canvas.width = cw;
+            canvas.height = ch;
+          }
+
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, cw, ch);
+
+            const vw = video.videoWidth;
+            const vh = video.videoHeight;
+            const scale = Math.min(cw / vw, ch / vh);
+            const dw = vw * scale;
+            const dh = vh * scale;
+            const dx = (cw - dw) / 2;
+            const dy = (ch - dh) / 2;
+
+            ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
+          }
+        }
+      } catch (e) {
+        // ignore draw errors, keep loop alive
+      }
+
+      raf = requestAnimationFrame(draw);
+    };
+
+    raf = requestAnimationFrame(draw);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [hasCapture, capturedType, previewUrl, previewError]);
 
   // ============= HANDLERS (defined before early return to maintain hook order) =============
   
