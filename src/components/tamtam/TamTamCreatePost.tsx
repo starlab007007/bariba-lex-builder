@@ -188,12 +188,25 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  // Don't render content when closed, but DON'T return early to avoid hook violations
+  // Instead, wrap the entire rendered content in AnimatePresence
 
   return (
-    <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur">
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[80] bg-black/80 backdrop-blur"
+    >
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-[920px] rounded-[28px] overflow-hidden border border-white/10 bg-[#0b0b0e]">
+        <motion.div
+          initial={{ scale: 0.95, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.95, y: 20 }}
+          className="w-full max-w-[920px] rounded-[28px] overflow-hidden border border-white/10 bg-[#0b0b0e]"
+        >
           {/* Header */}
           <div className="px-4 py-3 flex items-center justify-between border-b border-white/10">
             <div className="text-white">
@@ -438,7 +451,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
               ) : null}
             </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* FullscreenCreator (video/photo/text) */}
@@ -453,7 +466,9 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
           resetAll();
         }}
       />
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
