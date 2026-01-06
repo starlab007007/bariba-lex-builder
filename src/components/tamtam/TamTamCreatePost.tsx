@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X, Mic, Square, Play, Radio, Sparkles, Camera, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FullscreenCreator, { type CreatorOutputPayload } from "./FullscreenCreator";
+export type { CreatorOutputPayload };
 
 type CreateStep = "hub" | "audioRecord" | "audioPreview";
 
@@ -442,16 +443,15 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({
 
       {/* FullscreenCreator (video/photo/text) */}
       <FullscreenCreator
-        isOpen={creatorOpen}
+        open={creatorOpen}
         onClose={() => setCreatorOpen(false)}
-        onComplete={async (payload) => {
+        onPublish={async (payload) => {
           if (onSubmitCreator) await onSubmitCreator(payload);
           else console.log("[TamTamCreatePost] Publish creator:", payload);
           setCreatorOpen(false);
           onClose();
           resetAll();
         }}
-        language="fr"
       />
     </div>
   );
