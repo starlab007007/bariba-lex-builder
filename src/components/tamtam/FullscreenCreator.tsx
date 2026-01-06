@@ -245,6 +245,10 @@ export default function FullscreenCreator({
   onClose,
   onPublish,
 }: FullscreenCreatorProps) {
+  // ⚠️ CRITICAL: Early return MUST be BEFORE any hooks to avoid React hook violations
+  // When open is false, we render nothing, but hooks must always run in the same order
+  // So we use a wrapper pattern instead
+
   const [step, setStep] = useState<CreatorStep>("capture");
 
   const [topTab, setTopTab] = useState<TopTab>("video");
@@ -304,8 +308,18 @@ export default function FullscreenCreator({
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  // open guard
-  if (!open) return null;
+  // gestureRef moved here (before early return)
+  const gestureRef = useRef<{ x0: number; y0: number; active: boolean; edge: "left" | "right" | "center" } | null>(
+    null
+  );
+
+  // modeLabel moved here (before early return)
+  const modeLabel = useMemo(() => {
+    if (mode === "burst") return "Burst";
+    if (mode === "photo") return "Photo";
+    if (mode === "video") return "Vidéo";
+    return "Texte";
+  }, [mode]);
 
   /** ====== Camera bootstrap ====== */
   const stopStream = () => {
@@ -360,6 +374,9 @@ export default function FullscreenCreator({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capturedBlob]);
+
+  // ⚠️ CRITICAL: Early return MUST be AFTER all hooks to avoid React hook violations
+  if (!open) return null;
 
   /** ====== MediaRecorder helpers (BUGFIX: deterministic stop -> blob) ====== */
   const startRecording = async () => {
@@ -560,9 +577,7 @@ export default function FullscreenCreator({
   };
 
   /** ====== Gestures: edge swipe + swipe up drawer + filter swipe ====== */
-  const gestureRef = useRef<{ x0: number; y0: number; active: boolean; edge: "left" | "right" | "center" } | null>(
-    null
-  );
+  // gestureRef is declared earlier (before early return) to avoid hook violations
 
   const onSurfaceDown = (e: React.PointerEvent) => {
     const w = window.innerWidth || 390;
@@ -630,12 +645,7 @@ export default function FullscreenCreator({
   };
 
   /** ====== Derived labels ====== */
-  const modeLabel = useMemo(() => {
-    if (mode === "burst") return "Burst";
-    if (mode === "photo") return "Photo";
-    if (mode === "video") return "Vidéo";
-    return "Texte";
-  }, [mode]);
+  // modeLabel is declared earlier (before early return) to avoid hook violations
 
   return (
     <div className="fixed inset-0 z-[100] bg-black text-white">
