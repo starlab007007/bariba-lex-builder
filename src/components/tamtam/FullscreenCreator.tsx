@@ -1,281 +1,323 @@
 // src/components/tamtam/FullscreenCreator.tsx
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X,
-  Camera,
-  Repeat2,
-  Flashlight,
-  FlashlightOff,
+  ChevronDown,
+  RotateCcw,
+  Zap,
   Timer,
   Gauge,
+  Expand,
   Sparkles,
+  Eye,
+  Flame,
   Wand2,
+  Music,
+  Camera as CameraIcon,
+  Type as TypeIcon,
   Image as ImageIcon,
   Video as VideoIcon,
-  Type as TypeIcon,
-  Radio,
-  Flame,
-  Eye,
-  Lightbulb,
-  Hash,
-  Scissors,
   Send,
-  Undo2,
-  MoreHorizontal,
-  LayoutGrid,
-  Check,
   Loader2,
-  AlertTriangle,
+  AlertCircle,
+  LayoutGrid,
+  Film,
+  Volume2,
+  VolumeX,
+  MoreHorizontal,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import TimelineEditorKuaishou, { TimelineSegment } from "./TimelineEditor";
 
-type TopTab = "Video" | "Story" | "AI" | "LIVE";
-type CaptureMode = "Burst" | "Photo" | "Video" | "Text";
-type SpeedPreset = 0.5 | 1 | 1.5 | 2;
-type LengthPreset = 15 | 30 | 60;
+import TimelineEditor, { TimelineSegment } from "./TimelineEditor";
+import VideoFiltersPanel, {
+  VIDEO_FILTERS,
+  VideoFilter,
+  scaleCssFilter,
+} from "./VideoFilters";
 
-type RecommendedFilter =
+type TopTab = "video" | "story" | "ai" | "live";
+type CaptureMode = "burst" | "photo" | "video" | "text";
+type CreatorStep = "capture" | "preview" | "editor" | "publish";
+
+type CanvasRatio = "9:16" | "1:1" | "16:9";
+
+type SidePanel = "none" | "canvasLeft" | "filtersRight";
+type DrawerPanel =
   | "none"
-  | "beauty"
-  | "warm"
-  | "cool"
-  | "vivid"
-  | "vintage"
-  | "bw"
-  | "dramatic";
+  | "inspiring"
+  | "shotTips"
+  | "coverTips"
+  | "challenge"
+  | "recommendedFilter"
+  | "magic";
 
-export type CreatorOutputPayload = {
-  media_type: "video" | "photo" | "audio" | "text";
-  media_blob?: Blob;
-  media_url?: string;
-  text_content?: string;
-  is_story?: boolean;
-  top_tab?: TopTab;
-  template_id?: string;
-  theme_id?: string;
-  filter_applied?: string;
-  challenge?: string;
-  music_title?: string;
-  duration_seconds?: number;
-  meta?: Record<string, any>;
-};
+export interface FullscreenCreatorProps {
+  open?: boolean;
+  onClose?: () => void;
 
-interface FullscreenCreatorProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onComplete?: (payload: CreatorOutputPayload) => Promise<void> | void;
-  language?: "fr" | "ba";
+  // called when user presses final "Publish"
+  onPublish?: (payload: {
+    segments: TimelineSegment[];
+    caption: string;
+    topTab: TopTab;
+    mode: CaptureMode;
+    canvasRatio: CanvasRatio;
+    selectedFilterId?: string;
+  }) => Promise<void> | void;
 }
 
-/** =========================
- * DATA
- * ========================= */
-const FILTERS: { id: RecommendedFilter; label: string; css: string }[] = [
-  { id: "none", label: "Original", css: "none" },
-  { id: "beauty", label: "Beauté", css: "brightness(1.05) contrast(0.95) saturate(1.1) blur(0.3px)" },
-  { id: "warm", label: "Chaud", css: "sepia(0.3) saturate(1.4) brightness(1.05)" },
-  { id: "cool", label: "Froid", css: "hue-rotate(10deg) saturate(0.9) brightness(1.05)" },
-  { id: "vivid", label: "Vif", css: "saturate(1.8) contrast(1.2) brightness(1.05)" },
-  { id: "vintage", label: "Vintage", css: "sepia(0.5) contrast(1.1) brightness(0.95)" },
-  { id: "bw", label: "N&B", css: "grayscale(1) contrast(1.2) brightness(1.05)" },
-  { id: "dramatic", label: "Dramatique", css: "contrast(1.4) brightness(0.9) saturate(0.8)" },
-];
-
-const SPEEDS: SpeedPreset[] = [0.5, 1, 1.5, 2];
-const LENGTHS: LengthPreset[] = [15, 30, 60];
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
 }
 
-function randomId(prefix = "id") {
-  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+function isMediaRecorderSupported() {
+  return typeof window !== "undefined" && "MediaRecorder" in window;
 }
 
-async function getBlobDurationSec(blob: Blob): Promise<number> {
-  const url = URL.createObjectURL(blob);
-  try {
-    const v = document.createElement("video");
-    v.preload = "metadata";
-    v.src = url;
-    await new Promise<void>((res, rej) => {
-      v.onloadedmetadata = () => res();
-      v.onerror = () => rej(new Error("metadata error"));
-    });
-    const d = Number.isFinite(v.duration) ? v.duration : 0;
-    return Math.max(0, d || 0);
-  } finally {
-    URL.revokeObjectURL(url);
+function pickMimeType(): string | undefined {
+  const candidates = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4", // may fail in many browsers; ok to try
+  ];
+  // @ts-ignore
+  const MR = typeof window !== "undefined" ? window.MediaRecorder : undefined;
+  if (!MR || !MR.isTypeSupported) return undefined;
+  for (const c of candidates) {
+    try {
+      if (MR.isTypeSupported(c)) return c;
+    } catch {}
   }
+  return undefined;
 }
 
-/** =========================
- * COMPONENT
- * ========================= */
+async function capturePhotoFromVideo(videoEl: HTMLVideoElement, ratio: CanvasRatio): Promise<Blob> {
+  const w = videoEl.videoWidth || 1080;
+  const h = videoEl.videoHeight || 1920;
+
+  // We keep aspect ratio (no deformation). We may crop (cover-like) to match ratio.
+  const target = (() => {
+    if (ratio === "1:1") return { tw: 1080, th: 1080 };
+    if (ratio === "16:9") return { tw: 1920, th: 1080 };
+    return { tw: 1080, th: 1920 }; // 9:16
+  })();
+
+  const canvas = document.createElement("canvas");
+  canvas.width = target.tw;
+  canvas.height = target.th;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No canvas context");
+
+  // cover crop
+  const srcAR = w / h;
+  const dstAR = target.tw / target.th;
+
+  let sx = 0, sy = 0, sw = w, sh = h;
+  if (srcAR > dstAR) {
+    // source wider => crop left/right
+    sw = Math.round(h * dstAR);
+    sx = Math.round((w - sw) / 2);
+  } else {
+    // source taller => crop top/bottom
+    sh = Math.round(w / dstAR);
+    sy = Math.round((h - sh) / 2);
+  }
+
+  ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, target.tw, target.th);
+
+  const blob: Blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error("Photo blob failed"))),
+      "image/jpeg",
+      0.92
+    );
+  });
+
+  return blob;
+}
+
+async function renderTextToImage(text: string, ratio: CanvasRatio): Promise<Blob> {
+  const size = (() => {
+    if (ratio === "1:1") return { w: 1080, h: 1080 };
+    if (ratio === "16:9") return { w: 1920, h: 1080 };
+    return { w: 1080, h: 1920 };
+  })();
+
+  const canvas = document.createElement("canvas");
+  canvas.width = size.w;
+  canvas.height = size.h;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No canvas ctx");
+
+  // background (simple premium gradient)
+  const g = ctx.createLinearGradient(0, 0, size.w, size.h);
+  g.addColorStop(0, "#0f172a");
+  g.addColorStop(1, "#111827");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size.w, size.h);
+
+  // text block
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.font = "700 72px Inter, system-ui, -apple-system, Segoe UI, Roboto";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const pad = 120;
+  const maxW = size.w - pad * 2;
+
+  const lines = wrapText(ctx, text || "Texte", maxW);
+  const lineH = 92;
+  const totalH = lines.length * lineH;
+  let y = size.h / 2 - totalH / 2 + lineH / 2;
+
+  // subtle card
+  const cardW = size.w - 140;
+  const cardH = Math.max(260, totalH + 140);
+  const cardX = (size.w - cardW) / 2;
+  const cardY = (size.h - cardH) / 2;
+  roundRect(ctx, cardX, cardY, cardW, cardH, 48);
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  for (const line of lines) {
+    ctx.fillText(line, size.w / 2, y);
+    y += lineH;
+  }
+
+  const blob: Blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Text blob failed"))), "image/jpeg", 0.92);
+  });
+
+  return blob;
+}
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = (text || "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return ["Texte"];
+
+  const lines: string[] = [];
+  let line = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    const test = `${line} ${words[i]}`;
+    if (ctx.measureText(test).width <= maxWidth) line = test;
+    else {
+      lines.push(line);
+      line = words[i];
+    }
+  }
+  lines.push(line);
+  return lines.slice(0, 6); // keep it clean
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
 export default function FullscreenCreator({
-  isOpen,
+  open = true,
   onClose,
-  onComplete,
-  language = "fr",
+  onPublish,
 }: FullscreenCreatorProps) {
-  /** stage */
-  const [stage, setStage] = useState<"capture" | "preview">("capture");
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [step, setStep] = useState<CreatorStep>("capture");
 
-  /** HUD & drawers */
-  const [hudVisible, setHudVisible] = useState(true); // tap to hide
-  const [drawerOpen, setDrawerOpen] = useState(false); // swipe up or ⋯
-  const [toast, setToast] = useState<string | null>(null);
+  const [topTab, setTopTab] = useState<TopTab>("video");
+  const [mode, setMode] = useState<CaptureMode>("video");
 
-  /** Tabs & modes */
-  const [topTab, setTopTab] = useState<TopTab>("Video");
-  const [mode, setMode] = useState<CaptureMode>("Video");
+  const [canvasRatio, setCanvasRatio] = useState<CanvasRatio>("9:16");
 
-  /** camera controls */
-  const [frontCamera, setFrontCamera] = useState(true);
-  const [flashOn, setFlashOn] = useState(false); // web: simulation only
-  const [timerSec, setTimerSec] = useState<0 | 3 | 5 | 10>(0);
-  const [speed, setSpeed] = useState<SpeedPreset>(1);
-  const [length, setLength] = useState<LengthPreset>(30);
+  // side panels
+  const [sidePanel, setSidePanel] = useState<SidePanel>("none");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerPanel, setDrawerPanel] = useState<DrawerPanel>("none");
+
+  // camera
+  const [facing, setFacing] = useState<"user" | "environment">("environment");
+  const [flashSim, setFlashSim] = useState(false); // web cannot control real flash (simulate)
+  const [timerSec, setTimerSec] = useState<0 | 3 | 10>(0);
+  const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
+  const [lengthSec, setLengthSec] = useState<15 | 30 | 60>(30);
   const [isRecording, setIsRecording] = useState(false);
 
-  /** creative assistant */
-  const [challenge, setChallenge] = useState<string | null>(null);
-  const [recommendedFilterOn, setRecommendedFilterOn] = useState(true);
-  const [assistOpen, setAssistOpen] = useState(false);
+  const [hudVisible, setHudVisible] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
-  /** beauty / magic / fx */
-  const [beautifyOn, setBeautifyOn] = useState(true);
-  const [magicOn, setMagicOn] = useState(true);
-  const [stickersOn, setStickersOn] = useState(false);
-  const [graffitiOn, setGraffitiOn] = useState(false);
-  const [effectsOn, setEffectsOn] = useState(false);
+  // filters
+  const [filterId, setFilterId] = useState<string>("original");
+  const filter = useMemo<VideoFilter | undefined>(
+    () => VIDEO_FILTERS.find((f) => f.id === filterId) ?? VIDEO_FILTERS[0],
+    [filterId]
+  );
+  const cssFilter = useMemo(() => {
+    const base = filter?.css ?? "none";
+    return scaleCssFilter(base);
+  }, [filter?.css]);
 
-  /** canvas */
-  const [canvasRatio, setCanvasRatio] = useState<"9:16" | "1:1" | "16:9">("9:16");
-  const [canvasBackground, setCanvasBackground] = useState<"none" | "blur" | "gradient">("none");
-
-  /** music */
-  const [musicOpen, setMusicOpen] = useState(false);
-  const [pureMusic, setPureMusic] = useState(false);
-  const [selectedMusic, setSelectedMusic] = useState<{ id: string; title: string; emoji: string } | null>(null);
-
-  /** text */
-  const [textDraft, setTextDraft] = useState("");
-
-  /** preview */
-  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [previewType, setPreviewType] = useState<"video" | "photo" | "audio" | "text">("video");
-  const [previewDuration, setPreviewDuration] = useState<number>(0);
-  const [segments, setSegments] = useState<TimelineSegment[]>([]);
-
-  /** display fit */
-  const [fullMode, setFullMode] = useState(false); // contain by default
-
-  /** refs */
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  // stream/recorder refs
   const streamRef = useRef<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
-  const recordStartRef = useRef<number>(0);
-  const timerIntervalRef = useRef<number | null>(null);
 
-  const [loadingCamera, setLoadingCamera] = useState(false);
-  const [cameraError, setCameraError] = useState("");
+  // capture outputs
+  const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
+  const [capturedType, setCapturedType] = useState<"video" | "photo" | "audio">("video");
+  const [previewUrl, setPreviewUrl] = useState<string>("");
 
-  /** filter swipe */
-  const [filterId, setFilterId] = useState<RecommendedFilter>("none");
-  const swipeRef = useRef<{ x0: number; y0: number; active: boolean } | null>(null);
+  // editor
+  const [segments, setSegments] = useState<TimelineSegment[]>([]);
 
-  const filterCss = useMemo(() => {
-    const base = FILTERS.find((f) => f.id === filterId)?.css ?? "none";
-    if (beautifyOn && base === "none") return "brightness(1.03) saturate(1.05) blur(0.25px)";
-    if (beautifyOn) return `${base} blur(0.15px)`;
-    return base;
-  }, [filterId, beautifyOn]);
+  // publish
+  const [caption, setCaption] = useState("");
 
-  /** Assist text */
-  const assist = useMemo(() => {
-    const inspiring =
-      topTab === "Story"
-        ? "Idée: 1 phrase simple + 1 action claire."
-        : topTab === "AI"
-        ? "Idée: choisis un template, l’IA propose filtre + musique + hook."
-        : topTab === "LIVE"
-        ? "Idée: annonce courte + promesse + appel à s’abonner."
-        : "Idée: Hook 1s + preuve + appel à l’action.";
-
-    const shotTips =
-      challenge?.includes("Market")
-        ? "Shot tips: 3 plans (produit → prix → bénéfice)."
-        : challenge?.includes("Dance")
-        ? "Shot tips: cadre plein corps + lumière face."
-        : "Shot tips: 1 action par plan, gestes clairs.";
-
-    const coverTips = topTab === "Story" ? "Cover tips: 3 mots max, contraste fort." : "Cover tips: visage/objet centré + titre ultra court.";
-
-    return { inspiring, shotTips, coverTips };
-  }, [topTab, challenge]);
-
-  /** recommended filter (IA) */
+  // clean toast
   useEffect(() => {
-    if (!recommendedFilterOn) return;
-    if (topTab === "Story") setFilterId("warm");
-    else if (topTab === "AI") setFilterId("vivid");
-    else if (topTab === "LIVE") setFilterId("none");
-    else {
-      if (mode === "Photo") setFilterId("beauty");
-      else if (mode === "Text") setFilterId("none");
-      else setFilterId("vivid");
-    }
-  }, [recommendedFilterOn, topTab, mode]);
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 900);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
-  /** music list demo */
-  const MUSIC = useMemo(
-    () => [
-      { id: "m1", emoji: "🎵", title: "Afro Vibes", group: "Trending" },
-      { id: "m2", emoji: "🥁", title: "Drum Groove", group: "Trending" },
-      { id: "m3", emoji: "🎹", title: "Chill Beats", group: "History" },
-      { id: "m4", emoji: "🎸", title: "Upbeat Dance", group: "Trending" },
-      { id: "m5", emoji: "🎺", title: "Traditional", group: "Collect" },
-    ],
-    []
-  );
+  // open guard
+  if (!open) return null;
 
-  /** camera start/stop */
-  const stopCamera = useCallback(() => {
-    try {
-      if (videoRef.current) videoRef.current.srcObject = null;
-    } catch {}
+  /** ====== Camera bootstrap ====== */
+  const stopStream = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-  }, []);
+  };
 
-  const startCamera = useCallback(async () => {
-    setCameraError("");
-    setLoadingCamera(true);
+  const startStream = async () => {
+    setError(null);
+    stopStream();
+
     try {
-      stopCamera();
-
-      const needsVideo = topTab !== "AI" && mode !== "Text" && !pureMusic;
       const constraints: MediaStreamConstraints = {
-        audio: mode === "Video" || pureMusic ? true : false,
-        video: needsVideo
-          ? {
-              facingMode: { ideal: frontCamera ? "user" : "environment" },
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              aspectRatio: { ideal: canvasRatio === "9:16" ? 9 / 16 : canvasRatio === "1:1" ? 1 : 16 / 9 },
-            }
-          : false,
+        video: {
+          facingMode: facing,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: mode === "video", // only need mic for video
       };
-
-      if (!constraints.video) return;
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
@@ -285,1241 +327,1098 @@ export default function FullscreenCreator({
         await videoRef.current.play().catch(() => {});
       }
     } catch (e: any) {
-      console.error(e);
-      setCameraError(language === "ba" ? "Kamɛra kɔ̀ rɛ" : "Impossible d’accéder à la caméra/micro.");
-    } finally {
-      setLoadingCamera(false);
+      setError(e?.message || "Impossible d’accéder à la caméra.");
     }
-  }, [stopCamera, topTab, mode, pureMusic, frontCamera, canvasRatio, language]);
+  };
 
-  /** countdown */
-  const [countdown, setCountdown] = useState(0);
+  useEffect(() => {
+    if (step !== "capture") return;
+    startStream();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, facing, mode]);
 
-  const runCountdownThen = useCallback(
-    async (fn: () => Promise<void> | void) => {
-      if (!timerSec) {
-        await fn();
+  // cleanup urls
+  useEffect(() => {
+    if (!capturedBlob) return;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const url = URL.createObjectURL(capturedBlob);
+    setPreviewUrl(url);
+    return () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capturedBlob]);
+
+  /** ====== MediaRecorder helpers (BUGFIX: deterministic stop -> blob) ====== */
+  const startRecording = async () => {
+    setError(null);
+    if (!streamRef.current) await startStream();
+    if (!streamRef.current) return;
+
+    if (!isMediaRecorderSupported()) {
+      setError("Enregistrement vidéo non supporté sur ce navigateur.");
+      return;
+    }
+
+    const mimeType = pickMimeType();
+    try {
+      chunksRef.current = [];
+      const rec = new MediaRecorder(streamRef.current, mimeType ? { mimeType } : undefined);
+      recorderRef.current = rec;
+
+      rec.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
+      };
+
+      rec.start(200); // small chunks
+      setIsRecording(true);
+      setToast("REC ●");
+    } catch (e: any) {
+      setError(e?.message || "Impossible de démarrer l’enregistrement.");
+    }
+  };
+
+  const stopRecordingToBlob = async (): Promise<Blob> => {
+    const rec = recorderRef.current;
+    if (!rec) throw new Error("Recorder not initialized");
+    if (rec.state === "inactive") throw new Error("Recorder already stopped");
+
+    const blob: Blob = await new Promise((resolve, reject) => {
+      rec.onstop = () => {
+        try {
+          const type = rec.mimeType || "video/webm";
+          const b = new Blob(chunksRef.current, { type });
+          if (!b.size) reject(new Error("Empty recording"));
+          else resolve(b);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      try {
+        rec.stop();
+      } catch (e) {
+        reject(e);
+      }
+    });
+
+    recorderRef.current = null;
+    chunksRef.current = [];
+    setIsRecording(false);
+    return blob;
+  };
+
+  /** ====== Capture actions ====== */
+  const runTimerIfNeeded = async () => {
+    if (timerSec === 0) return;
+    setToast(`${timerSec}s…`);
+    await new Promise((r) => setTimeout(r, timerSec * 1000));
+    setToast(null);
+  };
+
+  const onPressCapture = async () => {
+    setError(null);
+
+    // TEXT mode -> generate image blob and go preview
+    if (mode === "text") {
+      try {
+        await runTimerIfNeeded();
+        stopStream(); // we don't need camera for text
+        const b = await renderTextToImage(caption || "Texte", canvasRatio);
+        setCapturedType("photo");
+        setCapturedBlob(b);
+        setStep("preview");
+        setSidePanel("none");
+        setDrawerOpen(false);
+        setDrawerPanel("none");
+        return;
+      } catch (e: any) {
+        setError(e?.message || "Erreur texte");
         return;
       }
-      setCountdown(timerSec);
-      return new Promise<void>((resolve) => {
-        const start = Date.now();
-        timerIntervalRef.current = window.setInterval(async () => {
-          const elapsed = Math.floor((Date.now() - start) / 1000);
-          const left = timerSec - elapsed;
-          setCountdown(Math.max(0, left));
-          if (left <= 0) {
-            if (timerIntervalRef.current) {
-              window.clearInterval(timerIntervalRef.current);
-              timerIntervalRef.current = null;
-            }
-            setCountdown(0);
-            await fn();
-            resolve();
-          }
-        }, 200);
-      });
-    },
-    [timerSec]
-  );
-
-  /** preview helpers */
-  const cleanupPreviewUrl = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl("");
-  }, [previewUrl]);
-
-  const toPreview = useCallback(
-    async (blob: Blob, type: "video" | "photo" | "audio", durationSec?: number) => {
-      cleanupPreviewUrl();
-      const url = URL.createObjectURL(blob);
-      setPreviewBlob(blob);
-      setPreviewUrl(url);
-      setPreviewType(type);
-      const dur =
-        typeof durationSec === "number"
-          ? durationSec
-          : type === "video"
-          ? await getBlobDurationSec(blob)
-          : type === "audio"
-          ? durationSec ?? 0
-          : 0;
-
-      setPreviewDuration(dur);
-
-      const seg: TimelineSegment = {
-        id: randomId("seg"),
-        blob,
-        type: type === "photo" ? "photo" : type === "audio" ? "audio" : "video",
-        duration: type === "photo" ? 5 : Math.max(0.1, dur || (type === "audio" ? 10 : 5)),
-        startTime: 0,
-        endTime: type === "photo" ? 5 : Math.max(0.1, dur || (type === "audio" ? 10 : 5)),
-        isMuted: false,
-        volume: 100,
-        filter: filterId,
-      };
-      setSegments([seg]);
-
-      setStage("preview");
-      setDrawerOpen(false);
-      setAssistOpen(false);
-      setHudVisible(true);
-    },
-    [cleanupPreviewUrl, filterId]
-  );
-
-  const resetToCapture = useCallback(() => {
-    setStage("capture");
-    setEditorOpen(false);
-    setIsRecording(false);
-    setCountdown(0);
-    setTextDraft("");
-    setPreviewBlob(null);
-    setPreviewDuration(0);
-    setPreviewType("video");
-    setSegments([]);
-    cleanupPreviewUrl();
-    setDrawerOpen(false);
-    setAssistOpen(false);
-  }, [cleanupPreviewUrl]);
-
-  /** take photo */
-  const takePhoto = useCallback(async () => {
-    if (!streamRef.current || !videoRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1080;
-    canvas.height = video.videoHeight || 1920;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.filter = filterCss === "none" ? "none" : filterCss;
-    if (flashOn) ctx.filter = `${ctx.filter} brightness(1.15)`;
-
-    // Save non-mirrored
-    if (frontCamera) {
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
     }
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const blob: Blob = await new Promise((resolve) =>
-      canvas.toBlob((b) => resolve(b || new Blob()), "image/jpeg", 0.92)
-    );
-
-    await toPreview(blob, "photo", 0);
-  }, [filterCss, flashOn, frontCamera, toPreview]);
-
-  /** record video/audio */
-  const stopRecording = useCallback(() => {
-    const r = recorderRef.current;
-    if (!r) return;
-    try {
-      if (r.state !== "inactive") r.stop();
-    } catch {}
-  }, []);
-
-  const startRecording = useCallback(async () => {
-    if (!streamRef.current) return;
-    if (isRecording) return;
-
-    chunksRef.current = [];
-    recordStartRef.current = Date.now();
-
-    const isAudioOnly = pureMusic;
-    const preferred = isAudioOnly
-      ? MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "audio/webm"
-      : MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-      ? "video/webm;codecs=vp9,opus"
-      : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-      ? "video/webm;codecs=vp8,opus"
-      : "video/webm";
-
-    const recorder = new MediaRecorder(streamRef.current, { mimeType: preferred });
-    recorderRef.current = recorder;
-
-    recorder.ondataavailable = (ev) => {
-      if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
-    };
-
-    recorder.onstop = async () => {
-      setIsRecording(false);
-      const durationSec = Math.max(0.1, (Date.now() - recordStartRef.current) / 1000);
-      const blob = new Blob(chunksRef.current, {
-        type: recorder.mimeType || (isAudioOnly ? "audio/webm" : "video/webm"),
-      });
-      await toPreview(blob, isAudioOnly ? "audio" : "video", durationSec);
-    };
-
-    setIsRecording(true);
-    recorder.start(200);
-
-    window.setTimeout(() => {
+    // PHOTO mode
+    if (mode === "photo") {
       try {
-        if (recorderRef.current && recorderRef.current.state === "recording") recorderRef.current.stop();
-      } catch {}
-    }, length * 1000);
-  }, [isRecording, length, pureMusic, toPreview]);
-
-  /** capture action */
-  const handleCapture = useCallback(async () => {
-    if (topTab === "AI") {
-      cleanupPreviewUrl();
-      setPreviewBlob(null);
-      setPreviewType("text");
-      setPreviewUrl("");
-      setPreviewDuration(0);
-      setSegments([]);
-      setStage("preview");
-      setDrawerOpen(false);
-      setAssistOpen(false);
-      return;
+        await runTimerIfNeeded();
+        if (!videoRef.current) throw new Error("Preview video not ready");
+        const b = await capturePhotoFromVideo(videoRef.current, canvasRatio);
+        setCapturedType("photo");
+        setCapturedBlob(b);
+        setStep("preview");
+        setSidePanel("none");
+        setDrawerOpen(false);
+        setDrawerPanel("none");
+        return;
+      } catch (e: any) {
+        setError(e?.message || "Erreur photo");
+        return;
+      }
     }
 
-    if (mode === "Text") {
-      cleanupPreviewUrl();
-      setPreviewBlob(null);
-      setPreviewType("text");
-      setPreviewUrl("");
-      setPreviewDuration(0);
-      setSegments([]);
-      setStage("preview");
-      setDrawerOpen(false);
-      setAssistOpen(false);
-      return;
-    }
-
-    if (mode === "Photo" || mode === "Burst") {
-      await runCountdownThen(async () => {
-        if (mode === "Burst") {
-          for (let i = 0; i < 3; i++) {
-            // eslint-disable-next-line no-await-in-loop
-            await takePhoto();
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((r) => setTimeout(r, 180));
-          }
+    // VIDEO mode
+    if (mode === "video") {
+      try {
+        if (!isRecording) {
+          await runTimerIfNeeded();
+          await startRecording();
         } else {
-          await takePhoto();
+          const b = await stopRecordingToBlob();
+          stopStream(); // release camera while preview/editor
+          setCapturedType("video");
+          setCapturedBlob(b);
+          setStep("preview"); // ✅ always goes preview first (clean)
+          setSidePanel("none");
+          setDrawerOpen(false);
+          setDrawerPanel("none");
         }
-      });
+      } catch (e: any) {
+        setError(e?.message || "Erreur vidéo");
+        setIsRecording(false);
+      }
+    }
+  };
+
+  const goToEditor = () => {
+    if (!capturedBlob) {
+      setError("Aucun média capturé.");
       return;
     }
 
-    await runCountdownThen(async () => {
-      if (isRecording) stopRecording();
-      else await startRecording();
-    });
-  }, [cleanupPreviewUrl, isRecording, mode, runCountdownThen, startRecording, stopRecording, takePhoto, topTab]);
+    const segType =
+      capturedType === "video" ? "video" : "photo";
 
-  /** publish */
-  const publish = useCallback(async () => {
-    const payload: CreatorOutputPayload = {
-      media_type: previewType,
-      media_blob: previewBlob ?? undefined,
-      text_content: previewType === "text" ? (textDraft.trim() || "Texte (vide)") : undefined,
-      is_story: topTab === "Story",
-      top_tab: topTab,
-      filter_applied: filterId,
-      challenge: challenge ?? undefined,
-      music_title: selectedMusic?.title ?? undefined,
-      duration_seconds: previewDuration || (previewType === "photo" ? 0 : undefined),
-      meta: {
-        mode,
-        speed,
-        length,
-        timerSec,
-        flashOn,
-        frontCamera,
-        beautifyOn,
-        magicOn,
-        effectsOn,
-        stickersOn,
-        graffitiOn,
-        canvasRatio,
-        canvasBackground,
-        recommendedFilterOn,
-      },
+    const duration =
+      segType === "video" ? lengthSec : 5;
+
+    const seg: TimelineSegment = {
+      id: `${Date.now()}`,
+      blob: capturedBlob,
+      type: segType,
+      duration,
+      startTime: 0,
+      endTime: duration,
+      isMuted: false,
+      volume: 100,
+      filter: filterId,
     };
 
-    try {
-      if (onComplete) await onComplete(payload);
-      onClose();
-      resetToCapture();
-    } catch (e) {
-      console.error(e);
-      alert(language === "ba" ? "Bà yà nɔ̀ŋ" : "Échec publication. Réessaie.");
-    }
-  }, [
-    beautifyOn,
-    canvasBackground,
-    canvasRatio,
-    challenge,
-    effectsOn,
-    filterId,
-    flashOn,
-    frontCamera,
-    graffitiOn,
-    language,
-    length,
-    magicOn,
-    mode,
-    onClose,
-    onComplete,
-    previewBlob,
-    previewDuration,
-    previewType,
-    recommendedFilterOn,
-    resetToCapture,
-    selectedMusic?.title,
-    speed,
-    stickersOn,
-    textDraft,
-    timerSec,
-    topTab,
-  ]);
+    setSegments([seg]);
+    setStep("editor");
+  };
 
-  /** lifecycle */
-  useEffect(() => {
-    if (!isOpen) {
-      stopCamera();
-      return;
-    }
-
-    setStage("capture");
-    setEditorOpen(false);
-    setHudVisible(true);
-    setDrawerOpen(false);
-    setAssistOpen(false);
-    setTopTab("Video");
-    setMode("Video");
-    setFrontCamera(true);
-    setFlashOn(false);
-    setTimerSec(0);
-    setSpeed(1);
-    setLength(30);
-    setIsRecording(false);
-    setChallenge(null);
-    setRecommendedFilterOn(true);
-    setBeautifyOn(true);
-    setMagicOn(true);
-    setEffectsOn(false);
-    setStickersOn(false);
-    setGraffitiOn(false);
-    setCanvasRatio("9:16");
-    setCanvasBackground("none");
-    setSelectedMusic(null);
-    setPureMusic(false);
-    setTextDraft("");
-    setPreviewBlob(null);
-    setPreviewDuration(0);
-    setPreviewType("video");
+  const retake = () => {
+    setCapturedBlob(null);
+    setCapturedType("video");
+    setPreviewUrl("");
     setSegments([]);
-    cleanupPreviewUrl();
-  }, [cleanupPreviewUrl, isOpen, stopCamera]);
+    setStep("capture");
+    setHudVisible(true);
+    setSidePanel("none");
+    setDrawerOpen(false);
+    setDrawerPanel("none");
+  };
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const needsCamera = topTab !== "AI" && mode !== "Text" && stage === "capture";
-    if (!needsCamera) {
-      stopCamera();
-      return;
+  const onEditorConfirm = async (nextSegments: TimelineSegment[]) => {
+    // After editing, go to publish step
+    setSegments(nextSegments);
+    setStep("publish");
+  };
+
+  const publish = async () => {
+    try {
+      setError(null);
+      if (!segments.length) throw new Error("Aucun contenu à publier.");
+      if (onPublish) {
+        await onPublish({
+          segments,
+          caption,
+          topTab,
+          mode,
+          canvasRatio,
+          selectedFilterId: filterId,
+        });
+      }
+      setToast("Publié ✓");
+      // close creator
+      onClose?.();
+    } catch (e: any) {
+      setError(e?.message || "Erreur publication");
     }
-    startCamera();
-    return () => stopCamera();
-  }, [isOpen, mode, startCamera, stage, stopCamera, topTab]);
+  };
 
-  /** toast helper */
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 900);
-    return () => window.clearTimeout(t);
-  }, [toast]);
+  /** ====== Gestures: edge swipe + swipe up drawer + filter swipe ====== */
+  const gestureRef = useRef<{ x0: number; y0: number; active: boolean; edge: "left" | "right" | "center" } | null>(
+    null
+  );
 
-  /** gestures: tap hide HUD, swipe up open drawer, swipe left/right change filter */
-  const onSurfacePointerDown = useCallback((e: React.PointerEvent) => {
-    swipeRef.current = { x0: e.clientX, y0: e.clientY, active: true };
-  }, []);
+  const onSurfaceDown = (e: React.PointerEvent) => {
+    const w = window.innerWidth || 390;
+    const x = e.clientX;
+    const edge = x < 24 ? "left" : x > w - 24 ? "right" : "center";
+    gestureRef.current = { x0: e.clientX, y0: e.clientY, active: true, edge };
+  };
 
-  const onSurfacePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!swipeRef.current?.active) return;
-    const dx = e.clientX - swipeRef.current.x0;
-    const dy = e.clientY - swipeRef.current.y0;
+  const onSurfaceMove = (e: React.PointerEvent) => {
+    if (!gestureRef.current?.active) return;
+    const dx = e.clientX - gestureRef.current.x0;
+    const dy = e.clientY - gestureRef.current.y0;
 
-    // swipe up => drawer
-    if (dy < -70 && Math.abs(dx) < 60) {
-      swipeRef.current.active = false;
+    // swipe up => drawer tools
+    if (dy < -70 && Math.abs(dx) < 70) {
+      gestureRef.current.active = false;
       setDrawerOpen(true);
+      setDrawerPanel("none");
+      setSidePanel("none");
       setHudVisible(true);
       return;
     }
 
-    // swipe left/right => filter
-    if (Math.abs(dx) > 60 && Math.abs(dy) < 60 && stage === "capture") {
-      swipeRef.current.active = false;
-      const idx = FILTERS.findIndex((f) => f.id === filterId);
-      const next = clamp(idx + (dx > 0 ? 1 : -1), 0, FILTERS.length - 1);
-      setFilterId(FILTERS[next].id);
-      setToast(`Filtre: ${FILTERS[next].label}`);
+    // edge swipe right from left => Canvas
+    if (gestureRef.current.edge === "left" && dx > 80 && Math.abs(dy) < 70) {
+      gestureRef.current.active = false;
+      setSidePanel((p) => (p === "canvasLeft" ? "none" : "canvasLeft"));
+      setDrawerOpen(false);
+      setDrawerPanel("none");
+      setHudVisible(true);
+      return;
     }
-  }, [filterId, stage]);
 
-  const onSurfacePointerUp = useCallback(() => {
-    if (swipeRef.current) swipeRef.current.active = false;
-  }, []);
+    // edge swipe left from right => Filters/Effects
+    if (gestureRef.current.edge === "right" && dx < -80 && Math.abs(dy) < 70) {
+      gestureRef.current.active = false;
+      setSidePanel((p) => (p === "filtersRight" ? "none" : "filtersRight"));
+      setDrawerOpen(false);
+      setDrawerPanel("none");
+      setHudVisible(true);
+      return;
+    }
 
-  const toggleHud = useCallback(() => {
+    // swipe left/right in center => quick filter step (only in capture)
+    if (gestureRef.current.edge === "center" && step === "capture" && Math.abs(dy) < 60 && Math.abs(dx) > 90) {
+      gestureRef.current.active = false;
+      const idx = VIDEO_FILTERS.findIndex((f) => f.id === filterId);
+      const dir = dx < 0 ? 1 : -1;
+      const next = clamp(idx + dir, 0, VIDEO_FILTERS.length - 1);
+      setFilterId(VIDEO_FILTERS[next].id);
+      setToast(`Filtre: ${VIDEO_FILTERS[next].name}`);
+      return;
+    }
+  };
+
+  const onSurfaceUp = () => {
+    if (gestureRef.current) gestureRef.current.active = false;
+  };
+
+  const toggleHud = () => {
     setHudVisible((v) => !v);
-    setAssistOpen(false);
-    // on garde le drawer fermé si on cache HUD
+    setSidePanel("none");
     setDrawerOpen(false);
-  }, []);
+    setDrawerPanel("none");
+  };
 
-  /** UI atoms */
-  const TopTabBtn: React.FC<{ tab: TopTab; active: boolean; onClick: () => void }> = ({ tab, active, onClick }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "h-9 px-3 rounded-2xl border text-xs",
-        active ? "bg-white/15 border-white/25 text-white" : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10"
-      )}
-    >
-      {tab}
-    </button>
+  /** ====== Derived labels ====== */
+  const modeLabel = useMemo(() => {
+    if (mode === "burst") return "Burst";
+    if (mode === "photo") return "Photo";
+    if (mode === "video") return "Vidéo";
+    return "Texte";
+  }, [mode]);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black text-white">
+      {/* CAPTURE */}
+      {step === "capture" ? (
+        <div
+          className="absolute inset-0"
+          onPointerDown={onSurfaceDown}
+          onPointerMove={onSurfaceMove}
+          onPointerUp={onSurfaceUp}
+          onClick={() => toggleHud()}
+        >
+          {/* Camera preview */}
+          <div className="absolute inset-0">
+            <video
+              ref={videoRef}
+              className="absolute inset-0 w-full h-full object-cover bg-black"
+              style={{
+                filter: cssFilter,
+                transform: facing === "user" ? "scaleX(-1)" : "none",
+              }}
+              playsInline
+              muted
+              autoPlay
+            />
+            {/* Flash simulation */}
+            <AnimatePresence>
+              {flashSim ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.08 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-white pointer-events-none"
+                />
+              ) : null}
+            </AnimatePresence>
+          </div>
+
+          {/* Side panel LEFT: Canvas */}
+          <AnimatePresence>
+            {sidePanel === "canvasLeft" ? (
+              <motion.div
+                initial={{ x: -360, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -360, opacity: 0 }}
+                transition={{ type: "spring", damping: 26, stiffness: 260 }}
+                className="absolute left-0 top-0 bottom-0 w-[320px] z-[120] bg-[#0b0b0e]/95 border-r border-white/10 backdrop-blur"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-3 flex items-center justify-between border-b border-white/10">
+                  <div className="font-semibold flex items-center gap-2">
+                    <LayoutGrid className="h-4 w-4" /> Canvas
+                  </div>
+                  <button
+                    onClick={() => setSidePanel("none")}
+                    className="h-9 w-9 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="p-3">
+                  <div className="text-xs text-white/60">Ratio</div>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    <SideBtn label="9:16" active={canvasRatio === "9:16"} onClick={() => setCanvasRatio("9:16")} />
+                    <SideBtn label="1:1" active={canvasRatio === "1:1"} onClick={() => setCanvasRatio("1:1")} />
+                    <SideBtn label="16:9" active={canvasRatio === "16:9"} onClick={() => setCanvasRatio("16:9")} />
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-3 text-xs text-white/70">
+                    Edge swipe depuis gauche ouvre/ferme Canvas.
+                  </div>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Side panel RIGHT: Filters/Effects */}
+          <AnimatePresence>
+            {sidePanel === "filtersRight" ? (
+              <motion.div
+                initial={{ x: 360, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 360, opacity: 0 }}
+                transition={{ type: "spring", damping: 26, stiffness: 260 }}
+                className="absolute right-0 top-0 bottom-0 w-[340px] z-[120] bg-[#0b0b0e]/95 border-l border-white/10 backdrop-blur"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-3 flex items-center justify-between border-b border-white/10">
+                  <div className="font-semibold flex items-center gap-2">
+                    <Film className="h-4 w-4" /> Filters / Effects
+                  </div>
+                  <button
+                    onClick={() => setSidePanel("none")}
+                    className="h-9 w-9 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="p-3">
+                  <VideoFiltersPanel
+                    selectedId={filterId}
+                    onSelect={(id) => setFilterId(id)}
+                  />
+
+                  <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-3">
+                    <div className="text-xs text-white/60 mb-2">Effects rapides</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {["Cinematic", "Vlog", "Vintage", "Dramatic"].map((p) => (
+                        <QuickBtn key={p} label={p} onClick={() => setToast(`Effect: ${p}`)} />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-3 text-xs text-white/70">
+                    Edge swipe depuis droite ouvre/ferme Filters.
+                  </div>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* HUD */}
+          <AnimatePresence>
+            {hudVisible ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
+                {/* Top bar */}
+                <div className="absolute top-0 left-0 right-0 p-3 z-30 flex items-center justify-between pointer-events-auto">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClose?.();
+                    }}
+                    className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center"
+                    title="Fermer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+
+                  <div className="flex items-center gap-2 bg-black/35 border border-white/10 rounded-2xl px-3 py-2 backdrop-blur">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTopTab("video");
+                      }}
+                      className={cn("text-xs px-2 py-1 rounded-xl", topTab === "video" ? "bg-white/15" : "text-white/70")}
+                    >
+                      Video
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTopTab("story");
+                      }}
+                      className={cn("text-xs px-2 py-1 rounded-xl", topTab === "story" ? "bg-white/15" : "text-white/70")}
+                    >
+                      Story
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTopTab("ai");
+                      }}
+                      className={cn("text-xs px-2 py-1 rounded-xl", topTab === "ai" ? "bg-white/15" : "text-white/70")}
+                    >
+                      AI
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTopTab("live");
+                      }}
+                      className={cn("text-xs px-2 py-1 rounded-xl", topTab === "live" ? "bg-white/15" : "text-white/70")}
+                    >
+                      LIVE
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleHud();
+                    }}
+                    className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center"
+                    title="Masquer HUD"
+                  >
+                    <MoreHorizontal className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Right rail (essentials) */}
+                <div className="absolute right-3 top-20 z-30 flex flex-col gap-2 pointer-events-auto">
+                  <MiniBtn
+                    title="Canvas (edge swipe gauche)"
+                    icon={<LayoutGrid className="h-5 w-5" />}
+                    active={sidePanel === "canvasLeft"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSidePanel((p) => (p === "canvasLeft" ? "none" : "canvasLeft"));
+                      setDrawerOpen(false);
+                      setDrawerPanel("none");
+                    }}
+                  />
+                  <MiniBtn
+                    title="Filters (edge swipe droite)"
+                    icon={<Film className="h-5 w-5" />}
+                    active={sidePanel === "filtersRight"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSidePanel((p) => (p === "filtersRight" ? "none" : "filtersRight"));
+                      setDrawerOpen(false);
+                      setDrawerPanel("none");
+                    }}
+                  />
+                  <MiniBtn
+                    title="Switch camera"
+                    icon={<RotateCcw className="h-5 w-5" />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFacing((f) => (f === "environment" ? "user" : "environment"));
+                    }}
+                  />
+                  <MiniBtn
+                    title="Flash (web simulation)"
+                    icon={<Zap className="h-5 w-5" />}
+                    active={flashSim}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFlashSim((v) => !v);
+                    }}
+                  />
+                  <MiniBtn
+                    title="Timer"
+                    icon={<Timer className="h-5 w-5" />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTimerSec((t) => (t === 0 ? 3 : t === 3 ? 10 : 0));
+                      setToast(timerSec === 0 ? "Timer 3s" : timerSec === 3 ? "Timer 10s" : "Timer Off");
+                    }}
+                  />
+                  <MiniBtn
+                    title="Speed"
+                    icon={<Gauge className="h-5 w-5" />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSpeed((s) => (s === 1 ? 2 : s === 2 ? 0.5 : 1));
+                      setToast(speed === 1 ? "Speed 2x" : speed === 2 ? "Speed 0.5x" : "Speed 1x");
+                    }}
+                  />
+                  <MiniBtn
+                    title="Fullscreen"
+                    icon={<Expand className="h-5 w-5" />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setToast("Fullscreen ✓");
+                    }}
+                  />
+                </div>
+
+                {/* Bottom controls */}
+                <div className="absolute left-0 right-0 bottom-0 z-30 p-4 pointer-events-auto">
+                  <div className="mx-auto max-w-[920px]">
+                    {/* Drawer handle / hint */}
+                    <div className="flex items-center justify-center mb-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDrawerOpen(true);
+                          setDrawerPanel("none");
+                          setSidePanel("none");
+                        }}
+                        className="h-7 px-3 rounded-full bg-black/35 border border-white/10 backdrop-blur flex items-center gap-2 text-xs text-white/80"
+                      >
+                        <ChevronDown className="h-4 w-4 rotate-180" />
+                        Outils (swipe ↑)
+                      </button>
+                    </div>
+
+                    <div className="rounded-3xl bg-black/45 border border-white/10 backdrop-blur p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        {/* Modes */}
+                        <div className="flex items-center gap-2">
+                          <ModeBtn
+                            label="Burst"
+                            icon={<Zap className="h-4 w-4" />}
+                            active={mode === "burst"}
+                            onClick={() => setMode("burst")}
+                          />
+                          <ModeBtn
+                            label="Photo"
+                            icon={<ImageIcon className="h-4 w-4" />}
+                            active={mode === "photo"}
+                            onClick={() => setMode("photo")}
+                          />
+                          <ModeBtn
+                            label="Vidéo"
+                            icon={<VideoIcon className="h-4 w-4" />}
+                            active={mode === "video"}
+                            onClick={() => setMode("video")}
+                          />
+                          <ModeBtn
+                            label="Texte"
+                            icon={<TypeIcon className="h-4 w-4" />}
+                            active={mode === "text"}
+                            onClick={() => setMode("text")}
+                          />
+                        </div>
+
+                        {/* Capture button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPressCapture();
+                          }}
+                          className={cn(
+                            "h-14 w-14 rounded-full flex items-center justify-center border",
+                            isRecording ? "bg-red-500/90 border-red-300/40" : "bg-white/15 border-white/25 hover:bg-white/20"
+                          )}
+                          title={mode === "video" ? (isRecording ? "Stop" : "Record") : "Capture"}
+                        >
+                          {isRecording ? <div className="h-5 w-5 rounded bg-white" /> : <CameraIcon className="h-6 w-6" />}
+                        </button>
+
+                        {/* Music / quick info */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setToast("Music picker (todo)");
+                          }}
+                          className="h-12 px-4 rounded-2xl bg-white/10 border border-white/10 flex items-center gap-2"
+                        >
+                          <Music className="h-4 w-4" />
+                          Music
+                        </button>
+                      </div>
+
+                      <div className="mt-2 text-[11px] text-white/65 flex items-center justify-between">
+                        <div>
+                          {modeLabel} · Speed {speed}x · Length {lengthSec}s · Timer {timerSec ? `${timerSec}s` : "Off"} · Canvas {canvasRatio}
+                        </div>
+                        <div className="text-white/50">Filtre: {filter?.name ?? "Original"} (swipe ←/→)</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Small overlay hint for edge swipe */}
+                <div className="absolute left-3 bottom-28 text-[11px] text-white/55 bg-black/35 border border-white/10 rounded-2xl px-3 py-2 backdrop-blur">
+                  Edge swipe: Canvas (gauche) / Filters (droite)
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Drawer tools bottom */}
+          <AnimatePresence>
+            {drawerOpen ? (
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 30 }}
+                className="absolute inset-0 z-[130] bg-black/60 backdrop-blur flex items-end"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  setDrawerPanel("none");
+                }}
+              >
+                <div
+                  className="w-full rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-white font-semibold flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" /> Assistance créative
+                    </div>
+                    <button
+                      onClick={() => {
+                        setDrawerOpen(false);
+                        setDrawerPanel("none");
+                      }}
+                      className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    <DrawerTab label="Inspiring" icon={<Eye className="h-4 w-4" />} active={drawerPanel === "inspiring"} onClick={() => setDrawerPanel("inspiring")} />
+                    <DrawerTab label="Shot tips" icon={<Sparkles className="h-4 w-4" />} active={drawerPanel === "shotTips"} onClick={() => setDrawerPanel("shotTips")} />
+                    <DrawerTab label="Cover tips" icon={<ImageIcon className="h-4 w-4" />} active={drawerPanel === "coverTips"} onClick={() => setDrawerPanel("coverTips")} />
+                    <DrawerTab label="Challenge" icon={<Flame className="h-4 w-4" />} active={drawerPanel === "challenge"} onClick={() => setDrawerPanel("challenge")} />
+                    <DrawerTab label="Recommended" icon={<Check className="h-4 w-4" />} active={drawerPanel === "recommendedFilter"} onClick={() => setDrawerPanel("recommendedFilter")} />
+                    <DrawerTab label="Magic" icon={<Wand2 className="h-4 w-4" />} active={drawerPanel === "magic"} onClick={() => setDrawerPanel("magic")} />
+                  </div>
+
+                  <div className="mt-3">
+                    {drawerPanel === "none" ? (
+                      <PanelCard title="Mode Kuaishou (clean)" desc="Tout est accessible sans encombrer l’écran.">
+                        <QuickBtn label="Inspiring" onClick={() => setDrawerPanel("inspiring")} />
+                        <QuickBtn label="Shot tips" onClick={() => setDrawerPanel("shotTips")} />
+                        <QuickBtn label="Challenge" onClick={() => setDrawerPanel("challenge")} />
+                        <QuickBtn label="Recommended filter" onClick={() => setDrawerPanel("recommendedFilter")} />
+                      </PanelCard>
+                    ) : null}
+
+                    {drawerPanel === "inspiring" ? (
+                      <PanelCard title="Inspiring" desc="Lutte contre la page blanche.">
+                        <SmallLine text="Idée: annonce courte + promesse + appel à s’abonner." />
+                        <SmallLine text="Hook: question directe + preuve rapide." />
+                        <SmallLine text="Structure: 1 problème → 1 solution → 1 action." />
+                        <SmallLine text="Astuce: phrase ultra courte, gestes clairs." />
+                      </PanelCard>
+                    ) : null}
+
+                    {drawerPanel === "shotTips" ? (
+                      <PanelCard title="Shot tips" desc="Guidage tournage.">
+                        <SmallLine text="1 action par plan, gestes nets." />
+                        <SmallLine text="Plan serré sur visage/objet, fond simple." />
+                        <SmallLine text="Lumière face à toi, éviter contre-jour." />
+                        <SmallLine text="Parle fort et lentement, phrases courtes." />
+                      </PanelCard>
+                    ) : null}
+
+                    {drawerPanel === "coverTips" ? (
+                      <PanelCard title="Cover tips" desc="Optimisation CTR.">
+                        <SmallLine text="Visage/objet centré + titre très court." />
+                        <SmallLine text="Texte gros (3–5 mots), contraste fort." />
+                        <SmallLine text="Éviter trop d’éléments, 1 message." />
+                        <SmallLine text="Expression émotionnelle (surprise/joie)." />
+                      </PanelCard>
+                    ) : null}
+
+                    {drawerPanel === "challenge" ? (
+                      <PanelCard title="Challenge" desc="Viralisation.">
+                        <QuickBtn label="#DanceChallenge" onClick={() => setToast("Challenge: #DanceChallenge")} />
+                        <QuickBtn label="#MarketDay" onClick={() => setToast("Challenge: #MarketDay")} />
+                        <QuickBtn label="#BeforeAfter" onClick={() => setToast("Challenge: #BeforeAfter")} />
+                        <QuickBtn label="#StoryTime" onClick={() => setToast("Challenge: #StoryTime")} />
+                      </PanelCard>
+                    ) : null}
+
+                    {drawerPanel === "recommendedFilter" ? (
+                      <PanelCard title="Recommended filter" desc="IA proactive (simulation).">
+                        <SmallLine text="Suggestion: Vlog (lumière douce)" />
+                        <SmallLine text="Suggestion: Cinematic (contraste + LUT)" />
+                        <SmallLine text="Suggestion: Beauty (peau + glow)" />
+                        <QuickBtn
+                          label="Appliquer: Vlog"
+                          onClick={() => {
+                            const vlog = VIDEO_FILTERS.find((f) => f.name.toLowerCase().includes("vlog")) ?? VIDEO_FILTERS[1];
+                            setFilterId(vlog.id);
+                            setToast("Filtre recommandé appliqué");
+                          }}
+                        />
+                      </PanelCard>
+                    ) : null}
+
+                    {drawerPanel === "magic" ? (
+                      <PanelCard title="Magic" desc="IA / AR (placeholder).">
+                        <SmallLine text="Face recognition (détection visage)" />
+                        <SmallLine text="Emoji face (stickers sur visage)" />
+                        <SmallLine text="Object tracking (suivi dynamique)" />
+                        <SmallLine text="Auto recommend (suggestions)" />
+                        <QuickBtn label="Magic: ON" onClick={() => setToast("Magic ON")} />
+                      </PanelCard>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-3 text-xs text-white/60">
+                    Swipe ↑ ouvre. Tap dehors ferme. Edge swipe = Canvas/Filters. Swipe ←/→ = changer filtre.
+                  </div>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Errors */}
+          <AnimatePresence>
+            {error ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute left-1/2 -translate-x-1/2 bottom-28 z-[200] px-3 py-2 rounded-2xl bg-red-500/20 border border-red-400/30 backdrop-blur text-xs flex items-center gap-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Toast */}
+          <AnimatePresence>
+            {toast ? (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/55 border border-white/10 text-white text-xs backdrop-blur z-[200]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {toast}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      ) : null}
+
+      {/* PREVIEW */}
+      {step === "preview" ? (
+        <div className="absolute inset-0 bg-black">
+          <div className="absolute top-0 left-0 right-0 p-3 z-20 flex items-center justify-between">
+            <button
+              onClick={() => retake()}
+              className="h-10 px-3 rounded-2xl bg-white/10 border border-white/10 flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" /> Reprendre
+            </button>
+
+            <button
+              onClick={() => onClose?.()}
+              className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="absolute inset-0 flex items-center justify-center">
+            {capturedType === "video" ? (
+              <video src={previewUrl} className="w-full h-full object-contain" controls playsInline />
+            ) : (
+              <img src={previewUrl} className="w-full h-full object-contain" alt="preview" />
+            )}
+          </div>
+
+          <div className="absolute left-0 right-0 bottom-0 p-4 z-20">
+            <div className="mx-auto max-w-[920px] rounded-3xl bg-black/45 border border-white/10 backdrop-blur p-3 flex items-center justify-between">
+              <div className="text-xs text-white/70">
+                Preview · Canvas {canvasRatio} · Filtre {filter?.name ?? "Original"}
+              </div>
+
+              <button
+                onClick={() => goToEditor()}
+                className="h-12 px-5 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white font-semibold flex items-center gap-2"
+              >
+                <Film className="h-5 w-5" />
+                Éditer
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* EDITOR */}
+      {step === "editor" ? (
+        <TimelineEditor
+          segments={segments}
+          onSegmentsChange={setSegments}
+          onClose={() => {
+            // go back to preview for safety
+            setStep("preview");
+          }}
+          onConfirm={onEditorConfirm}
+        />
+      ) : null}
+
+      {/* PUBLISH */}
+      {step === "publish" ? (
+        <div className="absolute inset-0 bg-black">
+          <div className="absolute top-0 left-0 right-0 p-3 z-20 flex items-center justify-between">
+            <button
+              onClick={() => setStep("editor")}
+              className="h-10 px-3 rounded-2xl bg-white/10 border border-white/10 flex items-center gap-2"
+            >
+              <Film className="h-4 w-4" /> Retour édition
+            </button>
+
+            <button
+              onClick={() => onClose?.()}
+              className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="absolute inset-0 flex items-center justify-center p-6">
+            <div className="w-full max-w-[720px] rounded-3xl bg-white/5 border border-white/10 p-4 backdrop-blur">
+              <div className="text-white font-semibold">Publier</div>
+              <div className="text-xs text-white/60 mt-1">
+                Canvas {canvasRatio} · Filtre {filter?.name ?? "Original"}
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-black/40 border border-white/10 p-2">
+                  {segments[0]?.type === "video" ? (
+                    <video
+                      src={URL.createObjectURL(segments[0].blob)}
+                      className="w-full aspect-[9/16] object-contain rounded-xl bg-black"
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={URL.createObjectURL(segments[0].blob)}
+                      className="w-full aspect-[9/16] object-contain rounded-xl bg-black"
+                      alt="thumb"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-xs text-white/70">Caption / texte</label>
+                  <textarea
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    placeholder="Écris une description courte…"
+                    className="mt-2 w-full min-h-[160px] rounded-2xl bg-white/5 border border-white/10 p-3 text-white placeholder:text-white/40 outline-none"
+                  />
+                  <div className="mt-2 text-[11px] text-white/50">
+                    Astuce: 1 phrase + 3 hashtags + appel à l’action.
+                  </div>
+
+                  <button
+                    onClick={() => publish()}
+                    className="mt-4 h-12 w-full rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Send className="h-5 w-5" />
+                    Publier
+                  </button>
+
+                  {error ? (
+                    <div className="mt-3 text-xs text-red-300 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" /> {error}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Toast */}
+          <AnimatePresence>
+            {toast ? (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/55 border border-white/10 text-white text-xs backdrop-blur z-[200]"
+              >
+                {toast}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      ) : null}
+    </div>
   );
+}
 
-  const RightBtn: React.FC<{
-    icon: React.ReactNode;
-    onClick: () => void;
-    active?: boolean;
-    badge?: string;
-    title: string;
-    disabled?: boolean;
-  }> = ({ icon, onClick, active, badge, title, disabled }) => (
+/** UI atoms */
+function MiniBtn({
+  title,
+  icon,
+  onClick,
+  active,
+  disabled,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  onClick: (e: any) => void;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={disabled}
       title={title}
+      disabled={disabled}
+      onClick={onClick}
       className={cn(
-        "relative w-12 h-12 rounded-2xl flex items-center justify-center",
-        "bg-black/35 border border-white/10 backdrop-blur",
-        "hover:bg-black/45",
+        "w-12 h-12 rounded-2xl flex items-center justify-center",
+        "bg-black/35 border border-white/10 backdrop-blur hover:bg-black/45",
         active ? "ring-2 ring-white/25" : "",
         disabled ? "opacity-40 cursor-not-allowed" : ""
       )}
     >
       {icon}
-      {badge ? (
-        <span className="absolute -top-1 -right-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/90 text-white">
-          {badge}
-        </span>
-      ) : null}
     </button>
   );
+}
 
-  const ModeChip: React.FC<{
-    label: string;
-    icon: React.ReactNode;
-    active: boolean;
-    onClick: () => void;
-  }> = ({ label, icon, active, onClick }) => (
+function ModeBtn({
+  label,
+  icon,
+  active,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
     <button
-      type="button"
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       className={cn(
         "h-11 px-3 rounded-2xl border text-xs flex items-center gap-2",
-        active ? "bg-white/15 border-white/25 text-white" : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10"
+        active ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10 text-white/80 hover:bg-white/15"
       )}
     >
       {icon}
-      <span>{label}</span>
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
+}
 
-  if (!isOpen) return null;
-
-  const surfaceStyle: React.CSSProperties =
-    stage === "capture"
-      ? {
-          objectFit: fullMode ? "cover" : "contain",
-          backgroundColor: "black",
-          transform: frontCamera ? "scaleX(-1)" : undefined,
-          filter: filterCss,
-        }
-      : { objectFit: "contain", backgroundColor: "black" };
-
-  const isCameraStage = stage === "capture" && topTab !== "AI" && mode !== "Text";
-
+function DrawerTab({
+  label,
+  icon,
+  active,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div className="fixed inset-0 z-[90] bg-black">
-      {/* Surface (tap to toggle HUD) */}
-      <div
-        className="absolute inset-0"
-        onClick={() => {
-          // tap on surface toggles HUD (but not when clicking buttons)
-          // buttons stopPropagation automatically via onClick
-          toggleHud();
-        }}
-        onPointerDown={onSurfacePointerDown}
-        onPointerMove={onSurfacePointerMove}
-        onPointerUp={onSurfacePointerUp}
-      >
-        {/* CAPTURE surface */}
-        {stage === "capture" ? (
-          <>
-            {topTab === "AI" || mode === "Text" ? (
-              <div className="absolute inset-0 flex items-center justify-center p-6">
-                <div
-                  className="w-full max-w-[560px] rounded-3xl bg-white/5 border border-white/10 p-4 text-white"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="font-semibold flex items-center gap-2">
-                    <Wand2 className="h-4 w-4" /> Magic (IA / AR)
-                  </div>
-                  <div className="text-xs text-white/70 mt-1">
-                    Mode création assistée (templates + thèmes). UI allégée.
-                  </div>
+    <button
+      onClick={onClick}
+      className={cn(
+        "h-11 rounded-2xl border text-white text-xs flex items-center justify-center gap-2",
+        active ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10 hover:bg-white/15"
+      )}
+    >
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+}
 
-                  {mode === "Text" ? (
-                    <div className="mt-3">
-                      <div className="text-xs text-white/70 mb-2 flex items-center gap-2">
-                        <TypeIcon className="h-4 w-4" /> Texte (sans caméra)
-                      </div>
-                      <textarea
-                        value={textDraft}
-                        onChange={(e) => setTextDraft(e.target.value)}
-                        className="w-full h-40 rounded-2xl bg-black/40 border border-white/10 text-white p-3 text-sm outline-none"
-                        placeholder="Écris un message simple (on ajoutera dictée vocale)."
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                  ) : null}
+function PanelCard({
+  title,
+  desc,
+  children,
+}: {
+  title: string;
+  desc: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+      <div className="font-semibold">{title}</div>
+      <div className="text-xs text-white/70 mt-1">{desc}</div>
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">{children}</div>
+    </div>
+  );
+}
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMusicOpen(true);
-                      }}
-                      className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                    >
-                      <Radio className="h-4 w-4" /> Music
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDrawerOpen(true)}
-                      className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                    >
-                      <LayoutGrid className="h-4 w-4" /> Outils
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <>
-                <video ref={videoRef} playsInline muted className="absolute inset-0 w-full h-full" style={surfaceStyle} />
+function QuickBtn({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-xs flex items-center justify-center hover:bg-white/15"
+    >
+      {label}
+    </button>
+  );
+}
 
-                {loadingCamera ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                    <div className="text-white flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Loader2 className="h-5 w-5 animate-spin" /> Ouverture caméra…
-                    </div>
-                  </div>
-                ) : null}
+function SideBtn({ label, active, onClick }: { label: string; active?: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "h-11 rounded-2xl border text-xs flex items-center justify-center",
+        active ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10 hover:bg-white/15"
+      )}
+    >
+      {label}
+    </button>
+  );
+}
 
-                {cameraError ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 p-6">
-                    <div
-                      className="w-full max-w-[520px] rounded-3xl bg-white/5 border border-white/10 p-4 text-white"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="font-semibold flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5" /> Caméra indisponible
-                      </div>
-                      <div className="text-xs text-white/70 mt-2">{cameraError}</div>
-                      <button
-                        type="button"
-                        onClick={() => startCamera()}
-                        className="mt-3 h-10 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm"
-                      >
-                        Réessayer
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            {/* PREVIEW surface */}
-            {previewType === "video" ? (
-              <video
-                src={previewUrl}
-                className="absolute inset-0 w-full h-full"
-                style={surfaceStyle}
-                controls
-                playsInline
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : previewType === "photo" ? (
-              <img
-                src={previewUrl}
-                className="absolute inset-0 w-full h-full object-contain bg-black"
-                alt="preview"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : previewType === "audio" ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-black p-6">
-                <div
-                  className="w-full max-w-[520px] rounded-3xl bg-white/5 border border-white/10 p-4 text-white"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="font-semibold flex items-center gap-2">
-                    <Radio className="h-4 w-4" /> Audio (Pure Music)
-                  </div>
-                  <div className="text-xs text-white/70 mt-1">
-                    {selectedMusic ? `Musique: ${selectedMusic.title}` : "Aucune musique sélectionnée"}
-                  </div>
-                  <audio src={previewUrl} controls className="w-full mt-3" />
-                </div>
-              </div>
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-black p-6">
-                <div
-                  className="w-full max-w-[520px] rounded-3xl bg-white/5 border border-white/10 p-4 text-white"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="font-semibold flex items-center gap-2">
-                    <TypeIcon className="h-4 w-4" /> Texte
-                  </div>
-                  <div className="text-xs text-white/70 mt-2">{textDraft.trim() || "Texte (vide)"}</div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Countdown */}
-        <AnimatePresence>
-          {countdown > 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
-              className="absolute inset-0 flex items-center justify-center bg-black/35"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="text-white text-7xl font-extrabold drop-shadow">{countdown}</div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
-        {/* Toast */}
-        <AnimatePresence>
-          {toast ? (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/55 border border-white/10 text-white text-xs backdrop-blur"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {toast}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </div>
-
-      {/* HUD (minimal, clean) */}
-      <AnimatePresence>
-        {hudVisible ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 pointer-events-none"
-          >
-            {/* Top minimal bar */}
-            <div className="absolute top-0 left-0 right-0 z-20 p-3 flex items-center justify-between pointer-events-auto">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClose();
-                    resetToCapture();
-                  }}
-                  className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-                  title="Fermer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-
-                {/* Tabs compact */}
-                <div className="hidden sm:flex items-center gap-2">
-                  <TopTabBtn tab="Video" active={topTab === "Video"} onClick={() => setTopTab("Video")} />
-                  <TopTabBtn tab="Story" active={topTab === "Story"} onClick={() => setTopTab("Story")} />
-                  <TopTabBtn tab="AI" active={topTab === "AI"} onClick={() => setTopTab("AI")} />
-                  <TopTabBtn tab="LIVE" active={topTab === "LIVE"} onClick={() => setTopTab("LIVE")} />
-                </div>
-
-                {/* On mobile: show current tab pill */}
-                <div className="sm:hidden text-white text-sm font-semibold px-3 py-1.5 rounded-full bg-white/10 border border-white/10">
-                  {topTab}
-                </div>
-
-                {challenge ? (
-                  <span className="text-xs px-2 py-1 rounded-full bg-orange-500/80 text-white flex items-center gap-1">
-                    <Flame className="h-3.5 w-3.5" /> {challenge}
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDrawerOpen(true);
-                  }}
-                  className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-                  title="Outils (swipe ↑)"
-                >
-                  <MoreHorizontal className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Right rail (ONLY essentials) */}
-            <div className="absolute right-3 top-20 z-20 flex flex-col gap-2 pointer-events-auto">
-              <RightBtn
-                icon={<Repeat2 className="h-5 w-5 text-white" />}
-                title="Switch"
-                onClick={(e: any) => {
-                  e?.stopPropagation?.();
-                  setFrontCamera((v) => !v);
-                }}
-                disabled={!isCameraStage}
-              />
-              <RightBtn
-                icon={flashOn ? <Flashlight className="h-5 w-5 text-white" /> : <FlashlightOff className="h-5 w-5 text-white/80" />}
-                title="Flash"
-                active={flashOn}
-                onClick={(e: any) => {
-                  e?.stopPropagation?.();
-                  setFlashOn((v) => !v);
-                }}
-                disabled={!isCameraStage}
-              />
-              <RightBtn
-                icon={<Timer className="h-5 w-5 text-white" />}
-                title="Timer"
-                badge={timerSec ? `${timerSec}s` : undefined}
-                active={!!timerSec}
-                onClick={(e: any) => {
-                  e?.stopPropagation?.();
-                  setTimerSec((s) => (s === 0 ? 3 : s === 3 ? 5 : s === 5 ? 10 : 0));
-                }}
-                disabled={stage !== "capture"}
-              />
-              <RightBtn
-                icon={<Gauge className="h-5 w-5 text-white" />}
-                title="Speed"
-                badge={`${speed}x`}
-                onClick={(e: any) => {
-                  e?.stopPropagation?.();
-                  setSpeed((sp) => (sp === 0.5 ? 1 : sp === 1 ? 1.5 : sp === 1.5 ? 2 : 0.5));
-                }}
-                disabled={stage !== "capture"}
-              />
-            </div>
-
-            {/* Bottom clean bar */}
-            <div className="absolute left-0 right-0 bottom-0 z-20 p-3 pointer-events-auto">
-              <div className="mx-auto max-w-[820px] rounded-3xl bg-black/45 border border-white/10 backdrop-blur p-3">
-                {stage === "capture" ? (
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                      <ModeChip
-                        label="Burst"
-                        icon={<span className="text-white/90">📸</span>}
-                        active={mode === "Burst"}
-                        onClick={() => setMode("Burst")}
-                      />
-                      <ModeChip
-                        label="Photo"
-                        icon={<ImageIcon className="h-4 w-4 text-white" />}
-                        active={mode === "Photo"}
-                        onClick={() => setMode("Photo")}
-                      />
-                      <ModeChip
-                        label="Vidéo"
-                        icon={<VideoIcon className="h-4 w-4 text-white" />}
-                        active={mode === "Video"}
-                        onClick={() => setMode("Video")}
-                      />
-                      <ModeChip
-                        label="Texte"
-                        icon={<TypeIcon className="h-4 w-4 text-white" />}
-                        active={mode === "Text"}
-                        onClick={() => setMode("Text")}
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMusicOpen(true);
-                        }}
-                        className="h-11 px-3 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
-                      >
-                        <Radio className="h-4 w-4" />
-                        Music
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPureMusic((v) => !v);
-                        }}
-                        className={cn(
-                          "h-11 px-3 rounded-2xl border text-white text-sm flex items-center gap-2",
-                          pureMusic ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
-                        )}
-                        title="Pure Music"
-                      >
-                        <Radio className="h-4 w-4" />
-                        Pure
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCapture();
-                        }}
-                        className={cn(
-                          "h-11 px-4 rounded-2xl text-white font-semibold flex items-center gap-2",
-                          isRecording ? "bg-red-500/85 hover:bg-red-500" : "bg-orange-500/90 hover:bg-orange-500"
-                        )}
-                      >
-                        {mode === "Video" ? (
-                          <>
-                            <div className={cn("h-3 w-3 rounded-full", isRecording ? "bg-white" : "bg-white/90")} />
-                            {isRecording ? "Stop" : "Rec"}
-                          </>
-                        ) : mode === "Text" ? (
-                          <>
-                            <Check className="h-4 w-4" /> Valider
-                          </>
-                        ) : (
-                          <>
-                            <Camera className="h-4 w-4" /> Capturer
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        resetToCapture();
-                      }}
-                      className="h-11 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
-                    >
-                      <Undo2 className="h-4 w-4" />
-                      Refaire
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditorOpen(true);
-                      }}
-                      className="h-11 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center gap-2"
-                      disabled={previewType === "text" && !textDraft.trim()}
-                    >
-                      <Scissors className="h-4 w-4" />
-                      Éditer
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        publish();
-                      }}
-                      className="h-11 px-4 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white text-sm font-semibold flex items-center gap-2"
-                    >
-                      <Send className="h-4 w-4" />
-                      Publier
-                    </button>
-                  </div>
-                )}
-
-                {/* micro status line (clean) */}
-                <div className="mt-2 text-[11px] text-white/60 flex items-center justify-between">
-                  <div>
-                    {FILTERS.find((f) => f.id === filterId)?.label ?? "—"} · {speed}x · {length}s · {timerSec ? `${timerSec}s` : "Timer off"}
-                  </div>
-                  <div className="text-white/45">Swipe ↑ outils · Tap écran: hide HUD · Swipe ⇆ filtre</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Mini assistant card (optional) */}
-            <AnimatePresence>
-              {assistOpen ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute left-3 right-3 bottom-28 z-20 pointer-events-auto"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="mx-auto max-w-[820px] rounded-3xl bg-black/55 border border-white/10 backdrop-blur p-3 text-white">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold flex items-center gap-2">
-                        <Eye className="h-4 w-4" /> Assistance
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setAssistOpen(false)}
-                        className="h-9 w-9 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="mt-2 grid gap-2">
-                      <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-sm">
-                        <div className="text-xs text-white/70 flex items-center gap-2">
-                          <Eye className="h-3.5 w-3.5" /> Inspiring
-                        </div>
-                        <div className="mt-1">{assist.inspiring}</div>
-                      </div>
-                      <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-sm">
-                        <div className="text-xs text-white/70 flex items-center gap-2">
-                          <Lightbulb className="h-3.5 w-3.5" /> Shot tips
-                        </div>
-                        <div className="mt-1">{assist.shotTips}</div>
-                      </div>
-                      <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-sm">
-                        <div className="text-xs text-white/70 flex items-center gap-2">
-                          <Hash className="h-3.5 w-3.5" /> Cover tips
-                        </div>
-                        <div className="mt-1">{assist.coverTips}</div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
-      {/* Drawer (Swipe ↑) : all secondary features */}
-      <AnimatePresence>
-        {drawerOpen ? (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            className="absolute inset-0 z-[92] bg-black/55 backdrop-blur flex items-end"
-            onClick={() => setDrawerOpen(false)}
-          >
-            <div
-              className="w-full rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-white font-semibold flex items-center gap-2">
-                  <LayoutGrid className="h-4 w-4" /> Outils
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDrawerOpen(false)}
-                  className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAssistOpen(true)}
-                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                >
-                  <Eye className="h-4 w-4" /> Inspiring
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setChallenge((c) => (c ? null : "#DanceChallenge"))}
-                  className={cn(
-                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
-                    challenge ? "bg-orange-500/25 border-orange-500/40" : "bg-white/10 border-white/10"
-                  )}
-                >
-                  <Flame className="h-4 w-4" /> Challenge
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRecommendedFilterOn((v) => !v)}
-                  className={cn(
-                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
-                    recommendedFilterOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
-                  )}
-                >
-                  <Sparkles className="h-4 w-4" /> Auto filtre
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMusicOpen(true)}
-                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                >
-                  <Radio className="h-4 w-4" /> Music
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setBeautifyOn((v) => !v)}
-                  className={cn(
-                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
-                    beautifyOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
-                  )}
-                >
-                  <Sparkles className="h-4 w-4" /> Beautify
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMagicOn((v) => !v)}
-                  className={cn(
-                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
-                    magicOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
-                  )}
-                >
-                  <Wand2 className="h-4 w-4" /> Magic
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStickersOn((v) => !v)}
-                  className={cn(
-                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
-                    stickersOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
-                  )}
-                >
-                  😀 Stickers
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setGraffitiOn((v) => !v)}
-                  className={cn(
-                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
-                    graffitiOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
-                  )}
-                >
-                  ✍️ Graffiti
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setEffectsOn((v) => !v)}
-                  className={cn(
-                    "h-11 rounded-2xl border text-white text-sm flex items-center justify-center gap-2",
-                    effectsOn ? "bg-white/15 border-white/25" : "bg-white/10 border-white/10"
-                  )}
-                >
-                  ✨ Effects
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCanvasRatio((r) => (r === "9:16" ? "1:1" : r === "1:1" ? "16:9" : "9:16"))}
-                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                >
-                  <LayoutGrid className="h-4 w-4" /> Ratio: {canvasRatio}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCanvasBackground((b) => (b === "none" ? "blur" : b === "blur" ? "gradient" : "none"))}
-                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                >
-                  🖼️ Fond: {canvasBackground}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFullMode((v) => !v)}
-                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                >
-                  📐 Fit: {fullMode ? "cover" : "contain"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setLength((l) => (l === 15 ? 30 : l === 30 ? 60 : 15))}
-                  className="h-11 rounded-2xl bg-white/10 border border-white/10 text-white text-sm flex items-center justify-center gap-2"
-                >
-                  ⏱️ Durée: {length}s
-                </button>
-              </div>
-
-              <div className="mt-3 text-xs text-white/60">
-                Astuce: **Swipe ↑** ouvre ces outils. **Tap écran** cache/affiche le HUD. **Swipe ⇆** change le filtre.
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
-      {/* TimelineEditor overlay */}
-      <AnimatePresence>
-        {editorOpen && segments.length > 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[95] bg-black"
-          >
-            <TimelineEditorKuaishou
-              segments={segments}
-              onSegmentsChange={setSegments}
-              onClose={() => setEditorOpen(false)}
-              onConfirm={async (finalSegs) => {
-                setSegments(finalSegs);
-                const first = finalSegs[0];
-                if (first?.blob) {
-                  if (first.type === "video") await toPreview(first.blob, "video");
-                  if (first.type === "photo") await toPreview(first.blob, "photo");
-                  if (first.type === "audio") await toPreview(first.blob, "audio", first.duration);
-                }
-                setEditorOpen(false);
-              }}
-              language={language}
-            />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
-      {/* Music bottom sheet */}
-      <AnimatePresence>
-        {musicOpen ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="absolute inset-0 z-[98] bg-black/70 backdrop-blur flex items-end"
-            onClick={() => setMusicOpen(false)}
-          >
-            <div
-              className="w-full rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-white font-semibold flex items-center gap-2">
-                  <Radio className="h-4 w-4" /> Music
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMusicOpen(false)}
-                  className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
-                  <div className="text-xs text-white/70 mb-2">Trending</div>
-                  <div className="space-y-2">
-                    {MUSIC.filter((m) => m.group === "Trending").map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedMusic({ id: m.id, title: m.title, emoji: m.emoji });
-                          setToast(`Music: ${m.title}`);
-                        }}
-                        className={cn(
-                          "w-full text-left rounded-2xl p-3 border",
-                          selectedMusic?.id === m.id ? "bg-white/15 border-white/25" : "bg-white/5 border-white/10 hover:bg-white/10"
-                        )}
-                      >
-                        <div className="text-white text-sm font-semibold">
-                          {m.emoji} {m.title}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
-                  <div className="text-xs text-white/70 mb-2">Collect / History</div>
-                  <div className="space-y-2">
-                    {MUSIC.filter((m) => m.group !== "Trending").map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedMusic({ id: m.id, title: m.title, emoji: m.emoji });
-                          setToast(`Music: ${m.title}`);
-                        }}
-                        className={cn(
-                          "w-full text-left rounded-2xl p-3 border",
-                          selectedMusic?.id === m.id ? "bg-white/15 border-white/25" : "bg-white/5 border-white/10 hover:bg-white/10"
-                        )}
-                      >
-                        <div className="text-white text-sm font-semibold">
-                          {m.emoji} {m.title}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setSelectedMusic(null)}
-                  className="h-11 px-4 rounded-2xl bg-white/10 border border-white/10 text-white text-sm"
-                >
-                  Retirer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMusicOpen(false)}
-                  className="h-11 px-4 rounded-2xl bg-orange-500/90 hover:bg-orange-500 text-white text-sm font-semibold"
-                >
-                  OK
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+function SmallLine({ text }: { text: string }) {
+  return (
+    <div className="col-span-2 sm:col-span-4 rounded-2xl bg-black/30 border border-white/10 p-3 text-xs text-white/80">
+      {text}
     </div>
   );
 }
