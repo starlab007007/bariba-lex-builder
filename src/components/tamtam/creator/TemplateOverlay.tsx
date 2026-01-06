@@ -53,31 +53,15 @@ export const TemplateOverlay: React.FC<TemplateOverlayProps> = ({
 interface TemplateCarouselProps {
   selectedId: string;
   onSelect: (id: string) => void;
-  showLabels?: boolean;
-  size?: 'sm' | 'md' | 'lg';
 }
 
 export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({
   selectedId,
   onSelect,
-  showLabels = true,
-  size = 'md',
 }) => {
-  const sizeClasses = {
-    sm: 'w-12 h-12 text-xl',
-    md: 'w-14 h-14 text-2xl',
-    lg: 'w-16 h-16 text-3xl',
-  };
-
-  // Group templates by category for better organization
-  const templatesByCategory = CULTURAL_TEMPLATES.reduce((acc, tpl) => {
-    if (!acc[tpl.category]) acc[tpl.category] = [];
-    acc[tpl.category].push(tpl);
-    return acc;
-  }, {} as Record<string, typeof CULTURAL_TEMPLATES>);
 
   return (
-    <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+    <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
       {CULTURAL_TEMPLATES.map((tpl) => {
         const isSelected = selectedId === tpl.id;
         
@@ -87,29 +71,20 @@ export const TemplateCarousel: React.FC<TemplateCarouselProps> = ({
             onClick={() => onSelect(tpl.id)}
             whileTap={{ scale: 0.95 }}
             className={cn(
-              'flex-shrink-0 flex flex-col items-center gap-1 transition-all',
-              isSelected && 'scale-110'
+              'flex-shrink-0 transition-all',
+              isSelected && 'scale-105'
             )}
           >
             <div
               className={cn(
-                'rounded-full flex items-center justify-center border-2 transition-all',
-                sizeClasses[size],
+                'px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap',
                 isSelected
-                  ? 'border-white bg-white/20 shadow-lg shadow-white/20'
-                  : 'border-white/30 bg-black/30 hover:border-white/50'
+                  ? 'bg-white text-black shadow-lg'
+                  : 'bg-black/40 text-white/80 border border-white/20 hover:bg-white/10'
               )}
             >
-              <span className="drop-shadow-lg">{tpl.emoji}</span>
+              {tpl.label}
             </div>
-            {showLabels && (
-              <span className={cn(
-                'text-[10px] max-w-[60px] truncate',
-                isSelected ? 'text-white font-medium' : 'text-white/70'
-              )}>
-                {tpl.label}
-              </span>
-            )}
           </motion.button>
         );
       })}
