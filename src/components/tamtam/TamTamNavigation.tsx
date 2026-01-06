@@ -10,9 +10,7 @@ import { Volume2, Loader2 } from 'lucide-react';
 import { useVoiceMenu } from '@/hooks/useVoiceMenu';
 
 const navItems = [
-  { icon: '🏠', path: '/tamtam/home', id: 'home', labelKey: 'home' },
-  { icon: '💬', path: '/tamtam/social', id: 'social', labelKey: 'social' },
-  { icon: '🛒', path: '/tamtam/market', id: 'market', labelKey: 'market' },
+  { icon: '🏠', path: '/tamtam/social', id: 'home', labelKey: 'home' },
   { icon: '👤', path: '/tamtam/profile', id: 'profile', labelKey: 'profile' },
 ];
 
