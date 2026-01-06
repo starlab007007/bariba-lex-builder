@@ -93,20 +93,52 @@ function isMediaRecorderSupported() {
   return typeof window !== "undefined" && "MediaRecorder" in window;
 }
 
+function isSafariOrIOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /^((?!chrome|android).)*safari/i.test(ua) || 
+         /iPad|iPhone|iPod/.test(ua) || 
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
 function pickMimeType(): string | undefined {
+  const MR = typeof window !== "undefined" ? (window as any).MediaRecorder : undefined;
+  if (!MR || !MR.isTypeSupported) return undefined;
+
+  // Safari/iOS: prefer MP4 (better support)
+  if (isSafariOrIOS()) {
+    const iosCandidates = [
+      "video/mp4",
+      "video/webm;codecs=h264,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+    ];
+    for (const c of iosCandidates) {
+      try {
+        if (MR.isTypeSupported(c)) {
+          console.log('[FullscreenCreator] Selected MIME (Safari/iOS):', c);
+          return c;
+        }
+      } catch {}
+    }
+  }
+
+  // Other browsers: prefer vp8 (more stable) over vp9
   const candidates = [
-    "video/webm;codecs=vp9,opus",
     "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp9,opus",
     "video/webm",
     "video/mp4",
   ];
-  const MR = typeof window !== "undefined" ? (window as any).MediaRecorder : undefined;
-  if (!MR || !MR.isTypeSupported) return undefined;
   for (const c of candidates) {
     try {
-      if (MR.isTypeSupported(c)) return c;
+      if (MR.isTypeSupported(c)) {
+        console.log('[FullscreenCreator] Selected MIME:', c);
+        return c;
+      }
     } catch {}
   }
+  console.error('[FullscreenCreator] No supported MIME type found');
   return undefined;
 }
 
@@ -545,52 +577,61 @@ export default function FullscreenCreator({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capturedBlob]);
 
-  // FIXED: Video playback initialization after capture - robust async loading
+  // Preview error state
+  const [previewError, setPreviewError] = useState(false);
+  
+  // FIXED: Robust video preview initialization with multiple fallback strategies
   useEffect(() => {
     const video = previewVideoRef.current;
-    if (!video || !hasCapture || !previewUrl || capturedType !== 'video') return;
+    if (!video || !hasCapture || !previewUrl || capturedType !== 'video') {
+      setPreviewError(false);
+      return;
+    }
     
     let mounted = true;
     let retryCount = 0;
     const maxRetries = 3;
+    setPreviewError(false);
     
     const initVideo = async () => {
       try {
-        console.log('[FullscreenCreator] Initializing video preview:', { previewUrl, hasCapture });
+        console.log('[FullscreenCreator] Initializing video preview:', { previewUrl, hasCapture, attempt: retryCount + 1 });
         
-        // Reset video state
+        // Reset video state completely
         video.pause();
-        video.currentTime = 0;
         video.muted = true; // Required for autoplay on mobile
         video.playsInline = true;
-        video.preload = 'metadata';
+        video.preload = 'auto';
+        video.autoplay = false;
         
-        // CRITICAL FIX: Set src directly and force load
+        // Set src and wait for loading
         video.src = previewUrl;
         
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
             cleanup();
-            // Don't reject on timeout - try to continue anyway
-            console.warn('[FullscreenCreator] Video load timeout, continuing...');
+            console.warn('[FullscreenCreator] Video load timeout, attempting to continue...');
             resolve();
-          }, 5000);
+          }, 8000);
           
           const onCanPlay = () => {
             clearTimeout(timeout);
             cleanup();
+            console.log('[FullscreenCreator] Video canplay fired');
             resolve();
           };
           const onLoadedData = () => {
             clearTimeout(timeout);
             cleanup();
+            console.log('[FullscreenCreator] Video loadeddata fired');
             resolve();
           };
           const onError = (e: Event) => {
             clearTimeout(timeout);
             cleanup();
-            console.error('[FullscreenCreator] Video error:', e);
-            reject(new Error('Video load failed'));
+            const videoEl = e.target as HTMLVideoElement;
+            console.error('[FullscreenCreator] Video error:', videoEl?.error?.code, videoEl?.error?.message);
+            reject(new Error(`Video load failed: ${videoEl?.error?.message || 'Unknown error'}`));
           };
           
           const cleanup = () => {
@@ -605,28 +646,57 @@ export default function FullscreenCreator({
           video.load();
         });
         
-        if (mounted) {
-          // CRITICAL FIX: For webm with Infinity duration, play briefly then pause to show first frame
-          const duration = video.duration;
-          console.log('[FullscreenCreator] Video ready, duration:', duration);
+        if (!mounted) return;
+        
+        console.log('[FullscreenCreator] Video loaded, dimensions:', video.videoWidth, 'x', video.videoHeight, 'duration:', video.duration);
+        
+        // Check if video has valid dimensions
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+          throw new Error('Video has no dimensions');
+        }
+        
+        // CRITICAL FIX: Handle Infinity duration (common for webm recordings)
+        // Use seekable range trick + play/pause to force first frame display
+        const duration = video.duration;
+        
+        if (!isFinite(duration) || duration <= 0) {
+          console.log('[FullscreenCreator] Fixing Infinity duration...');
           
-          if (!isFinite(duration) || duration <= 0) {
-            // Duration is Infinity (common for webm) - use play/pause trick
-            console.log('[FullscreenCreator] Fixing Infinity duration - using play/pause trick');
-            try {
-              await video.play();
-              // Wait a tiny bit then pause to show first frame
-              await new Promise(r => setTimeout(r, 50));
-              video.pause();
-              video.currentTime = 0;
-            } catch (playErr) {
-              console.warn('[FullscreenCreator] Play trick failed:', playErr);
+          // Strategy 1: Use seekable range
+          if (video.seekable.length > 0) {
+            const seekableEnd = video.seekable.end(0);
+            console.log('[FullscreenCreator] Seekable end:', seekableEnd);
+            
+            // Seek to near end then back to start
+            video.currentTime = Math.max(0.1, seekableEnd - 0.1);
+            await new Promise(r => setTimeout(r, 50));
+            video.currentTime = 0.001;
+            await new Promise(r => setTimeout(r, 50));
+          }
+          
+          // Strategy 2: Brief play/pause to force decode
+          try {
+            const playPromise = video.play();
+            if (playPromise) {
+              await playPromise;
             }
-          } else {
-            // Normal case - just seek to start
+            await new Promise(r => setTimeout(r, 80));
+            video.pause();
+            video.currentTime = 0.001;
+          } catch (playErr) {
+            console.warn('[FullscreenCreator] Play/pause trick failed:', playErr);
+            // Still try to seek
             video.currentTime = 0.001;
           }
+        } else {
+          // Normal duration - just seek to start
+          video.currentTime = 0.001;
         }
+        
+        // Ensure video is paused and ready
+        video.pause();
+        console.log('[FullscreenCreator] Video preview ready');
+        
       } catch (err) {
         console.error('[FullscreenCreator] Failed to init preview video:', err);
         
@@ -634,35 +704,36 @@ export default function FullscreenCreator({
         if (mounted && retryCount < maxRetries) {
           retryCount++;
           console.log(`[FullscreenCreator] Retrying video init (${retryCount}/${maxRetries})...`);
-          setTimeout(initVideo, 500);
+          await new Promise(r => setTimeout(r, 500));
+          return initVideo();
+        } else if (mounted) {
+          // All retries failed - show error state
+          setPreviewError(true);
         }
       }
     };
     
     // Small delay to ensure blob URL is ready
-    const timer = setTimeout(initVideo, 50);
+    const timer = setTimeout(initVideo, 100);
     
-    // Time sync handlers
-    const handleTimeUpdate = () => {
-      if (mounted) setCurrentTime(video.currentTime);
-    };
-    const handleEnded = () => {
-      if (mounted) setIsPlaying(false);
-    };
-    const handleLoadedMetadata = () => {
-      console.log('[FullscreenCreator] Video metadata loaded, duration:', video.duration);
-    };
+    // Sync play state with video events
+    const handlePlay = () => { if (mounted) setIsPlaying(true); };
+    const handlePause = () => { if (mounted) setIsPlaying(false); };
+    const handleEnded = () => { if (mounted) setIsPlaying(false); };
+    const handleTimeUpdate = () => { if (mounted) setCurrentTime(video.currentTime); };
     
-    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
     video.addEventListener('ended', handleEnded);
-    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('timeupdate', handleTimeUpdate);
     
     return () => {
       mounted = false;
       clearTimeout(timer);
-      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, [hasCapture, previewUrl, capturedType]);
 
@@ -672,37 +743,65 @@ export default function FullscreenCreator({
     const video = previewVideoRef.current;
     if (!video || capturedType !== 'video') return;
     
-    if (isPlaying) {
+    console.log('[FullscreenCreator] togglePlayPause, current isPlaying:', isPlaying, 'video paused:', video.paused);
+    
+    if (!video.paused) {
       video.pause();
-      setIsPlaying(false);
     } else {
-      // FIXED: Unmute if needed for manual play
+      // Try unmuted first, then fallback to muted if needed
       video.muted = false;
-      video.play().then(() => {
-        setIsPlaying(true);
-      }).catch((err) => {
-        console.warn('Play failed:', err);
-        // Retry with muted
-        video.muted = true;
-        video.play().then(() => setIsPlaying(true)).catch(() => {});
-      });
+      video.play()
+        .then(() => {
+          console.log('[FullscreenCreator] Play started successfully');
+        })
+        .catch((err) => {
+          console.warn('[FullscreenCreator] Unmuted play failed, trying muted:', err.message);
+          video.muted = true;
+          video.play().catch((e) => {
+            console.error('[FullscreenCreator] Muted play also failed:', e.message);
+          });
+        });
     }
   }, [isPlaying, capturedType]);
 
 
 
+  // FIXED: Recording with baked-in effects when template is active
   const startRecording = async () => {
     setError(null);
     if (!streamRef.current) await startStream();
     if (!streamRef.current) return;
     if (!isMediaRecorderSupported()) {
-      setError("Enregistrement vidéo non supporté.");
+      setError("Enregistrement vidéo non supporté sur cet appareil.");
       return;
     }
     const mimeType = pickMimeType();
+    if (!mimeType) {
+      setError("Format vidéo non supporté sur cet appareil.");
+      return;
+    }
+    
     try {
       chunksRef.current = [];
-      const rec = new MediaRecorder(streamRef.current, mimeType ? { mimeType } : undefined);
+      
+      // Determine which stream to record
+      let recordStream = streamRef.current;
+      
+      // If an advanced template (non-neutral) is active, capture from canvas for baked-in effects
+      if (activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' && liveCanvasRef.current) {
+        try {
+          const canvasStream = liveCanvasRef.current.captureStream(30);
+          // Add audio tracks from microphone
+          const audioTracks = streamRef.current.getAudioTracks();
+          audioTracks.forEach(track => canvasStream.addTrack(track));
+          recordStream = canvasStream;
+          console.log('[FullscreenCreator] Recording from canvas stream (baked-in effects)');
+        } catch (canvasErr) {
+          console.warn('[FullscreenCreator] Canvas capture failed, using camera stream:', canvasErr);
+        }
+      }
+      
+      const rec = new MediaRecorder(recordStream, { mimeType });
       recorderRef.current = rec;
       rec.ondataavailable = (ev) => {
         if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
@@ -710,7 +809,9 @@ export default function FullscreenCreator({
       rec.start(200);
       setIsRecording(true);
       setToast("● REC");
+      console.log('[FullscreenCreator] Recording started with MIME:', mimeType);
     } catch (e: any) {
+      console.error('[FullscreenCreator] Recording error:', e);
       setError(e?.message || "Impossible de démarrer l'enregistrement.");
     }
   };
@@ -719,11 +820,22 @@ export default function FullscreenCreator({
     const rec = recorderRef.current;
     if (!rec) throw new Error("Recorder not initialized");
     if (rec.state === "inactive") throw new Error("Recorder already stopped");
+    
+    // CRITICAL FIX: Request any pending data before stopping
+    try {
+      if (typeof rec.requestData === 'function') {
+        rec.requestData();
+        // Small delay to let data arrive
+        await new Promise(r => setTimeout(r, 100));
+      }
+    } catch {}
+    
     const blob: Blob = await new Promise((resolve, reject) => {
       rec.onstop = () => {
         try {
           const type = rec.mimeType || "video/webm";
           const b = new Blob(chunksRef.current, { type });
+          console.log('[FullscreenCreator] Recording stopped, blob size:', b.size, 'type:', type);
           if (!b.size) reject(new Error("Empty recording"));
           else resolve(b);
         } catch (e) { reject(e); }
@@ -1183,19 +1295,48 @@ export default function FullscreenCreator({
                 <video
                   ref={previewVideoRef}
                   className="absolute inset-0 w-full h-full object-contain bg-black"
-                  style={{ filter: cssFilter }}
+                  // CRITICAL FIX: Remove CSS filter on preview video - it causes black screen on iOS/Safari
+                  // Effects are already baked into the video when recorded with template
                   playsInline
                   muted
-                  preload="metadata"
+                  preload="auto"
                   src={previewUrl || undefined}
-                  onLoadedData={() => console.log('[FullscreenCreator] Preview video loadeddata event')}
-                  onCanPlay={() => console.log('[FullscreenCreator] Preview video canplay event')}
-                  onError={(e) => console.error('[FullscreenCreator] Preview video error:', e)}
                 />
+                
                 {/* Loading indicator while video loads */}
-                {hasCapture && !previewUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black">
+                {hasCapture && previewUrl && !previewError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black pointer-events-none opacity-0 transition-opacity duration-300"
+                    style={{ opacity: previewVideoRef.current?.readyState && previewVideoRef.current.readyState >= 2 ? 0 : 1 }}
+                  >
                     <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+                
+                {/* Error state */}
+                {previewError && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 p-6">
+                    <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+                    <p className="text-white text-center mb-4">Vidéo illisible sur cet appareil</p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setPreviewError(false);
+                          // Force re-init
+                          const url = previewUrl;
+                          setPreviewUrl('');
+                          setTimeout(() => setPreviewUrl(url), 100);
+                        }}
+                        className="px-4 py-2 rounded-full bg-white/10 text-white border border-white/20"
+                      >
+                        Réessayer
+                      </button>
+                      <button
+                        onClick={retake}
+                        className="px-4 py-2 rounded-full bg-orange-500 text-white"
+                      >
+                        Reprendre
+                      </button>
+                    </div>
                   </div>
                 )}
               </>
