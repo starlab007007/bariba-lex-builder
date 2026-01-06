@@ -445,7 +445,12 @@ export default function FullscreenCreator({
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {});
+        // Ensure video starts playing with proper error handling
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch((err) => {
+            console.warn("Auto-play failed, user interaction may be required:", err);
+          });
+        };
       }
     } catch (e: any) {
       setError(e?.message || "Impossible d'accéder à la caméra.");
@@ -473,10 +478,10 @@ export default function FullscreenCreator({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capturedBlob]);
 
-  // Video playback time sync
+  // Video playback time sync and auto-load preview
   useEffect(() => {
     const video = previewVideoRef.current;
-    if (!video || !hasCapture) return;
+    if (!video || !hasCapture || !previewUrl) return;
     
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
@@ -486,14 +491,33 @@ export default function FullscreenCreator({
       setIsPlaying(false);
     };
     
+    const handleLoadedData = () => {
+      // Video is loaded and ready to display first frame
+      video.currentTime = 0;
+    };
+    
+    const handleCanPlay = () => {
+      // Video can play - seek to start to show first frame
+      if (video.currentTime === 0 && !isPlaying) {
+        video.currentTime = 0.001; // Slight offset to trigger frame render
+      }
+    };
+    
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('ended', handleEnded);
+    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('canplay', handleCanPlay);
+    
+    // Force load the video to show first frame
+    video.load();
     
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('canplay', handleCanPlay);
     };
-  }, [hasCapture]);
+  }, [hasCapture, previewUrl, isPlaying]);
 
   // ⚠️ CRITICAL: Early return MUST be AFTER all hooks
   if (!open) return null;
@@ -984,6 +1008,8 @@ export default function FullscreenCreator({
                 className="absolute inset-0 w-full h-full object-contain bg-black"
                 style={{ filter: cssFilter }}
                 playsInline
+                preload="auto"
+                poster=""
               />
             ) : (
               <img
