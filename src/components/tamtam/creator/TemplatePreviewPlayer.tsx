@@ -137,8 +137,8 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        "relative rounded-2xl overflow-hidden transition-all",
-        isActive && "ring-2 ring-white shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+        "relative rounded-xl sm:rounded-2xl overflow-hidden transition-all",
+        isActive && "ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.15)]"
       )}
     >
       {/* Background Gradient */}
@@ -158,11 +158,11 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
       />
 
       {/* Content */}
-      <div className="relative z-10 p-4">
+      <div className="relative z-10 p-3 sm:p-4">
         {/* Header: Emoji + Labels */}
         <div className="flex items-start justify-between">
           <motion.span 
-            className="text-5xl"
+            className="text-3xl sm:text-4xl"
             animate={isPlaying ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
             transition={{ duration: 1, repeat: Infinity }}
           >
@@ -177,37 +177,37 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
               speakDescription();
             }}
             className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center",
+              "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center",
               isDescribing
                 ? "bg-white text-black"
                 : "bg-black/30 text-white"
             )}
           >
             {isMuted ? (
-              <VolumeX className="h-5 w-5" />
+              <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" />
             ) : (
-              <Volume2 className="h-5 w-5" />
+              <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />
             )}
           </motion.button>
         </div>
 
         {/* Title & Description */}
-        <h3 className="mt-3 font-bold text-white text-lg leading-tight">
+        <h3 className="mt-2 font-bold text-white text-sm sm:text-base leading-tight">
           {template.label_fr}
         </h3>
         {template.label_ba && (
-          <p className="text-white/60 text-xs">{template.label_ba}</p>
+          <p className="text-white/60 text-[10px] sm:text-xs">{template.label_ba}</p>
         )}
-        <p className="mt-1 text-white/80 text-sm line-clamp-2">
+        <p className="mt-1 text-white/80 text-xs sm:text-sm line-clamp-2 leading-snug">
           {template.description_fr}
         </p>
 
-        {/* Feature Badges */}
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        {/* Feature Badges - Scrollable on mobile */}
+        <div className="mt-2 sm:mt-3 flex gap-1 sm:gap-1.5 overflow-x-auto scrollbar-hide pb-1">
           {badges.map((badge, i) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/30 text-white text-xs"
+              className="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-black/30 text-white text-[10px] sm:text-xs whitespace-nowrap flex-shrink-0"
             >
               <span>{badge.icon}</span>
               <span className="opacity-80">{badge.label}</span>
@@ -216,12 +216,12 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
         </div>
 
         {/* Durations */}
-        <div className="mt-3 flex items-center gap-1.5 flex-wrap">
-          <Clock className="h-3.5 w-3.5 text-white/60" />
+        <div className="mt-2 sm:mt-3 flex items-center gap-1 sm:gap-1.5 flex-wrap">
+          <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white/60" />
           {template.supportedDurations.slice(0, 4).map((dur) => (
             <span
               key={dur}
-              className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded"
+              className="text-[10px] sm:text-xs text-white/70 bg-white/10 px-1.5 sm:px-2 py-0.5 rounded"
             >
               {formatDuration(dur)}
             </span>
@@ -229,7 +229,7 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-4 flex gap-2">
+        <div className="mt-3 sm:mt-4 flex gap-1.5 sm:gap-2">
           {/* Preview Button */}
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -241,17 +241,17 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
                 startPreviewAnimation();
               }
             }}
-            className="flex-1 h-11 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center gap-2 text-white"
+            className="flex-1 h-9 sm:h-11 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center gap-1.5 text-white"
           >
             {isPlaying ? (
               <>
-                <Pause className="h-4 w-4" />
-                <span className="text-sm font-medium">Arrêter</span>
+                <Pause className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm font-medium">Arrêter</span>
               </>
             ) : (
               <>
-                <Play className="h-4 w-4" />
-                <span className="text-sm font-medium">Aperçu</span>
+                <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm font-medium">Aperçu</span>
               </>
             )}
           </motion.button>
@@ -260,10 +260,10 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={onSelect}
-            className="flex-1 h-11 rounded-full bg-white text-black flex items-center justify-center gap-2 font-semibold"
+            className="flex-1 h-9 sm:h-11 rounded-full bg-white text-black flex items-center justify-center gap-1.5 font-semibold"
           >
-            <Check className="h-4 w-4" />
-            <span className="text-sm">Utiliser</span>
+            <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Utiliser</span>
           </motion.button>
         </div>
 
@@ -274,7 +274,7 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="mt-3 h-1 rounded-full bg-black/30 overflow-hidden"
+              className="mt-2 sm:mt-3 h-1 rounded-full bg-black/30 overflow-hidden"
             >
               <motion.div
                 className="h-full bg-white"
@@ -287,9 +287,9 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
 
       {/* Voice Instructions Indicator */}
       {template.voiceInstructions.length > 0 && (
-        <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm flex items-center gap-1">
-          <Sparkles className="h-3 w-3 text-amber-400" />
-          <span className="text-[10px] text-white/80">
+        <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-black/40 backdrop-blur-sm flex items-center gap-0.5 sm:gap-1">
+          <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-amber-400" />
+          <span className="text-[9px] sm:text-[10px] text-white/80">
             {template.voiceInstructions.length} étapes
           </span>
         </div>
