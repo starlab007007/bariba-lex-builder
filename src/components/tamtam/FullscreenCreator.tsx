@@ -55,7 +55,9 @@ import { GraphicsDrawer, getGraphicsStyles, getGraphicsClasses } from "./creator
 import { MagicDrawer } from "./creator/MagicDrawer";
 import { TemplateOverlay, TemplateCarousel } from "./creator/TemplateOverlay";
 import AdvancedTemplateDrawer from "./creator/AdvancedTemplateDrawer";
-import { AdvancedTemplate, durationToSeconds } from "./creator/AdvancedTemplateData";
+import TemplateCaptureOverlay from "./creator/TemplateCaptureOverlay";
+import { AdvancedTemplate, durationToSeconds, getTemplateById as getAdvancedTemplateById } from "./creator/AdvancedTemplateData";
+import templateEngine, { ProcessingProgress, TemplateInputs } from "./creator/TemplateEngine";
 
 export type CreatorOutputPayload = {
   segments: TimelineSegment[];
@@ -375,6 +377,12 @@ export default function FullscreenCreator({
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [capturedType, setCapturedType] = useState<"video" | "photo" | "audio">("video");
   const [previewUrl, setPreviewUrl] = useState<string>("");
+
+  // Advanced template state
+  const [activeAdvancedTemplate, setActiveAdvancedTemplate] = useState<AdvancedTemplate | null>(null);
+  const [templateCapturedInputs, setTemplateCapturedInputs] = useState<number>(0);
+  const [isProcessingTemplate, setIsProcessingTemplate] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState<ProcessingProgress | null>(null);
 
   // Editor
   const [segments, setSegments] = useState<TimelineSegment[]>([]);
@@ -914,8 +922,46 @@ export default function FullscreenCreator({
             )}
           </AnimatePresence>
 
+          {/* ===== ADVANCED TEMPLATE CAPTURE OVERLAY ===== */}
+          {activeAdvancedTemplate && (
+            <TemplateCaptureOverlay
+              template={activeAdvancedTemplate}
+              isRecording={isRecording}
+              currentInputIndex={0}
+              capturedInputs={templateCapturedInputs}
+            />
+          )}
+
+          {/* ===== TEMPLATE PROCESSING OVERLAY ===== */}
+          <AnimatePresence>
+            {isProcessingTemplate && processingProgress && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-50 bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center"
+              >
+                <div className={`w-24 h-24 rounded-full bg-gradient-to-r ${activeAdvancedTemplate?.color || 'from-amber-500 to-orange-500'} flex items-center justify-center mb-6`}>
+                  <span className="text-4xl">{activeAdvancedTemplate?.emoji || '✨'}</span>
+                </div>
+                <h3 className="text-white text-xl font-bold mb-2">{processingProgress.message_fr}</h3>
+                {processingProgress.message_ba && (
+                  <p className="text-white/60 text-sm mb-6">{processingProgress.message_ba}</p>
+                )}
+                <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${processingProgress.percent}%` }}
+                    className={`h-full bg-gradient-to-r ${activeAdvancedTemplate?.color || 'from-amber-500 to-orange-500'}`}
+                  />
+                </div>
+                <p className="text-white/40 text-xs mt-2">{processingProgress.percent}%</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* ===== TEXT MODE INPUT ===== */}
-          {mode === "text" && (
+          {mode === "text" && !activeAdvancedTemplate && (
             <div className="absolute inset-0 flex items-center justify-center z-10 bg-gradient-to-br from-orange-900/80 via-red-900/80 to-purple-900/80">
               <div className="w-full max-w-md px-6">
                 <textarea
@@ -1180,6 +1226,10 @@ export default function FullscreenCreator({
             isOpen={drawer === "template"}
             onClose={() => setDrawer("none")}
             onSelectTemplate={(template: AdvancedTemplate) => {
+              // Activate the advanced template
+              setActiveAdvancedTemplate(template);
+              setTemplateCapturedInputs(0);
+              
               // Configure le mode et la durée selon le template
               const firstDuration = template.supportedDurations[0];
               const durationSec = durationToSeconds(firstDuration);
@@ -1207,7 +1257,14 @@ export default function FullscreenCreator({
               // Store template id in effects
               updateEffects({ templateId: template.id });
               setDrawer("none");
-              setToast(`${template.emoji} ${template.label_fr}`);
+              setToast(`${template.emoji} ${template.label_fr} activé`);
+              
+              // Speak first instruction
+              if (template.voiceInstructions.length > 0) {
+                setTimeout(() => {
+                  templateEngine.speakInstruction(template.voiceInstructions[0], 'fr');
+                }, 500);
+              }
             }}
           />
 
