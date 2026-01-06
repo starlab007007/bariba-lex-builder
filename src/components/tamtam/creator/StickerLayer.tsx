@@ -174,7 +174,9 @@ export const StickerPicker: React.FC<StickerPickerProps> = ({
   onClose,
   onAddSticker,
 }) => {
+  // ALL HOOKS MUST BE DECLARED BEFORE ANY CONDITIONAL RETURNS
   const [activeCategory, setActiveCategory] = useState<keyof typeof STICKER_CATEGORIES>('emojis');
+  
   const categories = [
     { id: 'emojis' as const, label: 'Emojis', emoji: '😀' },
     { id: 'badges' as const, label: 'Badges', emoji: '🏷️' },
@@ -194,6 +196,7 @@ export const StickerPicker: React.FC<StickerPickerProps> = ({
     onClose();
   };
 
+  // EARLY RETURN AFTER ALL HOOKS
   if (!isOpen) return null;
 
   return (

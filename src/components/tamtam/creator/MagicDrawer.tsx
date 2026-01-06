@@ -49,6 +49,7 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
   onToggleAREffect,
   onSelectIdea,
 }) => {
+  // ALL HOOKS MUST BE DECLARED BEFORE ANY CONDITIONAL RETURNS
   const [activeTab, setActiveTab] = useState<MagicTab>('ar_effects');
 
   const tabs = [
@@ -58,6 +59,7 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
     { id: 'inspiring' as const, label: 'Idées', icon: <Lightbulb className="w-4 h-4" /> },
   ];
 
+  // EARLY RETURN AFTER ALL HOOKS
   if (!isOpen) return null;
 
   return (
