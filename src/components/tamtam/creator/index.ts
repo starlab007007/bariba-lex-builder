@@ -16,3 +16,8 @@ export type { Caption, CaptionStyle, CaptionAnimation } from './CaptionsDrawer';
 export { default as MusicDrawer } from './MusicDrawer';
 export type { SelectedMusic } from './MusicDrawer';
 export { default as PublishScreen } from './PublishScreen';
+
+// New services
+export { KaraokeSyncService } from '@/services/KaraokeSyncService';
+export { AIMusicGenerationService } from '@/services/AIMusicGenerationService';
+export { useCreatorDraft } from '@/hooks/useCreatorDraft';
