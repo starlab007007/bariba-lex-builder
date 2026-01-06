@@ -532,28 +532,55 @@ export default function FullscreenCreator({
   // FIXED: Video playback initialization after capture - robust async loading
   useEffect(() => {
     const video = previewVideoRef.current;
-    if (!video || !hasCapture || !previewUrl) return;
+    if (!video || !hasCapture || !previewUrl || capturedType !== 'video') return;
     
     let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
     
     const initVideo = async () => {
       try {
-        // FIXED: Set muted for autoplay compatibility on mobile
-        video.muted = true;
+        console.log('[FullscreenCreator] Initializing video preview:', { previewUrl, hasCapture });
+        
+        // Reset video state
+        video.pause();
+        video.currentTime = 0;
+        video.muted = true; // Required for autoplay on mobile
         video.src = previewUrl;
+        video.preload = 'auto';
         
         await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error('Video load timeout'));
+          }, 10000);
+          
           const onCanPlay = () => {
-            video.removeEventListener('canplaythrough', onCanPlay);
-            video.removeEventListener('error', onError);
+            clearTimeout(timeout);
+            cleanup();
             resolve();
           };
-          const onError = () => {
-            video.removeEventListener('canplaythrough', onCanPlay);
-            video.removeEventListener('error', onError);
+          const onLoadedData = () => {
+            // Also accept loadeddata as success
+            clearTimeout(timeout);
+            cleanup();
+            resolve();
+          };
+          const onError = (e: Event) => {
+            clearTimeout(timeout);
+            cleanup();
+            console.error('[FullscreenCreator] Video error:', e);
             reject(new Error('Video load failed'));
           };
+          
+          const cleanup = () => {
+            video.removeEventListener('canplaythrough', onCanPlay);
+            video.removeEventListener('loadeddata', onLoadedData);
+            video.removeEventListener('error', onError);
+          };
+          
           video.addEventListener('canplaythrough', onCanPlay);
+          video.addEventListener('loadeddata', onLoadedData);
           video.addEventListener('error', onError);
           video.load();
         });
@@ -561,27 +588,46 @@ export default function FullscreenCreator({
         if (mounted) {
           // Position at start to show first frame
           video.currentTime = 0.001;
+          console.log('[FullscreenCreator] Video ready, duration:', video.duration);
         }
       } catch (err) {
-        console.error('Failed to init preview video:', err);
+        console.error('[FullscreenCreator] Failed to init preview video:', err);
+        
+        // Retry logic
+        if (mounted && retryCount < maxRetries) {
+          retryCount++;
+          console.log(`[FullscreenCreator] Retrying video init (${retryCount}/${maxRetries})...`);
+          setTimeout(initVideo, 500);
+        }
       }
     };
     
-    initVideo();
+    // Small delay to ensure blob URL is ready
+    const timer = setTimeout(initVideo, 100);
     
     // Time sync handlers
-    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
-    const handleEnded = () => setIsPlaying(false);
+    const handleTimeUpdate = () => {
+      if (mounted) setCurrentTime(video.currentTime);
+    };
+    const handleEnded = () => {
+      if (mounted) setIsPlaying(false);
+    };
+    const handleLoadedMetadata = () => {
+      console.log('[FullscreenCreator] Video metadata loaded, duration:', video.duration);
+    };
     
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('ended', handleEnded);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
     
     return () => {
       mounted = false;
+      clearTimeout(timer);
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
-  }, [hasCapture, previewUrl]); // FIXED: Removed isPlaying from dependencies
+  }, [hasCapture, previewUrl, capturedType]);
 
   // ============= HANDLERS (defined before early return to maintain hook order) =============
   
@@ -1082,15 +1128,25 @@ export default function FullscreenCreator({
           ) : (
             // CAPTURED MEDIA
             capturedType === "video" ? (
-              <video
-                ref={previewVideoRef}
-                src={previewUrl}
-                className="absolute inset-0 w-full h-full object-contain bg-black"
-                style={{ filter: cssFilter }}
-                playsInline
-                muted  // FIXED: Required for autoplay on mobile
-                preload="auto"
-              />
+              <>
+                <video
+                  ref={previewVideoRef}
+                  className="absolute inset-0 w-full h-full object-contain bg-black"
+                  style={{ filter: cssFilter }}
+                  playsInline
+                  muted
+                  preload="auto"
+                  onLoadedData={() => console.log('[FullscreenCreator] Preview video loadeddata event')}
+                  onCanPlay={() => console.log('[FullscreenCreator] Preview video canplay event')}
+                  onError={(e) => console.error('[FullscreenCreator] Preview video error:', e)}
+                />
+                {/* Loading indicator while video loads */}
+                {hasCapture && !previewUrl && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black">
+                    <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </>
             ) : (
               <img
                 src={previewUrl}

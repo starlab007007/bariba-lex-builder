@@ -123,10 +123,15 @@ export default function MiniTimeline({
         </div>
       </div>
 
-      {/* Timeline Track */}
+      {/* Timeline Track - More transparent/visible */}
       <div
         ref={timelineRef}
-        className="relative h-14 bg-white/5 rounded-xl border border-white/10 overflow-hidden cursor-pointer"
+        className="relative h-16 rounded-xl overflow-hidden cursor-pointer"
+        style={{
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
+          border: '1px solid rgba(255,255,255,0.15)',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)',
+        }}
         onClick={handleTimelineClick}
       >
         {/* Segments */}
@@ -140,10 +145,16 @@ export default function MiniTimeline({
               <motion.div
                 key={seg.id}
                 className={cn(
-                  "relative h-full border-r border-white/10 last:border-r-0 transition-all",
-                  isActive ? "bg-orange-500/30 ring-2 ring-orange-500 ring-inset" : "bg-white/10"
+                  "relative h-full transition-all",
+                  idx < segments.length - 1 && "border-r-2 border-white/20"
                 )}
-                style={{ width: `${segWidth}%` }}
+                style={{ 
+                  width: `${segWidth}%`,
+                  background: isActive 
+                    ? 'linear-gradient(180deg, rgba(249,115,22,0.4) 0%, rgba(249,115,22,0.2) 100%)'
+                    : 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 100%)',
+                  boxShadow: isActive ? 'inset 0 0 0 2px rgba(249,115,22,0.8)' : 'none',
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectSegment(seg.id);
@@ -160,9 +171,11 @@ export default function MiniTimeline({
                 ) : (
                   <div className={cn(
                     "absolute inset-0",
-                    seg.type === "video" ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20" :
-                    seg.type === "photo" ? "bg-gradient-to-r from-green-500/20 to-teal-500/20" :
-                    "bg-gradient-to-r from-orange-500/20 to-red-500/20"
+                    seg.type === "video" 
+                      ? "bg-gradient-to-b from-blue-400/30 via-purple-400/20 to-transparent" 
+                      : seg.type === "photo" 
+                        ? "bg-gradient-to-b from-green-400/30 via-teal-400/20 to-transparent" 
+                        : "bg-gradient-to-b from-orange-400/30 via-red-400/20 to-transparent"
                   )} />
                 )}
 
@@ -194,15 +207,32 @@ export default function MiniTimeline({
           })}
         </div>
 
-        {/* Playhead */}
+        {/* Playhead - More visible */}
         <motion.div
-          className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg shadow-white/50 z-10"
-          style={{ left: `${progressPercent}%` }}
+          className="absolute top-0 bottom-0 w-1 z-10"
+          style={{ 
+            left: `${progressPercent}%`,
+            background: 'linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.8) 100%)',
+            boxShadow: '0 0 8px rgba(255,255,255,0.6), 0 0 16px rgba(249,115,22,0.4)',
+          }}
           animate={{ left: `${progressPercent}%` }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-          {/* Playhead handle */}
-          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg" />
+          {/* Playhead handle - Larger */}
+          <div 
+            className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full shadow-lg"
+            style={{
+              background: 'linear-gradient(180deg, #fff 0%, #f97316 100%)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            }}
+          />
+          <div 
+            className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full shadow-lg"
+            style={{
+              background: 'linear-gradient(180deg, #f97316 0%, #fff 100%)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            }}
+          />
         </motion.div>
       </div>
 
