@@ -665,38 +665,51 @@ export default function FullscreenCreator({
         
         if (!isFinite(duration) || duration <= 0) {
           console.log('[FullscreenCreator] Fixing Infinity duration...');
-          
-          // Strategy 1: Use seekable range
+
+          // Strategy 1: Use seekable range (only if finite)
           if (video.seekable.length > 0) {
             const seekableEnd = video.seekable.end(0);
             console.log('[FullscreenCreator] Seekable end:', seekableEnd);
-            
-            // Seek to near end then back to start
-            video.currentTime = Math.max(0.1, seekableEnd - 0.1);
-            await new Promise(r => setTimeout(r, 50));
-            video.currentTime = 0.001;
-            await new Promise(r => setTimeout(r, 50));
-          }
-          
-          // Strategy 2: Brief play/pause to force decode
-          try {
-            const playPromise = video.play();
-            if (playPromise) {
-              await playPromise;
+
+            if (Number.isFinite(seekableEnd) && seekableEnd > 0.2) {
+              // Seek to near end then back to start
+              try {
+                video.currentTime = Math.max(0.1, seekableEnd - 0.1);
+                await new Promise((r) => setTimeout(r, 50));
+              } catch (seekErr) {
+                console.warn('[FullscreenCreator] Seek near end failed:', seekErr);
+              }
+            } else {
+              console.log('[FullscreenCreator] Seekable end is non-finite, skipping seek trick');
             }
-            await new Promise(r => setTimeout(r, 80));
+          }
+
+          // Strategy 2: Brief play/pause to force decode (works when muted)
+          try {
+            video.muted = true;
+            const playPromise = video.play();
+            if (playPromise) await playPromise;
+            await new Promise((r) => setTimeout(r, 80));
             video.pause();
-            video.currentTime = 0.001;
           } catch (playErr) {
             console.warn('[FullscreenCreator] Play/pause trick failed:', playErr);
-            // Still try to seek
+          }
+
+          // Always try to land on a finite start time
+          try {
             video.currentTime = 0.001;
+          } catch (seekErr) {
+            console.warn('[FullscreenCreator] Seek to start failed:', seekErr);
           }
         } else {
           // Normal duration - just seek to start
-          video.currentTime = 0.001;
+          try {
+            video.currentTime = 0.001;
+          } catch (seekErr) {
+            console.warn('[FullscreenCreator] Seek to start failed:', seekErr);
+          }
         }
-        
+
         // Ensure video is paused and ready
         video.pause();
         if (mounted) setPreviewReady(true);
