@@ -606,10 +606,8 @@ export default function FullscreenCreator({
     }
   }, [isPlaying, capturedType]);
 
-  // ⚠️ CRITICAL: Early return MUST be AFTER all hooks
-  if (!open) return null;
 
-  // ============= RECORDING HELPERS =============
+
   const startRecording = async () => {
     setError(null);
     if (!streamRef.current) await startStream();
@@ -953,6 +951,8 @@ export default function FullscreenCreator({
   const activeSegment = segments.find(s => s.id === activeSegmentId);
 
   // ============= RENDER =============
+  if (!open) return null;
+
   return (
     <div className="fixed inset-0 z-[100] bg-black text-white select-none">
       {/* Hidden album input */}
