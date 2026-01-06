@@ -1,5 +1,5 @@
 // src/components/tamtam/FullscreenCreator.tsx
-// Kuaishou-style premium interface with FULL integration of all modules
+// Kuaishou-style premium interface with UNIFIED live editing (no screen transitions)
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -11,25 +11,26 @@ import {
   Gauge,
   Sparkles,
   Flame,
-  Wand2,
   Music,
   Camera as CameraIcon,
   Send,
   AlertCircle,
-  Film,
   ChevronUp,
-  BookOpen,
-  Radio,
-  Layers,
   SunMedium,
   FolderOpen,
   Sticker,
+  Layers,
+  Play,
+  Pause,
+  Scissors,
+  Volume2,
+  VolumeX,
   Type,
-  Image as ImageIcon,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import TimelineEditor, { TimelineSegment } from "./TimelineEditor";
 import {
   VideoFiltersInlinePanel,
   VIDEO_FILTERS,
@@ -58,9 +59,11 @@ import AdvancedTemplateDrawer from "./creator/AdvancedTemplateDrawer";
 import TemplateCaptureOverlay from "./creator/TemplateCaptureOverlay";
 import { AdvancedTemplate, durationToSeconds, getTemplateById as getAdvancedTemplateById } from "./creator/AdvancedTemplateData";
 import templateEngine, { ProcessingProgress, TemplateInputs } from "./creator/TemplateEngine";
+import MiniTimeline, { MiniTimelineSegment } from "./creator/MiniTimeline";
+import EditingToolbar from "./creator/EditingToolbar";
 
 export type CreatorOutputPayload = {
-  segments: TimelineSegment[];
+  segments: MiniTimelineSegment[];
   caption: string;
   topTab: TopTab;
   mode: CaptureMode;
@@ -72,9 +75,8 @@ export type CreatorOutputPayload = {
 
 type TopTab = "15s" | "30s" | "45s" | "60s" | "story" | "album" | "template";
 type CaptureMode = "burst" | "photo" | "video" | "text";
-type CreatorStep = "capture" | "preview" | "editor" | "publish";
 type CanvasRatio = "9:16" | "1:1" | "16:9";
-type DrawerType = "none" | "beautify" | "length" | "magic" | "graphics" | "stickers" | "template";
+type DrawerType = "none" | "beautify" | "length" | "magic" | "graphics" | "stickers" | "template" | "captions" | "music" | "speed";
 
 export interface FullscreenCreatorProps {
   open?: boolean;
@@ -293,8 +295,11 @@ export default function FullscreenCreator({
   onClose,
   onPublish,
 }: FullscreenCreatorProps) {
-  // Core state
-  const [step, setStep] = useState<CreatorStep>("capture");
+  // ============= UNIFIED STATE =============
+  // hasCapture: false = live camera mode, true = edit mode (same screen)
+  const [hasCapture, setHasCapture] = useState(false);
+  const [showPublish, setShowPublish] = useState(false);
+  
   const [topTab, setTopTab] = useState<TopTab>("30s");
   const [mode, setMode] = useState<CaptureMode>("video");
   const [canvasRatio, setCanvasRatio] = useState<CanvasRatio>("9:16");
@@ -311,15 +316,13 @@ export default function FullscreenCreator({
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  // ============= EFFECTS STATE (FULL INTEGRATION) =============
+  // ============= EFFECTS STATE =============
   const [effects, setEffects] = useState<CaptureEffects>({ ...DEFAULT_EFFECTS });
 
-  // Quick accessors
   const updateEffects = useCallback((updates: Partial<CaptureEffects>) => {
     setEffects(prev => ({ ...prev, ...updates }));
   }, []);
 
-  // Template selection
   const selectedTemplate = useMemo(() => getTemplateById(effects.templateId), [effects.templateId]);
 
   // Filter
@@ -331,7 +334,6 @@ export default function FullscreenCreator({
     const base = filter?.cssFilter ?? "none";
     let result = scaleCssFilter(base, effects.filterIntensity);
     
-    // Add AR face filters
     effects.arEffects.forEach(arId => {
       const ar = AR_EFFECTS.find(e => e.id === arId);
       if (ar?.type === 'face' && ar.cssFilter) {
@@ -348,7 +350,7 @@ export default function FullscreenCreator({
   // Sticker picker
   const [showStickerPicker, setShowStickerPicker] = useState(false);
 
-  // Graphics styles for preview (MUST BE BEFORE EARLY RETURN)
+  // Graphics styles
   const graphicsStyles = useMemo(() => 
     getGraphicsStyles(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
     [effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId]
@@ -362,6 +364,7 @@ export default function FullscreenCreator({
   // Stream/recorder refs
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
@@ -373,10 +376,20 @@ export default function FullscreenCreator({
   const [burstPhotos, setBurstPhotos] = useState<Blob[]>([]);
   const [burstCount, setBurstCount] = useState(0);
 
-  // Capture outputs
+  // ============= CAPTURED MEDIA STATE =============
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [capturedType, setCapturedType] = useState<"video" | "photo" | "audio">("video");
   const [previewUrl, setPreviewUrl] = useState<string>("");
+
+  // ============= TIMELINE/EDITING STATE =============
+  const [segments, setSegments] = useState<MiniTimelineSegment[]>([]);
+  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  
+  // Undo/Redo stacks
+  const [undoStack, setUndoStack] = useState<MiniTimelineSegment[][]>([]);
+  const [redoStack, setRedoStack] = useState<MiniTimelineSegment[][]>([]);
 
   // Advanced template state
   const [activeAdvancedTemplate, setActiveAdvancedTemplate] = useState<AdvancedTemplate | null>(null);
@@ -384,11 +397,14 @@ export default function FullscreenCreator({
   const [isProcessingTemplate, setIsProcessingTemplate] = useState(false);
   const [processingProgress, setProcessingProgress] = useState<ProcessingProgress | null>(null);
 
-  // Editor
-  const [segments, setSegments] = useState<TimelineSegment[]>([]);
-
   // Publish
   const [caption, setCaption] = useState("");
+
+  // Total duration
+  const totalDuration = useMemo(() => 
+    segments.reduce((sum, seg) => sum + (seg.endTime - seg.startTime), 0),
+    [segments]
+  );
 
   // Clean toast
   useEffect(() => {
@@ -410,14 +426,14 @@ export default function FullscreenCreator({
   }, [selectedTemplate, updateEffects]);
 
   // Camera bootstrap
-  const stopStream = () => {
+  const stopStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-  };
+  }, []);
 
-  const startStream = async () => {
+  const startStream = useCallback(async () => {
     setError(null);
     stopStream();
     try {
@@ -434,13 +450,16 @@ export default function FullscreenCreator({
     } catch (e: any) {
       setError(e?.message || "Impossible d'accéder à la caméra.");
     }
-  };
+  }, [facing, mode, stopStream]);
 
   useEffect(() => {
-    if (step !== "capture") return;
-    startStream();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, facing, mode]);
+    if (!hasCapture) {
+      startStream();
+    }
+    return () => {
+      if (!hasCapture) stopStream();
+    };
+  }, [hasCapture, facing, mode, startStream, stopStream]);
 
   // Cleanup urls
   useEffect(() => {
@@ -454,10 +473,32 @@ export default function FullscreenCreator({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capturedBlob]);
 
+  // Video playback time sync
+  useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video || !hasCapture) return;
+    
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+    };
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+    
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('ended', handleEnded);
+    
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('ended', handleEnded);
+    };
+  }, [hasCapture]);
+
   // ⚠️ CRITICAL: Early return MUST be AFTER all hooks
   if (!open) return null;
 
-  // MediaRecorder helpers
+  // ============= RECORDING HELPERS =============
   const startRecording = async () => {
     setError(null);
     if (!streamRef.current) await startStream();
@@ -503,7 +544,7 @@ export default function FullscreenCreator({
     return blob;
   };
 
-  // Capture actions
+  // ============= CAPTURE ACTIONS =============
   const runTimerIfNeeded = async () => {
     if (timerSec === 0) return;
     setToast(`${timerSec}s…`);
@@ -519,10 +560,7 @@ export default function FullscreenCreator({
         await runTimerIfNeeded();
         stopStream();
         const b = await renderTextToImage(caption || "Texte", canvasRatio, effects);
-        setCapturedType("photo");
-        setCapturedBlob(b);
-        setStep("preview");
-        setDrawer("none");
+        finishCapture(b, "photo", 5);
         return;
       } catch (e: any) {
         setError(e?.message || "Erreur texte");
@@ -535,10 +573,7 @@ export default function FullscreenCreator({
         await runTimerIfNeeded();
         if (!videoRef.current) throw new Error("Preview not ready");
         const b = await capturePhotoFromVideo(videoRef.current, canvasRatio, effects);
-        setCapturedType("photo");
-        setCapturedBlob(b);
-        setStep("preview");
-        setDrawer("none");
+        finishCapture(b, "photo", 5);
         return;
       } catch (e: any) {
         setError(e?.message || "Erreur photo");
@@ -547,24 +582,17 @@ export default function FullscreenCreator({
     }
     
     if (mode === "burst") {
-      // Toggle burst mode on/off
       if (burstIntervalRef.current) {
-        // Stop burst
         window.clearInterval(burstIntervalRef.current);
         burstIntervalRef.current = null;
         setIsRecording(false);
-        // Use the last captured photo
         if (burstPhotos.length > 0) {
-          setCapturedType("photo");
-          setCapturedBlob(burstPhotos[burstPhotos.length - 1]);
-          setStep("preview");
-          setDrawer("none");
+          finishCapture(burstPhotos[burstPhotos.length - 1], "photo", 5);
         }
         setBurstPhotos([]);
         setBurstCount(0);
         return;
       } else {
-        // Start burst
         await runTimerIfNeeded();
         if (!videoRef.current) throw new Error("Preview not ready");
         setIsRecording(true);
@@ -581,7 +609,6 @@ export default function FullscreenCreator({
           } catch {}
         };
         
-        // Capture immediately then every 300ms
         captureOne();
         burstIntervalRef.current = window.setInterval(captureOne, 300);
         return;
@@ -596,10 +623,7 @@ export default function FullscreenCreator({
         } else {
           const b = await stopRecordingToBlob();
           stopStream();
-          setCapturedType("video");
-          setCapturedBlob(b);
-          setStep("preview");
-          setDrawer("none");
+          finishCapture(b, "video", lengthSec);
         }
       } catch (e: any) {
         setError(e?.message || "Erreur vidéo");
@@ -608,26 +632,25 @@ export default function FullscreenCreator({
     }
   };
 
-  const goToEditor = () => {
-    if (!capturedBlob) {
-      setError("Aucun média capturé.");
-      return;
-    }
-    const segType = capturedType === "video" ? "video" : "photo";
-    const duration = segType === "video" ? lengthSec : 5;
-    const seg: TimelineSegment = {
+  // Finish capture and switch to edit mode (same screen)
+  const finishCapture = (blob: Blob, type: "video" | "photo" | "audio", duration: number) => {
+    setCapturedBlob(blob);
+    setCapturedType(type);
+    
+    // Create initial segment
+    const seg: MiniTimelineSegment = {
       id: `${Date.now()}`,
-      blob: capturedBlob,
-      type: segType,
+      type: type === "video" ? "video" : "photo",
       duration,
       startTime: 0,
       endTime: duration,
       isMuted: false,
       volume: 100,
-      filter: effects.filterId,
     };
     setSegments([seg]);
-    setStep("editor");
+    setActiveSegmentId(seg.id);
+    setHasCapture(true);
+    setDrawer("none");
   };
 
   const retake = () => {
@@ -635,21 +658,118 @@ export default function FullscreenCreator({
     setCapturedType("video");
     setPreviewUrl("");
     setSegments([]);
-    setStep("capture");
+    setActiveSegmentId(null);
+    setCurrentTime(0);
+    setUndoStack([]);
+    setRedoStack([]);
+    setHasCapture(false);
     setDrawer("none");
+    startStream();
   };
 
-  const onEditorConfirm = async (nextSegments: TimelineSegment[]) => {
-    setSegments(nextSegments);
-    setStep("publish");
+  // ============= EDITING ACTIONS =============
+  const saveForUndo = () => {
+    setUndoStack(prev => [...prev.slice(-19), segments]);
+    setRedoStack([]);
   };
 
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    const prev = undoStack[undoStack.length - 1];
+    setRedoStack(r => [...r, segments]);
+    setSegments(prev);
+    setUndoStack(u => u.slice(0, -1));
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    setUndoStack(u => [...u, segments]);
+    setSegments(next);
+    setRedoStack(r => r.slice(0, -1));
+  };
+
+  const handleSplit = (segmentId: string, time: number) => {
+    saveForUndo();
+    const seg = segments.find(s => s.id === segmentId);
+    if (!seg || time <= seg.startTime || time >= seg.endTime) return;
+    
+    const seg1: MiniTimelineSegment = { ...seg, endTime: time, duration: time - seg.startTime };
+    const seg2: MiniTimelineSegment = { ...seg, id: `${Date.now()}`, startTime: time, duration: seg.endTime - time };
+    
+    setSegments(prev => {
+      const idx = prev.findIndex(s => s.id === segmentId);
+      const newSegs = [...prev];
+      newSegs.splice(idx, 1, seg1, seg2);
+      return newSegs;
+    });
+    setToast("Coupé ✂️");
+  };
+
+  const handleTrim = (segmentId: string, start: number, end: number) => {
+    saveForUndo();
+    setSegments(prev => prev.map(s => 
+      s.id === segmentId 
+        ? { ...s, startTime: start, endTime: end, duration: end - start }
+        : s
+    ));
+  };
+
+  const handleVolumeChange = (segmentId: string, volume: number) => {
+    saveForUndo();
+    setSegments(prev => prev.map(s => 
+      s.id === segmentId ? { ...s, volume } : s
+    ));
+  };
+
+  const handleToggleMute = (segmentId: string) => {
+    saveForUndo();
+    setSegments(prev => prev.map(s => 
+      s.id === segmentId ? { ...s, isMuted: !s.isMuted } : s
+    ));
+  };
+
+  const handleDelete = (segmentId: string) => {
+    if (segments.length <= 1) return;
+    saveForUndo();
+    setSegments(prev => prev.filter(s => s.id !== segmentId));
+    setActiveSegmentId(segments[0]?.id || null);
+  };
+
+  const handleDuplicate = (segmentId: string) => {
+    saveForUndo();
+    const seg = segments.find(s => s.id === segmentId);
+    if (!seg) return;
+    const newSeg: MiniTimelineSegment = { ...seg, id: `${Date.now()}` };
+    setSegments(prev => [...prev, newSeg]);
+    setToast("Dupliqué 📋");
+  };
+
+  const handleSeek = (time: number) => {
+    setCurrentTime(time);
+    if (previewVideoRef.current && capturedType === "video") {
+      previewVideoRef.current.currentTime = time;
+    }
+  };
+
+  const togglePlayPause = () => {
+    const video = previewVideoRef.current;
+    if (!video) return;
+    
+    if (isPlaying) {
+      video.pause();
+    } else {
+      video.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  // ============= PUBLISH =============
   const publish = async () => {
     try {
       setError(null);
       if (!segments.length) throw new Error("Aucun contenu à publier.");
       
-      // Get challenge hashtag if selected
       const challenge = effects.challengeId ? CHALLENGES.find(c => c.id === effects.challengeId) : null;
       const finalCaption = challenge ? `${caption} ${challenge.hashtag}`.trim() : caption;
       
@@ -672,7 +792,7 @@ export default function FullscreenCreator({
     }
   };
 
-  // Gestures for filter swipe
+  // ============= GESTURES =============
   const onSurfaceDown = (e: React.PointerEvent) => {
     gestureRef.current = { x0: e.clientX, y0: e.clientY, active: true };
   };
@@ -681,7 +801,7 @@ export default function FullscreenCreator({
     if (!gestureRef.current?.active) return;
     const dx = e.clientX - gestureRef.current.x0;
     const dy = e.clientY - gestureRef.current.y0;
-    if (step === "capture" && Math.abs(dy) < 60 && Math.abs(dx) > 90) {
+    if (!hasCapture && Math.abs(dy) < 60 && Math.abs(dx) > 90) {
       gestureRef.current.active = false;
       const idx = VIDEO_FILTERS.findIndex((f) => f.id === effects.filterId);
       const dir = dx < 0 ? 1 : -1;
@@ -695,7 +815,7 @@ export default function FullscreenCreator({
     if (gestureRef.current) gestureRef.current.active = false;
   };
 
-  // Sticker management
+  // ============= STICKER MANAGEMENT =============
   const addSticker = (sticker: Omit<StickerType, 'id'>) => {
     const newSticker: StickerType = {
       ...sticker,
@@ -704,7 +824,6 @@ export default function FullscreenCreator({
     updateEffects({ stickers: [...effects.stickers, newSticker] });
   };
 
-  // AR toggle
   const toggleAREffect = (id: string) => {
     const current = effects.arEffects;
     const newEffects = current.includes(id)
@@ -712,15 +831,6 @@ export default function FullscreenCreator({
       : [...current, id];
     updateEffects({ arEffects: newEffects });
   };
-
-  // Length options
-  const lengthOptions = [
-    { value: 15, label: "15s" },
-    { value: 30, label: "30s" },
-    { value: 60, label: "60s" },
-    { value: 180, label: "3min" },
-    { value: 600, label: "10min" },
-  ];
 
   // Album file handler
   const handleAlbumSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -730,17 +840,15 @@ export default function FullscreenCreator({
     const isVideo = file.type.startsWith('video/');
     const blob = file as Blob;
     
-    setCapturedType(isVideo ? "video" : "photo");
-    setCapturedBlob(blob);
     stopStream();
-    setStep("preview");
-    setDrawer("none");
+    finishCapture(blob, isVideo ? "video" : "photo", isVideo ? lengthSec : 5);
     
-    // Reset input
     if (albumInputRef.current) albumInputRef.current.value = '';
   };
 
+  const activeSegment = segments.find(s => s.id === activeSegmentId);
 
+  // ============= RENDER =============
   return (
     <div className="fixed inset-0 z-[100] bg-black text-white select-none">
       {/* Hidden album input */}
@@ -751,20 +859,111 @@ export default function FullscreenCreator({
         className="hidden"
         onChange={handleAlbumSelect}
       />
-      {/* ============ CAPTURE STEP ============ */}
-      {step === "capture" && (
-        <div
-          ref={containerRef}
-          className="absolute inset-0"
-          onPointerDown={onSurfaceDown}
-          onPointerMove={onSurfaceMove}
-          onPointerUp={onSurfaceUp}
-        >
-          {/* Camera preview with all effects applied */}
-          <div 
-            className={cn("absolute inset-0", graphicsClasses)}
-            style={graphicsStyles}
+
+      {/* ============ PUBLISH OVERLAY ============ */}
+      <AnimatePresence>
+        {showPublish && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[200] bg-black/95 backdrop-blur-xl"
           >
+            <div className="absolute top-0 left-0 right-0 p-4 z-20 flex items-center justify-between safe-area-top">
+              <button
+                onClick={() => setShowPublish(false)}
+                className="h-11 px-4 rounded-full bg-white/10 backdrop-blur-xl flex items-center gap-2"
+              >
+                <X className="h-4 w-4" /> Retour
+              </button>
+            </div>
+
+            <div className="absolute inset-0 flex items-center justify-center p-6 pt-20">
+              <div className="w-full max-w-lg">
+                <div className="rounded-3xl bg-white/5 border border-white/10 p-4 backdrop-blur-xl">
+                  <div className="text-white font-semibold text-lg flex items-center gap-2">
+                    Publier
+                    {selectedTemplate.id !== 'free' && (
+                      <span className="text-sm px-2 py-0.5 rounded-full bg-white/10">
+                        {selectedTemplate.emoji} {selectedTemplate.label}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-black/40 border border-white/10 p-2 aspect-[9/16] max-h-[200px] overflow-hidden relative">
+                    {capturedType === "video" && previewUrl ? (
+                      <video
+                        src={previewUrl}
+                        className="w-full h-full object-contain rounded-xl"
+                        style={{ filter: cssFilter }}
+                        playsInline
+                      />
+                    ) : previewUrl ? (
+                      <img
+                        src={previewUrl}
+                        className="w-full h-full object-contain rounded-xl"
+                        alt="thumb"
+                      />
+                    ) : null}
+                    
+                    {selectedTemplate.id !== 'free' && (
+                      <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-xs">
+                        {selectedTemplate.emoji}
+                      </div>
+                    )}
+                  </div>
+
+                  {effects.challengeId && (
+                    <div className="mt-3 px-3 py-2 rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 flex items-center gap-2">
+                      <Flame className="h-4 w-4 text-orange-400" />
+                      <span className="text-sm text-orange-300">
+                        {CHALLENGES.find(c => c.id === effects.challengeId)?.hashtag}
+                      </span>
+                    </div>
+                  )}
+
+                  <textarea
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    placeholder="Ajoute une description…"
+                    className="mt-4 w-full min-h-[100px] rounded-2xl bg-white/5 border border-white/10 p-4 text-white placeholder:text-white/40 outline-none resize-none"
+                  />
+
+                  <button
+                    onClick={publish}
+                    className="mt-4 w-full h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Send className="h-5 w-5" />
+                    Publier
+                  </button>
+
+                  {error && (
+                    <div className="mt-3 text-sm text-red-300 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" /> {error}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ============ UNIFIED CREATOR INTERFACE ============ */}
+      <div
+        ref={containerRef}
+        className="absolute inset-0"
+        onPointerDown={onSurfaceDown}
+        onPointerMove={onSurfaceMove}
+        onPointerUp={onSurfaceUp}
+      >
+        {/* MEDIA ZONE: Camera (live) or Captured Media (edit) */}
+        <div 
+          className={cn("absolute inset-0", graphicsClasses)}
+          style={graphicsStyles}
+        >
+          {!hasCapture ? (
+            // LIVE CAMERA
             <video
               ref={videoRef}
               className="absolute inset-0 w-full h-full object-cover bg-black"
@@ -776,208 +975,296 @@ export default function FullscreenCreator({
               muted
               autoPlay
             />
-          </div>
-
-          {/* Template overlay */}
-          <TemplateOverlay templateId={effects.templateId} />
-
-          {/* AR Effects Layer */}
-          <AREffectsLayer activeEffects={effects.arEffects} />
-
-          {/* Shot Tip Overlay */}
-          <ShotTipOverlay tipId={effects.shotTipId} />
-
-          {/* Stickers Layer */}
-          <StickerLayer
-            stickers={effects.stickers}
-            onStickersChange={(stickers) => updateEffects({ stickers })}
-            isEditing={true}
-            containerRef={containerRef}
-          />
-
-          {/* Flash simulation */}
-          <AnimatePresence>
-            {flashSim && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.08 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-white pointer-events-none"
+          ) : (
+            // CAPTURED MEDIA
+            capturedType === "video" ? (
+              <video
+                ref={previewVideoRef}
+                src={previewUrl}
+                className="absolute inset-0 w-full h-full object-contain bg-black"
+                style={{ filter: cssFilter }}
+                playsInline
               />
-            )}
-          </AnimatePresence>
+            ) : (
+              <img
+                src={previewUrl}
+                className="absolute inset-0 w-full h-full object-contain bg-black"
+                alt="captured"
+              />
+            )
+          )}
+        </div>
 
-          {/* ===== TOP BAR ===== */}
-          <div className="absolute top-0 left-0 right-0 z-30 safe-area-top">
-            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        {/* Template overlay */}
+        <TemplateOverlay templateId={effects.templateId} />
+
+        {/* AR Effects Layer */}
+        <AREffectsLayer activeEffects={effects.arEffects} />
+
+        {/* Shot Tip Overlay */}
+        <ShotTipOverlay tipId={effects.shotTipId} />
+
+        {/* Stickers Layer */}
+        <StickerLayer
+          stickers={effects.stickers}
+          onStickersChange={(stickers) => updateEffects({ stickers })}
+          isEditing={true}
+          containerRef={containerRef}
+        />
+
+        {/* Flash simulation */}
+        <AnimatePresence>
+          {flashSim && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.08 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white pointer-events-none"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ===== TOP BAR ===== */}
+        <div className="absolute top-0 left-0 right-0 z-30 safe-area-top">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
+            {hasCapture ? (
+              <button
+                onClick={retake}
+                className="h-11 px-4 rounded-full bg-black/40 backdrop-blur-xl flex items-center gap-2"
+              >
+                <RotateCcw className="h-4 w-4" /> Reprendre
+              </button>
+            ) : (
               <button
                 onClick={() => onClose?.()}
                 className="h-11 w-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
               >
                 <X className="h-5 w-5" />
               </button>
+            )}
 
-              {musicTrack ? (
-                <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl rounded-full px-4 py-2">
-                  <Music className="h-4 w-4" />
-                  <span className="text-sm max-w-[120px] truncate">{musicTrack}</span>
-                  <button onClick={() => setMusicTrack(null)}>
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setToast("Music picker")}
-                  className="flex items-center gap-2 bg-black/40 backdrop-blur-xl rounded-full px-4 py-2"
-                >
-                  <Music className="h-4 w-4" />
-                  <span className="text-sm">Musique</span>
+            {musicTrack ? (
+              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl rounded-full px-4 py-2">
+                <Music className="h-4 w-4" />
+                <span className="text-sm max-w-[120px] truncate">{musicTrack}</span>
+                <button onClick={() => setMusicTrack(null)}>
+                  <X className="h-4 w-4" />
                 </button>
-              )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setToast("Music picker")}
+                className="flex items-center gap-2 bg-black/40 backdrop-blur-xl rounded-full px-4 py-2"
+              >
+                <Music className="h-4 w-4" />
+                <span className="text-sm">Musique</span>
+              </button>
+            )}
 
+            {hasCapture ? (
+              <button
+                onClick={() => onClose?.()}
+                className="h-11 w-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            ) : (
               <button
                 onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
                 className="h-11 w-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
               >
                 <RotateCcw className="h-5 w-5" />
               </button>
-            </div>
-          </div>
-
-          {/* ===== RIGHT RAIL ===== */}
-          <div className="absolute right-3 top-24 bottom-60 z-30 flex flex-col items-center justify-center gap-3">
-            <RailButton
-              icon={<RotateCcw className="h-5 w-5" />}
-              label="Switch"
-              onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
-            />
-            <RailButton
-              icon={<Timer className="h-5 w-5" />}
-              label={timerSec ? `${timerSec}s` : "Timer"}
-              active={timerSec > 0}
-              onClick={() => {
-                const next = timerSec === 0 ? 3 : timerSec === 3 ? 10 : 0;
-                setTimerSec(next);
-                setToast(next ? `Timer ${next}s` : "Timer off");
-              }}
-            />
-            <RailButton
-              icon={<SunMedium className="h-5 w-5" />}
-              label="Beautify"
-              onClick={() => setDrawer(drawer === "beautify" ? "none" : "beautify")}
-              active={drawer === "beautify" || effects.filterId !== 'none'}
-            />
-            <RailButton
-              icon={<Layers className="h-5 w-5" />}
-              label="Graphics"
-              onClick={() => setDrawer(drawer === "graphics" ? "none" : "graphics")}
-              active={drawer === "graphics" || !!effects.frameId || !!effects.borderId}
-            />
-            <RailButton
-              icon={<Sticker className="h-5 w-5" />}
-              label="Stickers"
-              onClick={() => setShowStickerPicker(true)}
-              active={effects.stickers.length > 0}
-            />
-            <RailButton
-              icon={<Gauge className="h-5 w-5" />}
-              label={`${speed}x`}
-              onClick={() => {
-                const next = speed === 1 ? 2 : speed === 2 ? 0.5 : 1;
-                setSpeed(next as 0.5 | 1 | 2);
-                setToast(`Speed ${next}x`);
-              }}
-            />
-            <RailButton
-              icon={<Zap className="h-5 w-5" />}
-              label="Flash"
-              active={flashSim}
-              onClick={() => setFlashSim((v) => !v)}
-            />
-            <RailButton
-              icon={<ChevronUp className="h-5 w-5" />}
-              label="Magic"
-              onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
-              active={drawer === "magic" || effects.arEffects.length > 0}
-            />
-            <RailButton
-              icon={<Layers className="h-5 w-5" />}
-              label="Template"
-              onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
-              active={drawer === "template" || effects.templateId !== 'free'}
-            />
-          </div>
-
-          {/* ===== VIDEO RECORDING TIMER WITH NEEDLE ===== */}
-          <AnimatePresence>
-            {isRecording && mode === "video" && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="absolute top-24 left-1/2 -translate-x-1/2 z-30"
-              >
-                <RecordingTimer maxSeconds={lengthSec} />
-              </motion.div>
             )}
-          </AnimatePresence>
+          </div>
+        </div>
 
-          {/* ===== ADVANCED TEMPLATE CAPTURE OVERLAY ===== */}
-          {activeAdvancedTemplate && (
-            <TemplateCaptureOverlay
-              template={activeAdvancedTemplate}
-              isRecording={isRecording}
-              currentInputIndex={0}
-              capturedInputs={templateCapturedInputs}
-            />
+        {/* ===== RIGHT RAIL (UNIFIED - same before and after capture) ===== */}
+        <div className="absolute right-3 top-24 bottom-48 z-30 flex flex-col items-center justify-start gap-2 overflow-y-auto py-2">
+          {/* Common tools (always visible) */}
+          {!hasCapture && (
+            <>
+              <RailButton
+                icon={<RotateCcw className="h-5 w-5" />}
+                label="Switch"
+                onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
+              />
+              <RailButton
+                icon={<Timer className="h-5 w-5" />}
+                label={timerSec ? `${timerSec}s` : "Timer"}
+                active={timerSec > 0}
+                onClick={() => {
+                  const next = timerSec === 0 ? 3 : timerSec === 3 ? 10 : 0;
+                  setTimerSec(next);
+                  setToast(next ? `Timer ${next}s` : "Timer off");
+                }}
+              />
+              <RailButton
+                icon={<Zap className="h-5 w-5" />}
+                label="Flash"
+                active={flashSim}
+                onClick={() => setFlashSim((v) => !v)}
+              />
+            </>
           )}
+          
+          <RailButton
+            icon={<SunMedium className="h-5 w-5" />}
+            label="Beautify"
+            onClick={() => setDrawer(drawer === "beautify" ? "none" : "beautify")}
+            active={drawer === "beautify" || effects.filterId !== 'none'}
+          />
+          <RailButton
+            icon={<Layers className="h-5 w-5" />}
+            label="Graphics"
+            onClick={() => setDrawer(drawer === "graphics" ? "none" : "graphics")}
+            active={drawer === "graphics" || !!effects.frameId || !!effects.borderId}
+          />
+          <RailButton
+            icon={<Sticker className="h-5 w-5" />}
+            label="Stickers"
+            onClick={() => setShowStickerPicker(true)}
+            active={effects.stickers.length > 0}
+          />
+          <RailButton
+            icon={<Gauge className="h-5 w-5" />}
+            label={`${speed}x`}
+            onClick={() => {
+              const next = speed === 1 ? 2 : speed === 2 ? 0.5 : 1;
+              setSpeed(next as 0.5 | 1 | 2);
+              setToast(`Speed ${next}x`);
+            }}
+          />
+          <RailButton
+            icon={<ChevronUp className="h-5 w-5" />}
+            label="Magic"
+            onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
+            active={drawer === "magic" || effects.arEffects.length > 0}
+          />
+          <RailButton
+            icon={<Layers className="h-5 w-5" />}
+            label="Template"
+            onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
+            active={drawer === "template" || effects.templateId !== 'free'}
+          />
 
-          {/* ===== TEMPLATE PROCESSING OVERLAY ===== */}
-          <AnimatePresence>
-            {isProcessingTemplate && processingProgress && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 z-50 bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center"
-              >
-                <div className={`w-24 h-24 rounded-full bg-gradient-to-r ${activeAdvancedTemplate?.color || 'from-amber-500 to-orange-500'} flex items-center justify-center mb-6`}>
-                  <span className="text-4xl">{activeAdvancedTemplate?.emoji || '✨'}</span>
-                </div>
-                <h3 className="text-white text-xl font-bold mb-2">{processingProgress.message_fr}</h3>
-                {processingProgress.message_ba && (
-                  <p className="text-white/60 text-sm mb-6">{processingProgress.message_ba}</p>
-                )}
-                <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${processingProgress.percent}%` }}
-                    className={`h-full bg-gradient-to-r ${activeAdvancedTemplate?.color || 'from-amber-500 to-orange-500'}`}
-                  />
-                </div>
-                <p className="text-white/40 text-xs mt-2">{processingProgress.percent}%</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ===== TEXT MODE INPUT ===== */}
-          {mode === "text" && !activeAdvancedTemplate && (
-            <div className="absolute inset-0 flex items-center justify-center z-10 bg-gradient-to-br from-orange-900/80 via-red-900/80 to-purple-900/80">
-              <div className="w-full max-w-md px-6">
-                <textarea
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Tapez votre texte ici..."
-                  autoFocus
-                  className="w-full min-h-[200px] bg-white/10 backdrop-blur-xl rounded-3xl p-6 text-white text-2xl font-semibold text-center placeholder:text-white/40 border border-white/20 outline-none resize-none"
-                  style={{ caretColor: 'white' }}
-                />
-                <p className="text-center text-white/60 text-sm mt-4">Appuyez sur le bouton pour capturer</p>
+          {/* EDITING TOOLS (only after capture) */}
+          {hasCapture && (
+            <>
+              <div className="w-8 h-px bg-white/20 my-1" />
+              <RailButton
+                icon={<Scissors className="h-5 w-5" />}
+                label="Couper"
+                onClick={() => activeSegmentId && handleSplit(activeSegmentId, currentTime)}
+              />
+              <RailButton
+                icon={activeSegment?.isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                label="Son"
+                active={activeSegment?.isMuted}
+                onClick={() => activeSegmentId && handleToggleMute(activeSegmentId)}
+              />
+              <RailButton
+                icon={<Type className="h-5 w-5" />}
+                label="Texte"
+                onClick={() => setDrawer(drawer === "captions" ? "none" : "captions")}
+              />
+              <div className="flex gap-1 mt-1">
+                <button
+                  onClick={handleUndo}
+                  disabled={undoStack.length === 0}
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center",
+                    undoStack.length === 0 ? "opacity-30" : "bg-black/40"
+                  )}
+                >
+                  <Undo2 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={redoStack.length === 0}
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center",
+                    redoStack.length === 0 ? "opacity-30" : "bg-black/40"
+                  )}
+                >
+                  <Redo2 className="h-4 w-4" />
+                </button>
               </div>
-            </div>
+            </>
           )}
+        </div>
 
-          {/* ===== MODE PILL SELECTOR ===== */}
+        {/* ===== VIDEO RECORDING TIMER WITH NEEDLE ===== */}
+        <AnimatePresence>
+          {isRecording && mode === "video" && !hasCapture && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute top-24 left-1/2 -translate-x-1/2 z-30"
+            >
+              <RecordingTimer maxSeconds={lengthSec} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ===== ADVANCED TEMPLATE CAPTURE OVERLAY ===== */}
+        {activeAdvancedTemplate && !hasCapture && (
+          <TemplateCaptureOverlay
+            template={activeAdvancedTemplate}
+            isRecording={isRecording}
+            currentInputIndex={0}
+            capturedInputs={templateCapturedInputs}
+          />
+        )}
+
+        {/* ===== TEMPLATE PROCESSING OVERLAY ===== */}
+        <AnimatePresence>
+          {isProcessingTemplate && processingProgress && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center"
+            >
+              <div className={`w-24 h-24 rounded-full bg-gradient-to-r ${activeAdvancedTemplate?.color || 'from-amber-500 to-orange-500'} flex items-center justify-center mb-6`}>
+                <span className="text-4xl">{activeAdvancedTemplate?.emoji || '✨'}</span>
+              </div>
+              <h3 className="text-white text-xl font-bold mb-2">{processingProgress.message_fr}</h3>
+              {processingProgress.message_ba && (
+                <p className="text-white/60 text-sm mb-6">{processingProgress.message_ba}</p>
+              )}
+              <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${processingProgress.percent}%` }}
+                  className={`h-full bg-gradient-to-r ${activeAdvancedTemplate?.color || 'from-amber-500 to-orange-500'}`}
+                />
+              </div>
+              <p className="text-white/40 text-xs mt-2">{processingProgress.percent}%</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ===== TEXT MODE INPUT ===== */}
+        {mode === "text" && !hasCapture && !activeAdvancedTemplate && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-gradient-to-br from-orange-900/80 via-red-900/80 to-purple-900/80">
+            <div className="w-full max-w-md px-6">
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder="Tapez votre texte ici..."
+                autoFocus
+                className="w-full min-h-[200px] bg-white/10 backdrop-blur-xl rounded-3xl p-6 text-white text-2xl font-semibold text-center placeholder:text-white/40 border border-white/20 outline-none resize-none"
+                style={{ caretColor: 'white' }}
+              />
+              <p className="text-center text-white/60 text-sm mt-4">Appuyez sur le bouton pour capturer</p>
+            </div>
+          </div>
+        )}
+
+        {/* ===== MODE PILL SELECTOR (only before capture) ===== */}
+        {!hasCapture && (
           <div className="absolute left-1/2 -translate-x-1/2 bottom-[168px] z-20">
             <div className="inline-flex bg-black/50 backdrop-blur-xl rounded-full p-1 border border-white/10">
               {(["burst", "photo", "video", "text"] as CaptureMode[]).map((m) => (
@@ -991,71 +1278,133 @@ export default function FullscreenCreator({
                       : "text-white/70 hover:text-white"
                   )}
                 >
-                  {m === "burst" ? "Burst" : m === "photo" ? "Photo" : m === "video" ? "Video" : "Text"}
+                  {m === "burst" ? "Burst" : m === "photo" ? "Photo" : m === "video" ? "Vidéo" : "Texte"}
                 </button>
               ))}
             </div>
           </div>
+        )}
 
-          {/* ===== BOTTOM ACTIONS BAR ===== */}
-          <div className="absolute left-0 right-0 bottom-20 z-20 px-6">
-            <div className="flex items-center justify-between max-w-sm mx-auto">
-              <button
-                onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
-                className="flex flex-col items-center gap-1"
-              >
-                <div className={cn(
-                  "w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-all",
-                  effects.arEffects.length > 0 || effects.challengeId
-                    ? "bg-white/20 border-white"
-                    : "bg-black/40 border-white/10"
-                )}>
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <span className="text-[10px] text-white/80">Magic</span>
-              </button>
-
-              {/* Capture button with burst counter */}
-              <div className="relative">
-                <button
-                  onClick={onPressCapture}
-                  className={cn(
-                    "w-[72px] h-[72px] rounded-full flex items-center justify-center border-4 transition-all",
-                    isRecording
-                      ? "bg-red-500 border-red-300/50 scale-110"
-                      : "bg-gradient-to-br from-orange-500 to-red-500 border-white/30 hover:scale-105"
-                  )}
-                >
-                  {isRecording ? (
-                    mode === "burst" ? (
-                      <span className="text-white font-bold text-lg">{burstCount}</span>
-                    ) : (
-                      <div className="w-6 h-6 rounded bg-white" />
-                    )
-                  ) : (
-                    <CameraIcon className="h-7 w-7 text-white" />
-                  )}
-                </button>
-                {mode === "burst" && isRecording && (
-                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-xs font-bold">
-                    {burstCount}
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => albumInputRef.current?.click()}
-                className="flex flex-col items-center gap-1"
-              >
-                <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10">
-                  <FolderOpen className="h-5 w-5" />
-                </div>
-                <span className="text-[10px] text-white/80">Album</span>
-              </button>
-            </div>
+        {/* ===== MINI TIMELINE (only after capture) ===== */}
+        {hasCapture && segments.length > 0 && (
+          <div className="absolute left-4 right-4 bottom-[140px] z-20">
+            <MiniTimeline
+              segments={segments}
+              activeSegmentId={activeSegmentId}
+              currentTime={currentTime}
+              totalDuration={totalDuration}
+              onSelectSegment={setActiveSegmentId}
+              onSplit={handleSplit}
+              onTrim={handleTrim}
+              onVolumeChange={handleVolumeChange}
+              onToggleMute={handleToggleMute}
+              onDelete={handleDelete}
+              onDuplicate={handleDuplicate}
+              onSeek={handleSeek}
+            />
           </div>
+        )}
 
-          {/* ===== BOTTOM TABS ===== */}
+        {/* ===== BOTTOM ACTIONS BAR ===== */}
+        <div className="absolute left-0 right-0 bottom-20 z-20 px-6">
+          <div className="flex items-center justify-between max-w-sm mx-auto">
+            {!hasCapture ? (
+              // LIVE MODE
+              <>
+                <button
+                  onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <div className={cn(
+                    "w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-all",
+                    effects.arEffects.length > 0 || effects.challengeId
+                      ? "bg-white/20 border-white"
+                      : "bg-black/40 border-white/10"
+                  )}>
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <span className="text-[10px] text-white/80">Magic</span>
+                </button>
+
+                <div className="relative">
+                  <button
+                    onClick={onPressCapture}
+                    className={cn(
+                      "w-[72px] h-[72px] rounded-full flex items-center justify-center border-4 transition-all",
+                      isRecording
+                        ? "bg-red-500 border-red-300/50 scale-110"
+                        : "bg-gradient-to-br from-orange-500 to-red-500 border-white/30 hover:scale-105"
+                    )}
+                  >
+                    {isRecording ? (
+                      mode === "burst" ? (
+                        <span className="text-white font-bold text-lg">{burstCount}</span>
+                      ) : (
+                        <div className="w-6 h-6 rounded bg-white" />
+                      )
+                    ) : (
+                      <CameraIcon className="h-7 w-7 text-white" />
+                    )}
+                  </button>
+                  {mode === "burst" && isRecording && (
+                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-xs font-bold">
+                      {burstCount}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => albumInputRef.current?.click()}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10">
+                    <FolderOpen className="h-5 w-5" />
+                  </div>
+                  <span className="text-[10px] text-white/80">Album</span>
+                </button>
+              </>
+            ) : (
+              // EDIT MODE
+              <>
+                <button
+                  onClick={retake}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10">
+                    <RotateCcw className="h-5 w-5" />
+                  </div>
+                  <span className="text-[10px] text-white/80">Reprendre</span>
+                </button>
+
+                {capturedType === "video" && (
+                  <button
+                    onClick={togglePlayPause}
+                    className="w-[72px] h-[72px] rounded-full bg-white/20 backdrop-blur-xl flex items-center justify-center border-4 border-white/30"
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-8 w-8 text-white" />
+                    ) : (
+                      <Play className="h-8 w-8 text-white ml-1" />
+                    )}
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setShowPublish(true)}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center border border-white/20">
+                    <Send className="h-5 w-5" />
+                  </div>
+                  <span className="text-[10px] text-white/80">Publier</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ===== BOTTOM TABS (only before capture) ===== */}
+        {!hasCapture && (
           <div className="absolute left-0 right-0 bottom-0 z-20 safe-area-bottom">
             <div className="flex items-center justify-around py-3 bg-black/60 backdrop-blur-xl border-t border-white/10">
               {([
@@ -1070,7 +1419,6 @@ export default function FullscreenCreator({
                   key={tab.id}
                   onClick={() => {
                     setTopTab(tab.id);
-                    // Handle duration tabs
                     if (tab.id === '15s') { setLengthSec(15); setMode('video'); }
                     else if (tab.id === '30s') { setLengthSec(30); setMode('video'); }
                     else if (tab.id === '45s') { setLengthSec(45 as any); setMode('video'); }
@@ -1092,412 +1440,159 @@ export default function FullscreenCreator({
               ))}
             </div>
           </div>
+        )}
 
-          {/* ===== DRAWERS ===== */}
-          <AnimatePresence>
-            {drawer === "beautify" && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 z-[120] bg-black/50 backdrop-blur-sm"
-                onClick={() => setDrawer("none")}
-              >
-                <motion.div
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                  className="absolute left-0 right-0 bottom-0 rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4 max-h-[60vh] overflow-auto"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-                  <div className="font-semibold mb-4 flex items-center gap-2">
-                    <SunMedium className="h-5 w-5" /> Beautify & Filtres
-                  </div>
-                  <VideoFiltersInlinePanel
-                    selectedId={effects.filterId}
-                    onSelect={(id) => updateEffects({ filterId: id })}
-                    showIntensity
-                    intensity={effects.filterIntensity}
-                    onIntensityChange={(v) => updateEffects({ filterIntensity: v })}
-                  />
-                </motion.div>
-              </motion.div>
-            )}
+        {/* ===== SAFE AREA BOTTOM (after capture) ===== */}
+        {hasCapture && (
+          <div className="absolute left-0 right-0 bottom-0 h-16 z-10 bg-gradient-to-t from-black/80 to-transparent safe-area-bottom" />
+        )}
 
-            {drawer === "length" && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 z-[120] bg-black/50 backdrop-blur-sm"
-                onClick={() => setDrawer("none")}
-              >
-                <motion.div
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                  className="absolute left-0 right-0 bottom-0 rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-                  <div className="font-semibold mb-4 flex items-center gap-2">
-                    <Timer className="h-5 w-5" /> Durée & Vitesse
-                  </div>
-                  <div className="mb-4">
-                    <div className="text-xs text-white/60 mb-2">Durée</div>
-                    <div className="flex gap-2 flex-wrap">
-                      {lengthOptions.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setLengthSec(opt.value as 15 | 30 | 60 | 180 | 600)}
-                          className={cn(
-                            "h-10 px-4 rounded-full border text-sm",
-                            lengthSec === opt.value
-                              ? "bg-white text-black border-white"
-                              : "bg-white/10 border-white/20 text-white/80"
-                          )}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-white/60 mb-2">Vitesse</div>
-                    <div className="flex gap-2">
-                      {[0.5, 1, 2].map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => setSpeed(s as 0.5 | 1 | 2)}
-                          className={cn(
-                            "h-10 px-4 rounded-full border text-sm",
-                            speed === s
-                              ? "bg-white text-black border-white"
-                              : "bg-white/10 border-white/20 text-white/80"
-                          )}
-                        >
-                          {s}x
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Graphics Drawer */}
-          <GraphicsDrawer
-            isOpen={drawer === "graphics"}
-            onClose={() => setDrawer("none")}
-            selectedFrame={effects.frameId}
-            selectedBorder={effects.borderId}
-            selectedOverlay={effects.overlayId}
-            selectedBackground={effects.backgroundId}
-            selectedTextStyle={undefined}
-            onSelectFrame={(id) => updateEffects({ frameId: id })}
-            onSelectBorder={(id) => updateEffects({ borderId: id })}
-            onSelectOverlay={(id) => updateEffects({ overlayId: id })}
-            onSelectBackground={(id) => updateEffects({ backgroundId: id })}
-            onSelectTextStyle={() => {}}
-          />
-
-          {/* Magic Drawer */}
-          <MagicDrawer
-            isOpen={drawer === "magic"}
-            onClose={() => setDrawer("none")}
-            selectedShotTip={effects.shotTipId}
-            onSelectShotTip={(id) => updateEffects({ shotTipId: id })}
-            selectedChallenge={effects.challengeId}
-            onSelectChallenge={(id) => updateEffects({ challengeId: id })}
-            activeAREffects={effects.arEffects}
-            onToggleAREffect={toggleAREffect}
-            onSelectIdea={(idea) => {
-              setToast(`💡 ${idea.label}`);
-              setDrawer("none");
-            }}
-          />
-
-          {/* Advanced Template Drawer - 24 Templates IA */}
-          <AdvancedTemplateDrawer
-            isOpen={drawer === "template"}
-            onClose={() => setDrawer("none")}
-            onSelectTemplate={(template: AdvancedTemplate) => {
-              // Activate the advanced template
-              setActiveAdvancedTemplate(template);
-              setTemplateCapturedInputs(0);
-              
-              // Configure le mode et la durée selon le template
-              const firstDuration = template.supportedDurations[0];
-              const durationSec = durationToSeconds(firstDuration);
-              
-              // Set appropriate length
-              if (durationSec <= 15) setLengthSec(15);
-              else if (durationSec <= 30) setLengthSec(30);
-              else if (durationSec <= 60) setLengthSec(60);
-              else setLengthSec(180);
-              
-              // Set mode based on inputs
-              const hasVideo = template.inputs.some(i => i.type === 'video');
-              const hasPhotoOnly = template.inputs.every(i => i.type === 'photo' || i.type === 'audio');
-              const hasAudioOnly = template.inputs.every(i => i.type === 'audio');
-              
-              if (hasAudioOnly) {
-                // Audio template - stay in video mode but could add audio recording
-                setMode("video");
-              } else if (hasPhotoOnly && !hasVideo) {
-                setMode("photo");
-              } else {
-                setMode("video");
-              }
-              
-              // Store template id in effects
-              updateEffects({ templateId: template.id });
-              setDrawer("none");
-              setToast(`${template.emoji} ${template.label_fr} activé`);
-              
-              // Speak first instruction
-              if (template.voiceInstructions.length > 0) {
-                setTimeout(() => {
-                  templateEngine.speakInstruction(template.voiceInstructions[0], 'fr');
-                }, 500);
-              }
-            }}
-          />
-
-          {/* Sticker Picker */}
-          <AnimatePresence>
-            {showStickerPicker && (
-              <StickerPicker
-                isOpen={showStickerPicker}
-                onClose={() => setShowStickerPicker(false)}
-                onAddSticker={addSticker}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Errors */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute left-4 right-4 bottom-36 z-[200] px-4 py-3 rounded-2xl bg-red-500/20 border border-red-400/30 backdrop-blur text-sm flex items-center gap-2"
-              >
-                <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                {error}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Toast */}
-          <AnimatePresence>
-            {toast && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/70 border border-white/10 text-white text-sm backdrop-blur-xl z-[200]"
-              >
-                {toast}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
-
-      {/* ============ PREVIEW STEP ============ */}
-      {step === "preview" && (
-        <div className="absolute inset-0 bg-black">
-          <div className="absolute top-0 left-0 right-0 p-4 z-20 flex items-center justify-between safe-area-top">
-            <button
-              onClick={retake}
-              className="h-11 px-4 rounded-full bg-white/10 backdrop-blur-xl flex items-center gap-2"
+        {/* ===== DRAWERS ===== */}
+        <AnimatePresence>
+          {drawer === "beautify" && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[120] bg-black/50 backdrop-blur-sm"
+              onClick={() => setDrawer("none")}
             >
-              <RotateCcw className="h-4 w-4" /> Reprendre
-            </button>
-            <button
-              onClick={() => onClose?.()}
-              className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Preview with effects */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div 
-              className={cn("relative w-full h-full", graphicsClasses)}
-              style={graphicsStyles}
-            >
-              {capturedType === "video" ? (
-                <video 
-                  src={previewUrl} 
-                  className="w-full h-full object-contain" 
-                  style={{ filter: cssFilter }}
-                  controls 
-                  playsInline 
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                className="absolute left-0 right-0 bottom-0 rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4 max-h-[60vh] overflow-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+                <div className="font-semibold mb-4 flex items-center gap-2">
+                  <SunMedium className="h-5 w-5" /> Beautify & Filtres
+                </div>
+                <VideoFiltersInlinePanel
+                  selectedId={effects.filterId}
+                  onSelect={(id) => updateEffects({ filterId: id })}
+                  showIntensity
+                  intensity={effects.filterIntensity}
+                  onIntensityChange={(v) => updateEffects({ filterIntensity: v })}
                 />
-              ) : (
-                <img 
-                  src={previewUrl} 
-                  className="w-full h-full object-contain" 
-                  alt="preview" 
-                />
-              )}
-              
-              {/* Template overlay on preview */}
-              <TemplateOverlay templateId={effects.templateId} />
-              
-              {/* AR effects on preview */}
-              <AREffectsLayer activeEffects={effects.arEffects} />
-              
-              {/* Stickers on preview */}
-              <StickerLayer
-                stickers={effects.stickers}
-                onStickersChange={(stickers) => updateEffects({ stickers })}
-                isEditing={true}
-              />
-            </div>
-          </div>
-
-          {/* Challenge badge */}
-          {effects.challengeId && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500/80 to-red-500/80 backdrop-blur-sm border border-white/20 z-30">
-              <span className="text-sm font-medium">
-                {CHALLENGES.find(c => c.id === effects.challengeId)?.hashtag}
-              </span>
-            </div>
+              </motion.div>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          <div className="absolute left-0 right-0 bottom-0 p-4 z-20 safe-area-bottom">
-            <button
-              onClick={goToEditor}
-              className="w-full max-w-sm mx-auto h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold flex items-center justify-center gap-2"
-            >
-              <Film className="h-5 w-5" />
-              Éditer
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ============ EDITOR STEP ============ */}
-      {step === "editor" && (
-        <TimelineEditor
-          segments={segments}
-          onSegmentsChange={setSegments}
-          onClose={() => setStep("preview")}
-          onConfirm={onEditorConfirm}
+        {/* Graphics Drawer */}
+        <GraphicsDrawer
+          isOpen={drawer === "graphics"}
+          onClose={() => setDrawer("none")}
+          selectedFrame={effects.frameId}
+          selectedBorder={effects.borderId}
+          selectedOverlay={effects.overlayId}
+          selectedBackground={effects.backgroundId}
+          selectedTextStyle={undefined}
+          onSelectFrame={(id) => updateEffects({ frameId: id })}
+          onSelectBorder={(id) => updateEffects({ borderId: id })}
+          onSelectOverlay={(id) => updateEffects({ overlayId: id })}
+          onSelectBackground={(id) => updateEffects({ backgroundId: id })}
+          onSelectTextStyle={() => {}}
         />
-      )}
 
-      {/* ============ PUBLISH STEP ============ */}
-      {step === "publish" && (
-        <div className="absolute inset-0 bg-black">
-          <div className="absolute top-0 left-0 right-0 p-4 z-20 flex items-center justify-between safe-area-top">
-            <button
-              onClick={() => setStep("editor")}
-              className="h-11 px-4 rounded-full bg-white/10 backdrop-blur-xl flex items-center gap-2"
+        {/* Magic Drawer */}
+        <MagicDrawer
+          isOpen={drawer === "magic"}
+          onClose={() => setDrawer("none")}
+          selectedShotTip={effects.shotTipId}
+          onSelectShotTip={(id) => updateEffects({ shotTipId: id })}
+          selectedChallenge={effects.challengeId}
+          onSelectChallenge={(id) => updateEffects({ challengeId: id })}
+          activeAREffects={effects.arEffects}
+          onToggleAREffect={toggleAREffect}
+          onSelectIdea={(idea) => {
+            setToast(`💡 ${idea.label}`);
+            setDrawer("none");
+          }}
+        />
+
+        {/* Advanced Template Drawer */}
+        <AdvancedTemplateDrawer
+          isOpen={drawer === "template"}
+          onClose={() => setDrawer("none")}
+          onSelectTemplate={(template: AdvancedTemplate) => {
+            setActiveAdvancedTemplate(template);
+            setTemplateCapturedInputs(0);
+            
+            const firstDuration = template.supportedDurations[0];
+            const durationSec = durationToSeconds(firstDuration);
+            
+            if (durationSec <= 15) setLengthSec(15);
+            else if (durationSec <= 30) setLengthSec(30);
+            else if (durationSec <= 60) setLengthSec(60);
+            else setLengthSec(180);
+            
+            const hasVideo = template.inputs.some(i => i.type === 'video');
+            const hasPhotoOnly = template.inputs.every(i => i.type === 'photo' || i.type === 'audio');
+            const hasAudioOnly = template.inputs.every(i => i.type === 'audio');
+            
+            if (hasAudioOnly) {
+              setMode("video");
+            } else if (hasPhotoOnly && !hasVideo) {
+              setMode("photo");
+            } else {
+              setMode("video");
+            }
+            
+            updateEffects({ templateId: template.id });
+            setDrawer("none");
+            setToast(`${template.emoji} ${template.label_fr} activé`);
+            
+            if (template.voiceInstructions.length > 0) {
+              setTimeout(() => {
+                templateEngine.speakInstruction(template.voiceInstructions[0], 'fr');
+              }, 500);
+            }
+          }}
+        />
+
+        {/* Sticker Picker */}
+        <AnimatePresence>
+          {showStickerPicker && (
+            <StickerPicker
+              isOpen={showStickerPicker}
+              onClose={() => setShowStickerPicker(false)}
+              onAddSticker={addSticker}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Errors */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute left-4 right-4 bottom-36 z-[200] px-4 py-3 rounded-2xl bg-red-500/20 border border-red-400/30 backdrop-blur text-sm flex items-center gap-2"
             >
-              <Film className="h-4 w-4" /> Édition
-            </button>
-            <button
-              onClick={() => onClose?.()}
-              className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center"
+              <AlertCircle className="h-5 w-5 flex-shrink-0" />
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Toast */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/70 border border-white/10 text-white text-sm backdrop-blur-xl z-[200]"
             >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="absolute inset-0 flex items-center justify-center p-6 pt-20">
-            <div className="w-full max-w-lg">
-              <div className="rounded-3xl bg-white/5 border border-white/10 p-4 backdrop-blur-xl">
-                <div className="text-white font-semibold text-lg flex items-center gap-2">
-                  Publier
-                  {selectedTemplate.id !== 'free' && (
-                    <span className="text-sm px-2 py-0.5 rounded-full bg-white/10">
-                      {selectedTemplate.emoji} {selectedTemplate.label}
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-4 rounded-2xl bg-black/40 border border-white/10 p-2 aspect-[9/16] max-h-[200px] overflow-hidden relative">
-                  {segments[0]?.type === "video" ? (
-                    <video
-                      src={URL.createObjectURL(segments[0].blob)}
-                      className="w-full h-full object-contain rounded-xl"
-                      style={{ filter: cssFilter }}
-                      playsInline
-                    />
-                  ) : segments[0] ? (
-                    <img
-                      src={URL.createObjectURL(segments[0].blob)}
-                      className="w-full h-full object-contain rounded-xl"
-                      alt="thumb"
-                    />
-                  ) : null}
-                  
-                  {/* Template badge on thumbnail */}
-                  {selectedTemplate.id !== 'free' && (
-                    <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-xs">
-                      {selectedTemplate.emoji}
-                    </div>
-                  )}
-                </div>
-
-                {/* Challenge badge */}
-                {effects.challengeId && (
-                  <div className="mt-3 px-3 py-2 rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 flex items-center gap-2">
-                    <Flame className="h-4 w-4 text-orange-400" />
-                    <span className="text-sm text-orange-300">
-                      {CHALLENGES.find(c => c.id === effects.challengeId)?.hashtag}
-                    </span>
-                  </div>
-                )}
-
-                <textarea
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Ajoute une description…"
-                  className="mt-4 w-full min-h-[100px] rounded-2xl bg-white/5 border border-white/10 p-4 text-white placeholder:text-white/40 outline-none resize-none"
-                />
-
-                <button
-                  onClick={publish}
-                  className="mt-4 w-full h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold flex items-center justify-center gap-2"
-                >
-                  <Send className="h-5 w-5" />
-                  Publier
-                </button>
-
-                {error && (
-                  <div className="mt-3 text-sm text-red-300 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" /> {error}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <AnimatePresence>
-            {toast && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/70 border border-white/10 text-white text-sm backdrop-blur-xl z-[200]"
-              >
-                {toast}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
+              {toast}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -1555,7 +1650,6 @@ function RecordingTimer({ maxSeconds }: { maxSeconds: number }) {
   
   return (
     <div className="relative w-24 h-24">
-      {/* Outer ring */}
       <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
         <circle
           cx="50"
@@ -1583,7 +1677,6 @@ function RecordingTimer({ maxSeconds }: { maxSeconds: number }) {
         </defs>
       </svg>
       
-      {/* Needle */}
       <div 
         className="absolute inset-0 flex items-center justify-center"
         style={{ transform: `rotate(${rotation}deg)` }}
@@ -1593,14 +1686,12 @@ function RecordingTimer({ maxSeconds }: { maxSeconds: number }) {
         />
       </div>
       
-      {/* Center with remaining time */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-xl flex items-center justify-center border border-white/20">
           <span className="text-white font-bold text-lg">{remaining}s</span>
         </div>
       </div>
       
-      {/* Recording indicator */}
       <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 animate-pulse" />
     </div>
   );
