@@ -291,7 +291,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 export default function FullscreenCreator({
-  open = true,
+  open = false,  // FIXED: Default to false to prevent auto-camera on app load
   onClose,
   onPublish,
 }: FullscreenCreatorProps) {
@@ -443,28 +443,79 @@ export default function FullscreenCreator({
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
+      
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        // Ensure video starts playing with proper error handling
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().catch((err) => {
-            console.warn("Auto-play failed, user interaction may be required:", err);
-          });
-        };
+        const video = videoRef.current;
+        
+        // FIXED: Assign handler BEFORE srcObject to ensure it fires
+        await new Promise<void>((resolve) => {
+          const onLoaded = () => {
+            video.removeEventListener('loadedmetadata', onLoaded);
+            video.play().then(() => resolve()).catch((err) => {
+              console.warn("Auto-play blocked:", err);
+              resolve();
+            });
+          };
+          video.addEventListener('loadedmetadata', onLoaded);
+          video.srcObject = stream;
+        });
       }
     } catch (e: any) {
       setError(e?.message || "Impossible d'accéder à la caméra.");
     }
   }, [facing, mode, stopStream]);
 
+  // Camera startup - only when open AND not in capture mode AND not text mode
   useEffect(() => {
+    if (!open) return; // FIXED: Don't start camera if creator is closed
+    
+    // FIXED: Don't start camera in text mode
+    if (mode === 'text') {
+      stopStream();
+      return;
+    }
+    
     if (!hasCapture) {
       startStream();
     }
     return () => {
       if (!hasCapture) stopStream();
     };
-  }, [hasCapture, facing, mode, startStream, stopStream]);
+  }, [open, hasCapture, facing, mode, startStream, stopStream]);
+
+  // FIXED: Global cleanup on unmount or when closing
+  useEffect(() => {
+    return () => {
+      // Stop any active recording
+      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+        try { recorderRef.current.stop(); } catch {}
+      }
+      recorderRef.current = null;
+      
+      // Stop camera stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+      
+      // Stop burst interval
+      if (burstIntervalRef.current) {
+        window.clearInterval(burstIntervalRef.current);
+        burstIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  // FIXED: Additional cleanup when open changes to false
+  useEffect(() => {
+    if (!open) {
+      stopStream();
+      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+        try { recorderRef.current.stop(); } catch {}
+      }
+      setIsRecording(false);
+    }
+  }, [open, stopStream]);
 
   // Cleanup urls
   useEffect(() => {
@@ -478,46 +529,59 @@ export default function FullscreenCreator({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capturedBlob]);
 
-  // Video playback time sync and auto-load preview
+  // FIXED: Video playback initialization after capture - robust async loading
   useEffect(() => {
     const video = previewVideoRef.current;
     if (!video || !hasCapture || !previewUrl) return;
     
-    const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
-    };
+    let mounted = true;
     
-    const handleEnded = () => {
-      setIsPlaying(false);
-    };
-    
-    const handleLoadedData = () => {
-      // Video is loaded and ready to display first frame
-      video.currentTime = 0;
-    };
-    
-    const handleCanPlay = () => {
-      // Video can play - seek to start to show first frame
-      if (video.currentTime === 0 && !isPlaying) {
-        video.currentTime = 0.001; // Slight offset to trigger frame render
+    const initVideo = async () => {
+      try {
+        // FIXED: Set muted for autoplay compatibility on mobile
+        video.muted = true;
+        video.src = previewUrl;
+        
+        await new Promise<void>((resolve, reject) => {
+          const onCanPlay = () => {
+            video.removeEventListener('canplaythrough', onCanPlay);
+            video.removeEventListener('error', onError);
+            resolve();
+          };
+          const onError = () => {
+            video.removeEventListener('canplaythrough', onCanPlay);
+            video.removeEventListener('error', onError);
+            reject(new Error('Video load failed'));
+          };
+          video.addEventListener('canplaythrough', onCanPlay);
+          video.addEventListener('error', onError);
+          video.load();
+        });
+        
+        if (mounted) {
+          // Position at start to show first frame
+          video.currentTime = 0.001;
+        }
+      } catch (err) {
+        console.error('Failed to init preview video:', err);
       }
     };
     
+    initVideo();
+    
+    // Time sync handlers
+    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
+    const handleEnded = () => setIsPlaying(false);
+    
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('ended', handleEnded);
-    video.addEventListener('loadeddata', handleLoadedData);
-    video.addEventListener('canplay', handleCanPlay);
-    
-    // Force load the video to show first frame
-    video.load();
     
     return () => {
+      mounted = false;
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('ended', handleEnded);
-      video.removeEventListener('loadeddata', handleLoadedData);
-      video.removeEventListener('canplay', handleCanPlay);
     };
-  }, [hasCapture, previewUrl, isPlaying]);
+  }, [hasCapture, previewUrl]); // FIXED: Removed isPlaying from dependencies
 
   // ⚠️ CRITICAL: Early return MUST be AFTER all hooks
   if (!open) return null;
@@ -658,6 +722,9 @@ export default function FullscreenCreator({
 
   // Finish capture and switch to edit mode (same screen)
   const finishCapture = (blob: Blob, type: "video" | "photo" | "audio", duration: number) => {
+    // FIXED: Stop camera stream BEFORE transitioning to edit mode
+    stopStream();
+    
     setCapturedBlob(blob);
     setCapturedType(type);
     
@@ -776,17 +843,25 @@ export default function FullscreenCreator({
     }
   };
 
-  const togglePlayPause = () => {
+  const togglePlayPause = useCallback(() => {
     const video = previewVideoRef.current;
-    if (!video) return;
+    if (!video || capturedType !== 'video') return;
     
     if (isPlaying) {
       video.pause();
+      setIsPlaying(false);
     } else {
-      video.play();
+      // FIXED: Unmute for manual play, with fallback to muted if blocked
+      video.muted = false;
+      video.play().then(() => {
+        setIsPlaying(true);
+      }).catch((err) => {
+        console.warn('Play failed, retrying muted:', err);
+        video.muted = true;
+        video.play().then(() => setIsPlaying(true)).catch(() => {});
+      });
     }
-    setIsPlaying(!isPlaying);
-  };
+  }, [isPlaying, capturedType]);
 
   // ============= PUBLISH =============
   const publish = async () => {
@@ -1008,8 +1083,8 @@ export default function FullscreenCreator({
                 className="absolute inset-0 w-full h-full object-contain bg-black"
                 style={{ filter: cssFilter }}
                 playsInline
+                muted  // FIXED: Required for autoplay on mobile
                 preload="auto"
-                poster=""
               />
             ) : (
               <img
