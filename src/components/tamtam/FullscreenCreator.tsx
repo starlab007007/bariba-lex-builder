@@ -344,6 +344,17 @@ export default function FullscreenCreator({
   // Sticker picker
   const [showStickerPicker, setShowStickerPicker] = useState(false);
 
+  // Graphics styles for preview (MUST BE BEFORE EARLY RETURN)
+  const graphicsStyles = useMemo(() => 
+    getGraphicsStyles(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
+    [effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId]
+  );
+
+  const graphicsClasses = useMemo(() =>
+    getGraphicsClasses(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
+    [effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId]
+  );
+
   // Stream/recorder refs
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -653,16 +664,6 @@ export default function FullscreenCreator({
     { value: 600, label: "10min" },
   ];
 
-  // Graphics styles for preview
-  const graphicsStyles = useMemo(() => 
-    getGraphicsStyles(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
-    [effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId]
-  );
-
-  const graphicsClasses = useMemo(() =>
-    getGraphicsClasses(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
-    [effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId]
-  );
 
   return (
     <div className="fixed inset-0 z-[100] bg-black text-white select-none">
