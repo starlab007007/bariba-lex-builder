@@ -79,6 +79,9 @@ type CaptureMode = "burst" | "photo" | "video" | "text";
 type CanvasRatio = "9:16" | "1:1" | "16:9";
 type DrawerType = "none" | "beautify" | "length" | "magic" | "graphics" | "stickers" | "template" | "captions" | "music" | "speed";
 
+// TEMP: disable advanced templates/live effects (requested) to restore reliable post-recording preview.
+const ENABLE_ADVANCED_TEMPLATES = false;
+
 export interface FullscreenCreatorProps {
   open?: boolean;
   onClose?: () => void;
@@ -1158,7 +1161,7 @@ export default function FullscreenCreator({
                 style={{
                   filter: cssFilter,
                   transform: facing === "user" ? "scaleX(-1)" : "none",
-                  opacity: activeAdvancedTemplate ? 0 : 1,
+                  opacity: ENABLE_ADVANCED_TEMPLATES && activeAdvancedTemplate ? 0 : 1,
                 }}
                 playsInline
                 muted
@@ -1166,7 +1169,7 @@ export default function FullscreenCreator({
               />
 
               {/* When an advanced template is active, we render a canvas that shows the realtime processed preview */}
-              {activeAdvancedTemplate && (
+              {ENABLE_ADVANCED_TEMPLATES && activeAdvancedTemplate && (
                 <canvas
                   ref={liveCanvasRef}
                   className="absolute inset-0 w-full h-full pointer-events-none"
@@ -1212,7 +1215,7 @@ export default function FullscreenCreator({
         <TemplateOverlay templateId={effects.templateId} />
 
         {/* Advanced template realtime effects */}
-        {activeAdvancedTemplate && !hasCapture && (
+        {ENABLE_ADVANCED_TEMPLATES && activeAdvancedTemplate && !hasCapture && (
           <LiveTemplateEffect
             template={activeAdvancedTemplate}
             videoRef={videoRef}
@@ -1366,12 +1369,14 @@ export default function FullscreenCreator({
             onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
             active={drawer === "magic" || effects.arEffects.length > 0}
           />
-          <RailButton
-            icon={<Layers className="h-5 w-5" />}
-            label="Template"
-            onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
-            active={drawer === "template" || effects.templateId !== 'free'}
-          />
+          {ENABLE_ADVANCED_TEMPLATES && (
+            <RailButton
+              icon={<Layers className="h-5 w-5" />}
+              label="Template"
+              onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
+              active={drawer === "template" || effects.templateId !== 'free'}
+            />
+          )}
 
           {/* EDITING TOOLS (only after capture) */}
           {hasCapture && (
@@ -1434,7 +1439,7 @@ export default function FullscreenCreator({
         </AnimatePresence>
 
         {/* ===== ADVANCED TEMPLATE CAPTURE OVERLAY ===== */}
-        {activeAdvancedTemplate && !hasCapture && (
+        {ENABLE_ADVANCED_TEMPLATES && activeAdvancedTemplate && !hasCapture && (
           <TemplateCaptureOverlay
             template={activeAdvancedTemplate}
             isRecording={isRecording}
@@ -1739,44 +1744,46 @@ export default function FullscreenCreator({
         />
 
         {/* Advanced Template Drawer */}
-        <AdvancedTemplateDrawer
-          isOpen={drawer === "template"}
-          onClose={() => setDrawer("none")}
-          onSelectTemplate={(template: AdvancedTemplate) => {
-            setActiveAdvancedTemplate(template);
-            setTemplateCapturedInputs(0);
-            
-            const firstDuration = template.supportedDurations[0];
-            const durationSec = durationToSeconds(firstDuration);
-            
-            if (durationSec <= 15) setLengthSec(15);
-            else if (durationSec <= 30) setLengthSec(30);
-            else if (durationSec <= 60) setLengthSec(60);
-            else setLengthSec(180);
-            
-            const hasVideo = template.inputs.some(i => i.type === 'video');
-            const hasPhotoOnly = template.inputs.every(i => i.type === 'photo' || i.type === 'audio');
-            const hasAudioOnly = template.inputs.every(i => i.type === 'audio');
-            
-            if (hasAudioOnly) {
-              setMode("video");
-            } else if (hasPhotoOnly && !hasVideo) {
-              setMode("photo");
-            } else {
-              setMode("video");
-            }
-            
-            updateEffects({ templateId: template.id });
-            setDrawer("none");
-            setToast(`${template.emoji} ${template.label_fr} activé`);
-            
-            if (template.voiceInstructions.length > 0) {
-              setTimeout(() => {
-                templateEngine.speakInstruction(template.voiceInstructions[0], 'fr');
-              }, 500);
-            }
-          }}
-        />
+        {ENABLE_ADVANCED_TEMPLATES && (
+          <AdvancedTemplateDrawer
+            isOpen={drawer === "template"}
+            onClose={() => setDrawer("none")}
+            onSelectTemplate={(template: AdvancedTemplate) => {
+              setActiveAdvancedTemplate(template);
+              setTemplateCapturedInputs(0);
+              
+              const firstDuration = template.supportedDurations[0];
+              const durationSec = durationToSeconds(firstDuration);
+              
+              if (durationSec <= 15) setLengthSec(15);
+              else if (durationSec <= 30) setLengthSec(30);
+              else if (durationSec <= 60) setLengthSec(60);
+              else setLengthSec(180);
+              
+              const hasVideo = template.inputs.some(i => i.type === 'video');
+              const hasPhotoOnly = template.inputs.every(i => i.type === 'photo' || i.type === 'audio');
+              const hasAudioOnly = template.inputs.every(i => i.type === 'audio');
+              
+              if (hasAudioOnly) {
+                setMode("video");
+              } else if (hasPhotoOnly && !hasVideo) {
+                setMode("photo");
+              } else {
+                setMode("video");
+              }
+              
+              updateEffects({ templateId: template.id });
+              setDrawer("none");
+              setToast(`${template.emoji} ${template.label_fr} activé`);
+              
+              if (template.voiceInstructions.length > 0) {
+                setTimeout(() => {
+                  templateEngine.speakInstruction(template.voiceInstructions[0], 'fr');
+                }, 500);
+              }
+            }}
+          />
+        )}
 
         {/* Sticker Picker */}
         <AnimatePresence>
