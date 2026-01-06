@@ -46,6 +46,7 @@ export const GraphicsDrawer: React.FC<GraphicsDrawerProps> = ({
   onSelectBackground,
   onSelectTextStyle,
 }) => {
+  // ALL HOOKS MUST BE DECLARED BEFORE ANY CONDITIONAL RETURNS
   const [activeCategory, setActiveCategory] = useState<GraphicsCategory>('frames');
 
   const items = useMemo(() => 
@@ -76,6 +77,7 @@ export const GraphicsDrawer: React.FC<GraphicsDrawerProps> = ({
     }
   };
 
+  // EARLY RETURN AFTER ALL HOOKS
   if (!isOpen) return null;
 
   return (
