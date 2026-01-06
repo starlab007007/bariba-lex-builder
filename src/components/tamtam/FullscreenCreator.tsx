@@ -31,11 +31,21 @@ import {
 import { cn } from "@/lib/utils";
 
 import TimelineEditor, { TimelineSegment } from "./TimelineEditor";
-import VideoFiltersPanel, {
+import {
+  VideoFiltersInlinePanel,
   VIDEO_FILTERS,
   VideoFilter,
   scaleCssFilter,
 } from "./VideoFilters";
+
+export type CreatorOutputPayload = {
+  segments: TimelineSegment[];
+  caption: string;
+  topTab: TopTab;
+  mode: CaptureMode;
+  canvasRatio: CanvasRatio;
+  selectedFilterId?: string;
+};
 
 type TopTab = "video" | "story" | "ai" | "live";
 type CaptureMode = "burst" | "photo" | "video" | "text";
@@ -266,9 +276,9 @@ export default function FullscreenCreator({
     [filterId]
   );
   const cssFilter = useMemo(() => {
-    const base = filter?.css ?? "none";
+    const base = filter?.cssFilter ?? "none";
     return scaleCssFilter(base);
-  }, [filter?.css]);
+  }, [filter?.cssFilter]);
 
   // stream/recorder refs
   const streamRef = useRef<MediaStream | null>(null);
@@ -727,7 +737,7 @@ export default function FullscreenCreator({
                 </div>
 
                 <div className="p-3">
-                  <VideoFiltersPanel
+                  <VideoFiltersInlinePanel
                     selectedId={filterId}
                     onSelect={(id) => setFilterId(id)}
                   />
