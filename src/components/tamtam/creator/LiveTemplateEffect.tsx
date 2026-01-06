@@ -159,8 +159,10 @@ const LiveTemplateEffect: React.FC<LiveTemplateEffectProps> = ({
   }, [template, videoRef, canvasRef, overlayGradient, getTemplateFilter, currentFilterIntensity, onProcessedFrame]);
 
   // Start/stop frame processing
+  // We process frames whenever a template is active so effects are visible in realtime while framing,
+  // and not only during the recording.
   useEffect(() => {
-    if (isRecording && template) {
+    if (template) {
       animationRef.current = requestAnimationFrame(processFrame);
     }
 
@@ -170,7 +172,7 @@ const LiveTemplateEffect: React.FC<LiveTemplateEffectProps> = ({
         animationRef.current = null;
       }
     };
-  }, [isRecording, template, processFrame]);
+  }, [template, processFrame]);
 
   // Beat sync animation for music templates
   useEffect(() => {

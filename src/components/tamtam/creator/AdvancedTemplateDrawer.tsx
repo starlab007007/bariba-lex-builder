@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mic, Volume2, VolumeX, Sparkles, Play, ChevronRight, Search } from "lucide-react";
-import { 
-  ADVANCED_TEMPLATES, 
+import { X, Mic, Volume2, VolumeX, Sparkles } from "lucide-react";
+import {
+  ADVANCED_TEMPLATES,
   TEMPLATE_COLLECTIONS,
   getTemplatesByCollection,
-  getTemplatesByFamily,
   AdvancedTemplate,
-  TemplateCollection,
   TemplateFamily,
-  formatDuration
 } from "./AdvancedTemplateData";
+import TemplatePreviewPlayer from "./TemplatePreviewPlayer";
 import { useFrenchTTS } from "@/hooks/useFrenchTTS";
+import { useBaribaTTS } from "@/hooks/useBaribaTTS";
 import { useFrenchSTT } from "@/hooks/useFrenchSTT";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -31,16 +30,28 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
 }) => {
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [focusedTemplate, setFocusedTemplate] = useState<AdvancedTemplate | null>(null);
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
+
+  // Preview modal state (audio/video + visual preview + storyboard)
+  const [previewTemplate, setPreviewTemplate] = useState<AdvancedTemplate | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [previewStoryboard, setPreviewStoryboard] = useState<any | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
   const [aiSuggestions, setAiSuggestions] = useState<Array<{ id: string; emoji: string; reason_fr: string }>>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [voiceDescriptions, setVoiceDescriptions] = useState<Record<string, string>>({});
-  
-  const { speak, stop: stopSpeaking, isSpeaking } = useFrenchTTS();
+
+  const { speak: speakFr, stop: stopFr, isSpeaking: isSpeakingFr } = useFrenchTTS();
+  const { speak: speakBa, stop: stopBa, isSpeaking: isSpeakingBa } = useBaribaTTS();
+
+  const speak = language === 'ba' ? speakBa : speakFr;
+  const stopSpeaking = language === 'ba' ? stopBa : stopFr;
+  const isSpeaking = language === 'ba' ? isSpeakingBa : isSpeakingFr;
+
   const { startListening, stopListening, isListening, transcript } = useFrenchSTT();
-  
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSpokenTemplate = useRef<string | null>(null);
 
   // Haptic feedback
@@ -197,14 +208,12 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
   const toggleVoiceMode = useCallback(() => {
     if (isListening) {
       stopListening();
-      setIsVoiceMode(false);
     } else {
       startListening();
-      setIsVoiceMode(true);
       triggerHaptic([100]);
-      speak("Dis-moi ce que tu veux créer");
+      speak(language === 'ba' ? "Sↄ n bɛ fɛ kɛ?" : "Dis-moi ce que tu veux créer");
     }
-  }, [isListening, startListening, stopListening, triggerHaptic, speak]);
+  }, [isListening, startListening, stopListening, triggerHaptic, speak, language]);
 
   // Get displayed templates
   const getDisplayedTemplates = (): AdvancedTemplate[] => {
@@ -218,6 +227,52 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
   const findTemplateById = (id: string): AdvancedTemplate | undefined => {
     return ADVANCED_TEMPLATES.find(t => t.id === id);
   };
+
+  const openPreview = useCallback(async (template: AdvancedTemplate) => {
+    setPreviewTemplate(template);
+    setFocusedTemplate(template);
+    setIsLoadingPreview(true);
+    setPreviewImageUrl(null);
+    setPreviewStoryboard(null);
+
+    // Speak description immediately (accessibility-first)
+    if (audioEnabled) {
+      speakTemplateDescription(template);
+    }
+
+    try {
+      const [imgRes, storyRes] = await Promise.all([
+        supabase.functions.invoke('generate-template-assets', {
+          body: {
+            action: 'generate_preview_image',
+            templateId: template.id,
+            templateLabel: template.label_fr,
+            templateDescription: template.description_fr,
+            templateEmoji: template.emoji,
+            templateColor: template.color,
+          },
+        }).catch(() => ({ data: null } as any)),
+        supabase.functions.invoke('generate-template-assets', {
+          body: {
+            action: 'generate_sample_storyboard',
+            templateId: template.id,
+            templateLabel: template.label_fr,
+            templateDescription: template.description_fr,
+            templateEmoji: template.emoji,
+            userContext: { language },
+          },
+        }).catch(() => ({ data: null } as any)),
+      ]);
+
+      const imageUrl = imgRes?.data?.previewImageUrl as string | undefined;
+      if (imageUrl) setPreviewImageUrl(imageUrl);
+
+      const storyboard = storyRes?.data;
+      if (storyboard?.scenes?.length) setPreviewStoryboard(storyboard);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  }, [audioEnabled, speakTemplateDescription, language]);
 
   return (
     <AnimatePresence>
@@ -328,7 +383,7 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                       <motion.button
                         key={suggestion.id}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => handleSelectTemplate(template)}
+                        onClick={() => openPreview(template)}
                         onTouchStart={() => handleLongPressStart(template)}
                         onTouchEnd={handleLongPressEnd}
                         onMouseDown={() => handleLongPressStart(template)}
@@ -394,22 +449,116 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
             <div className="flex-1 overflow-y-auto px-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 {getDisplayedTemplates().map((template) => (
-                  <XXLTemplateCard
-                    key={template.id}
-                    template={template}
-                    isFocused={focusedTemplate?.id === template.id}
-                    isSpeaking={isSpeaking && lastSpokenTemplate.current === template.id}
-                    onSelect={() => handleSelectTemplate(template)}
-                    onLongPressStart={() => handleLongPressStart(template)}
-                    onLongPressEnd={handleLongPressEnd}
-                    audioEnabled={audioEnabled}
-                  />
+                    <XXLTemplateCard
+                      key={template.id}
+                      template={template}
+                      isFocused={focusedTemplate?.id === template.id}
+                      isSpeaking={isSpeaking && lastSpokenTemplate.current === template.id}
+                      onOpenPreview={() => openPreview(template)}
+                      onLongPressStart={() => handleLongPressStart(template)}
+                      onLongPressEnd={handleLongPressEnd}
+                      audioEnabled={audioEnabled}
+                    />
                 ))}
               </div>
             </div>
 
             {/* Bottom Safe Area */}
             <div className="h-8 bg-gradient-to-t from-black to-transparent" />
+
+            {/* ===== PREVIEW MODAL (Audio/Video + Visual + Storyboard) ===== */}
+            <AnimatePresence>
+              {previewTemplate && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-[70] bg-black/80 backdrop-blur-md"
+                  onClick={() => setPreviewTemplate(null)}
+                >
+                  <motion.div
+                    initial={{ y: 30, scale: 0.98, opacity: 0 }}
+                    animate={{ y: 0, scale: 1, opacity: 1 }}
+                    exit={{ y: 30, scale: 0.98, opacity: 0 }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 260 }}
+                    className="absolute inset-x-4 top-16 bottom-10 rounded-3xl overflow-hidden bg-black/60 border border-white/10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Visual preview banner (AI-generated) */}
+                    <div className="relative h-40 overflow-hidden">
+                      {previewImageUrl ? (
+                        <img
+                          src={previewImageUrl}
+                          alt={`Aperçu visuel du template ${previewTemplate.label_fr}`}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className={cn('absolute inset-0 bg-gradient-to-br', previewTemplate.color)} />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+                      {isLoadingPreview && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-10 h-10 border-4 border-white/40 border-t-white rounded-full animate-spin" />
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => setPreviewTemplate(null)}
+                        className="absolute top-3 right-3 w-12 h-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center"
+                        aria-label="Fermer la prévisualisation"
+                      >
+                        <X className="h-6 w-6 text-white" />
+                      </button>
+                    </div>
+
+                    <div className="p-4 overflow-y-auto h-[calc(100%-10rem)]">
+                      <TemplatePreviewPlayer
+                        template={previewTemplate}
+                        isActive={true}
+                        onSelect={() => handleSelectTemplate(previewTemplate)}
+                        language={language}
+                        autoPlay
+                      />
+
+                      {/* Storyboard (simple + vocal) */}
+                      {previewStoryboard?.scenes?.length > 0 && (
+                        <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="text-white/70 text-sm font-medium">📖 Guide (audio)</div>
+                            <button
+                              onClick={() => {
+                                const first = previewStoryboard.scenes?.[0];
+                                const text = language === 'ba'
+                                  ? (first?.instruction_vocale_ba || first?.instruction_vocale_fr)
+                                  : first?.instruction_vocale_fr;
+                                if (text) speak(text);
+                              }}
+                              className="px-4 py-2 rounded-full bg-white text-black font-semibold"
+                            >
+                              🔊 Écouter
+                            </button>
+                          </div>
+
+                          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                            {previewStoryboard.scenes.map((s: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="flex-shrink-0 w-16 h-16 rounded-2xl bg-black/30 border border-white/10 flex items-center justify-center"
+                                title={s?.visual_hint}
+                              >
+                                <span className="text-2xl">{s?.emoji || '🎬'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </motion.div>
       )}
@@ -426,7 +575,7 @@ interface XXLTemplateCardProps {
   isFocused: boolean;
   isSpeaking: boolean;
   audioEnabled: boolean;
-  onSelect: () => void;
+  onOpenPreview: () => void;
   onLongPressStart: () => void;
   onLongPressEnd: () => void;
 }
@@ -436,7 +585,7 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
   isFocused,
   isSpeaking,
   audioEnabled,
-  onSelect,
+  onOpenPreview,
   onLongPressStart,
   onLongPressEnd
 }) => {
@@ -458,7 +607,7 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
       onMouseDown={onLongPressStart}
       onMouseUp={onLongPressEnd}
       onMouseLeave={onLongPressEnd}
-      onClick={onSelect}
+      onClick={onOpenPreview}
       className={cn(
         "relative overflow-hidden rounded-3xl p-5 text-left transition-all min-h-[180px]",
         isFocused && "ring-4 ring-white shadow-2xl",

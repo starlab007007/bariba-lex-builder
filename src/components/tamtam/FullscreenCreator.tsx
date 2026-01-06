@@ -56,6 +56,7 @@ import { GraphicsDrawer, getGraphicsStyles, getGraphicsClasses } from "./creator
 import { MagicDrawer } from "./creator/MagicDrawer";
 import { TemplateOverlay, TemplateCarousel } from "./creator/TemplateOverlay";
 import AdvancedTemplateDrawer from "./creator/AdvancedTemplateDrawer";
+import LiveTemplateEffect from "./creator/LiveTemplateEffect";
 import TemplateCaptureOverlay from "./creator/TemplateCaptureOverlay";
 import { AdvancedTemplate, durationToSeconds, getTemplateById as getAdvancedTemplateById } from "./creator/AdvancedTemplateData";
 import templateEngine, { ProcessingProgress, TemplateInputs } from "./creator/TemplateEngine";
@@ -312,6 +313,7 @@ export default function FullscreenCreator({
   const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
   const [lengthSec, setLengthSec] = useState<15 | 30 | 60 | 180 | 600>(30);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingElapsed, setRecordingElapsed] = useState(0);
 
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -364,6 +366,7 @@ export default function FullscreenCreator({
   // Stream/recorder refs
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const liveCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -424,6 +427,19 @@ export default function FullscreenCreator({
       }
     }
   }, [selectedTemplate, updateEffects]);
+
+  // Track recording elapsed time (for template overlays)
+  useEffect(() => {
+    if (!isRecording) {
+      setRecordingElapsed(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const t = window.setInterval(() => {
+      setRecordingElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 200);
+    return () => window.clearInterval(t);
+  }, [isRecording]);
 
   // Camera bootstrap
   const stopStream = useCallback(() => {
@@ -1114,17 +1130,30 @@ export default function FullscreenCreator({
         >
           {!hasCapture ? (
             // LIVE CAMERA
-            <video
-              ref={videoRef}
-              className="absolute inset-0 w-full h-full object-cover bg-black"
-              style={{
-                filter: cssFilter,
-                transform: facing === "user" ? "scaleX(-1)" : "none",
-              }}
-              playsInline
-              muted
-              autoPlay
-            />
+            <>
+              <video
+                ref={videoRef}
+                className="absolute inset-0 w-full h-full object-cover bg-black"
+                style={{
+                  filter: cssFilter,
+                  transform: facing === "user" ? "scaleX(-1)" : "none",
+                  opacity: activeAdvancedTemplate ? 0 : 1,
+                }}
+                playsInline
+                muted
+                autoPlay
+              />
+
+              {/* When an advanced template is active, we render a canvas that shows the realtime processed preview */}
+              {activeAdvancedTemplate && (
+                <canvas
+                  ref={liveCanvasRef}
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  style={{ transform: facing === "user" ? "scaleX(-1)" : "none" }}
+                  aria-hidden="true"
+                />
+              )}
+            </>
           ) : (
             // CAPTURED MEDIA
             capturedType === "video" ? (
@@ -1159,6 +1188,18 @@ export default function FullscreenCreator({
 
         {/* Template overlay */}
         <TemplateOverlay templateId={effects.templateId} />
+
+        {/* Advanced template realtime effects */}
+        {activeAdvancedTemplate && !hasCapture && (
+          <LiveTemplateEffect
+            template={activeAdvancedTemplate}
+            videoRef={videoRef}
+            canvasRef={liveCanvasRef}
+            isRecording={isRecording}
+            recordingDuration={recordingElapsed}
+            currentStep={templateCapturedInputs}
+          />
+        )}
 
         {/* AR Effects Layer */}
         <AREffectsLayer activeEffects={effects.arEffects} />
