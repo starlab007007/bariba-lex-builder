@@ -562,14 +562,19 @@ export default function FullscreenCreator({
         video.pause();
         video.currentTime = 0;
         video.muted = true; // Required for autoplay on mobile
+        video.playsInline = true;
+        video.preload = 'metadata';
+        
+        // CRITICAL FIX: Set src directly and force load
         video.src = previewUrl;
-        video.preload = 'auto';
         
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
             cleanup();
-            reject(new Error('Video load timeout'));
-          }, 10000);
+            // Don't reject on timeout - try to continue anyway
+            console.warn('[FullscreenCreator] Video load timeout, continuing...');
+            resolve();
+          }, 5000);
           
           const onCanPlay = () => {
             clearTimeout(timeout);
@@ -577,7 +582,6 @@ export default function FullscreenCreator({
             resolve();
           };
           const onLoadedData = () => {
-            // Also accept loadeddata as success
             clearTimeout(timeout);
             cleanup();
             resolve();
@@ -602,9 +606,26 @@ export default function FullscreenCreator({
         });
         
         if (mounted) {
-          // Position at start to show first frame
-          video.currentTime = 0.001;
-          console.log('[FullscreenCreator] Video ready, duration:', video.duration);
+          // CRITICAL FIX: For webm with Infinity duration, play briefly then pause to show first frame
+          const duration = video.duration;
+          console.log('[FullscreenCreator] Video ready, duration:', duration);
+          
+          if (!isFinite(duration) || duration <= 0) {
+            // Duration is Infinity (common for webm) - use play/pause trick
+            console.log('[FullscreenCreator] Fixing Infinity duration - using play/pause trick');
+            try {
+              await video.play();
+              // Wait a tiny bit then pause to show first frame
+              await new Promise(r => setTimeout(r, 50));
+              video.pause();
+              video.currentTime = 0;
+            } catch (playErr) {
+              console.warn('[FullscreenCreator] Play trick failed:', playErr);
+            }
+          } else {
+            // Normal case - just seek to start
+            video.currentTime = 0.001;
+          }
         }
       } catch (err) {
         console.error('[FullscreenCreator] Failed to init preview video:', err);
@@ -619,7 +640,7 @@ export default function FullscreenCreator({
     };
     
     // Small delay to ensure blob URL is ready
-    const timer = setTimeout(initVideo, 100);
+    const timer = setTimeout(initVideo, 50);
     
     // Time sync handlers
     const handleTimeUpdate = () => {
@@ -1164,7 +1185,8 @@ export default function FullscreenCreator({
                   style={{ filter: cssFilter }}
                   playsInline
                   muted
-                  preload="auto"
+                  preload="metadata"
+                  src={previewUrl || undefined}
                   onLoadedData={() => console.log('[FullscreenCreator] Preview video loadeddata event')}
                   onCanPlay={() => console.log('[FullscreenCreator] Preview video canplay event')}
                   onError={(e) => console.error('[FullscreenCreator] Preview video error:', e)}
