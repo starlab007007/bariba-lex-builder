@@ -114,7 +114,7 @@ const VoiceTemplateSelector: React.FC<VoiceTemplateSelectorProps> = ({
     } catch (err) {
       console.error('Failed to start recording:', err);
     }
-  }, [transcribe]);
+  }, []);
 
   // Stop voice recording
   const stopListening = useCallback(() => {
