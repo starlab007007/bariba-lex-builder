@@ -580,19 +580,22 @@ export default function FullscreenCreator({
 
   // Preview error state
   const [previewError, setPreviewError] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
   
   // FIXED: Robust video preview initialization with multiple fallback strategies
   useEffect(() => {
     const video = previewVideoRef.current;
     if (!video || !hasCapture || !previewUrl || capturedType !== 'video') {
       setPreviewError(false);
+      setPreviewReady(false);
       return;
     }
-    
+
     let mounted = true;
     let retryCount = 0;
     const maxRetries = 3;
     setPreviewError(false);
+    setPreviewReady(false);
     
     const initVideo = async () => {
       try {
@@ -696,6 +699,7 @@ export default function FullscreenCreator({
         
         // Ensure video is paused and ready
         video.pause();
+        if (mounted) setPreviewReady(true);
         console.log('[FullscreenCreator] Video preview ready');
         
       } catch (err) {
@@ -739,56 +743,64 @@ export default function FullscreenCreator({
   }, [hasCapture, previewUrl, capturedType]);
 
   // CRITICAL FIX: Draw decoded video frames to a canvas in edit mode.
-  // This avoids black-screen compositor bugs where <video> renders black on some devices.
+  // This avoids black-screen compositor bugs where <video> renders black on some devices,
+  // and also lets us apply the same visual filter without using CSS filter on <video>.
   useEffect(() => {
-    if (!hasCapture || capturedType !== 'video' || previewError) return;
+    if (!hasCapture || capturedType !== "video" || previewError) return;
     const video = previewVideoRef.current;
     const canvas = previewCanvasRef.current;
-    const container = containerRef.current;
-    if (!video || !canvas || !container) return;
+    if (!video || !canvas) return;
 
     let raf: number | null = null;
 
-    const draw = () => {
-      try {
-        if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-          const dpr = window.devicePixelRatio || 1;
-          const rect = container.getBoundingClientRect();
-          const cw = Math.max(1, Math.floor(rect.width * dpr));
-          const ch = Math.max(1, Math.floor(rect.height * dpr));
+    const drawOnce = () => {
+      if (!(video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0)) return;
 
-          if (canvas.width !== cw || canvas.height !== ch) {
-            canvas.width = cw;
-            canvas.height = ch;
-          }
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const cw = Math.max(1, Math.floor(rect.width * dpr));
+      const ch = Math.max(1, Math.floor(rect.height * dpr));
 
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.clearRect(0, 0, cw, ch);
-
-            const vw = video.videoWidth;
-            const vh = video.videoHeight;
-            const scale = Math.min(cw / vw, ch / vh);
-            const dw = vw * scale;
-            const dh = vh * scale;
-            const dx = (cw - dw) / 2;
-            const dy = (ch - dh) / 2;
-
-            ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
-          }
-        }
-      } catch (e) {
-        // ignore draw errors, keep loop alive
+      if (canvas.width !== cw || canvas.height !== ch) {
+        canvas.width = cw;
+        canvas.height = ch;
       }
 
-      raf = requestAnimationFrame(draw);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cw, ch);
+
+      // Apply filter in canvas (safe across devices)
+      ctx.filter = cssFilter && cssFilter !== "none" ? cssFilter : "none";
+
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const scale = Math.min(cw / vw, ch / vh);
+      const dw = vw * scale;
+      const dh = vh * scale;
+      const dx = (cw - dw) / 2;
+      const dy = (ch - dh) / 2;
+
+      ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
+      ctx.filter = "none";
     };
 
-    raf = requestAnimationFrame(draw);
+    const loop = () => {
+      try {
+        drawOnce();
+      } catch {
+        // ignore draw errors, keep loop alive
+      }
+      raf = requestAnimationFrame(loop);
+    };
+
+    raf = requestAnimationFrame(loop);
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [hasCapture, capturedType, previewUrl, previewError]);
+  }, [hasCapture, capturedType, previewUrl, previewError, cssFilter]);
 
   // ============= HANDLERS (defined before early return to maintain hook order) =============
   
@@ -1247,17 +1259,18 @@ export default function FullscreenCreator({
                       <video
                         src={previewUrl}
                         className="w-full h-full object-contain rounded-xl"
-                        style={{ filter: cssFilter }}
                         playsInline
+                        muted
+                        preload="metadata"
                       />
                     ) : previewUrl ? (
                       <img
                         src={previewUrl}
                         className="w-full h-full object-contain rounded-xl"
-                        alt="thumb"
+                        alt="aperçu média"
                       />
                     ) : null}
-                    
+
                     {selectedTemplate.id !== 'free' && (
                       <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-xs">
                         {selectedTemplate.emoji}
@@ -1345,26 +1358,30 @@ export default function FullscreenCreator({
             // CAPTURED MEDIA
             capturedType === "video" ? (
               <>
+                {/* Visible preview surface (always canvas, works everywhere) */}
+                <canvas
+                  ref={previewCanvasRef}
+                  className="absolute inset-0 w-full h-full bg-black"
+                  aria-hidden="true"
+                />
+
+                {/* Hidden video used only as a decoder + time source for play/pause */}
                 <video
                   ref={previewVideoRef}
-                  className="absolute inset-0 w-full h-full object-contain bg-black"
-                  // CRITICAL FIX: Remove CSS filter on preview video - it causes black screen on iOS/Safari
-                  // Effects are already baked into the video when recorded with template
+                  className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
                   playsInline
                   muted
                   preload="auto"
                   src={previewUrl || undefined}
                 />
-                
+
                 {/* Loading indicator while video loads */}
-                {hasCapture && previewUrl && !previewError && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black pointer-events-none opacity-0 transition-opacity duration-300"
-                    style={{ opacity: previewVideoRef.current?.readyState && previewVideoRef.current.readyState >= 2 ? 0 : 1 }}
-                  >
+                {hasCapture && previewUrl && !previewError && !previewReady && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black pointer-events-none">
                     <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
                   </div>
                 )}
-                
+
                 {/* Error state */}
                 {previewError && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 p-6">
