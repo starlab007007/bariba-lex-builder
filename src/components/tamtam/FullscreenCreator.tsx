@@ -892,13 +892,36 @@ export default function FullscreenCreator({
             />
           </div>
 
-          {/* ===== TEMPLATE CAROUSEL ===== */}
-          <div className="absolute left-0 right-0 bottom-52 z-20 px-4">
-            <TemplateCarousel
-              selectedId={effects.templateId}
-              onSelect={(id) => updateEffects({ templateId: id })}
-            />
-          </div>
+          {/* ===== VIDEO RECORDING TIMER WITH NEEDLE ===== */}
+          <AnimatePresence>
+            {isRecording && mode === "video" && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="absolute top-24 left-1/2 -translate-x-1/2 z-30"
+              >
+                <RecordingTimer maxSeconds={lengthSec} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ===== TEXT MODE INPUT ===== */}
+          {mode === "text" && (
+            <div className="absolute inset-0 flex items-center justify-center z-10 bg-gradient-to-br from-orange-900/80 via-red-900/80 to-purple-900/80">
+              <div className="w-full max-w-md px-6">
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Tapez votre texte ici..."
+                  autoFocus
+                  className="w-full min-h-[200px] bg-white/10 backdrop-blur-xl rounded-3xl p-6 text-white text-2xl font-semibold text-center placeholder:text-white/40 border border-white/20 outline-none resize-none"
+                  style={{ caretColor: 'white' }}
+                />
+                <p className="text-center text-white/60 text-sm mt-4">Appuyez sur le bouton pour capturer</p>
+              </div>
+            </div>
+          )}
 
           {/* ===== MODE PILL SELECTOR ===== */}
           <div className="absolute left-1/2 -translate-x-1/2 bottom-[168px] z-20">
@@ -1473,5 +1496,79 @@ function RailButton({
       </div>
       <span className="text-[10px] text-white/80">{label}</span>
     </button>
+  );
+}
+
+// Recording timer with needle animation
+function RecordingTimer({ maxSeconds }: { maxSeconds: number }) {
+  const [elapsed, setElapsed] = useState(0);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(prev => {
+        if (prev >= maxSeconds) {
+          clearInterval(interval);
+          return maxSeconds;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [maxSeconds]);
+  
+  const remaining = maxSeconds - elapsed;
+  const progress = elapsed / maxSeconds;
+  const rotation = progress * 360;
+  
+  return (
+    <div className="relative w-24 h-24">
+      {/* Outer ring */}
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          fill="none"
+          stroke="rgba(255,255,255,0.2)"
+          strokeWidth="4"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          fill="none"
+          stroke="url(#timerGradient)"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={`${progress * 283} 283`}
+        />
+        <defs>
+          <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#f97316" />
+            <stop offset="100%" stopColor="#ef4444" />
+          </linearGradient>
+        </defs>
+      </svg>
+      
+      {/* Needle */}
+      <div 
+        className="absolute inset-0 flex items-center justify-center"
+        style={{ transform: `rotate(${rotation}deg)` }}
+      >
+        <div className="absolute w-1 h-10 bg-gradient-to-b from-orange-500 to-red-500 rounded-full origin-bottom" 
+          style={{ bottom: '50%' }}
+        />
+      </div>
+      
+      {/* Center with remaining time */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-xl flex items-center justify-center border border-white/20">
+          <span className="text-white font-bold text-lg">{remaining}s</span>
+        </div>
+      </div>
+      
+      {/* Recording indicator */}
+      <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 animate-pulse" />
+    </div>
   );
 }
