@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface VisualGenerationRequest {
-  action: 'generate_preview' | 'generate_icon' | 'generate_storyboard' | 'generate_all' | 'batch_generate';
+  action: 'generate_preview' | 'generate_icon' | 'generate_storyboard' | 'generate_video' | 'generate_all' | 'batch_generate';
   templateId?: string;
   templateKey?: string;
   batchSize?: number;
@@ -84,6 +84,37 @@ serve(async (req) => {
         });
       }
 
+      case 'generate_video': {
+        const template = await getTemplate(templateId, templateKey);
+        
+        await supabase
+          .from('ai_generated_templates')
+          .update({ visual_generation_status: 'generating' })
+          .eq('id', template.id);
+
+        try {
+          const videoUrl = await generateDemoVideo(lovableApiKey, template, supabase);
+          
+          await supabase
+            .from('ai_generated_templates')
+            .update({ 
+              demo_video_url: videoUrl,
+              visual_generation_status: 'completed'
+            })
+            .eq('id', template.id);
+
+          return new Response(JSON.stringify({ success: true, videoUrl }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } catch (error) {
+          await supabase
+            .from('ai_generated_templates')
+            .update({ visual_generation_status: 'failed' })
+            .eq('id', template.id);
+          throw error;
+        }
+      }
+
       case 'generate_all': {
         const template = await getTemplate(templateId, templateKey);
         
@@ -94,33 +125,31 @@ serve(async (req) => {
           .eq('id', template.id);
 
         try {
-          // Generate all visuals
-          const [previewUrl, iconUrl, storyboardFrames] = await Promise.all([
-            generatePreviewImage(lovableApiKey, template, supabase),
-            generateIconImage(lovableApiKey, template, supabase),
-            generateStoryboardFrames(lovableApiKey, template, supabase)
-          ]);
+          // Generate preview image first
+          const previewUrl = await generatePreviewImage(lovableApiKey, template, supabase);
+          
+          // Then generate animated video from the preview
+          const videoUrl = await generateDemoVideo(lovableApiKey, template, supabase, previewUrl);
 
           // Update with all generated content
           await supabase
             .from('ai_generated_templates')
             .update({
               preview_image_url: previewUrl,
-              icon_url: iconUrl,
-              storyboard_frames: storyboardFrames,
+              demo_video_url: videoUrl,
               visual_generation_status: 'completed'
             })
             .eq('id', template.id);
 
           return new Response(JSON.stringify({ 
             success: true, 
-            previewUrl, 
-            iconUrl, 
-            storyboardFrames 
+            previewUrl,
+            videoUrl
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         } catch (error) {
+          console.error('Error generating visuals:', error);
           await supabase
             .from('ai_generated_templates')
             .update({ visual_generation_status: 'failed' })
@@ -147,20 +176,24 @@ serve(async (req) => {
               .update({ visual_generation_status: 'generating' })
               .eq('id', template.id);
 
+            // Generate preview image first
             const previewUrl = await generatePreviewImage(lovableApiKey, template, supabase);
-            const iconUrl = await generateIconImage(lovableApiKey, template, supabase);
+            
+            // Generate animated video from preview
+            const videoUrl = await generateDemoVideo(lovableApiKey, template, supabase, previewUrl);
 
             await supabase
               .from('ai_generated_templates')
               .update({
                 preview_image_url: previewUrl,
-                icon_url: iconUrl,
+                demo_video_url: videoUrl,
                 visual_generation_status: 'completed'
               })
               .eq('id', template.id);
 
-            results.push({ templateKey: template.template_key, success: true });
+            results.push({ templateKey: template.template_key, success: true, previewUrl, videoUrl });
           } catch (err) {
+            console.error(`Error processing ${template.template_key}:`, err);
             await supabase
               .from('ai_generated_templates')
               .update({ visual_generation_status: 'failed' })
@@ -316,71 +349,113 @@ Output: Single clean icon, no text, vibrant colors.`;
   return urlData.publicUrl;
 }
 
-async function generateStoryboardFrames(apiKey: string, template: any, supabase: any): Promise<any[]> {
-  console.log(`[generateStoryboardFrames] Generating for ${template.template_key}`);
+async function generateDemoVideo(apiKey: string, template: any, supabase: any, previewImageUrl?: string): Promise<string> {
+  console.log(`[generateDemoVideo] Generating animated video for ${template.template_key}`);
   
-  const frames = [];
-  const frameDescriptions = [
-    { step: 1, description: "Opening scene - user starts recording" },
-    { step: 2, description: "Middle action - main template effect visible" },
-    { step: 3, description: "Final result - polished output preview" }
-  ];
+  const videoPrompt = `A dynamic, eye-catching video preview for a mobile video template called "${template.label_fr}".
 
-  for (const frame of frameDescriptions) {
-    const prompt = `Generate storyboard frame ${frame.step}/3 for video template "${template.label_fr}".
+Theme: ${template.family} - ${template.description_fr}
+Emoji essence: ${template.emoji}
 
-Scene: ${frame.description}
-Template family: ${template.family}
-Visual style: ${template.color} color scheme, modern African aesthetic
+Visual requirements:
+- Smooth, looping animation suitable for a template preview
+- Show the template effect in action on a mobile phone screen mockup
+- Contemporary African visual style with vibrant ${template.color} colors
+- Professional motion graphics quality
+- 9:16 vertical mobile format
+- Dynamic camera movements and transitions
+- Engaging visual effects that showcase the template capabilities
 
-This is a storyboard frame showing the template in action on a mobile device.
-Make it clear, illustrative, suitable for explaining the template workflow.`;
+Style: Modern app preview video, social media quality, eye-catching and professional.`;
 
-    try {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-pro-image-preview",
-          messages: [{ role: "user", content: prompt }],
-          modalities: ["image", "text"]
-        })
+  const requestBody: any = {
+    prompt: videoPrompt,
+    aspect_ratio: "9:16",
+    duration: 5,
+    resolution: "480p"
+  };
+
+  // If we have a preview image, use it as starting frame for better consistency
+  if (previewImageUrl) {
+    requestBody.starting_frame = previewImageUrl;
+  }
+
+  console.log(`[generateDemoVideo] Calling video generation API...`);
+  
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/videos/generate", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Video generation failed: ${response.status} - ${errorText}`);
+    throw new Error(`Video generation failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  console.log(`[generateDemoVideo] Video API response:`, JSON.stringify(data).slice(0, 500));
+  
+  // The video API returns a URL directly or base64
+  let videoUrl = data.video_url || data.url;
+  
+  if (!videoUrl && data.video) {
+    // If base64 video, upload to storage
+    const base64Data = data.video.replace(/^data:video\/\w+;base64,/, '');
+    const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    
+    const filePath = `videos/${template.template_key}_demo.mp4`;
+    const { error: uploadError } = await supabase.storage
+      .from('template-assets')
+      .upload(filePath, buffer, {
+        contentType: 'video/mp4',
+        upsert: true
       });
 
-      if (!response.ok) continue;
+    if (uploadError) {
+      console.error('Video upload error:', uploadError);
+      throw uploadError;
+    }
 
-      const data = await response.json();
-      const imageBase64 = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const { data: urlData } = supabase.storage
+      .from('template-assets')
+      .getPublicUrl(filePath);
+
+    videoUrl = urlData.publicUrl;
+  }
+  
+  if (!videoUrl) {
+    // Fallback: download video from temporary URL and re-upload to our storage
+    if (data.url) {
+      const videoResponse = await fetch(data.url);
+      const videoBuffer = new Uint8Array(await videoResponse.arrayBuffer());
       
-      if (imageBase64) {
-        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-        
-        const filePath = `storyboards/${template.template_key}_frame_${frame.step}.png`;
-        await supabase.storage
-          .from('template-assets')
-          .upload(filePath, buffer, {
-            contentType: 'image/png',
-            upsert: true
-          });
-
-        const { data: urlData } = supabase.storage
-          .from('template-assets')
-          .getPublicUrl(filePath);
-
-        frames.push({
-          step: frame.step,
-          description: frame.description,
-          imageUrl: urlData.publicUrl
+      const filePath = `videos/${template.template_key}_demo.mp4`;
+      const { error: uploadError } = await supabase.storage
+        .from('template-assets')
+        .upload(filePath, videoBuffer, {
+          contentType: 'video/mp4',
+          upsert: true
         });
-      }
-    } catch (err) {
-      console.error(`Error generating frame ${frame.step}:`, err);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('template-assets')
+        .getPublicUrl(filePath);
+
+      videoUrl = urlData.publicUrl;
     }
   }
 
-  return frames;
+  if (!videoUrl) {
+    throw new Error('No video URL returned from API');
+  }
+
+  console.log(`[generateDemoVideo] Video generated: ${videoUrl}`);
+  return videoUrl;
 }
