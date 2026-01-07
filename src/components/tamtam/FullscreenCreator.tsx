@@ -1,5 +1,8 @@
 // src/components/tamtam/FullscreenCreator.tsx
 // Kuaishou-style premium interface with UNIFIED live editing (no screen transitions)
+// ✅ Updated to align with K-Engine TemplateEngine (TemplateManifest / EngineState / exportJob / pipeline fallback)
+// ✅ Keeps legacy AdvancedTemplate UX working (voice instructions, overlays) with safe type-guards
+// ✅ Adds K-Engine timeline preview + play/pause/seek + auto-bind captured media to slots + AI pipeline progress
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -38,30 +41,39 @@ import {
   scaleCssFilter,
 } from "./VideoFilters";
 
-// Import all creator modules
 import {
-  CULTURAL_TEMPLATES,
-  GRAPHICS_ITEMS,
   AR_EFFECTS,
   CHALLENGES,
-  SHOT_TIPS,
   CaptureEffects,
   DEFAULT_EFFECTS,
-  getTemplateById,
+  getTemplateById, // "simple" UI template (overlay/gradient) from CreatorEffectsData
   Sticker as StickerType,
 } from "./creator/CreatorEffectsData";
+
 import { StickerLayer, StickerPicker } from "./creator/StickerLayer";
 import { AREffectsLayer, ShotTipOverlay } from "./creator/AREffectsLayer";
 import { GraphicsDrawer, getGraphicsStyles, getGraphicsClasses } from "./creator/GraphicsDrawer";
 import { MagicDrawer } from "./creator/MagicDrawer";
-import { TemplateOverlay, TemplateCarousel } from "./creator/TemplateOverlay";
+import { TemplateOverlay } from "./creator/TemplateOverlay";
 import AdvancedTemplateDrawer from "./creator/AdvancedTemplateDrawer";
 import LiveTemplateEffect from "./creator/LiveTemplateEffect";
 import TemplateCaptureOverlay from "./creator/TemplateCaptureOverlay";
-import { AdvancedTemplate, durationToSeconds, getTemplateById as getAdvancedTemplateById } from "./creator/AdvancedTemplateData";
-import templateEngine, { ProcessingProgress, TemplateInputs } from "./creator/TemplateEngine";
 import MiniTimeline, { MiniTimelineSegment } from "./creator/MiniTimeline";
-import EditingToolbar from "./creator/EditingToolbar";
+
+// Legacy AdvancedTemplate data (still used by some UI effects/voice instructions)
+import {
+  AdvancedTemplate,
+  durationToSeconds,
+} from "./creator/AdvancedTemplateData";
+
+// ✅ TemplateEngine updated exports (K-Engine runtime + legacy engine service)
+import templateEngine, {
+  kEngine,
+  type EngineState,
+  type TemplateManifest,
+  type ExportJob,
+  type BoundAsset,
+} from "./creator/TemplateEngine";
 
 export type CreatorOutputPayload = {
   segments: MiniTimelineSegment[];
@@ -72,12 +84,26 @@ export type CreatorOutputPayload = {
   selectedFilterId?: string;
   effects?: CaptureEffects;
   challengeHashtag?: string;
+
+  // ✅ New (optional): if a K-Engine template is active, pass export job + engine snapshot
+  exportJob?: ExportJob;
+  engineState?: EngineState;
 };
 
 type TopTab = "15s" | "30s" | "45s" | "60s" | "story" | "album" | "template";
 type CaptureMode = "burst" | "photo" | "video" | "text";
 type CanvasRatio = "9:16" | "1:1" | "16:9";
-type DrawerType = "none" | "beautify" | "length" | "magic" | "graphics" | "stickers" | "template" | "captions" | "music" | "speed";
+type DrawerType =
+  | "none"
+  | "beautify"
+  | "length"
+  | "magic"
+  | "graphics"
+  | "stickers"
+  | "template"
+  | "captions"
+  | "music"
+  | "speed";
 
 export interface FullscreenCreatorProps {
   open?: boolean;
@@ -94,11 +120,13 @@ function isMediaRecorderSupported() {
 }
 
 function isSafariOrIOS(): boolean {
-  if (typeof navigator === 'undefined') return false;
+  if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
-  return /^((?!chrome|android).)*safari/i.test(ua) || 
-         /iPad|iPhone|iPod/.test(ua) || 
-         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return (
+    /^((?!chrome|android).)*safari/i.test(ua) ||
+    /iPad|iPhone|iPod/.test(ua) ||
+    ((navigator as any).platform === "MacIntel" && (navigator as any).maxTouchPoints > 1)
+  );
 }
 
 function pickMimeType(): string | undefined {
@@ -115,184 +143,19 @@ function pickMimeType(): string | undefined {
     ];
     for (const c of iosCandidates) {
       try {
-        if (MR.isTypeSupported(c)) {
-          console.log('[FullscreenCreator] Selected MIME (Safari/iOS):', c);
-          return c;
-        }
+        if (MR.isTypeSupported(c)) return c;
       } catch {}
     }
   }
 
   // Other browsers: prefer vp8 (more stable) over vp9
-  const candidates = [
-    "video/webm;codecs=vp8,opus",
-    "video/webm;codecs=vp9,opus",
-    "video/webm",
-    "video/mp4",
-  ];
+  const candidates = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm", "video/mp4"];
   for (const c of candidates) {
     try {
-      if (MR.isTypeSupported(c)) {
-        console.log('[FullscreenCreator] Selected MIME:', c);
-        return c;
-      }
+      if (MR.isTypeSupported(c)) return c;
     } catch {}
   }
-  console.error('[FullscreenCreator] No supported MIME type found');
   return undefined;
-}
-
-async function capturePhotoFromVideo(
-  videoEl: HTMLVideoElement, 
-  ratio: CanvasRatio,
-  effects: CaptureEffects
-): Promise<Blob> {
-  const w = videoEl.videoWidth || 1080;
-  const h = videoEl.videoHeight || 1920;
-  const target = (() => {
-    if (ratio === "1:1") return { tw: 1080, th: 1080 };
-    if (ratio === "16:9") return { tw: 1920, th: 1080 };
-    return { tw: 1080, th: 1920 };
-  })();
-
-  const canvas = document.createElement("canvas");
-  canvas.width = target.tw;
-  canvas.height = target.th;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("No canvas context");
-
-  const srcAR = w / h;
-  const dstAR = target.tw / target.th;
-  let sx = 0, sy = 0, sw = w, sh = h;
-  if (srcAR > dstAR) {
-    sw = Math.round(h * dstAR);
-    sx = Math.round((w - sw) / 2);
-  } else {
-    sh = Math.round(w / dstAR);
-    sy = Math.round((h - sh) / 2);
-  }
-
-  // Apply filter
-  const filter = VIDEO_FILTERS.find(f => f.id === effects.filterId);
-  if (filter && filter.id !== 'none') {
-    ctx.filter = scaleCssFilter(filter.cssFilter, effects.filterIntensity);
-  }
-
-  ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, target.tw, target.th);
-
-  // Apply template overlay gradient
-  const template = getTemplateById(effects.templateId);
-  if (template?.overlayGradient) {
-    ctx.save();
-    const gradient = ctx.createLinearGradient(0, 0, 0, target.th);
-    gradient.addColorStop(0, 'rgba(0,0,0,0.3)');
-    gradient.addColorStop(0.5, 'rgba(0,0,0,0)');
-    gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, target.tw, target.th);
-    ctx.restore();
-  }
-
-  // Draw stickers
-  for (const sticker of effects.stickers) {
-    ctx.save();
-    const x = (sticker.position.x / 100) * target.tw;
-    const y = (sticker.position.y / 100) * target.th;
-    ctx.translate(x, y);
-    ctx.rotate((sticker.rotation * Math.PI) / 180);
-    ctx.scale(sticker.scale, sticker.scale);
-    ctx.font = '60px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(sticker.content, 0, 0);
-    ctx.restore();
-  }
-
-  const blob: Blob = await new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Photo blob failed"))), "image/jpeg", 0.92);
-  });
-  return blob;
-}
-
-async function renderTextToImage(text: string, ratio: CanvasRatio, effects: CaptureEffects): Promise<Blob> {
-  const size = (() => {
-    if (ratio === "1:1") return { w: 1080, h: 1080 };
-    if (ratio === "16:9") return { w: 1920, h: 1080 };
-    return { w: 1080, h: 1920 };
-  })();
-
-  const canvas = document.createElement("canvas");
-  canvas.width = size.w;
-  canvas.height = size.h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("No canvas ctx");
-
-  // Background with template gradient
-  const template = getTemplateById(effects.templateId);
-  const g = ctx.createLinearGradient(0, 0, size.w, size.h);
-  g.addColorStop(0, "#0f172a");
-  g.addColorStop(1, "#111827");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size.w, size.h);
-
-  // Template overlay
-  if (template?.overlayGradient) {
-    const overlay = ctx.createLinearGradient(0, 0, 0, size.h);
-    overlay.addColorStop(0, 'rgba(139,69,19,0.3)');
-    overlay.addColorStop(0.5, 'rgba(0,0,0,0)');
-    overlay.addColorStop(1, 'rgba(139,69,19,0.4)');
-    ctx.fillStyle = overlay;
-    ctx.fillRect(0, 0, size.w, size.h);
-  }
-
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.font = "700 72px Inter, system-ui, -apple-system, Segoe UI, Roboto";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  const pad = 120;
-  const maxW = size.w - pad * 2;
-  const lines = wrapText(ctx, text || "Texte", maxW);
-  const lineH = 92;
-  const totalH = lines.length * lineH;
-  let y = size.h / 2 - totalH / 2 + lineH / 2;
-
-  const cardW = size.w - 140;
-  const cardH = Math.max(260, totalH + 140);
-  const cardX = (size.w - cardW) / 2;
-  const cardY = (size.h - cardH) / 2;
-  roundRect(ctx, cardX, cardY, cardW, cardH, 48);
-  ctx.fillStyle = "rgba(255,255,255,0.06)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
-  for (const line of lines) {
-    ctx.fillText(line, size.w / 2, y);
-    y += lineH;
-  }
-
-  // Draw stickers
-  for (const sticker of effects.stickers) {
-    ctx.save();
-    const x = (sticker.position.x / 100) * size.w;
-    const sy = (sticker.position.y / 100) * size.h;
-    ctx.translate(x, sy);
-    ctx.rotate((sticker.rotation * Math.PI) / 180);
-    ctx.scale(sticker.scale, sticker.scale);
-    ctx.font = '60px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(sticker.content, 0, 0);
-    ctx.restore();
-  }
-
-  const blob: Blob = await new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Text blob failed"))), "image/jpeg", 0.92);
-  });
-  return blob;
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -323,16 +186,207 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
+async function capturePhotoFromVideo(
+  videoEl: HTMLVideoElement,
+  ratio: CanvasRatio,
+  effects: CaptureEffects
+): Promise<Blob> {
+  const w = videoEl.videoWidth || 1080;
+  const h = videoEl.videoHeight || 1920;
+  const target = (() => {
+    if (ratio === "1:1") return { tw: 1080, th: 1080 };
+    if (ratio === "16:9") return { tw: 1920, th: 1080 };
+    return { tw: 1080, th: 1920 };
+  })();
+
+  const canvas = document.createElement("canvas");
+  canvas.width = target.tw;
+  canvas.height = target.th;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No canvas context");
+
+  const srcAR = w / h;
+  const dstAR = target.tw / target.th;
+  let sx = 0,
+    sy = 0,
+    sw = w,
+    sh = h;
+  if (srcAR > dstAR) {
+    sw = Math.round(h * dstAR);
+    sx = Math.round((w - sw) / 2);
+  } else {
+    sh = Math.round(w / dstAR);
+    sy = Math.round((h - sh) / 2);
+  }
+
+  // Apply filter
+  const filter = VIDEO_FILTERS.find((f) => f.id === effects.filterId);
+  if (filter && filter.id !== "none") {
+    ctx.filter = scaleCssFilter(filter.cssFilter, effects.filterIntensity);
+  }
+
+  ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, target.tw, target.th);
+
+  // Apply template overlay gradient
+  const template = getTemplateById(effects.templateId);
+  if (template?.overlayGradient) {
+    ctx.save();
+    const gradient = ctx.createLinearGradient(0, 0, 0, target.th);
+    gradient.addColorStop(0, "rgba(0,0,0,0.3)");
+    gradient.addColorStop(0.5, "rgba(0,0,0,0)");
+    gradient.addColorStop(1, "rgba(0,0,0,0.4)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, target.tw, target.th);
+    ctx.restore();
+  }
+
+  // Draw stickers (emoji text)
+  for (const sticker of effects.stickers) {
+    ctx.save();
+    const x = (sticker.position.x / 100) * target.tw;
+    const y = (sticker.position.y / 100) * target.th;
+    ctx.translate(x, y);
+    ctx.rotate((sticker.rotation * Math.PI) / 180);
+    ctx.scale(sticker.scale, sticker.scale);
+    ctx.font = "60px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(sticker.content, 0, 0);
+    ctx.restore();
+  }
+
+  const blob: Blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Photo blob failed"))), "image/jpeg", 0.92);
+  });
+  return blob;
+}
+
+async function renderTextToImage(text: string, ratio: CanvasRatio, effects: CaptureEffects): Promise<Blob> {
+  const size = (() => {
+    if (ratio === "1:1") return { w: 1080, h: 1080 };
+    if (ratio === "16:9") return { w: 1920, h: 1080 };
+    return { w: 1080, h: 1920 };
+  })();
+
+  const canvas = document.createElement("canvas");
+  canvas.width = size.w;
+  canvas.height = size.h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No canvas ctx");
+
+  const template = getTemplateById(effects.templateId);
+
+  const g = ctx.createLinearGradient(0, 0, size.w, size.h);
+  g.addColorStop(0, "#0f172a");
+  g.addColorStop(1, "#111827");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size.w, size.h);
+
+  if (template?.overlayGradient) {
+    const overlay = ctx.createLinearGradient(0, 0, 0, size.h);
+    overlay.addColorStop(0, "rgba(139,69,19,0.3)");
+    overlay.addColorStop(0.5, "rgba(0,0,0,0)");
+    overlay.addColorStop(1, "rgba(139,69,19,0.4)");
+    ctx.fillStyle = overlay;
+    ctx.fillRect(0, 0, size.w, size.h);
+  }
+
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.font = "700 72px Inter, system-ui, -apple-system, Segoe UI, Roboto";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const pad = 120;
+  const maxW = size.w - pad * 2;
+  const lines = wrapText(ctx, text || "Texte", maxW);
+  const lineH = 92;
+  const totalH = lines.length * lineH;
+  let y = size.h / 2 - totalH / 2 + lineH / 2;
+
+  const cardW = size.w - 140;
+  const cardH = Math.max(260, totalH + 140);
+  const cardX = (size.w - cardW) / 2;
+  const cardY = (size.h - cardH) / 2;
+
+  roundRect(ctx, cardX, cardY, cardW, cardH, 48);
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  for (const line of lines) {
+    ctx.fillText(line, size.w / 2, y);
+    y += lineH;
+  }
+
+  for (const sticker of effects.stickers) {
+    ctx.save();
+    const x = (sticker.position.x / 100) * size.w;
+    const sy = (sticker.position.y / 100) * size.h;
+    ctx.translate(x, sy);
+    ctx.rotate((sticker.rotation * Math.PI) / 180);
+    ctx.scale(sticker.scale, sticker.scale);
+    ctx.font = "60px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(sticker.content, 0, 0);
+    ctx.restore();
+  }
+
+  const blob: Blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Text blob failed"))), "image/jpeg", 0.92);
+  });
+  return blob;
+}
+
+// ---------- K-ENGINE helpers ----------
+function isTemplateManifest(x: any): x is TemplateManifest {
+  return !!x && typeof x === "object" && Array.isArray(x.slots) && Array.isArray(x.timeline) && typeof x.ratio === "string";
+}
+
+function asTemplateMeta(tpl: any) {
+  // AdvancedTemplate-like
+  const emoji = tpl?.emoji ?? "✨";
+  const color = tpl?.color ?? "from-amber-500 to-orange-500";
+  const label = tpl?.label_fr ?? tpl?.name ?? "Template";
+  const id = tpl?.id ?? "none";
+  const voiceInstructions = Array.isArray(tpl?.voiceInstructions) ? tpl.voiceInstructions : [];
+  const supportedDurations = Array.isArray(tpl?.supportedDurations) ? tpl.supportedDurations : [];
+  const inputs = Array.isArray(tpl?.inputs) ? tpl.inputs : [];
+  return { id, emoji, color, label, voiceInstructions, supportedDurations, inputs };
+}
+
+function pickSlotForCapture(manifest: TemplateManifest, capturedType: "video" | "photo" | "audio") {
+  const need = capturedType === "photo" ? "photo" : capturedType; // slot types are "video"|"photo"|"audio"
+  const required = manifest.slots.filter((s) => s.required);
+  const candidates = required.length ? required : manifest.slots;
+
+  const exact = candidates.find((s) => s.type === need);
+  if (exact) return exact.id;
+
+  // fallback: accept video into photo slot or vice versa if no exact match
+  if (capturedType === "video") {
+    const alt = candidates.find((s) => s.type === "video") || candidates.find((s) => s.type === "photo");
+    return alt?.id;
+  }
+  if (capturedType === "photo") {
+    const alt = candidates.find((s) => s.type === "photo") || candidates.find((s) => s.type === "video");
+    return alt?.id;
+  }
+  return candidates[0]?.id;
+}
+
 export default function FullscreenCreator({
-  open = false,  // FIXED: Default to false to prevent auto-camera on app load
+  open = false,
   onClose,
   onPublish,
 }: FullscreenCreatorProps) {
   // ============= UNIFIED STATE =============
-  // hasCapture: false = live camera mode, true = edit mode (same screen)
   const [hasCapture, setHasCapture] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
-  
+
   const [topTab, setTopTab] = useState<TopTab>("30s");
   const [mode, setMode] = useState<CaptureMode>("video");
   const [canvasRatio, setCanvasRatio] = useState<CanvasRatio>("9:16");
@@ -352,29 +406,29 @@ export default function FullscreenCreator({
 
   // ============= EFFECTS STATE =============
   const [effects, setEffects] = useState<CaptureEffects>({ ...DEFAULT_EFFECTS });
-
   const updateEffects = useCallback((updates: Partial<CaptureEffects>) => {
-    setEffects(prev => ({ ...prev, ...updates }));
+    setEffects((prev) => ({ ...prev, ...updates }));
   }, []);
 
   const selectedTemplate = useMemo(() => getTemplateById(effects.templateId), [effects.templateId]);
 
-  // Filter
+  // Filter (live camera)
   const filter = useMemo<VideoFilter | undefined>(
     () => VIDEO_FILTERS.find((f) => f.id === effects.filterId) ?? VIDEO_FILTERS[0],
     [effects.filterId]
   );
+
   const cssFilter = useMemo(() => {
     const base = filter?.cssFilter ?? "none";
     let result = scaleCssFilter(base, effects.filterIntensity);
-    
-    effects.arEffects.forEach(arId => {
-      const ar = AR_EFFECTS.find(e => e.id === arId);
-      if (ar?.type === 'face' && ar.cssFilter) {
-        result = result === 'none' ? ar.cssFilter : `${result} ${ar.cssFilter}`;
+
+    effects.arEffects.forEach((arId) => {
+      const ar = AR_EFFECTS.find((e) => e.id === arId);
+      if (ar?.type === "face" && ar.cssFilter) {
+        result = result === "none" ? ar.cssFilter : `${result} ${ar.cssFilter}`;
       }
     });
-    
+
     return result;
   }, [filter?.cssFilter, effects.filterIntensity, effects.arEffects]);
 
@@ -385,13 +439,13 @@ export default function FullscreenCreator({
   const [showStickerPicker, setShowStickerPicker] = useState(false);
 
   // Graphics styles
-  const graphicsStyles = useMemo(() => 
-    getGraphicsStyles(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
+  const graphicsStyles = useMemo(
+    () => getGraphicsStyles(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
     [effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId]
   );
 
-  const graphicsClasses = useMemo(() =>
-    getGraphicsClasses(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
+  const graphicsClasses = useMemo(
+    () => getGraphicsClasses(effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId),
     [effects.frameId, effects.borderId, effects.overlayId, effects.backgroundId]
   );
 
@@ -406,8 +460,8 @@ export default function FullscreenCreator({
   const chunksRef = useRef<BlobPart[]>([]);
   const gestureRef = useRef<{ x0: number; y0: number; active: boolean } | null>(null);
   const albumInputRef = useRef<HTMLInputElement | null>(null);
-  
-  // Burst mode state
+
+  // Burst
   const burstIntervalRef = useRef<number | null>(null);
   const [burstPhotos, setBurstPhotos] = useState<Blob[]>([]);
   const [burstCount, setBurstCount] = useState(0);
@@ -421,24 +475,42 @@ export default function FullscreenCreator({
   const [segments, setSegments] = useState<MiniTimelineSegment[]>([]);
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
+
+  // Video element play state (non K-Engine path)
   const [isPlaying, setIsPlaying] = useState(false);
-  
-  // Undo/Redo stacks
+
+  // Undo/Redo
   const [undoStack, setUndoStack] = useState<MiniTimelineSegment[][]>([]);
   const [redoStack, setRedoStack] = useState<MiniTimelineSegment[][]>([]);
 
-  // Advanced template state
-  const [activeAdvancedTemplate, setActiveAdvancedTemplate] = useState<AdvancedTemplate | null>(null);
-  const [templateCapturedInputs, setTemplateCapturedInputs] = useState<number>(0);
+  // ============= TEMPLATE (Legacy + K-Engine) =============
+  const [activeTemplateAny, setActiveTemplateAny] = useState<AdvancedTemplate | TemplateManifest | null>(null);
+
+  const activeMeta = useMemo(() => asTemplateMeta(activeTemplateAny), [activeTemplateAny]);
+
+  // K-Engine state mirror
+  const [kState, setKState] = useState<EngineState>(() => kEngine.getState());
+  const kTickerRef = useRef<number | null>(null);
+
+  const isKEngineActive = useMemo(() => {
+    // active when a TemplateManifest is selected and loaded
+    return !!kState.loaded && !!kState.template;
+  }, [kState.loaded, kState.template]);
+
+  // Processing overlay state (reuse same UI)
   const [isProcessingTemplate, setIsProcessingTemplate] = useState(false);
-  const [processingProgress, setProcessingProgress] = useState<ProcessingProgress | null>(null);
+  const [processingProgress, setProcessingProgress] = useState<{
+    percent: number;
+    message_fr: string;
+    message_ba?: string;
+  } | null>(null);
 
   // Publish
   const [caption, setCaption] = useState("");
 
   // Total duration
-  const totalDuration = useMemo(() => 
-    segments.reduce((sum, seg) => sum + (seg.endTime - seg.startTime), 0),
+  const totalDuration = useMemo(
+    () => segments.reduce((sum, seg) => sum + (seg.endTime - seg.startTime), 0),
     [segments]
   );
 
@@ -449,19 +521,17 @@ export default function FullscreenCreator({
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  // Auto-apply template settings
+  // Auto-apply simple template settings
   useEffect(() => {
-    if (selectedTemplate && selectedTemplate.id !== 'free') {
+    if (selectedTemplate && selectedTemplate.id !== "free") {
       setLengthSec(selectedTemplate.suggestedDuration as 15 | 30 | 60 | 180 | 600);
       setMode(selectedTemplate.suggestedMode as CaptureMode);
       setCanvasRatio(selectedTemplate.suggestedRatio);
-      if (selectedTemplate.autoFilter) {
-        updateEffects({ filterId: selectedTemplate.autoFilter });
-      }
+      if (selectedTemplate.autoFilter) updateEffects({ filterId: selectedTemplate.autoFilter });
     }
   }, [selectedTemplate, updateEffects]);
 
-  // Track recording elapsed time (for template overlays)
+  // Track recording elapsed
   useEffect(() => {
     if (!isRecording) {
       setRecordingElapsed(0);
@@ -474,7 +544,49 @@ export default function FullscreenCreator({
     return () => window.clearInterval(t);
   }, [isRecording]);
 
-  // Camera bootstrap
+  // -------- K-Engine subscribe lifecycle --------
+  useEffect(() => {
+    const unsub = kEngine.subscribe((evt, st) => {
+      setKState(st);
+      if (evt.type === "TIME_UPDATE") {
+        setCurrentTime(st.currentTime);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // -------- K-Engine ticker when playing --------
+  useEffect(() => {
+    if (!isKEngineActive) return;
+    if (!kState.isPlaying) {
+      if (kTickerRef.current) cancelAnimationFrame(kTickerRef.current);
+      kTickerRef.current = null;
+      return;
+    }
+
+    let last = performance.now();
+
+    const tick = (now: number) => {
+      const dt = (now - last) / 1000;
+      last = now;
+      const tplDur = kState.template?.duration ?? 0;
+      const next = clamp((kEngine.getState().currentTime ?? 0) + dt, 0, tplDur);
+      kEngine.setTime(next);
+      // loop if needed
+      if (tplDur > 0 && next >= tplDur) {
+        kEngine.setTime(0);
+      }
+      kTickerRef.current = requestAnimationFrame(tick);
+    };
+
+    kTickerRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (kTickerRef.current) cancelAnimationFrame(kTickerRef.current);
+      kTickerRef.current = null;
+    };
+  }, [isKEngineActive, kState.isPlaying, kState.template?.duration]);
+
+  // -------- Camera bootstrap --------
   const stopStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -492,20 +604,16 @@ export default function FullscreenCreator({
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-      
+
       if (videoRef.current) {
         const video = videoRef.current;
-        
-        // FIXED: Assign handler BEFORE srcObject to ensure it fires
+
         await new Promise<void>((resolve) => {
           const onLoaded = () => {
-            video.removeEventListener('loadedmetadata', onLoaded);
-            video.play().then(() => resolve()).catch((err) => {
-              console.warn("Auto-play blocked:", err);
-              resolve();
-            });
+            video.removeEventListener("loadedmetadata", onLoaded);
+            video.play().then(resolve).catch(() => resolve());
           };
-          video.addEventListener('loadedmetadata', onLoaded);
+          video.addEventListener("loadedmetadata", onLoaded);
           video.srcObject = stream;
         });
       }
@@ -514,78 +622,88 @@ export default function FullscreenCreator({
     }
   }, [facing, mode, stopStream]);
 
-  // Camera startup - only when open AND not in capture mode AND not text mode
+  // Camera startup only when open and not in edit mode and not text
   useEffect(() => {
-    if (!open) return; // FIXED: Don't start camera if creator is closed
-    
-    // FIXED: Don't start camera in text mode
-    if (mode === 'text') {
+    if (!open) return;
+    if (mode === "text") {
       stopStream();
       return;
     }
-    
-    if (!hasCapture) {
-      startStream();
-    }
+    if (!hasCapture) startStream();
     return () => {
       if (!hasCapture) stopStream();
     };
   }, [open, hasCapture, facing, mode, startStream, stopStream]);
 
-  // FIXED: Global cleanup on unmount or when closing
+  // Global cleanup on unmount
   useEffect(() => {
     return () => {
-      // Stop any active recording
-      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-        try { recorderRef.current.stop(); } catch {}
+      // Stop recording
+      if (recorderRef.current && recorderRef.current.state !== "inactive") {
+        try {
+          recorderRef.current.stop();
+        } catch {}
       }
       recorderRef.current = null;
-      
-      // Stop camera stream
+
+      // Stop stream
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
-      
-      // Stop burst interval
+
+      // Stop burst
       if (burstIntervalRef.current) {
         window.clearInterval(burstIntervalRef.current);
         burstIntervalRef.current = null;
       }
+
+      // Clear K-Engine
+      try {
+        kEngine.clearTemplate();
+      } catch {}
     };
   }, []);
 
-  // FIXED: Additional cleanup when open changes to false
+  // Additional cleanup when open becomes false
   useEffect(() => {
     if (!open) {
       stopStream();
-      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-        try { recorderRef.current.stop(); } catch {}
+      if (recorderRef.current && recorderRef.current.state !== "inactive") {
+        try {
+          recorderRef.current.stop();
+        } catch {}
       }
       setIsRecording(false);
+      // also stop K-Engine playback
+      if (kEngine.getState().loaded) kEngine.pause();
     }
   }, [open, stopStream]);
 
-  // Cleanup urls
+  // Cleanup URLs
   useEffect(() => {
     if (!capturedBlob) return;
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     const url = URL.createObjectURL(capturedBlob);
     setPreviewUrl(url);
     return () => {
-      try { URL.revokeObjectURL(url); } catch {}
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capturedBlob]);
 
-  // Preview error state
+  // Preview error state (video decoder path)
   const [previewError, setPreviewError] = useState(false);
   const [previewReady, setPreviewReady] = useState(false);
-  
-  // FIXED: Robust video preview initialization with multiple fallback strategies
+
+  // Robust video preview initialization (ONLY when NOT in K-Engine mode)
   useEffect(() => {
+    if (isKEngineActive) return;
+
     const video = previewVideoRef.current;
-    if (!video || !hasCapture || !previewUrl || capturedType !== 'video') {
+    if (!video || !hasCapture || !previewUrl || capturedType !== "video") {
       setPreviewError(false);
       setPreviewReady(false);
       return;
@@ -596,255 +714,204 @@ export default function FullscreenCreator({
     const maxRetries = 3;
     setPreviewError(false);
     setPreviewReady(false);
-    
+
     const initVideo = async () => {
       try {
-        console.log('[FullscreenCreator] Initializing video preview:', { previewUrl, hasCapture, attempt: retryCount + 1 });
-        
-        // Reset video state completely
         video.pause();
-        video.muted = true; // Required for autoplay on mobile
+        video.muted = true;
         video.playsInline = true;
-        video.preload = 'auto';
+        video.preload = "auto";
         video.autoplay = false;
-        
-        // Set src and wait for loading
+
         video.src = previewUrl;
-        
+
         await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            cleanup();
-            console.warn('[FullscreenCreator] Video load timeout, attempting to continue...');
-            resolve();
-          }, 8000);
-          
+          const timeout = setTimeout(() => resolve(), 8000);
+
           const onCanPlay = () => {
             clearTimeout(timeout);
             cleanup();
-            console.log('[FullscreenCreator] Video canplay fired');
             resolve();
           };
           const onLoadedData = () => {
             clearTimeout(timeout);
             cleanup();
-            console.log('[FullscreenCreator] Video loadeddata fired');
             resolve();
           };
           const onError = (e: Event) => {
             clearTimeout(timeout);
             cleanup();
             const videoEl = e.target as HTMLVideoElement;
-            console.error('[FullscreenCreator] Video error:', videoEl?.error?.code, videoEl?.error?.message);
-            reject(new Error(`Video load failed: ${videoEl?.error?.message || 'Unknown error'}`));
+            reject(new Error(videoEl?.error?.message || "Video load failed"));
           };
-          
+
           const cleanup = () => {
-            video.removeEventListener('canplaythrough', onCanPlay);
-            video.removeEventListener('loadeddata', onLoadedData);
-            video.removeEventListener('error', onError);
+            video.removeEventListener("canplaythrough", onCanPlay);
+            video.removeEventListener("loadeddata", onLoadedData);
+            video.removeEventListener("error", onError);
           };
-          
-          video.addEventListener('canplaythrough', onCanPlay);
-          video.addEventListener('loadeddata', onLoadedData);
-          video.addEventListener('error', onError);
+
+          video.addEventListener("canplaythrough", onCanPlay);
+          video.addEventListener("loadeddata", onLoadedData);
+          video.addEventListener("error", onError);
           video.load();
         });
-        
-        if (!mounted) return;
-        
-        console.log('[FullscreenCreator] Video loaded, dimensions:', video.videoWidth, 'x', video.videoHeight, 'duration:', video.duration);
-        
-        // Check if video has valid dimensions
-        if (video.videoWidth === 0 || video.videoHeight === 0) {
-          throw new Error('Video has no dimensions');
-        }
-        
-        // CRITICAL FIX: Handle Infinity duration (common for webm recordings)
-        // Use seekable range trick + play/pause to force first frame display
-        const duration = video.duration;
-        
-        if (!isFinite(duration) || duration <= 0) {
-          console.log('[FullscreenCreator] Fixing Infinity duration...');
 
-          // Strategy 1: Use seekable range (only if finite)
+        if (!mounted) return;
+
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+          throw new Error("Video has no dimensions");
+        }
+
+        const duration = video.duration;
+
+        // Fix Infinity duration
+        if (!isFinite(duration) || duration <= 0) {
           if (video.seekable.length > 0) {
             const seekableEnd = video.seekable.end(0);
-            console.log('[FullscreenCreator] Seekable end:', seekableEnd);
-
             if (Number.isFinite(seekableEnd) && seekableEnd > 0.2) {
-              // Seek to near end then back to start
               try {
                 video.currentTime = Math.max(0.1, seekableEnd - 0.1);
                 await new Promise((r) => setTimeout(r, 50));
-              } catch (seekErr) {
-                console.warn('[FullscreenCreator] Seek near end failed:', seekErr);
-              }
-            } else {
-              console.log('[FullscreenCreator] Seekable end is non-finite, skipping seek trick');
+              } catch {}
             }
           }
-
-          // Strategy 2: Brief play/pause to force decode (works when muted)
           try {
             video.muted = true;
-            const playPromise = video.play();
-            if (playPromise) await playPromise;
+            const p = video.play();
+            if (p) await p;
             await new Promise((r) => setTimeout(r, 80));
             video.pause();
-          } catch (playErr) {
-            console.warn('[FullscreenCreator] Play/pause trick failed:', playErr);
-          }
-
-          // Always try to land on a finite start time
+          } catch {}
           try {
             video.currentTime = 0.001;
-          } catch (seekErr) {
-            console.warn('[FullscreenCreator] Seek to start failed:', seekErr);
-          }
+          } catch {}
         } else {
-          // Normal duration - just seek to start
           try {
             video.currentTime = 0.001;
-          } catch (seekErr) {
-            console.warn('[FullscreenCreator] Seek to start failed:', seekErr);
-          }
+          } catch {}
         }
 
-        // Ensure video is paused and ready
         video.pause();
         if (mounted) setPreviewReady(true);
-        console.log('[FullscreenCreator] Video preview ready');
-        
       } catch (err) {
-        console.error('[FullscreenCreator] Failed to init preview video:', err);
-        
-        // Retry logic
         if (mounted && retryCount < maxRetries) {
           retryCount++;
-          console.log(`[FullscreenCreator] Retrying video init (${retryCount}/${maxRetries})...`);
-          await new Promise(r => setTimeout(r, 500));
+          await new Promise((r) => setTimeout(r, 500));
           return initVideo();
         } else if (mounted) {
-          // All retries failed - show error state
           setPreviewError(true);
         }
       }
     };
-    
-    // Small delay to ensure blob URL is ready
+
     const timer = setTimeout(initVideo, 100);
-    
-    // Sync play state with video events
-    const handlePlay = () => { if (mounted) setIsPlaying(true); };
-    const handlePause = () => { if (mounted) setIsPlaying(false); };
-    const handleEnded = () => { if (mounted) setIsPlaying(false); };
-    const handleTimeUpdate = () => { if (mounted) setCurrentTime(video.currentTime); };
-    
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('pause', handlePause);
-    video.addEventListener('ended', handleEnded);
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    
+
+    const handlePlay = () => mounted && setIsPlaying(true);
+    const handlePause = () => mounted && setIsPlaying(false);
+    const handleEnded = () => mounted && setIsPlaying(false);
+    const handleTimeUpdate = () => mounted && setCurrentTime(video.currentTime);
+
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", handleEnded);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+
     return () => {
       mounted = false;
       clearTimeout(timer);
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('ended', handleEnded);
-      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
     };
-  }, [hasCapture, previewUrl, capturedType]);
+  }, [hasCapture, previewUrl, capturedType, isKEngineActive]);
 
-  // CRITICAL FIX: Draw decoded video frames to a canvas in edit mode.
-  // This avoids black-screen compositor bugs where <video> renders black on some devices,
-  // and also lets us apply the same visual filter without using CSS filter on <video>.
+  // Canvas draw loop:
+  // - if K-Engine active: render engine frame
+  // - else: draw decoded video frame with cssFilter (for black-screen compositor bug)
   useEffect(() => {
-    if (!hasCapture || capturedType !== "video" || previewError) return;
-    const video = previewVideoRef.current;
+    if (!hasCapture || previewError) return;
+
     const canvas = previewCanvasRef.current;
-    if (!video || !canvas) return;
+    if (!canvas) return;
 
     let raf: number | null = null;
 
-    const drawOnce = () => {
-      if (!(video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0)) return;
-
-      const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      const cw = Math.max(1, Math.floor(rect.width * dpr));
-      const ch = Math.max(1, Math.floor(rect.height * dpr));
-
-      if (canvas.width !== cw || canvas.height !== ch) {
-        canvas.width = cw;
-        canvas.height = ch;
-      }
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, cw, ch);
-
-      // Apply filter in canvas (safe across devices)
-      ctx.filter = cssFilter && cssFilter !== "none" ? cssFilter : "none";
-
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      const scale = Math.min(cw / vw, ch / vh);
-      const dw = vw * scale;
-      const dh = vh * scale;
-      const dx = (cw - dw) / 2;
-      const dy = (ch - dh) / 2;
-
-      ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
-      ctx.filter = "none";
-    };
-
-    const loop = () => {
+    const draw = () => {
       try {
-        drawOnce();
+        if (isKEngineActive && kState.template) {
+          kEngine.renderFrameToCanvas(canvas, kEngine.getState().currentTime || 0);
+        } else if (capturedType === "video") {
+          const video = previewVideoRef.current;
+          if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            const cw = Math.max(1, Math.floor(rect.width * dpr));
+            const ch = Math.max(1, Math.floor(rect.height * dpr));
+            if (canvas.width !== cw || canvas.height !== ch) {
+              canvas.width = cw;
+              canvas.height = ch;
+            }
+
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.clearRect(0, 0, cw, ch);
+
+              ctx.filter = cssFilter && cssFilter !== "none" ? cssFilter : "none";
+
+              const vw = video.videoWidth;
+              const vh = video.videoHeight;
+              const scale = Math.min(cw / vw, ch / vh);
+              const dw = vw * scale;
+              const dh = vh * scale;
+              const dx = (cw - dw) / 2;
+              const dy = (ch - dh) / 2;
+
+              ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
+              ctx.filter = "none";
+            }
+          }
+        }
       } catch {
-        // ignore draw errors, keep loop alive
+        // keep loop alive
       }
-      raf = requestAnimationFrame(loop);
+      raf = requestAnimationFrame(draw);
     };
 
-    raf = requestAnimationFrame(loop);
+    raf = requestAnimationFrame(draw);
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [hasCapture, capturedType, previewUrl, previewError, cssFilter]);
+  }, [hasCapture, capturedType, previewError, cssFilter, isKEngineActive, kState.template]);
 
-  // ============= HANDLERS (defined before early return to maintain hook order) =============
-  
+  // ============= HANDLERS =============
   const togglePlayPause = useCallback(() => {
+    if (isKEngineActive) {
+      const st = kEngine.getState();
+      if (st.isPlaying) kEngine.pause();
+      else kEngine.play();
+      return;
+    }
+
     const video = previewVideoRef.current;
-    if (!video || capturedType !== 'video') return;
-    
-    console.log('[FullscreenCreator] togglePlayPause, current isPlaying:', isPlaying, 'video paused:', video.paused);
-    
+    if (!video || capturedType !== "video") return;
+
     if (!video.paused) {
       video.pause();
     } else {
-      // Try unmuted first, then fallback to muted if needed
       video.muted = false;
-      video.play()
-        .then(() => {
-          console.log('[FullscreenCreator] Play started successfully');
-        })
-        .catch((err) => {
-          console.warn('[FullscreenCreator] Unmuted play failed, trying muted:', err.message);
+      video
+        .play()
+        .catch(() => {
           video.muted = true;
-          video.play().catch((e) => {
-            console.error('[FullscreenCreator] Muted play also failed:', e.message);
-          });
+          video.play().catch(() => {});
         });
     }
-  }, [isPlaying, capturedType]);
+  }, [capturedType, isKEngineActive]);
 
-
-
-  // FIXED: Recording with baked-in effects when template is active
+  // Recording (baked-in effects when template is active - legacy live canvas path)
   const startRecording = async () => {
     setError(null);
     if (!streamRef.current) await startStream();
@@ -858,38 +925,34 @@ export default function FullscreenCreator({
       setError("Format vidéo non supporté sur cet appareil.");
       return;
     }
-    
+
     try {
       chunksRef.current = [];
-      
-      // Determine which stream to record
+
       let recordStream = streamRef.current;
-      
-      // If an advanced template (non-neutral) is active, capture from canvas for baked-in effects
-      if (activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' && liveCanvasRef.current) {
+
+      // If legacy advanced template live canvas is used, bake effects by capturing canvas
+      const legacyActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
+      if (legacyActive && liveCanvasRef.current) {
         try {
           const canvasStream = liveCanvasRef.current.captureStream(30);
-          // Add audio tracks from microphone
           const audioTracks = streamRef.current.getAudioTracks();
-          audioTracks.forEach(track => canvasStream.addTrack(track));
+          audioTracks.forEach((track) => canvasStream.addTrack(track));
           recordStream = canvasStream;
-          console.log('[FullscreenCreator] Recording from canvas stream (baked-in effects)');
-        } catch (canvasErr) {
-          console.warn('[FullscreenCreator] Canvas capture failed, using camera stream:', canvasErr);
-        }
+        } catch {}
       }
-      
+
       const rec = new MediaRecorder(recordStream, { mimeType });
       recorderRef.current = rec;
+
       rec.ondataavailable = (ev) => {
         if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
       };
+
       rec.start(200);
       setIsRecording(true);
       setToast("● REC");
-      console.log('[FullscreenCreator] Recording started with MIME:', mimeType);
     } catch (e: any) {
-      console.error('[FullscreenCreator] Recording error:', e);
       setError(e?.message || "Impossible de démarrer l'enregistrement.");
     }
   };
@@ -898,28 +961,32 @@ export default function FullscreenCreator({
     const rec = recorderRef.current;
     if (!rec) throw new Error("Recorder not initialized");
     if (rec.state === "inactive") throw new Error("Recorder already stopped");
-    
-    // CRITICAL FIX: Request any pending data before stopping
+
     try {
-      if (typeof rec.requestData === 'function') {
-        rec.requestData();
-        // Small delay to let data arrive
-        await new Promise(r => setTimeout(r, 100));
+      if (typeof (rec as any).requestData === "function") {
+        (rec as any).requestData();
+        await new Promise((r) => setTimeout(r, 100));
       }
     } catch {}
-    
+
     const blob: Blob = await new Promise((resolve, reject) => {
       rec.onstop = () => {
         try {
           const type = rec.mimeType || "video/webm";
           const b = new Blob(chunksRef.current, { type });
-          console.log('[FullscreenCreator] Recording stopped, blob size:', b.size, 'type:', type);
           if (!b.size) reject(new Error("Empty recording"));
           else resolve(b);
-        } catch (e) { reject(e); }
+        } catch (e) {
+          reject(e);
+        }
       };
-      try { rec.stop(); } catch (e) { reject(e); }
+      try {
+        rec.stop();
+      } catch (e) {
+        reject(e);
+      }
     });
+
     recorderRef.current = null;
     chunksRef.current = [];
     setIsRecording(false);
@@ -934,6 +1001,87 @@ export default function FullscreenCreator({
     setToast(null);
   };
 
+  // Create/replace K-Engine binding after capture (best-effort auto bind)
+  const bindCaptureToKEngine = useCallback(
+    async (blob: Blob, type: "video" | "photo" | "audio") => {
+      const tpl = kEngine.getState().template;
+      if (!tpl) return;
+
+      const slotId = pickSlotForCapture(tpl, type);
+      if (!slotId) return;
+
+      const asset: BoundAsset = {
+        slotId,
+        kind: "recording",
+        blob,
+        mime: blob.type || (type === "photo" ? "image/jpeg" : type === "audio" ? "audio/*" : "video/*"),
+      };
+
+      try {
+        // Bind + run pipeline
+        setIsProcessingTemplate(true);
+        setProcessingProgress({ percent: 10, message_fr: "Analyse du média…" });
+
+        await kEngine.bindUserMedia(slotId, asset);
+
+        setProcessingProgress({ percent: 30, message_fr: "Préparation IA…" });
+
+        await kEngine.runAIPipeline((p, step) => {
+          setProcessingProgress({
+            percent: clamp(30 + Math.round((p / 100) * 60), 0, 95),
+            message_fr: step ? `IA: ${step}` : "IA en cours…",
+          });
+        });
+
+        setProcessingProgress({ percent: 100, message_fr: "Prêt ✓" });
+        setTimeout(() => {
+          setIsProcessingTemplate(false);
+          setProcessingProgress(null);
+        }, 450);
+
+        // Reset time for preview
+        kEngine.setTime(0);
+      } catch (e: any) {
+        setIsProcessingTemplate(false);
+        setProcessingProgress(null);
+        setError(e?.message || "Échec pipeline IA");
+      }
+    },
+    []
+  );
+
+  const finishCapture = useCallback(
+    async (blob: Blob, type: "video" | "photo" | "audio", duration: number) => {
+      stopStream();
+
+      setCapturedBlob(blob);
+      setCapturedType(type);
+
+      // Create initial segment WITH blob for upload
+      const seg: MiniTimelineSegment = {
+        id: `${Date.now()}`,
+        type: type === "video" ? "video" : "photo",
+        duration,
+        startTime: 0,
+        endTime: duration,
+        isMuted: false,
+        volume: 100,
+        blob,
+      };
+
+      setSegments([seg]);
+      setActiveSegmentId(seg.id);
+      setHasCapture(true);
+      setDrawer("none");
+
+      // If K-Engine active, auto-bind and run pipeline (fallback safe)
+      if (isKEngineActive) {
+        await bindCaptureToKEngine(blob, type);
+      }
+    },
+    [bindCaptureToKEngine, isKEngineActive, stopStream]
+  );
+
   const onPressCapture = async () => {
     setError(null);
 
@@ -942,7 +1090,7 @@ export default function FullscreenCreator({
         await runTimerIfNeeded();
         stopStream();
         const b = await renderTextToImage(caption || "Texte", canvasRatio, effects);
-        finishCapture(b, "photo", 5);
+        await finishCapture(b, "photo", 5);
         return;
       } catch (e: any) {
         setError(e?.message || "Erreur texte");
@@ -955,21 +1103,21 @@ export default function FullscreenCreator({
         await runTimerIfNeeded();
         if (!videoRef.current) throw new Error("Preview not ready");
         const b = await capturePhotoFromVideo(videoRef.current, canvasRatio, effects);
-        finishCapture(b, "photo", 5);
+        await finishCapture(b, "photo", 5);
         return;
       } catch (e: any) {
         setError(e?.message || "Erreur photo");
         return;
       }
     }
-    
+
     if (mode === "burst") {
       if (burstIntervalRef.current) {
         window.clearInterval(burstIntervalRef.current);
         burstIntervalRef.current = null;
         setIsRecording(false);
         if (burstPhotos.length > 0) {
-          finishCapture(burstPhotos[burstPhotos.length - 1], "photo", 5);
+          await finishCapture(burstPhotos[burstPhotos.length - 1], "photo", 5);
         }
         setBurstPhotos([]);
         setBurstCount(0);
@@ -981,16 +1129,16 @@ export default function FullscreenCreator({
         setBurstPhotos([]);
         setBurstCount(0);
         setToast("● BURST");
-        
+
         const captureOne = async () => {
           if (!videoRef.current) return;
           try {
             const b = await capturePhotoFromVideo(videoRef.current, canvasRatio, effects);
-            setBurstPhotos(prev => [...prev, b]);
-            setBurstCount(prev => prev + 1);
+            setBurstPhotos((prev) => [...prev, b]);
+            setBurstCount((prev) => prev + 1);
           } catch {}
         };
-        
+
         captureOne();
         burstIntervalRef.current = window.setInterval(captureOne, 300);
         return;
@@ -1005,7 +1153,7 @@ export default function FullscreenCreator({
         } else {
           const b = await stopRecordingToBlob();
           stopStream();
-          finishCapture(b, "video", lengthSec);
+          await finishCapture(b, "video", lengthSec);
         }
       } catch (e: any) {
         setError(e?.message || "Erreur vidéo");
@@ -1014,32 +1162,19 @@ export default function FullscreenCreator({
     }
   };
 
-  // Finish capture and switch to edit mode (same screen)
-  const finishCapture = (blob: Blob, type: "video" | "photo" | "audio", duration: number) => {
-    // FIXED: Stop camera stream BEFORE transitioning to edit mode
-    stopStream();
-    
-    setCapturedBlob(blob);
-    setCapturedType(type);
-    
-    // Create initial segment WITH blob for upload
-    const seg: MiniTimelineSegment = {
-      id: `${Date.now()}`,
-      type: type === "video" ? "video" : "photo",
-      duration,
-      startTime: 0,
-      endTime: duration,
-      isMuted: false,
-      volume: 100,
-      blob: blob, // Store blob for upload
-    };
-    setSegments([seg]);
-    setActiveSegmentId(seg.id);
-    setHasCapture(true);
-    setDrawer("none");
-  };
-
   const retake = () => {
+    // Reset K-Engine if active
+    if (isKEngineActive) {
+      try {
+        kEngine.pause();
+        kEngine.setTime(0);
+        // keep template loaded, but clear bound assets for a clean retake
+        // simplest: reload same template instance
+        const tpl = kEngine.getState().template;
+        if (tpl) kEngine.loadTemplate(tpl);
+      } catch {}
+    }
+
     setCapturedBlob(null);
     setCapturedType("video");
     setPreviewUrl("");
@@ -1055,36 +1190,41 @@ export default function FullscreenCreator({
 
   // ============= EDITING ACTIONS =============
   const saveForUndo = () => {
-    setUndoStack(prev => [...prev.slice(-19), segments]);
+    setUndoStack((prev) => [...prev.slice(-19), segments]);
     setRedoStack([]);
   };
 
   const handleUndo = () => {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
-    setRedoStack(r => [...r, segments]);
+    setRedoStack((r) => [...r, segments]);
     setSegments(prev);
-    setUndoStack(u => u.slice(0, -1));
+    setUndoStack((u) => u.slice(0, -1));
   };
 
   const handleRedo = () => {
     if (redoStack.length === 0) return;
     const next = redoStack[redoStack.length - 1];
-    setUndoStack(u => [...u, segments]);
+    setUndoStack((u) => [...u, segments]);
     setSegments(next);
-    setRedoStack(r => r.slice(0, -1));
+    setRedoStack((r) => r.slice(0, -1));
   };
 
   const handleSplit = (segmentId: string, time: number) => {
     saveForUndo();
-    const seg = segments.find(s => s.id === segmentId);
+    const seg = segments.find((s) => s.id === segmentId);
     if (!seg || time <= seg.startTime || time >= seg.endTime) return;
-    
+
     const seg1: MiniTimelineSegment = { ...seg, endTime: time, duration: time - seg.startTime };
-    const seg2: MiniTimelineSegment = { ...seg, id: `${Date.now()}`, startTime: time, duration: seg.endTime - time };
-    
-    setSegments(prev => {
-      const idx = prev.findIndex(s => s.id === segmentId);
+    const seg2: MiniTimelineSegment = {
+      ...seg,
+      id: `${Date.now()}`,
+      startTime: time,
+      duration: seg.endTime - time,
+    };
+
+    setSegments((prev) => {
+      const idx = prev.findIndex((s) => s.id === segmentId);
       const newSegs = [...prev];
       newSegs.splice(idx, 1, seg1, seg2);
       return newSegs;
@@ -1094,77 +1234,45 @@ export default function FullscreenCreator({
 
   const handleTrim = (segmentId: string, start: number, end: number) => {
     saveForUndo();
-    setSegments(prev => prev.map(s => 
-      s.id === segmentId 
-        ? { ...s, startTime: start, endTime: end, duration: end - start }
-        : s
-    ));
+    setSegments((prev) =>
+      prev.map((s) => (s.id === segmentId ? { ...s, startTime: start, endTime: end, duration: end - start } : s))
+    );
   };
 
   const handleVolumeChange = (segmentId: string, volume: number) => {
     saveForUndo();
-    setSegments(prev => prev.map(s => 
-      s.id === segmentId ? { ...s, volume } : s
-    ));
+    setSegments((prev) => prev.map((s) => (s.id === segmentId ? { ...s, volume } : s)));
   };
 
   const handleToggleMute = (segmentId: string) => {
     saveForUndo();
-    setSegments(prev => prev.map(s => 
-      s.id === segmentId ? { ...s, isMuted: !s.isMuted } : s
-    ));
+    setSegments((prev) => prev.map((s) => (s.id === segmentId ? { ...s, isMuted: !s.isMuted } : s)));
   };
 
   const handleDelete = (segmentId: string) => {
     if (segments.length <= 1) return;
     saveForUndo();
-    setSegments(prev => prev.filter(s => s.id !== segmentId));
+    setSegments((prev) => prev.filter((s) => s.id !== segmentId));
     setActiveSegmentId(segments[0]?.id || null);
   };
 
   const handleDuplicate = (segmentId: string) => {
     saveForUndo();
-    const seg = segments.find(s => s.id === segmentId);
+    const seg = segments.find((s) => s.id === segmentId);
     if (!seg) return;
     const newSeg: MiniTimelineSegment = { ...seg, id: `${Date.now()}` };
-    setSegments(prev => [...prev, newSeg]);
+    setSegments((prev) => [...prev, newSeg]);
     setToast("Dupliqué 📋");
   };
 
   const handleSeek = (time: number) => {
     setCurrentTime(time);
+    if (isKEngineActive) {
+      kEngine.setTime(time);
+      return;
+    }
     if (previewVideoRef.current && capturedType === "video") {
       previewVideoRef.current.currentTime = time;
-    }
-  };
-
-  // togglePlayPause is defined earlier (before early return) to maintain hook order
-
-  // ============= PUBLISH =============
-  const publish = async () => {
-    try {
-      setError(null);
-      if (!segments.length) throw new Error("Aucun contenu à publier.");
-      
-      const challenge = effects.challengeId ? CHALLENGES.find(c => c.id === effects.challengeId) : null;
-      const finalCaption = challenge ? `${caption} ${challenge.hashtag}`.trim() : caption;
-      
-      if (onPublish) {
-        await onPublish({ 
-          segments, 
-          caption: finalCaption, 
-          topTab, 
-          mode, 
-          canvasRatio, 
-          selectedFilterId: effects.filterId,
-          effects,
-          challengeHashtag: challenge?.hashtag,
-        });
-      }
-      setToast("Publié ✓");
-      onClose?.();
-    } catch (e: any) {
-      setError(e?.message || "Erreur publication");
     }
   };
 
@@ -1192,7 +1300,7 @@ export default function FullscreenCreator({
   };
 
   // ============= STICKER MANAGEMENT =============
-  const addSticker = (sticker: Omit<StickerType, 'id'>) => {
+  const addSticker = (sticker: Omit<StickerType, "id">) => {
     const newSticker: StickerType = {
       ...sticker,
       id: `sticker-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -1202,30 +1310,140 @@ export default function FullscreenCreator({
 
   const toggleAREffect = (id: string) => {
     const current = effects.arEffects;
-    const newEffects = current.includes(id)
-      ? current.filter(e => e !== id)
-      : [...current, id];
+    const newEffects = current.includes(id) ? current.filter((e) => e !== id) : [...current, id];
     updateEffects({ arEffects: newEffects });
   };
 
-  // Album file handler
-  const handleAlbumSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Album handler
+  const handleAlbumSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    const isVideo = file.type.startsWith('video/');
-    const blob = file as Blob;
-    
+
+    const isVideo = file.type.startsWith("video/");
     stopStream();
-    finishCapture(blob, isVideo ? "video" : "photo", isVideo ? lengthSec : 5);
-    
-    if (albumInputRef.current) albumInputRef.current.value = '';
+    await finishCapture(file as Blob, isVideo ? "video" : "photo", isVideo ? lengthSec : 5);
+
+    if (albumInputRef.current) albumInputRef.current.value = "";
   };
 
-  const activeSegment = segments.find(s => s.id === activeSegmentId);
+  const activeSegment = segments.find((s) => s.id === activeSegmentId);
+
+  // ============= PUBLISH =============
+  const publish = async () => {
+    try {
+      setError(null);
+      if (!segments.length) throw new Error("Aucun contenu à publier.");
+
+      const challenge = effects.challengeId ? CHALLENGES.find((c) => c.id === effects.challengeId) : null;
+      const finalCaption = challenge ? `${caption} ${challenge.hashtag}`.trim() : caption;
+
+      // If K-Engine active: generate export job (FFmpeg command + inputs + meta)
+      const exportJob = isKEngineActive ? kEngine.exportJob() : undefined;
+      const engineSnapshot = isKEngineActive ? kEngine.getState() : undefined;
+
+      if (onPublish) {
+        await onPublish({
+          segments,
+          caption: finalCaption,
+          topTab,
+          mode,
+          canvasRatio,
+          selectedFilterId: effects.filterId,
+          effects,
+          challengeHashtag: challenge?.hashtag,
+          exportJob,
+          engineState: engineSnapshot,
+        });
+      }
+
+      setToast("Publié ✓");
+      onClose?.();
+    } catch (e: any) {
+      setError(e?.message || "Erreur publication");
+    }
+  };
+
+  // ============= TEMPLATE selection handler (supports both AdvancedTemplate and TemplateManifest) =============
+  const onSelectAnyTemplate = useCallback(
+    (tpl: any) => {
+      setActiveTemplateAny(tpl);
+
+      // Also update the simple overlay templateId so TemplateOverlay stays coherent
+      if (tpl?.id) updateEffects({ templateId: tpl.id });
+
+      // If TemplateManifest => load into K-Engine
+      if (isTemplateManifest(tpl)) {
+        try {
+          kEngine.loadTemplate(tpl);
+          kEngine.setTime(0);
+          kEngine.pause();
+        } catch (e: any) {
+          setError(e?.message || "Impossible de charger le template K-Engine");
+        }
+
+        // best-effort: align ratio + duration
+        setCanvasRatio((tpl.ratio as CanvasRatio) || "9:16");
+        const dur = typeof tpl.duration === "number" ? tpl.duration : 30;
+        if (dur <= 15) setLengthSec(15);
+        else if (dur <= 30) setLengthSec(30);
+        else if (dur <= 60) setLengthSec(60);
+        else setLengthSec(180);
+
+        // pick a reasonable mode based on slots
+        const hasVideo = tpl.slots.some((s) => s.type === "video");
+        const hasPhoto = tpl.slots.some((s) => s.type === "photo");
+        if (hasVideo) setMode("video");
+        else if (hasPhoto) setMode("photo");
+
+        setDrawer("none");
+        setToast(`✨ ${tpl.name}`);
+        return;
+      }
+
+      // Else legacy AdvancedTemplate behavior (voice instructions etc.)
+      const meta = asTemplateMeta(tpl);
+      const firstDuration = meta.supportedDurations?.[0];
+      if (firstDuration) {
+        const durationSec = durationToSeconds(firstDuration);
+        if (durationSec <= 15) setLengthSec(15);
+        else if (durationSec <= 30) setLengthSec(30);
+        else if (durationSec <= 60) setLengthSec(60);
+        else setLengthSec(180);
+      }
+
+      const inputs = meta.inputs || [];
+      const hasVideo = inputs.some((i: any) => i.type === "video");
+      const hasPhotoOnly = inputs.length > 0 && inputs.every((i: any) => i.type === "photo" || i.type === "audio");
+      const hasAudioOnly = inputs.length > 0 && inputs.every((i: any) => i.type === "audio");
+
+      if (hasAudioOnly) setMode("video");
+      else if (hasPhotoOnly && !hasVideo) setMode("photo");
+      else setMode("video");
+
+      // stop any K-Engine template if switching to legacy
+      try {
+        if (kEngine.getState().loaded) kEngine.clearTemplate();
+      } catch {}
+
+      setDrawer("none");
+      setToast(`${meta.emoji} ${meta.label} activé`);
+
+      // voice instruction (legacy)
+      if (meta.voiceInstructions.length > 0) {
+        setTimeout(() => {
+          try {
+            templateEngine.speakInstruction(meta.voiceInstructions[0], "fr");
+          } catch {}
+        }, 500);
+      }
+    },
+    [updateEffects]
+  );
 
   // ============= RENDER =============
   if (!open) return null;
+
+  const uiIsPlaying = isKEngineActive ? kState.isPlaying : isPlaying;
 
   return (
     <div className="fixed inset-0 z-[100] bg-black text-white select-none">
@@ -1261,33 +1479,21 @@ export default function FullscreenCreator({
                 <div className="rounded-3xl bg-white/5 border border-white/10 p-4 backdrop-blur-xl">
                   <div className="text-white font-semibold text-lg flex items-center gap-2">
                     Publier
-                    {selectedTemplate.id !== 'free' && (
+                    {effects.templateId !== "free" && (
                       <span className="text-sm px-2 py-0.5 rounded-full bg-white/10">
-                        {selectedTemplate.emoji} {selectedTemplate.label}
+                        {activeMeta.emoji} {activeMeta.label}
                       </span>
                     )}
                   </div>
 
                   <div className="mt-4 rounded-2xl bg-black/40 border border-white/10 p-2 aspect-[9/16] max-h-[200px] overflow-hidden relative">
-                    {capturedType === "video" && previewUrl ? (
-                      <video
-                        src={previewUrl}
-                        className="w-full h-full object-contain rounded-xl"
-                        playsInline
-                        muted
-                        preload="metadata"
-                      />
-                    ) : previewUrl ? (
-                      <img
-                        src={previewUrl}
-                        className="w-full h-full object-contain rounded-xl"
-                        alt="aperçu média"
-                      />
+                    {hasCapture ? (
+                      <canvas className="w-full h-full object-contain rounded-xl" ref={previewCanvasRef as any} />
                     ) : null}
 
-                    {selectedTemplate.id !== 'free' && (
+                    {effects.templateId !== "free" && (
                       <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-xs">
-                        {selectedTemplate.emoji}
+                        {activeMeta.emoji}
                       </div>
                     )}
                   </div>
@@ -1296,7 +1502,7 @@ export default function FullscreenCreator({
                     <div className="mt-3 px-3 py-2 rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 flex items-center gap-2">
                       <Flame className="h-4 w-4 text-orange-400" />
                       <span className="text-sm text-orange-300">
-                        {CHALLENGES.find(c => c.id === effects.challengeId)?.hashtag}
+                        {CHALLENGES.find((c) => c.id === effects.challengeId)?.hashtag}
                       </span>
                     </div>
                   )}
@@ -1315,6 +1521,14 @@ export default function FullscreenCreator({
                     <Send className="h-5 w-5" />
                     Publier
                   </button>
+
+                  {isKEngineActive && (
+                    <div className="mt-3 text-xs text-white/60 bg-white/5 border border-white/10 rounded-xl p-3">
+                      <div className="font-semibold text-white/80 mb-1">Export K-Engine</div>
+                      <div>FFmpeg command générée via exportJob().</div>
+                      <div className="mt-1">Durée: {kState.template?.duration ?? 0}s • Ratio: {kState.template?.ratio}</div>
+                    </div>
+                  )}
 
                   {error && (
                     <div className="mt-3 text-sm text-red-300 flex items-center gap-2">
@@ -1336,13 +1550,9 @@ export default function FullscreenCreator({
         onPointerMove={onSurfaceMove}
         onPointerUp={onSurfaceUp}
       >
-        {/* MEDIA ZONE: Camera (live) or Captured Media (edit) */}
-        <div 
-          className={cn("absolute inset-0", graphicsClasses)}
-          style={graphicsStyles}
-        >
+        {/* MEDIA ZONE */}
+        <div className={cn("absolute inset-0", graphicsClasses)} style={graphicsStyles}>
           {!hasCapture ? (
-            // LIVE CAMERA
             <>
               <video
                 ref={videoRef}
@@ -1350,16 +1560,16 @@ export default function FullscreenCreator({
                 style={{
                   filter: cssFilter,
                   transform: facing === "user" ? "scaleX(-1)" : "none",
-                  // Show video directly when no template or neutral template selected
-                  opacity: activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' ? 0 : 1,
+                  // show video directly when not using legacy live canvas effects
+                  opacity: !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none" ? 0 : 1,
                 }}
                 playsInline
                 muted
                 autoPlay
               />
 
-              {/* When an advanced template (non-neutral) is active, we render a canvas that shows the realtime processed preview */}
-              {activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' && (
+              {/* Legacy realtime effects path */}
+              {!isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none" && (
                 <canvas
                   ref={liveCanvasRef}
                   className="absolute inset-0 w-full h-full pointer-events-none"
@@ -1368,18 +1578,13 @@ export default function FullscreenCreator({
                 />
               )}
             </>
-          ) : (
-            // CAPTURED MEDIA
-            capturedType === "video" ? (
-              <>
-                {/* Visible preview surface (always canvas, works everywhere) */}
-                <canvas
-                  ref={previewCanvasRef}
-                  className="absolute inset-0 w-full h-full bg-black"
-                  aria-hidden="true"
-                />
+          ) : capturedType === "video" ? (
+            <>
+              {/* Visible preview surface (canvas) */}
+              <canvas ref={previewCanvasRef} className="absolute inset-0 w-full h-full bg-black" aria-hidden="true" />
 
-                {/* Hidden video used only as a decoder + time source for play/pause */}
+              {/* Hidden decoder video (only for non K-Engine path) */}
+              {!isKEngineActive && (
                 <video
                   ref={previewVideoRef}
                   className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
@@ -1388,70 +1593,62 @@ export default function FullscreenCreator({
                   preload="auto"
                   src={previewUrl || undefined}
                 />
+              )}
 
-                {/* Loading indicator while video loads */}
-                {hasCapture && previewUrl && !previewError && !previewReady && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black pointer-events-none">
-                    <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
+              {/* Loading indicator */}
+              {hasCapture && previewUrl && !previewError && !previewReady && !isKEngineActive && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black pointer-events-none">
+                  <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
 
-                {/* Error state */}
-                {previewError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 p-6">
-                    <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
-                    <p className="text-white text-center mb-4">Vidéo illisible sur cet appareil</p>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => {
-                          setPreviewError(false);
-                          // Force re-init
-                          const url = previewUrl;
-                          setPreviewUrl('');
-                          setTimeout(() => setPreviewUrl(url), 100);
-                        }}
-                        className="px-4 py-2 rounded-full bg-white/10 text-white border border-white/20"
-                      >
-                        Réessayer
-                      </button>
-                      <button
-                        onClick={retake}
-                        className="px-4 py-2 rounded-full bg-orange-500 text-white"
-                      >
-                        Reprendre
-                      </button>
-                    </div>
+              {/* Error state */}
+              {previewError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 p-6">
+                  <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+                  <p className="text-white text-center mb-4">Vidéo illisible sur cet appareil</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setPreviewError(false);
+                        const url = previewUrl;
+                        setPreviewUrl("");
+                        setTimeout(() => setPreviewUrl(url), 100);
+                      }}
+                      className="px-4 py-2 rounded-full bg-white/10 text-white border border-white/20"
+                    >
+                      Réessayer
+                    </button>
+                    <button onClick={retake} className="px-4 py-2 rounded-full bg-orange-500 text-white">
+                      Reprendre
+                    </button>
                   </div>
-                )}
-              </>
-            ) : (
-              <img
-                src={previewUrl}
-                className="absolute inset-0 w-full h-full object-contain bg-black"
-                alt="captured"
-              />
-            )
+                </div>
+              )}
+            </>
+          ) : (
+            <img src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-black" alt="captured" />
           )}
         </div>
 
-        {/* Template overlay */}
+        {/* Simple template overlay */}
         <TemplateOverlay templateId={effects.templateId} />
 
-        {/* Advanced template realtime effects - skip for neutral template */}
-        {activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' && !hasCapture && (
+        {/* Legacy realtime effects overlay */}
+        {!isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none" && !hasCapture && (
           <LiveTemplateEffect
-            template={activeAdvancedTemplate}
+            template={activeTemplateAny as any}
             videoRef={videoRef}
             canvasRef={liveCanvasRef}
             isRecording={isRecording}
             recordingDuration={recordingElapsed}
-            currentStep={templateCapturedInputs}
+            currentStep={0}
           />
         )}
 
         {/* Active Template Indicator Badge */}
         <AnimatePresence>
-          {activeAdvancedTemplate && !hasCapture && !isRecording && (
+          {!!activeTemplateAny && !hasCapture && !isRecording && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1462,15 +1659,11 @@ export default function FullscreenCreator({
                 onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-xl border transition-all",
-                  activeAdvancedTemplate.id === 'none'
-                    ? "bg-black/40 border-white/20"
-                    : `bg-gradient-to-r ${activeAdvancedTemplate.color} border-white/30`
+                  activeMeta.id === "none" ? "bg-black/40 border-white/20" : `bg-gradient-to-r ${activeMeta.color} border-white/30`
                 )}
               >
-                <span className="text-xl">{activeAdvancedTemplate.emoji}</span>
-                <span className="text-white text-sm font-medium max-w-[100px] truncate">
-                  {activeAdvancedTemplate.label_fr}
-                </span>
+                <span className="text-xl">{activeMeta.emoji}</span>
+                <span className="text-white text-sm font-medium max-w-[120px] truncate">{activeMeta.label}</span>
                 <span className="text-white/60 text-xs">✏️</span>
               </button>
             </motion.div>
@@ -1558,9 +1751,8 @@ export default function FullscreenCreator({
           </div>
         </div>
 
-        {/* ===== RIGHT RAIL (UNIFIED - same before and after capture) ===== */}
+        {/* ===== RIGHT RAIL ===== */}
         <div className="absolute right-3 top-24 bottom-48 z-30 flex flex-col items-center justify-start gap-2 overflow-y-auto py-2">
-          {/* Common tools (always visible) */}
           {!hasCapture && (
             <>
               <RailButton
@@ -1586,12 +1778,12 @@ export default function FullscreenCreator({
               />
             </>
           )}
-          
+
           <RailButton
             icon={<SunMedium className="h-5 w-5" />}
             label="Beautify"
             onClick={() => setDrawer(drawer === "beautify" ? "none" : "beautify")}
-            active={drawer === "beautify" || effects.filterId !== 'none'}
+            active={drawer === "beautify" || effects.filterId !== "none"}
           />
           <RailButton
             icon={<Layers className="h-5 w-5" />}
@@ -1624,10 +1816,9 @@ export default function FullscreenCreator({
             icon={<Layers className="h-5 w-5" />}
             label="Template"
             onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
-            active={drawer === "template" || effects.templateId !== 'free'}
+            active={drawer === "template" || effects.templateId !== "free"}
           />
 
-          {/* EDITING TOOLS (only after capture) */}
           {hasCapture && (
             <>
               <div className="w-8 h-px bg-white/20 my-1" />
@@ -1687,17 +1878,17 @@ export default function FullscreenCreator({
           )}
         </AnimatePresence>
 
-        {/* ===== ADVANCED TEMPLATE CAPTURE OVERLAY ===== */}
-        {activeAdvancedTemplate && activeAdvancedTemplate.id !== 'none' && !hasCapture && (
+        {/* ===== ADVANCED TEMPLATE CAPTURE OVERLAY (legacy only) ===== */}
+        {!isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none" && !hasCapture && (
           <TemplateCaptureOverlay
-            template={activeAdvancedTemplate}
+            template={activeTemplateAny as any}
             isRecording={isRecording}
             currentInputIndex={0}
-            capturedInputs={templateCapturedInputs}
+            capturedInputs={0}
           />
         )}
 
-        {/* ===== TEMPLATE PROCESSING OVERLAY ===== */}
+        {/* ===== TEMPLATE PROCESSING OVERLAY (K-Engine pipeline) ===== */}
         <AnimatePresence>
           {isProcessingTemplate && processingProgress && (
             <motion.div
@@ -1706,18 +1897,20 @@ export default function FullscreenCreator({
               exit={{ opacity: 0 }}
               className="absolute inset-0 z-50 bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center"
             >
-              <div className={`w-24 h-24 rounded-full bg-gradient-to-r ${activeAdvancedTemplate?.color || 'from-amber-500 to-orange-500'} flex items-center justify-center mb-6`}>
-                <span className="text-4xl">{activeAdvancedTemplate?.emoji || '✨'}</span>
+              <div
+                className={`w-24 h-24 rounded-full bg-gradient-to-r ${
+                  activeMeta.color || "from-amber-500 to-orange-500"
+                } flex items-center justify-center mb-6`}
+              >
+                <span className="text-4xl">{activeMeta.emoji || "✨"}</span>
               </div>
               <h3 className="text-white text-xl font-bold mb-2">{processingProgress.message_fr}</h3>
-              {processingProgress.message_ba && (
-                <p className="text-white/60 text-sm mb-6">{processingProgress.message_ba}</p>
-              )}
+              {processingProgress.message_ba && <p className="text-white/60 text-sm mb-6">{processingProgress.message_ba}</p>}
               <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${processingProgress.percent}%` }}
-                  className={`h-full bg-gradient-to-r ${activeAdvancedTemplate?.color || 'from-amber-500 to-orange-500'}`}
+                  className={`h-full bg-gradient-to-r ${activeMeta.color || "from-amber-500 to-orange-500"}`}
                 />
               </div>
               <p className="text-white/40 text-xs mt-2">{processingProgress.percent}%</p>
@@ -1726,7 +1919,7 @@ export default function FullscreenCreator({
         </AnimatePresence>
 
         {/* ===== TEXT MODE INPUT ===== */}
-        {mode === "text" && !hasCapture && !activeAdvancedTemplate && (
+        {mode === "text" && !hasCapture && (!activeTemplateAny || isTemplateManifest(activeTemplateAny)) && (
           <div className="absolute inset-0 flex items-center justify-center z-10 bg-gradient-to-br from-orange-900/80 via-red-900/80 to-purple-900/80">
             <div className="w-full max-w-md px-6">
               <textarea
@@ -1735,7 +1928,7 @@ export default function FullscreenCreator({
                 placeholder="Tapez votre texte ici..."
                 autoFocus
                 className="w-full min-h-[200px] bg-white/10 backdrop-blur-xl rounded-3xl p-6 text-white text-2xl font-semibold text-center placeholder:text-white/40 border border-white/20 outline-none resize-none"
-                style={{ caretColor: 'white' }}
+                style={{ caretColor: "white" }}
               />
               <p className="text-center text-white/60 text-sm mt-4">Appuyez sur le bouton pour capturer</p>
             </div>
@@ -1752,9 +1945,7 @@ export default function FullscreenCreator({
                   onClick={() => setMode(m)}
                   className={cn(
                     "px-4 py-2 rounded-full text-sm font-medium transition-all",
-                    mode === m
-                      ? "bg-white text-black"
-                      : "text-white/70 hover:text-white"
+                    mode === m ? "bg-white text-black" : "text-white/70 hover:text-white"
                   )}
                 >
                   {m === "burst" ? "Burst" : m === "photo" ? "Photo" : m === "video" ? "Vidéo" : "Texte"}
@@ -1788,18 +1979,14 @@ export default function FullscreenCreator({
         <div className="absolute left-0 right-0 bottom-20 z-20 px-6">
           <div className="flex items-center justify-between max-w-sm mx-auto">
             {!hasCapture ? (
-              // LIVE MODE
               <>
-                <button
-                  onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
-                  className="flex flex-col items-center gap-1"
-                >
-                  <div className={cn(
-                    "w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-all",
-                    effects.arEffects.length > 0 || effects.challengeId
-                      ? "bg-white/20 border-white"
-                      : "bg-black/40 border-white/10"
-                  )}>
+                <button onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")} className="flex flex-col items-center gap-1">
+                  <div
+                    className={cn(
+                      "w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-all",
+                      effects.arEffects.length > 0 || effects.challengeId ? "bg-white/20 border-white" : "bg-black/40 border-white/10"
+                    )}
+                  >
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <span className="text-[10px] text-white/80">Magic</span>
@@ -1810,9 +1997,7 @@ export default function FullscreenCreator({
                     onClick={onPressCapture}
                     className={cn(
                       "w-[72px] h-[72px] rounded-full flex items-center justify-center border-4 transition-all",
-                      isRecording
-                        ? "bg-red-500 border-red-300/50 scale-110"
-                        : "bg-gradient-to-br from-orange-500 to-red-500 border-white/30 hover:scale-105"
+                      isRecording ? "bg-red-500 border-red-300/50 scale-110" : "bg-gradient-to-br from-orange-500 to-red-500 border-white/30 hover:scale-105"
                     )}
                   >
                     {isRecording ? (
@@ -1832,10 +2017,7 @@ export default function FullscreenCreator({
                   )}
                 </div>
 
-                <button
-                  onClick={() => albumInputRef.current?.click()}
-                  className="flex flex-col items-center gap-1"
-                >
+                <button onClick={() => albumInputRef.current?.click()} className="flex flex-col items-center gap-1">
                   <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10">
                     <FolderOpen className="h-5 w-5" />
                   </div>
@@ -1843,35 +2025,24 @@ export default function FullscreenCreator({
                 </button>
               </>
             ) : (
-              // EDIT MODE
               <>
-                <button
-                  onClick={retake}
-                  className="flex flex-col items-center gap-1"
-                >
+                <button onClick={retake} className="flex flex-col items-center gap-1">
                   <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10">
                     <RotateCcw className="h-5 w-5" />
                   </div>
                   <span className="text-[10px] text-white/80">Reprendre</span>
                 </button>
 
-                {capturedType === "video" && (
+                {(capturedType === "video" || isKEngineActive) && (
                   <button
                     onClick={togglePlayPause}
                     className="w-[72px] h-[72px] rounded-full bg-white/20 backdrop-blur-xl flex items-center justify-center border-4 border-white/30"
                   >
-                    {isPlaying ? (
-                      <Pause className="h-8 w-8 text-white" />
-                    ) : (
-                      <Play className="h-8 w-8 text-white ml-1" />
-                    )}
+                    {uiIsPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white ml-1" />}
                   </button>
                 )}
 
-                <button
-                  onClick={publish}
-                  className="flex flex-col items-center gap-1"
-                >
+                <button onClick={publish} className="flex flex-col items-center gap-1">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center border border-white/20">
                     <Send className="h-5 w-5" />
                   </div>
@@ -1898,23 +2069,29 @@ export default function FullscreenCreator({
                   key={tab.id}
                   onClick={() => {
                     setTopTab(tab.id);
-                    if (tab.id === '15s') { setLengthSec(15); setMode('video'); }
-                    else if (tab.id === '30s') { setLengthSec(30); setMode('video'); }
-                    else if (tab.id === '45s') { setLengthSec(45 as any); setMode('video'); }
-                    else if (tab.id === '60s') { setLengthSec(60); setMode('video'); }
-                    else if (tab.id === 'story') { setLengthSec(15); setMode('video'); }
-                    else if (tab.id === 'album') { albumInputRef.current?.click(); }
-                    else if (tab.id === 'template') { setDrawer('template'); }
+                    if (tab.id === "15s") {
+                      setLengthSec(15);
+                      setMode("video");
+                    } else if (tab.id === "30s") {
+                      setLengthSec(30);
+                      setMode("video");
+                    } else if (tab.id === "45s") {
+                      setLengthSec(45 as any);
+                      setMode("video");
+                    } else if (tab.id === "60s") {
+                      setLengthSec(60);
+                      setMode("video");
+                    } else if (tab.id === "story") {
+                      setLengthSec(15);
+                      setMode("video");
+                    } else if (tab.id === "album") {
+                      albumInputRef.current?.click();
+                    }
                   }}
-                  className={cn(
-                    "flex flex-col items-center gap-0.5 transition-all px-2",
-                    topTab === tab.id ? "text-white" : "text-white/50"
-                  )}
+                  className={cn("flex flex-col items-center gap-0.5 transition-all px-2", topTab === tab.id ? "text-white" : "text-white/50")}
                 >
                   <span className="text-xs font-medium">{tab.label}</span>
-                  {topTab === tab.id && (
-                    <div className="w-4 h-0.5 bg-white rounded-full" />
-                  )}
+                  {topTab === tab.id && <div className="w-4 h-0.5 bg-white rounded-full" />}
                 </button>
               ))}
             </div>
@@ -1922,9 +2099,7 @@ export default function FullscreenCreator({
         )}
 
         {/* ===== SAFE AREA BOTTOM (after capture) ===== */}
-        {hasCapture && (
-          <div className="absolute left-0 right-0 bottom-0 h-16 z-10 bg-gradient-to-t from-black/80 to-transparent safe-area-bottom" />
-        )}
+        {hasCapture && <div className="absolute left-0 right-0 bottom-0 h-16 z-10 bg-gradient-to-t from-black/80 to-transparent safe-area-bottom" />}
 
         {/* ===== DRAWERS ===== */}
         <AnimatePresence>
@@ -1992,54 +2167,17 @@ export default function FullscreenCreator({
           }}
         />
 
-        {/* Advanced Template Drawer */}
+        {/* Advanced Template Drawer (now supports new manifest output; we accept any and type-guard) */}
         <AdvancedTemplateDrawer
           isOpen={drawer === "template"}
           onClose={() => setDrawer("none")}
-          onSelectTemplate={(template: AdvancedTemplate) => {
-            setActiveAdvancedTemplate(template);
-            setTemplateCapturedInputs(0);
-            
-            const firstDuration = template.supportedDurations[0];
-            const durationSec = durationToSeconds(firstDuration);
-            
-            if (durationSec <= 15) setLengthSec(15);
-            else if (durationSec <= 30) setLengthSec(30);
-            else if (durationSec <= 60) setLengthSec(60);
-            else setLengthSec(180);
-            
-            const hasVideo = template.inputs.some(i => i.type === 'video');
-            const hasPhotoOnly = template.inputs.every(i => i.type === 'photo' || i.type === 'audio');
-            const hasAudioOnly = template.inputs.every(i => i.type === 'audio');
-            
-            if (hasAudioOnly) {
-              setMode("video");
-            } else if (hasPhotoOnly && !hasVideo) {
-              setMode("photo");
-            } else {
-              setMode("video");
-            }
-            
-            updateEffects({ templateId: template.id });
-            setDrawer("none");
-            setToast(`${template.emoji} ${template.label_fr} activé`);
-            
-            if (template.voiceInstructions.length > 0) {
-              setTimeout(() => {
-                templateEngine.speakInstruction(template.voiceInstructions[0], 'fr');
-              }, 500);
-            }
-          }}
+          onSelectTemplate={(tpl: any) => onSelectAnyTemplate(tpl)}
         />
 
         {/* Sticker Picker */}
         <AnimatePresence>
           {showStickerPicker && (
-            <StickerPicker
-              isOpen={showStickerPicker}
-              onClose={() => setShowStickerPicker(false)}
-              onAddSticker={addSticker}
-            />
+            <StickerPicker isOpen={showStickerPicker} onClose={() => setShowStickerPicker(false)} onAddSticker={addSticker} />
           )}
         </AnimatePresence>
 
@@ -2094,9 +2232,7 @@ function RailButton({
       <div
         className={cn(
           "w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-xl transition-all",
-          active
-            ? "bg-white/30 border-2 border-white"
-            : "bg-black/40 border border-white/10"
+          active ? "bg-white/30 border-2 border-white" : "bg-black/40 border border-white/10"
         )}
       >
         {icon}
@@ -2109,10 +2245,10 @@ function RailButton({
 // Recording timer with needle animation
 function RecordingTimer({ maxSeconds }: { maxSeconds: number }) {
   const [elapsed, setElapsed] = useState(0);
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
-      setElapsed(prev => {
+      setElapsed((prev) => {
         if (prev >= maxSeconds) {
           clearInterval(interval);
           return maxSeconds;
@@ -2122,22 +2258,15 @@ function RecordingTimer({ maxSeconds }: { maxSeconds: number }) {
     }, 1000);
     return () => clearInterval(interval);
   }, [maxSeconds]);
-  
+
   const remaining = maxSeconds - elapsed;
-  const progress = elapsed / maxSeconds;
+  const progress = maxSeconds > 0 ? elapsed / maxSeconds : 0;
   const rotation = progress * 360;
-  
+
   return (
     <div className="relative w-24 h-24">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-        <circle
-          cx="50"
-          cy="50"
-          r="45"
-          fill="none"
-          stroke="rgba(255,255,255,0.2)"
-          strokeWidth="4"
-        />
+        <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="4" />
         <circle
           cx="50"
           cy="50"
@@ -2155,22 +2284,17 @@ function RecordingTimer({ maxSeconds }: { maxSeconds: number }) {
           </linearGradient>
         </defs>
       </svg>
-      
-      <div 
-        className="absolute inset-0 flex items-center justify-center"
-        style={{ transform: `rotate(${rotation}deg)` }}
-      >
-        <div className="absolute w-1 h-10 bg-gradient-to-b from-orange-500 to-red-500 rounded-full origin-bottom" 
-          style={{ bottom: '50%' }}
-        />
+
+      <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `rotate(${rotation}deg)` }}>
+        <div className="absolute w-1 h-10 bg-gradient-to-b from-orange-500 to-red-500 rounded-full origin-bottom" style={{ bottom: "50%" }} />
       </div>
-      
+
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-xl flex items-center justify-center border border-white/20">
           <span className="text-white font-bold text-lg">{remaining}s</span>
         </div>
       </div>
-      
+
       <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 animate-pulse" />
     </div>
   );
