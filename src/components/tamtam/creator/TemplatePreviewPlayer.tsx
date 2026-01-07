@@ -169,6 +169,9 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
     onPreviewEnd?.();
   }, [onPreviewEnd]);
 
+  // Use a ref to avoid circular dependency
+  const renderTickRef = useRef<() => void>(() => {});
+  
   const renderTick = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -186,11 +189,16 @@ const TemplatePreviewPlayer: React.FC<TemplatePreviewPlayerProps> = ({
     kEngine.renderFrameToCanvas(canvas, t);
 
     if (p < 1) {
-      rafRef.current = requestAnimationFrame(renderTick);
+      rafRef.current = requestAnimationFrame(renderTickRef.current);
     } else {
       stopPreview();
     }
-  }, [manifest.duration, renderTick, stopPreview]);
+  }, [manifest.duration, stopPreview]);
+
+  // Keep ref in sync
+  useEffect(() => {
+    renderTickRef.current = renderTick;
+  }, [renderTick]);
 
   const startPreview = useCallback(() => {
     setIsPlaying(true);

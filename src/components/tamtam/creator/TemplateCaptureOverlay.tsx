@@ -7,7 +7,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, VolumeX, Check, Camera, Mic, Type, Image } from "lucide-react";
 import { AdvancedTemplate, VoiceInstruction, formatDuration } from "./AdvancedTemplateData";
-import { kEngine, TemplateManifest, SlotDefinition } from "./TemplateEngine";
+import { kEngine, templateEngine, TemplateManifest, SlotDefinition, BoundAsset } from "./TemplateEngine";
 
 // ------------------------------------------------------------
 // Props
@@ -173,8 +173,8 @@ const TemplateCaptureOverlay: React.FC<TemplateCaptureOverlayProps> = ({
     if (!voiceEnabled) return;
 
     setIsSpeaking(true);
-    // Use engine TTS utility (keeps your existing TTS pipeline)
-    await kEngine.speakInstruction(currentInstruction, "fr");
+    // Use templateEngine TTS utility (keeps your existing TTS pipeline)
+    await templateEngine.speakInstruction(currentInstruction, "fr");
     setIsSpeaking(false);
   }, [currentInstruction, voiceEnabled]);
 
@@ -184,7 +184,7 @@ const TemplateCaptureOverlay: React.FC<TemplateCaptureOverlayProps> = ({
       speakCurrentInstruction();
     }
     return () => {
-      kEngine.stopSpeaking();
+      templateEngine.stopSpeaking();
     };
   }, [currentStep, voiceEnabled, currentInstruction, isRecording, speakCurrentInstruction]);
 
@@ -218,8 +218,14 @@ const TemplateCaptureOverlay: React.FC<TemplateCaptureOverlayProps> = ({
 
       if (!slotId) return;
 
-      // ✅ Real K-Engine binding
-      await kEngine.bindUserMedia(slotId, media.blob);
+      // ✅ Real K-Engine binding with BoundAsset
+      const boundAsset: BoundAsset = {
+        slotId: slotId,
+        kind: "recording",
+        blob: media.blob,
+        mime: media.blob.type,
+      };
+      await kEngine.bindUserMedia(slotId, boundAsset);
 
       // Optional: if slot requires AI (segmentation), we can mark progress step complete
       onInstructionComplete?.(currentStep);
@@ -297,7 +303,7 @@ const TemplateCaptureOverlay: React.FC<TemplateCaptureOverlayProps> = ({
         onClick={() => {
           setVoiceEnabled(!voiceEnabled);
           if (!voiceEnabled) speakCurrentInstruction();
-          else kEngine.stopSpeaking();
+          else templateEngine.stopSpeaking();
         }}
         className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-xl flex items-center justify-center pointer-events-auto border border-white/20"
       >
