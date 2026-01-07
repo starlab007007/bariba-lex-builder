@@ -15,12 +15,13 @@ import AdvancedDictionaryManager from '@/components/admin/AdvancedDictionaryMana
 import { ModelHealthDashboard } from '@/components/admin/ModelHealthDashboard';
 import { ByT5SpaceConfig } from '@/components/admin/ByT5SpaceConfig';
 import { AudioServicesMonitor } from '@/components/admin/AudioServicesMonitor';
+import { TemplateGenerationAdmin } from '@/components/admin/TemplateGenerationAdmin';
 import { 
   Settings, Users, BarChart3, 
   FileText, Globe, 
   BookOpen, 
   Sparkles, Shield, 
-  Activity, Download, Edit3, Volume2
+  Activity, Download, Edit3, Volume2, Film
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -105,6 +106,17 @@ export default function AdminDashboard() {
                 Analytics
               </TabsTrigger>
 
+              {/* 🎬 SECTION CRÉATION */}
+              <div className="flex items-center gap-1 w-full mt-2">
+                <Separator className="flex-1" />
+                <span className="text-xs font-semibold text-[hsl(var(--section-creation))] px-2 whitespace-nowrap">🎬 CRÉATION</span>
+                <Separator className="flex-1" />
+              </div>
+              <TabsTrigger value="templates-ia" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-creation))]">
+                <Film className="h-4 w-4 text-[hsl(var(--section-creation))]" />
+                Templates IA
+              </TabsTrigger>
+
               {/* 🛠️ SECTION OUTILS */}
               <div className="flex items-center gap-1 w-full mt-2">
                 <Separator className="flex-1" />
@@ -162,6 +174,8 @@ export default function AdminDashboard() {
           <TabsContent value="diagnostic"><TranslationDiagnosticDashboard /></TabsContent>
           
           <TabsContent value="analytics"><AnalyticsDashboard /></TabsContent>
+          
+          <TabsContent value="templates-ia"><TemplateGenerationAdmin /></TabsContent>
           
           <TabsContent value="grammar-stats"><GrammaticalStatsDashboard /></TabsContent>
           <TabsContent value="bulk-edit"><BulkEditPanel /></TabsContent>
