@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Download, Eye, Play, Filter, Mic, 
   RefreshCw, Sparkles, CheckCircle, Clock, AlertCircle,
-  X, Grid, List, Heart
+  X, Grid, List, Heart, Image
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTemplateLibrary, AIGeneratedTemplate, TemplateFilters } from '@/hooks/useTemplateLibrary';
 import { TemplatePreviewModal } from './TemplatePreviewModal';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-
+import { useTemplateVisuals } from '@/hooks/useTemplateVisuals';
+import { AnimatedTemplateCard } from './AnimatedTemplateCard';
 interface TemplateLibraryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,7 +36,7 @@ export function TemplateLibrary({ isOpen, onClose, onSelectTemplate }: TemplateL
   } = useTemplateLibrary();
 
   const { speak, isSpeaking } = useFrenchTTS();
-
+  const { generateAllPending: generateAllVisuals, generationProgress: visualProgress, isGenerating: isGeneratingVisuals } = useTemplateVisuals();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -187,7 +188,16 @@ export function TemplateLibrary({ isOpen, onClose, onSelectTemplate }: TemplateL
                 disabled={isGenerating || !stats || stats.pending === 0}
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                Générer tout ({stats?.pending || 0})
+                Générer IA ({stats?.pending || 0})
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={generateAllVisuals}
+                disabled={isGeneratingVisuals}
+              >
+                <Image className="w-4 h-4 mr-2" />
+                {isGeneratingVisuals ? 'Génération...' : 'Visuels IA'}
               </Button>
             </div>
           </div>
@@ -225,14 +235,14 @@ export function TemplateLibrary({ isOpen, onClose, onSelectTemplate }: TemplateL
                 ) : viewMode === 'grid' ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {filteredTemplates.map(template => (
-                      <TemplateCard
+                      <AnimatedTemplateCard
                         key={template.id}
                         template={template}
                         onPreview={() => setPreviewTemplate(template)}
                         onSelect={() => handleSelect(template)}
                         onDownload={() => downloadTemplate(template)}
                         onSpeak={() => handleSpeakDescription(template)}
-                        getStatusIcon={getStatusIcon}
+                        isGeneratingVisuals={isGeneratingVisuals}
                       />
                     ))}
                   </div>

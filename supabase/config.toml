@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.generate-ai-templates]
 verify_jwt = false
+
+[functions.generate-template-visuals]
+verify_jwt = false
