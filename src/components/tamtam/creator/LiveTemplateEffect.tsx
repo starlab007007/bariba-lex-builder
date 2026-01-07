@@ -115,9 +115,12 @@ const LiveTemplateEffect: React.FC<LiveTemplateEffectProps> = ({
       return;
     }
 
-    // Match canvas size to video dimensions for proper rendering
-    const targetWidth = video.videoWidth || 1920;
-    const targetHeight = video.videoHeight || 1080;
+    // Use canvas bounding rect for sizing (works for both live and preview)
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const targetWidth = Math.max(1, Math.floor(rect.width * dpr)) || video.videoWidth || 1080;
+    const targetHeight = Math.max(1, Math.floor(rect.height * dpr)) || video.videoHeight || 1920;
+    
     if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
       canvas.width = targetWidth;
       canvas.height = targetHeight;
@@ -126,11 +129,25 @@ const LiveTemplateEffect: React.FC<LiveTemplateEffectProps> = ({
     const w = canvas.width;
     const h = canvas.height;
 
-    // Clear and draw video with filter
+    // Clear canvas
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+
+    // Calculate video scaling to fit canvas (cover)
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const scale = Math.max(w / vw, h / vh);
+    const dw = vw * scale;
+    const dh = vh * scale;
+    const dx = (w - dw) / 2;
+    const dy = (h - dh) / 2;
+
+    // Draw video with filter
     const filterString = getTemplateFilter(template, currentFilterIntensity);
     ctx.filter = filterString;
-    ctx.drawImage(video, 0, 0, w, h);
+    ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
     ctx.filter = 'none';
 
     // Apply color overlay gradient
@@ -149,11 +166,76 @@ const LiveTemplateEffect: React.FC<LiveTemplateEffectProps> = ({
     ctx.fillStyle = vignetteGradient;
     ctx.fillRect(0, 0, w, h);
 
-    // Draw watermark
-    ctx.font = 'bold 24px system-ui';
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    // Draw decorative frame corners for certain templates
+    if (template.family === 'grand_public' || template.id === 'carte_postale_beaute') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 3;
+      const cornerSize = Math.min(w, h) * 0.08;
+      // Top-left
+      ctx.beginPath();
+      ctx.moveTo(20, 20 + cornerSize);
+      ctx.lineTo(20, 20);
+      ctx.lineTo(20 + cornerSize, 20);
+      ctx.stroke();
+      // Top-right
+      ctx.beginPath();
+      ctx.moveTo(w - 20 - cornerSize, 20);
+      ctx.lineTo(w - 20, 20);
+      ctx.lineTo(w - 20, 20 + cornerSize);
+      ctx.stroke();
+      // Bottom-left
+      ctx.beginPath();
+      ctx.moveTo(20, h - 20 - cornerSize);
+      ctx.lineTo(20, h - 20);
+      ctx.lineTo(20 + cornerSize, h - 20);
+      ctx.stroke();
+      // Bottom-right
+      ctx.beginPath();
+      ctx.moveTo(w - 20 - cornerSize, h - 20);
+      ctx.lineTo(w - 20, h - 20);
+      ctx.lineTo(w - 20, h - 20 - cornerSize);
+      ctx.stroke();
+    }
+
+    // Draw watermark badge with background
+    const badgeText = `${template.emoji} ${template.label_fr}`;
+    ctx.font = 'bold 20px system-ui';
+    const textWidth = ctx.measureText(badgeText).width;
+    const badgeX = 16;
+    const badgeY = h - 40;
+    const badgePadX = 12;
+    const badgePadY = 8;
+    
+    // Badge background (use fallback for roundRect)
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    const badgeW = textWidth + badgePadX * 2;
+    const badgeH = 32 + badgePadY;
+    const badgeTop = badgeY - 16 - badgePadY;
+    const badgeLeft = badgeX - badgePadX;
+    const badgeRadius = 16;
+    
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(badgeLeft, badgeTop, badgeW, badgeH, badgeRadius);
+    } else {
+      // Fallback for browsers without roundRect
+      ctx.moveTo(badgeLeft + badgeRadius, badgeTop);
+      ctx.lineTo(badgeLeft + badgeW - badgeRadius, badgeTop);
+      ctx.quadraticCurveTo(badgeLeft + badgeW, badgeTop, badgeLeft + badgeW, badgeTop + badgeRadius);
+      ctx.lineTo(badgeLeft + badgeW, badgeTop + badgeH - badgeRadius);
+      ctx.quadraticCurveTo(badgeLeft + badgeW, badgeTop + badgeH, badgeLeft + badgeW - badgeRadius, badgeTop + badgeH);
+      ctx.lineTo(badgeLeft + badgeRadius, badgeTop + badgeH);
+      ctx.quadraticCurveTo(badgeLeft, badgeTop + badgeH, badgeLeft, badgeTop + badgeH - badgeRadius);
+      ctx.lineTo(badgeLeft, badgeTop + badgeRadius);
+      ctx.quadraticCurveTo(badgeLeft, badgeTop, badgeLeft + badgeRadius, badgeTop);
+      ctx.closePath();
+    }
+    ctx.fill();
+    
+    // Badge text
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.textAlign = 'left';
-    ctx.fillText(`${template.emoji} ${template.label_fr}`, 20, h - 20);
+    ctx.fillText(badgeText, badgeX, badgeY);
 
     // Callback for external processing
     if (onProcessedFrame) {
