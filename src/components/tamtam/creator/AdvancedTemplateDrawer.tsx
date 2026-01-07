@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mic, Volume2, VolumeX, Sparkles, Eye, Check, Clock, Camera } from "lucide-react";
+import { X, Mic, Volume2, VolumeX, Sparkles, Eye, Check, Clock, Camera, Play, Pause } from "lucide-react";
 import {
   ADVANCED_TEMPLATES,
   TEMPLATE_COLLECTIONS,
@@ -15,6 +15,7 @@ import { useBaribaTTS } from "@/hooks/useBaribaTTS";
 import { useFrenchSTT } from "@/hooks/useFrenchSTT";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 // ✅ K-Engine runtime
 import { kEngine, TemplateManifest, SlotDefinition } from "./TemplateEngine";
@@ -189,6 +190,30 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [voiceDescriptions, setVoiceDescriptions] = useState<Record<string, string>>({});
+
+  // ✅ Load AI-generated template data from database
+  const { data: aiTemplates = [] } = useQuery({
+    queryKey: ['ai-templates-drawer'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ai_generated_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('usage_count', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isOpen,
+  });
+
+  // Map AI template data to local templates for enhanced display
+  const aiTemplateMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    aiTemplates.forEach((t: any) => {
+      map[t.template_key] = t;
+    });
+    return map;
+  }, [aiTemplates]);
 
   const { speak: speakFr, stop: stopFr, isSpeaking: isSpeakingFr } = useFrenchTTS();
   const { speak: speakBa, stop: stopBa, isSpeaking: isSpeakingBa } = useBaribaTTS();
@@ -603,20 +628,24 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
             {/* Templates Grid */}
             <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
-                {getDisplayedTemplates().map((tpl) => (
-                  <XXLTemplateCard
-                    key={tpl.id}
-                    template={tpl}
-                    isFocused={focusedTemplate?.id === tpl.id}
-                    isSpeaking={isSpeaking && lastSpokenTemplate.current === tpl.id}
-                    isNeutral={tpl.id === "none"}
-                    onQuickSelect={() => handleSelectTemplate(tpl)}
-                    onOpenPreview={() => openPreview(tpl)}
-                    onLongPressStart={() => handleLongPressStart(tpl)}
-                    onLongPressEnd={handleLongPressEnd}
-                    audioEnabled={audioEnabled}
-                  />
-                ))}
+                {getDisplayedTemplates().map((tpl) => {
+                  const aiData = aiTemplateMap[tpl.id];
+                  return (
+                    <XXLTemplateCard
+                      key={tpl.id}
+                      template={tpl}
+                      aiData={aiData}
+                      isFocused={focusedTemplate?.id === tpl.id}
+                      isSpeaking={isSpeaking && lastSpokenTemplate.current === tpl.id}
+                      isNeutral={tpl.id === "none"}
+                      onQuickSelect={() => handleSelectTemplate(tpl)}
+                      onOpenPreview={() => openPreview(tpl)}
+                      onLongPressStart={() => handleLongPressStart(tpl)}
+                      onLongPressEnd={handleLongPressEnd}
+                      audioEnabled={audioEnabled}
+                    />
+                  );
+                })}
               </div>
             </div>
 
@@ -727,6 +756,7 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
 
 interface XXLTemplateCardProps {
   template: AdvancedTemplate;
+  aiData?: any; // AI-generated data from database
   isFocused: boolean;
   isSpeaking: boolean;
   isNeutral?: boolean;
@@ -739,6 +769,7 @@ interface XXLTemplateCardProps {
 
 const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
   template,
+  aiData,
   isFocused,
   isSpeaking,
   isNeutral,
@@ -748,9 +779,64 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
   onLongPressStart,
   onLongPressEnd,
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ✅ Get Kuaishou-style card hints from KSE engine
   const kseManifest = template.engine?.variants?.[template.engine?.defaultDuration || '15s'];
   const cardHint = kseManifest?.cardHint;
+
+  // ✅ Extract animation frames from AI data
+  const animationFrames: string[] = useMemo(() => {
+    if (!aiData) return [];
+    const frames = 
+      (aiData.storyboard_frames as { frames?: string[] })?.frames || 
+      aiData.ai_storyboard?.animation_frames || 
+      [];
+    return frames;
+  }, [aiData]);
+
+  const hasAnimationFrames = animationFrames.length > 1;
+  const hasPreviewImage = aiData?.preview_image_url || aiData?.ai_preview_image_url;
+  const previewImageUrl = aiData?.preview_image_url || aiData?.ai_preview_image_url;
+
+  // ✅ Animation logic
+  const startAnimation = useCallback(() => {
+    if (!hasAnimationFrames || isAnimating) return;
+    setIsAnimating(true);
+    
+    const frameDuration = 1000;
+    let frameIndex = 0;
+    
+    const animate = () => {
+      frameIndex = (frameIndex + 1) % animationFrames.length;
+      setCurrentFrameIndex(frameIndex);
+      animationRef.current = setTimeout(animate, frameDuration);
+    };
+    
+    animationRef.current = setTimeout(animate, frameDuration);
+  }, [hasAnimationFrames, isAnimating, animationFrames.length]);
+
+  const stopAnimation = useCallback(() => {
+    if (animationRef.current) {
+      clearTimeout(animationRef.current);
+      animationRef.current = null;
+    }
+    setIsAnimating(false);
+    setCurrentFrameIndex(0);
+  }, []);
+
+  // Handle hover for animation
+  useEffect(() => {
+    if (isHovered && hasAnimationFrames) {
+      startAnimation();
+    } else if (!isHovered) {
+      stopAnimation();
+    }
+    return () => stopAnimation();
+  }, [isHovered, hasAnimationFrames, startAnimation, stopAnimation]);
 
   const getFeatureIcons = () => {
     const features = [];
@@ -761,6 +847,10 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
     if ((template as any).features?.stabilization) features.push("📹");
     return features.slice(0, 3);
   };
+
+  const currentDisplayImage = hasAnimationFrames 
+    ? animationFrames[currentFrameIndex] 
+    : previewImageUrl;
 
   if (isNeutral) {
     return (
@@ -795,73 +885,133 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
   return (
     <motion.div
       whileTap={{ scale: 0.97 }}
+      whileHover={{ scale: 1.02 }}
       onTouchStart={onLongPressStart}
       onTouchEnd={onLongPressEnd}
       onMouseDown={onLongPressStart}
       onMouseUp={onLongPressEnd}
-      onMouseLeave={onLongPressEnd}
+      onMouseLeave={() => {
+        onLongPressEnd();
+        setIsHovered(false);
+      }}
+      onMouseEnter={() => setIsHovered(true)}
       className={cn(
-        "relative overflow-hidden rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-left transition-all min-h-[155px] sm:min-h-[175px]",
+        "relative overflow-hidden rounded-2xl sm:rounded-3xl text-left transition-all min-h-[155px] sm:min-h-[175px]",
         isFocused && "ring-2 sm:ring-3 ring-white shadow-xl",
         isSpeaking && "ring-2 sm:ring-3 ring-green-400"
       )}
     >
-      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-90", (template as any).color)} />
+      {/* Background: Gradient or Image */}
+      <div className={cn("absolute inset-0 bg-gradient-to-br", (template as any).color)} />
 
+      {/* ✅ AI Preview Image or Animation Frames */}
+      {currentDisplayImage && (
+        <motion.img
+          key={currentFrameIndex}
+          src={currentDisplayImage}
+          alt={template.label_fr}
+          className="absolute inset-0 w-full h-full object-cover"
+          initial={{ opacity: 0.7 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        />
+      )}
+
+      {/* Dark overlay for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20" />
+
+      {/* ✅ LIVE Badge when animating */}
+      {hasAnimationFrames && isAnimating && (
+        <div className="absolute top-2 left-2 z-20 flex items-center gap-1">
+          <motion.div
+            className="flex items-center gap-1 bg-red-500 rounded-full px-2 py-0.5"
+            animate={{ opacity: [1, 0.7, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          >
+            <span className="w-1.5 h-1.5 bg-white rounded-full" />
+            <span className="text-white text-[9px] font-bold">LIVE</span>
+          </motion.div>
+          <span className="text-white/70 text-[9px] bg-black/40 rounded-full px-1.5">
+            {currentFrameIndex + 1}/{animationFrames.length}
+          </span>
+        </div>
+      )}
+
+      {/* ✅ AI Badge when has generated content */}
+      {aiData?.generation_status === 'completed' && !isAnimating && (
+        <div className="absolute top-2 left-2 z-20">
+          <div className="flex items-center gap-1 bg-purple-500/80 rounded-full px-2 py-0.5">
+            <Sparkles className="h-2.5 w-2.5 text-white" />
+            <span className="text-white text-[9px] font-medium">IA</span>
+          </div>
+        </div>
+      )}
+
+      {/* Pulse animation overlay */}
       <motion.div
-        className="absolute inset-0 bg-white/10"
+        className="absolute inset-0 bg-white/10 pointer-events-none"
         animate={{
-          opacity:
-            (template as any).previewAnimation === "pulse"
-              ? [0.1, 0.3, 0.1]
-              : (template as any).previewAnimation === "glow"
-              ? [0.05, 0.2, 0.05]
-              : 0.05,
+          opacity: isHovered ? [0.1, 0.2, 0.1] : 0,
         }}
-        transition={{ duration: 2, repeat: Infinity }}
+        transition={{ duration: 1.5, repeat: Infinity }}
       />
 
-      <div className="relative z-10 flex flex-col h-full">
+      {/* Content */}
+      <div className="relative z-10 flex flex-col h-full p-3 sm:p-4">
         <div className="flex items-start justify-between mb-1.5">
           <motion.div
-            animate={isFocused ? { scale: [1, 1.1, 1] } : {}}
+            animate={isFocused || isHovered ? { scale: [1, 1.1, 1] } : {}}
             transition={{ duration: 0.5 }}
-            className="text-3xl sm:text-4xl"
+            className="text-3xl sm:text-4xl drop-shadow-lg"
           >
             {(template as any).emoji}
           </motion.div>
 
-          {audioEnabled && (
-            <div className="flex items-center gap-1">
-              {isSpeaking ? (
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 0.5, repeat: Infinity }}
-                  className="bg-green-500/30 rounded-full p-1"
-                >
-                  <Volume2 className="h-3.5 w-3.5 text-white" />
-                </motion.div>
-              ) : (
-                <Volume2 className="h-3 w-3 text-white/30" />
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-1">
+            {hasAnimationFrames && (
+              <motion.div
+                className={cn(
+                  "p-1 rounded-full transition-colors",
+                  isAnimating ? "bg-green-500/50" : "bg-white/10"
+                )}
+                animate={isAnimating ? { scale: [1, 1.1, 1] } : {}}
+                transition={{ duration: 0.5, repeat: Infinity }}
+              >
+                {isAnimating ? (
+                  <Pause className="h-3 w-3 text-white" />
+                ) : (
+                  <Play className="h-3 w-3 text-white/70" />
+                )}
+              </motion.div>
+            )}
+            {audioEnabled && isSpeaking && (
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 0.5, repeat: Infinity }}
+                className="bg-green-500/30 rounded-full p-1"
+              >
+                <Volume2 className="h-3.5 w-3.5 text-white" />
+              </motion.div>
+            )}
+          </div>
         </div>
 
-        <h3 className="font-bold text-white text-xs sm:text-sm leading-tight mb-0.5">{(template as any).label_fr}</h3>
+        <h3 className="font-bold text-white text-xs sm:text-sm leading-tight mb-0.5 drop-shadow-md">
+          {(template as any).label_fr}
+        </h3>
 
-        <p className="text-white/70 text-[10px] sm:text-xs line-clamp-2 mb-2 flex-grow leading-snug">
-          {(template as any).description_fr}
+        <p className="text-white/80 text-[10px] sm:text-xs line-clamp-2 mb-2 flex-grow leading-snug drop-shadow-sm">
+          {aiData?.ai_enhanced_description || (template as any).description_fr}
         </p>
 
         {/* ✅ Kuaishou-style input & time hints */}
         {cardHint && (
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-            <span className="text-[10px] sm:text-xs bg-black/30 rounded-full px-2 py-0.5 text-white/80 flex items-center gap-1">
+            <span className="text-[10px] sm:text-xs bg-black/40 rounded-full px-2 py-0.5 text-white/90 flex items-center gap-1">
               <Camera className="h-3 w-3" />
               {cardHint.inputSummary}
             </span>
-            <span className="text-[10px] sm:text-xs bg-black/30 rounded-full px-2 py-0.5 text-white/80 flex items-center gap-1">
+            <span className="text-[10px] sm:text-xs bg-black/40 rounded-full px-2 py-0.5 text-white/90 flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {cardHint.timeLabel}
             </span>
@@ -871,7 +1021,7 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
         {/* Feature icons */}
         <div className="flex items-center gap-1 mb-2">
           {getFeatureIcons().map((icon, i) => (
-            <span key={i} className="text-xs sm:text-sm bg-black/20 rounded-full px-1.5 py-0.5">
+            <span key={i} className="text-xs sm:text-sm bg-black/30 rounded-full px-1.5 py-0.5">
               {icon}
             </span>
           ))}
@@ -883,10 +1033,10 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
               e.stopPropagation();
               onOpenPreview();
             }}
-            className="flex-1 flex items-center justify-center gap-1 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-white/10 backdrop-blur-sm active:bg-white/20 transition-all"
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm active:bg-white/30 transition-all"
           >
-            <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white/80" />
-            <span className="text-white/80 text-[10px] sm:text-xs font-medium">Aperçu</span>
+            <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />
+            <span className="text-white text-[10px] sm:text-xs font-medium">Aperçu</span>
           </button>
           <button
             onClick={(e) => {
