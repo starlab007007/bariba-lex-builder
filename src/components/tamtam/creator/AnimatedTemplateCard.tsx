@@ -1,8 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Download, Eye, Sparkles, Volume2, Loader2, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+
+interface AnimationData {
+  type: string;
+  frames: string[];
+  duration: number;
+  fps: number;
+}
 
 interface AnimatedTemplateCardProps {
   template: {
@@ -20,6 +27,8 @@ interface AnimatedTemplateCardProps {
     visual_generation_status?: string;
     usage_count?: number;
     is_featured?: boolean;
+    storyboard_frames?: AnimationData | any;
+    ai_storyboard?: { animation_frames?: string[] };
   };
   onSelect: () => void;
   onPreview: () => void;
@@ -41,46 +50,81 @@ export function AnimatedTemplateCard({
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [videoPlaying, setVideoPlaying] = useState(false);
-  const [videoError, setVideoError] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const animationRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // Extract animation frames from template
+  const animationFrames: string[] = 
+    (template.storyboard_frames as AnimationData)?.frames || 
+    template.ai_storyboard?.animation_frames || 
+    [];
+  
+  const hasAnimationFrames = animationFrames.length > 1;
   const hasPreviewImage = template.preview_image_url && !imageError;
-  const hasDemoVideo = template.demo_video_url && !videoError;
+  const hasDemoVideo = template.demo_video_url && !imageError;
   const isGenerating = template.visual_generation_status === 'generating' || isGeneratingVisuals;
 
-  // Auto-play video when visible
-  useEffect(() => {
-    if (autoPlayVideo && hasDemoVideo && videoRef.current) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              videoRef.current?.play().catch(() => {});
-              setVideoPlaying(true);
-            } else {
-              videoRef.current?.pause();
-              setVideoPlaying(false);
-            }
-          });
-        },
-        { threshold: 0.5 }
-      );
+  // Frame animation logic
+  const startAnimation = useCallback(() => {
+    if (!hasAnimationFrames || isAnimating) return;
+    setIsAnimating(true);
+    
+    const frameDuration = 1200; // ms per frame
+    let frameIndex = 0;
+    
+    const animate = () => {
+      frameIndex = (frameIndex + 1) % animationFrames.length;
+      setCurrentFrameIndex(frameIndex);
+      animationRef.current = window.setTimeout(animate, frameDuration);
+    };
+    
+    animationRef.current = window.setTimeout(animate, frameDuration);
+  }, [hasAnimationFrames, isAnimating, animationFrames.length]);
 
-      observer.observe(videoRef.current);
-      return () => observer.disconnect();
+  const stopAnimation = useCallback(() => {
+    if (animationRef.current) {
+      clearTimeout(animationRef.current);
+      animationRef.current = null;
     }
-  }, [autoPlayVideo, hasDemoVideo]);
+    setIsAnimating(false);
+    setCurrentFrameIndex(0);
+  }, []);
 
-  // Handle hover for video
+  // Auto-play animation when visible
   useEffect(() => {
-    if (hasDemoVideo && videoRef.current) {
-      if (isHovered) {
-        videoRef.current.play().catch(() => {});
-        setVideoPlaying(true);
-      }
+    if (!autoPlayVideo || !hasAnimationFrames || !containerRef.current) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            startAnimation();
+          } else {
+            stopAnimation();
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    observer.observe(containerRef.current);
+    return () => {
+      observer.disconnect();
+      stopAnimation();
+    };
+  }, [autoPlayVideo, hasAnimationFrames, startAnimation, stopAnimation]);
+
+  // Handle hover for animation
+  useEffect(() => {
+    if (isHovered && hasAnimationFrames) {
+      startAnimation();
+    } else if (!isHovered) {
+      stopAnimation();
     }
-  }, [isHovered, hasDemoVideo]);
+  }, [isHovered, hasAnimationFrames, startAnimation, stopAnimation]);
 
   const getGradientStyle = () => {
     if (template.color.includes(',')) {
@@ -90,21 +134,22 @@ export function AnimatedTemplateCard({
     return `linear-gradient(135deg, ${template.color}, ${template.color}dd)`;
   };
 
-  const toggleVideo = (e: React.MouseEvent) => {
+  const currentDisplayImage = hasAnimationFrames 
+    ? animationFrames[currentFrameIndex] 
+    : template.preview_image_url;
+
+  const toggleAnimation = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (videoRef.current) {
-      if (videoPlaying) {
-        videoRef.current.pause();
-        setVideoPlaying(false);
-      } else {
-        videoRef.current.play().catch(() => {});
-        setVideoPlaying(true);
-      }
+    if (isAnimating) {
+      stopAnimation();
+    } else {
+      startAnimation();
     }
   };
 
   return (
     <motion.div
+      ref={containerRef}
       className="relative group cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -124,24 +169,24 @@ export function AnimatedTemplateCard({
           style={{ background: getGradientStyle() }}
         />
 
-        {/* Video Layer - Primary when available */}
-        {hasDemoVideo && (
-          <video
-            ref={videoRef}
-            src={template.demo_video_url}
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="absolute inset-0 w-full h-full object-cover z-10"
-            onError={() => setVideoError(true)}
-            onPlay={() => setVideoPlaying(true)}
-            onPause={() => setVideoPlaying(false)}
-          />
+        {/* Animated Frames Layer */}
+        {hasAnimationFrames && (
+          <div className="absolute inset-0 z-10">
+            {animationFrames.map((frameUrl, index) => (
+              <img
+                key={frameUrl}
+                src={frameUrl}
+                alt={`Frame ${index + 1}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                  index === currentFrameIndex ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            ))}
+          </div>
         )}
 
-        {/* Image Layer - Fallback when no video */}
-        {!hasDemoVideo && hasPreviewImage && (
+        {/* Static Image Layer - When no animation frames */}
+        {!hasAnimationFrames && hasPreviewImage && (
           <>
             {!imageLoaded && (
               <div className="absolute inset-0 animate-pulse z-5" />
@@ -159,7 +204,7 @@ export function AnimatedTemplateCard({
         )}
 
         {/* Emoji Fallback when no media */}
-        {!hasDemoVideo && !hasPreviewImage && (
+        {!hasAnimationFrames && !hasPreviewImage && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <span className="text-6xl drop-shadow-lg">{template.emoji}</span>
           </div>
@@ -174,8 +219,8 @@ export function AnimatedTemplateCard({
           </div>
         )}
 
-        {/* Live Badge for videos */}
-        {hasDemoVideo && videoPlaying && (
+        {/* Live Badge for animation */}
+        {hasAnimationFrames && isAnimating && (
           <div className="absolute top-2 left-2 z-20">
             <Badge className="bg-red-500 text-white font-bold gap-1 animate-pulse">
               <span className="w-2 h-2 bg-white rounded-full" />
@@ -184,8 +229,17 @@ export function AnimatedTemplateCard({
           </div>
         )}
 
+        {/* Frame Counter */}
+        {hasAnimationFrames && isAnimating && (
+          <div className="absolute top-2 right-2 z-20">
+            <Badge className="bg-black/60 text-white text-xs">
+              {currentFrameIndex + 1}/{animationFrames.length}
+            </Badge>
+          </div>
+        )}
+
         {/* Featured Badge */}
-        {template.is_featured && !hasDemoVideo && (
+        {template.is_featured && !hasAnimationFrames && (
           <div className="absolute top-2 left-2 z-20">
             <Badge className="bg-yellow-500 text-black font-bold gap-1">
               <Sparkles className="w-3 h-3" />
@@ -208,12 +262,12 @@ export function AnimatedTemplateCard({
           </div>
         )}
 
-        {/* Video indicator badge */}
-        {hasDemoVideo && template.visual_generation_status === 'completed' && (
+        {/* Animation indicator badge */}
+        {hasAnimationFrames && template.visual_generation_status === 'completed' && !isAnimating && (
           <div className="absolute top-2 right-2 z-20">
             <Badge className="bg-green-500/80 text-white text-xs gap-1">
               <Play className="w-3 h-3" />
-              Vidéo
+              {animationFrames.length} frames
             </Badge>
           </div>
         )}
@@ -257,14 +311,14 @@ export function AnimatedTemplateCard({
               Utiliser
             </Button>
             
-            {hasDemoVideo && (
+            {hasAnimationFrames && (
               <Button
                 size="sm"
                 variant="outline"
                 className="border-white/30 text-white hover:bg-white/20"
-                onClick={toggleVideo}
+                onClick={toggleAnimation}
               >
-                {videoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {isAnimating ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               </Button>
             )}
             
@@ -308,8 +362,8 @@ export function AnimatedTemplateCard({
           </motion.div>
         </div>
 
-        {/* Play/Pause Overlay (when not hovered and has video) */}
-        {!isHovered && !isGenerating && hasDemoVideo && !videoPlaying && (
+        {/* Play Overlay (when not animating) */}
+        {!isHovered && !isGenerating && hasAnimationFrames && !isAnimating && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-15">
             <motion.div
               initial={{ scale: 0.8, opacity: 0.5 }}
@@ -321,8 +375,8 @@ export function AnimatedTemplateCard({
           </div>
         )}
 
-        {/* Static Play Icon for templates without video */}
-        {!isHovered && !isGenerating && !hasDemoVideo && (
+        {/* Static Play Icon for templates without animation */}
+        {!isHovered && !isGenerating && !hasAnimationFrames && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-15">
             <motion.div
               initial={{ scale: 0.8, opacity: 0.5 }}
