@@ -5,6 +5,7 @@
 // ✅ Adds K-Engine timeline preview + play/pause/seek + auto-bind captured media to slots + AI pipeline progress
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X,
@@ -1425,11 +1426,33 @@ export default function FullscreenCreator({
 
   // ============= TEMPLATE selection handler (supports both AdvancedTemplate and TemplateManifest) =============
   const onSelectAnyTemplate = useCallback(
-    (tpl: any) => {
+    async (tpl: any) => {
       setActiveTemplateAny(tpl);
 
       // Also update the simple overlay templateId so TemplateOverlay stays coherent
       if (tpl?.id) updateEffects({ templateId: tpl.id });
+
+      // ✅ Load AI visual data from database for enhanced display
+      const templateKey = tpl?.id || tpl?.template_key;
+      if (templateKey) {
+        try {
+          const { data: aiData } = await supabase
+            .from('ai_generated_templates')
+            .select('ai_preview_image_url, storyboard_frames, visual_generation_status, ai_enhanced_description')
+            .eq('template_key', templateKey)
+            .single();
+          
+          if (aiData?.visual_generation_status === 'completed') {
+            console.log('[FullscreenCreator] AI visuals loaded for:', templateKey);
+            setToast(`✨ Visuels IA chargés`);
+          } else if (aiData?.visual_generation_status === 'generating') {
+            setToast(`🎬 Génération des visuels en cours...`);
+          }
+        } catch (e) {
+          // Not critical - continue with template selection
+          console.log('[FullscreenCreator] No AI data for template:', templateKey);
+        }
+      }
 
       // If TemplateManifest => load into K-Engine
       if (isTemplateManifest(tpl)) {

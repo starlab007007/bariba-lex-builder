@@ -782,32 +782,44 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // ✅ Get Kuaishou-style card hints from KSE engine
   const kseManifest = template.engine?.variants?.[template.engine?.defaultDuration || '15s'];
   const cardHint = kseManifest?.cardHint;
 
-  // ✅ Extract animation frames from AI data
+  // ✅ Extract animation frames from AI data - check multiple sources
   const animationFrames: string[] = useMemo(() => {
     if (!aiData) return [];
+    // Try multiple sources for frames
     const frames = 
       (aiData.storyboard_frames as { frames?: string[] })?.frames || 
       aiData.ai_storyboard?.animation_frames || 
+      aiData.ai_storyboard?.frames ||
       [];
-    return frames;
+    // Filter out any invalid URLs
+    return frames.filter((f: string) => f && typeof f === 'string' && f.startsWith('http'));
   }, [aiData]);
 
   const hasAnimationFrames = animationFrames.length > 1;
-  const hasPreviewImage = aiData?.preview_image_url || aiData?.ai_preview_image_url;
-  const previewImageUrl = aiData?.preview_image_url || aiData?.ai_preview_image_url;
+  
+  // ✅ FIX: Use visual_generation_status instead of generation_status
+  const isAICompleted = aiData?.visual_generation_status === 'completed';
+  const isAIGenerating = aiData?.visual_generation_status === 'generating';
+  
+  const previewImageUrl = aiData?.ai_preview_image_url || aiData?.preview_image_url;
+  const hasPreviewImage = !!previewImageUrl && !imageError;
 
-  // ✅ Animation logic
+  // ✅ Animation logic with smoother transitions
   const startAnimation = useCallback(() => {
     if (!hasAnimationFrames || isAnimating) return;
     setIsAnimating(true);
     
-    const frameDuration = 1000;
+    const frameDuration = 800; // Slightly faster for better effect
     let frameIndex = 0;
     
     const animate = () => {
@@ -828,15 +840,41 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
     setCurrentFrameIndex(0);
   }, []);
 
-  // Handle hover for animation
+  // ✅ IntersectionObserver for auto-play when visible
   useEffect(() => {
-    if (isHovered && hasAnimationFrames) {
+    const card = cardRef.current;
+    if (!card) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
+
+  // Handle hover OR visibility for animation
+  useEffect(() => {
+    if ((isHovered || isVisible) && hasAnimationFrames) {
       startAnimation();
-    } else if (!isHovered) {
+    } else if (!isHovered && !isVisible) {
       stopAnimation();
     }
     return () => stopAnimation();
-  }, [isHovered, hasAnimationFrames, startAnimation, stopAnimation]);
+  }, [isHovered, isVisible, hasAnimationFrames, startAnimation, stopAnimation]);
+
+  // Preload frames
+  useEffect(() => {
+    if (hasAnimationFrames) {
+      animationFrames.forEach((url) => {
+        const img = new Image();
+        img.src = url;
+      });
+    }
+  }, [hasAnimationFrames, animationFrames]);
 
   const getFeatureIcons = () => {
     const features = [];
@@ -847,10 +885,6 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
     if ((template as any).features?.stabilization) features.push("📹");
     return features.slice(0, 3);
   };
-
-  const currentDisplayImage = hasAnimationFrames 
-    ? animationFrames[currentFrameIndex] 
-    : previewImageUrl;
 
   if (isNeutral) {
     return (
@@ -882,8 +916,13 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
     );
   }
 
+  const currentDisplayImage = hasAnimationFrames && isAnimating
+    ? animationFrames[currentFrameIndex] 
+    : previewImageUrl;
+
   return (
     <motion.div
+      ref={cardRef}
       whileTap={{ scale: 0.97 }}
       whileHover={{ scale: 1.02 }}
       onTouchStart={onLongPressStart}
@@ -901,19 +940,32 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
         isSpeaking && "ring-2 sm:ring-3 ring-green-400"
       )}
     >
-      {/* Background: Gradient or Image */}
+      {/* Background: Gradient fallback */}
       <div className={cn("absolute inset-0 bg-gradient-to-br", (template as any).color)} />
 
-      {/* ✅ AI Preview Image or Animation Frames */}
-      {currentDisplayImage && (
+      {/* ✅ Skeleton loader while image loads */}
+      {hasPreviewImage && !imageLoaded && !imageError && (
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 animate-pulse" />
+      )}
+
+      {/* ✅ AI Preview Image or Animation Frames with proper loading */}
+      {currentDisplayImage && !imageError && (
         <motion.img
-          key={currentFrameIndex}
+          key={isAnimating ? `frame-${currentFrameIndex}` : 'preview'}
           src={currentDisplayImage}
           alt={template.label_fr}
-          className="absolute inset-0 w-full h-full object-cover"
-          initial={{ opacity: 0.7 }}
-          animate={{ opacity: 1 }}
+          className={cn(
+            "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
+            imageLoaded ? "opacity-100" : "opacity-0"
+          )}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: imageLoaded ? 1 : 0 }}
           transition={{ duration: 0.3 }}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => {
+            setImageError(true);
+            setImageLoaded(false);
+          }}
         />
       )}
 
@@ -937,13 +989,27 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
         </div>
       )}
 
-      {/* ✅ AI Badge when has generated content */}
-      {aiData?.generation_status === 'completed' && !isAnimating && (
+      {/* ✅ AI Badge when has generated content - FIXED: use visual_generation_status */}
+      {isAICompleted && !isAnimating && (
         <div className="absolute top-2 left-2 z-20">
           <div className="flex items-center gap-1 bg-purple-500/80 rounded-full px-2 py-0.5">
             <Sparkles className="h-2.5 w-2.5 text-white" />
             <span className="text-white text-[9px] font-medium">IA</span>
           </div>
+        </div>
+      )}
+
+      {/* ✅ Generating Badge */}
+      {isAIGenerating && (
+        <div className="absolute top-2 left-2 z-20">
+          <motion.div 
+            className="flex items-center gap-1 bg-blue-500/80 rounded-full px-2 py-0.5"
+            animate={{ opacity: [0.7, 1, 0.7] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          >
+            <div className="w-2 h-2 border border-white border-t-transparent rounded-full animate-spin" />
+            <span className="text-white text-[9px] font-medium">Génération...</span>
+          </motion.div>
         </div>
       )}
 
