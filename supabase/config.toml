@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.generate-template-assets]
 verify_jwt = false
+
+[functions.generate-ai-templates]
+verify_jwt = false
