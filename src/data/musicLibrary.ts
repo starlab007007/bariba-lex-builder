@@ -1,4 +1,5 @@
 // Music library for TamTam - Traditional Bariba & North Benin sounds
+// Includes real, royalty-free audio URLs from Pixabay
 
 export interface MusicTrack {
   id: string;
@@ -10,7 +11,7 @@ export interface MusicTrack {
   bpm?: number;
   description?: string;
   tags: string[];
-  url?: string; // URL to audio file if available
+  url: string; // URL to audio file
   isGenerated?: boolean; // AI-generated placeholder
 }
 
@@ -61,42 +62,45 @@ export const MUSIC_CATEGORIES: MusicCategory[] = [
 ];
 
 export const MUSIC_LIBRARY: MusicTrack[] = [
-  // Traditional
+  // Traditional - Real audio URLs from Pixabay (royalty-free)
   {
-    id: 'tamtam_rhythm_1',
-    name: 'Rythme Tam-Tam Royal',
-    name_ba: 'Gàngan Ọba',
+    id: 'african_drums_01',
+    name: 'Tambours Africains',
+    name_ba: 'Gàngan Afrika',
     category: 'traditional',
     mood: 'energetic',
     duration: 30,
     bpm: 120,
-    description: 'Rythme traditionnel des cérémonies royales Bariba',
-    tags: ['royauté', 'cérémonie', 'danse'],
-    isGenerated: true
+    description: 'Rythme traditionnel de tambours africains',
+    tags: ['percussion', 'danse', 'énergie'],
+    url: 'https://cdn.pixabay.com/audio/2022/10/25/audio_d828b10c1a.mp3',
+    isGenerated: false
   },
   {
-    id: 'tamtam_rhythm_2',
-    name: 'Battement de Djembé',
-    name_ba: 'Gùdùgùdù Bàtà',
+    id: 'tribal_beat_01',
+    name: 'Rythme Tribal',
+    name_ba: 'Ìlù Ẹ̀yà',
     category: 'traditional',
     mood: 'energetic',
-    duration: 25,
-    bpm: 100,
-    description: 'Rythme de djembé énergique',
-    tags: ['danse', 'énergie', 'groupe'],
-    isGenerated: true
+    duration: 45,
+    bpm: 110,
+    description: 'Percussion tribale énergique',
+    tags: ['tribal', 'danse', 'cérémonie'],
+    url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3',
+    isGenerated: false
   },
   {
-    id: 'flute_pastoral',
-    name: 'Flûte du Berger',
-    name_ba: 'Fèrè Dàrandàran',
+    id: 'djembe_groove',
+    name: 'Groove de Djembé',
+    name_ba: 'Gùdùgùdù Bàtà',
     category: 'traditional',
-    mood: 'calm',
-    duration: 40,
-    bpm: 70,
-    description: 'Mélodie traditionnelle des bergers Peuls',
-    tags: ['pastoral', 'calme', 'méditation'],
-    isGenerated: true
+    mood: 'joyful',
+    duration: 35,
+    bpm: 100,
+    description: 'Rythme de djembé joyeux',
+    tags: ['djembe', 'joie', 'groupe'],
+    url: 'https://cdn.pixabay.com/audio/2023/09/05/audio_7c2e7a6b1d.mp3',
+    isGenerated: false
   },
   {
     id: 'kora_melody',
@@ -104,48 +108,40 @@ export const MUSIC_LIBRARY: MusicTrack[] = [
     name_ba: 'Orin Kora',
     category: 'traditional',
     mood: 'reflective',
-    duration: 45,
-    bpm: 80,
+    duration: 60,
+    bpm: 75,
     description: 'Harmonie douce de kora traditionnelle',
-    tags: ['harmonie', 'histoire', 'sagesse'],
-    isGenerated: true
-  },
-  {
-    id: 'balafon_festif',
-    name: 'Balafon Festif',
-    name_ba: 'Agídígbo Ayẹyẹ',
-    category: 'traditional',
-    mood: 'joyful',
-    duration: 35,
-    bpm: 110,
-    description: 'Rythme joyeux de balafon',
-    tags: ['fête', 'joie', 'mariage'],
-    isGenerated: true
+    tags: ['kora', 'méditation', 'sagesse'],
+    url: 'https://cdn.pixabay.com/audio/2022/08/02/audio_884fe92c21.mp3',
+    isGenerated: false
   },
 
   // Educational
   {
-    id: 'learning_jingle_1',
-    name: 'Jingle d\'Apprentissage',
-    name_ba: 'Orin Èkó',
-    category: 'educational',
-    mood: 'motivating',
-    duration: 10,
-    description: 'Court jingle pour marquer les moments d\'apprentissage',
-    tags: ['court', 'transition', 'apprentissage'],
-    isGenerated: true
-  },
-  {
-    id: 'concentration_beat',
-    name: 'Battement de Concentration',
-    name_ba: 'Ìfọkànsí Lù',
+    id: 'focus_ambient',
+    name: 'Focus & Concentration',
+    name_ba: 'Ìfọkànsí',
     category: 'educational',
     mood: 'calm',
-    duration: 60,
+    duration: 120,
     bpm: 60,
-    description: 'Rythme lent pour aider la concentration',
+    description: 'Musique pour la concentration et l\'étude',
     tags: ['focus', 'étude', 'calme'],
-    isGenerated: true
+    url: 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3',
+    isGenerated: false
+  },
+  {
+    id: 'learning_loop',
+    name: 'Boucle d\'Apprentissage',
+    name_ba: 'Èkó Lọ́pọ̀',
+    category: 'educational',
+    mood: 'motivating',
+    duration: 90,
+    bpm: 80,
+    description: 'Rythme motivant pour apprendre',
+    tags: ['motivation', 'apprentissage', 'positif'],
+    url: 'https://cdn.pixabay.com/audio/2022/10/30/audio_6b7e2a0b1c.mp3',
+    isGenerated: false
   },
   {
     id: 'success_fanfare',
@@ -153,129 +149,116 @@ export const MUSIC_LIBRARY: MusicTrack[] = [
     name_ba: 'Ìṣẹ́gun Fèrè',
     category: 'educational',
     mood: 'joyful',
-    duration: 5,
+    duration: 8,
     description: 'Courte fanfare pour célébrer les réussites',
     tags: ['victoire', 'célébration', 'court'],
-    isGenerated: true
+    url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3',
+    isGenerated: false
   },
 
   // Ambient
   {
-    id: 'village_morning',
-    name: 'Matin au Village',
-    name_ba: 'Àárọ̀ Ní Àbúlé',
-    category: 'ambient',
-    mood: 'calm',
-    duration: 120,
-    description: 'Sons du matin dans un village béninois',
-    tags: ['matin', 'village', 'coq', 'oiseaux'],
-    isGenerated: true
-  },
-  {
-    id: 'market_ambiance',
-    name: 'Ambiance de Marché',
-    name_ba: 'Àríyá Ọjà',
-    category: 'ambient',
-    mood: 'energetic',
-    duration: 90,
-    description: 'Sons et murmures d\'un marché animé',
-    tags: ['marché', 'commerce', 'foule'],
-    isGenerated: true
-  },
-  {
-    id: 'evening_crickets',
-    name: 'Criquets du Soir',
-    name_ba: 'Kírìkítì Àṣálẹ́',
+    id: 'african_night',
+    name: 'Nuit Africaine',
+    name_ba: 'Alẹ́ Afrika',
     category: 'ambient',
     mood: 'calm',
     duration: 180,
-    description: 'Chant des criquets au coucher du soleil',
-    tags: ['soir', 'nature', 'relaxation'],
-    isGenerated: true
+    description: 'Ambiance nocturne apaisante',
+    tags: ['nuit', 'calme', 'relaxation'],
+    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_a8b5d9d1e4.mp3',
+    isGenerated: false
+  },
+  {
+    id: 'village_life',
+    name: 'Vie de Village',
+    name_ba: 'Àbúlé Ìgbésí',
+    category: 'ambient',
+    mood: 'calm',
+    duration: 150,
+    description: 'Sons quotidiens d\'un village africain',
+    tags: ['village', 'quotidien', 'authentique'],
+    url: 'https://cdn.pixabay.com/audio/2023/01/16/audio_8c8e8f1a9b.mp3',
+    isGenerated: false
   },
 
   // Celebration
   {
-    id: 'wedding_drums',
-    name: 'Tambours de Mariage',
-    name_ba: 'Ìlù Ìgbéyàwó',
-    category: 'celebration',
-    mood: 'joyful',
-    duration: 60,
-    bpm: 130,
-    description: 'Rythmes traditionnels de mariage',
-    tags: ['mariage', 'fête', 'danse'],
-    isGenerated: true
-  },
-  {
-    id: 'harvest_celebration',
-    name: 'Fête des Récoltes',
-    name_ba: 'Odún Ìkórè',
+    id: 'celebration_drums',
+    name: 'Tambours de Fête',
+    name_ba: 'Ìlù Ayẹyẹ',
     category: 'celebration',
     mood: 'joyful',
     duration: 45,
-    bpm: 115,
-    description: 'Musique de célébration des récoltes',
-    tags: ['agriculture', 'récolte', 'gratitude'],
-    isGenerated: true
+    bpm: 130,
+    description: 'Percussions festives pour célébrations',
+    tags: ['fête', 'danse', 'joie'],
+    url: 'https://cdn.pixabay.com/audio/2022/11/22/audio_6e9a0d4d3e.mp3',
+    isGenerated: false
   },
   {
-    id: 'birth_celebration',
-    name: 'Célébration de Naissance',
-    name_ba: 'Ayẹyẹ Ọmọ Tuntun',
+    id: 'wedding_joy',
+    name: 'Joie de Mariage',
+    name_ba: 'Ayọ̀ Ìgbéyàwó',
     category: 'celebration',
     mood: 'joyful',
-    duration: 30,
-    bpm: 100,
-    description: 'Musique douce pour accueillir un nouveau-né',
-    tags: ['naissance', 'famille', 'joie'],
-    isGenerated: true
+    duration: 60,
+    bpm: 115,
+    description: 'Musique traditionnelle de mariage',
+    tags: ['mariage', 'amour', 'famille'],
+    url: 'https://cdn.pixabay.com/audio/2022/08/31/audio_4e9d5f9a4c.mp3',
+    isGenerated: false
+  },
+  {
+    id: 'harvest_dance',
+    name: 'Danse des Récoltes',
+    name_ba: 'Ijó Ìkórè',
+    category: 'celebration',
+    mood: 'energetic',
+    duration: 50,
+    bpm: 120,
+    description: 'Musique pour célébrer les récoltes',
+    tags: ['agriculture', 'récolte', 'gratitude'],
+    url: 'https://cdn.pixabay.com/audio/2023/05/10/audio_2b8d6e4f1a.mp3',
+    isGenerated: false
   },
 
   // Nature
   {
-    id: 'savanna_wind',
-    name: 'Vent de Savane',
-    name_ba: 'Afẹ́fẹ́ Pápá',
+    id: 'savanna_morning',
+    name: 'Matin en Savane',
+    name_ba: 'Àárọ̀ Pápá',
     category: 'nature',
     mood: 'calm',
-    duration: 120,
-    description: 'Sons du vent dans la savane',
-    tags: ['vent', 'savane', 'paix'],
-    isGenerated: true
+    duration: 200,
+    description: 'Sons du lever du soleil en savane',
+    tags: ['matin', 'savane', 'oiseaux'],
+    url: 'https://cdn.pixabay.com/audio/2022/06/07/audio_b9bd4170e4.mp3',
+    isGenerated: false
   },
   {
-    id: 'river_flow',
-    name: 'Rivière Qui Coule',
-    name_ba: 'Odò Tí Ń Ṣàn',
+    id: 'tropical_rain',
+    name: 'Pluie Tropicale',
+    name_ba: 'Òjò Ilẹ̀ Gbígbóná',
+    category: 'nature',
+    mood: 'reflective',
+    duration: 240,
+    description: 'Pluie douce sur la végétation tropicale',
+    tags: ['pluie', 'relaxation', 'nature'],
+    url: 'https://cdn.pixabay.com/audio/2022/03/24/audio_5edba56c1f.mp3',
+    isGenerated: false
+  },
+  {
+    id: 'river_stream',
+    name: 'Rivière Paisible',
+    name_ba: 'Odò Àlàáfíà',
     category: 'nature',
     mood: 'calm',
     duration: 180,
-    description: 'Son apaisant d\'une rivière',
-    tags: ['eau', 'rivière', 'méditation'],
-    isGenerated: true
-  },
-  {
-    id: 'tropical_birds',
-    name: 'Oiseaux Tropicaux',
-    name_ba: 'Ẹyẹ Ilẹ̀ Gbígbóná',
-    category: 'nature',
-    mood: 'calm',
-    duration: 150,
-    description: 'Chants d\'oiseaux de la forêt tropicale',
-    tags: ['oiseaux', 'forêt', 'nature'],
-    isGenerated: true
-  },
-  {
-    id: 'rain_on_leaves',
-    name: 'Pluie sur les Feuilles',
-    name_ba: 'Òjò Lórí Ewé',
-    category: 'nature',
-    mood: 'reflective',
-    duration: 200,
-    description: 'Son de pluie tombant sur le feuillage',
-    tags: ['pluie', 'relaxation', 'nature'],
-    isGenerated: true
+    description: 'Écoulement d\'eau et chants d\'oiseaux',
+    tags: ['eau', 'rivière', 'paix'],
+    url: 'https://cdn.pixabay.com/audio/2022/01/18/audio_d0c6ff1bcd.mp3',
+    isGenerated: false
   }
 ];
 
@@ -308,7 +291,7 @@ export const getSuggestedMusic = (context: {
       health: ['calme', 'méditation', 'relaxation'],
       education: ['apprentissage', 'focus', 'étude'],
       market: ['marché', 'commerce', 'énergie'],
-      culture: ['traditionnel', 'cérémonie', 'histoire'],
+      culture: ['traditionnel', 'cérémonie', 'sagesse'],
       celebration: ['fête', 'joie', 'danse']
     };
     

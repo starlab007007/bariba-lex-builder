@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, ChevronRight, RefreshCw, UserPlus } from 'lucide-react';
+import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, ChevronRight, RefreshCw, UserPlus, Clock } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
-import { useTamTamPosts, TamTamComment } from '@/hooks/useTamTamPosts';
+import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
@@ -13,9 +13,10 @@ import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
 import { useSideMenu } from './TamTamApp';
+import { supabase } from '@/integrations/supabase/client';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📱 TAM-TAM SOCIAL V7 - SANS HEADER + TOUS BOUTONS + FIX AUDIO
+// 📱 TAM-TAM SOCIAL V8 - AVEC UPLOAD MEDIA + HEURES DE PUBLICATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
@@ -23,6 +24,19 @@ type BottomTab = 'fil' | 'chat' | 'groupes' | 'direct';
 
 // URL audio par défaut (silence ou placeholder)
 const DEFAULT_AUDIO_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+
+// Helper pour formater la date/heure de publication
+const formatPublicationDate = (dateString: string | null): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const months = ['janv.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${day} ${month} ${year}, ${hours}:${minutes}`;
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TEMPLATES POUR DISQUES VINYLE
@@ -378,8 +392,13 @@ const AudioFeedCard: React.FC<{
 
         {/* Title & Author */}
         <h2 className="text-white text-lg font-bold text-center mb-1 px-4">{post.title || post.transcript_fr?.slice(0, 35) || template.name}</h2>
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-1">
           <span className="text-white/60 text-sm">📍 {post.profile?.display_name || 'Utilisateur'} • {post.location_name || 'Communauté'}</span>
+        </div>
+        {/* Date/heure de publication */}
+        <div className="flex items-center gap-1 mb-2">
+          <Clock className="w-3 h-3 text-white/40" />
+          <span className="text-white/40 text-xs">{formatPublicationDate(post.created_at)}</span>
         </div>
 
         {/* Follow button */}
@@ -523,6 +542,11 @@ const VideoFeedCard: React.FC<{
           </motion.button>
         </div>
         <p className="text-white text-sm mb-1">{post.transcript_fr || 'Création vidéo'}</p>
+        {/* Date/heure de publication */}
+        <div className="flex items-center gap-1 mb-1">
+          <Clock className="w-3 h-3 text-white/50" />
+          <span className="text-white/50 text-xs">{formatPublicationDate(post.created_at)}</span>
+        </div>
         <p className="text-white/50 text-xs">#TAMTAM #Création</p>
       </div>
 
@@ -643,17 +667,45 @@ export default function TamTamSocial() {
 
   const handleCreatorComplete = useCallback(async (d: any) => {
     try {
+      // Get user for upload
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id || 'anonymous';
+      
+      let mediaUrl = d.media_url || null;
+      let audioUrl = d.audio_url || DEFAULT_AUDIO_URL;
+      
+      // Upload media blob if present
+      if (d.segments && d.segments.length > 0) {
+        const firstSegment = d.segments[0];
+        if (firstSegment.blob) {
+          try {
+            const mediaType = d.mode === 'video' ? 'video' : d.mode === 'photo' ? 'photo' : 'audio';
+            mediaUrl = await uploadMediaToStorage(firstSegment.blob, mediaType, userId);
+            console.log('[TamTamSocial] Media uploaded:', mediaUrl);
+            
+            // For video/audio, use same URL for audio
+            if (mediaType === 'video' || mediaType === 'audio') {
+              audioUrl = mediaUrl;
+            }
+          } catch (uploadError) {
+            console.error('[TamTamSocial] Upload error:', uploadError);
+            // Continue with default URL if upload fails
+          }
+        }
+      }
+      
       const postData = {
-        audio_url: d.audio_url || DEFAULT_AUDIO_URL,
-        media_type: d.media_type || 'audio',
-        media_url: d.media_url || null,
-        transcript_fr: d.transcript_fr || '',
-        transcript_ba: d.transcript_ba || '',
-        topic: d.topic || 'creation',
-        template_id: d.template_id || null,
-        duration_seconds: d.duration_seconds || 30,
+        audio_url: audioUrl,
+        media_type: d.mode || 'video',
+        media_url: mediaUrl,
+        transcript_fr: d.caption || '',
+        transcript_ba: '',
+        topic: 'creation',
+        template_id: d.effects?.templateId || null,
+        duration_seconds: d.segments?.reduce((sum: number, s: any) => sum + (s.endTime - s.startTime), 0) || 30,
       };
       
+      console.log('[TamTamSocial] Creating post with data:', postData);
       await createPost(postData);
       toast({ title: "✅ Publié!" });
       triggerFeedback('success');
