@@ -103,52 +103,57 @@ const LiveTemplateEffect: React.FC<LiveTemplateEffectProps> = ({
       return;
     }
 
+    // Skip if video not ready or has no dimensions
+    if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+      animationRef.current = requestAnimationFrame(processFrame);
+      return;
+    }
+
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       animationRef.current = requestAnimationFrame(processFrame);
       return;
     }
 
-    // Match canvas size to video
-    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-      canvas.width = video.videoWidth || 1920;
-      canvas.height = video.videoHeight || 1080;
+    // Match canvas size to video dimensions for proper rendering
+    const targetWidth = video.videoWidth || 1920;
+    const targetHeight = video.videoHeight || 1080;
+    if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
     }
 
-    // Apply CSS filter to context
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Clear and draw video with filter
+    ctx.clearRect(0, 0, w, h);
     const filterString = getTemplateFilter(template, currentFilterIntensity);
     ctx.filter = filterString;
-
-    // Draw video frame
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Reset filter for overlays
+    ctx.drawImage(video, 0, 0, w, h);
     ctx.filter = 'none';
 
     // Apply color overlay gradient
     if (overlayGradient) {
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      const gradient = ctx.createLinearGradient(0, 0, w, h);
       gradient.addColorStop(0, overlayGradient.start);
       gradient.addColorStop(1, overlayGradient.end);
       ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, w, h);
     }
 
     // Apply vignette effect
-    const vignetteGradient = ctx.createRadialGradient(
-      canvas.width / 2, canvas.height / 2, canvas.height * 0.3,
-      canvas.width / 2, canvas.height / 2, canvas.height * 0.8
-    );
+    const vignetteGradient = ctx.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, h * 0.8);
     vignetteGradient.addColorStop(0, 'transparent');
     vignetteGradient.addColorStop(1, 'rgba(0,0,0,0.4)');
     ctx.fillStyle = vignetteGradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, w, h);
 
     // Draw watermark
     ctx.font = 'bold 24px system-ui';
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.textAlign = 'left';
-    ctx.fillText(`${template.emoji} ${template.label_fr}`, 20, canvas.height - 20);
+    ctx.fillText(`${template.emoji} ${template.label_fr}`, 20, h - 20);
 
     // Callback for external processing
     if (onProcessedFrame) {
