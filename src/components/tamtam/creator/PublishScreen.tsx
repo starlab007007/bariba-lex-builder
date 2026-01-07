@@ -1,7 +1,7 @@
 // src/components/tamtam/creator/PublishScreen.tsx
-// Fullscreen publish screen with differentiation for text/photo/video
+// Fullscreen publish screen with K-Engine exportJob integration
 
-import React, { useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -11,7 +11,6 @@ import {
   Lock,
   Globe,
   Hash,
-  Sparkles,
   Palette,
   Play,
   Pause,
@@ -22,24 +21,38 @@ import {
   Image as ImageIcon,
   Type,
   Video,
+  Sparkles,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Caption } from "./CaptionsDrawer";
 import { SelectedMusic } from "./MusicDrawer";
 import { CaptureEffects } from "./CreatorEffectsData";
 
+// ✅ K-Engine
+import { kEngine } from "../TemplateEngine"; // <-- ajuste le path si besoin
+
 interface PublishScreenProps {
   isOpen: boolean;
   mediaType: "video" | "photo" | "text";
-  previewUrl: string;
+  previewUrl: string; // preview URL (blob/object url)
   textContent?: string;
+
   caption: string;
   effects: CaptureEffects;
   selectedMusic?: SelectedMusic | null;
   captions?: Caption[];
   cssFilter?: string;
+
   onCaptionChange: (caption: string) => void;
-  onPublish: () => Promise<void>;
+
+  /**
+   * Legacy publish hook (upload to backend, DB insert, etc.)
+   * We will call it AFTER we have the final exported blob from K-Engine.
+   * If you want, you can replace entirely with onPublishExported(blob,...).
+   */
+  onPublish: (payload?: { exportedBlob?: Blob; exportedType?: "video" | "image"; meta?: any }) => Promise<void>;
+
   onBack: () => void;
   isPublishing?: boolean;
   error?: string | null;
@@ -68,6 +81,137 @@ const SUGGESTED_HASHTAGS = [
   "#Communauté",
 ];
 
+async function urlToBlob(url: string): Promise<Blob> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Impossible de charger le média de prévisualisation.");
+  return await res.blob();
+}
+
+// Render text mode to an image blob so K-Engine/export can handle it
+async function renderTextToImageBlob(text: string, bgClass: string): Promise<Blob> {
+  // Simple canvas renderer (client-side)
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas non disponible");
+
+  // Background: approximate gradient mapping (we keep it simple, production can map exact colors)
+  // If you want exact tailwind colors, we can map each id -> hex stops.
+  const bgId = bgClass.includes("gradient-1")
+    ? "gradient-1"
+    : bgClass.includes("gradient-2")
+    ? "gradient-2"
+    : bgClass.includes("gradient-3")
+    ? "gradient-3"
+    : bgClass.includes("gradient-4")
+    ? "gradient-4"
+    : bgClass.includes("gradient-5")
+    ? "gradient-5"
+    : bgClass.includes("bg-slate-900")
+    ? "solid-dark"
+    : "solid-warm";
+
+  if (bgId.startsWith("gradient")) {
+    const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    // minimal palette
+    if (bgId === "gradient-1") {
+      g.addColorStop(0, "#f97316");
+      g.addColorStop(0.5, "#ef4444");
+      g.addColorStop(1, "#7c3aed");
+    } else if (bgId === "gradient-2") {
+      g.addColorStop(0, "#3b82f6");
+      g.addColorStop(0.5, "#a855f7");
+      g.addColorStop(1, "#ec4899");
+    } else if (bgId === "gradient-3") {
+      g.addColorStop(0, "#34d399");
+      g.addColorStop(0.5, "#14b8a6");
+      g.addColorStop(1, "#3b82f6");
+    } else if (bgId === "gradient-4") {
+      g.addColorStop(0, "#facc15");
+      g.addColorStop(0.5, "#f97316");
+      g.addColorStop(1, "#ef4444");
+    } else {
+      g.addColorStop(0, "#f472b6");
+      g.addColorStop(0.5, "#a855f7");
+      g.addColorStop(1, "#4f46e5");
+    }
+    ctx.fillStyle = g;
+  } else {
+    ctx.fillStyle = bgId === "solid-dark" ? "#0f172a" : "#78350f";
+  }
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Text card
+  const pad = 140;
+  const cardW = canvas.width - pad * 2;
+  const cardH = Math.floor(canvas.height * 0.45);
+  const cardX = pad;
+  const cardY = Math.floor((canvas.height - cardH) / 2);
+
+  // glass card
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  roundRect(ctx, cardX, cardY, cardW, cardH, 56);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 3;
+  roundRect(ctx, cardX, cardY, cardW, cardH, 56);
+  ctx.stroke();
+
+  // text
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "600 56px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  const maxWidth = cardW * 0.85;
+
+  const lines = wrapText(ctx, text || "Votre texte", maxWidth);
+  const lineH = 78;
+  const startY = cardY + cardH / 2 - ((lines.length - 1) * lineH) / 2;
+
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], canvas.width / 2, startY + i * lineH);
+  }
+
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => {
+      if (!b) reject(new Error("Impossible de générer l’image du texte."));
+      else resolve(b);
+    }, "image/png");
+  });
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w;
+    if (ctx.measureText(test).width <= maxWidth) line = test;
+    else {
+      if (line) lines.push(line);
+      line = w;
+    }
+  }
+  if (line) lines.push(line);
+
+  // clamp to avoid overflow
+  return lines.slice(0, 8);
+}
+
 export default function PublishScreen({
   isOpen,
   mediaType,
@@ -92,36 +236,126 @@ export default function PublishScreen({
   const [isMuted, setIsMuted] = useState(false);
   const [showHashtags, setShowHashtags] = useState(false);
 
-  const videoRef = React.useRef<HTMLVideoElement>(null);
+  // ✅ K-Engine export state (real)
+  const [exporting, setExporting] = useState(false);
+  const [exportPercent, setExportPercent] = useState(0);
+  const [exportMessage, setExportMessage] = useState<string>("");
 
-  // Toggle video playback
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const selectedBg = TEXT_BACKGROUNDS[textBgIndex];
+
+  const canExportThroughEngine = useMemo(() => {
+    // If a template is loaded and engine has a manifest, we can export job.
+    // If you're in "no template" mode, engine may not be loaded => fallback to legacy onPublish.
+    const st = kEngine.getState?.();
+    return !!st?.loaded;
+  }, [isOpen]);
+
   const togglePlay = () => {
     if (!videoRef.current) return;
-    if (isPlaying) {
-      videoRef.current.pause();
-    } else {
-      videoRef.current.play();
-    }
+    if (isPlaying) videoRef.current.pause();
+    else videoRef.current.play();
     setIsPlaying(!isPlaying);
   };
 
-  // Toggle mute
   const toggleMute = () => {
     if (!videoRef.current) return;
     videoRef.current.muted = !isMuted;
     setIsMuted(!isMuted);
   };
 
-  // Add hashtag to caption
   const addHashtag = (tag: string) => {
     if (!caption.includes(tag)) {
       onCaptionChange(caption ? `${caption} ${tag}` : tag);
     }
   };
 
-  // Handle publish
+  // ✅ Publish = export (K-Engine) -> then backend publish
   const handlePublish = async () => {
-    await onPublish();
+    if (exporting || isPublishing) return;
+
+    try {
+      setExporting(true);
+      setExportPercent(0);
+      setExportMessage(canExportThroughEngine ? "Préparation de l’export..." : "Publication...");
+
+      // If no engine template loaded, fallback to legacy onPublish
+      if (!canExportThroughEngine) {
+        await onPublish();
+        return;
+      }
+
+      // 1) Build export inputs for K-Engine
+      let primaryBlob: Blob;
+      let outputType: "video" | "image" = mediaType === "video" ? "video" : "image";
+
+      if (mediaType === "text") {
+        primaryBlob = await renderTextToImageBlob(textContent || "Votre texte", selectedBg.style);
+        outputType = "image";
+      } else {
+        primaryBlob = await urlToBlob(previewUrl);
+        outputType = mediaType === "video" ? "video" : "image";
+      }
+
+      // 2) Build metadata
+      const meta = {
+        caption,
+        visibility,
+        location: location || undefined,
+        selectedMusic: selectedMusic
+          ? {
+              id: selectedMusic.track?.id,
+              name: selectedMusic.track?.name || selectedMusic.customName,
+              url: selectedMusic.track?.url,
+              startAt: selectedMusic.startAt,
+              duration: selectedMusic.duration,
+            }
+          : null,
+        captions: captions || null,
+        effects: effects || null,
+        cssFilter: cssFilter || null,
+        mediaType,
+        textBackground: mediaType === "text" ? selectedBg.id : null,
+      };
+
+      // 3) Export job via K-Engine
+      //    Your K-Engine should translate its manifest/timeline/pipeline into a real job.
+      //    This callback mimics "Recognizing... / Exporting..." progress.
+      const result = await kEngine.exportJob(
+        {
+          inputBlob: primaryBlob,
+          inputType: mediaType,
+          meta,
+        },
+        (p: { stage?: string; percent?: number; message?: string }) => {
+          setExportPercent(Math.max(0, Math.min(100, p.percent ?? 0)));
+          setExportMessage(p.message || (p.stage ? `Export: ${p.stage}` : "Export en cours..."));
+        }
+      );
+
+      // result can be Blob or { outputBlob, ... }
+      const exportedBlob: Blob =
+        result instanceof Blob ? result : (result?.outputBlob as Blob);
+
+      if (!exportedBlob) {
+        throw new Error("Export K-Engine échoué : aucun fichier généré.");
+      }
+
+      setExportPercent(100);
+      setExportMessage("Export terminé ✅");
+
+      // 4) Call your existing publish (upload DB/storage etc.)
+      await onPublish({ exportedBlob, exportedType: outputType, meta });
+    } catch (e: any) {
+      console.error("[PublishScreen] publish/export error:", e);
+      // we keep the existing `error` prop display. If you want local error too, add state.
+      alert(e?.message || "Erreur pendant l’export/publication.");
+    } finally {
+      setExporting(false);
+      setExportPercent(0);
+      setExportMessage("");
+    }
   };
 
   if (!isOpen) return null;
@@ -136,8 +370,7 @@ export default function PublishScreen({
       {/* ===== FULLSCREEN MEDIA PREVIEW ===== */}
       <div className="absolute inset-0">
         {mediaType === "text" ? (
-          // TEXT MODE - Colored background with styled text
-          <div className={cn("absolute inset-0", TEXT_BACKGROUNDS[textBgIndex].style)}>
+          <div className={cn("absolute inset-0", selectedBg.style)}>
             <div className="absolute inset-0 flex items-center justify-center p-8">
               <div className="max-w-lg">
                 <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20">
@@ -149,7 +382,6 @@ export default function PublishScreen({
             </div>
           </div>
         ) : mediaType === "video" ? (
-          // VIDEO MODE - Fullscreen video
           <video
             ref={videoRef}
             src={previewUrl}
@@ -160,7 +392,6 @@ export default function PublishScreen({
             onClick={togglePlay}
           />
         ) : (
-          // PHOTO MODE - Fullscreen image
           <img
             src={previewUrl}
             alt="Preview"
@@ -169,7 +400,6 @@ export default function PublishScreen({
           />
         )}
 
-        {/* Gradient overlay for better text visibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none" />
       </div>
 
@@ -213,7 +443,6 @@ export default function PublishScreen({
         </div>
       )}
 
-      {/* Volume control for video */}
       {mediaType === "video" && (
         <button
           onClick={toggleMute}
@@ -308,6 +537,29 @@ export default function PublishScreen({
             )}
           </AnimatePresence>
 
+          {/* ✅ Export Progress (K-Engine) */}
+          <AnimatePresence>
+            {exporting && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="rounded-2xl bg-white/5 border border-white/10 p-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-white/80 text-sm">
+                    <Sparkles className="h-4 w-4 text-orange-400" />
+                    <span>{exportMessage || "Export K-Engine..."}</span>
+                  </div>
+                  <div className="text-white/70 text-sm tabular-nums">{exportPercent}%</div>
+                </div>
+                <div className="mt-2 h-2 rounded-full bg-black/40 overflow-hidden">
+                  <div className="h-full bg-orange-500" style={{ width: `${exportPercent}%` }} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Options row */}
           <div className="flex items-center gap-2">
             {/* Location */}
@@ -333,9 +585,7 @@ export default function PublishScreen({
                 onClick={() => setShowLocationInput(true)}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm transition-all",
-                  location
-                    ? "bg-orange-500/20 text-orange-400"
-                    : "bg-white/5 text-white/60"
+                  location ? "bg-orange-500/20 text-orange-400" : "bg-white/5 text-white/60"
                 )}
               >
                 <MapPin className="h-4 w-4" />
@@ -361,9 +611,7 @@ export default function PublishScreen({
                   onClick={() => setVisibility(v.id as Visibility)}
                   className={cn(
                     "px-3 py-2 flex items-center gap-1.5 text-sm transition-all",
-                    visibility === v.id
-                      ? "bg-orange-500 text-white"
-                      : "text-white/60"
+                    visibility === v.id ? "bg-orange-500 text-white" : "text-white/60"
                   )}
                 >
                   <v.icon className="h-4 w-4" />
@@ -383,13 +631,13 @@ export default function PublishScreen({
           {/* Publish button */}
           <button
             onClick={handlePublish}
-            disabled={isPublishing}
+            disabled={isPublishing || exporting}
             className="w-full h-14 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg hover:shadow-orange-500/25"
           >
-            {isPublishing ? (
+            {isPublishing || exporting ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Publication...
+                {exporting ? "Export K-Engine..." : "Publication..."}
               </>
             ) : (
               <>
@@ -398,6 +646,18 @@ export default function PublishScreen({
               </>
             )}
           </button>
+
+          {/* small hint when engine is active */}
+          <div className="text-[11px] text-white/40 flex items-center justify-center gap-1">
+            {canExportThroughEngine ? (
+              <>
+                <Check className="h-3 w-3" />
+                Export via K-Engine
+              </>
+            ) : (
+              <span>Export standard</span>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
