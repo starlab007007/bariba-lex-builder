@@ -261,6 +261,14 @@ const pickBestRecorderMime = () => {
 const waitMs = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // ---- Attempt to load ffmpeg.wasm if installed (optional) ----
+/**
+ * ✅ IMPORTANT (Fix GitHub Deploy):
+ * On évite que Vite/Rollup essaie de résoudre "@ffmpeg/ffmpeg" au build quand le package
+ * n'est pas installé. Sinon: "Rollup failed to resolve import '@ffmpeg/ffmpeg'".
+ *
+ * Ici on "cache" l'import pour que le build passe, et si le module est absent,
+ * on retourne null (fallback -> WebM).
+ */
 async function tryLoadFFmpegWasm(): Promise<
   | null
   | {
@@ -269,12 +277,9 @@ async function tryLoadFFmpegWasm(): Promise<
     }
 > {
   try {
-    // If you have @ffmpeg/ffmpeg installed, this works:
-    // npm i @ffmpeg/ffmpeg
-    // NOTE: some bundlers require explicit path; adapt if needed.
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const mod = await import("@ffmpeg/ffmpeg");
+    // eslint-disable-next-line no-new-func
+    const dynamicImport = new Function("m", "return import(m)") as (m: string) => Promise<any>;
+    const mod = await dynamicImport("@ffmpeg/ffmpeg");
     if (mod?.createFFmpeg && mod?.fetchFile) return { createFFmpeg: mod.createFFmpeg, fetchFile: mod.fetchFile };
     return null;
   } catch {
@@ -536,7 +541,7 @@ export class TemplateEngine {
       if (layer.animation?.type === "bounce") ctx.translate(0, Math.sin(local * Math.PI) * -12);
 
       const s = t.scale || 1;
-      const zoom = layer.animation?.type === "zoom" ? (0.85 + 0.15 * local) : 1;
+      const zoom = layer.animation?.type === "zoom" ? 0.85 + 0.15 * local : 1;
       ctx.scale(s * zoom, s * zoom);
 
       const rot = ((t.rotation || 0) * Math.PI) / 180;
@@ -676,12 +681,15 @@ export class TemplateEngine {
   exportJob(
     args: ExportRuntimeArgs,
     onProgress?: (p: ExportRuntimeProgress) => void
-  ): Promise<{ outputBlob: Blob; outputType: "video" | "image"; ffmpegJob: ExportJob; used: "web" | "ffmpeg_wasm" | "fallback"; meta: any }>;
+  ): Promise<{
+    outputBlob: Blob;
+    outputType: "video" | "image";
+    ffmpegJob: ExportJob;
+    used: "web" | "ffmpeg_wasm" | "fallback";
+    meta: any;
+  }>;
 
-  exportJob(
-    arg1?: ExportRuntimeArgs,
-    arg2?: (p: ExportRuntimeProgress) => void
-  ): any {
+  exportJob(arg1?: ExportRuntimeArgs, arg2?: (p: ExportRuntimeProgress) => void): any {
     // If no args -> build command
     if (!arg1) return this.buildFFmpegExportJob();
 
@@ -734,10 +742,7 @@ export class TemplateEngine {
     const pxY = (ny: number) => Math.round((ny || 0) * h);
 
     const safeText = (s: string) =>
-      (s || "TamTam")
-        .replace(/:/g, "\\:")
-        .replace(/'/g, "\\'")
-        .replace(/"/g, '\\"');
+      (s || "TamTam").replace(/:/g, "\\:").replace(/'/g, "\\'").replace(/"/g, '\\"');
 
     userInputIndex.forEach((u, i) => {
       const L = u.layer;
@@ -979,7 +984,9 @@ export class TemplateEngine {
 
     if (!candidate) return;
 
-    const mime = inferMimeFromBlob(inputBlob) || (typeToSlotType === "photo" ? "image/png" : typeToSlotType === "audio" ? "audio/webm" : "video/webm");
+    const mime =
+      inferMimeFromBlob(inputBlob) ||
+      (typeToSlotType === "photo" ? "image/png" : typeToSlotType === "audio" ? "audio/webm" : "video/webm");
 
     await this.bindUserMedia(candidate.id, {
       slotId: candidate.id,
