@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   RefreshCw, Sparkles, CheckCircle, Clock, AlertCircle, 
-  Download, Eye, Play, Pause, RotateCcw, Database, Zap
+  Download, Eye, Play, Pause, RotateCcw, Database, Zap, Image, ImagePlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,8 +11,8 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTemplateLibrary, AIGeneratedTemplate } from '@/hooks/useTemplateLibrary';
+import { useTemplateVisuals } from '@/hooks/useTemplateVisuals';
 import { TemplatePreviewModal } from '@/components/tamtam/creator/TemplatePreviewModal';
-
 export function TemplateGenerationAdmin() {
   const {
     templates,
@@ -29,7 +29,20 @@ export function TemplateGenerationAdmin() {
     refetch,
   } = useTemplateLibrary();
 
+  const {
+    generateSingleVisuals,
+    generateAllPending: generateAllVisuals,
+    getVisualStats,
+    generationProgress: visualProgress,
+    isGenerating: isGeneratingVisuals
+  } = useTemplateVisuals();
+
   const [previewTemplate, setPreviewTemplate] = useState<AIGeneratedTemplate | null>(null);
+  const [visualStats, setVisualStats] = useState<any>(null);
+
+  useEffect(() => {
+    getVisualStats().then(setVisualStats);
+  }, [templates]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -141,6 +154,26 @@ export function TemplateGenerationAdmin() {
         </Card>
       )}
 
+      {/* Visual Progress Bar */}
+      {visualProgress && (
+        <Card className="border-purple-500/20 bg-purple-500/5">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">
+                🎨 Génération visuels: {visualProgress.currentTemplate}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {visualProgress.current}/{visualProgress.total}
+              </span>
+            </div>
+            <Progress 
+              value={(visualProgress.current / visualProgress.total) * 100} 
+              className="h-3"
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Actions */}
       <Card>
         <CardHeader>
@@ -189,6 +222,28 @@ export function TemplateGenerationAdmin() {
               Actualiser
             </Button>
           </div>
+
+          {/* Visual Generation Section */}
+          <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mr-4">
+              <ImagePlus className="w-4 h-4" />
+              <span>Visuels IA:</span>
+              {visualStats && (
+                <span className="font-medium text-foreground">
+                  {visualStats.completed}/{visualStats.total} générés
+                </span>
+              )}
+            </div>
+            
+            <Button
+              variant="outline"
+              onClick={generateAllVisuals}
+              disabled={isGeneratingVisuals}
+            >
+              <Image className={`w-4 h-4 mr-2 ${isGeneratingVisuals ? 'animate-pulse' : ''}`} />
+              {isGeneratingVisuals ? 'Génération...' : 'Générer tous les visuels'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -197,7 +252,7 @@ export function TemplateGenerationAdmin() {
         <CardHeader>
           <CardTitle>Templates ({templates.length})</CardTitle>
           <CardDescription>
-            Liste de tous les templates avec leur statut de génération IA
+            Liste de tous les templates avec leur statut de génération IA et visuels
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -205,12 +260,12 @@ export function TemplateGenerationAdmin() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">Icon</TableHead>
+                  <TableHead className="w-16">Preview</TableHead>
                   <TableHead>Template</TableHead>
                   <TableHead>Famille</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Status IA</TableHead>
+                  <TableHead>Visuels</TableHead>
                   <TableHead className="text-center">Usage</TableHead>
-                  <TableHead className="text-center">Downloads</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -218,12 +273,20 @@ export function TemplateGenerationAdmin() {
                 {templates.map(template => (
                   <TableRow key={template.id}>
                     <TableCell>
-                      <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-                        style={{ background: `${template.color}20` }}
-                      >
-                        {template.emoji}
-                      </div>
+                      {(template as any).preview_image_url ? (
+                        <img 
+                          src={(template as any).preview_image_url} 
+                          alt={template.label_fr}
+                          className="w-12 h-16 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div
+                          className="w-12 h-16 rounded-lg flex items-center justify-center text-xl"
+                          style={{ background: `${template.color}20` }}
+                        >
+                          {template.emoji}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div>
@@ -239,11 +302,20 @@ export function TemplateGenerationAdmin() {
                     <TableCell>
                       {getStatusBadge(template.generation_status)}
                     </TableCell>
-                    <TableCell className="text-center">
-                      {template.usage_count}
+                    <TableCell>
+                      <Badge 
+                        variant={(template as any).visual_generation_status === 'completed' ? 'default' : 'outline'}
+                        className="gap-1"
+                      >
+                        {(template as any).visual_generation_status === 'completed' && <CheckCircle className="w-3 h-3" />}
+                        {(template as any).visual_generation_status === 'pending' && <Clock className="w-3 h-3" />}
+                        {(template as any).visual_generation_status === 'generating' && <RefreshCw className="w-3 h-3 animate-spin" />}
+                        {(template as any).visual_generation_status === 'failed' && <AlertCircle className="w-3 h-3" />}
+                        {(template as any).preview_image_url ? '✓' : '—'}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      {template.download_count}
+                      {template.usage_count}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -259,8 +331,18 @@ export function TemplateGenerationAdmin() {
                           size="icon"
                           onClick={() => generateSingle(template.template_key)}
                           disabled={isGenerating || template.generation_status === 'generating'}
+                          title="Régénérer contenu IA"
                         >
                           <RotateCcw className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => generateSingleVisuals.mutate(template.id)}
+                          disabled={isGeneratingVisuals || (template as any).visual_generation_status === 'generating'}
+                          title="Générer visuels"
+                        >
+                          <ImagePlus className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"

@@ -26,6 +26,7 @@ export type Database = {
           collection: string | null
           color: string
           created_at: string | null
+          demo_video_url: string | null
           description_ba: string | null
           description_fr: string
           download_count: number | null
@@ -33,6 +34,7 @@ export type Database = {
           family: string
           features: Json
           generation_status: string | null
+          icon_url: string | null
           id: string
           inputs: Json
           is_active: boolean | null
@@ -42,12 +44,15 @@ export type Database = {
           label_fr: string
           last_generated_at: string | null
           output_ratios: string[]
+          preview_image_url: string | null
           rating_average: number | null
           rating_count: number | null
+          storyboard_frames: Json | null
           supported_durations: string[]
           template_key: string
           updated_at: string | null
           usage_count: number | null
+          visual_generation_status: string | null
           voice_instructions: Json
         }
         Insert: {
@@ -61,6 +66,7 @@ export type Database = {
           collection?: string | null
           color: string
           created_at?: string | null
+          demo_video_url?: string | null
           description_ba?: string | null
           description_fr: string
           download_count?: number | null
@@ -68,6 +74,7 @@ export type Database = {
           family: string
           features?: Json
           generation_status?: string | null
+          icon_url?: string | null
           id?: string
           inputs?: Json
           is_active?: boolean | null
@@ -77,12 +84,15 @@ export type Database = {
           label_fr: string
           last_generated_at?: string | null
           output_ratios?: string[]
+          preview_image_url?: string | null
           rating_average?: number | null
           rating_count?: number | null
+          storyboard_frames?: Json | null
           supported_durations?: string[]
           template_key: string
           updated_at?: string | null
           usage_count?: number | null
+          visual_generation_status?: string | null
           voice_instructions?: Json
         }
         Update: {
@@ -96,6 +106,7 @@ export type Database = {
           collection?: string | null
           color?: string
           created_at?: string | null
+          demo_video_url?: string | null
           description_ba?: string | null
           description_fr?: string
           download_count?: number | null
@@ -103,6 +114,7 @@ export type Database = {
           family?: string
           features?: Json
           generation_status?: string | null
+          icon_url?: string | null
           id?: string
           inputs?: Json
           is_active?: boolean | null
@@ -112,12 +124,15 @@ export type Database = {
           label_fr?: string
           last_generated_at?: string | null
           output_ratios?: string[]
+          preview_image_url?: string | null
           rating_average?: number | null
           rating_count?: number | null
+          storyboard_frames?: Json | null
           supported_durations?: string[]
           template_key?: string
           updated_at?: string | null
           usage_count?: number | null
+          visual_generation_status?: string | null
           voice_instructions?: Json
         }
         Relationships: []
