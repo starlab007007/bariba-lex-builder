@@ -59,11 +59,15 @@ import AdvancedTemplateDrawer from "./creator/AdvancedTemplateDrawer";
 import LiveTemplateEffect from "./creator/LiveTemplateEffect";
 import TemplateCaptureOverlay from "./creator/TemplateCaptureOverlay";
 import MiniTimeline, { MiniTimelineSegment } from "./creator/MiniTimeline";
+import TemplateSlotPicker from "./creator/TemplateSlotPicker";
+import RecognizingScreen from "./creator/RecognizingScreen";
+import OverridesEditor from "./creator/OverridesEditor";
 
 // Legacy AdvancedTemplate data (still used by some UI effects/voice instructions)
 import {
   AdvancedTemplate,
   durationToSeconds,
+  KSEOverride,
 } from "./creator/AdvancedTemplateData";
 
 // ✅ TemplateEngine updated exports (K-Engine runtime + legacy engine service)
@@ -504,6 +508,12 @@ export default function FullscreenCreator({
     message_fr: string;
     message_ba?: string;
   } | null>(null);
+
+  // ============= KUAISHOU FLOW STATE =============
+  type KuaishouPhase = 'idle' | 'slot_picker' | 'recognizing' | 'overrides' | 'publish';
+  const [kuaishouPhase, setKuaishouPhase] = useState<KuaishouPhase>('idle');
+  const [boundAssets, setBoundAssets] = useState<Record<string, BoundAsset>>({});
+  const [activeKSEManifest, setActiveKSEManifest] = useState<TemplateManifest | null>(null);
 
   // Publish
   const [caption, setCaption] = useState("");
@@ -1363,6 +1373,48 @@ export default function FullscreenCreator({
     }
   };
 
+  // ============= KUAISHOU AI PIPELINE RUNNER =============
+  const runKuaishouAIPipeline = useCallback(async () => {
+    if (!activeKSEManifest) return;
+    
+    const steps = activeKSEManifest.pipeline || [];
+    const totalWeight = steps.reduce((sum, s) => sum + ((s as any).weight || 0.1), 0);
+    let progress = 0;
+
+    for (const step of steps) {
+      const stepAny = step as any;
+      setProcessingProgress({ 
+        percent: Math.round(progress), 
+        message_fr: stepAny.label || step.op,
+        message_ba: undefined
+      });
+      
+      // Simulate AI processing (in production: real API calls)
+      await new Promise(r => setTimeout(r, 300 + Math.random() * 500));
+      
+      progress += ((stepAny.weight || 0.1) / totalWeight) * 100;
+    }
+
+    setProcessingProgress({ percent: 100, message_fr: 'Terminé ✓' });
+  }, [activeKSEManifest]);
+
+  // ============= KUAISHOU OVERRIDE HANDLER =============
+  const handleKuaishouOverride = useCallback((action: KSEOverride, data?: any) => {
+    console.log('Override action:', action, data);
+    // Handle override actions (music, text, subtitles, cover, change, stickers)
+    switch (action) {
+      case 'music':
+        setDrawer('music');
+        break;
+      case 'text':
+      case 'subtitles':
+        setDrawer('captions');
+        break;
+      default:
+        setToast(`${action} sélectionné`);
+    }
+  }, []);
+
   // ============= TEMPLATE selection handler (supports both AdvancedTemplate and TemplateManifest) =============
   const onSelectAnyTemplate = useCallback(
     (tpl: any) => {
@@ -1381,6 +1433,9 @@ export default function FullscreenCreator({
           setError(e?.message || "Impossible de charger le template K-Engine");
         }
 
+        // Store manifest for Kuaishou flow
+        setActiveKSEManifest(tpl);
+
         // best-effort: align ratio + duration
         setCanvasRatio((tpl.ratio as CanvasRatio) || "9:16");
         const dur = typeof tpl.duration === "number" ? tpl.duration : 30;
@@ -1395,12 +1450,100 @@ export default function FullscreenCreator({
         if (hasVideo) setMode("video");
         else if (hasPhoto) setMode("photo");
 
+        // ✅ KUAISHOU FLOW: If template has slots, go to slot picker
+        if (tpl.slots.length > 0) {
+          setKuaishouPhase('slot_picker');
+          setDrawer("none");
+          setToast(`✨ ${tpl.name} - Sélectionnez vos médias`);
+          return;
+        }
+
         setDrawer("none");
         setToast(`✨ ${tpl.name}`);
         return;
       }
 
-      // Else legacy AdvancedTemplate behavior (voice instructions etc.)
+      // Else legacy AdvancedTemplate behavior - check for KSE engine
+      const advTpl = tpl as AdvancedTemplate;
+      if (advTpl.engine?.kind === 'KSE' && advTpl.engine.variants) {
+        const defaultDur = advTpl.engine.defaultDuration;
+        const kseManifest = advTpl.engine.variants[defaultDur];
+        
+        if (kseManifest) {
+          // Convert KSE manifest to TemplateManifest format
+          const manifest: TemplateManifest = {
+            id: kseManifest.id,
+            name: kseManifest.title_fr,
+            description: kseManifest.title_ba || '',
+            version: kseManifest.version,
+            duration: kseManifest.durationSec,
+            ratio: kseManifest.ratio,
+            category: kseManifest.family || 'default',
+            usage: 0,
+            slots: kseManifest.slots.map(s => ({
+              id: s.id,
+              description: s.id,
+              type: s.type[0] as 'video' | 'photo' | 'audio',
+              required: s.required,
+              min: s.min,
+              max: s.max,
+              constraints: {
+                min_duration: s.minDurationSec,
+              }
+            })),
+            pipeline: kseManifest.pipeline.map(p => ({
+              op: (p.op || 'enhance') as any,
+              target: undefined,
+              quality: 'medium' as const,
+              output: p.output || p.op,
+              params: p.params
+            })),
+            timeline: kseManifest.timeline.map((layer, i) => ({
+              layer_id: layer.layer,
+              type: layer.fromSlot ? 'user_media_layer' : 'video_layer',
+              z_index: i,
+              start: layer.t[0],
+              end: layer.t[1],
+              asset: layer.asset,
+              slot_ref: layer.fromSlot,
+              transform: { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 },
+              effects: [],
+              animation: null
+            })),
+            overrides: kseManifest.overrides,
+            music: { enabled: true, beatSync: kseManifest.pipeline.some(p => p.op === 'beat_detect') }
+          };
+
+          try {
+            kEngine.loadTemplate(manifest);
+            kEngine.setTime(0);
+            kEngine.pause();
+          } catch (e: any) {
+            console.warn('K-Engine load failed:', e);
+          }
+
+          setActiveKSEManifest(manifest);
+
+          // Align settings
+          const dur = kseManifest.durationSec;
+          if (dur <= 15) setLengthSec(15);
+          else if (dur <= 30) setLengthSec(30);
+          else if (dur <= 60) setLengthSec(60);
+          else setLengthSec(180);
+
+          setCanvasRatio((kseManifest.ratio as CanvasRatio) || "9:16");
+
+          // ✅ KUAISHOU FLOW: Go to slot picker if has slots
+          if (kseManifest.slots.length > 0) {
+            setKuaishouPhase('slot_picker');
+            setDrawer("none");
+            setToast(`✨ ${advTpl.label_fr} - Sélectionnez vos médias`);
+            return;
+          }
+        }
+      }
+
+      // Legacy flow without KSE
       const meta = asTemplateMeta(tpl);
       const firstDuration = meta.supportedDurations?.[0];
       if (firstDuration) {
@@ -1455,6 +1598,70 @@ export default function FullscreenCreator({
         className="hidden"
         onChange={handleAlbumSelect}
       />
+
+      {/* ============ KUAISHOU FLOW SCREENS ============ */}
+      
+      {/* Slot Picker Screen */}
+      {kuaishouPhase === 'slot_picker' && activeTemplateAny && activeKSEManifest && (
+        <TemplateSlotPicker
+          template={activeTemplateAny as AdvancedTemplate}
+          manifest={activeKSEManifest}
+          isOpen={true}
+          onComplete={async (assets) => {
+            setBoundAssets(assets);
+            setKuaishouPhase('recognizing');
+            
+            // Bind assets to K-Engine
+            for (const [slotId, asset] of Object.entries(assets)) {
+              try {
+                await kEngine.bindUserMedia(slotId, asset);
+              } catch (e) {
+                console.warn('Failed to bind asset:', slotId, e);
+              }
+            }
+            
+            // Run AI pipeline
+            await runKuaishouAIPipeline();
+          }}
+          onCancel={() => {
+            setKuaishouPhase('idle');
+            setActiveTemplateAny(null);
+            setActiveKSEManifest(null);
+          }}
+          onCapture={() => {
+            setKuaishouPhase('idle');
+            // Switch to camera capture mode
+          }}
+        />
+      )}
+
+      {/* Recognizing Screen */}
+      {kuaishouPhase === 'recognizing' && activeTemplateAny && (
+        <RecognizingScreen
+          isVisible={true}
+          progress={processingProgress?.percent || 0}
+          currentStep={processingProgress?.message_fr || ''}
+          template={activeTemplateAny as AdvancedTemplate}
+          previewUrl={boundAssets[Object.keys(boundAssets)[0]]?.url}
+          onComplete={() => setKuaishouPhase('overrides')}
+        />
+      )}
+
+      {/* Overrides Editor Screen */}
+      {kuaishouPhase === 'overrides' && activeTemplateAny && activeKSEManifest && (
+        <OverridesEditor
+          template={activeTemplateAny as AdvancedTemplate}
+          manifest={activeKSEManifest}
+          boundAssets={boundAssets}
+          isOpen={true}
+          onOverride={handleKuaishouOverride}
+          onPublish={() => {
+            setKuaishouPhase('idle');
+            setShowPublish(true);
+          }}
+          onBack={() => setKuaishouPhase('slot_picker')}
+        />
+      )}
 
       {/* ============ PUBLISH OVERLAY ============ */}
       <AnimatePresence>
