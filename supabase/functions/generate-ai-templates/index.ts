@@ -76,8 +76,32 @@ serve(async (req) => {
           throw new Error("No templates provided for sync");
         }
 
+        // ✅ IMPORTANT: Sync should NEVER reset already generated templates back to 'pending'.
+        // We preserve existing generation_status, and we also "auto-finalize" if AI fields are already present.
+        const templateKeys = templates.map((t) => t.id);
+        const { data: existingRows, error: existingError } = await supabase
+          .from('ai_generated_templates')
+          .select('template_key, generation_status, ai_enhanced_description, ai_storyboard, ai_analysis')
+          .in('template_key', templateKeys);
+
+        if (existingError) throw existingError;
+
+        const existingMap = new Map<string, any>();
+        (existingRows || []).forEach((r) => existingMap.set(r.template_key, r));
+
         const results = [];
         for (const tpl of templates) {
+          const existing = existingMap.get(tpl.id);
+
+          const hasEnoughAIContent =
+            !!existing?.ai_enhanced_description &&
+            !!existing?.ai_storyboard &&
+            !!existing?.ai_analysis;
+
+          const preservedStatus = hasEnoughAIContent
+            ? 'completed'
+            : (existing?.generation_status || 'pending');
+
           const templateRecord = {
             template_key: tpl.id,
             emoji: tpl.emoji,
@@ -93,7 +117,7 @@ serve(async (req) => {
             features: tpl.features,
             voice_instructions: tpl.voiceInstructions,
             kse_engine: tpl.engine || null,
-            generation_status: 'pending',
+            generation_status: preservedStatus,
           };
 
           const { data, error } = await supabase
@@ -110,11 +134,11 @@ serve(async (req) => {
           }
         }
 
-        return new Response(JSON.stringify({ 
-          success: true, 
+        return new Response(JSON.stringify({
+          success: true,
           synced: results.filter(r => r.success).length,
           failed: results.filter(r => !r.success).length,
-          results 
+          results
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
