@@ -94,6 +94,14 @@
     --tamtam-secondary: 160 84% 39%;
     --tamtam-text: 220 15% 20%;
     --tamtam-text-muted: 220 10% 50%;
+
+    /* Admin dashboard section colors */
+    --section-data: 210 100% 50%;
+    --section-tests: 280 70% 60%;
+    --section-analytics: 160 80% 45%;
+    --section-tools: 35 90% 55%;
+    --section-management: 220 15% 45%;
+    --section-creation: 340 80% 60%;
   }
 
   .dark {
@@ -140,6 +148,14 @@
     --sidebar-accent-foreground: 230 25% 85%;
     --sidebar-border: 220 15% 18%;
     --sidebar-ring: 210 100% 60%;
+
+    /* Admin dashboard section colors - dark mode */
+    --section-data: 210 100% 55%;
+    --section-tests: 280 70% 65%;
+    --section-analytics: 160 80% 50%;
+    --section-tools: 35 90% 60%;
+    --section-management: 220 15% 60%;
+    --section-creation: 340 80% 65%;
   }
 }
 
