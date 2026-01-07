@@ -1,10 +1,11 @@
 // ============================================================
 // OVERRIDES EDITOR - Kuaishou-style simplified editor (6 buttons max)
 // Shows only the allowed overrides after template is applied
+// ✅ Connected: Real MusicDrawer + CaptionsDrawer
 // ============================================================
 
 import React, { useState, useCallback, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, 
   Music, 
@@ -22,6 +23,8 @@ import {
 import { cn } from "@/lib/utils";
 import { AdvancedTemplate, KSEOverride } from "./AdvancedTemplateData";
 import { kEngine, TemplateManifest, BoundAsset } from "./TemplateEngine";
+import MusicDrawer, { SelectedMusic } from "./MusicDrawer";
+import CaptionsDrawer, { Caption } from "./CaptionsDrawer";
 
 interface OverridesEditorProps {
   template: AdvancedTemplate;
@@ -29,7 +32,10 @@ interface OverridesEditorProps {
   boundAssets: Record<string, BoundAsset>;
   isOpen: boolean;
   previewCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  videoDuration?: number;
   onOverride: (action: KSEOverride, data?: any) => void;
+  onMusicChange?: (music: SelectedMusic | null) => void;
+  onCaptionsChange?: (captions: Caption[]) => void;
   onPublish: () => void;
   onBack: () => void;
 }
@@ -57,13 +63,23 @@ const OverridesEditor: React.FC<OverridesEditorProps> = ({
   boundAssets,
   isOpen,
   previewCanvasRef,
+  videoDuration = 30,
   onOverride,
+  onMusicChange,
+  onCaptionsChange,
   onPublish,
   onBack,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeDrawer, setActiveDrawer] = useState<KSEOverride | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Music state
+  const [selectedMusic, setSelectedMusic] = useState<SelectedMusic | null>(null);
+  
+  // Captions state
+  const [captions, setCaptions] = useState<Caption[]>([]);
 
   // Get allowed overrides from template or manifest
   const allowedOverrides = manifest.overrides || template.engine?.overrides || [
@@ -90,6 +106,24 @@ const OverridesEditor: React.FC<OverridesEditorProps> = ({
     setActiveDrawer(action);
     onOverride(action);
   }, [onOverride]);
+
+  // Handle music selection
+  const handleMusicSelect = useCallback((music: SelectedMusic | null) => {
+    setSelectedMusic(music);
+    onMusicChange?.(music);
+  }, [onMusicChange]);
+
+  // Handle captions change
+  const handleCaptionsChange = useCallback((newCaptions: Caption[]) => {
+    setCaptions(newCaptions);
+    onCaptionsChange?.(newCaptions);
+  }, [onCaptionsChange]);
+
+  // Seek handler
+  const handleSeek = useCallback((time: number) => {
+    setCurrentTime(time);
+    // kEngine seek handled internally
+  }, []);
 
   if (!isOpen) return null;
 
@@ -158,6 +192,18 @@ const OverridesEditor: React.FC<OverridesEditorProps> = ({
             ⏱️ {manifest.duration}s
           </div>
 
+          {/* Music indicator */}
+          {selectedMusic && (
+            <div className="absolute bottom-16 left-4 right-4 px-3 py-2 rounded-xl bg-black/60 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <Music className="h-4 w-4 text-orange-400" />
+                <span className="text-white text-xs truncate">
+                  {selectedMusic.track?.name || selectedMusic.customName || "Musique"}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Hint text */}
           <div className="absolute bottom-4 left-0 right-0 text-center">
             <div className="inline-block px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm text-white/70 text-xs">
@@ -194,40 +240,39 @@ const OverridesEditor: React.FC<OverridesEditorProps> = ({
         </div>
       </div>
 
-      {/* Drawers for each override (simplified) */}
-      {activeDrawer === "music" && (
-        <MusicDrawer onClose={() => setActiveDrawer(null)} />
-      )}
-      {activeDrawer === "text" && (
-        <TextDrawer onClose={() => setActiveDrawer(null)} />
-      )}
-      {activeDrawer === "subtitles" && (
-        <SubtitlesDrawer onClose={() => setActiveDrawer(null)} />
-      )}
+      {/* Real Drawers */}
+      <AnimatePresence>
+        {activeDrawer === "music" && (
+          <MusicDrawer
+            isOpen={true}
+            onClose={() => setActiveDrawer(null)}
+            selectedMusic={selectedMusic}
+            onSelectMusic={handleMusicSelect}
+            videoDuration={videoDuration}
+          />
+        )}
+        
+        {activeDrawer === "subtitles" && (
+          <CaptionsDrawer
+            isOpen={true}
+            onClose={() => setActiveDrawer(null)}
+            captions={captions}
+            onCaptionsChange={handleCaptionsChange}
+            videoDuration={videoDuration}
+            currentTime={currentTime}
+            onSeek={handleSeek}
+          />
+        )}
+        
+        {activeDrawer === "text" && (
+          <TextDrawer onClose={() => setActiveDrawer(null)} />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
 
-// Simple drawer components (placeholders - can be expanded)
-const MusicDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => (
-  <motion.div
-    initial={{ y: "100%" }}
-    animate={{ y: 0 }}
-    exit={{ y: "100%" }}
-    className="absolute bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl rounded-t-3xl p-4 border-t border-white/10"
-  >
-    <div className="flex items-center justify-between mb-4">
-      <span className="text-white font-bold">🎵 Musique</span>
-      <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-        <X className="h-4 w-4 text-white" />
-      </button>
-    </div>
-    <div className="text-white/60 text-sm text-center py-8">
-      Bibliothèque musicale à venir
-    </div>
-  </motion.div>
-);
-
+// Simple text drawer (can be expanded later)
 const TextDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <motion.div
     initial={{ y: "100%" }}
@@ -248,29 +293,6 @@ const TextDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => (
     <button className="w-full mt-4 py-3 rounded-xl bg-white text-black font-bold">
       Ajouter
     </button>
-  </motion.div>
-);
-
-const SubtitlesDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => (
-  <motion.div
-    initial={{ y: "100%" }}
-    animate={{ y: 0 }}
-    exit={{ y: "100%" }}
-    className="absolute bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl rounded-t-3xl p-4 border-t border-white/10"
-  >
-    <div className="flex items-center justify-between mb-4">
-      <span className="text-white font-bold">💬 Sous-titres</span>
-      <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-        <X className="h-4 w-4 text-white" />
-      </button>
-    </div>
-    <div className="flex gap-2 mb-4">
-      <button className="flex-1 py-2 rounded-lg bg-white/10 text-white text-sm">Auto (ASR)</button>
-      <button className="flex-1 py-2 rounded-lg bg-white/10 text-white text-sm">Manuel</button>
-    </div>
-    <div className="text-white/60 text-sm text-center py-4">
-      Clique sur une ligne de sous-titre pour la modifier
-    </div>
   </motion.div>
 );
 

@@ -1146,13 +1146,147 @@ const VOCAL_RADIO_TEMPLATES_RAW: RawTemplate[] = [
 ];
 
 // ============================================================
+// D) 5 NEW KUAISHOU-STYLE VISUAL TEMPLATES
+// Grass Cutout, Neon Glow, Split Screen, Photo Slideshow, Karaoke
+// ============================================================
+
+const KUAISHOU_VISUAL_TEMPLATES_RAW: RawTemplate[] = [
+  {
+    id: 'grass_cutout',
+    emoji: '🌿',
+    label_fr: 'Détourage Prairie',
+    label_ba: 'Bin kↄnↄ',
+    description_fr: 'Détourage personne sur fond prairie animé',
+    description_ba: 'I yɛrɛ bin kↄnↄ',
+    family: 'grand_public',
+    collection: 'fierte_beaute',
+    inputs: [{ type: 'video', minCount: 1, maxCount: 1, minDurationSec: 3, maxDurationSec: 15 }],
+    supportedDurations: ['10s', '15s', '30s'],
+    outputRatios: ['9:16'],
+    features: { 
+      stabilization: true, 
+      audioEnhance: true,
+      smartCaptions: true
+    },
+    previewAnimation: 'wave',
+    color: 'from-green-500 to-emerald-600',
+    voiceInstructions: [
+      { step: 1, text_fr: 'Filme-toi debout sur un fond uni', text_ba: 'I yɛrɛ fili', action: 'record_video', durationHint: 8 },
+      { step: 2, text_fr: 'L\'IA va te détourer sur une prairie', action: 'wait' }
+    ]
+  },
+  {
+    id: 'neon_glow',
+    emoji: '💜',
+    label_fr: 'Néon Glow',
+    label_ba: 'Finyɛ',
+    description_fr: 'Effet néon lumineux avec beat sync',
+    description_ba: 'Finyɛ kaa dↄn',
+    family: 'grand_public',
+    collection: 'fierte_beaute',
+    inputs: [{ type: 'video', minCount: 1, maxCount: 1, minDurationSec: 5, maxDurationSec: 20 }],
+    supportedDurations: ['10s', '15s', '30s'],
+    outputRatios: ['9:16', '1:1'],
+    features: { 
+      beatSync: true, 
+      styleTransfer: true,
+      audioEnhance: true
+    },
+    previewAnimation: 'glow',
+    color: 'from-purple-600 to-pink-500',
+    voiceInstructions: [
+      { step: 1, text_fr: 'Filme-toi en train de danser ou bouger', action: 'record_video', durationHint: 10 },
+      { step: 2, text_fr: 'L\'IA ajoute des effets néon sur le rythme', action: 'wait' }
+    ]
+  },
+  {
+    id: 'split_screen_duo',
+    emoji: '👯',
+    label_fr: 'Split Screen Duo',
+    label_ba: 'Fila fila',
+    description_fr: 'Écran divisé pour duos et réactions',
+    description_ba: 'Fila fila yeli',
+    family: 'grand_public',
+    collection: null,
+    inputs: [
+      { type: 'video', minCount: 2, maxCount: 2, minDurationSec: 5, maxDurationSec: 30 }
+    ],
+    supportedDurations: ['15s', '30s', '45s'],
+    outputRatios: ['9:16'],
+    features: { 
+      stabilization: true, 
+      audioEnhance: true,
+      autoEditing: true
+    },
+    previewAnimation: 'slide',
+    color: 'from-cyan-500 to-blue-500',
+    voiceInstructions: [
+      { step: 1, text_fr: 'Ajoute la première vidéo (à gauche)', action: 'record_video' },
+      { step: 2, text_fr: 'Ajoute la seconde vidéo (à droite)', action: 'record_video' },
+      { step: 3, text_fr: 'L\'IA synchronise les deux vidéos', action: 'wait' }
+    ]
+  },
+  {
+    id: 'photo_slideshow',
+    emoji: '🖼️',
+    label_fr: 'Diaporama Photo',
+    label_ba: 'Fↄtↄ bɛɛ',
+    description_fr: 'Diaporama animé avec transitions et musique',
+    description_ba: 'Fↄtↄ bɛɛ yeli',
+    family: 'grand_public',
+    collection: null,
+    inputs: [{ type: 'photo', minCount: 3, maxCount: 10 }],
+    supportedDurations: ['15s', '30s', '45s', '60s'],
+    outputRatios: ['9:16', '1:1'],
+    features: { 
+      photoAnimation: true, 
+      beatSync: true,
+      autoEditing: true
+    },
+    previewAnimation: 'pulse',
+    color: 'from-orange-500 to-amber-500',
+    voiceInstructions: [
+      { step: 1, text_fr: 'Ajoute 3 à 10 photos', text_ba: 'Fↄtↄ saba fo tan', action: 'take_photo' },
+      { step: 2, text_fr: 'L\'IA crée un diaporama animé', action: 'wait' }
+    ]
+  },
+  {
+    id: 'karaoke_mode',
+    emoji: '🎤',
+    label_fr: 'Mode Karaoké',
+    label_ba: 'Dↄnkili yeli',
+    description_fr: 'Sous-titres synchronisés mot par mot',
+    description_ba: 'Kuma kelen kelen',
+    family: 'vocal_radio',
+    collection: 'voix_village',
+    inputs: [
+      { type: 'audio', minCount: 1, maxCount: 1, minDurationSec: 10, maxDurationSec: 120 }
+    ],
+    supportedDurations: ['30s', '45s', '60s', '90s'],
+    outputRatios: ['9:16'],
+    features: { 
+      smartCaptions: true, 
+      audioEnhance: true,
+      translation: true
+    },
+    previewAnimation: 'wave',
+    color: 'from-rose-500 to-red-500',
+    voiceInstructions: [
+      { step: 1, text_fr: 'Enregistre ta chanson ou poème', text_ba: 'I ka dↄnkili da', action: 'record_audio' },
+      { step: 2, text_fr: 'L\'IA synchronise les paroles en karaoké', action: 'wait' }
+    ]
+  }
+];
+
+// ============================================================
 // EXPORT: Tous les templates combinés (engine injected here)
 // ============================================================
 
 const ALL_RAW_TEMPLATES: RawTemplate[] = [
   ...GRAND_PUBLIC_TEMPLATES_RAW,
   ...EDUCATIF_CULTURE_TEMPLATES_RAW,
-  ...VOCAL_RADIO_TEMPLATES_RAW
+  ...VOCAL_RADIO_TEMPLATES_RAW,
+  ...KUAISHOU_VISUAL_TEMPLATES_RAW
 ];
 
 export const ADVANCED_TEMPLATES: AdvancedTemplate[] = ALL_RAW_TEMPLATES.map(t => ({
