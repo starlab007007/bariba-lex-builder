@@ -14,6 +14,114 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_generated_templates: {
+        Row: {
+          ai_analysis: Json | null
+          ai_enhanced_description: string | null
+          ai_preview_image_base64: string | null
+          ai_preview_image_url: string | null
+          ai_storyboard: Json | null
+          ai_voice_description_ba: string | null
+          ai_voice_description_fr: string | null
+          collection: string | null
+          color: string
+          created_at: string | null
+          description_ba: string | null
+          description_fr: string
+          download_count: number | null
+          emoji: string
+          family: string
+          features: Json
+          generation_status: string | null
+          id: string
+          inputs: Json
+          is_active: boolean | null
+          is_featured: boolean | null
+          kse_engine: Json | null
+          label_ba: string | null
+          label_fr: string
+          last_generated_at: string | null
+          output_ratios: string[]
+          rating_average: number | null
+          rating_count: number | null
+          supported_durations: string[]
+          template_key: string
+          updated_at: string | null
+          usage_count: number | null
+          voice_instructions: Json
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          ai_enhanced_description?: string | null
+          ai_preview_image_base64?: string | null
+          ai_preview_image_url?: string | null
+          ai_storyboard?: Json | null
+          ai_voice_description_ba?: string | null
+          ai_voice_description_fr?: string | null
+          collection?: string | null
+          color: string
+          created_at?: string | null
+          description_ba?: string | null
+          description_fr: string
+          download_count?: number | null
+          emoji: string
+          family: string
+          features?: Json
+          generation_status?: string | null
+          id?: string
+          inputs?: Json
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          kse_engine?: Json | null
+          label_ba?: string | null
+          label_fr: string
+          last_generated_at?: string | null
+          output_ratios?: string[]
+          rating_average?: number | null
+          rating_count?: number | null
+          supported_durations?: string[]
+          template_key: string
+          updated_at?: string | null
+          usage_count?: number | null
+          voice_instructions?: Json
+        }
+        Update: {
+          ai_analysis?: Json | null
+          ai_enhanced_description?: string | null
+          ai_preview_image_base64?: string | null
+          ai_preview_image_url?: string | null
+          ai_storyboard?: Json | null
+          ai_voice_description_ba?: string | null
+          ai_voice_description_fr?: string | null
+          collection?: string | null
+          color?: string
+          created_at?: string | null
+          description_ba?: string | null
+          description_fr?: string
+          download_count?: number | null
+          emoji?: string
+          family?: string
+          features?: Json
+          generation_status?: string | null
+          id?: string
+          inputs?: Json
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          kse_engine?: Json | null
+          label_ba?: string | null
+          label_fr?: string
+          last_generated_at?: string | null
+          output_ratios?: string[]
+          rating_average?: number | null
+          rating_count?: number | null
+          supported_durations?: string[]
+          template_key?: string
+          updated_at?: string | null
+          usage_count?: number | null
+          voice_instructions?: Json
+        }
+        Relationships: []
+      }
       ai_training_context: {
         Row: {
           created_at: string | null
