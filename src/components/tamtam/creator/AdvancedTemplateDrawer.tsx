@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mic, Volume2, VolumeX, Sparkles, Eye, Check } from "lucide-react";
+import { X, Mic, Volume2, VolumeX, Sparkles, Eye, Check, Clock, Camera } from "lucide-react";
 import {
   ADVANCED_TEMPLATES,
   TEMPLATE_COLLECTIONS,
   getTemplatesByCollection,
   AdvancedTemplate,
   NEUTRAL_TEMPLATE,
+  KuaishouTemplateManifest,
 } from "./AdvancedTemplateData";
 import TemplatePreviewPlayer from "./TemplatePreviewPlayer";
 import { useFrenchTTS } from "@/hooks/useFrenchTTS";
@@ -16,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 // ✅ K-Engine runtime
-import { kEngine, TemplateManifest } from "./TemplateEngine";
+import { kEngine, TemplateManifest, SlotDefinition } from "./TemplateEngine";
 
 interface AdvancedTemplateDrawerProps {
   isOpen: boolean;
@@ -32,20 +33,82 @@ interface AdvancedTemplateDrawerProps {
 }
 
 /**
- * Adapter: AdvancedTemplate -> TemplateManifest
- * - If your template already has manifest (recommended), use it.
- * - Else build a minimal manifest so K-Engine can still run preview.
+ * ✅ KUAISHOU-STYLE: Convert KuaishouTemplateManifest → TemplateManifest
+ * This bridges the rich KSE data to the K-Engine runtime format.
+ */
+function convertKSEToManifest(kse: KuaishouTemplateManifest): TemplateManifest {
+  return {
+    id: kse.id,
+    name: kse.title_fr,
+    description: kse.title_ba || kse.title_fr,
+    version: kse.version,
+    duration: kse.durationSec,
+    ratio: kse.ratio,
+    category: kse.family || 'default',
+    usage: 0,
+    slots: kse.slots.map(s => ({
+      id: s.id,
+      description: s.id.replace(/_/g, ' '),
+      type: s.type[0] as 'video' | 'photo' | 'audio',
+      required: s.required,
+      min: s.min,
+      max: s.max,
+      constraints: {
+        min_duration: s.minDurationSec,
+      }
+    })),
+    pipeline: kse.pipeline.map(p => ({
+      op: p.op as any,
+      target: undefined,
+      quality: 'medium' as const,
+      output: p.output || p.op,
+      params: p.params
+    })),
+    timeline: kse.timeline.map((layer, i) => ({
+      layer_id: layer.layer,
+      type: layer.fromSlot ? 'user_media_layer' as const : 'video_layer' as const,
+      z_index: i,
+      start: layer.t[0],
+      end: layer.t[1],
+      asset: layer.asset,
+      slot_ref: layer.fromSlot,
+      transform: { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 },
+      effects: [],
+      animation: null
+    })),
+    overrides: kse.overrides,
+    music: { enabled: true, beatSync: kse.pipeline.some(p => p.op === 'beat_detect') }
+  };
+}
+
+/**
+ * ✅ KUAISHOU-STYLE: Resolve manifest with priority for real KSE engine variants
+ * Priority order:
+ * 1. KSE engine variants (Kuaishou manifests) - BEST
+ * 2. Existing manifest property
+ * 3. Fallback minimal manifest
  */
 function resolveManifest(template: AdvancedTemplate): TemplateManifest | null {
   const anyTpl: any = template as any;
 
-  if (anyTpl.manifest && typeof anyTpl.manifest === "object") return anyTpl.manifest as TemplateManifest;
-  if (anyTpl.kManifest && typeof anyTpl.kManifest === "object") return anyTpl.kManifest as TemplateManifest;
-
   // Neutral template means "no template"
   if ((template as any).id === "none") return null;
 
-  // Minimal fallback (background + user + text) for safety
+  // ✅ PRIORITY 1: Use real Kuaishou manifest from engine.variants
+  const engine = template.engine;
+  if (engine?.kind === 'KSE' && engine.variants) {
+    const defaultDuration = engine.defaultDuration;
+    const kseManifest = engine.variants[defaultDuration];
+    if (kseManifest) {
+      return convertKSEToManifest(kseManifest);
+    }
+  }
+
+  // PRIORITY 2: Existing manifest property
+  if (anyTpl.manifest && typeof anyTpl.manifest === "object") return anyTpl.manifest as TemplateManifest;
+  if (anyTpl.kManifest && typeof anyTpl.kManifest === "object") return anyTpl.kManifest as TemplateManifest;
+
+  // PRIORITY 3: Minimal fallback (background + user + text)
   return {
     id: anyTpl.id || `tpl_${Math.random().toString(16).slice(2, 10)}`,
     name: anyTpl.label_fr || "Template",
@@ -659,7 +722,7 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
 };
 
 // ============================================================
-// XXL Template Card Component (unchanged UI)
+// XXL Template Card Component - Enhanced with Kuaishou-style hints
 // ============================================================
 
 interface XXLTemplateCardProps {
@@ -685,6 +748,10 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
   onLongPressStart,
   onLongPressEnd,
 }) => {
+  // ✅ Get Kuaishou-style card hints from KSE engine
+  const kseManifest = template.engine?.variants?.[template.engine?.defaultDuration || '15s'];
+  const cardHint = kseManifest?.cardHint;
+
   const getFeatureIcons = () => {
     const features = [];
     if ((template as any).features?.beatSync) features.push("🎵");
@@ -787,6 +854,21 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
           {(template as any).description_fr}
         </p>
 
+        {/* ✅ Kuaishou-style input & time hints */}
+        {cardHint && (
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            <span className="text-[10px] sm:text-xs bg-black/30 rounded-full px-2 py-0.5 text-white/80 flex items-center gap-1">
+              <Camera className="h-3 w-3" />
+              {cardHint.inputSummary}
+            </span>
+            <span className="text-[10px] sm:text-xs bg-black/30 rounded-full px-2 py-0.5 text-white/80 flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {cardHint.timeLabel}
+            </span>
+          </div>
+        )}
+
+        {/* Feature icons */}
         <div className="flex items-center gap-1 mb-2">
           {getFeatureIcons().map((icon, i) => (
             <span key={i} className="text-xs sm:text-sm bg-black/20 rounded-full px-1.5 py-0.5">
