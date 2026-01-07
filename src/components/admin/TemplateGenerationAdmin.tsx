@@ -300,7 +300,7 @@ export function TemplateGenerationAdmin() {
                       <Badge variant="outline">{template.family}</Badge>
                     </TableCell>
                     <TableCell>
-                      {getStatusBadge(template.generation_status)}
+                      {getStatusBadge(template.generation_status || 'pending')}
                     </TableCell>
                     <TableCell>
                       <Badge 
