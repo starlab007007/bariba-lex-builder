@@ -1,25 +1,36 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Loader2, BookOpen } from 'lucide-react';
+import { Loader2, BookOpen, Shield } from 'lucide-react';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
 
   // Redirect if already logged in
-  if (user) {
-    navigate('/');
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      // If admin and trying to access admin, redirect to admin
+      if (isAdmin && redirectTo === '/admin') {
+        navigate('/admin');
+      } else if (isAdmin) {
+        // Show option to go to admin or continue
+        navigate(redirectTo);
+      } else {
+        navigate(redirectTo);
+      }
+    }
+  }, [user, isAdmin, navigate, redirectTo]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +38,14 @@ export default function Auth() {
     const { error } = await signIn(email, password);
     setLoading(false);
     if (!error) {
-      navigate('/');
+      // Wait a bit for isAdmin to be set, then redirect
+      setTimeout(() => {
+        if (redirectTo === '/admin') {
+          navigate('/admin');
+        } else {
+          navigate(redirectTo);
+        }
+      }, 500);
     }
   };
 
@@ -133,6 +151,17 @@ export default function Auth() {
               </form>
             </TabsContent>
           </Tabs>
+
+          {/* Admin access link */}
+          <div className="mt-6 pt-4 border-t text-center">
+            <Link 
+              to="/auth?redirect=/admin" 
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Shield className="h-4 w-4" />
+              Accès administrateur
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
