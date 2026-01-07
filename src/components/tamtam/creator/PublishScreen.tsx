@@ -30,7 +30,7 @@ import { SelectedMusic } from "./MusicDrawer";
 import { CaptureEffects } from "./CreatorEffectsData";
 
 // ✅ K-Engine
-import { kEngine } from "../TemplateEngine"; // <-- ajuste le path si besoin
+import { kEngine } from "./TemplateEngine";
 
 interface PublishScreenProps {
   isOpen: boolean;
@@ -308,8 +308,8 @@ export default function PublishScreen({
               id: selectedMusic.track?.id,
               name: selectedMusic.track?.name || selectedMusic.customName,
               url: selectedMusic.track?.url,
-              startAt: selectedMusic.startAt,
-              duration: selectedMusic.duration,
+              startAt: selectedMusic.startOffset,
+              duration: selectedMusic.trimmedDuration,
             }
           : null,
         captions: captions || null,
