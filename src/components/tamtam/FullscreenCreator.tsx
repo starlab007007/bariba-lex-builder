@@ -1022,7 +1022,7 @@ export default function FullscreenCreator({
     setCapturedBlob(blob);
     setCapturedType(type);
     
-    // Create initial segment
+    // Create initial segment WITH blob for upload
     const seg: MiniTimelineSegment = {
       id: `${Date.now()}`,
       type: type === "video" ? "video" : "photo",
@@ -1031,6 +1031,7 @@ export default function FullscreenCreator({
       endTime: duration,
       isMuted: false,
       volume: 100,
+      blob: blob, // Store blob for upload
     };
     setSegments([seg]);
     setActiveSegmentId(seg.id);

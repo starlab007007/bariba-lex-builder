@@ -15,6 +15,7 @@ export interface MiniTimelineSegment {
   volume: number;
   type: "video" | "photo" | "audio";
   thumbnailUrl?: string;
+  blob?: Blob; // Media blob for upload
 }
 
 interface MiniTimelineProps {

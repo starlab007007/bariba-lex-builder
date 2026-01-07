@@ -67,6 +67,32 @@ export interface TamTamStory {
   };
 }
 
+// Helper pour uploader les médias vers Supabase Storage
+export async function uploadMediaToStorage(
+  blob: Blob, 
+  type: 'video' | 'photo' | 'audio',
+  userId: string
+): Promise<string> {
+  const ext = type === 'video' ? 'webm' : type === 'photo' ? 'jpg' : 'webm';
+  const fileName = `${type}_${userId}_${Date.now()}.${ext}`;
+  const filePath = `posts/${fileName}`;
+  
+  const { data, error } = await supabase.storage
+    .from('tamtam-media')
+    .upload(filePath, blob, {
+      contentType: type === 'video' ? 'video/webm' : type === 'photo' ? 'image/jpeg' : 'audio/webm',
+      upsert: false
+    });
+    
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  
+  const { data: urlData } = supabase.storage
+    .from('tamtam-media')
+    .getPublicUrl(filePath);
+    
+  return urlData.publicUrl;
+}
+
 export const useTamTamPosts = () => {
   const [posts, setPosts] = useState<TamTamPost[]>([]);
   const [stories, setStories] = useState<TamTamStory[]>([]);
