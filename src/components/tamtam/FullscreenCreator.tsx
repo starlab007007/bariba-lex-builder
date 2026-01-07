@@ -839,17 +839,21 @@ export default function FullscreenCreator({
 
   // Canvas draw loop:
   // - if K-Engine active: render engine frame
+  // - if legacy template active: LiveTemplateEffect handles ALL rendering (skip this loop)
   // - else: draw decoded video frame with cssFilter (for black-screen compositor bug)
+  const legacyTemplateActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
+  
   useEffect(() => {
     if (!hasCapture || previewError) return;
+    
+    // When legacy template is active, LiveTemplateEffect handles canvas rendering
+    // Skip this draw loop to avoid conflicts
+    if (legacyTemplateActive) return;
 
     const canvas = previewCanvasRef.current;
     if (!canvas) return;
 
     let raf: number | null = null;
-
-    // Check if legacy template is active (for applying visual effects)
-    const legacyTemplateActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
 
     const draw = () => {
       try {
@@ -885,46 +889,6 @@ export default function FullscreenCreator({
 
               ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
               ctx.filter = "none";
-
-              // Apply legacy template effects if active
-              if (legacyTemplateActive) {
-                const tpl = activeTemplateAny as any;
-                
-                // Color overlay gradient
-                const colorMap: Record<string, { start: string; end: string }> = {
-                  'from-purple-500 to-pink-500': { start: 'rgba(168,85,247,0.15)', end: 'rgba(236,72,153,0.15)' },
-                  'from-amber-500 to-orange-500': { start: 'rgba(245,158,11,0.12)', end: 'rgba(249,115,22,0.12)' },
-                  'from-blue-500 to-cyan-500': { start: 'rgba(59,130,246,0.12)', end: 'rgba(6,182,212,0.12)' },
-                  'from-violet-500 to-purple-500': { start: 'rgba(139,92,246,0.18)', end: 'rgba(168,85,247,0.18)' },
-                  'from-green-500 to-emerald-500': { start: 'rgba(34,197,94,0.12)', end: 'rgba(16,185,129,0.12)' },
-                  'from-amber-600 to-yellow-500': { start: 'rgba(217,119,6,0.15)', end: 'rgba(234,179,8,0.15)' },
-                  'from-purple-600 to-indigo-600': { start: 'rgba(147,51,234,0.2)', end: 'rgba(79,70,229,0.2)' },
-                  'from-amber-700 to-orange-600': { start: 'rgba(180,83,9,0.15)', end: 'rgba(234,88,12,0.15)' },
-                  'from-red-500 to-orange-500': { start: 'rgba(239,68,68,0.15)', end: 'rgba(249,115,22,0.15)' },
-                  'from-yellow-500 to-amber-500': { start: 'rgba(234,179,8,0.15)', end: 'rgba(245,158,11,0.15)' },
-                  'from-sky-500 to-blue-600': { start: 'rgba(14,165,233,0.12)', end: 'rgba(37,99,235,0.12)' },
-                  'from-rose-500 to-pink-600': { start: 'rgba(244,63,94,0.15)', end: 'rgba(219,39,119,0.15)' },
-                };
-                const colors = colorMap[tpl.color] || { start: 'rgba(0,0,0,0.08)', end: 'rgba(0,0,0,0.12)' };
-                const gradient = ctx.createLinearGradient(0, 0, cw, ch);
-                gradient.addColorStop(0, colors.start);
-                gradient.addColorStop(1, colors.end);
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, cw, ch);
-
-                // Vignette effect
-                const vignette = ctx.createRadialGradient(cw / 2, ch / 2, ch * 0.3, cw / 2, ch / 2, ch * 0.8);
-                vignette.addColorStop(0, 'transparent');
-                vignette.addColorStop(1, 'rgba(0,0,0,0.35)');
-                ctx.fillStyle = vignette;
-                ctx.fillRect(0, 0, cw, ch);
-
-                // Watermark badge
-                ctx.font = 'bold 18px system-ui';
-                ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.textAlign = 'left';
-                ctx.fillText(`${activeMeta.emoji} ${activeMeta.label}`, 16, ch - 16);
-              }
             }
           }
         }
@@ -938,7 +902,7 @@ export default function FullscreenCreator({
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [hasCapture, capturedType, previewError, cssFilter, isKEngineActive, kState.template, activeTemplateAny, activeMeta]);
+  }, [hasCapture, capturedType, previewError, cssFilter, isKEngineActive, kState.template, legacyTemplateActive]);
 
   // ============= HANDLERS =============
   const togglePlayPause = useCallback(() => {

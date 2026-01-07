@@ -561,6 +561,7 @@ export class TemplateEngine {
           } catch {}
           ctx.drawImage(vid, 0, 0, w, h);
         } else {
+          // Fallback: colorful gradient background
           const g = ctx.createLinearGradient(0, 0, 0, h);
           g.addColorStop(0, "#667eea");
           g.addColorStop(1, "#764ba2");
@@ -574,6 +575,7 @@ export class TemplateEngine {
         const asset = slotId ? this.state.userAssets[slotId] : undefined;
 
         if (!asset?.url) {
+          // Fallback when no asset bound - show placeholder
           ctx.fillStyle = "#4ecdc4";
           ctx.fillRect(w * 0.2 - px, h * 0.28 - py, w * 0.6, h * 0.42);
           ctx.fillStyle = "#fff";
@@ -658,11 +660,59 @@ export class TemplateEngine {
       ctx.restore();
     }
 
+    // Apply template visual effects (vignette + color overlay) on top of all layers
     ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.font = "12px monospace";
-    ctx.textAlign = "left";
-    ctx.fillText(`${time.toFixed(2)}s / ${tpl.duration}s`, 10, 18);
+    
+    // Color overlay based on template category
+    const categoryColors: Record<string, { start: string; end: string }> = {
+      'transition': { start: 'rgba(168,85,247,0.12)', end: 'rgba(236,72,153,0.12)' },
+      'storytelling': { start: 'rgba(245,158,11,0.1)', end: 'rgba(249,115,22,0.1)' },
+      'cultural': { start: 'rgba(139,92,246,0.15)', end: 'rgba(168,85,247,0.15)' },
+      'vocal': { start: 'rgba(59,130,246,0.1)', end: 'rgba(6,182,212,0.1)' },
+      'default': { start: 'rgba(100,100,100,0.08)', end: 'rgba(50,50,50,0.1)' },
+    };
+    const colors = categoryColors[tpl.category] || categoryColors.default;
+    const overlayGrad = ctx.createLinearGradient(0, 0, w, h);
+    overlayGrad.addColorStop(0, colors.start);
+    overlayGrad.addColorStop(1, colors.end);
+    ctx.fillStyle = overlayGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Vignette effect
+    const vignette = ctx.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, h * 0.85);
+    vignette.addColorStop(0, 'transparent');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
+
+    // Template badge watermark
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(16, h - 56);
+    ctx.lineTo(180, h - 56);
+    ctx.quadraticCurveTo(196, h - 56, 196, h - 40);
+    ctx.lineTo(196, h - 24);
+    ctx.quadraticCurveTo(196, h - 8, 180, h - 8);
+    ctx.lineTo(16, h - 8);
+    ctx.quadraticCurveTo(0, h - 8, 0, h - 24);
+    ctx.lineTo(0, h - 40);
+    ctx.quadraticCurveTo(0, h - 56, 16, h - 56);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = 'bold 16px system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText(`🎬 ${tpl.name}`, 12, h - 28);
+
+    ctx.restore();
+
+    // Time indicator (debug - can be removed later)
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = "11px monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(`${time.toFixed(1)}s / ${tpl.duration}s`, w - 10, 18);
     ctx.restore();
   }
 
