@@ -1,6 +1,8 @@
 // ============================================================
 // ADVANCED TEMPLATE DATA - 24 Templates IA TAMTAM
 // ✅ Upgraded: Kuaishou-like Template Engine manifests (slots → pipeline → timeline → overrides)
+// ✅ FIXED: TDZ crash (Cannot access before initialization) by hoisting duration helpers as functions
+// ✅ FIXED: Tailwind invalid color token "from-sepia" replaced with valid gradient
 // ✅ Modification scope: templates/data ONLY (no change needed in AdvancedTemplateDrawer.tsx)
 // ============================================================
 
@@ -43,6 +45,33 @@ export interface VoiceInstruction {
   text_ba?: string;
   action: 'record_video' | 'record_audio' | 'take_photo' | 'add_text' | 'wait' | 'confirm';
   durationHint?: number;
+}
+
+// ============================================================
+// HELPER FUNCTIONS (HOISTED) - required by KSE builders at module init
+// ============================================================
+
+export function durationToSeconds(duration: TemplateDuration): number {
+  const map: Record<TemplateDuration, number> = {
+    '10s': 10,
+    '15s': 15,
+    '30s': 30,
+    '45s': 45,
+    '60s': 60,
+    '90s': 90,
+    '120s': 120
+  };
+  return map[duration];
+}
+
+export function formatDuration(duration: TemplateDuration): string {
+  const seconds = durationToSeconds(duration);
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}min`;
+  }
+  return `${seconds}s`;
 }
 
 /* =========================================================================================
@@ -198,7 +227,6 @@ const summarizeInputsKuaishouStyle = (tpl: Omit<AdvancedTemplate, 'engine'>): st
   if ((hasVideo || hasPhoto) && !hasAudio && !hasText) {
     const v = tpl.inputs.find(i => i.type === 'video');
     const p = tpl.inputs.find(i => i.type === 'photo');
-    // If any of them requires at least 1, show 1. Else show 0..N isn't Kuaishou-like; we still show "1"
     const required = (v?.minCount ?? 0) > 0 || (p?.minCount ?? 0) > 0;
     const count = required ? 1 : 1;
     return `${count} Picture/Video`;
@@ -391,7 +419,6 @@ const buildKSEPipeline = (tpl: Omit<AdvancedTemplate, 'engine'>): KSEPipelineSte
     weight: 0.03
   });
 
-  // normalize weights if you want exact 100% later (optional)
   return steps;
 };
 
@@ -404,7 +431,6 @@ const buildKSETimeline = (tpl: Omit<AdvancedTemplate, 'engine'>, durationSec: nu
   const layers: KSETimelineLayer[] = [];
 
   // Background: placeholder assets (swap with real assets later)
-  // (Kuaishou templates often ship with a background scene / frame)
   layers.push({
     t: [0, durationSec],
     layer: 'bg',
@@ -493,7 +519,6 @@ const buildKSETimeline = (tpl: Omit<AdvancedTemplate, 'engine'>, durationSec: nu
 };
 
 const pickDefaultDuration = (tpl: Omit<AdvancedTemplate, 'engine'>): TemplateDuration => {
-  // Prefer the shortest Kuaishou-like durations (10/15/30) for better completion.
   const pref: TemplateDuration[] = ['10s', '15s', '30s', '45s', '60s', '90s', '120s'];
   for (const d of pref) {
     if (tpl.supportedDurations.includes(d)) return d;
@@ -502,7 +527,6 @@ const pickDefaultDuration = (tpl: Omit<AdvancedTemplate, 'engine'>): TemplateDur
 };
 
 const pickDefaultRatio = (tpl: Omit<AdvancedTemplate, 'engine'>): OutputRatio => {
-  // Kuaishou templates are mostly 9:16; we keep 9:16 when possible
   if (tpl.outputRatios.includes('9:16')) return '9:16';
   return tpl.outputRatios[0] ?? '9:16';
 };
@@ -516,7 +540,7 @@ const buildKSEVariant = (tpl: Omit<AdvancedTemplate, 'engine'>, duration: Templa
   const timeline = buildKSETimeline(tpl, durationSec);
 
   return {
-    id: `${tpl.id}__${duration}`, // variant id
+    id: `${tpl.id}__${duration}`,
     templateId: tpl.id,
     version: 'kse-1.0.0',
     title_fr: `${tpl.emoji} ${tpl.label_fr}`,
@@ -548,7 +572,6 @@ const buildKSEngine = (tpl: Omit<AdvancedTemplate, 'engine'>): KuaishouTemplateE
   const defaultDuration = pickDefaultDuration(tpl);
   const defaultRatio = pickDefaultRatio(tpl);
 
-  // Kuaishou templates are “duration fixed”; we create one variant per supported duration.
   const variants = tpl.supportedDurations.reduce((acc, d) => {
     acc[d] = buildKSEVariant(tpl, d);
     return acc;
@@ -587,8 +610,7 @@ export const NEUTRAL_TEMPLATE: AdvancedTemplate = {
 };
 
 // ============================================================
-// A) 8 Templates Grand Public
-// (raw templates - engine injected at export time)
+// A) 8 Templates Grand Public (raw templates - engine injected at export time)
 // ============================================================
 
 type RawTemplate = Omit<AdvancedTemplate, 'engine'>;
@@ -766,7 +788,7 @@ const GRAND_PUBLIC_TEMPLATES_RAW: RawTemplate[] = [
 ];
 
 // ============================================================
-// B) 10 Templates Éducatif / Culture / Mémoire
+// B) 10 Templates Éducatif / Culture / Mémoire (raw)
 // ============================================================
 
 const EDUCATIF_CULTURE_TEMPLATES_RAW: RawTemplate[] = [
@@ -898,7 +920,8 @@ const EDUCATIF_CULTURE_TEMPLATES_RAW: RawTemplate[] = [
     outputRatios: ['9:16', '1:1'],
     features: { photoAnimation: true, narrativeStructure: true },
     previewAnimation: 'slide',
-    color: 'from-sepia to-amber-600',
+    // FIXED: from-sepia (invalid) -> valid Tailwind gradient
+    color: 'from-amber-800 to-amber-600',
     voiceInstructions: [
       { step: 1, text_fr: 'Ajoute une photo ancienne', action: 'take_photo' },
       { step: 2, text_fr: 'Ajoute la photo actuelle du même endroit', action: 'take_photo' },
@@ -990,7 +1013,7 @@ const EDUCATIF_CULTURE_TEMPLATES_RAW: RawTemplate[] = [
 ];
 
 // ============================================================
-// C) 6 Templates Vocal / Radio / Communautaire
+// C) 6 Templates Vocal / Radio / Communautaire (raw)
 // ============================================================
 
 const VOCAL_RADIO_TEMPLATES_RAW: RawTemplate[] = [
@@ -1204,29 +1227,6 @@ export const getTemplatesByCollection = (collectionId: string): AdvancedTemplate
 
 export const getCollectionById = (id: string): TemplateCollection | undefined => {
   return TEMPLATE_COLLECTIONS.find(c => c.id === id);
-};
-
-export const durationToSeconds = (duration: TemplateDuration): number => {
-  const map: Record<TemplateDuration, number> = {
-    '10s': 10,
-    '15s': 15,
-    '30s': 30,
-    '45s': 45,
-    '60s': 60,
-    '90s': 90,
-    '120s': 120
-  };
-  return map[duration];
-};
-
-export const formatDuration = (duration: TemplateDuration): string => {
-  const seconds = durationToSeconds(duration);
-  if (seconds >= 60) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}min`;
-  }
-  return `${seconds}s`;
 };
 
 /* =========================================================================================
