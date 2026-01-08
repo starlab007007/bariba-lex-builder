@@ -601,7 +601,8 @@ serve(async (req) => {
             results: [{ 
               key: pendingTemplate.template_key, 
               success: true, 
-              scenesCount: sceneImages.length 
+              scenesCount: sceneImages.length,
+              scenes: sceneImages  // Include scene URLs for live preview
             }]
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
