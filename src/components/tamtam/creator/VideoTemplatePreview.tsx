@@ -30,6 +30,8 @@ interface VideoTemplatePreviewProps {
   onVideoReady?: () => void;
   onError?: (error: Error) => void;
   onRequestLoad?: () => void;
+  /** Status from visual_generation_status field */
+  generationStatus?: 'pending' | 'generating' | 'completed' | 'failed' | null;
 }
 
 // Get supported video mime type for the browser
@@ -345,7 +347,8 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
   autoLoad = false,
   onVideoReady,
   onError,
-  onRequestLoad
+  onRequestLoad,
+  generationStatus
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -549,11 +552,54 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
     }
   };
 
-  // ✅ ENHANCED: If no frames, show animated fallback based on template gradient & emoji
+  // ✅ KUAISHOU STYLE: Conditional status badge based on generationStatus
+  const StatusBadge = () => {
+    if (generationStatus === 'pending') {
+      return (
+        <motion.div
+          className="absolute top-3 right-3 z-20"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/90 text-white text-[10px] font-medium shadow-lg">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            En attente
+          </div>
+        </motion.div>
+      );
+    }
+    if (generationStatus === 'generating') {
+      return (
+        <motion.div
+          className="absolute top-3 right-3 z-20"
+          animate={{ scale: [1, 1.05, 1] }}
+          transition={{ duration: 1, repeat: Infinity }}
+        >
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/90 text-white text-[10px] font-medium shadow-lg">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Génération...
+          </div>
+        </motion.div>
+      );
+    }
+    if (generationStatus === 'failed') {
+      return (
+        <div className="absolute top-3 right-3 z-20">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/90 text-white text-[10px] font-medium shadow-lg">
+            ❌ Échec
+          </div>
+        </div>
+      );
+    }
+    // No badge for 'completed' or null - the video/image will show
+    return null;
+  };
+
+  // ✅ ENHANCED: If no frames, show Kuaishou-style animated fallback
   if (frames.length < 2) {
     return (
       <div className={cn("relative w-full h-full overflow-hidden", className)}>
-        {/* Animated gradient background */}
+        {/* Animated gradient background - Kuaishou style */}
         <motion.div 
           className={cn("absolute inset-0 bg-gradient-to-br", template.color)}
           animate={{
@@ -569,10 +615,10 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
         
         {/* Floating particles effect */}
         <div className="absolute inset-0 overflow-hidden">
-          {[...Array(12)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <motion.div
               key={i}
-              className="absolute w-2 h-2 rounded-full bg-white/20"
+              className="absolute w-1.5 h-1.5 rounded-full bg-white/30"
               initial={{ 
                 x: Math.random() * 100 + '%', 
                 y: '110%',
@@ -598,18 +644,18 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
           <motion.img 
             src={previewImage} 
             alt={template.label_fr}
-            className="absolute inset-0 w-full h-full object-cover opacity-50"
-            animate={{ scale: [1, 1.05, 1] }}
+            className="absolute inset-0 w-full h-full object-cover opacity-60"
+            animate={{ scale: [1, 1.03, 1] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           />
         )}
         
-        {/* Centered bouncing emoji */}
+        {/* Centered bouncing emoji - Kuaishou style */}
         <motion.div
           className="absolute inset-0 flex items-center justify-center"
           animate={{ 
-            y: [0, -15, 0],
-            scale: [1, 1.1, 1]
+            y: [0, -12, 0],
+            scale: [1, 1.08, 1]
           }}
           transition={{
             duration: 2,
@@ -617,18 +663,18 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
             ease: "easeInOut"
           }}
         >
-          <span className="text-6xl drop-shadow-2xl">{template.emoji}</span>
+          <span className="text-5xl drop-shadow-2xl">{template.emoji}</span>
         </motion.div>
         
-        {/* Template name with slide-in animation */}
+        {/* Template name with glass effect - Kuaishou style */}
         <motion.div
-          className="absolute bottom-4 left-0 right-0 text-center"
+          className="absolute bottom-3 left-2 right-2 text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 backdrop-blur-sm">
-            <span className="text-white text-sm font-medium">{template.label_fr}</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/10">
+            <span className="text-white text-xs font-medium truncate">{template.label_fr}</span>
           </div>
         </motion.div>
         
@@ -640,17 +686,8 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
           }}
         />
         
-        {/* "Generating" indicator if generation is pending */}
-        <motion.div
-          className="absolute top-3 right-3"
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/80 text-white text-[10px] font-medium">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            En attente
-          </div>
-        </motion.div>
+        {/* ✅ CONDITIONAL STATUS BADGE */}
+        <StatusBadge />
       </div>
     );
   }

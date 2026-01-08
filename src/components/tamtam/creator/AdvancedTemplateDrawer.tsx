@@ -716,17 +716,16 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
                         <div className={cn("absolute inset-0 bg-gradient-to-br", (previewTemplate as any).color)} />
                         
                         {/* Video Template Preview - Auto load on modal open */}
-                        {aiTemplateMap[previewTemplate.id] && (
-                          <VideoTemplatePreview
-                            template={previewTemplate}
-                            aiData={aiTemplateMap[previewTemplate.id]}
-                            isVisible={true}
-                            loop={true}
-                            autoLoad={true} // ✅ Auto load when modal opens
-                            className="absolute inset-0"
-                            onVideoReady={() => console.log('[Preview] Video ready')}
-                          />
-                        )}
+                        <VideoTemplatePreview
+                          template={previewTemplate}
+                          aiData={aiTemplateMap[previewTemplate.id]}
+                          isVisible={true}
+                          loop={true}
+                          autoLoad={true}
+                          className="absolute inset-0"
+                          onVideoReady={() => console.log('[Preview] Video ready')}
+                          generationStatus={aiTemplateMap[previewTemplate.id]?.visual_generation_status || null}
+                        />
 
                         {/* Fallback static preview image */}
                         {!aiTemplateMap[previewTemplate.id] && previewImageUrl && (
@@ -976,19 +975,23 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
           autoLoad={false}
           className="absolute inset-0"
           onVideoReady={() => setIsVideoReady(true)}
+          generationStatus={aiData?.visual_generation_status || null}
+        />
+      )}
+      
+      {/* ✅ FALLBACK PREVIEW when no animation frames - pass status */}
+      {!hasAnimationFrames && !isNeutral && (
+        <VideoTemplatePreview
+          template={template}
+          aiData={aiData}
+          isVisible={false}
+          loop={false}
+          autoLoad={false}
+          className="absolute inset-0"
+          generationStatus={aiData?.visual_generation_status || null}
         />
       )}
 
-      {/* ✅ Fallback: Static preview image if no frames */}
-      {!hasAnimationFrames && hasPreviewImage && !imageError && (
-        <img
-          src={previewImageUrl}
-          alt={template.label_fr}
-          className="absolute inset-0 w-full h-full object-cover"
-          onLoad={() => setImageLoaded(true)}
-          onError={() => setImageError(true)}
-        />
-      )}
 
       {/* Dark overlay for text readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20" />
