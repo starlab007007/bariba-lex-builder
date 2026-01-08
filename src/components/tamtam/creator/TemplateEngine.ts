@@ -761,112 +761,193 @@ export class TemplateEngine {
     }
 
     // ============================================================
-    // ✅ PROFESSIONAL K-ENGINE VISUAL EFFECTS
+    // ✅ KUAISHOU HORSE ENHANCED K-ENGINE VISUAL EFFECTS
     // ============================================================
     ctx.save();
-    
-    // ---- 1. FILM GRAIN EFFECT (subtle, organic texture) ----
-    const grainIntensity = 0.015;
+
+    const tplAny = tpl as any;
+    const effects = tplAny.effects || {};
+    const duration = tpl.duration || 15;
+    const beatPhase = Math.sin(time * Math.PI * 4) * 0.5 + 0.5; // 128 BPM sync
+
+    // ---- 1. WARM GLOW OVERLAY (Kuaishou festive) ----
+    if (effects.warm_glow?.enabled !== false) {
+      const warmGlow = ctx.createRadialGradient(w * 0.5, h * 0.3, 0, w * 0.5, h * 0.5, h * 0.8);
+      const glowIntensity = 0.15 + beatPhase * 0.1;
+      warmGlow.addColorStop(0, `rgba(255,200,100,${glowIntensity})`);
+      warmGlow.addColorStop(0.5, `rgba(255,150,50,${glowIntensity * 0.5})`);
+      warmGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = warmGlow;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // ---- 2. CINEMATIC VIGNETTE (enhanced breathing) ----
+    if (effects.vignette_cinematic?.enabled !== false) {
+      const breatheFactor = 0.85 + Math.sin(time * 0.5) * 0.05;
+      const vignetteRadius = h * breatheFactor;
+      const vignette = ctx.createRadialGradient(w / 2, h / 2, h * 0.2, w / 2, h / 2, vignetteRadius);
+      vignette.addColorStop(0, 'transparent');
+      vignette.addColorStop(0.6, 'rgba(0,0,0,0.2)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // ---- 3. BEAT GLOW (pulses with music) ----
+    if (effects.beat_glow?.enabled !== false) {
+      const beatGlow = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.8);
+      const glowAlpha = 0.08 + beatPhase * 0.15;
+      beatGlow.addColorStop(0, `rgba(255,215,0,${glowAlpha})`);
+      beatGlow.addColorStop(0.4, `rgba(255,165,0,${glowAlpha * 0.5})`);
+      beatGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = beatGlow;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // ---- 4. SPARKLES (16 animated particles) ----
+    if (effects.sparkles?.enabled !== false) {
+      const sparkleCount = effects.sparkles?.count || 16;
+      const sparkleColors = effects.sparkles?.colors || ['#FFD700', '#FFA500', '#FF6347', '#FFFFFF'];
+      
+      for (let i = 0; i < sparkleCount; i++) {
+        const seed = i * 137.5;
+        const x = (Math.sin(seed) * 0.5 + 0.5) * w;
+        const baseY = (Math.cos(seed * 0.7) * 0.5 + 0.5) * h;
+        const y = baseY + Math.sin(time * 2 + seed) * 20;
+        const size = 3 + Math.sin(time * 5 + seed * 0.3) * 3;
+        const alpha = 0.4 + Math.sin(time * 4 + seed * 0.5) * 0.4;
+        
+        const color = sparkleColors[i % sparkleColors.length];
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
+        
+        // 4-pointed star sparkle
+        ctx.beginPath();
+        ctx.moveTo(x, y - size);
+        ctx.lineTo(x + size * 0.3, y);
+        ctx.lineTo(x, y + size);
+        ctx.lineTo(x - size * 0.3, y);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.moveTo(x - size, y);
+        ctx.lineTo(x, y + size * 0.3);
+        ctx.lineTo(x + size, y);
+        ctx.lineTo(x, y - size * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.restore();
+      }
+    }
+
+    // ---- 5. HORSE SILHOUETTE ANIMATION (gallops across screen) ----
+    if (effects.horse_silhouette?.enabled && time >= 5 && time <= 10) {
+      const horseProgress = (time - 5) / 5; // 0 to 1 over 5 seconds
+      const horseX = -w * 0.3 + horseProgress * w * 1.6;
+      const horseY = h * 0.55 + Math.sin(time * 8) * 10; // Gallop bounce
+      const horseSize = w * 0.25;
+      
+      ctx.save();
+      ctx.translate(horseX, horseY);
+      ctx.scale(horseSize / 200, horseSize / 150);
+      
+      // Golden glow
+      ctx.shadowColor = '#FFD700';
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = '#FFD700';
+      ctx.globalAlpha = 0.7 + beatPhase * 0.3;
+      
+      // Simplified horse silhouette path
+      ctx.beginPath();
+      ctx.moveTo(45, 95);
+      ctx.quadraticCurveTo(35, 85, 30, 70);
+      ctx.quadraticCurveTo(28, 55, 35, 45);
+      ctx.quadraticCurveTo(40, 38, 50, 35);
+      ctx.lineTo(55, 30);
+      ctx.quadraticCurveTo(58, 25, 65, 22);
+      ctx.quadraticCurveTo(72, 20, 78, 22);
+      ctx.lineTo(85, 28);
+      ctx.quadraticCurveTo(100, 30, 105, 50);
+      ctx.quadraticCurveTo(130, 55, 155, 58);
+      ctx.quadraticCurveTo(175, 75, 165, 105);
+      ctx.lineTo(45, 95);
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.restore();
+    }
+
+    // ---- 6. FILM GRAIN (subtle organic texture) ----
+    const grainIntensity = 0.012;
     const imageData = ctx.getImageData(0, 0, w, h);
     const data = imageData.data;
-    const frameNoise = Math.sin(time * 30) * 0.5 + 0.5; // Vary grain per frame
-    for (let i = 0; i < data.length; i += 4) {
+    const frameNoise = Math.sin(time * 30) * 0.5 + 0.5;
+    for (let i = 0; i < data.length; i += 16) { // Sample every 4th pixel for performance
       const noise = (Math.random() - 0.5) * grainIntensity * 255 * (0.8 + frameNoise * 0.4);
-      data[i] = Math.max(0, Math.min(255, data[i] + noise));     // R
-      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise)); // G
-      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise)); // B
+      data[i] = clamp(data[i] + noise, 0, 255);
+      data[i + 1] = clamp(data[i + 1] + noise, 0, 255);
+      data[i + 2] = clamp(data[i + 2] + noise, 0, 255);
     }
     ctx.putImageData(imageData, 0, 0);
-    
-    // ---- 2. CINEMATIC COLOR GRADING (category-based) ----
-    const categoryColors: Record<string, { start: string; end: string; blend: string }> = {
-      'transition': { start: 'rgba(168,85,247,0.12)', end: 'rgba(236,72,153,0.12)', blend: 'overlay' },
-      'storytelling': { start: 'rgba(245,158,11,0.1)', end: 'rgba(249,115,22,0.1)', blend: 'soft-light' },
-      'cultural': { start: 'rgba(139,92,246,0.15)', end: 'rgba(168,85,247,0.15)', blend: 'overlay' },
-      'vocal': { start: 'rgba(59,130,246,0.1)', end: 'rgba(6,182,212,0.1)', blend: 'soft-light' },
-      'challenge': { start: 'rgba(239,68,68,0.12)', end: 'rgba(249,115,22,0.12)', blend: 'overlay' },
-      'story': { start: 'rgba(217,119,6,0.15)', end: 'rgba(180,83,9,0.1)', blend: 'soft-light' },
-      'default': { start: 'rgba(100,100,100,0.08)', end: 'rgba(50,50,50,0.1)', blend: 'multiply' },
-    };
-    const colorScheme = categoryColors[tpl.category] || categoryColors.default;
-    const overlayGrad = ctx.createLinearGradient(0, 0, w, h);
-    overlayGrad.addColorStop(0, colorScheme.start);
-    overlayGrad.addColorStop(1, colorScheme.end);
-    ctx.fillStyle = overlayGrad;
-    ctx.fillRect(0, 0, w, h);
 
-    // ---- 3. DYNAMIC VIGNETTE (breathing effect) ----
-    const breatheFactor = 0.85 + Math.sin(time * 0.5) * 0.05; // Subtle breathing
-    const vignetteRadius = h * breatheFactor;
-    const vignette = ctx.createRadialGradient(w / 2, h / 2, h * 0.25, w / 2, h / 2, vignetteRadius);
-    vignette.addColorStop(0, 'transparent');
-    vignette.addColorStop(0.7, 'rgba(0,0,0,0.15)');
-    vignette.addColorStop(1, 'rgba(0,0,0,0.45)');
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, w, h);
-
-    // ---- 4. LETTERBOX BARS (cinematic 2.35:1 feel for story templates) ----
-    if (tpl.category === 'story' || tpl.category === 'storytelling') {
-      const barHeight = h * 0.05;
-      ctx.fillStyle = 'rgba(0,0,0,0.9)';
-      ctx.fillRect(0, 0, w, barHeight);
-      ctx.fillRect(0, h - barHeight, w, barHeight);
+    // ---- 7. PROGRESS BAR (golden animated) ----
+    if (effects.progress_bar?.enabled !== false) {
+      const progressWidth = w - 40;
+      const progressY = h - 16;
+      const progressHeight = 4;
+      const progressPercent = time / duration;
+      
+      // Background track
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath();
+      ctx.roundRect(20, progressY, progressWidth, progressHeight, 2);
+      ctx.fill();
+      
+      // Golden fill with glow
+      const progressGradient = ctx.createLinearGradient(20, 0, 20 + progressWidth, 0);
+      progressGradient.addColorStop(0, '#FFD700');
+      progressGradient.addColorStop(0.5, '#FFA500');
+      progressGradient.addColorStop(1, '#FF6347');
+      ctx.fillStyle = progressGradient;
+      ctx.shadowColor = 'rgba(255,215,0,0.6)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.roundRect(20, progressY, progressWidth * progressPercent, progressHeight, 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
-    // ---- 5. SCANLINE OVERLAY (retro video effect, subtle) ----
-    ctx.globalAlpha = 0.03;
-    for (let y = 0; y < h; y += 3) {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, y, w, 1);
-    }
-    ctx.globalAlpha = 1;
-
-    // ---- 6. CORNER GRADIENT HIGHLIGHTS (adds depth) ----
-    const topLeftHighlight = ctx.createRadialGradient(0, 0, 0, 0, 0, w * 0.5);
-    topLeftHighlight.addColorStop(0, 'rgba(255,255,255,0.08)');
-    topLeftHighlight.addColorStop(1, 'transparent');
-    ctx.fillStyle = topLeftHighlight;
-    ctx.fillRect(0, 0, w, h);
-
-    // ---- 7. ANIMATED TEMPLATE BADGE (professional watermark) ----
-    const badgeY = h - 60;
+    // ---- 8. TEMPLATE BADGE (premium gold style) ----
+    const badgeY = h - 65;
     const badgeWidth = 180;
     const badgeHeight = 44;
-    const pulseAlpha = 0.5 + Math.sin(time * 2) * 0.1;
+    const pulseAlpha = 0.6 + beatPhase * 0.2;
     
-    // Badge background with rounded corners
+    // Badge background with golden border
     ctx.fillStyle = `rgba(0,0,0,${pulseAlpha})`;
     ctx.beginPath();
-    ctx.roundRect(12, badgeY, badgeWidth, badgeHeight, 8);
+    ctx.roundRect(12, badgeY, badgeWidth, badgeHeight, 10);
     ctx.fill();
     
-    // Badge border glow
-    ctx.strokeStyle = `rgba(255,255,255,${pulseAlpha * 0.3})`;
-    ctx.lineWidth = 1;
+    // Golden border glow
+    ctx.strokeStyle = `rgba(255,215,0,${pulseAlpha * 0.6})`;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur = 8;
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    // Badge text
-    ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+    // Badge text with gradient
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 15px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`🎬 ${tpl.name}`, 24, badgeY + badgeHeight / 2);
-
-    // ---- 8. PROGRESS INDICATOR (subtle timeline) ----
-    const progressWidth = w - 40;
-    const progressY = h - 16;
-    const progressHeight = 3;
-    const progressPercent = (time / tpl.duration) * 100;
-    
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.beginPath();
-    ctx.roundRect(20, progressY, progressWidth, progressHeight, 2);
-    ctx.fill();
-    
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.beginPath();
-    ctx.roundRect(20, progressY, progressWidth * (progressPercent / 100), progressHeight, 2);
-    ctx.fill();
+    ctx.fillText(`🐴 ${tpl.name}`, 24, badgeY + badgeHeight / 2);
 
     ctx.restore();
   }

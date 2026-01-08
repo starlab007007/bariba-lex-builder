@@ -55,13 +55,14 @@
     },
     {
       "id": "one_take_pro",
-      "name": "One-Take Pro",
-      "durationSec": 30,
+      "name": "One-Take Pro 🐴",
+      "durationSec": 15,
       "ratio": "9:16",
       "manifest": "manifests/one_take_pro.json",
-      "tags": ["live", "authentic", "prise", "unique", "spontane", "stabilization", "premium"],
-      "family": "grand_public",
-      "featured": true
+      "tags": ["kuaishou", "horse", "sparkles", "calligraphy", "beat-sync", "premium", "2026", "stabilization"],
+      "family": "kuaishou_style",
+      "featured": true,
+      "collection": "kuaishou_horse"
     },
     {
       "id": "quick_story",
@@ -285,6 +286,11 @@
       "label_fr": "Style Africain",
       "description": "Effets visuels inspirés des motifs et couleurs africaines",
       "emoji": "🎨"
+    },
+    "kuaishou_horse": {
+      "label_fr": "Kuaishou Horse 2026",
+      "description": "Templates premium avec effets Kuaishou: sparkles, calligraphie, beat sync, cheval animé",
+      "emoji": "🐴"
     }
   }
 }
