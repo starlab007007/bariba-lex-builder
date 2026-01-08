@@ -115,31 +115,32 @@ export const useTamTamPosts = () => {
 
       if (error) throw error;
 
-      // Fetch reactions for each post
-      const postsWithReactions = await Promise.all(
-        (data || []).map(async (post) => {
-          const { data: reactions } = await supabase
+      // ✅ OPTIMIZED: Single query for all reactions instead of N queries
+      const postIds = (data || []).map(p => p.id);
+      const { data: allReactions } = postIds.length > 0 
+        ? await supabase
             .from('tamtam_reactions')
-            .select('reaction_type')
-            .eq('post_id', post.id);
+            .select('post_id, reaction_type')
+            .in('post_id', postIds)
+        : { data: [] };
 
-          const reactionCounts = {
-            like: 0, love: 0, laugh: 0, wow: 0, pray: 0
-          };
-          
-          reactions?.forEach(r => {
-            if (r.reaction_type in reactionCounts) {
-              reactionCounts[r.reaction_type as keyof typeof reactionCounts]++;
-            }
-          });
+      // Group reactions by post
+      const reactionsByPost = new Map<string, { like: number; love: number; laugh: number; wow: number; pray: number }>();
+      allReactions?.forEach(r => {
+        if (!reactionsByPost.has(r.post_id)) {
+          reactionsByPost.set(r.post_id, { like: 0, love: 0, laugh: 0, wow: 0, pray: 0 });
+        }
+        const counts = reactionsByPost.get(r.post_id)!;
+        if (r.reaction_type in counts) {
+          counts[r.reaction_type as keyof typeof counts]++;
+        }
+      });
 
-          return {
-            ...post,
-            profile: Array.isArray(post.profile) ? post.profile[0] : post.profile,
-            reactions: reactionCounts
-          };
-        })
-      );
+      const postsWithReactions = (data || []).map(post => ({
+        ...post,
+        profile: Array.isArray(post.profile) ? post.profile[0] : post.profile,
+        reactions: reactionsByPost.get(post.id) || { like: 0, love: 0, laugh: 0, wow: 0, pray: 0 }
+      }));
 
       setPosts(postsWithReactions);
     } catch (err: any) {
@@ -209,6 +210,26 @@ export const useTamTamPosts = () => {
           variant: "destructive" 
         });
         throw new Error('Veuillez vous connecter pour publier');
+      }
+
+      // ✅ Auto-create profile if missing (prevents FK constraint error)
+      const { data: existingProfile } = await supabase
+        .from('tamtam_profiles')
+        .select('user_id')
+        .eq('user_id', userData.user.id)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        console.log('[useTamTamPosts.createPost] Auto-creating missing profile...');
+        const shortId = userData.user.id.replace(/-/g, '').slice(0, 8);
+        const { error: profileError } = await supabase.from('tamtam_profiles').insert({
+          user_id: userData.user.id,
+          username: `user_${shortId}`,
+          display_name: userData.user.user_metadata?.display_name || 'Utilisateur'
+        });
+        if (profileError) {
+          console.warn('[useTamTamPosts.createPost] Profile creation failed:', profileError.message);
+        }
       }
 
       const insertData = {
