@@ -47,7 +47,7 @@ type ProgressCallback = (progress: ProcessingProgress) => void;
 // ============================================================
 
 export type InputType = "video" | "photo" | "audio" | "text";
-export type LayerType = "video_layer" | "user_media_layer" | "text_layer" | "sticker_layer";
+export type LayerType = "video_layer" | "user_media_layer" | "text_layer" | "sticker_layer" | "effect_layer" | "particle_layer" | "graphic_layer" | "ui_layer";
 
 export type PipelineOp =
   | "smart_crop"
@@ -124,6 +124,9 @@ export interface TemplateManifest {
   overrides?: string[];
   music?: { enabled: boolean; beatSync?: boolean; defaultTrack?: string; bpm?: number };
   export?: { codec?: string; preset?: "ultrafast" | "fast" | "medium"; crf?: number; fps?: number };
+  // Kuaishou Horse effects
+  effects?: Record<string, any>;
+  phases?: Record<string, { start: number; end: number; label?: string }>;
 }
 
 export interface BoundAsset {
@@ -765,10 +768,11 @@ export class TemplateEngine {
     // ============================================================
     ctx.save();
 
-    const tplAny = tpl as any;
-    const effects = tplAny.effects || {};
+    // ✅ KUAISHOU HORSE: Access effects directly from normalized template
+    const effects = tpl.effects || {};
     const duration = tpl.duration || 15;
-    const beatPhase = Math.sin(time * Math.PI * 4) * 0.5 + 0.5; // 128 BPM sync
+    const bpm = tpl.music?.bpm || 128;
+    const beatPhase = Math.sin(time * Math.PI * (bpm / 30)) * 0.5 + 0.5; // BPM sync
 
     // ---- 1. WARM GLOW OVERLAY (Kuaishou festive) ----
     if (effects.warm_glow?.enabled !== false) {
@@ -1519,9 +1523,12 @@ export class TemplateEngine {
       overrides: Array.isArray(rawTpl.overrides) ? rawTpl.overrides : ["cover", "text", "music"],
       music: rawTpl.music || { enabled: false, beatSync: false, defaultTrack: "", bpm: 120 },
       export: rawTpl.export || { codec: "libx264", preset: "ultrafast", crf: 23, fps: 30 },
+      // ✅ KUAISHOU HORSE: Preserve effects and phases from manifest
+      effects: rawTpl.effects || {},
+      phases: rawTpl.phases || {},
     };
 
-    console.log('[K-Engine] Template normalized:', safe.id, 'slots:', safe.slots.length, 'timeline:', safe.timeline.length);
+    console.log('[K-Engine] Template normalized:', safe.id, 'slots:', safe.slots.length, 'timeline:', safe.timeline.length, 'effects:', Object.keys(safe.effects || {}));
 
     return safe;
   }
