@@ -281,7 +281,7 @@
         "fillColor": "#FFD700",
         "glow": "rgba(255,215,0,0.6)"
       }
-    },
+    }
   ],
 
   "overrides": ["music", "text", "subtitles", "cover", "enhance", "speed"],
