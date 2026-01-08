@@ -942,11 +942,15 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
     );
   }
 
+  // ✅ KUAISHOU: Check if template is featured/popular
+  const isFeatured = aiData?.is_featured || aiData?.usage_count > 100;
+  const isPending = aiData?.visual_generation_status === 'pending' || !aiData?.visual_generation_status;
+
   return (
     <motion.div
       ref={cardRef}
-      whileTap={{ scale: 0.97 }}
-      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.96 }}
+      whileHover={{ scale: 1.03, y: -4 }}
       onTouchStart={onLongPressStart}
       onTouchEnd={onLongPressEnd}
       onMouseDown={onLongPressStart}
@@ -957,166 +961,239 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
       }}
       onMouseEnter={() => setIsHovered(true)}
       className={cn(
-        "relative overflow-hidden rounded-2xl sm:rounded-3xl text-left transition-all min-h-[155px] sm:min-h-[175px]",
+        "relative overflow-hidden rounded-2xl sm:rounded-3xl text-left transition-all min-h-[165px] sm:min-h-[185px]",
+        "shadow-lg hover:shadow-2xl",
         isFocused && "ring-2 sm:ring-3 ring-white shadow-xl",
-        isSpeaking && "ring-2 sm:ring-3 ring-green-400"
+        isSpeaking && "ring-2 sm:ring-3 ring-green-400",
+        isFeatured && "ring-1 ring-amber-400/50"
       )}
+      style={{
+        boxShadow: isHovered ? '0 20px 40px -12px rgba(0,0,0,0.5)' : undefined
+      }}
     >
-      {/* Background: Gradient fallback */}
-      <div className={cn("absolute inset-0 bg-gradient-to-br", (template as any).color)} />
-
-      {/* ✅ VIDEO TEMPLATE PREVIEW - Real WebM video from AI frames */}
-      {hasAnimationFrames && !isNeutral && (
-        <VideoTemplatePreview
-          template={template}
-          aiData={aiData}
-          isVisible={isVisible || isHovered}
-          loop={true}
-          autoLoad={false}
-          className="absolute inset-0"
-          onVideoReady={() => setIsVideoReady(true)}
-          generationStatus={aiData?.visual_generation_status || null}
-        />
-      )}
-      
-      {/* ✅ FALLBACK PREVIEW when no animation frames - pass status */}
-      {!hasAnimationFrames && !isNeutral && (
-        <VideoTemplatePreview
-          template={template}
-          aiData={aiData}
-          isVisible={false}
-          loop={false}
-          autoLoad={false}
-          className="absolute inset-0"
-          generationStatus={aiData?.visual_generation_status || null}
+      {/* ✅ KUAISHOU: Animated gradient border for featured templates */}
+      {isFeatured && (
+        <motion.div
+          className="absolute -inset-[1px] rounded-2xl sm:rounded-3xl z-0"
+          style={{
+            background: 'linear-gradient(135deg, #FFD700, #FF6B00, #FF1493, #FFD700)',
+            backgroundSize: '300% 300%',
+          }}
+          animate={{
+            backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "linear"
+          }}
         />
       )}
 
+      {/* Background container */}
+      <div className="absolute inset-[1px] rounded-2xl sm:rounded-3xl overflow-hidden bg-black">
+        {/* Background: Gradient fallback */}
+        <div className={cn("absolute inset-0 bg-gradient-to-br", (template as any).color)} />
 
-      {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20" />
+        {/* ✅ VIDEO TEMPLATE PREVIEW - Real WebM video from AI frames */}
+        {hasAnimationFrames && !isNeutral && (
+          <VideoTemplatePreview
+            template={template}
+            aiData={aiData}
+            isVisible={isVisible || isHovered}
+            loop={true}
+            autoLoad={false}
+            className="absolute inset-0"
+            onVideoReady={() => setIsVideoReady(true)}
+            generationStatus={aiData?.visual_generation_status || null}
+          />
+        )}
+        
+        {/* ✅ FALLBACK PREVIEW when no animation frames - pass status */}
+        {!hasAnimationFrames && !isNeutral && (
+          <VideoTemplatePreview
+            template={template}
+            aiData={aiData}
+            isVisible={false}
+            loop={false}
+            autoLoad={false}
+            className="absolute inset-0"
+            generationStatus={aiData?.visual_generation_status || null}
+          />
+        )}
 
-      {/* ✅ Video duration badge when playing */}
-      {hasAnimationFrames && (isVisible || isHovered) && (
-        <div className="absolute top-2 left-2 z-20 flex items-center gap-1">
-          <motion.div
-            className="flex items-center gap-1 bg-green-500/90 rounded-full px-2 py-0.5"
-            animate={{ opacity: [1, 0.8, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
+        {/* ✅ KUAISHOU: Dark gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+        
+        {/* ✅ KUAISHOU: Hover glow effect */}
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          animate={{
+            opacity: isHovered ? 0.15 : 0,
+          }}
+          style={{
+            background: 'radial-gradient(circle at center, white 0%, transparent 70%)',
+          }}
+        />
+      </div>
+
+      {/* ✅ KUAISHOU: Duration badge - Always visible top left */}
+      <div className="absolute top-2.5 left-2.5 z-20">
+        <motion.div
+          className={cn(
+            "flex items-center gap-1 rounded-full px-2 py-1 backdrop-blur-md border",
+            hasAnimationFrames && (isVisible || isHovered) 
+              ? "bg-green-500/90 border-green-400/50" 
+              : "bg-black/60 border-white/10"
+          )}
+          animate={hasAnimationFrames && (isVisible || isHovered) ? { 
+            boxShadow: ['0 0 0 0 rgba(34, 197, 94, 0.4)', '0 0 0 6px rgba(34, 197, 94, 0)', '0 0 0 0 rgba(34, 197, 94, 0.4)']
+          } : {}}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          {hasAnimationFrames && (isVisible || isHovered) ? (
             <Play className="h-2.5 w-2.5 text-white" />
-            <span className="text-white text-[9px] font-bold">
-              {Math.round(templateDurationMs / 1000)}s
-            </span>
+          ) : (
+            <Clock className="h-2.5 w-2.5 text-white/80" />
+          )}
+          <span className="text-white text-[9px] font-bold">
+            {(template as any).supportedDurations?.[0] || '15s'}
+          </span>
+        </motion.div>
+      </div>
+
+      {/* ✅ KUAISHOU: Status badges top right */}
+      <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1">
+        {/* Featured badge */}
+        {isFeatured && (
+          <motion.div
+            className="flex items-center gap-0.5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full px-1.5 py-0.5"
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <span className="text-[8px]">🔥</span>
+            <span className="text-white text-[8px] font-bold">HOT</span>
           </motion.div>
-        </div>
-      )}
-
-      {/* ✅ AI Badge when has generated content (only if not playing video) */}
-      {isAICompleted && !hasAnimationFrames && (
-        <div className="absolute top-2 left-2 z-20">
-          <div className="flex items-center gap-1 bg-purple-500/80 rounded-full px-2 py-0.5">
-            <Sparkles className="h-2.5 w-2.5 text-white" />
-            <span className="text-white text-[9px] font-medium">IA</span>
+        )}
+        
+        {/* AI Completed badge */}
+        {isAICompleted && !isPending && (
+          <div className="flex items-center gap-0.5 bg-purple-500/90 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+            <Sparkles className="h-2 w-2 text-white" />
+            <span className="text-white text-[8px] font-medium">IA</span>
           </div>
-        </div>
-      )}
-
-      {/* ✅ Generating Badge */}
-      {isAIGenerating && (
-        <div className="absolute top-2 left-2 z-20">
+        )}
+        
+        {/* Generating badge */}
+        {isAIGenerating && (
           <motion.div 
-            className="flex items-center gap-1 bg-blue-500/80 rounded-full px-2 py-0.5"
+            className="flex items-center gap-0.5 bg-blue-500/90 backdrop-blur-sm rounded-full px-1.5 py-0.5"
             animate={{ opacity: [0.7, 1, 0.7] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
             <Loader2 className="w-2 h-2 text-white animate-spin" />
-            <span className="text-white text-[9px] font-medium">Génération...</span>
           </motion.div>
-        </div>
-      )}
-
-      {/* Pulse animation overlay */}
-      <motion.div
-        className="absolute inset-0 bg-white/10 pointer-events-none"
-        animate={{
-          opacity: isHovered ? [0.1, 0.2, 0.1] : 0,
-        }}
-        transition={{ duration: 1.5, repeat: Infinity }}
-      />
-
-      {/* Content */}
-      <div className="relative z-10 flex flex-col h-full p-3 sm:p-4">
-        <div className="flex items-start justify-between mb-1.5">
+        )}
+        
+        {/* Video ready indicator */}
+        {hasAnimationFrames && isVideoReady && !isAIGenerating && (
           <motion.div
-            animate={isFocused || isHovered ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.5 }}
-            className="text-3xl sm:text-4xl drop-shadow-lg"
-          >
-            {(template as any).emoji}
-          </motion.div>
+            className="w-2 h-2 rounded-full bg-green-400"
+            animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          />
+        )}
+      </div>
 
-          <div className="flex items-center gap-1">
-            {hasAnimationFrames && isVideoReady && (
-              <motion.div
-                className="p-1 rounded-full bg-green-500/50"
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 0.5, repeat: Infinity }}
-              >
-                <Play className="h-3 w-3 text-white" />
-              </motion.div>
-            )}
-            {audioEnabled && isSpeaking && (
-              <motion.div
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 0.5, repeat: Infinity }}
-                className="bg-green-500/30 rounded-full p-1"
-              >
-                <Volume2 className="h-3.5 w-3.5 text-white" />
-              </motion.div>
-            )}
+      {/* ✅ KUAISHOU: Content overlay */}
+      <div className="absolute inset-0 z-10 flex flex-col justify-end p-3 sm:p-4">
+        {/* Emoji with hover animation */}
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+          animate={isFocused || isHovered ? { 
+            scale: [1, 1.15, 1],
+            y: [0, -5, 0]
+          } : {}}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <span className="text-4xl sm:text-5xl drop-shadow-2xl opacity-90">{(template as any).emoji}</span>
+        </motion.div>
+
+        {/* Bottom content */}
+        <div className="mt-auto">
+          {/* Template name with glass effect */}
+          <motion.h3 
+            className="font-bold text-white text-sm leading-tight mb-0.5 drop-shadow-lg"
+            animate={isHovered ? { x: [0, 2, 0] } : {}}
+            transition={{ duration: 0.3 }}
+          >
+            {(template as any).label_fr}
+          </motion.h3>
+
+          <p className="text-white/60 text-[10px] line-clamp-1 mb-2.5 drop-shadow-sm">
+            {(template as any).description_fr}
+          </p>
+
+          {/* ✅ KUAISHOU: Action buttons with glass effect */}
+          <div className="flex gap-1.5">
+            <motion.button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenPreview();
+              }}
+              whileTap={{ scale: 0.95 }}
+              className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl bg-white/15 backdrop-blur-md border border-white/10 active:bg-white/25 transition-all"
+            >
+              <Eye className="h-3.5 w-3.5 text-white" />
+              <span className="text-white text-[10px] font-medium">Aperçu</span>
+            </motion.button>
+            <motion.button
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickSelect();
+              }}
+              whileTap={{ scale: 0.95 }}
+              className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl bg-white active:bg-white/90 transition-all shadow-lg"
+            >
+              <Check className="h-3.5 w-3.5 text-black" />
+              <span className="text-black text-[10px] font-bold">Utiliser</span>
+            </motion.button>
           </div>
         </div>
 
-        <h3 className="font-bold text-white text-sm leading-tight mb-0.5 drop-shadow-md">
-          {(template as any).label_fr}
-        </h3>
-
-        <p className="text-white/70 text-[10px] line-clamp-1 mb-2 flex-grow drop-shadow-sm">
-          {(template as any).description_fr}
-        </p>
-
-        {/* ✅ Simplified badge - duration only */}
-        <div className="flex items-center gap-1.5 mb-2">
-          <span className="text-[10px] bg-black/40 rounded-full px-2 py-0.5 text-white/90 flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {(template as any).supportedDurations?.[0] || '15s'}
-          </span>
-        </div>
-
-        <div className="flex gap-1.5">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenPreview();
-            }}
-            className="flex-1 flex items-center justify-center gap-1 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm active:bg-white/30 transition-all"
+        {/* ✅ KUAISHOU: Audio indicator */}
+        {audioEnabled && isSpeaking && (
+          <motion.div
+            className="absolute top-12 right-3"
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 0.5, repeat: Infinity }}
           >
-            <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />
-            <span className="text-white text-[10px] sm:text-xs font-medium">Aperçu</span>
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onQuickSelect();
-            }}
-            className="flex-1 flex items-center justify-center gap-1 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-white/90 active:bg-white transition-all"
-          >
-            <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black" />
-            <span className="text-black text-[10px] sm:text-xs font-bold">Utiliser</span>
-          </button>
-        </div>
+            <div className="bg-green-500/80 backdrop-blur-sm rounded-full p-1.5">
+              <Volume2 className="h-3 w-3 text-white" />
+            </div>
+          </motion.div>
+        )}
       </div>
+
+      {/* ✅ KUAISHOU: Play overlay on hover */}
+      <AnimatePresence>
+        {isHovered && hasAnimationFrames && !isVideoReady && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-15 flex items-center justify-center bg-black/30 backdrop-blur-[2px]"
+          >
+            <motion.div
+              className="w-12 h-12 rounded-full bg-white/30 backdrop-blur-md flex items-center justify-center"
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              <Play className="h-5 w-5 text-white ml-0.5" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
