@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   RefreshCw, Sparkles, CheckCircle, Clock, AlertCircle, 
-  Download, Eye, Play, Pause, RotateCcw, Database, Zap, Image, ImagePlus, Video, Film
+  Download, Eye, Play, Pause, RotateCcw, Database, Zap, Image, ImagePlus, Video, Film,
+  StopCircle, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,6 +16,19 @@ import { useTemplateVisuals } from '@/hooks/useTemplateVisuals';
 import { TemplatePreviewModal } from '@/components/tamtam/creator/TemplatePreviewModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+interface GenerationState {
+  isRunning: boolean;
+  currentTemplate: { key: string; emoji: string; label: string } | null;
+  currentScene: number;
+  totalScenes: number;
+  completedTemplates: number;
+  totalTemplates: number;
+  generatedScenes: { scene: number; url: string }[];
+  startTime: number;
+  errors: string[];
+}
+
 export function TemplateGenerationAdmin() {
   const {
     templates,
@@ -33,20 +47,156 @@ export function TemplateGenerationAdmin() {
 
   const {
     generateSingleVisuals,
-    generateAllPending: generateAllVisuals,
     getVisualStats,
-    generationProgress: visualProgress,
-    isGenerating: isGeneratingVisuals
   } = useTemplateVisuals();
 
   const [previewTemplate, setPreviewTemplate] = useState<AIGeneratedTemplate | null>(null);
   const [visualStats, setVisualStats] = useState<any>(null);
   const [isGeneratingMiniDoc, setIsGeneratingMiniDoc] = useState(false);
   const [miniDocProgress, setMiniDocProgress] = useState<string | null>(null);
+  
+  // État de génération avancé avec progression scene par scene
+  const [genState, setGenState] = useState<GenerationState>({
+    isRunning: false,
+    currentTemplate: null,
+    currentScene: 0,
+    totalScenes: 5,
+    completedTemplates: 0,
+    totalTemplates: 0,
+    generatedScenes: [],
+    startTime: 0,
+    errors: []
+  });
+  
+  const stopRequestedRef = useRef(false);
 
   useEffect(() => {
     getVisualStats().then(setVisualStats);
   }, [templates, getVisualStats]);
+
+  // Fonction de génération avec progression réelle
+  const startBatchGeneration = useCallback(async () => {
+    stopRequestedRef.current = false;
+    
+    // Compter les templates en attente
+    const { count } = await supabase
+      .from('ai_generated_templates')
+      .select('*', { count: 'exact', head: true })
+      .or('visual_generation_status.eq.pending,visual_generation_status.is.null');
+    
+    const total = count || 0;
+    if (total === 0) {
+      toast.info('✅ Tous les templates ont déjà des visuels !');
+      return;
+    }
+
+    setGenState({
+      isRunning: true,
+      currentTemplate: null,
+      currentScene: 0,
+      totalScenes: 5,
+      completedTemplates: 0,
+      totalTemplates: total,
+      generatedScenes: [],
+      startTime: Date.now(),
+      errors: []
+    });
+
+    toast.info(`🎬 Démarrage génération TikTok pour ${total} templates...`);
+
+    let completed = 0;
+
+    while (!stopRequestedRef.current && completed < total) {
+      try {
+        // Obtenir le prochain template
+        const { data: nextTemplate } = await supabase
+          .from('ai_generated_templates')
+          .select('id, template_key, emoji, label_fr')
+          .or('visual_generation_status.eq.pending,visual_generation_status.is.null')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .single();
+
+        if (!nextTemplate) break;
+
+        // Mettre à jour l'état avec le template actuel
+        setGenState(prev => ({
+          ...prev,
+          currentTemplate: {
+            key: nextTemplate.template_key,
+            emoji: nextTemplate.emoji,
+            label: nextTemplate.label_fr
+          },
+          currentScene: 0,
+          generatedScenes: []
+        }));
+
+        // Appeler l'edge function pour générer les visuels
+        const { data: result, error } = await supabase.functions.invoke('generate-ai-templates', {
+          body: { action: 'generate_visuals_batch' }
+        });
+
+        if (error) {
+          console.error('Generation error:', error);
+          setGenState(prev => ({
+            ...prev,
+            errors: [...prev.errors, `${nextTemplate.template_key}: ${error.message}`]
+          }));
+        } else if (result?.success) {
+          completed++;
+          
+          // Simuler la progression des scènes (l'edge function génère les 5 d'un coup)
+          for (let i = 1; i <= 5; i++) {
+            if (stopRequestedRef.current) break;
+            setGenState(prev => ({
+              ...prev,
+              currentScene: i,
+              completedTemplates: completed - 1 + (i / 5)
+            }));
+            await new Promise(r => setTimeout(r, 300));
+          }
+
+          setGenState(prev => ({
+            ...prev,
+            completedTemplates: completed
+          }));
+        }
+
+        // Petit délai entre les templates
+        await new Promise(r => setTimeout(r, 500));
+
+      } catch (err) {
+        console.error('Batch generation error:', err);
+        break;
+      }
+    }
+
+    // Fin de la génération
+    setGenState(prev => ({ ...prev, isRunning: false }));
+    refetch();
+    getVisualStats().then(setVisualStats);
+    
+    if (stopRequestedRef.current) {
+      toast.warning(`⏹️ Génération arrêtée: ${completed}/${total} templates`);
+    } else {
+      toast.success(`🎉 Génération terminée: ${completed} templates avec 5 scènes TikTok chacun !`);
+    }
+  }, [refetch, getVisualStats]);
+
+  const stopGeneration = useCallback(() => {
+    stopRequestedRef.current = true;
+    toast.info('⏹️ Arrêt en cours...');
+  }, []);
+
+  // Calcul du temps restant estimé
+  const estimatedTimeRemaining = genState.isRunning && genState.completedTemplates > 0
+    ? Math.round(((Date.now() - genState.startTime) / genState.completedTemplates) * (genState.totalTemplates - genState.completedTemplates) / 1000)
+    : 0;
+
+  const formatTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  };
 
   // Generate Mini-Doc Village video
   const generateMiniDocVideo = async (duration: 15 | 30 | 45) => {
@@ -166,13 +316,13 @@ export function TemplateGenerationAdmin() {
         </Card>
       </div>
 
-      {/* Progress Bar (if generating) */}
+      {/* Progress Bar (if generating AI content) */}
       {generationProgress && (
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">
-                Génération en cours: {generationProgress.currentTemplate}
+                Génération IA: {generationProgress.currentTemplate}
               </span>
               <span className="text-sm text-muted-foreground">
                 {generationProgress.current}/{generationProgress.total}
@@ -186,25 +336,127 @@ export function TemplateGenerationAdmin() {
         </Card>
       )}
 
-      {/* Visual Progress Bar */}
-      {visualProgress && (
-        <Card className="border-purple-500/20 bg-purple-500/5">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">
-                🎨 Génération visuels: {visualProgress.currentTemplate}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {visualProgress.current}/{visualProgress.total}
-              </span>
-            </div>
-            <Progress 
-              value={(visualProgress.current / visualProgress.total) * 100} 
-              className="h-3"
-            />
-          </CardContent>
-        </Card>
-      )}
+      {/* 🎬 NOUVELLE UI DE PROGRESSION TIKTOK AVANCÉE */}
+      <AnimatePresence>
+        {genState.isRunning && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+          >
+            <Card className="border-2 border-purple-500/50 bg-gradient-to-br from-purple-900/20 via-pink-900/20 to-orange-900/20 overflow-hidden">
+              <CardContent className="pt-6">
+                {/* En-tête avec template actuel */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <motion.div 
+                      className="text-5xl"
+                      animate={{ 
+                        scale: [1, 1.2, 1],
+                        rotate: [0, 10, -10, 0]
+                      }}
+                      transition={{ 
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      {genState.currentTemplate?.emoji || '🎬'}
+                    </motion.div>
+                    <div>
+                      <h3 className="text-lg font-bold text-foreground">
+                        {genState.currentTemplate?.label || 'Préparation...'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {genState.currentTemplate?.key}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={stopGeneration}
+                    className="gap-2"
+                  >
+                    <StopCircle className="w-4 h-4" />
+                    Arrêter
+                  </Button>
+                </div>
+
+                {/* Progression des scènes */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">
+                      🎬 Scène {genState.currentScene}/5 en génération...
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Template {Math.floor(genState.completedTemplates) + 1}/{genState.totalTemplates}
+                    </span>
+                  </div>
+                  
+                  {/* Barre de progression des scènes */}
+                  <div className="flex gap-2 mb-3">
+                    {[1, 2, 3, 4, 5].map((scene) => (
+                      <motion.div
+                        key={scene}
+                        className={`h-3 flex-1 rounded-full ${
+                          scene < genState.currentScene 
+                            ? 'bg-green-500' 
+                            : scene === genState.currentScene 
+                              ? 'bg-purple-500' 
+                              : 'bg-muted'
+                        }`}
+                        animate={scene === genState.currentScene ? {
+                          opacity: [0.5, 1, 0.5]
+                        } : {}}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Barre de progression globale */}
+                  <Progress 
+                    value={(genState.completedTemplates / genState.totalTemplates) * 100} 
+                    className="h-4 bg-purple-500/20"
+                  />
+                </div>
+
+                {/* Statistiques en temps réel */}
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <p className="text-2xl font-bold text-green-500">
+                      {Math.floor(genState.completedTemplates)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Terminés</p>
+                  </div>
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <p className="text-2xl font-bold text-purple-500">
+                      {Math.floor(genState.completedTemplates) * 5 + genState.currentScene}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Scènes AI</p>
+                  </div>
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <p className="text-2xl font-bold text-orange-500">
+                      ~{formatTime(estimatedTimeRemaining)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Temps restant</p>
+                  </div>
+                </div>
+
+                {/* Erreurs éventuelles */}
+                {genState.errors.length > 0 && (
+                  <div className="mt-4 p-3 bg-red-500/10 rounded-lg border border-red-500/30">
+                    <p className="text-sm text-red-400">
+                      ⚠️ {genState.errors.length} erreur(s): {genState.errors[genState.errors.length - 1]}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Actions */}
       <Card>
@@ -214,7 +466,7 @@ export function TemplateGenerationAdmin() {
             Actions
           </CardTitle>
           <CardDescription>
-            Gérer la synchronisation et la génération des templates IA
+            Gérer la synchronisation et la génération des templates IA TikTok
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -234,7 +486,7 @@ export function TemplateGenerationAdmin() {
               disabled={isGenerating || !stats || stats.pending === 0}
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              Générer 5 templates
+              Générer 5 contenus IA
             </Button>
 
             <Button
@@ -242,7 +494,7 @@ export function TemplateGenerationAdmin() {
               disabled={isGenerating || !stats || stats.pending === 0}
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              Générer tous ({stats?.pending || 0})
+              Générer tous contenus ({stats?.pending || 0})
             </Button>
 
             <Button
@@ -255,66 +507,60 @@ export function TemplateGenerationAdmin() {
             </Button>
           </div>
 
-          {/* Visual Generation Section with Real-time Progress */}
-          <div className="flex flex-col gap-4 mt-4 pt-4 border-t">
+          {/* 🎬 SECTION GÉNÉRATION VISUELS TIKTOK */}
+          <div className="flex flex-col gap-4 mt-6 pt-6 border-t border-purple-500/30">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
+                <Video className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h4 className="font-semibold">🎬 Génération Visuels TikTok</h4>
+                <p className="text-sm text-muted-foreground">
+                  Créer 5 scènes AI style TikTok/Kuaishou par template
+                </p>
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <ImagePlus className="w-4 h-4" />
-                <span>Visuels IA:</span>
+              <div className="flex items-center gap-2 text-sm">
+                <ImagePlus className="w-4 h-4 text-purple-500" />
+                <span className="text-muted-foreground">Visuels:</span>
                 {visualStats && (
-                  <span className="font-medium text-foreground">
-                    {visualStats.completed}/{visualStats.total} générés
-                  </span>
+                  <Badge variant={visualStats.completed === visualStats.total ? 'default' : 'secondary'}>
+                    {visualStats.completed}/{visualStats.total}
+                  </Badge>
                 )}
               </div>
               
               <Button
-                variant="default"
-                onClick={generateAllVisuals}
-                disabled={isGeneratingVisuals}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                size="lg"
+                onClick={startBatchGeneration}
+                disabled={genState.isRunning || (visualStats?.pending === 0)}
+                className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 hover:from-purple-700 hover:via-pink-700 hover:to-orange-600 text-white shadow-lg shadow-purple-500/25"
               >
-                <Sparkles className={`w-4 h-4 mr-2 ${isGeneratingVisuals ? 'animate-spin' : ''}`} />
-                {isGeneratingVisuals ? 'Génération en cours...' : `🎨 Générer tous les visuels (${visualStats?.pending || 0})`}
+                {genState.isRunning ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Génération en cours...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    🎬 Générer Visuels TikTok ({visualStats?.pending || 0})
+                  </>
+                )}
               </Button>
               
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => getVisualStats().then(setVisualStats)}
-                disabled={isGeneratingVisuals}
+                disabled={genState.isRunning}
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Actualiser stats
+                Actualiser
               </Button>
             </div>
-            
-            {/* Real-time Progress Bar */}
-            {isGeneratingVisuals && visualProgress && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/20"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-purple-500 animate-pulse" />
-                    <span className="text-sm font-medium">
-                      Génération: {visualProgress.currentTemplate || 'En cours...'}
-                    </span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {visualProgress.current}/{visualProgress.total} templates
-                  </span>
-                </div>
-                <Progress 
-                  value={(visualProgress.current / visualProgress.total) * 100} 
-                  className="h-3 bg-purple-500/20"
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  ⏳ Chaque template génère 5 scènes AI (~30s par template)
-                </p>
-              </motion.div>
-            )}
           </div>
 
           {/* Mini-Doc Village Special Section */}
@@ -358,7 +604,7 @@ export function TemplateGenerationAdmin() {
         <CardHeader>
           <CardTitle>Templates ({templates.length})</CardTitle>
           <CardDescription>
-            Liste de tous les templates avec leur statut de génération IA et visuels
+            Liste de tous les templates avec leur statut de génération IA et visuels TikTok
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -370,7 +616,7 @@ export function TemplateGenerationAdmin() {
                   <TableHead>Template</TableHead>
                   <TableHead>Famille</TableHead>
                   <TableHead>Status IA</TableHead>
-                  <TableHead>Visuels</TableHead>
+                  <TableHead>Visuels TikTok</TableHead>
                   <TableHead className="text-center">Usage</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -383,7 +629,7 @@ export function TemplateGenerationAdmin() {
                         <img 
                           src={(template as any).preview_image_url} 
                           alt={template.label_fr}
-                          className="w-12 h-16 rounded-lg object-cover"
+                          className="w-12 h-16 rounded-lg object-cover ring-2 ring-purple-500/30"
                         />
                       ) : (
                         <div
@@ -411,13 +657,13 @@ export function TemplateGenerationAdmin() {
                     <TableCell>
                       <Badge 
                         variant={(template as any).visual_generation_status === 'completed' ? 'default' : 'outline'}
-                        className="gap-1"
+                        className={`gap-1 ${(template as any).visual_generation_status === 'completed' ? 'bg-purple-500' : ''}`}
                       >
                         {(template as any).visual_generation_status === 'completed' && <CheckCircle className="w-3 h-3" />}
                         {(template as any).visual_generation_status === 'pending' && <Clock className="w-3 h-3" />}
                         {(template as any).visual_generation_status === 'generating' && <RefreshCw className="w-3 h-3 animate-spin" />}
                         {(template as any).visual_generation_status === 'failed' && <AlertCircle className="w-3 h-3" />}
-                        {(template as any).preview_image_url ? '✓' : '—'}
+                        {(template as any).visual_generation_status === 'completed' ? '5 scènes ✓' : 'En attente'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
@@ -436,24 +682,22 @@ export function TemplateGenerationAdmin() {
                           variant="ghost"
                           size="icon"
                           onClick={() => generateSingle(template.template_key)}
-                          disabled={isGenerating || template.generation_status === 'generating'}
-                          title="Régénérer contenu IA"
+                          disabled={isGenerating}
                         >
-                          <RotateCcw className="w-4 h-4" />
+                          <Sparkles className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => generateSingleVisuals.mutate(template.id)}
-                          disabled={isGeneratingVisuals || (template as any).visual_generation_status === 'generating'}
-                          title="Générer visuels"
+                          disabled={generateSingleVisuals.isPending}
                         >
                           <ImagePlus className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => downloadTemplate(template)}
+                          onClick={() => downloadTemplate(template.template_key)}
                         >
                           <Download className="w-4 h-4" />
                         </Button>
@@ -461,30 +705,6 @@ export function TemplateGenerationAdmin() {
                     </TableCell>
                   </TableRow>
                 ))}
-
-                {templates.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                      {isLoading ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <RefreshCw className="w-5 h-5 animate-spin" />
-                          Chargement...
-                        </div>
-                      ) : (
-                        <div>
-                          <p>Aucun template trouvé</p>
-                          <Button
-                            variant="link"
-                            onClick={() => syncTemplates()}
-                            className="mt-2"
-                          >
-                            Synchroniser depuis le code
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           </ScrollArea>
@@ -492,15 +712,38 @@ export function TemplateGenerationAdmin() {
       </Card>
 
       {/* Preview Modal */}
-      <TemplatePreviewModal
-        template={previewTemplate}
-        isOpen={!!previewTemplate}
-        onClose={() => setPreviewTemplate(null)}
-        onSelect={() => setPreviewTemplate(null)}
-        onDownload={() => {
-          if (previewTemplate) downloadTemplate(previewTemplate);
-        }}
-      />
+      {previewTemplate && (
+        <TemplatePreviewModal
+          template={{
+            id: previewTemplate.template_key,
+            emoji: previewTemplate.emoji,
+            label: previewTemplate.label_fr,
+            labelBa: previewTemplate.label_ba || undefined,
+            description: previewTemplate.description_fr,
+            family: previewTemplate.family,
+            color: previewTemplate.color,
+            inputs: previewTemplate.inputs as any[],
+            supportedDurations: previewTemplate.supported_durations,
+            outputRatios: previewTemplate.output_ratios,
+            features: previewTemplate.features as any,
+            voiceInstructions: previewTemplate.voice_instructions as any[],
+            engine: previewTemplate.kse_engine as any
+          }}
+          aiData={{
+            storyboard_frames: (previewTemplate as any).storyboard_frames,
+            ai_storyboard: previewTemplate.ai_storyboard as any,
+            ai_preview_image_url: previewTemplate.ai_preview_image_url || undefined,
+            preview_image_url: (previewTemplate as any).preview_image_url || undefined,
+            ai_voice_description_fr: previewTemplate.ai_voice_description_fr || undefined,
+          }}
+          isOpen={!!previewTemplate}
+          onClose={() => setPreviewTemplate(null)}
+          onSelect={() => {
+            toast.success(`Template "${previewTemplate.label_fr}" sélectionné !`);
+            setPreviewTemplate(null);
+          }}
+        />
+      )}
     </div>
   );
 }
