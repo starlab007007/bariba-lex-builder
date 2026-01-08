@@ -45,17 +45,22 @@ async function openDB(): Promise<IDBDatabase> {
 export const templateVideoCache = {
   /**
    * Get cached video blob for a template
+   * @param cacheKey - The cache key (can be templateId or a composite key like "templateId:duration:frameCount:hash")
    */
-  async get(templateId: string): Promise<CachedVideo | null> {
+  async get(cacheKey: string): Promise<CachedVideo | null> {
     try {
       const db = await openDB();
       return new Promise((resolve) => {
         const transaction = db.transaction(STORE_NAME, 'readonly');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.get(templateId);
+        const request = store.get(cacheKey);
 
         request.onsuccess = () => {
-          resolve(request.result || null);
+          const result = request.result as CachedVideo | undefined;
+          if (result) {
+            console.log(`[TemplateVideoCache] Cache hit for: ${cacheKey}`);
+          }
+          resolve(result || null);
         };
 
         request.onerror = () => {
@@ -71,9 +76,10 @@ export const templateVideoCache = {
 
   /**
    * Store a generated video blob
+   * @param cacheKey - The cache key (can be templateId or a composite key)
    */
   async set(
-    templateId: string,
+    cacheKey: string,
     blob: Blob,
     durationMs: number,
     frameCount: number,
@@ -86,7 +92,7 @@ export const templateVideoCache = {
         const store = transaction.objectStore(STORE_NAME);
         
         const data: CachedVideo = {
-          templateId,
+          templateId: cacheKey, // Use cacheKey as templateId for storage
           blob,
           durationMs,
           frameCount,
@@ -97,7 +103,7 @@ export const templateVideoCache = {
         const request = store.put(data);
 
         request.onsuccess = () => {
-          console.log(`[TemplateVideoCache] Cached video for ${templateId}`);
+          console.log(`[TemplateVideoCache] Cached video: ${cacheKey} (${(blob.size / 1024).toFixed(1)}KB)`);
           resolve();
         };
 
