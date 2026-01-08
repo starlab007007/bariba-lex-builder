@@ -1,0 +1,87 @@
+{
+  "id": "smart_captions",
+  "name": "Smart Captions",
+  "description": "Sous-titres auto avec emojis contextuels",
+  "version": "1.0.0",
+  "duration": 45,
+  "ratio": "9:16",
+  "category": "storytelling",
+  "family": "grand_public",
+  "tags": ["captions", "subtitles", "emoji", "accessibility"],
+
+  "slots": [
+    {
+      "id": "video_main",
+      "description": "Vidéo avec parole",
+      "type": "video",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "constraints": {
+        "minDurationSec": 15,
+        "maxDurationSec": 120
+      }
+    }
+  ],
+
+  "pipeline": [
+    { "op": "asr_subtitles", "params": { "langs": ["fr", "ba"], "align": "forced" }, "output": "subtitleTrack", "weight": 0.35 },
+    { "op": "icon_injection", "params": { "mode": "contextual_emojis", "density": "medium" }, "output": "iconLayer", "weight": 0.20 },
+    { "op": "translation_subtitles", "params": { "targetLangs": ["fr", "ba"] }, "output": "translatedTracks", "weight": 0.20 },
+    { "op": "audio_enhance", "params": { "denoise": true }, "output": "audioFx", "weight": 0.15 }
+  ],
+
+  "timeline": [
+    {
+      "id": "main_video",
+      "type": "user_media_layer",
+      "zIndex": 1,
+      "start": 0,
+      "end": 45,
+      "slotRef": "video_main",
+      "blend": "normal"
+    },
+    {
+      "id": "subtitles_layer",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 0,
+      "end": 45,
+      "text": "{{subtitleTrack}}",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.3, "easing": "ease-out" }
+    },
+    {
+      "id": "emoji_overlay",
+      "type": "sticker_layer",
+      "zIndex": 8,
+      "start": 0,
+      "end": 45,
+      "track": "iconLayer",
+      "blend": "screen"
+    }
+  ],
+
+  "overrides": ["music", "text", "subtitles", "cover", "enhance"],
+
+  "music": {
+    "enabled": false,
+    "beatSync": false
+  },
+
+  "publishDefaults": {
+    "allowDuo": false,
+    "hashtags": ["#SousTitres", "#Accessible", "#Smart"]
+  },
+
+  "cardHint": {
+    "inputSummary": "1 Video",
+    "timeLabel": "00:45"
+  },
+
+  "export": {
+    "fps": 30,
+    "preset": "medium",
+    "crf": 21
+  }
+}

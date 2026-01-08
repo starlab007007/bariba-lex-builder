@@ -1,0 +1,89 @@
+{
+  "id": "doc_express_patrimoine",
+  "name": "Doc Patrimoine",
+  "description": "Monument ou lieu sacré documenté",
+  "version": "1.0.0",
+  "duration": 60,
+  "ratio": "9:16",
+  "category": "cultural",
+  "family": "educatif_culture",
+  "tags": ["heritage", "monument", "sacred", "documentary"],
+
+  "slots": [
+    {
+      "id": "video_monument",
+      "description": "Vidéo du monument/lieu",
+      "type": "video",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "constraints": {
+        "minDurationSec": 30,
+        "maxDurationSec": 120
+      }
+    }
+  ],
+
+  "pipeline": [
+    { "op": "narrative_structure", "params": { "pattern": "documentary" }, "output": "chapters", "weight": 0.25 },
+    { "op": "asr_subtitles", "params": { "langs": ["fr", "ba"] }, "output": "subtitleTrack", "weight": 0.25 },
+    { "op": "icon_injection", "params": { "mode": "historical_facts" }, "output": "iconLayer", "weight": 0.20 },
+    { "op": "style_transfer", "params": { "preset": "warm_documentary" }, "output": "styledVideo", "weight": 0.20 }
+  ],
+
+  "timeline": [
+    {
+      "id": "main_video",
+      "type": "user_media_layer",
+      "zIndex": 1,
+      "start": 0,
+      "end": 60,
+      "slotRef": "video_monument",
+      "blend": "normal",
+      "effects": ["filter_warm_documentary"]
+    },
+    {
+      "id": "heritage_badge",
+      "type": "sticker_layer",
+      "zIndex": 5,
+      "start": 0,
+      "end": 60,
+      "asset": "overlays/heritage_badge.png",
+      "blend": "normal"
+    },
+    {
+      "id": "title_text",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 1,
+      "end": 6,
+      "text": "🏛️ Patrimoine Vivant",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.8, "easing": "ease-out" }
+    }
+  ],
+
+  "overrides": ["music", "text", "subtitles", "cover"],
+
+  "music": {
+    "enabled": true,
+    "beatSync": false,
+    "defaultTrack": "traditional_soft"
+  },
+
+  "publishDefaults": {
+    "allowDuo": false,
+    "hashtags": ["#Patrimoine", "#Monument", "#Histoire"]
+  },
+
+  "cardHint": {
+    "inputSummary": "1 Video",
+    "timeLabel": "01:00"
+  },
+
+  "export": {
+    "fps": 24,
+    "preset": "medium",
+    "crf": 20
+  }
+}

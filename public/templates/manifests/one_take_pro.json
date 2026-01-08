@@ -1,0 +1,79 @@
+{
+  "id": "one_take_pro",
+  "name": "One-Take Pro",
+  "description": "Stabilisation et recadrage intelligent",
+  "version": "1.0.0",
+  "duration": 30,
+  "ratio": "9:16",
+  "category": "transition",
+  "family": "grand_public",
+  "tags": ["stabilization", "professional", "smooth", "quality"],
+
+  "slots": [
+    {
+      "id": "video_main",
+      "description": "Vidéo à stabiliser",
+      "type": "video",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "constraints": {
+        "minDurationSec": 10,
+        "maxDurationSec": 60
+      }
+    }
+  ],
+
+  "pipeline": [
+    { "op": "stabilization", "params": { "strength": 0.75 }, "output": "stabilizedVideo", "weight": 0.35 },
+    { "op": "smart_crop", "params": { "target": "person", "mode": "reframe" }, "output": "cropRect", "weight": 0.20 },
+    { "op": "auto_editing", "params": { "cuts": "auto", "pacing": "smooth" }, "output": "editPlan", "weight": 0.20 },
+    { "op": "denoise_sharpen", "params": { "level": 0.35 }, "output": "enhanced", "weight": 0.15 }
+  ],
+
+  "timeline": [
+    {
+      "id": "main_video",
+      "type": "user_media_layer",
+      "zIndex": 1,
+      "start": 0,
+      "end": 30,
+      "slotRef": "video_main",
+      "blend": "normal",
+      "effects": ["stabilization"]
+    },
+    {
+      "id": "pro_badge",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 0.5,
+      "end": 3,
+      "text": "📹 One-Take Pro",
+      "style": "bold_hook",
+      "animation": { "type": "slide", "duration": 0.4, "easing": "ease-out" }
+    }
+  ],
+
+  "overrides": ["music", "text", "subtitles", "cover", "enhance"],
+
+  "music": {
+    "enabled": false,
+    "beatSync": false
+  },
+
+  "publishDefaults": {
+    "allowDuo": false,
+    "hashtags": ["#OneTake", "#Pro", "#Quality"]
+  },
+
+  "cardHint": {
+    "inputSummary": "1 Video",
+    "timeLabel": "00:30"
+  },
+
+  "export": {
+    "fps": 30,
+    "preset": "medium",
+    "crf": 20
+  }
+}

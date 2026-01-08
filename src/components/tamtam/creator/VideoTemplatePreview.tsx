@@ -549,19 +549,108 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
     }
   };
 
-  // If no frames, show preview image or gradient
+  // ✅ ENHANCED: If no frames, show animated fallback based on template gradient & emoji
   if (frames.length < 2) {
     return (
-      <div className={cn("relative w-full h-full", className)}>
-        {previewImage ? (
-          <img 
+      <div className={cn("relative w-full h-full overflow-hidden", className)}>
+        {/* Animated gradient background */}
+        <motion.div 
+          className={cn("absolute inset-0 bg-gradient-to-br", template.color)}
+          animate={{
+            backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          style={{ backgroundSize: '200% 200%' }}
+        />
+        
+        {/* Floating particles effect */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(12)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-2 h-2 rounded-full bg-white/20"
+              initial={{ 
+                x: Math.random() * 100 + '%', 
+                y: '110%',
+                opacity: 0.3 + Math.random() * 0.4
+              }}
+              animate={{ 
+                y: '-10%',
+                x: `${Math.random() * 100}%`,
+                opacity: [0.3, 0.6, 0.3]
+              }}
+              transition={{
+                duration: 4 + Math.random() * 4,
+                repeat: Infinity,
+                delay: i * 0.3,
+                ease: "linear"
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Preview image overlay if available */}
+        {previewImage && (
+          <motion.img 
             src={previewImage} 
             alt={template.label_fr}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover opacity-50"
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           />
-        ) : (
-          <div className={cn("w-full h-full bg-gradient-to-br", template.color)} />
         )}
+        
+        {/* Centered bouncing emoji */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          animate={{ 
+            y: [0, -15, 0],
+            scale: [1, 1.1, 1]
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        >
+          <span className="text-6xl drop-shadow-2xl">{template.emoji}</span>
+        </motion.div>
+        
+        {/* Template name with slide-in animation */}
+        <motion.div
+          className="absolute bottom-4 left-0 right-0 text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 backdrop-blur-sm">
+            <span className="text-white text-sm font-medium">{template.label_fr}</span>
+          </div>
+        </motion.div>
+        
+        {/* Vignette overlay */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.4) 100%)'
+          }}
+        />
+        
+        {/* "Generating" indicator if generation is pending */}
+        <motion.div
+          className="absolute top-3 right-3"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/80 text-white text-[10px] font-medium">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            En attente
+          </div>
+        </motion.div>
       </div>
     );
   }

@@ -1,0 +1,88 @@
+{
+  "id": "style_transfer_local",
+  "name": "Style Cinéma Local",
+  "description": "Look cinéma adapté aux visages locaux",
+  "version": "1.0.0",
+  "duration": 30,
+  "ratio": "9:16",
+  "category": "story",
+  "family": "grand_public",
+  "tags": ["cinema", "style", "professional", "african"],
+
+  "slots": [
+    {
+      "id": "video_main",
+      "description": "Vidéo à transformer",
+      "type": "video",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "constraints": {
+        "minDurationSec": 10,
+        "maxDurationSec": 60
+      }
+    }
+  ],
+
+  "pipeline": [
+    { "op": "smart_crop", "params": { "target": "person" }, "output": "cropRect", "weight": 0.10 },
+    { "op": "style_transfer", "params": { "preset": "cinema_local", "skinToneAware": true }, "output": "styledVideo", "weight": 0.35 },
+    { "op": "audio_enhance", "params": { "denoise": true, "normalize": true }, "output": "audioFx", "weight": 0.20 },
+    { "op": "denoise_sharpen", "params": { "level": 0.3 }, "output": "enhanced", "weight": 0.15 }
+  ],
+
+  "timeline": [
+    {
+      "id": "bg_layer",
+      "type": "video_layer",
+      "zIndex": 0,
+      "start": 0,
+      "end": 30,
+      "asset": "scenes/cinema_bg.mp4",
+      "blend": "normal"
+    },
+    {
+      "id": "main_video",
+      "type": "user_media_layer",
+      "zIndex": 1,
+      "start": 0,
+      "end": 30,
+      "slotRef": "video_main",
+      "blend": "normal",
+      "effects": ["filter_cinema"]
+    },
+    {
+      "id": "letterbox_top",
+      "type": "sticker_layer",
+      "zIndex": 10,
+      "start": 0,
+      "end": 30,
+      "asset": "overlays/letterbox.png",
+      "blend": "normal"
+    }
+  ],
+
+  "overrides": ["music", "text", "subtitles", "cover", "enhance"],
+
+  "music": {
+    "enabled": true,
+    "beatSync": false,
+    "defaultTrack": "cinematic_ambient"
+  },
+
+  "publishDefaults": {
+    "allowDuo": false,
+    "hashtags": ["#Cinéma", "#Style", "#Afrique"]
+  },
+
+  "cardHint": {
+    "inputSummary": "1 Video",
+    "timeLabel": "00:30"
+  },
+
+  "export": {
+    "fps": 24,
+    "preset": "medium",
+    "crf": 20
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "id": "avant_apres_village",
+  "name": "Avant/Après Village",
+  "description": "Archives vivantes - nostalgie virale",
+  "version": "1.0.0",
+  "duration": 30,
+  "ratio": "9:16",
+  "category": "transition",
+  "family": "educatif_culture",
+  "tags": ["before-after", "nostalgia", "archive", "village"],
+
+  "slots": [
+    {
+      "id": "photo_before",
+      "description": "Photo ancienne",
+      "type": "photo",
+      "required": true,
+      "min": 1,
+      "max": 1
+    },
+    {
+      "id": "photo_after",
+      "description": "Photo actuelle",
+      "type": "photo",
+      "required": true,
+      "min": 1,
+      "max": 1
+    }
+  ],
+
+  "pipeline": [
+    { "op": "photo_animation", "params": { "mode": "kenburns" }, "output": "animatedPhotos", "weight": 0.30 },
+    { "op": "narrative_structure", "params": { "pattern": "time_comparison" }, "output": "chapters", "weight": 0.30 },
+    { "op": "style_transfer", "params": { "preset": "sepia_to_color" }, "output": "styledPhotos", "weight": 0.25 }
+  ],
+
+  "timeline": [
+    {
+      "id": "bg_sepia",
+      "type": "video_layer",
+      "zIndex": 0,
+      "start": 0,
+      "end": 30,
+      "asset": "scenes/sepia_bg.mp4",
+      "blend": "normal"
+    },
+    {
+      "id": "before_photo",
+      "type": "user_media_layer",
+      "zIndex": 1,
+      "start": 0,
+      "end": 14,
+      "slotRef": "photo_before",
+      "blend": "normal",
+      "effects": ["filter_sepia"]
+    },
+    {
+      "id": "after_photo",
+      "type": "user_media_layer",
+      "zIndex": 2,
+      "start": 14,
+      "end": 30,
+      "slotRef": "photo_after",
+      "blend": "normal"
+    },
+    {
+      "id": "before_text",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 2,
+      "end": 12,
+      "text": "🕰️ Autrefois...",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.6, "easing": "ease-out" }
+    },
+    {
+      "id": "after_text",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 16,
+      "end": 28,
+      "text": "📍 Aujourd'hui",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.6, "easing": "ease-out" }
+    }
+  ],
+
+  "overrides": ["music", "text", "cover"],
+
+  "music": {
+    "enabled": true,
+    "beatSync": false,
+    "defaultTrack": "nostalgic_piano"
+  },
+
+  "publishDefaults": {
+    "allowDuo": false,
+    "hashtags": ["#AvantAprès", "#Village", "#Nostalgie"]
+  },
+
+  "cardHint": {
+    "inputSummary": "2 Photos",
+    "timeLabel": "00:30"
+  },
+
+  "export": {
+    "fps": 30,
+    "preset": "medium",
+    "crf": 20
+  }
+}
