@@ -909,6 +909,69 @@ export default function FullscreenCreator({
     };
   }, [hasCapture, isKEngineActive, kState.template, legacyTemplateActive]);
 
+  // ✅ Helper: Rendu hybride vidéo + effets K-Engine overlay
+  const renderVideoWithKEngineOverlay = useCallback((
+    canvas: HTMLCanvasElement,
+    video: HTMLVideoElement,
+    template: TemplateManifest
+  ) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+
+    ctx.clearRect(0, 0, w, h);
+
+    // 1. Dessiner la vidéo (cover crop)
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if (vw === 0 || vh === 0) return;
+    
+    const scale = Math.max(w / vw, h / vh);
+    const dw = vw * scale;
+    const dh = vh * scale;
+    const dx = (w - dw) / 2;
+    const dy = (h - dh) / 2;
+    ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
+
+    // 2. Appliquer effets K-Engine (color grading, vignette, badge)
+    const categoryColors: Record<string, string> = {
+      'transition': 'rgba(168,85,247,0.12)',
+      'storytelling': 'rgba(245,158,11,0.1)',
+      'cultural': 'rgba(139,92,246,0.15)',
+      'default': 'rgba(100,100,100,0.08)'
+    };
+    const overlayColor = categoryColors[template.category] || categoryColors.default;
+    ctx.fillStyle = overlayColor;
+    ctx.fillRect(0, 0, w, h);
+
+    // Vignette
+    const vignette = ctx.createRadialGradient(w/2, h/2, h*0.25, w/2, h/2, h*0.85);
+    vignette.addColorStop(0, 'transparent');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.4)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
+
+    // Badge template
+    const badgeY = h - 60;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.roundRect(12, badgeY, 180, 44, 8);
+    ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 14px system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText(`🎬 ${template.name}`, 24, badgeY + 26);
+  }, []);
+
   // Preview canvas draw loop (after capture)
   useEffect(() => {
     if (!hasCapture || previewError) return;
@@ -925,7 +988,19 @@ export default function FullscreenCreator({
     const draw = () => {
       try {
         if (isKEngineActive && kState.template) {
-          kEngine.renderFrameToCanvas(canvas, kEngine.getState().currentTime || 0);
+          // ✅ CORRECTION: Si pas d'assets bindés mais on a un capturedBlob,
+          // dessiner la vidéo preview + overlay K-Engine
+          const hasUserAssets = Object.keys(kState.userAssets).length > 0;
+          
+          if (hasUserAssets) {
+            kEngine.renderFrameToCanvas(canvas, kEngine.getState().currentTime || 0);
+          } else if (previewVideoRef.current && previewVideoRef.current.readyState >= 2) {
+            // Fallback: dessiner la vidéo + appliquer effets K-Engine en overlay
+            renderVideoWithKEngineOverlay(canvas, previewVideoRef.current, kState.template);
+          } else {
+            // Dernier fallback: essayer de rendre quand même
+            kEngine.renderFrameToCanvas(canvas, kEngine.getState().currentTime || 0);
+          }
         } else if (capturedType === "video") {
           const video = previewVideoRef.current;
           if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
@@ -969,7 +1044,7 @@ export default function FullscreenCreator({
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [hasCapture, capturedType, previewError, cssFilter, isKEngineActive, kState.template, legacyTemplateActive]);
+  }, [hasCapture, capturedType, previewError, cssFilter, isKEngineActive, kState.template, kState.userAssets, legacyTemplateActive, renderVideoWithKEngineOverlay]);
 
   // ============= HANDLERS =============
   const togglePlayPause = useCallback(() => {
@@ -1173,12 +1248,15 @@ export default function FullscreenCreator({
       setHasCapture(true);
       setDrawer("none");
 
-      // If K-Engine active, auto-bind and run pipeline (fallback safe)
-      if (isKEngineActive) {
+      // ✅ CORRECTION: Si K-Engine actif, binder IMMÉDIATEMENT et forcer phase idle
+      // pour afficher le preview avec effets (pas slot_picker)
+      if (isKEngineActive && kState.template) {
         await bindCaptureToKEngine(blob, type);
+        // Forcer phase idle pour afficher le preview avec effets
+        setKuaishouPhase('idle');
       }
     },
-    [bindCaptureToKEngine, isKEngineActive, stopStream]
+    [bindCaptureToKEngine, isKEngineActive, kState.template, stopStream]
   );
 
   const onPressCapture = async () => {
@@ -1643,8 +1721,23 @@ export default function FullscreenCreator({
         if (hasVideo) setMode("video");
         else if (hasPhoto) setMode("photo");
 
-        // ✅ KUAISHOU FLOW: If template has slots, go to slot picker
+        // ✅ CORRECTION: Si on est en mode live (caméra active), binder le stream
+        // et NE PAS aller en slot_picker
         if (tpl.slots.length > 0) {
+          if (!hasCapture && streamRef.current && videoRef.current) {
+            const primarySlot = tpl.slots.find((s) => s.type === "video" && s.required)
+              || tpl.slots.find((s) => s.type === "video")
+              || tpl.slots[0];
+            
+            if (primarySlot) {
+              kEngine.bindLiveStream(primarySlot.id, videoRef.current);
+              setDrawer("none");
+              setToast(`✨ ${tpl.name} - Effets live activés`);
+              return; // NE PAS aller en slot_picker
+            }
+          }
+          
+          // Sinon (mode album ou pas de stream), aller en slot_picker
           setKuaishouPhase('slot_picker');
           setDrawer("none");
           setToast(`✨ ${tpl.name} - Sélectionnez vos médias`);
