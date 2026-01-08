@@ -1672,6 +1672,52 @@ export default function FullscreenCreator({
       // Also update the simple overlay templateId so TemplateOverlay stays coherent
       if (tpl?.id) updateEffects({ templateId: tpl.id });
 
+      // ✅ GOLDEN PATH: one_take_pro - load directly from manifest JSON
+      const templateId = tpl?.id || tpl?.template_key;
+      if (templateId === 'one_take_pro') {
+        console.log('[FullscreenCreator] 🎯 GOLDEN PATH: one_take_pro detected');
+        try {
+          const resp = await fetch('/templates/manifests/one_take_pro.json');
+          if (!resp.ok) throw new Error('Failed to fetch one_take_pro.json');
+          const manifestJson = await resp.json();
+          
+          console.log('[FullscreenCreator] 📄 Manifest loaded:', manifestJson);
+          
+          // Load into K-Engine
+          kEngine.loadTemplate(manifestJson as TemplateManifest);
+          kEngine.setTime(0);
+          kEngine.pause();
+          
+          setActiveKSEManifest(manifestJson as TemplateManifest);
+          setCanvasRatio((manifestJson.ratio as CanvasRatio) || "9:16");
+          setMode("video");
+          
+          // ✅ Bind live stream immediately if camera active
+          if (!hasCapture && streamRef.current && videoRef.current) {
+            const primarySlot = manifestJson.slots?.find((s: any) => s.type === "video" && s.required)
+              || manifestJson.slots?.find((s: any) => s.type === "video")
+              || manifestJson.slots?.[0];
+            
+            if (primarySlot) {
+              console.log('[FullscreenCreator] 🔗 Binding live stream to slot:', primarySlot.id);
+              kEngine.bindLiveStream(primarySlot.id, videoRef.current);
+              setKuaishouPhase('idle');
+              setDrawer("none");
+              setToast(`📹 One-Take Pro - Effets live activés`);
+              return;
+            }
+          }
+          
+          setDrawer("none");
+          setToast(`📹 One-Take Pro activé`);
+          return;
+        } catch (e: any) {
+          console.error('[FullscreenCreator] Failed to load one_take_pro:', e);
+          setError('Erreur chargement template One-Take Pro');
+        }
+        return;
+      }
+
       // ✅ Load AI visual data from database for enhanced display
       const templateKey = tpl?.id || tpl?.template_key;
       if (templateKey) {
@@ -2086,17 +2132,17 @@ export default function FullscreenCreator({
               {/* Visible preview surface (canvas) */}
               <canvas ref={previewCanvasRef} className="absolute inset-0 w-full h-full bg-black" aria-hidden="true" />
 
-              {/* Hidden decoder video (only for non K-Engine path) */}
-              {!isKEngineActive && (
-                <video
-                  ref={previewVideoRef}
-                  className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
-                  playsInline
-                  muted
-                  preload="auto"
-                  src={previewUrl || undefined}
-                />
-              )}
+              {/* Hidden decoder video - ALWAYS present for K-Engine fallback rendering */}
+              <video
+                ref={previewVideoRef}
+                className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+                playsInline
+                muted
+                preload="auto"
+                src={previewUrl || undefined}
+                loop
+                autoPlay
+              />
 
               {/* Loading indicator */}
               {hasCapture && previewUrl && !previewError && !previewReady && !isKEngineActive && (
@@ -2177,6 +2223,30 @@ export default function FullscreenCreator({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ✅ K-ENGINE DEBUG OVERLAY (development only) */}
+        {import.meta.env.DEV && isKEngineActive && (
+          <div className="absolute top-32 left-4 z-50 bg-black/80 text-xs text-white p-3 rounded-lg font-mono space-y-1 max-w-[200px]">
+            <div className="text-green-400 font-bold">🔧 K-Engine Debug</div>
+            <div>Template: {kState.template?.id || 'none'}</div>
+            <div>Name: {kState.template?.name || '-'}</div>
+            <div>Slots: {kState.template?.slots?.length || 0}</div>
+            <div>Timeline: {kState.template?.timeline?.length || 0} layers</div>
+            <div>Bound Assets: {Object.keys(kState.userAssets).length}</div>
+            <div className="text-yellow-300">
+              {Object.entries(kState.userAssets).map(([slotId, asset]) => (
+                <div key={slotId}>
+                  • {slotId}: {asset?.kind || 'none'}
+                  {asset?.kind === 'live' && ' 📹'}
+                </div>
+              ))}
+            </div>
+            <div>Playing: {kState.isPlaying ? '▶️' : '⏸️'}</div>
+            <div>Time: {(kState.currentTime || 0).toFixed(2)}s</div>
+            <div>hasCapture: {hasCapture ? '✅' : '❌'}</div>
+            <div>Phase: {kuaishouPhase}</div>
+          </div>
+        )}
 
         {/* AR Effects Layer */}
         <AREffectsLayer activeEffects={effects.arEffects} />
