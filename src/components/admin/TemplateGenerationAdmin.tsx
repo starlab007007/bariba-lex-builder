@@ -17,6 +17,12 @@ import { TemplatePreviewModal } from '@/components/tamtam/creator/TemplatePrevie
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+interface GeneratedScene {
+  scene: number;
+  url: string;
+  style?: string;
+}
+
 interface GenerationState {
   isRunning: boolean;
   currentTemplate: { key: string; emoji: string; label: string } | null;
@@ -24,7 +30,8 @@ interface GenerationState {
   totalScenes: number;
   completedTemplates: number;
   totalTemplates: number;
-  generatedScenes: { scene: number; url: string }[];
+  generatedScenes: GeneratedScene[];
+  lastCompletedScenes: GeneratedScene[];
   startTime: number;
   errors: string[];
 }
@@ -64,6 +71,7 @@ export function TemplateGenerationAdmin() {
     completedTemplates: 0,
     totalTemplates: 0,
     generatedScenes: [],
+    lastCompletedScenes: [],
     startTime: 0,
     errors: []
   });
@@ -98,6 +106,7 @@ export function TemplateGenerationAdmin() {
       completedTemplates: 0,
       totalTemplates: total,
       generatedScenes: [],
+      lastCompletedScenes: [],
       startTime: Date.now(),
       errors: []
     });
@@ -145,20 +154,31 @@ export function TemplateGenerationAdmin() {
         } else if (result?.success) {
           completed++;
           
-          // Simuler la progression des scènes (l'edge function génère les 5 d'un coup)
+          // Récupérer les scènes générées depuis le résultat
+          const generatedScenes: GeneratedScene[] = result.results?.[0]?.scenes || [];
+          
+          // Animer la progression des scènes avec les vraies images
           for (let i = 1; i <= 5; i++) {
             if (stopRequestedRef.current) break;
+            
+            // Ajouter progressivement les scènes au state pour preview live
+            const scenesUpToNow = generatedScenes.slice(0, i);
+            
             setGenState(prev => ({
               ...prev,
               currentScene: i,
+              generatedScenes: scenesUpToNow,
               completedTemplates: completed - 1 + (i / 5)
             }));
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, 400));
           }
 
+          // Sauvegarder les scènes complètes pour ce template
           setGenState(prev => ({
             ...prev,
-            completedTemplates: completed
+            completedTemplates: completed,
+            lastCompletedScenes: generatedScenes,
+            generatedScenes: []
           }));
         }
 
@@ -443,6 +463,63 @@ export function TemplateGenerationAdmin() {
                     <p className="text-xs text-muted-foreground">Temps restant</p>
                   </div>
                 </div>
+
+                {/* 🖼️ PREVIEW LIVE DES SCÈNES GÉNÉRÉES */}
+                {(genState.generatedScenes.length > 0 || genState.lastCompletedScenes.length > 0) && (
+                  <div className="mt-6 pt-4 border-t border-purple-500/30">
+                    <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <ImagePlus className="w-4 h-4 text-purple-400" />
+                      {genState.generatedScenes.length > 0 
+                        ? `🎬 Scènes en cours de génération...`
+                        : `✅ Dernières scènes générées`
+                      }
+                    </p>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {(genState.generatedScenes.length > 0 
+                        ? genState.generatedScenes 
+                        : genState.lastCompletedScenes
+                      ).map((scene, index) => (
+                        <motion.div
+                          key={`scene-${scene.scene}-${index}`}
+                          initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="relative flex-shrink-0"
+                        >
+                          <img 
+                            src={scene.url} 
+                            alt={`Scene ${scene.scene}`}
+                            className="w-16 h-24 rounded-lg object-cover ring-2 ring-purple-500/50 shadow-lg shadow-purple-500/20"
+                          />
+                          <div className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                            {scene.scene}
+                          </div>
+                          {genState.generatedScenes.length > 0 && index === genState.generatedScenes.length - 1 && (
+                            <motion.div
+                              className="absolute inset-0 rounded-lg ring-2 ring-green-400"
+                              animate={{ opacity: [1, 0.5, 1] }}
+                              transition={{ duration: 1, repeat: Infinity }}
+                            />
+                          )}
+                        </motion.div>
+                      ))}
+                      
+                      {/* Placeholders pour les scènes restantes */}
+                      {genState.generatedScenes.length > 0 && genState.generatedScenes.length < 5 && (
+                        [...Array(5 - genState.generatedScenes.length)].map((_, i) => (
+                          <motion.div
+                            key={`placeholder-${i}`}
+                            className="w-16 h-24 rounded-lg bg-muted/50 border-2 border-dashed border-purple-500/30 flex items-center justify-center"
+                            animate={{ opacity: [0.3, 0.6, 0.3] }}
+                            transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+                          >
+                            <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Erreurs éventuelles */}
                 {genState.errors.length > 0 && (
