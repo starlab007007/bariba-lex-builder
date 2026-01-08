@@ -322,13 +322,15 @@ export default function PublishScreen({
       };
 
       // 3) Export job via K-Engine
-      //    Your K-Engine should translate its manifest/timeline/pipeline into a real job.
-      //    This callback mimics "Recognizing... / Exporting..." progress.
+      //    ✅ FAST EXPORT: Since capture is already baked-in (stylized via liveCanvas),
+      //    we skip re-rendering which is MUCH faster for low-data zones.
       const result = await kEngine.exportJob(
         {
           inputBlob: primaryBlob,
           inputType: mediaType,
           meta,
+          fastExport: true, // ✅ Skip re-rendering - capture is already stylized
+          exportQuality: "medium", // ✅ 720p @ 15fps - good balance for mobile
         },
         (p: { stage?: string; percent?: number; message?: string }) => {
           setExportPercent(Math.max(0, Math.min(100, p.percent ?? 0)));
