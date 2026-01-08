@@ -677,93 +677,122 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
 
             <div className="h-6 sm:h-8 bg-gradient-to-t from-black to-transparent safe-area-inset-bottom" />
 
-            {/* Preview Modal */}
+            {/* Preview Modal - Simplified with Video Playback */}
             <AnimatePresence>
               {previewTemplate && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-[70] bg-black/90 backdrop-blur-md"
+                  className="absolute inset-0 z-[70] bg-black/95"
                   onClick={() => setPreviewTemplate(null)}
                 >
                   <motion.div
-                    initial={{ y: 30, scale: 0.98, opacity: 0 }}
-                    animate={{ y: 0, scale: 1, opacity: 1 }}
-                    exit={{ y: 30, scale: 0.98, opacity: 0 }}
-                    transition={{ type: "spring", damping: 25, stiffness: 260 }}
-                    className="absolute inset-x-2 sm:inset-x-4 top-12 sm:top-14 bottom-6 sm:bottom-8 rounded-2xl sm:rounded-3xl overflow-hidden bg-black/60 border border-white/10"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 20, opacity: 0 }}
+                    transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                    className="absolute inset-x-3 sm:inset-x-6 top-8 sm:top-12 bottom-4 sm:bottom-8 flex flex-col"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="relative h-32 sm:h-40 overflow-hidden">
-                      {previewImageUrl ? (
-                        <img
-                          src={previewImageUrl}
-                          alt={`Aperçu visuel du template ${(previewTemplate as any).label_fr}`}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
+                    {/* Close button */}
+                    <button
+                      onClick={() => setPreviewTemplate(null)}
+                      className="absolute top-0 right-0 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/70 backdrop-blur-md flex items-center justify-center"
+                      aria-label="Fermer"
+                    >
+                      <X className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                    </button>
+
+                    {/* Video Preview Area - Full screen 9:16 */}
+                    <div className="flex-1 flex items-center justify-center overflow-hidden rounded-2xl sm:rounded-3xl bg-black">
+                      <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-[9/16] rounded-xl sm:rounded-2xl overflow-hidden">
+                        {/* Gradient background */}
                         <div className={cn("absolute inset-0 bg-gradient-to-br", (previewTemplate as any).color)} />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                        
+                        {/* Video Template Preview - Auto load on modal open */}
+                        {aiTemplateMap[previewTemplate.id] && (
+                          <VideoTemplatePreview
+                            template={previewTemplate}
+                            aiData={aiTemplateMap[previewTemplate.id]}
+                            isVisible={true}
+                            loop={true}
+                            autoLoad={true} // ✅ Auto load when modal opens
+                            className="absolute inset-0"
+                            onVideoReady={() => console.log('[Preview] Video ready')}
+                          />
+                        )}
 
-                      {isLoadingPreview && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 border-3 sm:border-4 border-white/40 border-t-white rounded-full animate-spin" />
+                        {/* Fallback static preview image */}
+                        {!aiTemplateMap[previewTemplate.id] && previewImageUrl && (
+                          <img
+                            src={previewImageUrl}
+                            alt={`${(previewTemplate as any).label_fr}`}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        )}
+
+                        {/* Duration overlay */}
+                        <div className="absolute top-3 left-3 z-10">
+                          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5">
+                            <Play className="h-3 w-3 text-white" />
+                            <span className="text-white text-xs font-bold">
+                              {(previewTemplate as any).supportedDurations?.[0] || '15s'}
+                            </span>
+                          </div>
                         </div>
-                      )}
 
-                      <button
-                        onClick={() => setPreviewTemplate(null)}
-                        className="absolute top-2 right-2 sm:top-3 sm:right-3 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center"
-                        aria-label="Fermer la prévisualisation"
-                      >
-                        <X className="h-5 w-5 text-white" />
-                      </button>
+                        {/* Emoji badge */}
+                        <div className="absolute top-3 right-3 z-10">
+                          <span className="text-3xl sm:text-4xl drop-shadow-lg">
+                            {(previewTemplate as any).emoji}
+                          </span>
+                        </div>
+
+                        {/* Loading overlay */}
+                        {isLoadingPreview && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="p-3 sm:p-4 overflow-y-auto h-[calc(100%-8rem)] sm:h-[calc(100%-10rem)]">
-                      <TemplatePreviewPlayer
-                        template={previewTemplate}
-                        isActive={true}
-                        onSelect={() => handleSelectTemplate(previewTemplate)}
-                        language={language}
-                        autoPlay
-                      />
+                    {/* Bottom info + actions - Simplified */}
+                    <div className="mt-4 sm:mt-6 space-y-3">
+                      {/* Title */}
+                      <div className="text-center">
+                        <h2 className="text-white text-xl sm:text-2xl font-bold">
+                          {(previewTemplate as any).label_fr}
+                        </h2>
+                        <p className="text-white/60 text-sm mt-1">
+                          {(previewTemplate as any).description_fr}
+                        </p>
+                      </div>
 
-                      {previewStoryboard?.scenes?.length > 0 && (
-                        <div className="mt-3 sm:mt-4 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 p-3 sm:p-4">
-                          <div className="flex items-center justify-between mb-2 sm:mb-3">
-                            <div className="text-white/70 text-xs sm:text-sm font-medium">📖 Guide (audio)</div>
-                            <button
-                              onClick={() => {
-                                const first = previewStoryboard.scenes?.[0];
-                                const text =
-                                  language === "ba"
-                                    ? first?.instruction_vocale_ba || first?.instruction_vocale_fr
-                                    : first?.instruction_vocale_fr;
-                                if (text) speak(text);
-                              }}
-                              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white text-black text-xs sm:text-sm font-semibold"
-                            >
-                              🔊 Écouter
-                            </button>
-                          </div>
-
-                          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                            {previewStoryboard.scenes.map((s: any, idx: number) => (
-                              <div
-                                key={idx}
-                                className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-black/30 border border-white/10 flex items-center justify-center"
-                                title={s?.visual_hint}
-                              >
-                                <span className="text-lg sm:text-xl">{s?.emoji || "🎬"}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      {/* Action buttons */}
+                      <div className="flex gap-3 px-4">
+                        <button
+                          onClick={() => {
+                            // Speak description
+                            const text = language === "ba"
+                              ? (previewTemplate as any).label_ba || (previewTemplate as any).label_fr
+                              : (previewTemplate as any).label_fr;
+                            speak(text);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-sm active:bg-white/20 transition-all"
+                        >
+                          <Volume2 className="h-5 w-5 text-white" />
+                          <span className="text-white text-sm font-medium">Écouter</span>
+                        </button>
+                        <button
+                          onClick={() => handleSelectTemplate(previewTemplate)}
+                          className="flex-[2] flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl bg-white active:bg-white/90 transition-all"
+                        >
+                          <Check className="h-5 w-5 text-black" />
+                          <span className="text-black text-sm font-bold">Utiliser</span>
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 </motion.div>
