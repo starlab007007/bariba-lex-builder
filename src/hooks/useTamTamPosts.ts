@@ -183,6 +183,11 @@ export const useTamTamPosts = () => {
     duration_seconds?: number;
     topic?: string;
     template_id?: string;
+    // ✅ NEW: Kuaishou-style metadata
+    allow_duo?: boolean;
+    music_id?: string;
+    hashtags?: string[];
+    cover_url?: string;
   }) => {
     console.log('[useTamTamPosts.createPost] Starting post creation...');
     console.log('[useTamTamPosts.createPost] Post data:', JSON.stringify(postData, null, 2));
@@ -211,13 +216,14 @@ export const useTamTamPosts = () => {
         audio_url: postData.audio_url,
         media_type: postData.media_type || 'audio',
         media_url: postData.media_url || null,
-        thumbnail_url: postData.thumbnail_url || null,
+        thumbnail_url: postData.thumbnail_url || postData.cover_url || null, // ✅ Support cover_url
         transcript_fr: postData.transcript_fr || null,
         transcript_ba: postData.transcript_ba || null,
         feeling_emoji: postData.feeling_emoji || null,
         duration_seconds: postData.duration_seconds || null,
         topic: postData.topic || null,
         template_id: postData.template_id || null,
+        hashtags: postData.hashtags || null, // ✅ Hashtags array
         is_public: true
       };
       

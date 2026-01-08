@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "tpl_challenge_fast_v1",
+      "name": "Défi Viral Énergique",
+      "durationSec": 30,
+      "ratio": "9:16",
+      "manifest": "manifests/tpl_challenge_fast_v1.json",
+      "tags": ["challenge", "beat", "duo", "tuto", "viral"],
+      "family": "grand_public",
+      "featured": true
+    },
+    {
+      "id": "tpl_story_warm_v1",
+      "name": "Histoire Émotionnelle",
+      "durationSec": 30,
+      "ratio": "9:16",
+      "manifest": "manifests/tpl_story_warm_v1.json",
+      "tags": ["story", "authentic", "warm", "subtitles", "emotion"],
+      "family": "educatif_culture",
+      "featured": true
+    },
+    {
+      "id": "mini_doc_village",
+      "name": "Mini-Doc Village",
+      "durationSec": 15,
+      "ratio": "9:16",
+      "manifest": "manifests/mini_doc_village.json",
+      "tags": ["documentary", "village", "culture", "patrimoine"],
+      "family": "educatif_culture",
+      "collection": "patrimoine_vivant",
+      "featured": true
+    }
+  ]
+}

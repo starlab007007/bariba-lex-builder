@@ -6,6 +6,16 @@ import { motion } from "framer-motion";
 import { Scissors, Volume2, VolumeX, Trash2, Copy, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// ✅ Beat marker for Kuaishou-style beat sync
+export interface BeatMarker {
+  time: number;
+  strength: number; // 0-1
+  type: 'kick' | 'snare' | 'beat' | 'bar';
+}
+
+// ✅ Template segment labels
+export type SegmentLabel = 'hook' | 'prep' | 'action' | 'result' | 'cta' | 'intro' | 'outro' | 'main' | null;
+
 export interface MiniTimelineSegment {
   id: string;
   duration: number;
@@ -16,6 +26,8 @@ export interface MiniTimelineSegment {
   type: "video" | "photo" | "audio";
   thumbnailUrl?: string;
   blob?: Blob; // Media blob for upload
+  label?: SegmentLabel; // ✅ Template-generated segment label
+  color?: string; // ✅ Custom color for segment
 }
 
 interface MiniTimelineProps {
@@ -32,7 +44,21 @@ interface MiniTimelineProps {
   onDuplicate: (segmentId: string) => void;
   onSeek: (time: number) => void;
   className?: string;
+  beatMarkers?: BeatMarker[]; // ✅ Optional beat markers for music sync
+  showBeatMarkers?: boolean; // ✅ Toggle beat marker visibility
 }
+
+// ✅ Segment label colors (Kuaishou-style)
+const SEGMENT_LABEL_COLORS: Record<string, string> = {
+  hook: 'from-orange-500/40 to-red-500/40',
+  prep: 'from-blue-500/40 to-cyan-500/40',
+  action: 'from-green-500/40 to-emerald-500/40',
+  result: 'from-purple-500/40 to-pink-500/40',
+  cta: 'from-yellow-500/40 to-orange-500/40',
+  intro: 'from-indigo-500/40 to-blue-500/40',
+  outro: 'from-pink-500/40 to-rose-500/40',
+  main: 'from-slate-500/40 to-gray-500/40',
+};
 
 export default function MiniTimeline({
   segments,
@@ -48,6 +74,8 @@ export default function MiniTimeline({
   onDuplicate,
   onSeek,
   className,
+  beatMarkers = [],
+  showBeatMarkers = false,
 }: MiniTimelineProps) {
   const [showVolumeSlider, setShowVolumeSlider] = useState<string | null>(null);
   const [trimMode, setTrimMode] = useState<string | null>(null);
@@ -141,6 +169,7 @@ export default function MiniTimeline({
             const segStart = seg.startTime;
             const segWidth = totalDuration > 0 ? ((seg.endTime - seg.startTime) / totalDuration) * 100 : 100 / segments.length;
             const isActive = seg.id === activeSegmentId;
+            const labelColor = seg.label ? SEGMENT_LABEL_COLORS[seg.label] : null;
 
             return (
               <motion.div
@@ -162,6 +191,11 @@ export default function MiniTimeline({
                 }}
                 whileTap={{ scale: 0.98 }}
               >
+                {/* ✅ Template segment label background */}
+                {labelColor && (
+                  <div className={cn("absolute inset-0 bg-gradient-to-b", labelColor)} />
+                )}
+                
                 {/* Segment thumbnail or color */}
                 {seg.thumbnailUrl ? (
                   <img
@@ -169,7 +203,7 @@ export default function MiniTimeline({
                     alt=""
                     className="absolute inset-0 w-full h-full object-cover opacity-60"
                   />
-                ) : (
+                ) : !labelColor && (
                   <div className={cn(
                     "absolute inset-0",
                     seg.type === "video" 
@@ -178,6 +212,13 @@ export default function MiniTimeline({
                         ? "bg-gradient-to-b from-green-400/30 via-teal-400/20 to-transparent" 
                         : "bg-gradient-to-b from-orange-400/30 via-red-400/20 to-transparent"
                   )} />
+                )}
+
+                {/* ✅ Segment label badge */}
+                {seg.label && (
+                  <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-black/40 text-white/90">
+                    {seg.label}
+                  </div>
                 )}
 
                 {/* Mute indicator */}
@@ -207,6 +248,29 @@ export default function MiniTimeline({
             );
           })}
         </div>
+        
+        {/* ✅ Beat markers overlay */}
+        {showBeatMarkers && beatMarkers.length > 0 && (
+          <div className="absolute inset-0 pointer-events-none">
+            {beatMarkers.map((beat, idx) => {
+              const pos = totalDuration > 0 ? (beat.time / totalDuration) * 100 : 0;
+              return (
+                <div
+                  key={idx}
+                  className={cn(
+                    "absolute top-0 bottom-0 w-0.5",
+                    beat.type === 'bar' ? 'bg-yellow-400/80' : 'bg-white/30'
+                  )}
+                  style={{ 
+                    left: `${pos}%`,
+                    height: beat.strength > 0.7 ? '100%' : '60%',
+                    top: beat.strength > 0.7 ? '0' : '20%',
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
 
         {/* Playhead - More visible */}
         <motion.div
