@@ -844,6 +844,58 @@ export default function FullscreenCreator({
   // - else: draw decoded video frame with cssFilter (for black-screen compositor bug)
   const legacyTemplateActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
   
+  // ✅ BLOCK A: K-Engine LIVE preview on camera (before capture)
+  useEffect(() => {
+    if (hasCapture) return; // Only for live mode
+    if (!isKEngineActive || !kState.template) return;
+    if (legacyTemplateActive) return;
+
+    const canvas = liveCanvasRef.current;
+    const video = videoRef.current;
+    if (!canvas || !video) return;
+
+    // Bind live video to K-Engine slot
+    const tpl = kState.template;
+    const primarySlot = tpl.slots.find((s) => s.type === "video" && s.required) || tpl.slots.find((s) => s.type === "video") || tpl.slots[0];
+    if (primarySlot) {
+      kEngine.bindLiveStream(primarySlot.id, video);
+    }
+
+    let raf: number | null = null;
+    let time = 0;
+
+    const draw = () => {
+      try {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const cw = Math.max(1, Math.floor(rect.width * dpr));
+        const ch = Math.max(1, Math.floor(rect.height * dpr));
+        if (canvas.width !== cw || canvas.height !== ch) {
+          canvas.width = cw;
+          canvas.height = ch;
+        }
+
+        // Increment time for animations
+        time += 1 / 60;
+        const tplDur = kState.template?.duration || 10;
+        if (time > tplDur) time = 0;
+
+        kEngine.renderFrameToCanvas(canvas, time);
+      } catch {}
+      raf = requestAnimationFrame(draw);
+    };
+
+    raf = requestAnimationFrame(draw);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      // Unbind live stream when leaving live mode
+      if (primarySlot) {
+        kEngine.unbindLiveStream(primarySlot.id);
+      }
+    };
+  }, [hasCapture, isKEngineActive, kState.template, legacyTemplateActive]);
+
+  // Preview canvas draw loop (after capture)
   useEffect(() => {
     if (!hasCapture || previewError) return;
     
@@ -1121,6 +1173,28 @@ export default function FullscreenCreator({
       try {
         await runTimerIfNeeded();
         if (!videoRef.current) throw new Error("Preview not ready");
+        
+        // ✅ BLOCK B: If K-Engine active with live preview, capture from liveCanvasRef
+        if (isKEngineActive && liveCanvasRef.current) {
+          const canvas = liveCanvasRef.current;
+          const b: Blob = await new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Canvas capture failed"))), "image/jpeg", 0.92);
+          });
+          await finishCapture(b, "photo", 5);
+          return;
+        }
+        
+        // ✅ If legacy template active, capture from liveCanvasRef
+        const legacyActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
+        if (legacyActive && liveCanvasRef.current) {
+          const canvas = liveCanvasRef.current;
+          const b: Blob = await new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Canvas capture failed"))), "image/jpeg", 0.92);
+          });
+          await finishCapture(b, "photo", 5);
+          return;
+        }
+        
         const b = await capturePhotoFromVideo(videoRef.current, canvasRatio, effects);
         await finishCapture(b, "photo", 5);
         return;
@@ -1356,13 +1430,73 @@ export default function FullscreenCreator({
       const challenge = effects.challengeId ? CHALLENGES.find((c) => c.id === effects.challengeId) : null;
       const finalCaption = challenge ? `${caption} ${challenge.hashtag}`.trim() : caption;
 
-      // If K-Engine active: generate export job (FFmpeg command + inputs + meta)
+      let finalSegments = [...segments];
+
+      // ✅ BLOCK B: If K-Engine active, render the final output with template effects
+      if (isKEngineActive && segments[0]?.blob) {
+        setIsProcessingTemplate(true);
+        setProcessingProgress({ percent: 5, message_fr: "Préparation export template..." });
+
+        try {
+          const exportResult = await kEngine.exportJob(
+            {
+              inputBlob: segments[0].blob,
+              inputType: capturedType === "photo" ? "photo" : "video",
+              outputType: capturedType === "photo" ? "image" : "video",
+              preferMp4: false,
+              renderCanvas: previewCanvasRef.current || undefined,
+              meta: { caption: finalCaption, template: activeMeta.label },
+            },
+            (progress) => {
+              setProcessingProgress({
+                percent: clamp(progress.percent || 0, 0, 95),
+                message_fr: progress.message || "Export en cours...",
+              });
+            }
+          );
+
+          if (exportResult.outputBlob && exportResult.outputBlob.size > 0 && exportResult.used !== "fallback") {
+            // Replace segment blob with rendered output
+            finalSegments = segments.map((seg, i) =>
+              i === 0 ? { ...seg, blob: exportResult.outputBlob } : seg
+            );
+            setToast(`✨ Template appliqué (${exportResult.used})`);
+          }
+        } catch (e: any) {
+          console.warn("[FullscreenCreator] K-Engine export failed, using original:", e);
+          // Continue with original blob
+        } finally {
+          setIsProcessingTemplate(false);
+          setProcessingProgress(null);
+        }
+      }
+
+      // If legacy template active, capture from canvas
+      const legacyActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
+      if (legacyActive && capturedType === "photo" && previewCanvasRef.current) {
+        try {
+          const renderedBlob: Blob = await new Promise((resolve, reject) => {
+            previewCanvasRef.current?.toBlob(
+              (b) => (b ? resolve(b) : reject(new Error("Canvas capture failed"))),
+              "image/jpeg",
+              0.92
+            );
+          });
+          if (renderedBlob.size > 0) {
+            finalSegments = segments.map((seg, i) =>
+              i === 0 ? { ...seg, blob: renderedBlob } : seg
+            );
+          }
+        } catch {}
+      }
+
+      // Generate export job metadata for K-Engine templates
       const exportJob = isKEngineActive ? kEngine.exportJob() : undefined;
       const engineSnapshot = isKEngineActive ? kEngine.getState() : undefined;
 
       if (onPublish) {
         await onPublish({
-          segments,
+          segments: finalSegments,
           caption: finalCaption,
           topTab,
           mode,
@@ -1796,18 +1930,28 @@ export default function FullscreenCreator({
                 ref={videoRef}
                 className="absolute inset-0 w-full h-full object-cover bg-black"
                 style={{
-                  filter: cssFilter,
+                  filter: isKEngineActive ? "none" : cssFilter,
                   transform: facing === "user" ? "scaleX(-1)" : "none",
-                  // show video directly when not using legacy live canvas effects
-                  opacity: !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none" ? 0 : 1,
+                  // ✅ Hide video when K-Engine active OR legacy template active (canvas shows effects)
+                  opacity: isKEngineActive || (legacyTemplateActive) ? 0 : 1,
                 }}
                 playsInline
                 muted
                 autoPlay
               />
 
+              {/* ✅ K-Engine live canvas (renders template effects on camera) */}
+              {isKEngineActive && (
+                <canvas
+                  ref={liveCanvasRef}
+                  className="absolute inset-0 w-full h-full"
+                  style={{ transform: facing === "user" ? "scaleX(-1)" : "none" }}
+                  aria-hidden="true"
+                />
+              )}
+
               {/* Legacy realtime effects path */}
-              {!isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none" && (
+              {legacyTemplateActive && !isKEngineActive && (
                 <canvas
                   ref={liveCanvasRef}
                   className="absolute inset-0 w-full h-full pointer-events-none"
@@ -1884,9 +2028,9 @@ export default function FullscreenCreator({
           />
         )}
 
-        {/* Active Template Indicator Badge */}
+        {/* Active Template Indicator Badge - ✅ Visible during capture AND recording */}
         <AnimatePresence>
-          {!!activeTemplateAny && !hasCapture && !isRecording && (
+          {!!activeTemplateAny && activeMeta.id !== "none" && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1894,15 +2038,20 @@ export default function FullscreenCreator({
               className="absolute top-20 left-4 z-40"
             >
               <button
-                onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
+                onClick={() => !isRecording && setDrawer(drawer === "template" ? "none" : "template")}
+                disabled={isRecording}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-xl border transition-all",
-                  activeMeta.id === "none" ? "bg-black/40 border-white/20" : `bg-gradient-to-r ${activeMeta.color} border-white/30`
+                  `bg-gradient-to-r ${activeMeta.color} border-white/30`,
+                  isRecording && "opacity-80"
                 )}
               >
                 <span className="text-xl">{activeMeta.emoji}</span>
                 <span className="text-white text-sm font-medium max-w-[120px] truncate">{activeMeta.label}</span>
-                <span className="text-white/60 text-xs">✏️</span>
+                {!isRecording && !hasCapture && <span className="text-white/60 text-xs">✏️</span>}
+                {isKEngineActive && (
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" title="K-Engine actif" />
+                )}
               </button>
             </motion.div>
           )}

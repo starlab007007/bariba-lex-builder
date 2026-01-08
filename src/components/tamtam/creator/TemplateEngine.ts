@@ -128,7 +128,7 @@ export interface TemplateManifest {
 
 export interface BoundAsset {
   slotId: string;
-  kind: "file" | "recording" | "url";
+  kind: "file" | "recording" | "url" | "live";
   file?: File;
   blob?: Blob;
   url?: string; // blob url or remote url
@@ -136,6 +136,11 @@ export interface BoundAsset {
   durationSec?: number;
   width?: number;
   height?: number;
+  /**
+   * For "live" kind: reference to a live video element (camera stream).
+   * Used for real-time preview before capture.
+   */
+  liveVideoEl?: HTMLVideoElement;
 }
 
 export interface AICache {
@@ -403,6 +408,52 @@ export class TemplateEngine {
     this.emit({ type: "SLOT_BOUND", slotId });
   }
 
+  /**
+   * ✅ Bind live camera video element to a slot for real-time preview.
+   * This bypasses normal validation since we're using a live stream.
+   */
+  bindLiveStream(slotId: string, videoEl: HTMLVideoElement): void {
+    const tpl = this.state.template;
+    if (!tpl) return;
+
+    const slot = tpl.slots.find((s) => s.id === slotId);
+    if (!slot) {
+      // Auto-pick first video slot if slotId not found
+      const fallbackSlot = tpl.slots.find((s) => s.type === "video") || tpl.slots[0];
+      if (!fallbackSlot) return;
+      slotId = fallbackSlot.id;
+    }
+
+    const liveAsset: BoundAsset = {
+      slotId,
+      kind: "live",
+      liveVideoEl: videoEl,
+      mime: "video/live",
+      width: videoEl.videoWidth || 1080,
+      height: videoEl.videoHeight || 1920,
+    };
+
+    this.state = {
+      ...this.state,
+      slotErrors: { ...this.state.slotErrors, [slotId]: undefined },
+      userAssets: { ...this.state.userAssets, [slotId]: liveAsset },
+    };
+
+    this.emit({ type: "SLOT_BOUND", slotId });
+  }
+
+  /**
+   * Unbind live stream from a slot (used when switching from live to captured).
+   */
+  unbindLiveStream(slotId: string): void {
+    if (!this.state.userAssets[slotId]?.liveVideoEl) return;
+    
+    this.state = {
+      ...this.state,
+      userAssets: { ...this.state.userAssets, [slotId]: undefined },
+    };
+  }
+
   async runAIPipeline(onProgress?: (p: number, step?: string) => void): Promise<void> {
     const tpl = this.state.template;
     if (!tpl) return;
@@ -574,7 +625,28 @@ export class TemplateEngine {
         const slotId = layer.slot_ref || "";
         const asset = slotId ? this.state.userAssets[slotId] : undefined;
 
-        if (!asset?.url) {
+        // ✅ LIVE ASSET: render directly from video element (camera stream)
+        if (asset?.kind === "live" && asset.liveVideoEl) {
+          const liveVid = asset.liveVideoEl;
+          if (liveVid.readyState >= 2 && liveVid.videoWidth > 0 && liveVid.videoHeight > 0) {
+            // Draw live video with cover crop
+            const vw = liveVid.videoWidth;
+            const vh = liveVid.videoHeight;
+            const scale = Math.max(w / vw, h / vh);
+            const dw = vw * scale;
+            const dh = vh * scale;
+            const dx = (w - dw) / 2 - px;
+            const dy = (h - dh) / 2 - py;
+            ctx.drawImage(liveVid, 0, 0, vw, vh, dx, dy, dw, dh);
+          } else {
+            // Fallback gradient while camera loading
+            const g = ctx.createLinearGradient(0, 0, w, h);
+            g.addColorStop(0, "#4ecdc4");
+            g.addColorStop(1, "#556270");
+            ctx.fillStyle = g;
+            ctx.fillRect(-px, -py, w, h);
+          }
+        } else if (!asset?.url) {
           // Fallback when no asset bound - show placeholder
           ctx.fillStyle = "#4ecdc4";
           ctx.fillRect(w * 0.2 - px, h * 0.28 - py, w * 0.6, h * 0.42);

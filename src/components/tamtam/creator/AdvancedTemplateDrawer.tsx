@@ -415,7 +415,8 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
     return ADVANCED_TEMPLATES.find((t) => t.id === id);
   };
 
-  // ✅ NEW: pre-load into engine when opening preview modal (so TemplatePreviewPlayer renders instantly)
+  // ✅ BLOCK C: Pre-load into engine when opening preview modal
+  // Use existing AI assets from database FIRST, only generate if missing
   const openPreview = useCallback(
     async (template: AdvancedTemplate) => {
       setPreviewTemplate(template);
@@ -429,6 +430,30 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
 
       if (audioEnabled) speakTemplateDescription(template);
 
+      // ✅ Check if we have existing AI assets in database first
+      const aiData = aiTemplateMap[(template as any).id];
+      if (aiData) {
+        // Use existing assets if available
+        if (aiData.ai_preview_image_url) {
+          setPreviewImageUrl(aiData.ai_preview_image_url);
+        } else if (aiData.ai_preview_image_base64) {
+          setPreviewImageUrl(`data:image/png;base64,${aiData.ai_preview_image_base64}`);
+        }
+        
+        if (aiData.storyboard_frames && Array.isArray(aiData.storyboard_frames)) {
+          setPreviewStoryboard({ scenes: aiData.storyboard_frames });
+        } else if (aiData.ai_storyboard) {
+          setPreviewStoryboard(aiData.ai_storyboard);
+        }
+        
+        // If we have assets, no need to generate
+        if (aiData.visual_generation_status === 'completed' || aiData.ai_preview_image_url || aiData.storyboard_frames) {
+          setIsLoadingPreview(false);
+          return;
+        }
+      }
+
+      // Generate assets only if missing from database
       try {
         const [imgRes, storyRes] = await Promise.all([
           supabase.functions
@@ -466,7 +491,7 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
         setIsLoadingPreview(false);
       }
     },
-    [audioEnabled, speakTemplateDescription, language, loadIntoKEngine]
+    [audioEnabled, speakTemplateDescription, language, loadIntoKEngine, aiTemplateMap]
   );
 
   return (
