@@ -362,50 +362,75 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
     }
   }, [autoLoad, shouldLoad]);
 
-  // Extract frames and scenes from aiData
+  // Extract frames and scenes from aiData - ✅ ENHANCED parsing
   const { frames, scenes } = useMemo(() => {
     if (!aiData) return { frames: [], scenes: undefined };
     
     const frameList: string[] = [];
     let sceneList: SceneData[] | undefined = undefined;
     
-    // Try storyboard_frames first (Mini-Doc Village format with scene durations)
+    // ✅ Check storyboard_frames first (Mini-Doc Village format)
     const sfData = aiData.storyboard_frames as any;
     if (sfData) {
+      // Format 1: { scenes: [{ url, durationMs, ... }], frames: [...] }
       if (sfData.scenes && Array.isArray(sfData.scenes)) {
-        // Scene-based format with individual durations
-        sceneList = sfData.scenes.map((s: any) => ({
-          url: s.url || s.imageUrl,
-          durationMs: s.durationMs || 5000,
-          name_fr: s.name_fr
-        })).filter((s: any) => s.url?.startsWith('http'));
+        sceneList = sfData.scenes
+          .map((s: any) => ({
+            url: s.url || s.imageUrl,
+            durationMs: s.durationMs || 3000,
+            name_fr: s.name_fr
+          }))
+          .filter((s: SceneData) => s.url?.startsWith('http'));
         sceneList?.forEach(s => frameList.push(s.url));
-      } else if (sfData.frames) {
-        frameList.push(...sfData.frames.filter((f: string) => typeof f === 'string' && f.startsWith('http')));
-      } else if (Array.isArray(sfData)) {
-        frameList.push(...sfData.filter((f: string) => typeof f === 'string' && f.startsWith('http')));
+      }
+      // Format 2: { frames: [...], durationMs: ... }
+      else if (sfData.frames && Array.isArray(sfData.frames)) {
+        sfData.frames.forEach((f: any) => {
+          if (typeof f === 'string' && f.startsWith('http')) {
+            frameList.push(f);
+          }
+        });
+      }
+      // Format 3: Array of URL strings directly
+      else if (Array.isArray(sfData)) {
+        sfData.forEach((f: any) => {
+          if (typeof f === 'string' && f.startsWith('http')) {
+            frameList.push(f);
+          }
+        });
       }
     }
     
-    // Fallback to ai_storyboard
+    // Fallback to ai_storyboard if no frames found
     if (frameList.length === 0) {
       const aiSb = aiData.ai_storyboard as any;
       if (aiSb) {
         if (aiSb.scenes && Array.isArray(aiSb.scenes)) {
-          sceneList = aiSb.scenes.map((s: any) => ({
-            url: s.imageUrl || s.url,
-            durationMs: s.durationMs || 5000,
-            name_fr: s.name_fr
-          })).filter((s: any) => s.url?.startsWith('http'));
+          sceneList = aiSb.scenes
+            .map((s: any) => ({
+              url: s.imageUrl || s.url,
+              durationMs: s.durationMs || 3000,
+              name_fr: s.name_fr
+            }))
+            .filter((s: SceneData) => s.url?.startsWith('http'));
           sceneList?.forEach(s => frameList.push(s.url));
-        } else if (aiSb.animation_frames) {
-          frameList.push(...aiSb.animation_frames.filter((f: string) => typeof f === 'string' && f.startsWith('http')));
-        } else if (aiSb.frames) {
-          frameList.push(...aiSb.frames.filter((f: string) => typeof f === 'string' && f.startsWith('http')));
+        } else if (aiSb.animation_frames && Array.isArray(aiSb.animation_frames)) {
+          aiSb.animation_frames.forEach((f: any) => {
+            if (typeof f === 'string' && f.startsWith('http')) {
+              frameList.push(f);
+            }
+          });
+        } else if (aiSb.frames && Array.isArray(aiSb.frames)) {
+          aiSb.frames.forEach((f: any) => {
+            if (typeof f === 'string' && f.startsWith('http')) {
+              frameList.push(f);
+            }
+          });
         }
       }
     }
     
+    console.log('[VideoTemplatePreview] Parsed frames:', frameList.length, 'scenes:', sceneList?.length);
     return { frames: frameList, scenes: sceneList };
   }, [aiData]);
 
