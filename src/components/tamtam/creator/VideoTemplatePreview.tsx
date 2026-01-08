@@ -255,6 +255,13 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [shouldLoad, setShouldLoad] = useState(autoLoad);
 
+  // ✅ Sync shouldLoad with autoLoad prop changes
+  useEffect(() => {
+    if (autoLoad && !shouldLoad) {
+      setShouldLoad(true);
+    }
+  }, [autoLoad, shouldLoad]);
+
   // Extract frames and scenes from aiData
   const { frames, scenes } = useMemo(() => {
     if (!aiData) return { frames: [], scenes: undefined };
