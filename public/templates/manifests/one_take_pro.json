@@ -243,7 +243,7 @@
       "zIndex": 13,
       "start": 12.8,
       "end": 15,
-      "text": "🎬 One-Take Pro",
+      "text": "✨ TAM-TAM",
       "style": "outro_main",
       "position": { "x": 0.5, "y": 0.4 },
       "animation": { 
@@ -262,7 +262,7 @@
       "zIndex": 13,
       "start": 13.2,
       "end": 15,
-      "text": "Powered by TAM-TAM 🐴",
+      "text": "Créez. Partagez. Inspirez. 🐴",
       "style": "outro_sub",
       "position": { "x": 0.5, "y": 0.6 },
       "animation": { "type": "fade_in", "duration": 0.4 }
@@ -282,26 +282,6 @@
         "glow": "rgba(255,215,0,0.6)"
       }
     },
-    {
-      "id": "template_label",
-      "type": "text_layer",
-      "zIndex": 15,
-      "start": 0,
-      "end": 3,
-      "text": "🐴 One-Take Pro",
-      "style": "template_label",
-      "position": { "x": 0.12, "y": 0.92 },
-      "animation": { 
-        "type": "elastic_bounce", 
-        "duration": 0.5,
-        "glow": {
-          "enabled": true,
-          "color": "#FFD700",
-          "blur": 12,
-          "pulse": true
-        }
-      }
-    }
   ],
 
   "overrides": ["music", "text", "subtitles", "cover", "enhance", "speed"],

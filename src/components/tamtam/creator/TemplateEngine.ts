@@ -949,32 +949,7 @@ export class TemplateEngine {
       ctx.shadowBlur = 0;
     }
 
-    // ---- 8. TEMPLATE BADGE (premium gold style) ----
-    const badgeY = h - 65;
-    const badgeWidth = 180;
-    const badgeHeight = 44;
-    const pulseAlpha = 0.6 + beatPhase * 0.2;
-    
-    // Badge background with golden border
-    ctx.fillStyle = `rgba(0,0,0,${pulseAlpha})`;
-    ctx.beginPath();
-    safeRoundRectPath(ctx, 12, badgeY, badgeWidth, badgeHeight, 10);
-    ctx.fill();
-    
-    // Golden border glow
-    ctx.strokeStyle = `rgba(255,215,0,${pulseAlpha * 0.6})`;
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = '#FFD700';
-    ctx.shadowBlur = 8;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Badge text with gradient
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 15px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`🐴 ${tpl.name}`, 24, badgeY + badgeHeight / 2);
+    // Badge template supprimé pour vidéo finale propre
 
     ctx.restore();
   }
