@@ -55,12 +55,23 @@
     },
     {
       "id": "one_take_pro",
-      "name": "One Take Pro",
-      "durationSec": 60,
+      "name": "One-Take Pro",
+      "durationSec": 30,
       "ratio": "9:16",
       "manifest": "manifests/one_take_pro.json",
-      "tags": ["live", "authentic", "prise", "unique", "spontane"],
-      "family": "grand_public"
+      "tags": ["live", "authentic", "prise", "unique", "spontane", "stabilization", "premium"],
+      "family": "grand_public",
+      "featured": true
+    },
+    {
+      "id": "quick_story",
+      "name": "Quick Story",
+      "durationSec": 15,
+      "ratio": "9:16",
+      "manifest": "manifests/quick_story.json",
+      "tags": ["story", "quick", "emoji", "fun", "animated", "15s"],
+      "family": "grand_public",
+      "featured": true
     },
     {
       "id": "magic_transform",

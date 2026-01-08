@@ -1,13 +1,13 @@
 {
   "id": "one_take_pro",
   "name": "One-Take Pro",
-  "description": "Stabilisation et recadrage intelligent",
-  "version": "1.0.0",
+  "description": "Stabilisation et recadrage intelligent avec effets premium",
+  "version": "1.1.0",
   "duration": 30,
   "ratio": "9:16",
   "category": "transition",
   "family": "grand_public",
-  "tags": ["stabilization", "professional", "smooth", "quality"],
+  "tags": ["stabilization", "professional", "smooth", "quality", "premium"],
 
   "slots": [
     {
@@ -25,11 +25,28 @@
   ],
 
   "pipeline": [
-    { "op": "stabilization", "params": { "strength": 0.75 }, "output": "stabilizedVideo", "weight": 0.35 },
+    { "op": "stabilization", "params": { "strength": 0.85, "smoothing": "high" }, "output": "stabilizedVideo", "weight": 0.35 },
     { "op": "smart_crop", "params": { "target": "person", "mode": "reframe" }, "output": "cropRect", "weight": 0.20 },
     { "op": "auto_editing", "params": { "cuts": "auto", "pacing": "smooth" }, "output": "editPlan", "weight": 0.20 },
-    { "op": "denoise_sharpen", "params": { "level": 0.35 }, "output": "enhanced", "weight": 0.15 }
+    { "op": "denoise_sharpen", "params": { "level": 0.35 }, "output": "enhanced", "weight": 0.15 },
+    { "op": "color_grade", "params": { "preset": "cinematic_cool" }, "output": "graded", "weight": 0.10 }
   ],
+
+  "effects": {
+    "stabilization_visual": {
+      "enabled": true,
+      "border_glow": {
+        "color": "rgba(0, 180, 255, 0.3)",
+        "width": 3,
+        "pulse": true
+      },
+      "corner_markers": {
+        "enabled": true,
+        "color": "#00D4FF",
+        "size": 20
+      }
+    }
+  },
 
   "timeline": [
     {
@@ -40,17 +57,71 @@
       "end": 30,
       "slotRef": "video_main",
       "blend": "normal",
-      "effects": ["stabilization"]
+      "effects": ["stabilization", "color_grade"]
+    },
+    {
+      "id": "stabilization_overlay",
+      "type": "effect_layer",
+      "zIndex": 5,
+      "start": 0,
+      "end": 2.5,
+      "effect": "stabilization_visual",
+      "animation": { 
+        "type": "fade_pulse", 
+        "duration": 0.8, 
+        "easing": "ease-out",
+        "iterations": 3
+      }
     },
     {
       "id": "pro_badge",
       "type": "text_layer",
       "zIndex": 10,
-      "start": 0.5,
-      "end": 3,
+      "start": 0.3,
+      "end": 3.5,
       "text": "📹 One-Take Pro",
-      "style": "bold_hook",
-      "animation": { "type": "slide", "duration": 0.4, "easing": "ease-out" }
+      "style": "gradient_badge",
+      "gradient": {
+        "type": "linear",
+        "angle": 135,
+        "colors": ["#0066FF", "#00D4FF", "#00FFE5"]
+      },
+      "animation": { 
+        "type": "elastic_bounce", 
+        "duration": 0.6, 
+        "easing": "cubic-bezier(0.68,-0.55,0.265,1.55)",
+        "scale_from": 0.3,
+        "scale_to": 1.0,
+        "glow": {
+          "enabled": true,
+          "color": "#00D4FF",
+          "blur": 15,
+          "pulse": true
+        }
+      }
+    },
+    {
+      "id": "corner_frame_tl",
+      "type": "graphic_layer",
+      "zIndex": 8,
+      "start": 0,
+      "end": 2,
+      "graphic": "corner_bracket",
+      "position": { "x": "5%", "y": "5%" },
+      "color": "#00D4FF",
+      "animation": { "type": "draw_in", "duration": 0.4 }
+    },
+    {
+      "id": "corner_frame_br",
+      "type": "graphic_layer",
+      "zIndex": 8,
+      "start": 0.1,
+      "end": 2,
+      "graphic": "corner_bracket",
+      "position": { "x": "95%", "y": "95%" },
+      "rotation": 180,
+      "color": "#00D4FF",
+      "animation": { "type": "draw_in", "duration": 0.4, "delay": 0.1 }
     }
   ],
 
@@ -63,7 +134,7 @@
 
   "publishDefaults": {
     "allowDuo": false,
-    "hashtags": ["#OneTake", "#Pro", "#Quality"]
+    "hashtags": ["#OneTake", "#Pro", "#Quality", "#Stabilized"]
   },
 
   "cardHint": {
