@@ -845,6 +845,7 @@ export default function FullscreenCreator({
   const legacyTemplateActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
   
   // ✅ BLOCK A: K-Engine LIVE preview on camera (before capture)
+  // Automatically detects KSE templates and renders effects in real-time
   useEffect(() => {
     if (hasCapture) return; // Only for live mode
     if (!isKEngineActive || !kState.template) return;
@@ -854,18 +855,27 @@ export default function FullscreenCreator({
     const video = videoRef.current;
     if (!canvas || !video) return;
 
-    // Bind live video to K-Engine slot
+    // ✅ Auto-bind live video to K-Engine slot
     const tpl = kState.template;
-    const primarySlot = tpl.slots.find((s) => s.type === "video" && s.required) || tpl.slots.find((s) => s.type === "video") || tpl.slots[0];
+    const primarySlot = tpl.slots.find((s) => s.type === "video" && s.required) 
+      || tpl.slots.find((s) => s.type === "video") 
+      || tpl.slots[0];
+    
     if (primarySlot) {
+      console.log('[FullscreenCreator] Binding live stream to K-Engine slot:', primarySlot.id);
       kEngine.bindLiveStream(primarySlot.id, video);
     }
 
     let raf: number | null = null;
     let time = 0;
+    let lastTime = performance.now();
 
-    const draw = () => {
+    const draw = (now: number) => {
       try {
+        // Calculate delta time for smooth animation
+        const dt = (now - lastTime) / 1000;
+        lastTime = now;
+
         const rect = canvas.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
         const cw = Math.max(1, Math.floor(rect.width * dpr));
@@ -875,17 +885,21 @@ export default function FullscreenCreator({
           canvas.height = ch;
         }
 
-        // Increment time for animations
-        time += 1 / 60;
-        const tplDur = kState.template?.duration || 10;
+        // Increment time for animations (use delta for smooth timing)
+        time += dt;
+        const tplDur = kState.template?.duration || 15;
         if (time > tplDur) time = 0;
 
+        // ✅ Render K-Engine frame with all effects applied
         kEngine.renderFrameToCanvas(canvas, time);
-      } catch {}
+      } catch (err) {
+        // Silent fail to keep loop alive
+      }
       raf = requestAnimationFrame(draw);
     };
 
     raf = requestAnimationFrame(draw);
+    
     return () => {
       if (raf) cancelAnimationFrame(raf);
       // Unbind live stream when leaving live mode
