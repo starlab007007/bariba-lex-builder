@@ -1,0 +1,87 @@
+{
+  "id": "parole_ancien",
+  "name": "Parole d'Ancien",
+  "description": "Patrimoine immatériel - sauve la mémoire",
+  "version": "1.0.0",
+  "duration": 90,
+  "ratio": "9:16",
+  "category": "cultural",
+  "family": "educatif_culture",
+  "tags": ["elder", "heritage", "memory", "tradition"],
+
+  "slots": [
+    {
+      "id": "audio_elder",
+      "description": "Parole de l'ancien",
+      "type": "audio",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "constraints": {
+        "minDurationSec": 30,
+        "maxDurationSec": 180
+      }
+    }
+  ],
+
+  "pipeline": [
+    { "op": "audio_enhance", "params": { "denoise": true, "normalize": true }, "output": "audioFx", "weight": 0.30 },
+    { "op": "asr_subtitles", "params": { "langs": ["fr", "ba"], "align": "forced" }, "output": "subtitleTrack", "weight": 0.30 },
+    { "op": "icon_injection", "params": { "mode": "contextual_emojis", "density": "low" }, "output": "iconLayer", "weight": 0.15 },
+    { "op": "translation_subtitles", "params": { "targetLangs": ["fr", "ba"] }, "output": "translatedTracks", "weight": 0.15 }
+  ],
+
+  "timeline": [
+    {
+      "id": "bg_layer",
+      "type": "video_layer",
+      "zIndex": 0,
+      "start": 0,
+      "end": 90,
+      "asset": "scenes/elder_bg.mp4",
+      "blend": "normal"
+    },
+    {
+      "id": "waveform_layer",
+      "type": "sticker_layer",
+      "zIndex": 3,
+      "start": 0,
+      "end": 90,
+      "asset": "overlays/waveform_gold.png",
+      "blend": "screen"
+    },
+    {
+      "id": "title_text",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 1,
+      "end": 6,
+      "text": "👴 Parole d'Ancien",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.8, "easing": "ease-out" }
+    }
+  ],
+
+  "overrides": ["text", "subtitles", "cover", "enhance"],
+
+  "music": {
+    "enabled": false,
+    "beatSync": false
+  },
+
+  "publishDefaults": {
+    "allowDuo": false,
+    "hashtags": ["#Ancien", "#Patrimoine", "#Mémoire"]
+  },
+
+  "cardHint": {
+    "inputSummary": "1 Audio",
+    "timeLabel": "01:30"
+  },
+
+  "export": {
+    "fps": 24,
+    "preset": "medium",
+    "crf": 20
+  }
+}

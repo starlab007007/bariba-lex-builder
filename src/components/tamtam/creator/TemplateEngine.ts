@@ -732,59 +732,114 @@ export class TemplateEngine {
       ctx.restore();
     }
 
-    // Apply template visual effects (vignette + color overlay) on top of all layers
+    // ============================================================
+    // ✅ PROFESSIONAL K-ENGINE VISUAL EFFECTS
+    // ============================================================
     ctx.save();
     
-    // Color overlay based on template category
-    const categoryColors: Record<string, { start: string; end: string }> = {
-      'transition': { start: 'rgba(168,85,247,0.12)', end: 'rgba(236,72,153,0.12)' },
-      'storytelling': { start: 'rgba(245,158,11,0.1)', end: 'rgba(249,115,22,0.1)' },
-      'cultural': { start: 'rgba(139,92,246,0.15)', end: 'rgba(168,85,247,0.15)' },
-      'vocal': { start: 'rgba(59,130,246,0.1)', end: 'rgba(6,182,212,0.1)' },
-      'default': { start: 'rgba(100,100,100,0.08)', end: 'rgba(50,50,50,0.1)' },
+    // ---- 1. FILM GRAIN EFFECT (subtle, organic texture) ----
+    const grainIntensity = 0.015;
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    const frameNoise = Math.sin(time * 30) * 0.5 + 0.5; // Vary grain per frame
+    for (let i = 0; i < data.length; i += 4) {
+      const noise = (Math.random() - 0.5) * grainIntensity * 255 * (0.8 + frameNoise * 0.4);
+      data[i] = Math.max(0, Math.min(255, data[i] + noise));     // R
+      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise)); // G
+      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise)); // B
+    }
+    ctx.putImageData(imageData, 0, 0);
+    
+    // ---- 2. CINEMATIC COLOR GRADING (category-based) ----
+    const categoryColors: Record<string, { start: string; end: string; blend: string }> = {
+      'transition': { start: 'rgba(168,85,247,0.12)', end: 'rgba(236,72,153,0.12)', blend: 'overlay' },
+      'storytelling': { start: 'rgba(245,158,11,0.1)', end: 'rgba(249,115,22,0.1)', blend: 'soft-light' },
+      'cultural': { start: 'rgba(139,92,246,0.15)', end: 'rgba(168,85,247,0.15)', blend: 'overlay' },
+      'vocal': { start: 'rgba(59,130,246,0.1)', end: 'rgba(6,182,212,0.1)', blend: 'soft-light' },
+      'challenge': { start: 'rgba(239,68,68,0.12)', end: 'rgba(249,115,22,0.12)', blend: 'overlay' },
+      'story': { start: 'rgba(217,119,6,0.15)', end: 'rgba(180,83,9,0.1)', blend: 'soft-light' },
+      'default': { start: 'rgba(100,100,100,0.08)', end: 'rgba(50,50,50,0.1)', blend: 'multiply' },
     };
-    const colors = categoryColors[tpl.category] || categoryColors.default;
+    const colorScheme = categoryColors[tpl.category] || categoryColors.default;
     const overlayGrad = ctx.createLinearGradient(0, 0, w, h);
-    overlayGrad.addColorStop(0, colors.start);
-    overlayGrad.addColorStop(1, colors.end);
+    overlayGrad.addColorStop(0, colorScheme.start);
+    overlayGrad.addColorStop(1, colorScheme.end);
     ctx.fillStyle = overlayGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Vignette effect
-    const vignette = ctx.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, h * 0.85);
+    // ---- 3. DYNAMIC VIGNETTE (breathing effect) ----
+    const breatheFactor = 0.85 + Math.sin(time * 0.5) * 0.05; // Subtle breathing
+    const vignetteRadius = h * breatheFactor;
+    const vignette = ctx.createRadialGradient(w / 2, h / 2, h * 0.25, w / 2, h / 2, vignetteRadius);
     vignette.addColorStop(0, 'transparent');
-    vignette.addColorStop(1, 'rgba(0,0,0,0.35)');
+    vignette.addColorStop(0.7, 'rgba(0,0,0,0.15)');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.45)');
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, w, h);
 
-    // Template badge watermark
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    // ---- 4. LETTERBOX BARS (cinematic 2.35:1 feel for story templates) ----
+    if (tpl.category === 'story' || tpl.category === 'storytelling') {
+      const barHeight = h * 0.05;
+      ctx.fillStyle = 'rgba(0,0,0,0.9)';
+      ctx.fillRect(0, 0, w, barHeight);
+      ctx.fillRect(0, h - barHeight, w, barHeight);
+    }
+
+    // ---- 5. SCANLINE OVERLAY (retro video effect, subtle) ----
+    ctx.globalAlpha = 0.03;
+    for (let y = 0; y < h; y += 3) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, y, w, 1);
+    }
+    ctx.globalAlpha = 1;
+
+    // ---- 6. CORNER GRADIENT HIGHLIGHTS (adds depth) ----
+    const topLeftHighlight = ctx.createRadialGradient(0, 0, 0, 0, 0, w * 0.5);
+    topLeftHighlight.addColorStop(0, 'rgba(255,255,255,0.08)');
+    topLeftHighlight.addColorStop(1, 'transparent');
+    ctx.fillStyle = topLeftHighlight;
+    ctx.fillRect(0, 0, w, h);
+
+    // ---- 7. ANIMATED TEMPLATE BADGE (professional watermark) ----
+    const badgeY = h - 60;
+    const badgeWidth = 180;
+    const badgeHeight = 44;
+    const pulseAlpha = 0.5 + Math.sin(time * 2) * 0.1;
+    
+    // Badge background with rounded corners
+    ctx.fillStyle = `rgba(0,0,0,${pulseAlpha})`;
     ctx.beginPath();
-    ctx.moveTo(16, h - 56);
-    ctx.lineTo(180, h - 56);
-    ctx.quadraticCurveTo(196, h - 56, 196, h - 40);
-    ctx.lineTo(196, h - 24);
-    ctx.quadraticCurveTo(196, h - 8, 180, h - 8);
-    ctx.lineTo(16, h - 8);
-    ctx.quadraticCurveTo(0, h - 8, 0, h - 24);
-    ctx.lineTo(0, h - 40);
-    ctx.quadraticCurveTo(0, h - 56, 16, h - 56);
-    ctx.closePath();
+    ctx.roundRect(12, badgeY, badgeWidth, badgeHeight, 8);
+    ctx.fill();
+    
+    // Badge border glow
+    ctx.strokeStyle = `rgba(255,255,255,${pulseAlpha * 0.3})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Badge text
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`🎬 ${tpl.name}`, 24, badgeY + badgeHeight / 2);
+
+    // ---- 8. PROGRESS INDICATOR (subtle timeline) ----
+    const progressWidth = w - 40;
+    const progressY = h - 16;
+    const progressHeight = 3;
+    const progressPercent = (time / tpl.duration) * 100;
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.beginPath();
+    ctx.roundRect(20, progressY, progressWidth, progressHeight, 2);
+    ctx.fill();
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath();
+    ctx.roundRect(20, progressY, progressWidth * (progressPercent / 100), progressHeight, 2);
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.font = 'bold 16px system-ui';
-    ctx.textAlign = 'left';
-    ctx.fillText(`🎬 ${tpl.name}`, 12, h - 28);
-
-    ctx.restore();
-
-    // Time indicator (debug - can be removed later)
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.font = "11px monospace";
-    ctx.textAlign = "right";
-    ctx.fillText(`${time.toFixed(1)}s / ${tpl.duration}s`, w - 10, 18);
     ctx.restore();
   }
 
