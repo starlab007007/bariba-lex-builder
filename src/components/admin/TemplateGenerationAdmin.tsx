@@ -697,7 +697,7 @@ export function TemplateGenerationAdmin() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => downloadTemplate(template.template_key)}
+                          onClick={() => downloadTemplate(template)}
                         >
                           <Download className="w-4 h-4" />
                         </Button>
@@ -714,34 +714,14 @@ export function TemplateGenerationAdmin() {
       {/* Preview Modal */}
       {previewTemplate && (
         <TemplatePreviewModal
-          template={{
-            id: previewTemplate.template_key,
-            emoji: previewTemplate.emoji,
-            label: previewTemplate.label_fr,
-            labelBa: previewTemplate.label_ba || undefined,
-            description: previewTemplate.description_fr,
-            family: previewTemplate.family,
-            color: previewTemplate.color,
-            inputs: previewTemplate.inputs as any[],
-            supportedDurations: previewTemplate.supported_durations,
-            outputRatios: previewTemplate.output_ratios,
-            features: previewTemplate.features as any,
-            voiceInstructions: previewTemplate.voice_instructions as any[],
-            engine: previewTemplate.kse_engine as any
-          }}
-          aiData={{
-            storyboard_frames: (previewTemplate as any).storyboard_frames,
-            ai_storyboard: previewTemplate.ai_storyboard as any,
-            ai_preview_image_url: previewTemplate.ai_preview_image_url || undefined,
-            preview_image_url: (previewTemplate as any).preview_image_url || undefined,
-            ai_voice_description_fr: previewTemplate.ai_voice_description_fr || undefined,
-          }}
+          template={previewTemplate}
           isOpen={!!previewTemplate}
           onClose={() => setPreviewTemplate(null)}
           onSelect={() => {
             toast.success(`Template "${previewTemplate.label_fr}" sélectionné !`);
             setPreviewTemplate(null);
           }}
+          onDownload={() => downloadTemplate(previewTemplate)}
         />
       )}
     </div>
