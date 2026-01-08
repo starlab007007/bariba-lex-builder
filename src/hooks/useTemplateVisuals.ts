@@ -9,7 +9,10 @@ interface VisualGenerationResult {
   iconUrl?: string;
   storyboardFrames?: any[];
   error?: string;
-  results?: Array<{ templateKey: string; success: boolean; error?: string }>;
+  results?: Array<{ templateKey?: string; key?: string; success: boolean; error?: string; scenesCount?: number }>;
+  processed?: number;
+  succeeded?: number;
+  failed?: number;
 }
 
 export function useTemplateVisuals() {
@@ -25,6 +28,18 @@ export function useTemplateVisuals() {
     params: Record<string, any> = {}
   ): Promise<VisualGenerationResult> => {
     const { data, error } = await supabase.functions.invoke('generate-template-visuals', {
+      body: { action, ...params }
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
+  const invokeAITemplatesFunction = async (
+    action: string,
+    params: Record<string, any> = {}
+  ): Promise<VisualGenerationResult> => {
+    const { data, error } = await supabase.functions.invoke('generate-ai-templates', {
       body: { action, ...params }
     });
 
@@ -77,19 +92,19 @@ export function useTemplateVisuals() {
     }
   });
 
-  // Batch generate visuals
+  // Batch generate visuals using the new AI templates function
   const batchGenerate = useMutation({
     mutationFn: async (batchSize: number = 3) => {
-      return invokeVisualFunction('batch_generate', { batchSize });
+      return invokeAITemplatesFunction('generate_visuals_batch', { batchSize });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['ai-templates'] });
-      const successCount = data.results?.filter((r: any) => r.success).length || 0;
-      toast.success(`${successCount} templates générés`);
+      const successCount = data.succeeded || data.results?.filter((r: any) => r.success).length || 0;
+      toast.success(`${successCount} templates générés avec 5 scènes chacun`);
     }
   });
 
-  // Generate all pending templates
+  // Generate all pending templates with real-time progress
   const generateAllPending = useCallback(async () => {
     // Get count of pending templates
     const { count } = await supabase
@@ -107,29 +122,42 @@ export function useTemplateVisuals() {
     let generated = 0;
     const batchSize = 2; // Generate 2 at a time to avoid rate limits
 
+    toast.info(`🎨 Démarrage de la génération pour ${total} templates...`);
+
     while (generated < total) {
       try {
-        const result = await invokeVisualFunction('batch_generate', { batchSize });
-        const batchSuccess = result.results?.filter((r: any) => r.success).length || 0;
+        // Use the new generate_visuals_batch action
+        const result = await invokeAITemplatesFunction('generate_visuals_batch', { batchSize });
+        
+        const batchSuccess = result.succeeded || result.results?.filter((r: any) => r.success).length || 0;
         generated += batchSuccess;
+        
+        // Get current template name for progress
+        const currentTemplate = result.results?.[0]?.key || result.results?.[0]?.templateKey;
         
         setGenerationProgress({ 
           current: generated, 
           total,
-          currentTemplate: result.results?.[0]?.templateKey 
+          currentTemplate 
         });
 
+        // Break if no more templates processed
+        if (!result.results || result.results.length === 0) {
+          break;
+        }
+
         // Small delay between batches
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
       } catch (error) {
         console.error('Batch generation error:', error);
+        toast.error('Erreur lors de la génération batch');
         break;
       }
     }
 
     setGenerationProgress(null);
     queryClient.invalidateQueries({ queryKey: ['ai-templates'] });
-    toast.success(`Génération terminée: ${generated}/${total} templates`);
+    toast.success(`🎉 Génération terminée: ${generated}/${total} templates avec 5 scènes chacun`);
   }, [queryClient]);
 
   // Get visual generation stats

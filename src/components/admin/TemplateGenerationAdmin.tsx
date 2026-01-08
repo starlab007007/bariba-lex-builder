@@ -255,26 +255,66 @@ export function TemplateGenerationAdmin() {
             </Button>
           </div>
 
-          {/* Visual Generation Section */}
-          <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mr-4">
-              <ImagePlus className="w-4 h-4" />
-              <span>Visuels IA:</span>
-              {visualStats && (
-                <span className="font-medium text-foreground">
-                  {visualStats.completed}/{visualStats.total} générés
-                </span>
-              )}
+          {/* Visual Generation Section with Real-time Progress */}
+          <div className="flex flex-col gap-4 mt-4 pt-4 border-t">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ImagePlus className="w-4 h-4" />
+                <span>Visuels IA:</span>
+                {visualStats && (
+                  <span className="font-medium text-foreground">
+                    {visualStats.completed}/{visualStats.total} générés
+                  </span>
+                )}
+              </div>
+              
+              <Button
+                variant="default"
+                onClick={generateAllVisuals}
+                disabled={isGeneratingVisuals}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                <Sparkles className={`w-4 h-4 mr-2 ${isGeneratingVisuals ? 'animate-spin' : ''}`} />
+                {isGeneratingVisuals ? 'Génération en cours...' : `🎨 Générer tous les visuels (${visualStats?.pending || 0})`}
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => getVisualStats().then(setVisualStats)}
+                disabled={isGeneratingVisuals}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Actualiser stats
+              </Button>
             </div>
             
-            <Button
-              variant="outline"
-              onClick={generateAllVisuals}
-              disabled={isGeneratingVisuals}
-            >
-              <Image className={`w-4 h-4 mr-2 ${isGeneratingVisuals ? 'animate-pulse' : ''}`} />
-              {isGeneratingVisuals ? 'Génération...' : 'Générer tous les visuels'}
-            </Button>
+            {/* Real-time Progress Bar */}
+            {isGeneratingVisuals && visualProgress && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/20"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-purple-500 animate-pulse" />
+                    <span className="text-sm font-medium">
+                      Génération: {visualProgress.currentTemplate || 'En cours...'}
+                    </span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {visualProgress.current}/{visualProgress.total} templates
+                  </span>
+                </div>
+                <Progress 
+                  value={(visualProgress.current / visualProgress.total) * 100} 
+                  className="h-3 bg-purple-500/20"
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  ⏳ Chaque template génère 5 scènes AI (~30s par template)
+                </p>
+              </motion.div>
+            )}
           </div>
 
           {/* Mini-Doc Village Special Section */}
