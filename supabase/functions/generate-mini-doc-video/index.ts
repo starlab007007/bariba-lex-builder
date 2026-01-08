@@ -12,12 +12,13 @@ interface MiniDocRequest {
 }
 
 // 5 specific scene prompts for Mini-Doc Village template
+// ✅ FIXED: Scene durations now correctly add up to 100%
 const MINI_DOC_SCENES = [
   {
     id: 'overview',
     name_fr: 'Vue d\'ensemble',
     name_ba: 'Dugu yɛrɛ',
-    durationPercent: 17, // 0-17% of video
+    durationPercent: 20, // 0-20% of video (3s for 15s video)
     prompt: `Photorealistic aerial view of a traditional West African village at golden hour.
 Mud-brick houses with thatched roofs arranged organically, narrow winding paths between homes.
 Baobab trees in the background, warm amber and golden sunset lighting.
@@ -29,7 +30,7 @@ Warm sepia tones, dust particles visible in sunlight, authentic African village 
     id: 'artisanat',
     name_fr: 'Artisanat local',
     name_ba: 'Baara kɛcogo',
-    durationPercent: 25, // 17-42% of video
+    durationPercent: 20, // 20-40% of video (3s for 15s video)
     prompt: `Close-up of African artisan hands working on traditional pottery or weaving.
 Elderly hands shaping red clay on a simple potter's wheel, or fingers threading natural fibers.
 Warm afternoon sunlight filtering through a simple workshop window.
@@ -42,7 +43,7 @@ Traditional tools visible, authentic West African artisan workshop setting.`
     id: 'habitant',
     name_fr: 'Portrait habitant',
     name_ba: 'Mɔgɔ ja',
-    durationPercent: 25, // 42-67% of video
+    durationPercent: 20, // 40-60% of video (3s for 15s video)
     prompt: `Portrait of a wise elderly African villager with a warm, gentle smile looking at camera.
 Traditional colorful clothing (boubou or pagne), dignified and peaceful expression.
 Soft natural lighting from the side, blurred village background with bokeh.
@@ -55,7 +56,7 @@ Warm skin tones, natural lighting, respectful and dignified portrayal.`
     id: 'nature',
     name_fr: 'Nature et paysage',
     name_ba: 'Dugukolo ni sankolo',
-    durationPercent: 17, // 67-84% of video
+    durationPercent: 20, // 60-80% of video (3s for 15s video)
     prompt: `Majestic African savanna landscape at sunset with dramatic sky.
 Rolling hills covered in golden grass, scattered acacia trees silhouetted against orange sky.
 Dramatic cumulus clouds painted in orange, pink and purple hues.
@@ -68,7 +69,7 @@ Could include a river or distant mountains, emphasizing natural beauty.`
     id: 'conclusion',
     name_fr: 'Conclusion',
     name_ba: 'Laban',
-    durationPercent: 16, // 84-100% of video
+    durationPercent: 20, // 80-100% of video (3s for 15s video)
     prompt: `Silhouette of a person standing at the edge of a West African village, looking at sunset horizon.
 Village rooftops in the warm foreground, sun setting behind distant hills.
 Peaceful, contemplative, emotional closing scene.

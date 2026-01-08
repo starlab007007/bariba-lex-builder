@@ -46,15 +46,60 @@ function getSupportedMimeType(): string {
   return 'video/webm';
 }
 
-// Load an image and return it as HTMLImageElement
-async function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load: ${url}`));
-    img.src = url;
-  });
+// ✅ FIXED: Robust image loading via fetch->blob to bypass CORS issues
+async function loadImage(url: string, retries = 2): Promise<HTMLImageElement> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      // Strategy 1: Try fetch->blob->objectURL (bypasses CORS issues)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
+      const response = await fetch(url, { 
+        mode: 'cors',
+        signal: controller.signal 
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      return await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          resolve(img);
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error('Image decode failed'));
+        };
+        img.src = objectUrl;
+      });
+    } catch (err) {
+      // Strategy 2: Fallback to direct img.src with crossOrigin
+      if (attempt === retries) {
+        return await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          const timeout = setTimeout(() => reject(new Error('Timeout')), 8000);
+          img.onload = () => {
+            clearTimeout(timeout);
+            resolve(img);
+          };
+          img.onerror = () => {
+            clearTimeout(timeout);
+            reject(new Error(`Failed to load: ${url}`));
+          };
+          img.src = url;
+        });
+      }
+      // Wait before retry
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+  throw new Error('All load attempts failed');
 }
 
 interface SceneData {
@@ -334,6 +379,14 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
   // Fallback preview image
   const previewImage = aiData?.ai_preview_image_url || aiData?.preview_image_url;
 
+  // ✅ FIXED: Robust cache key including duration + frame count + first frame hash
+  const cacheKey = useMemo(() => {
+    const frameHash = frames.length > 0 
+      ? frames[0].slice(-20).replace(/[^a-zA-Z0-9]/g, '')
+      : 'empty';
+    return `${template.id}:${durationMs}:${frames.length}:${frameHash}`;
+  }, [template.id, durationMs, frames]);
+
   // Generate or load video
   const generateVideo = useCallback(async () => {
     if (frames.length < 2) {
@@ -346,9 +399,10 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
     setError(null);
 
     try {
-      // Check cache first
-      const cached = await templateVideoCache.get(template.id);
-      if (cached && cached.frameCount === frames.length) {
+      // ✅ Check cache with robust key
+      const cached = await templateVideoCache.get(cacheKey);
+      if (cached && cached.frameCount === frames.length && cached.durationMs === durationMs) {
+        console.log('[VideoTemplatePreview] Using cached video for:', cacheKey);
         const url = URL.createObjectURL(cached.blob);
         setVideoUrl(url);
         setIsGenerating(false);
@@ -356,11 +410,13 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
         return;
       }
 
+      console.log('[VideoTemplatePreview] Generating new video:', { frames: frames.length, durationMs, scenes: scenes?.length });
+      
       // Generate new video with scene support
       const blob = await generateVideoFromFrames(frames, durationMs, setProgress, scenes);
       
-      // Cache it
-      await templateVideoCache.set(template.id, blob, durationMs, frames.length);
+      // ✅ Cache with robust key
+      await templateVideoCache.set(cacheKey, blob, durationMs, frames.length);
       
       // Create URL
       const url = URL.createObjectURL(blob);
@@ -373,7 +429,7 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
     } finally {
       setIsGenerating(false);
     }
-  }, [frames, durationMs, template.id, onVideoReady, onError]);
+  }, [frames, durationMs, cacheKey, scenes, onVideoReady, onError]);
 
   // Auto-generate when visible, shouldLoad=true, and has frames
   useEffect(() => {

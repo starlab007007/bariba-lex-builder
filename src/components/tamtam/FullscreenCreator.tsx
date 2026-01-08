@@ -1002,15 +1002,29 @@ export default function FullscreenCreator({
 
       let recordStream = streamRef.current;
 
-      // If legacy advanced template live canvas is used, bake effects by capturing canvas
-      const legacyActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
-      if (legacyActive && liveCanvasRef.current) {
+      // ✅ BLOCK C: If K-Engine active with live preview, capture from liveCanvasRef (baked-in effects)
+      if (isKEngineActive && liveCanvasRef.current) {
         try {
           const canvasStream = liveCanvasRef.current.captureStream(30);
           const audioTracks = streamRef.current.getAudioTracks();
           audioTracks.forEach((track) => canvasStream.addTrack(track));
           recordStream = canvasStream;
-        } catch {}
+          console.log('[FullscreenCreator] Recording from K-Engine canvas (baked-in effects)');
+        } catch (e) {
+          console.warn('[FullscreenCreator] Failed to capture K-Engine canvas, falling back to raw stream:', e);
+        }
+      }
+      // If legacy advanced template live canvas is used, bake effects by capturing canvas
+      else {
+        const legacyActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
+        if (legacyActive && liveCanvasRef.current) {
+          try {
+            const canvasStream = liveCanvasRef.current.captureStream(30);
+            const audioTracks = streamRef.current.getAudioTracks();
+            audioTracks.forEach((track) => canvasStream.addTrack(track));
+            recordStream = canvasStream;
+          } catch {}
+        }
       }
 
       const rec = new MediaRecorder(recordStream, { mimeType });
