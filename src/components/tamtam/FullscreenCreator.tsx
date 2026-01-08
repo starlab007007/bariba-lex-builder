@@ -963,8 +963,7 @@ export default function FullscreenCreator({
     // Badge template
     const badgeY = h - 60;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.beginPath();
-    ctx.roundRect(12, badgeY, 180, 44, 8);
+    roundRect(ctx, 12, badgeY, 180, 44, 8);
     ctx.fill();
     ctx.fillStyle = 'white';
     ctx.font = 'bold 14px system-ui';
@@ -1034,8 +1033,9 @@ export default function FullscreenCreator({
             }
           }
         }
-      } catch {
-        // keep loop alive
+      } catch (err) {
+        // ✅ Log K-Engine errors for debugging (especially roundRect issues on mobile)
+        if (import.meta.env.DEV) console.warn('[K-Engine Draw]', err);
       }
       raf = requestAnimationFrame(draw);
     };
@@ -1688,6 +1688,9 @@ export default function FullscreenCreator({
           kEngine.setTime(0);
           kEngine.pause();
           
+          // ✅ CRITICAL FIX: Set activeTemplateAny to the MANIFEST so isTemplateManifest() returns true
+          // This prevents LiveTemplateEffect from conflicting with K-Engine rendering
+          setActiveTemplateAny(manifestJson as TemplateManifest);
           setActiveKSEManifest(manifestJson as TemplateManifest);
           setCanvasRatio((manifestJson.ratio as CanvasRatio) || "9:16");
           setMode("video");
@@ -2184,7 +2187,8 @@ export default function FullscreenCreator({
         <TemplateOverlay templateId={effects.templateId} />
 
         {/* Legacy realtime effects overlay - visible during capture AND preview */}
-        {!isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none" && (
+        {/* ✅ CRITICAL FIX: Do NOT mount when K-Engine is active to prevent rendering conflicts */}
+        {!isKEngineActive && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none" && (
           <LiveTemplateEffect
             template={activeTemplateAny as any}
             videoRef={hasCapture ? previewVideoRef : videoRef}
