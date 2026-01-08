@@ -1,0 +1,130 @@
+{
+  "id": "tpl_story_warm_v1",
+  "name": "Histoire Émotionnelle",
+  "description": "Template storytelling avec ambiance chaleureuse et sous-titres cinéma",
+  "version": "1.0.0",
+  "duration": 30,
+  "ratio": "9:16",
+  "category": "story",
+  "family": "educatif_culture",
+  "tags": ["story", "authentic", "warm", "emotion"],
+
+  "slots": [
+    {
+      "id": "video_story",
+      "description": "Vidéo(s) de l'histoire",
+      "type": "video",
+      "required": true,
+      "min": 1,
+      "max": 6,
+      "constraints": {
+        "minDurationSec": 6,
+        "maxDurationSec": 180
+      }
+    }
+  ],
+
+  "pipeline": [
+    { "op": "smart_crop", "params": { "target": "person" }, "output": "cropRect", "weight": 0.10 },
+    { "op": "asr_subtitles", "params": { "langs": ["fr", "ba"] }, "output": "subtitleTrack", "weight": 0.30 },
+    { "op": "style_transfer", "params": { "preset": "warm_cinematic" }, "output": "styledVideo", "weight": 0.25 },
+    { "op": "audio_enhance", "params": { "denoise": true }, "output": "audioFx", "weight": 0.15 },
+    { "op": "denoise_sharpen", "params": { "level": 0.25 }, "output": "enhanced", "weight": 0.10 }
+  ],
+
+  "timeline": [
+    {
+      "id": "bg_layer",
+      "type": "video_layer",
+      "zIndex": 0,
+      "start": 0,
+      "end": 30,
+      "asset": "scenes/story_bg.mp4",
+      "blend": "normal"
+    },
+    {
+      "id": "main_video",
+      "type": "user_media_layer",
+      "zIndex": 1,
+      "start": 0,
+      "end": 30,
+      "slotRef": "video_story",
+      "blend": "normal",
+      "effects": ["filter_warm_soft"]
+    },
+    {
+      "id": "opening_text",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 0.5,
+      "end": 6,
+      "text": "{{texts.opening}}",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.6, "easing": "ease-out" }
+    },
+    {
+      "id": "line1_text",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 7,
+      "end": 11,
+      "text": "{{texts.line1}}",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.4, "easing": "ease-out" }
+    },
+    {
+      "id": "line2_text",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 11,
+      "end": 16,
+      "text": "{{texts.line2}}",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.4, "easing": "ease-out" }
+    },
+    {
+      "id": "line3_text",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 16,
+      "end": 22,
+      "text": "{{texts.line3}}",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.4, "easing": "ease-out" }
+    },
+    {
+      "id": "final_text",
+      "type": "text_layer",
+      "zIndex": 10,
+      "start": 25,
+      "end": 30,
+      "text": "{{texts.final}}",
+      "style": "cinema_subtitles",
+      "animation": { "type": "fade", "duration": 0.5, "easing": "ease-out" }
+    }
+  ],
+
+  "overrides": ["music", "text", "subtitles", "cover", "enhance"],
+
+  "music": {
+    "enabled": true,
+    "beatSync": false,
+    "defaultTrack": "emotional_piano"
+  },
+
+  "publishDefaults": {
+    "allowDuo": false,
+    "hashtags": ["#Histoire", "#VraiVie", "#Émotion"]
+  },
+
+  "cardHint": {
+    "inputSummary": "1-6 Videos",
+    "timeLabel": "00:30"
+  },
+
+  "export": {
+    "fps": 30,
+    "preset": "medium",
+    "crf": 20
+  }
+}

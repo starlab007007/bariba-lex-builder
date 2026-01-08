@@ -1,0 +1,9 @@
+{
+  "id": "text_bold_hook_v1",
+  "type": "text_style",
+  "font": "System-Bold",
+  "size": 54,
+  "stroke": { "width": 6, "color": "#000000" },
+  "shadow": { "x": 0, "y": 6, "blur": 12, "opacity": 0.35 },
+  "align": "center"
+}

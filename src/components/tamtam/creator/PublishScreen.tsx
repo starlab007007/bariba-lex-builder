@@ -235,6 +235,7 @@ export default function PublishScreen({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showHashtags, setShowHashtags] = useState(false);
+  const [allowDuo, setAllowDuo] = useState(false); // ✅ Kuaishou-style Duo toggle
 
   // ✅ K-Engine export state (real)
   const [exporting, setExporting] = useState(false);
@@ -303,6 +304,7 @@ export default function PublishScreen({
         caption,
         visibility,
         location: location || undefined,
+        allowDuo, // ✅ Kuaishou-style Duo permission
         selectedMusic: selectedMusic
           ? {
               id: selectedMusic.track?.id,
@@ -559,6 +561,33 @@ export default function PublishScreen({
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* ✅ Autoriser Duo Toggle (Kuaishou-style) */}
+          <div className="flex items-center justify-between py-3 px-4 rounded-2xl bg-white/5 border border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <span className="text-white font-medium">Autoriser Duo</span>
+                <p className="text-white/50 text-xs">D'autres peuvent créer avec ta vidéo</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setAllowDuo(!allowDuo)}
+              className={cn(
+                "w-12 h-7 rounded-full transition-all relative",
+                allowDuo ? "bg-green-500" : "bg-white/20"
+              )}
+            >
+              <div
+                className={cn(
+                  "absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg transition-all",
+                  allowDuo ? "left-6" : "left-1"
+                )}
+              />
+            </button>
+          </div>
 
           {/* Options row */}
           <div className="flex items-center gap-2">
