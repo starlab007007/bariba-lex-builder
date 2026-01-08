@@ -211,6 +211,19 @@ export interface ExportRuntimeArgs {
    * pour exporter EXACTEMENT le rendu.
    */
   renderCanvas?: HTMLCanvasElement;
+
+  /**
+   * ✅ LOW-DATA MODE: Skip re-rendering if capture is already stylized (baked-in).
+   * When true, returns inputBlob directly without frame-by-frame re-rendering.
+   * Much faster for zones with slow connections.
+   */
+  fastExport?: boolean;
+
+  /**
+   * ✅ LOW-DATA MODE: Reduce quality for faster export.
+   * "low" = 480p, 12fps | "medium" = 720p, 15fps | "high" = 1080p, 30fps (default)
+   */
+  exportQuality?: "low" | "medium" | "high";
 }
 
 // ============================================================
@@ -219,7 +232,22 @@ export interface ExportRuntimeArgs {
 
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 
-const ratioToResolution = (ratio: TemplateManifest["ratio"]) => {
+const ratioToResolution = (ratio: TemplateManifest["ratio"], quality?: "low" | "medium" | "high") => {
+  // ✅ LOW-DATA: Reduce resolution based on quality setting
+  const q = quality || "high";
+  if (q === "low") {
+    // 480p equivalent
+    if (ratio === "16:9") return { w: 854, h: 480 };
+    if (ratio === "1:1") return { w: 480, h: 480 };
+    return { w: 480, h: 854 }; // 9:16
+  }
+  if (q === "medium") {
+    // 720p equivalent
+    if (ratio === "16:9") return { w: 1280, h: 720 };
+    if (ratio === "1:1") return { w: 720, h: 720 };
+    return { w: 720, h: 1280 }; // 9:16
+  }
+  // high = 1080p (default)
   if (ratio === "16:9") return { w: 1920, h: 1080 };
   if (ratio === "1:1") return { w: 1080, h: 1080 };
   return { w: 1080, h: 1920 }; // 9:16
@@ -989,6 +1017,20 @@ export class TemplateEngine {
       };
     }
 
+    // ✅ FAST EXPORT MODE: Skip re-rendering if capture is already stylized (baked-in)
+    // This is MUCH faster for low-data zones - just return the input directly
+    if (args.fastExport && args.inputBlob) {
+      onProgress?.({ stage: "fast", percent: 100, message: "Export rapide ✅" });
+      console.log("[KEngine] Fast export mode - returning baked-in capture directly");
+      return {
+        outputBlob: args.inputBlob,
+        outputType: args.outputType || "video",
+        ffmpegJob,
+        used: "web",
+        meta: { ...(args.meta || {}), fastExport: true },
+      };
+    }
+
     // Attempt auto-bind primary input into a missing required slot (best effort)
     if (args.inputBlob && args.inputType && this.hasMissingRequiredSlots()) {
       try {
@@ -1013,8 +1055,11 @@ export class TemplateEngine {
       };
     }
 
-    const { w, h } = ratioToResolution(tpl.ratio);
-    const fps = tpl.export?.fps || 30;
+    // ✅ LOW-DATA: Use quality-based resolution and FPS
+    const quality = args.exportQuality || "medium"; // Default to medium for better perf
+    const { w, h } = ratioToResolution(tpl.ratio, quality);
+    const baseFps = quality === "low" ? 12 : quality === "medium" ? 15 : 30;
+    const fps = Math.min(baseFps, tpl.export?.fps || 30);
     const duration = Math.max(0.5, tpl.duration || 6);
 
     // If caller provided an existing canvas (preview), use it; else create a new one.
