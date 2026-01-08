@@ -1345,36 +1345,57 @@ export class TemplateEngine {
   }
 
   private normalizeTemplate(tpl: TemplateManifest): TemplateManifest {
-    const safe: TemplateManifest = {
-      id: tpl.id || `tpl_${Math.random().toString(16).slice(2, 10)}`,
-      name: tpl.name || "Template",
-      description: tpl.description || "",
-      version: tpl.version || "1.0.0",
-      duration: typeof tpl.duration === "number" ? tpl.duration : 8,
-      ratio: tpl.ratio || "9:16",
-      category: tpl.category || "transition",
-      usage: tpl.usage ?? 0,
-      slots: Array.isArray(tpl.slots) ? tpl.slots : [],
-      pipeline: Array.isArray(tpl.pipeline) ? tpl.pipeline : [],
-      timeline: Array.isArray(tpl.timeline) ? tpl.timeline : [],
-      overrides: Array.isArray(tpl.overrides) ? tpl.overrides : ["cover", "text", "music"],
-      music: tpl.music || { enabled: false, beatSync: false, defaultTrack: "", bpm: 120 },
-      export: tpl.export || { codec: "libx264", preset: "ultrafast", crf: 23, fps: 30 },
-    };
+    // ✅ Convert camelCase JSON keys to snake_case for compatibility
+    const rawTpl = tpl as any;
+    
+    // Normalize slots (camelCase → snake_case)
+    const normalizedSlots: SlotDefinition[] = (Array.isArray(rawTpl.slots) ? rawTpl.slots : []).map((s: any) => ({
+      id: s.id || 'slot_0',
+      description: s.description || s.id || '',
+      type: s.type || 'video',
+      required: s.required ?? true,
+      min: s.min ?? 1,
+      max: s.max ?? 1,
+      constraints: s.constraints ? {
+        min_duration: s.constraints.min_duration ?? s.constraints.minDurationSec,
+        detect_object: s.constraints.detect_object ?? s.constraints.detectObject,
+        orientation: s.constraints.orientation,
+      } : undefined,
+    }));
 
-    safe.timeline = safe.timeline.map((l, idx) => ({
-      layer_id: l.layer_id || `layer_${idx}`,
-      type: l.type || "video_layer",
-      z_index: typeof l.z_index === "number" ? l.z_index : idx,
-      start: typeof l.start === "number" ? l.start : 0,
-      end: typeof l.end === "number" ? l.end : safe.duration,
-      asset: l.asset || "",
-      slot_ref: l.slot_ref || "",
+    // Normalize timeline layers (camelCase → snake_case)
+    const normalizedTimeline: TimelineLayer[] = (Array.isArray(rawTpl.timeline) ? rawTpl.timeline : []).map((l: any, idx: number) => ({
+      layer_id: l.layer_id || l.id || `layer_${idx}`,
+      type: l.type || 'video_layer',
+      z_index: l.z_index ?? l.zIndex ?? idx,
+      start: typeof l.start === 'number' ? l.start : 0,
+      end: typeof l.end === 'number' ? l.end : (rawTpl.duration || 8),
+      asset: l.asset || '',
+      slot_ref: l.slot_ref || l.slotRef || '',
       transform: normalizeTransform(l.transform),
       effects: Array.isArray(l.effects) ? l.effects : [],
       animation: l.animation || null,
       text: l.text,
     }));
+
+    const safe: TemplateManifest = {
+      id: rawTpl.id || `tpl_${Math.random().toString(16).slice(2, 10)}`,
+      name: rawTpl.name || "Template",
+      description: rawTpl.description || "",
+      version: rawTpl.version || "1.0.0",
+      duration: typeof rawTpl.duration === "number" ? rawTpl.duration : 8,
+      ratio: rawTpl.ratio || "9:16",
+      category: rawTpl.category || "transition",
+      usage: rawTpl.usage ?? 0,
+      slots: normalizedSlots,
+      pipeline: Array.isArray(rawTpl.pipeline) ? rawTpl.pipeline : [],
+      timeline: normalizedTimeline,
+      overrides: Array.isArray(rawTpl.overrides) ? rawTpl.overrides : ["cover", "text", "music"],
+      music: rawTpl.music || { enabled: false, beatSync: false, defaultTrack: "", bpm: 120 },
+      export: rawTpl.export || { codec: "libx264", preset: "ultrafast", crf: 23, fps: 30 },
+    };
+
+    console.log('[K-Engine] Template normalized:', safe.id, 'slots:', safe.slots.length, 'timeline:', safe.timeline.length);
 
     return safe;
   }
