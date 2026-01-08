@@ -235,6 +235,29 @@ export interface ExportRuntimeArgs {
 
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 
+/**
+ * ✅ MOBILE FIX: Safe roundRect helper with fallback for browsers without ctx.roundRect
+ * Prevents silent crashes on iOS Safari and older mobile browsers.
+ */
+function safeRoundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const radius = Math.min(r, w / 2, h / 2);
+  if (typeof (ctx as any).roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, radius);
+  } else {
+    // Fallback path for browsers without roundRect
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+}
+
 const ratioToResolution = (ratio: TemplateManifest["ratio"], quality?: "low" | "medium" | "high") => {
   // ✅ LOW-DATA: Reduce resolution based on quality setting
   const q = quality || "high";
@@ -909,7 +932,7 @@ export class TemplateEngine {
       // Background track
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
       ctx.beginPath();
-      ctx.roundRect(20, progressY, progressWidth, progressHeight, 2);
+      safeRoundRectPath(ctx, 20, progressY, progressWidth, progressHeight, 2);
       ctx.fill();
       
       // Golden fill with glow
@@ -921,7 +944,7 @@ export class TemplateEngine {
       ctx.shadowColor = 'rgba(255,215,0,0.6)';
       ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.roundRect(20, progressY, progressWidth * progressPercent, progressHeight, 2);
+      safeRoundRectPath(ctx, 20, progressY, progressWidth * progressPercent, progressHeight, 2);
       ctx.fill();
       ctx.shadowBlur = 0;
     }
@@ -935,7 +958,7 @@ export class TemplateEngine {
     // Badge background with golden border
     ctx.fillStyle = `rgba(0,0,0,${pulseAlpha})`;
     ctx.beginPath();
-    ctx.roundRect(12, badgeY, badgeWidth, badgeHeight, 10);
+    safeRoundRectPath(ctx, 12, badgeY, badgeWidth, badgeHeight, 10);
     ctx.fill();
     
     // Golden border glow
