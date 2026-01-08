@@ -665,7 +665,7 @@ const GRAND_PUBLIC_TEMPLATES_RAW: RawTemplate[] = [
     emoji: '📹',
     label_fr: 'One-Take Pro',
     label_ba: 'Gba kelen',
-    description_fr: 'Stabilisation et recadrage intelligent',
+    description_fr: 'Stabilisation premium avec effets bleu-cyan',
     description_ba: 'Gba kelen kaa sↄ',
     family: 'grand_public',
     collection: null,
@@ -674,10 +674,30 @@ const GRAND_PUBLIC_TEMPLATES_RAW: RawTemplate[] = [
     outputRatios: ['9:16', '1:1', '16:9'],
     features: { stabilization: true, autoEditing: true },
     previewAnimation: 'slide',
-    color: 'from-blue-500 to-cyan-500',
+    color: 'from-blue-500 to-cyan-400',
     voiceInstructions: [
       { step: 1, text_fr: 'Filme en marchant, même si ça tremble', action: 'record_video' },
       { step: 2, text_fr: 'L\'IA va stabiliser et recadrer', action: 'wait' }
+    ]
+  },
+  {
+    id: 'quick_story',
+    emoji: '⚡',
+    label_fr: 'Quick Story',
+    label_ba: 'Sↄ joona',
+    description_fr: 'Story rapide avec emojis animés - 15 sec',
+    description_ba: 'Sↄ joona kaa emojis',
+    family: 'grand_public',
+    collection: null,
+    inputs: [{ type: 'video', minCount: 1, maxCount: 1, minDurationSec: 5, maxDurationSec: 20 }],
+    supportedDurations: ['15s'],
+    outputRatios: ['9:16'],
+    features: { stabilization: true, iconInjection: true, beatSync: true },
+    previewAnimation: 'pulse',
+    color: 'from-yellow-400 to-orange-500',
+    voiceInstructions: [
+      { step: 1, text_fr: 'Filme une courte vidéo de 5 à 20 secondes', action: 'record_video', durationHint: 15 },
+      { step: 2, text_fr: 'L\'IA ajoute des emojis animés automatiquement', action: 'wait' }
     ]
   },
   {

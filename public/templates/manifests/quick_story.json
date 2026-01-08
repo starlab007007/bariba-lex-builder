@@ -1,0 +1,163 @@
+{
+  "id": "quick_story",
+  "name": "Quick Story",
+  "description": "Story rapide avec emojis animés - 15 secondes",
+  "version": "1.0.0",
+  "duration": 15,
+  "ratio": "9:16",
+  "category": "story",
+  "family": "grand_public",
+  "tags": ["story", "quick", "emoji", "fun", "animated"],
+
+  "slots": [
+    {
+      "id": "video_main",
+      "description": "Vidéo ou photo principale",
+      "type": "video",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "constraints": {
+        "minDurationSec": 5,
+        "maxDurationSec": 20
+      }
+    }
+  ],
+
+  "pipeline": [
+    { "op": "stabilization", "params": { "strength": 0.6 }, "output": "stabilizedVideo", "weight": 0.25 },
+    { "op": "auto_brightness", "params": { "level": 0.4 }, "output": "enhanced", "weight": 0.15 },
+    { "op": "emoji_overlay", "params": { "style": "floating" }, "output": "emojiLayer", "weight": 0.20 }
+  ],
+
+  "timeline": [
+    {
+      "id": "main_video",
+      "type": "user_media_layer",
+      "zIndex": 1,
+      "start": 0,
+      "end": 15,
+      "slotRef": "video_main",
+      "blend": "normal",
+      "effects": ["stabilization", "auto_brightness"]
+    },
+    {
+      "id": "emoji_sparkle_1",
+      "type": "emoji_layer",
+      "zIndex": 20,
+      "start": 0.5,
+      "end": 4,
+      "emoji": "✨",
+      "position": { "x": "15%", "y": "20%" },
+      "animation": { 
+        "type": "float_bounce", 
+        "duration": 1.2, 
+        "easing": "ease-in-out",
+        "loop": true
+      },
+      "scale": 1.5
+    },
+    {
+      "id": "emoji_fire_1",
+      "type": "emoji_layer",
+      "zIndex": 21,
+      "start": 2,
+      "end": 7,
+      "emoji": "🔥",
+      "position": { "x": "85%", "y": "30%" },
+      "animation": { 
+        "type": "pulse_glow", 
+        "duration": 0.8, 
+        "easing": "ease-out",
+        "loop": true
+      },
+      "scale": 1.8
+    },
+    {
+      "id": "emoji_heart_1",
+      "type": "emoji_layer",
+      "zIndex": 22,
+      "start": 5,
+      "end": 10,
+      "emoji": "💖",
+      "position": { "x": "20%", "y": "75%" },
+      "animation": { 
+        "type": "heartbeat", 
+        "duration": 0.6, 
+        "easing": "ease-in-out",
+        "loop": true
+      },
+      "scale": 2.0
+    },
+    {
+      "id": "emoji_star_1",
+      "type": "emoji_layer",
+      "zIndex": 23,
+      "start": 8,
+      "end": 13,
+      "emoji": "⭐",
+      "position": { "x": "80%", "y": "70%" },
+      "animation": { 
+        "type": "spin_slow", 
+        "duration": 2.0, 
+        "easing": "linear",
+        "loop": true
+      },
+      "scale": 1.6
+    },
+    {
+      "id": "emoji_rocket",
+      "type": "emoji_layer",
+      "zIndex": 24,
+      "start": 10,
+      "end": 15,
+      "emoji": "🚀",
+      "position": { "x": "50%", "y": "50%" },
+      "animation": { 
+        "type": "fly_up", 
+        "duration": 3.0, 
+        "easing": "ease-out",
+        "loop": false
+      },
+      "scale": 2.2
+    },
+    {
+      "id": "quick_badge",
+      "type": "text_layer",
+      "zIndex": 30,
+      "start": 0.3,
+      "end": 3,
+      "text": "⚡ Quick Story",
+      "style": "bold_hook",
+      "animation": { 
+        "type": "bounce_in", 
+        "duration": 0.5, 
+        "easing": "cubic-bezier(0.68,-0.55,0.265,1.55)" 
+      }
+    }
+  ],
+
+  "overrides": ["music", "text", "subtitles", "cover", "emoji"],
+
+  "music": {
+    "enabled": true,
+    "beatSync": true,
+    "defaultTrack": "upbeat_short"
+  },
+
+  "publishDefaults": {
+    "allowDuo": true,
+    "hashtags": ["#QuickStory", "#15sec", "#Fun"]
+  },
+
+  "cardHint": {
+    "inputSummary": "1 Vidéo/Photo",
+    "timeLabel": "00:15"
+  },
+
+  "export": {
+    "fps": 24,
+    "preset": "medium",
+    "crf": 22
+  }
+}
