@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mic, Volume2, VolumeX, Sparkles, Eye, Check, Clock, Camera, Play, Pause } from "lucide-react";
+import { X, Mic, Volume2, VolumeX, Sparkles, Eye, Check, Clock, Camera, Play, Pause, Loader2 } from "lucide-react";
 import {
   ADVANCED_TEMPLATES,
   TEMPLATE_COLLECTIONS,
@@ -10,6 +10,7 @@ import {
   KuaishouTemplateManifest,
 } from "./AdvancedTemplateData";
 import TemplatePreviewPlayer from "./TemplatePreviewPlayer";
+import VideoTemplatePreview from "./VideoTemplatePreview";
 import { useFrenchTTS } from "@/hooks/useFrenchTTS";
 import { useBaribaTTS } from "@/hooks/useBaribaTTS";
 import { useFrenchSTT } from "@/hooks/useFrenchSTT";
@@ -805,12 +806,9 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
   onLongPressEnd,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // ✅ Get Kuaishou-style card hints from KSE engine
@@ -830,7 +828,7 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
     return frames.filter((f: string) => f && typeof f === 'string' && f.startsWith('http'));
   }, [aiData]);
 
-  const hasAnimationFrames = animationFrames.length > 1;
+  const hasAnimationFrames = animationFrames.length >= 2;
   
   // ✅ FIX: Use visual_generation_status instead of generation_status
   const isAICompleted = aiData?.visual_generation_status === 'completed';
@@ -839,31 +837,21 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
   const previewImageUrl = aiData?.ai_preview_image_url || aiData?.preview_image_url;
   const hasPreviewImage = !!previewImageUrl && !imageError;
 
-  // ✅ Animation logic with smoother transitions
-  const startAnimation = useCallback(() => {
-    if (!hasAnimationFrames || isAnimating) return;
-    setIsAnimating(true);
+  // ✅ Get template duration for video playback
+  const templateDurationMs = useMemo(() => {
+    // From storyboard_frames data
+    const sfData = aiData?.storyboard_frames as { durationMs?: number } | null;
+    if (sfData?.durationMs) return sfData.durationMs;
     
-    const frameDuration = 800; // Slightly faster for better effect
-    let frameIndex = 0;
+    // From KSE manifest
+    const kse = template.engine?.variants?.[template.engine?.defaultDuration || '15s'];
+    if (kse?.durationSec) return kse.durationSec * 1000;
     
-    const animate = () => {
-      frameIndex = (frameIndex + 1) % animationFrames.length;
-      setCurrentFrameIndex(frameIndex);
-      animationRef.current = setTimeout(animate, frameDuration);
-    };
-    
-    animationRef.current = setTimeout(animate, frameDuration);
-  }, [hasAnimationFrames, isAnimating, animationFrames.length]);
+    return 10000; // 10 seconds default
+  }, [aiData, template]);
 
-  const stopAnimation = useCallback(() => {
-    if (animationRef.current) {
-      clearTimeout(animationRef.current);
-      animationRef.current = null;
-    }
-    setIsAnimating(false);
-    setCurrentFrameIndex(0);
-  }, []);
+  // ✅ Video ready state
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   // ✅ IntersectionObserver for auto-play when visible
   useEffect(() => {
@@ -874,32 +862,12 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
       ([entry]) => {
         setIsVisible(entry.isIntersecting);
       },
-      { threshold: 0.5 }
+      { threshold: 0.3 }
     );
 
     observer.observe(card);
     return () => observer.disconnect();
   }, []);
-
-  // Handle hover OR visibility for animation
-  useEffect(() => {
-    if ((isHovered || isVisible) && hasAnimationFrames) {
-      startAnimation();
-    } else if (!isHovered && !isVisible) {
-      stopAnimation();
-    }
-    return () => stopAnimation();
-  }, [isHovered, isVisible, hasAnimationFrames, startAnimation, stopAnimation]);
-
-  // Preload frames
-  useEffect(() => {
-    if (hasAnimationFrames) {
-      animationFrames.forEach((url) => {
-        const img = new Image();
-        img.src = url;
-      });
-    }
-  }, [hasAnimationFrames, animationFrames]);
 
   const getFeatureIcons = () => {
     const features = [];
@@ -941,10 +909,6 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
     );
   }
 
-  const currentDisplayImage = hasAnimationFrames && isAnimating
-    ? animationFrames[currentFrameIndex] 
-    : previewImageUrl;
-
   return (
     <motion.div
       ref={cardRef}
@@ -968,54 +932,50 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
       {/* Background: Gradient fallback */}
       <div className={cn("absolute inset-0 bg-gradient-to-br", (template as any).color)} />
 
-      {/* ✅ Skeleton loader while image loads */}
-      {hasPreviewImage && !imageLoaded && !imageError && (
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 animate-pulse" />
+      {/* ✅ VIDEO TEMPLATE PREVIEW - Real WebM video from AI frames */}
+      {hasAnimationFrames && !isNeutral && (
+        <VideoTemplatePreview
+          template={template}
+          aiData={aiData}
+          isVisible={isVisible || isHovered}
+          loop={true}
+          className="absolute inset-0"
+          onVideoReady={() => setIsVideoReady(true)}
+        />
       )}
 
-      {/* ✅ AI Preview Image or Animation Frames with proper loading */}
-      {currentDisplayImage && !imageError && (
-        <motion.img
-          key={isAnimating ? `frame-${currentFrameIndex}` : 'preview'}
-          src={currentDisplayImage}
+      {/* ✅ Fallback: Static preview image if no frames */}
+      {!hasAnimationFrames && hasPreviewImage && !imageError && (
+        <img
+          src={previewImageUrl}
           alt={template.label_fr}
-          className={cn(
-            "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
-            imageLoaded ? "opacity-100" : "opacity-0"
-          )}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: imageLoaded ? 1 : 0 }}
-          transition={{ duration: 0.3 }}
+          className="absolute inset-0 w-full h-full object-cover"
           onLoad={() => setImageLoaded(true)}
-          onError={() => {
-            setImageError(true);
-            setImageLoaded(false);
-          }}
+          onError={() => setImageError(true)}
         />
       )}
 
       {/* Dark overlay for text readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20" />
 
-      {/* ✅ LIVE Badge when animating */}
-      {hasAnimationFrames && isAnimating && (
+      {/* ✅ Video duration badge when playing */}
+      {hasAnimationFrames && (isVisible || isHovered) && (
         <div className="absolute top-2 left-2 z-20 flex items-center gap-1">
           <motion.div
-            className="flex items-center gap-1 bg-red-500 rounded-full px-2 py-0.5"
-            animate={{ opacity: [1, 0.7, 1] }}
-            transition={{ duration: 1, repeat: Infinity }}
+            className="flex items-center gap-1 bg-green-500/90 rounded-full px-2 py-0.5"
+            animate={{ opacity: [1, 0.8, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
           >
-            <span className="w-1.5 h-1.5 bg-white rounded-full" />
-            <span className="text-white text-[9px] font-bold">LIVE</span>
+            <Play className="h-2.5 w-2.5 text-white" />
+            <span className="text-white text-[9px] font-bold">
+              {Math.round(templateDurationMs / 1000)}s
+            </span>
           </motion.div>
-          <span className="text-white/70 text-[9px] bg-black/40 rounded-full px-1.5">
-            {currentFrameIndex + 1}/{animationFrames.length}
-          </span>
         </div>
       )}
 
-      {/* ✅ AI Badge when has generated content - FIXED: use visual_generation_status */}
-      {isAICompleted && !isAnimating && (
+      {/* ✅ AI Badge when has generated content (only if not playing video) */}
+      {isAICompleted && !hasAnimationFrames && (
         <div className="absolute top-2 left-2 z-20">
           <div className="flex items-center gap-1 bg-purple-500/80 rounded-full px-2 py-0.5">
             <Sparkles className="h-2.5 w-2.5 text-white" />
@@ -1032,7 +992,7 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
             animate={{ opacity: [0.7, 1, 0.7] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
-            <div className="w-2 h-2 border border-white border-t-transparent rounded-full animate-spin" />
+            <Loader2 className="w-2 h-2 text-white animate-spin" />
             <span className="text-white text-[9px] font-medium">Génération...</span>
           </motion.div>
         </div>
@@ -1059,20 +1019,13 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
           </motion.div>
 
           <div className="flex items-center gap-1">
-            {hasAnimationFrames && (
+            {hasAnimationFrames && isVideoReady && (
               <motion.div
-                className={cn(
-                  "p-1 rounded-full transition-colors",
-                  isAnimating ? "bg-green-500/50" : "bg-white/10"
-                )}
-                animate={isAnimating ? { scale: [1, 1.1, 1] } : {}}
+                className="p-1 rounded-full bg-green-500/50"
+                animate={{ scale: [1, 1.1, 1] }}
                 transition={{ duration: 0.5, repeat: Infinity }}
               >
-                {isAnimating ? (
-                  <Pause className="h-3 w-3 text-white" />
-                ) : (
-                  <Play className="h-3 w-3 text-white/70" />
-                )}
+                <Play className="h-3 w-3 text-white" />
               </motion.div>
             )}
             {audioEnabled && isSpeaking && (

@@ -350,28 +350,56 @@ Output: Single clean icon, no text, vibrant colors.`;
 }
 
 async function generateAnimatedFrames(apiKey: string, template: any, supabase: any): Promise<string[]> {
-  console.log(`[generateAnimatedFrames] Generating animation frames for ${template.template_key}`);
+  console.log(`[generateAnimatedFrames] Generating 20 animation frames for ${template.template_key}`);
   
   const frameUrls: string[] = [];
-  const frameCount = 4; // Generate 4 frames for animation
+  const frameCount = 20; // Generate 20 frames for smooth animation
   
+  // Define phases for natural progression
+  const phases = [
+    'intro_fade_in',
+    'intro_build',
+    'scene_1_start',
+    'scene_1_mid',
+    'scene_1_peak',
+    'transition_1',
+    'scene_2_start',
+    'scene_2_mid',
+    'scene_2_peak',
+    'transition_2',
+    'scene_3_start',
+    'scene_3_mid',
+    'scene_3_peak',
+    'climax_build',
+    'climax_peak',
+    'climax_sustain',
+    'outro_start',
+    'outro_mid',
+    'outro_fade',
+    'finale'
+  ];
+
   for (let i = 0; i < frameCount; i++) {
-    const phase = ['debut', 'progression', 'climax', 'finale'][i];
-    const prompt = `Generate frame ${i + 1}/${frameCount} for animated preview of "${template.label_fr}" template.
+    const phase = phases[i] || `frame_${i}`;
+    const progressPercent = Math.round((i / (frameCount - 1)) * 100);
+    
+    const prompt = `Generate frame ${i + 1}/${frameCount} (${progressPercent}% through) for animated preview of "${template.label_fr}" template.
 
 Phase: ${phase}
 Theme: ${template.family} - ${template.description_fr}
 Emoji: ${template.emoji}
+Progress: ${progressPercent}%
 
 Requirements:
-- Mobile phone mockup showing the template in action
-- Phase ${phase}: ${i === 0 ? 'Opening scene, template starting' : i === 1 ? 'Effect building up' : i === 2 ? 'Maximum effect impact' : 'Final polished result'}
+- Mobile phone mockup showing the template effect in action
+- Phase ${phase}: ${getPhaseDescription(i, frameCount)}
 - Vibrant ${template.color} colors, contemporary African aesthetic
 - 9:16 vertical format
-- Should flow smoothly with other frames
+- Should flow smoothly with adjacent frames (this is frame ${i + 1} of ${frameCount})
+- Visual continuity is critical - same scene/elements evolving over time
 - Professional app preview quality
 
-Style: Modern social media template preview, dynamic and engaging.`;
+Style: Modern social media template preview, dynamic and engaging, smooth motion.`;
 
     try {
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -399,7 +427,7 @@ Style: Modern social media template preview, dynamic and engaging.`;
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
         const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
         
-        const filePath = `animations/${template.template_key}_frame_${i}.png`;
+        const filePath = `animations/${template.template_key}_frame_${String(i).padStart(2, '0')}.png`;
         await supabase.storage
           .from('template-assets')
           .upload(filePath, buffer, {
@@ -412,33 +440,62 @@ Style: Modern social media template preview, dynamic and engaging.`;
           .getPublicUrl(filePath);
 
         frameUrls.push(urlData.publicUrl);
-        console.log(`[generateAnimatedFrames] Frame ${i + 1} generated`);
+        console.log(`[generateAnimatedFrames] Frame ${i + 1}/${frameCount} generated`);
       }
     } catch (err) {
       console.error(`Error generating frame ${i}:`, err);
+    }
+    
+    // Small delay to avoid rate limiting
+    if (i < frameCount - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
   return frameUrls;
 }
 
-// Store animation frames as JSON for client-side animation
+// Helper function for phase descriptions
+function getPhaseDescription(frameIndex: number, totalFrames: number): string {
+  const progress = frameIndex / (totalFrames - 1);
+  
+  if (progress < 0.1) return 'Opening scene, template effect just starting to appear';
+  if (progress < 0.2) return 'Effect beginning to build up, initial movement';
+  if (progress < 0.35) return 'First main scene, effect becoming visible';
+  if (progress < 0.5) return 'Effect at medium intensity, dynamic motion';
+  if (progress < 0.65) return 'Transition to peak, building energy';
+  if (progress < 0.75) return 'Maximum effect impact, most dramatic moment';
+  if (progress < 0.85) return 'Sustaining peak effect, full visual impact';
+  if (progress < 0.95) return 'Beginning to resolve, effect winding down';
+  return 'Final polished result, effect complete';
+}
+
+// Store animation frames as JSON for client-side video generation
 async function generateDemoVideo(apiKey: string, template: any, supabase: any, previewImageUrl?: string): Promise<string> {
   console.log(`[generateDemoVideo] Creating animated sequence for ${template.template_key}`);
   
-  // Generate multiple frames for animation
+  // Generate 20 frames for smooth animation
   const frameUrls = await generateAnimatedFrames(apiKey, template, supabase);
   
   if (frameUrls.length === 0) {
     throw new Error('No animation frames generated');
   }
 
-  // Store as JSON that the client can animate
+  // Get real template duration from KSE engine or default to 10s
+  const kseEngine = template.kse_engine as { variants?: Record<string, { durationSec?: number }>; defaultDuration?: string } | null;
+  const defaultDur = kseEngine?.defaultDuration || '15s';
+  const templateDurationSec = kseEngine?.variants?.[defaultDur]?.durationSec || 10;
+  const templateDurationMs = templateDurationSec * 1000;
+
+  // Store animation data with real duration
   const animationData = {
     type: 'frame_sequence',
     frames: frameUrls,
-    duration: 5000, // 5 seconds total
-    fps: frameUrls.length / 5 // frames per second
+    durationMs: templateDurationMs, // Real template duration!
+    fps: frameUrls.length / templateDurationSec,
+    loop: true,
+    frameCount: frameUrls.length,
+    generatedAt: new Date().toISOString()
   };
 
   const jsonBuffer = new TextEncoder().encode(JSON.stringify(animationData));
@@ -455,17 +512,17 @@ async function generateDemoVideo(apiKey: string, template: any, supabase: any, p
     .from('template-assets')
     .getPublicUrl(filePath);
 
-  console.log(`[generateDemoVideo] Animation sequence created: ${urlData.publicUrl}`);
+  console.log(`[generateDemoVideo] Animation sequence created with ${frameUrls.length} frames, ${templateDurationSec}s duration`);
   
-  // Return the first frame as demo_video_url placeholder, store animation in storyboard
+  // Store complete animation data in storyboard_frames
   await supabase
     .from('ai_generated_templates')
     .update({ 
       storyboard_frames: animationData,
-      ai_storyboard: { animation_frames: frameUrls }
+      ai_storyboard: { animation_frames: frameUrls, duration_ms: templateDurationMs }
     })
     .eq('id', template.id);
 
-  // Return first frame URL as preview (the client will use storyboard_frames for animation)
+  // Return first frame URL as demo_video_url placeholder
   return frameUrls[0] || previewImageUrl || '';
 }
