@@ -207,11 +207,16 @@ const AdvancedTemplateDrawer: React.FC<AdvancedTemplateDrawerProps> = ({
     enabled: isOpen,
   });
 
-  // Map AI template data to local templates for enhanced display
+  // ✅ FIX: Map AI template data by BOTH template_key AND id for compatibility
   const aiTemplateMap = useMemo(() => {
     const map: Record<string, any> = {};
     aiTemplates.forEach((t: any) => {
+      // Map by template_key (used in DB)
       map[t.template_key] = t;
+      // Also map by id if different (for local template matching)
+      if (t.id && t.id !== t.template_key) {
+        map[t.id] = t;
+      }
     });
     return map;
   }, [aiTemplates]);
