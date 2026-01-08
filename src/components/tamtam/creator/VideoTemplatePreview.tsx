@@ -26,8 +26,10 @@ interface VideoTemplatePreviewProps {
   isVisible: boolean;
   loop?: boolean;
   className?: string;
+  autoLoad?: boolean; // If false, show placeholder until clicked
   onVideoReady?: () => void;
   onError?: (error: Error) => void;
+  onRequestLoad?: () => void;
 }
 
 // Get supported video mime type for the browser
@@ -240,8 +242,10 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
   isVisible,
   loop = true,
   className,
+  autoLoad = false,
   onVideoReady,
-  onError
+  onError,
+  onRequestLoad
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -249,6 +253,7 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [shouldLoad, setShouldLoad] = useState(autoLoad);
 
   // Extract frames and scenes from aiData
   const { frames, scenes } = useMemo(() => {
@@ -363,12 +368,12 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
     }
   }, [frames, durationMs, template.id, onVideoReady, onError]);
 
-  // Auto-generate when visible and has frames
+  // Auto-generate when visible, shouldLoad=true, and has frames
   useEffect(() => {
-    if (isVisible && frames.length >= 2 && !videoUrl && !isGenerating && !error) {
+    if (shouldLoad && isVisible && frames.length >= 2 && !videoUrl && !isGenerating && !error) {
       generateVideo();
     }
-  }, [isVisible, frames.length, videoUrl, isGenerating, error, generateVideo]);
+  }, [shouldLoad, isVisible, frames.length, videoUrl, isGenerating, error, generateVideo]);
 
   // Play/pause based on visibility
   useEffect(() => {
@@ -414,6 +419,37 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
         ) : (
           <div className={cn("w-full h-full bg-gradient-to-br", template.color)} />
         )}
+      </div>
+    );
+  }
+
+  // Lazy loading: show placeholder until user clicks
+  if (!shouldLoad && !videoUrl) {
+    return (
+      <div className={cn("relative w-full h-full", className)}>
+        <div className={cn("absolute inset-0 bg-gradient-to-br", template.color)} />
+        {previewImage && (
+          <img 
+            src={previewImage} 
+            alt={template.label_fr}
+            className="absolute inset-0 w-full h-full object-cover opacity-60"
+          />
+        )}
+        <motion.div 
+          className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/20"
+          onClick={() => {
+            setShouldLoad(true);
+            onRequestLoad?.();
+          }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <div className="flex flex-col items-center gap-1">
+            <div className="p-3 rounded-full bg-white/30 backdrop-blur-sm">
+              <Play className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-white text-[10px] font-medium">Aperçu</span>
+          </div>
+        </motion.div>
       </div>
     );
   }

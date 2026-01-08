@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface MiniDocRequest {
-  duration?: number; // 30, 45, 60, or 90 seconds
+  duration?: number; // 15, 30, or 45 seconds
   villageName?: string;
 }
 
@@ -90,7 +90,7 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { duration = 60, villageName = 'Village Africain' }: MiniDocRequest = await req.json();
+    const { duration = 15, villageName = 'Village Africain' }: MiniDocRequest = await req.json();
 
     console.log(`[generate-mini-doc-video] Starting for duration: ${duration}s, village: ${villageName}`);
 
