@@ -47,14 +47,15 @@ export function useTemplateVisuals() {
     return data;
   };
 
-  // Generate all visuals for a single template
+  // Generate all visuals for a single template (accepts template ID string)
   const generateSingleVisuals = useMutation({
     mutationFn: async (templateId: string) => {
-      return invokeVisualFunction('generate_all', { templateId });
+      return invokeAITemplatesFunction('generate_single_visual', { templateId });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['ai-templates'] });
-      toast.success('Visuels générés avec succès !');
+      const scenesCount = (data as any)?.scenesCount || 5;
+      toast.success(`🎬 ${scenesCount} scènes TikTok générées !`);
     },
     onError: (error) => {
       console.error('Visual generation error:', error);
