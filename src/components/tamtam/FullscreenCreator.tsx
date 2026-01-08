@@ -63,6 +63,9 @@ import MiniTimeline, { MiniTimelineSegment } from "./creator/MiniTimeline";
 import TemplateSlotPicker from "./creator/TemplateSlotPicker";
 import RecognizingScreen from "./creator/RecognizingScreen";
 import OverridesEditor from "./creator/OverridesEditor";
+import TikTokEditingBar from "./creator/TikTokEditingBar";
+import TextOverlayEditor, { TextOverlay, TextOverlayRenderer } from "./creator/TextOverlayEditor";
+import OptimizedExportScreen from "./creator/OptimizedExportScreen";
 
 // Legacy AdvancedTemplate data (still used by some UI effects/voice instructions)
 import {
@@ -515,6 +518,12 @@ export default function FullscreenCreator({
   const [kuaishouPhase, setKuaishouPhase] = useState<KuaishouPhase>('idle');
   const [boundAssets, setBoundAssets] = useState<Record<string, BoundAsset>>({});
   const [activeKSEManifest, setActiveKSEManifest] = useState<TemplateManifest | null>(null);
+
+  // ============= TEXT OVERLAYS & EXPORT =============
+  const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
+  const [showTextEditor, setShowTextEditor] = useState(false);
+  const [editingTextOverlay, setEditingTextOverlay] = useState<TextOverlay | undefined>(undefined);
+  const [showExportScreen, setShowExportScreen] = useState(false);
 
   // Publish
   const [caption, setCaption] = useState("");
@@ -2266,6 +2275,17 @@ export default function FullscreenCreator({
           containerRef={containerRef}
         />
 
+        {/* Text Overlays Layer */}
+        {textOverlays.map((overlay) => (
+          <TextOverlayRenderer
+            key={overlay.id}
+            overlay={overlay}
+            containerWidth={containerRef.current?.clientWidth || 0}
+            containerHeight={containerRef.current?.clientHeight || 0}
+            currentTime={currentTime}
+          />
+        ))}
+
         {/* Flash simulation */}
         <AnimatePresence>
           {flashSim && (
@@ -2405,6 +2425,12 @@ export default function FullscreenCreator({
             <>
               <div className="w-8 h-px bg-white/20 my-1" />
               <RailButton
+                icon={<Type className="h-5 w-5" />}
+                label="Texte"
+                onClick={() => setShowTextEditor(true)}
+                active={textOverlays.length > 0}
+              />
+              <RailButton
                 icon={<Scissors className="h-5 w-5" />}
                 label="Couper"
                 onClick={() => activeSegmentId && handleSplit(activeSegmentId, currentTime)}
@@ -2415,33 +2441,6 @@ export default function FullscreenCreator({
                 active={activeSegment?.isMuted}
                 onClick={() => activeSegmentId && handleToggleMute(activeSegmentId)}
               />
-              <RailButton
-                icon={<Type className="h-5 w-5" />}
-                label="Texte"
-                onClick={() => setDrawer(drawer === "captions" ? "none" : "captions")}
-              />
-              <div className="flex gap-1 mt-1">
-                <button
-                  onClick={handleUndo}
-                  disabled={undoStack.length === 0}
-                  className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center",
-                    undoStack.length === 0 ? "opacity-30" : "bg-black/40"
-                  )}
-                >
-                  <Undo2 className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={handleRedo}
-                  disabled={redoStack.length === 0}
-                  className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center",
-                    redoStack.length === 0 ? "opacity-30" : "bg-black/40"
-                  )}
-                >
-                  <Redo2 className="h-4 w-4" />
-                </button>
-              </div>
             </>
           )}
         </div>
@@ -2777,6 +2776,41 @@ export default function FullscreenCreator({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Text Overlay Editor Modal */}
+        <TextOverlayEditor
+          open={showTextEditor}
+          onClose={() => {
+            setShowTextEditor(false);
+            setEditingTextOverlay(undefined);
+          }}
+          onSave={(overlay) => {
+            setTextOverlays((prev) => {
+              const exists = prev.find((o) => o.id === overlay.id);
+              if (exists) {
+                return prev.map((o) => (o.id === overlay.id ? overlay : o));
+              }
+              return [...prev, overlay];
+            });
+          }}
+          initialOverlay={editingTextOverlay}
+          videoDuration={totalDuration || lengthSec}
+        />
+
+        {/* Optimized Export Screen */}
+        <OptimizedExportScreen
+          open={showExportScreen}
+          onComplete={(blob) => {
+            setShowExportScreen(false);
+            setCapturedBlob(blob);
+            setShowPublish(true);
+          }}
+          onCancel={() => setShowExportScreen(false)}
+          sourceBlob={capturedBlob || undefined}
+          templateName={activeMeta.label}
+          quality="medium"
+          fastExport={true}
+        />
 
         {/* Toast */}
         <AnimatePresence>
