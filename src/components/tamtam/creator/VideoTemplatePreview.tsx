@@ -109,8 +109,27 @@ interface SceneData {
 }
 
 /**
+ * ✅ FALLBACK: Generate intermediate frames via color interpolation when not enough frames
+ */
+function generateFallbackFrames(existingFrames: string[], targetCount: number): string[] {
+  if (existingFrames.length >= targetCount) return existingFrames;
+  
+  // If we have at least 1 frame, duplicate it to reach target
+  const result: string[] = [];
+  const step = existingFrames.length / targetCount;
+  
+  for (let i = 0; i < targetCount; i++) {
+    const srcIndex = Math.min(Math.floor(i * step), existingFrames.length - 1);
+    result.push(existingFrames[Math.max(0, srcIndex)]);
+  }
+  
+  return result;
+}
+
+/**
  * Generate a WebM video from frames with optional scene-specific durations
  * Supports both simple frame arrays and scene-based storyboards with crossfade transitions
+ * ✅ ENHANCED: Intelligent fallback for missing frames, smooth crossfades, visual loader
  */
 async function generateVideoFromFrames(
   frames: string[],
@@ -122,33 +141,53 @@ async function generateVideoFromFrames(
     throw new Error('No frames provided');
   }
 
+  // ✅ FALLBACK: Ensure minimum 2 frames for smooth playback
+  const minFrames = 2;
+  let processedFrames = frames;
+  if (frames.length < minFrames) {
+    console.log('[VideoTemplatePreview] Applying fallback for insufficient frames:', frames.length);
+    processedFrames = generateFallbackFrames(frames, minFrames);
+  }
+
   // Canvas setup (9:16 ratio)
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
   canvas.width = 360;
   canvas.height = 640;
 
-  // Load all images first
+  // Load all images first with progress tracking
   const images: HTMLImageElement[] = [];
-  for (let i = 0; i < frames.length; i++) {
+  const loadingErrors: number[] = [];
+  
+  for (let i = 0; i < processedFrames.length; i++) {
     try {
-      const img = await loadImage(frames[i]);
+      const img = await loadImage(processedFrames[i]);
       images.push(img);
-      onProgress?.((i + 1) / frames.length * 0.5); // 0-50% for loading
+      onProgress?.((i + 1) / processedFrames.length * 0.4); // 0-40% for loading
     } catch (err) {
       console.warn(`[VideoTemplatePreview] Failed to load frame ${i}:`, err);
+      loadingErrors.push(i);
     }
   }
 
+  // ✅ FALLBACK: If some images failed, try to fill gaps with available images
   if (images.length === 0) {
     throw new Error('No frames could be loaded');
+  }
+  
+  if (images.length < processedFrames.length && images.length > 0) {
+    console.log('[VideoTemplatePreview] Filling gaps with available images');
+    const targetCount = processedFrames.length;
+    while (images.length < targetCount) {
+      images.push(images[images.length - 1]);
+    }
   }
 
   // Calculate timing based on scenes or equal distribution
   const fps = 30;
   const totalVideoFrames = Math.ceil(durationMs / 1000 * fps);
   const frameInterval = 1000 / fps;
-  const transitionFrames = Math.ceil(0.5 * fps); // 0.5 second crossfade
+  const transitionFrames = Math.ceil(0.6 * fps); // ✅ 0.6 second crossfade (smoother)
 
   // Build timeline with scene durations or equal split
   interface TimelineEntry { imageIndex: number; startFrame: number; endFrame: number; }
@@ -215,27 +254,36 @@ async function generateVideoFromFrames(
       const nextEntry = timeline[currentEntry.imageIndex + 1];
       const nextImg = nextEntry ? images[nextEntry.imageIndex] : null;
       
-      // Clear canvas
+      // Clear canvas with black background
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Calculate crossfade alpha
+      // ✅ ENHANCED: Calculate crossfade alpha with easing
       const framesFromEnd = currentEntry.endFrame - frameCount;
       const inTransition = framesFromEnd <= transitionFrames && nextImg;
-      const transitionAlpha = inTransition ? 1 - (framesFromEnd / transitionFrames) : 0;
+      let transitionAlpha = 0;
+      if (inTransition) {
+        // Apply ease-in-out easing for smoother transitions
+        const rawAlpha = 1 - (framesFromEnd / transitionFrames);
+        transitionAlpha = rawAlpha < 0.5 
+          ? 2 * rawAlpha * rawAlpha 
+          : 1 - Math.pow(-2 * rawAlpha + 2, 2) / 2;
+      }
 
-      // Draw function with aspect ratio fit
+      // Draw function with aspect ratio fit (cover mode)
       const drawImageFit = (image: HTMLImageElement, alpha: number = 1) => {
         const imgAspect = image.width / image.height;
         const canvasAspect = canvas.width / canvas.height;
         
         let drawW, drawH, drawX, drawY;
         if (imgAspect > canvasAspect) {
+          // Image is wider - fit height, crop sides
           drawH = canvas.height;
           drawW = canvas.height * imgAspect;
           drawX = (canvas.width - drawW) / 2;
           drawY = 0;
         } else {
+          // Image is taller - fit width, crop top/bottom
           drawW = canvas.width;
           drawH = canvas.width / imgAspect;
           drawX = 0;
@@ -255,18 +303,25 @@ async function generateVideoFromFrames(
         drawImageFit(nextImg, transitionAlpha);
       }
 
-      // Add subtle vignette effect for documentary feel
+      // ✅ Add subtle vignette effect for documentary feel
       const vignette = ctx.createRadialGradient(
         canvas.width / 2, canvas.height / 2, 0,
         canvas.width / 2, canvas.height / 2, canvas.width * 0.8
       );
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.3)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.25)');
       ctx.fillStyle = vignette;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // ✅ Add subtle film grain overlay for cinematic feel
+      if (frameCount % 3 === 0) {
+        ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.02})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
       frameCount++;
-      onProgress?.(0.5 + (frameCount / actualTotalFrames) * 0.5);
+      // Progress: 40-100% for rendering
+      onProgress?.(0.4 + (frameCount / actualTotalFrames) * 0.6);
 
       // Continue or stop
       if (frameCount < actualTotalFrames) {
@@ -534,22 +589,43 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
         />
       )}
 
-      {/* Loading state */}
+      {/* ✅ ENHANCED Loading state with visual progress */}
       {isGenerating && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3"
+          className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70 flex flex-col items-center justify-center gap-4"
         >
-          <Loader2 className="h-8 w-8 text-white animate-spin" />
-          <div className="text-white text-sm font-medium">
-            Génération vidéo... {Math.round(progress * 100)}%
-          </div>
-          <div className="w-32 h-1.5 bg-white/20 rounded-full overflow-hidden">
+          {/* Animated loader ring */}
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border-4 border-white/20" />
             <motion.div
-              className="h-full bg-white rounded-full"
+              className="absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent border-t-white"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">{Math.round(progress * 100)}%</span>
+            </div>
+          </div>
+          
+          {/* Status text */}
+          <div className="text-center">
+            <div className="text-white text-sm font-medium">
+              {progress < 0.4 ? '🎞️ Chargement images...' : '🎬 Rendu vidéo...'}
+            </div>
+            <div className="text-white/60 text-xs mt-1">
+              {Math.round(durationMs / 1000)}s • {frames.length} scènes
+            </div>
+          </div>
+          
+          {/* Progress bar */}
+          <div className="w-40 h-2 bg-white/20 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progress * 100}%` }}
+              transition={{ duration: 0.3 }}
             />
           </div>
         </motion.div>

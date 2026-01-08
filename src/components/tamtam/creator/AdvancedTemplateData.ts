@@ -797,22 +797,29 @@ const EDUCATIF_CULTURE_TEMPLATES_RAW: RawTemplate[] = [
     emoji: '🏘️',
     label_fr: 'Mini-Doc Village',
     label_ba: 'Dugu gba',
-    description_fr: 'Mini documentaire express',
-    description_ba: 'Dugu gba',
+    description_fr: 'Mini documentaire avec narration IA et sous-titres bilingues',
+    description_ba: 'Dugu gba - Dↄɔkumã kɔnɔ',
     family: 'educatif_culture',
     collection: 'patrimoine_vivant',
     inputs: [
-      { type: 'video', minCount: 1, maxCount: 1 }
+      { type: 'video', minCount: 1, maxCount: 1, minDurationSec: 10, maxDurationSec: 60 }
     ],
     supportedDurations: ['15s', '30s', '45s'],
     outputRatios: ['9:16'],
-    features: { narrativeStructure: true, smartCaptions: true, audioEnhance: true },
+    features: { 
+      narrativeStructure: true, 
+      smartCaptions: true, 
+      audioEnhance: true,
+      styleTransfer: true,    // ✅ Documentary color grading
+      stabilization: true,    // ✅ Smooth camera
+      translation: true       // ✅ Bilingual subtitles
+    },
     defaultMusic: 'traditional_soft',
     previewAnimation: 'glow',
     color: 'from-amber-600 to-yellow-500',
     voiceInstructions: [
-      { step: 1, text_fr: 'Filme 15 secondes', action: 'record_video' },
-      { step: 2, text_fr: 'L\'IA transforme', action: 'wait' }
+      { step: 1, text_fr: 'Filme ton village pendant 15 secondes', text_ba: 'I ka dugu gba sɛgɛsɛgɛli 15s', action: 'record_video', durationHint: 15 },
+      { step: 2, text_fr: 'L\'IA crée un mini-documentaire professionnel', text_ba: 'AI bɛ dↄɔkumã dɔ da', action: 'wait' }
     ]
   },
   {
