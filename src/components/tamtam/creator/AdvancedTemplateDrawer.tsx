@@ -939,6 +939,7 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
           aiData={aiData}
           isVisible={isVisible || isHovered}
           loop={true}
+          autoLoad={false}
           className="absolute inset-0"
           onVideoReady={() => setIsVideoReady(true)}
         />
@@ -1040,35 +1041,20 @@ const XXLTemplateCard: React.FC<XXLTemplateCardProps> = ({
           </div>
         </div>
 
-        <h3 className="font-bold text-white text-xs sm:text-sm leading-tight mb-0.5 drop-shadow-md">
+        <h3 className="font-bold text-white text-sm leading-tight mb-0.5 drop-shadow-md">
           {(template as any).label_fr}
         </h3>
 
-        <p className="text-white/80 text-[10px] sm:text-xs line-clamp-2 mb-2 flex-grow leading-snug drop-shadow-sm">
-          {aiData?.ai_enhanced_description || (template as any).description_fr}
+        <p className="text-white/70 text-[10px] line-clamp-1 mb-2 flex-grow drop-shadow-sm">
+          {(template as any).description_fr}
         </p>
 
-        {/* ✅ Kuaishou-style input & time hints */}
-        {cardHint && (
-          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-            <span className="text-[10px] sm:text-xs bg-black/40 rounded-full px-2 py-0.5 text-white/90 flex items-center gap-1">
-              <Camera className="h-3 w-3" />
-              {cardHint.inputSummary}
-            </span>
-            <span className="text-[10px] sm:text-xs bg-black/40 rounded-full px-2 py-0.5 text-white/90 flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {cardHint.timeLabel}
-            </span>
-          </div>
-        )}
-
-        {/* Feature icons */}
-        <div className="flex items-center gap-1 mb-2">
-          {getFeatureIcons().map((icon, i) => (
-            <span key={i} className="text-xs sm:text-sm bg-black/30 rounded-full px-1.5 py-0.5">
-              {icon}
-            </span>
-          ))}
+        {/* ✅ Simplified badge - duration only */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-[10px] bg-black/40 rounded-full px-2 py-0.5 text-white/90 flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {(template as any).supportedDurations?.[0] || '15s'}
+          </span>
         </div>
 
         <div className="flex gap-1.5">

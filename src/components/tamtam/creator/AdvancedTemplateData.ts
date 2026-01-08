@@ -797,24 +797,22 @@ const EDUCATIF_CULTURE_TEMPLATES_RAW: RawTemplate[] = [
     emoji: '🏘️',
     label_fr: 'Mini-Doc Village',
     label_ba: 'Dugu gba',
-    description_fr: 'Transforme en mini documentaire',
-    description_ba: 'Dugu gba yeli',
+    description_fr: 'Mini documentaire express',
+    description_ba: 'Dugu gba',
     family: 'educatif_culture',
     collection: 'patrimoine_vivant',
     inputs: [
-      { type: 'video', minCount: 1, maxCount: 1 },
-      { type: 'audio', minCount: 0, maxCount: 1, optional: true }
+      { type: 'video', minCount: 1, maxCount: 1 }
     ],
-    supportedDurations: ['30s', '45s', '60s', '90s'],
-    outputRatios: ['9:16', '16:9'],
-    features: { narrativeStructure: true, smartCaptions: true, iconInjection: true, audioEnhance: true },
+    supportedDurations: ['15s', '30s', '45s'],
+    outputRatios: ['9:16'],
+    features: { narrativeStructure: true, smartCaptions: true, audioEnhance: true },
     defaultMusic: 'traditional_soft',
     previewAnimation: 'glow',
     color: 'from-amber-600 to-yellow-500',
     voiceInstructions: [
-      { step: 1, text_fr: 'Filme ton village ou ton sujet', action: 'record_video' },
-      { step: 2, text_fr: 'Ajoute un commentaire vocal si tu veux', action: 'record_audio' },
-      { step: 3, text_fr: 'L\'IA crée intro, narration et outro', action: 'wait' }
+      { step: 1, text_fr: 'Filme 15 secondes', action: 'record_video' },
+      { step: 2, text_fr: 'L\'IA transforme', action: 'wait' }
     ]
   },
   {

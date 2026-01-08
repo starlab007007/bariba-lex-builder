@@ -49,7 +49,7 @@ export function TemplateGenerationAdmin() {
   }, [templates, getVisualStats]);
 
   // Generate Mini-Doc Village video
-  const generateMiniDocVideo = async (duration: 30 | 60) => {
+  const generateMiniDocVideo = async (duration: 15 | 30 | 45) => {
     setIsGeneratingMiniDoc(true);
     setMiniDocProgress(`Génération vidéo Mini-Doc Village ${duration}s...`);
     
@@ -285,6 +285,15 @@ export function TemplateGenerationAdmin() {
             </div>
             
             <Button
+              onClick={() => generateMiniDocVideo(15)}
+              disabled={isGeneratingMiniDoc}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              <Video className={`w-4 h-4 mr-2 ${isGeneratingMiniDoc ? 'animate-spin' : ''}`} />
+              Générer 15s
+            </Button>
+            
+            <Button
               variant="outline"
               size="sm"
               onClick={() => generateMiniDocVideo(30)}
@@ -293,15 +302,6 @@ export function TemplateGenerationAdmin() {
             >
               <Video className={`w-4 h-4 mr-2 ${isGeneratingMiniDoc ? 'animate-spin' : ''}`} />
               Générer 30s
-            </Button>
-            
-            <Button
-              onClick={() => generateMiniDocVideo(60)}
-              disabled={isGeneratingMiniDoc}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
-            >
-              <Video className={`w-4 h-4 mr-2 ${isGeneratingMiniDoc ? 'animate-spin' : ''}`} />
-              Générer 60s
             </Button>
             
             {miniDocProgress && (
