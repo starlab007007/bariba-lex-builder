@@ -24,10 +24,16 @@ interface TemplateData {
 }
 
 interface GenerationRequest {
-  action: 'sync_all' | 'generate_single' | 'generate_batch' | 'analyze' | 'enhance' | 'get_status';
+  action: 'sync_all' | 'generate_single' | 'generate_batch' | 'analyze' | 'enhance' | 'get_status' | 'generate_visuals_batch';
   templates?: TemplateData[];
   templateKey?: string;
   batchSize?: number;
+}
+
+interface ScenePrompt {
+  scene: number;
+  description: string;
+  visualElements: string[];
 }
 
 serve(async (req) => {
@@ -325,6 +331,80 @@ serve(async (req) => {
         });
       }
 
+      case 'generate_visuals_batch': {
+        // Get pending templates without visual assets
+        const { data: pendingTemplates, error: fetchError } = await supabase
+          .from('ai_generated_templates')
+          .select('*')
+          .or('visual_generation_status.eq.pending,visual_generation_status.is.null')
+          .limit(batchSize);
+
+        if (fetchError) throw fetchError;
+
+        if (!pendingTemplates || pendingTemplates.length === 0) {
+          return new Response(JSON.stringify({ 
+            success: true, 
+            message: 'No pending templates to generate visuals',
+            processed: 0 
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const results = [];
+        for (const template of pendingTemplates) {
+          try {
+            // Mark as generating
+            await supabase
+              .from('ai_generated_templates')
+              .update({ visual_generation_status: 'generating' })
+              .eq('id', template.id);
+
+            console.log(`[generate_visuals_batch] Generating 5 scenes for ${template.template_key}`);
+
+            // Generate 5 scene images
+            const sceneImages = await generateTemplateSceneImages(LOVABLE_API_KEY, template, supabase);
+
+            // Update with generated visuals
+            await supabase
+              .from('ai_generated_templates')
+              .update({
+                storyboard_frames: { 
+                  type: 'scene_sequence',
+                  scenes: sceneImages,
+                  generated_at: new Date().toISOString()
+                },
+                preview_image_url: sceneImages[0]?.url || null,
+                visual_generation_status: 'completed'
+              })
+              .eq('id', template.id);
+
+            results.push({ 
+              key: template.template_key, 
+              success: true, 
+              scenesCount: sceneImages.length 
+            });
+          } catch (err) {
+            console.error(`Error generating visuals for ${template.template_key}:`, err);
+            await supabase
+              .from('ai_generated_templates')
+              .update({ visual_generation_status: 'failed' })
+              .eq('id', template.id);
+            results.push({ key: template.template_key, success: false, error: String(err) });
+          }
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          processed: results.length,
+          succeeded: results.filter(r => r.success).length,
+          failed: results.filter(r => !r.success).length,
+          results 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -340,6 +420,145 @@ serve(async (req) => {
     });
   }
 });
+
+// Generate 5 scene images for a template using Lovable AI
+async function generateTemplateSceneImages(apiKey: string, template: any, supabase: any) {
+  const scenePrompts = getScenePromptsForTemplate(template);
+  const sceneImages: { scene: number; url: string; prompt: string }[] = [];
+
+  for (const scenePrompt of scenePrompts) {
+    try {
+      const imagePrompt = `Generate a vibrant, professional scene image for an African video template.
+
+Template: "${template.label_fr}" (${template.emoji})
+Scene ${scenePrompt.scene}/5: ${scenePrompt.description}
+Family: ${template.family}
+Color theme: ${template.color}
+
+Visual elements to include:
+${scenePrompt.visualElements.map(el => `- ${el}`).join('\n')}
+
+Style requirements:
+- Contemporary African aesthetic with bold patterns
+- Vibrant colors with ${template.color} as accent
+- Professional quality suitable for a video template preview
+- 9:16 vertical mobile format
+- Dynamic composition suggesting motion
+- Clean, modern design with cultural authenticity
+
+Output: A single high-quality scene frame for video template preview.`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-pro-image-preview",
+          messages: [{ role: "user", content: imagePrompt }],
+          modalities: ["image", "text"]
+        })
+      });
+
+      if (!response.ok) {
+        console.error(`Scene ${scenePrompt.scene} generation failed: ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const imageBase64 = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+      if (imageBase64) {
+        // Upload to Supabase Storage
+        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        
+        const filePath = `scenes/${template.template_key}_scene_${scenePrompt.scene}.png`;
+        await supabase.storage
+          .from('template-assets')
+          .upload(filePath, buffer, {
+            contentType: 'image/png',
+            upsert: true
+          });
+
+        const { data: urlData } = supabase.storage
+          .from('template-assets')
+          .getPublicUrl(filePath);
+
+        sceneImages.push({
+          scene: scenePrompt.scene,
+          url: urlData.publicUrl,
+          prompt: scenePrompt.description
+        });
+
+        console.log(`[generateTemplateSceneImages] Scene ${scenePrompt.scene}/5 generated for ${template.template_key}`);
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 800));
+    } catch (err) {
+      console.error(`Error generating scene ${scenePrompt.scene}:`, err);
+    }
+  }
+
+  return sceneImages;
+}
+
+// Generate scene prompts based on template type
+function getScenePromptsForTemplate(template: any): ScenePrompt[] {
+  const baseScenes: ScenePrompt[] = [];
+  const family = template.family || 'grand_public';
+  const label = template.label_fr || 'Template';
+
+  switch (family) {
+    case 'educatif_culture':
+      baseScenes.push(
+        { scene: 1, description: 'Opening - Cultural setting establishing shot', visualElements: ['African landscape', 'Traditional architecture', 'Warm lighting'] },
+        { scene: 2, description: 'Introduction - Person or subject presentation', visualElements: ['Local person', 'Traditional clothing', 'Natural environment'] },
+        { scene: 3, description: 'Main content - Educational moment or cultural demonstration', visualElements: ['Hands working', 'Traditional craft', 'Teaching moment'] },
+        { scene: 4, description: 'Detail shot - Close-up on important element', visualElements: ['Intricate details', 'Cultural patterns', 'Focused light'] },
+        { scene: 5, description: 'Closing - Inspiring conclusion with message', visualElements: ['Smiling faces', 'Community gathering', 'Sunset ambiance'] }
+      );
+      break;
+
+    case 'vocal_radio':
+      baseScenes.push(
+        { scene: 1, description: 'Radio studio or announcement setting', visualElements: ['Microphone', 'Sound waves', 'Broadcast equipment'] },
+        { scene: 2, description: 'Speaker or announcer presentation', visualElements: ['Confident speaker', 'Professional setting', 'Dynamic pose'] },
+        { scene: 3, description: 'Message delivery - Key information visual', visualElements: ['Text overlays', 'Info graphics', 'Bold typography'] },
+        { scene: 4, description: 'Community reaction or engagement', visualElements: ['Diverse listeners', 'Mobile phones', 'Village gathering'] },
+        { scene: 5, description: 'Call to action - Closing with contact info', visualElements: ['Phone numbers', 'Social icons', 'Community logo'] }
+      );
+      break;
+
+    case 'kuaishou_style':
+      baseScenes.push(
+        { scene: 1, description: 'Eye-catching intro with special effect', visualElements: ['Bright colors', 'Special effects', 'Attention grabber'] },
+        { scene: 2, description: 'Subject reveal with transition', visualElements: ['Smooth transition', 'Subject centered', 'Dynamic framing'] },
+        { scene: 3, description: 'Peak effect moment - Maximum visual impact', visualElements: ['Full effect applied', 'Vibrant colors', 'Motion blur'] },
+        { scene: 4, description: 'Variation or secondary effect', visualElements: ['Color shift', 'Pattern change', 'New angle'] },
+        { scene: 5, description: 'Finale - Perfect finished result', visualElements: ['Polished look', 'Professional finish', 'Share-ready'] }
+      );
+      break;
+
+    default: // grand_public
+      baseScenes.push(
+        { scene: 1, description: 'Dynamic intro with template branding', visualElements: ['Bold title', 'Energetic colors', 'Modern design'] },
+        { scene: 2, description: 'Main subject introduction', visualElements: ['Person or product', 'Clean framing', 'Good lighting'] },
+        { scene: 3, description: 'Action sequence - Movement and energy', visualElements: ['Motion effects', 'Beat sync suggestion', 'Dynamic poses'] },
+        { scene: 4, description: 'Highlight moment - Key visual impact', visualElements: ['Peak action', 'Emotional expression', 'Color pop'] },
+        { scene: 5, description: 'Outro with call to action', visualElements: ['Social buttons', 'Follow CTA', 'Brand consistency'] }
+      );
+  }
+
+  // Customize based on template emoji/label
+  return baseScenes.map(scene => ({
+    ...scene,
+    description: `${scene.description} for "${label}" ${template.emoji}`,
+    visualElements: [...scene.visualElements, template.emoji, template.color]
+  }));
+}
 
 async function generateAIContent(apiKey: string, template: any) {
   const [voiceDesc, analysis, storyboard] = await Promise.all([
