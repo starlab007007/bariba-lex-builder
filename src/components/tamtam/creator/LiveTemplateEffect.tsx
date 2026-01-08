@@ -197,45 +197,7 @@ const LiveTemplateEffect: React.FC<LiveTemplateEffectProps> = ({
       ctx.stroke();
     }
 
-    // Draw watermark badge with background
-    const badgeText = `${template.emoji} ${template.label_fr}`;
-    ctx.font = 'bold 20px system-ui';
-    const textWidth = ctx.measureText(badgeText).width;
-    const badgeX = 16;
-    const badgeY = h - 40;
-    const badgePadX = 12;
-    const badgePadY = 8;
-    
-    // Badge background (use fallback for roundRect)
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    const badgeW = textWidth + badgePadX * 2;
-    const badgeH = 32 + badgePadY;
-    const badgeTop = badgeY - 16 - badgePadY;
-    const badgeLeft = badgeX - badgePadX;
-    const badgeRadius = 16;
-    
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(badgeLeft, badgeTop, badgeW, badgeH, badgeRadius);
-    } else {
-      // Fallback for browsers without roundRect
-      ctx.moveTo(badgeLeft + badgeRadius, badgeTop);
-      ctx.lineTo(badgeLeft + badgeW - badgeRadius, badgeTop);
-      ctx.quadraticCurveTo(badgeLeft + badgeW, badgeTop, badgeLeft + badgeW, badgeTop + badgeRadius);
-      ctx.lineTo(badgeLeft + badgeW, badgeTop + badgeH - badgeRadius);
-      ctx.quadraticCurveTo(badgeLeft + badgeW, badgeTop + badgeH, badgeLeft + badgeW - badgeRadius, badgeTop + badgeH);
-      ctx.lineTo(badgeLeft + badgeRadius, badgeTop + badgeH);
-      ctx.quadraticCurveTo(badgeLeft, badgeTop + badgeH, badgeLeft, badgeTop + badgeH - badgeRadius);
-      ctx.lineTo(badgeLeft, badgeTop + badgeRadius);
-      ctx.quadraticCurveTo(badgeLeft, badgeTop, badgeLeft + badgeRadius, badgeTop);
-      ctx.closePath();
-    }
-    ctx.fill();
-    
-    // Badge text
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.textAlign = 'left';
-    ctx.fillText(badgeText, badgeX, badgeY);
+    // Watermark badge supprimé pour vidéo propre
 
     // Callback for external processing
     if (onProcessedFrame) {
@@ -323,16 +285,7 @@ const LiveTemplateEffect: React.FC<LiveTemplateEffectProps> = ({
       {/* Bottom Vignette */}
       <div className="absolute bottom-0 left-0 right-0 h-56 bg-gradient-to-t from-black/60 to-transparent" />
 
-      {/* Template Watermark Badge */}
-      <motion.div
-        initial={{ opacity: 0, y: -20, scale: 0.8 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ delay: 0.2, type: "spring" }}
-        className="absolute top-5 left-5 flex items-center gap-3 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/10"
-      >
-        <span className="text-2xl">{template.emoji}</span>
-        <span className="text-white text-sm font-semibold">{template.label_fr}</span>
-      </motion.div>
+      {/* Template Watermark Badge - Hidden for clean video */}
 
       {/* Feature Badges - Active Features */}
       <motion.div 
