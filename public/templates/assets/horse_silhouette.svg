@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" fill="currentColor">
+  <!-- Silhouette de cheval au galop - Kuaishou Horse Year Style -->
+  <defs>
+    <filter id="horseGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <g filter="url(#horseGlow)">
+    <!-- Corps du cheval -->
+    <path d="M45 95 
+             Q35 85 30 70 
+             Q28 55 35 45 
+             Q40 38 50 35 
+             L55 30 
+             Q58 25 65 22 
+             Q72 20 78 22 
+             L85 28 
+             Q90 25 95 28 
+             Q100 30 98 38 
+             L95 42 
+             Q100 45 105 50 
+             Q115 55 130 55 
+             Q145 52 155 58 
+             Q168 65 175 75 
+             Q180 82 178 92 
+             Q175 100 165 105 
+             L155 108 
+             Q150 115 145 125 
+             L140 135 
+             Q138 140 132 140 
+             Q128 138 130 130 
+             L135 115 
+             L130 108 
+             Q120 112 110 112 
+             L105 120 
+             Q102 130 98 138 
+             Q95 142 90 140 
+             Q86 136 88 128 
+             L95 112 
+             L85 108 
+             Q75 112 65 110 
+             L62 118 
+             Q58 128 55 135 
+             Q52 140 47 138 
+             Q43 134 45 125 
+             L52 110 
+             L48 105 
+             Q42 108 35 105 
+             L32 115 
+             Q28 125 25 132 
+             Q22 138 17 135 
+             Q14 130 18 120 
+             L28 100 
+             Z"/>
+    
+    <!-- Crinière -->
+    <path d="M55 30 
+             Q50 25 48 18 
+             Q52 22 58 20 
+             Q55 15 58 10 
+             Q62 15 68 14 
+             Q65 8 70 5 
+             Q75 10 80 12 
+             Q78 18 82 22 
+             Q85 18 88 22 
+             L85 28 
+             Q78 22 72 22 
+             Q65 22 58 25 
+             Z" opacity="0.9"/>
+    
+    <!-- Queue -->
+    <path d="M175 75 
+             Q182 70 188 72 
+             Q195 78 192 88 
+             Q188 95 180 92 
+             Q178 88 178 82 
+             Q180 78 175 75 
+             Z" opacity="0.85"/>
+    
+    <!-- Oreille -->
+    <path d="M50 35 
+             Q48 28 52 22 
+             Q56 26 55 32 
+             L55 35 
+             Z"/>
+    
+    <!-- Œil -->
+    <ellipse cx="62" cy="38" rx="3" ry="2.5" fill="white" opacity="0.3"/>
+  </g>
+</svg>

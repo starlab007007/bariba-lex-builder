@@ -156,7 +156,7 @@ export interface KuaishouTemplateManifest {
   // optional metadata for ranking/collections
   tags?: string[];
   family?: TemplateFamily;
-  collection?: 'voix_village' | 'patrimoine_vivant' | 'fierte_beaute' | null;
+  collection?: 'voix_village' | 'patrimoine_vivant' | 'fierte_beaute' | 'kuaishou_horse' | null;
   supportedOutputRatios?: OutputRatio[]; // your multi-format needs
 }
 
@@ -181,7 +181,7 @@ export interface AdvancedTemplate {
   description_fr: string;
   description_ba?: string;
   family: TemplateFamily;
-  collection: 'voix_village' | 'patrimoine_vivant' | 'fierte_beaute' | null;
+  collection: 'voix_village' | 'patrimoine_vivant' | 'fierte_beaute' | 'kuaishou_horse' | null;
   inputs: TemplateInput[];
   supportedDurations: TemplateDuration[];
   outputRatios: OutputRatio[];
@@ -662,22 +662,22 @@ const GRAND_PUBLIC_TEMPLATES_RAW: RawTemplate[] = [
   },
   {
     id: 'one_take_pro',
-    emoji: '📹',
-    label_fr: 'One-Take Pro',
-    label_ba: 'Gba kelen',
-    description_fr: 'Stabilisation premium avec effets bleu-cyan',
-    description_ba: 'Gba kelen kaa sↄ',
+    emoji: '🐴',
+    label_fr: 'One-Take Pro 🐴',
+    label_ba: 'Gba kelen Horse',
+    description_fr: 'Template Kuaishou Horse 15s: Sparkles, Calligraphie, Beat Sync, Cheval animé',
+    description_ba: 'Template premium kaa horse animation',
     family: 'grand_public',
-    collection: null,
-    inputs: [{ type: 'video', minCount: 1, maxCount: 1 }],
-    supportedDurations: ['15s', '30s', '60s'],
-    outputRatios: ['9:16', '1:1', '16:9'],
-    features: { stabilization: true, autoEditing: true },
-    previewAnimation: 'slide',
-    color: 'from-blue-500 to-cyan-400',
+    collection: 'kuaishou_horse',
+    inputs: [{ type: 'video', minCount: 1, maxCount: 1, minDurationSec: 5, maxDurationSec: 60 }],
+    supportedDurations: ['15s'],
+    outputRatios: ['9:16'],
+    features: { stabilization: true, autoEditing: true, beatSync: true, iconInjection: true },
+    previewAnimation: 'pulse',
+    color: 'from-yellow-500 to-orange-600',
     voiceInstructions: [
-      { step: 1, text_fr: 'Filme en marchant, même si ça tremble', action: 'record_video' },
-      { step: 2, text_fr: 'L\'IA va stabiliser et recadrer', action: 'wait' }
+      { step: 1, text_fr: 'Filme ta vidéo (5-60 sec)', action: 'record_video' },
+      { step: 2, text_fr: 'L\'IA ajoute sparkles, cheval, beat sync...', action: 'wait' }
     ]
   },
   {
