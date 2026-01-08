@@ -55,13 +55,21 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
+interface SceneData {
+  url: string;
+  durationMs: number;
+  name_fr?: string;
+}
+
 /**
- * Generate a WebM video from an array of image URLs
+ * Generate a WebM video from frames with optional scene-specific durations
+ * Supports both simple frame arrays and scene-based storyboards with crossfade transitions
  */
 async function generateVideoFromFrames(
   frames: string[],
   durationMs: number,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  scenes?: SceneData[]
 ): Promise<Blob> {
   if (frames.length === 0) {
     throw new Error('No frames provided');
@@ -89,11 +97,39 @@ async function generateVideoFromFrames(
     throw new Error('No frames could be loaded');
   }
 
-  // Calculate timing
-  const frameDurationMs = durationMs / images.length;
+  // Calculate timing based on scenes or equal distribution
   const fps = 30;
   const totalVideoFrames = Math.ceil(durationMs / 1000 * fps);
-  const framesPerImage = Math.ceil(totalVideoFrames / images.length);
+  const frameInterval = 1000 / fps;
+  const transitionFrames = Math.ceil(0.5 * fps); // 0.5 second crossfade
+
+  // Build timeline with scene durations or equal split
+  interface TimelineEntry { imageIndex: number; startFrame: number; endFrame: number; }
+  const timeline: TimelineEntry[] = [];
+  
+  if (scenes && scenes.length === images.length) {
+    // Use scene-specific durations (Mini-Doc Village style)
+    let currentFrame = 0;
+    for (let i = 0; i < scenes.length; i++) {
+      const sceneFrames = Math.ceil(scenes[i].durationMs / 1000 * fps);
+      timeline.push({
+        imageIndex: i,
+        startFrame: currentFrame,
+        endFrame: currentFrame + sceneFrames
+      });
+      currentFrame += sceneFrames;
+    }
+  } else {
+    // Equal distribution
+    const framesPerImage = Math.ceil(totalVideoFrames / images.length);
+    for (let i = 0; i < images.length; i++) {
+      timeline.push({
+        imageIndex: i,
+        startFrame: i * framesPerImage,
+        endFrame: (i + 1) * framesPerImage
+      });
+    }
+  }
 
   // Setup MediaRecorder
   const stream = canvas.captureStream(fps);
@@ -114,53 +150,79 @@ async function generateVideoFromFrames(
       resolve(blob);
     };
 
-    recorder.onerror = (e) => {
+    recorder.onerror = () => {
       reject(new Error('MediaRecorder error'));
     };
 
     recorder.start();
 
-    let currentImageIndex = 0;
     let frameCount = 0;
-    const frameInterval = 1000 / fps;
+    const actualTotalFrames = timeline[timeline.length - 1]?.endFrame || totalVideoFrames;
 
     const drawFrame = () => {
-      // Draw current image with smooth crossfade
-      const img = images[currentImageIndex];
+      // Find current scene
+      let currentEntry = timeline.find(e => frameCount >= e.startFrame && frameCount < e.endFrame);
+      if (!currentEntry) currentEntry = timeline[timeline.length - 1];
       
-      // Clear and draw
+      const img = images[currentEntry.imageIndex];
+      const nextEntry = timeline[currentEntry.imageIndex + 1];
+      const nextImg = nextEntry ? images[nextEntry.imageIndex] : null;
+      
+      // Clear canvas
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Calculate crossfade alpha
+      const framesFromEnd = currentEntry.endFrame - frameCount;
+      const inTransition = framesFromEnd <= transitionFrames && nextImg;
+      const transitionAlpha = inTransition ? 1 - (framesFromEnd / transitionFrames) : 0;
+
+      // Draw function with aspect ratio fit
+      const drawImageFit = (image: HTMLImageElement, alpha: number = 1) => {
+        const imgAspect = image.width / image.height;
+        const canvasAspect = canvas.width / canvas.height;
+        
+        let drawW, drawH, drawX, drawY;
+        if (imgAspect > canvasAspect) {
+          drawH = canvas.height;
+          drawW = canvas.height * imgAspect;
+          drawX = (canvas.width - drawW) / 2;
+          drawY = 0;
+        } else {
+          drawW = canvas.width;
+          drawH = canvas.width / imgAspect;
+          drawX = 0;
+          drawY = (canvas.height - drawH) / 2;
+        }
+        
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(image, drawX, drawY, drawW, drawH);
+        ctx.globalAlpha = 1;
+      };
+
+      // Draw current image
+      drawImageFit(img, 1 - transitionAlpha);
       
-      // Calculate aspect ratio fit
-      const imgAspect = img.width / img.height;
-      const canvasAspect = canvas.width / canvas.height;
-      
-      let drawW, drawH, drawX, drawY;
-      if (imgAspect > canvasAspect) {
-        drawH = canvas.height;
-        drawW = canvas.height * imgAspect;
-        drawX = (canvas.width - drawW) / 2;
-        drawY = 0;
-      } else {
-        drawW = canvas.width;
-        drawH = canvas.width / imgAspect;
-        drawX = 0;
-        drawY = (canvas.height - drawH) / 2;
+      // Draw next image (crossfade)
+      if (inTransition && nextImg) {
+        drawImageFit(nextImg, transitionAlpha);
       }
-      
-      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+      // Add subtle vignette effect for documentary feel
+      const vignette = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, 0,
+        canvas.width / 2, canvas.height / 2, canvas.width * 0.8
+      );
+      vignette.addColorStop(0, 'rgba(0,0,0,0)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.3)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       frameCount++;
-      onProgress?.(0.5 + (frameCount / totalVideoFrames) * 0.5); // 50-100% for encoding
-
-      // Move to next image
-      if (frameCount % framesPerImage === 0) {
-        currentImageIndex = (currentImageIndex + 1) % images.length;
-      }
+      onProgress?.(0.5 + (frameCount / actualTotalFrames) * 0.5);
 
       // Continue or stop
-      if (frameCount < totalVideoFrames) {
+      if (frameCount < actualTotalFrames) {
         setTimeout(drawFrame, frameInterval);
       } else {
         recorder.stop();
@@ -188,32 +250,65 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Extract frames from aiData
-  const frames = useMemo(() => {
-    if (!aiData) return [];
+  // Extract frames and scenes from aiData
+  const { frames, scenes } = useMemo(() => {
+    if (!aiData) return { frames: [], scenes: undefined };
     
-    // Try multiple sources
-    const sfData = aiData.storyboard_frames;
+    const frameList: string[] = [];
+    let sceneList: SceneData[] | undefined = undefined;
+    
+    // Try storyboard_frames first (Mini-Doc Village format with scene durations)
+    const sfData = aiData.storyboard_frames as any;
     if (sfData) {
-      if (Array.isArray(sfData)) return sfData.filter(f => typeof f === 'string' && f.startsWith('http'));
-      if (sfData.frames) return sfData.frames.filter(f => typeof f === 'string' && f.startsWith('http'));
+      if (sfData.scenes && Array.isArray(sfData.scenes)) {
+        // Scene-based format with individual durations
+        sceneList = sfData.scenes.map((s: any) => ({
+          url: s.url || s.imageUrl,
+          durationMs: s.durationMs || 5000,
+          name_fr: s.name_fr
+        })).filter((s: any) => s.url?.startsWith('http'));
+        sceneList?.forEach(s => frameList.push(s.url));
+      } else if (sfData.frames) {
+        frameList.push(...sfData.frames.filter((f: string) => typeof f === 'string' && f.startsWith('http')));
+      } else if (Array.isArray(sfData)) {
+        frameList.push(...sfData.filter((f: string) => typeof f === 'string' && f.startsWith('http')));
+      }
     }
     
-    const aiSb = aiData.ai_storyboard;
-    if (aiSb) {
-      if (aiSb.animation_frames) return aiSb.animation_frames.filter(f => typeof f === 'string' && f.startsWith('http'));
-      if (aiSb.frames) return aiSb.frames.filter(f => typeof f === 'string' && f.startsWith('http'));
+    // Fallback to ai_storyboard
+    if (frameList.length === 0) {
+      const aiSb = aiData.ai_storyboard as any;
+      if (aiSb) {
+        if (aiSb.scenes && Array.isArray(aiSb.scenes)) {
+          sceneList = aiSb.scenes.map((s: any) => ({
+            url: s.imageUrl || s.url,
+            durationMs: s.durationMs || 5000,
+            name_fr: s.name_fr
+          })).filter((s: any) => s.url?.startsWith('http'));
+          sceneList?.forEach(s => frameList.push(s.url));
+        } else if (aiSb.animation_frames) {
+          frameList.push(...aiSb.animation_frames.filter((f: string) => typeof f === 'string' && f.startsWith('http')));
+        } else if (aiSb.frames) {
+          frameList.push(...aiSb.frames.filter((f: string) => typeof f === 'string' && f.startsWith('http')));
+        }
+      }
     }
     
-    return [];
+    return { frames: frameList, scenes: sceneList };
   }, [aiData]);
 
   // Get template duration
   const durationMs = useMemo(() => {
     // From storyboard_frames data
-    const sfData = aiData?.storyboard_frames;
+    const sfData = aiData?.storyboard_frames as any;
     if (sfData && typeof sfData === 'object' && !Array.isArray(sfData) && sfData.durationMs) {
       return sfData.durationMs;
+    }
+    
+    // From ai_storyboard
+    const aiSb = aiData?.ai_storyboard as any;
+    if (aiSb?.durationMs) {
+      return aiSb.durationMs;
     }
     
     // From KSE manifest
@@ -249,8 +344,8 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
         return;
       }
 
-      // Generate new video
-      const blob = await generateVideoFromFrames(frames, durationMs, setProgress);
+      // Generate new video with scene support
+      const blob = await generateVideoFromFrames(frames, durationMs, setProgress, scenes);
       
       // Cache it
       await templateVideoCache.set(template.id, blob, durationMs, frames.length);

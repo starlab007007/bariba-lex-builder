@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   RefreshCw, Sparkles, CheckCircle, Clock, AlertCircle, 
-  Download, Eye, Play, Pause, RotateCcw, Database, Zap, Image, ImagePlus
+  Download, Eye, Play, Pause, RotateCcw, Database, Zap, Image, ImagePlus, Video, Film
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useTemplateLibrary, AIGeneratedTemplate } from '@/hooks/useTemplateLibrary';
 import { useTemplateVisuals } from '@/hooks/useTemplateVisuals';
 import { TemplatePreviewModal } from '@/components/tamtam/creator/TemplatePreviewModal';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 export function TemplateGenerationAdmin() {
   const {
     templates,
@@ -39,10 +41,40 @@ export function TemplateGenerationAdmin() {
 
   const [previewTemplate, setPreviewTemplate] = useState<AIGeneratedTemplate | null>(null);
   const [visualStats, setVisualStats] = useState<any>(null);
+  const [isGeneratingMiniDoc, setIsGeneratingMiniDoc] = useState(false);
+  const [miniDocProgress, setMiniDocProgress] = useState<string | null>(null);
 
   useEffect(() => {
     getVisualStats().then(setVisualStats);
-  }, [templates]);
+  }, [templates, getVisualStats]);
+
+  // Generate Mini-Doc Village video
+  const generateMiniDocVideo = async (duration: 30 | 60) => {
+    setIsGeneratingMiniDoc(true);
+    setMiniDocProgress(`Génération vidéo Mini-Doc Village ${duration}s...`);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-mini-doc-video', {
+        body: { duration, villageName: 'Village Africain' }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(`✅ Vidéo Mini-Doc Village ${duration}s générée avec ${data.scenes} scènes !`);
+        setMiniDocProgress(null);
+        refetch();
+      } else {
+        throw new Error(data?.error || 'Échec de génération');
+      }
+    } catch (err) {
+      console.error('Mini-Doc generation error:', err);
+      toast.error(`Erreur: ${String(err)}`);
+      setMiniDocProgress(null);
+    } finally {
+      setIsGeneratingMiniDoc(false);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -243,6 +275,40 @@ export function TemplateGenerationAdmin() {
               <Image className={`w-4 h-4 mr-2 ${isGeneratingVisuals ? 'animate-pulse' : ''}`} />
               {isGeneratingVisuals ? 'Génération...' : 'Générer tous les visuels'}
             </Button>
+          </div>
+
+          {/* Mini-Doc Village Special Section */}
+          <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-amber-500/20 bg-amber-500/5 -mx-6 px-6 py-4 -mb-6 rounded-b-lg">
+            <div className="flex items-center gap-2 text-sm text-amber-600 font-medium mr-4">
+              <Film className="w-4 h-4" />
+              <span>🏘️ Mini-Doc Village (5 scènes IA réalistes):</span>
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateMiniDocVideo(30)}
+              disabled={isGeneratingMiniDoc}
+              className="border-amber-500/30 hover:bg-amber-500/10"
+            >
+              <Video className={`w-4 h-4 mr-2 ${isGeneratingMiniDoc ? 'animate-spin' : ''}`} />
+              Générer 30s
+            </Button>
+            
+            <Button
+              onClick={() => generateMiniDocVideo(60)}
+              disabled={isGeneratingMiniDoc}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              <Video className={`w-4 h-4 mr-2 ${isGeneratingMiniDoc ? 'animate-spin' : ''}`} />
+              Générer 60s
+            </Button>
+            
+            {miniDocProgress && (
+              <span className="text-sm text-amber-600 animate-pulse ml-2">
+                {miniDocProgress}
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
