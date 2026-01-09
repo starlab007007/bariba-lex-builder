@@ -130,21 +130,49 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
       streamRef.current = stream;
       audioChunksRef.current = [];
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-          ? 'audio/webm;codecs=opus' 
-          : 'audio/webm'
-      });
+      // ✅ FIX: Cross-device audio MIME type detection (iOS/Safari needs audio/mp4)
+      const getCompatibleAudioMimeType = (): string => {
+        const MR = window.MediaRecorder;
+        if (!MR) return 'audio/webm';
+        
+        // Safari/iOS prefers MP4
+        const isSafari = /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        if (isSafari || isIOS) {
+          if (MR.isTypeSupported?.('audio/mp4')) return 'audio/mp4';
+        }
+        
+        const types = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/mp4',
+          'audio/ogg'
+        ];
+        
+        for (const type of types) {
+          if (MR.isTypeSupported?.(type)) return type;
+        }
+        
+        return 'audio/webm';
+      };
+      
+      const audioMimeType = getCompatibleAudioMimeType();
+      console.log('🎤 Audio recording format:', audioMimeType);
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: audioMimeType });
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        // ✅ Use actual MIME type from recorder
+        const blob = new Blob(audioChunksRef.current, { type: audioMimeType });
         const url = URL.createObjectURL(blob);
         setAudioBlob(blob);
         setAudioUrl(url);
+        console.log('🎵 Audio recorded:', blob.size, 'bytes, type:', audioMimeType);
 
         const audio = new Audio(url);
         audio.onloadedmetadata = () => {
@@ -565,21 +593,87 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
         }
       };
 
-      // 6. Start recording and playing
+      // 6. Start recording and playing with ROBUST audio playback handling
       setProcessingProgress(40);
       setProcessingMessage(language === 'fr' ? 'Génération en cours...' : 'Tɛ̀rɛ̀ tɔ́ɔ́...');
       
       recorder.start(100); // Collect chunks every 100ms
       drawFrame();
-      await audio.play();
-
-      // 7. Progress updates during recording
-      const progressInterval = setInterval(() => {
-        if (audio.currentTime && audio.duration) {
-          const progress = 40 + (audio.currentTime / audio.duration) * 50;
-          setProcessingProgress(Math.min(90, progress));
+      
+      // ✅ FIX: Robust audio.play() with fallback for autoplay restrictions
+      console.log('🔊 Starting audio playback...');
+      let audioStarted = false;
+      
+      try {
+        await audio.play();
+        audioStarted = true;
+        console.log('✅ Audio playing via audio.play()');
+      } catch (playError: any) {
+        console.warn('⚠️ audio.play() failed:', playError?.message);
+        
+        // If autoplay blocked, try AudioContext approach
+        if (playError?.name === 'NotAllowedError' || !audioStarted) {
+          console.log('🔄 Trying AudioContext fallback...');
           
-          const stepIndex = Math.floor((audio.currentTime / audio.duration) * processingSteps.length);
+          try {
+            const audioCtx = new AudioContext();
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            
+            const sourceNode = audioCtx.createBufferSource();
+            sourceNode.buffer = audioBuffer;
+            sourceNode.connect(audioCtx.destination);
+            
+            // Manually track time for progress
+            const startedAt = audioCtx.currentTime;
+            const duration = audioBuffer.duration;
+            
+            sourceNode.start();
+            audioStarted = true;
+            console.log('✅ Audio playing via AudioContext');
+            
+            // Override audio events with manual tracking
+            audio.dispatchEvent(new Event('play'));
+            
+            // Simulate currentTime updates
+            const timeInterval = setInterval(() => {
+              const elapsed = audioCtx.currentTime - startedAt;
+              Object.defineProperty(audio, 'currentTime', { value: elapsed, configurable: true });
+              Object.defineProperty(audio, 'duration', { value: duration, configurable: true });
+              
+              if (elapsed >= duration) {
+                clearInterval(timeInterval);
+                audio.dispatchEvent(new Event('ended'));
+              }
+            }, 100);
+            
+          } catch (ctxError) {
+            console.error('❌ AudioContext fallback also failed:', ctxError);
+            throw new Error(language === 'fr' 
+              ? 'Impossible de lire l\'audio. Veuillez réessayer.'
+              : 'Audio kɛ̀ bàn. Sɔ́ɔ̀n tɔ́ɔ́.');
+          }
+        }
+      }
+      
+      if (!audioStarted) {
+        throw new Error(language === 'fr' 
+          ? 'Impossible de démarrer la génération audio.'
+          : 'Audio tɛ̀rɛ̀ kɛ̀ bàn.');
+      }
+
+      // 7. Progress updates during recording with timeout safety
+      let lastProgressTime = Date.now();
+      const progressInterval = setInterval(() => {
+        const currentTime = (audio as any).currentTime || 0;
+        const duration = (audio as any).duration || audioDuration;
+        
+        if (currentTime && duration && duration > 0) {
+          const progress = 40 + (currentTime / duration) * 50;
+          setProcessingProgress(Math.min(90, progress));
+          lastProgressTime = Date.now();
+          
+          const stepIndex = Math.floor((currentTime / duration) * processingSteps.length);
           if (processingSteps[stepIndex]) {
             setProcessingMessage(
               language === 'fr' 
@@ -588,17 +682,38 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
             );
           }
         }
+        
+        // ✅ Safety: If no progress for 5s, force complete
+        if (Date.now() - lastProgressTime > 5000) {
+          console.warn('⚠️ Audio progress stalled, forcing completion');
+          audio.dispatchEvent(new Event('ended'));
+        }
       }, 500);
 
-      // 8. Wait for audio to finish
-      await new Promise<void>((resolve) => {
-        audio.onended = () => {
-          isRecording = false;
-          clearInterval(progressInterval);
-          recorder.stop();
-          setTimeout(resolve, 200); // Give recorder time to finish
-        };
-      });
+      // 8. Wait for audio to finish with timeout
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          audio.onended = () => {
+            console.log('🏁 Audio ended normally');
+            isRecording = false;
+            clearInterval(progressInterval);
+            recorder.stop();
+            setTimeout(resolve, 200);
+          };
+        }),
+        // Timeout fallback based on audio duration + 5s buffer
+        new Promise<void>((resolve) => {
+          setTimeout(() => {
+            console.log('⏰ Timeout reached, stopping recorder');
+            isRecording = false;
+            clearInterval(progressInterval);
+            if (recorder.state === 'recording') {
+              recorder.stop();
+            }
+            setTimeout(resolve, 200);
+          }, (audioDuration + 5) * 1000);
+        })
+      ]);
 
       // 9. Create final video blob
       setProcessingProgress(95);
