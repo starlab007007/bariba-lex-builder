@@ -227,6 +227,17 @@ export interface ExportRuntimeArgs {
    * "low" = 480p, 12fps | "medium" = 720p, 15fps | "high" = 1080p, 30fps (default)
    */
   exportQuality?: "low" | "medium" | "high";
+
+  /**
+   * ✅ NATIVE HD: Use source video's native resolution for export.
+   * When provided, overrides quality-based resolution calculation.
+   */
+  nativeResolution?: { width: number; height: number };
+
+  /**
+   * ✅ NATIVE HD: Preserve original video quality (use native resolution + 30fps).
+   */
+  preserveQuality?: boolean;
 }
 
 // ============================================================
@@ -1199,11 +1210,25 @@ export class TemplateEngine {
       };
     }
 
-    // ✅ LOW-DATA: Use quality-based resolution and FPS
-    const quality = args.exportQuality || "medium"; // Default to medium for better perf
-    const { w, h } = ratioToResolution(tpl.ratio, quality);
-    const baseFps = quality === "low" ? 12 : quality === "medium" ? 15 : 30;
-    const fps = Math.min(baseFps, tpl.export?.fps || 30);
+    // ✅ NATIVE HD: Use native resolution if provided, otherwise quality-based
+    let w: number, h: number, fps: number;
+    
+    if (args.nativeResolution && args.preserveQuality) {
+      // Use native resolution (capped at 1920 for safety)
+      w = Math.min(args.nativeResolution.width, 1920);
+      h = Math.min(args.nativeResolution.height, 1920);
+      fps = 30; // Always 30fps for native quality
+      console.log(`[KEngine] Using NATIVE resolution: ${w}x${h} @ ${fps}fps`);
+    } else {
+      // Fallback to quality-based resolution
+      const quality = args.exportQuality || "medium";
+      const resolution = ratioToResolution(tpl.ratio, quality);
+      w = resolution.w;
+      h = resolution.h;
+      const baseFps = quality === "low" ? 12 : quality === "medium" ? 15 : 30;
+      fps = Math.min(baseFps, tpl.export?.fps || 30);
+    }
+    
     const duration = Math.max(0.5, tpl.duration || 6);
 
     // If caller provided an existing canvas (preview), use it; else create a new one.

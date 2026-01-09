@@ -944,7 +944,7 @@ export default function FullscreenCreator({
     };
   }, [hasCapture, isKEngineActive, kState.template, legacyTemplateActive, kEngineQuality, performanceInfo?.tier]);
 
-  // ✅ Helper: Rendu hybride vidéo + effets K-Engine overlay
+  // ✅ Helper: Rendu hybride vidéo NATIVE HD + effets K-Engine overlay
   const renderVideoWithKEngineOverlay = useCallback((
     canvas: HTMLCanvasElement,
     video: HTMLVideoElement,
@@ -953,29 +953,26 @@ export default function FullscreenCreator({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const w = Math.max(1, Math.floor(rect.width * dpr));
-    const h = Math.max(1, Math.floor(rect.height * dpr));
+    // ✅ NATIVE HD RESOLUTION: Use video's native dimensions (not CSS/DPR scaled)
+    const nativeW = video.videoWidth || 1080;
+    const nativeH = video.videoHeight || 1920;
+    
+    // Cap at 1080p for performance, but preserve aspect ratio
+    const maxDim = 1080;
+    const scale = Math.min(1, maxDim / Math.max(nativeW, nativeH));
+    const w = Math.round(nativeW * scale);
+    const h = Math.round(nativeH * scale);
 
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
+      console.log(`[K-Engine Preview] Canvas sized to native resolution: ${w}x${h}`);
     }
 
     ctx.clearRect(0, 0, w, h);
 
-    // 1. Dessiner la vidéo (cover crop)
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    if (vw === 0 || vh === 0) return;
-    
-    const scale = Math.max(w / vw, h / vh);
-    const dw = vw * scale;
-    const dh = vh * scale;
-    const dx = (w - dw) / 2;
-    const dy = (h - dh) / 2;
-    ctx.drawImage(video, 0, 0, vw, vh, dx, dy, dw, dh);
+    // 1. Dessiner la vidéo à sa résolution native (pas de scaling CSS)
+    ctx.drawImage(video, 0, 0, nativeW, nativeH, 0, 0, w, h);
 
     // 2. Appliquer effets K-Engine (color grading, vignette, badge)
     const categoryColors: Record<string, string> = {
@@ -1106,7 +1103,10 @@ export default function FullscreenCreator({
     }
   }, [capturedType, isKEngineActive]);
 
-  // Recording (baked-in effects when template is active - legacy live canvas path)
+  // ✅ Track if capture needs K-Engine post-processing (for native quality capture)
+  const [captureNeedsKEngine, setCaptureNeedsKEngine] = useState(false);
+
+  // Recording - ✅ NATIVE HD QUALITY: Always capture from native stream, effects applied at export
   const startRecording = async () => {
     setError(null);
     if (!streamRef.current) await startStream();
@@ -1124,31 +1124,28 @@ export default function FullscreenCreator({
     try {
       chunksRef.current = [];
 
+      // ✅ NATIVE QUALITY: Always capture the native HD stream
+      // K-Engine effects will be applied during export (not baked-in at capture)
       let recordStream = streamRef.current;
-
-      // ✅ BLOCK C: If K-Engine active with live preview, capture from liveCanvasRef (baked-in effects)
-      if (isKEngineActive && liveCanvasRef.current) {
+      
+      // Track if we need K-Engine post-processing
+      const needsKEnginePostProcess = isKEngineActive && kState.template;
+      setCaptureNeedsKEngine(!!needsKEnginePostProcess);
+      
+      if (needsKEnginePostProcess) {
+        console.log('[FullscreenCreator] Recording NATIVE HD stream (effects applied at export)');
+      }
+      
+      // Legacy templates: still bake effects (backward compatibility)
+      const legacyActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
+      if (legacyActive && liveCanvasRef.current) {
         try {
           const canvasStream = liveCanvasRef.current.captureStream(30);
           const audioTracks = streamRef.current.getAudioTracks();
           audioTracks.forEach((track) => canvasStream.addTrack(track));
           recordStream = canvasStream;
-          console.log('[FullscreenCreator] Recording from K-Engine canvas (baked-in effects)');
-        } catch (e) {
-          console.warn('[FullscreenCreator] Failed to capture K-Engine canvas, falling back to raw stream:', e);
-        }
-      }
-      // If legacy advanced template live canvas is used, bake effects by capturing canvas
-      else {
-        const legacyActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
-        if (legacyActive && liveCanvasRef.current) {
-          try {
-            const canvasStream = liveCanvasRef.current.captureStream(30);
-            const audioTracks = streamRef.current.getAudioTracks();
-            audioTracks.forEach((track) => canvasStream.addTrack(track));
-            recordStream = canvasStream;
-          } catch {}
-        }
+          console.log('[FullscreenCreator] Recording from legacy template canvas (baked-in effects)');
+        } catch {}
       }
 
       const rec = new MediaRecorder(recordStream, { mimeType });
@@ -1573,12 +1570,41 @@ export default function FullscreenCreator({
 
       let finalSegments = [...segments];
 
-      // ✅ BLOCK B: If K-Engine active, render the final output with template effects
+      // ✅ BLOCK B: If K-Engine active, render the final output with template effects at NATIVE resolution
       if (isKEngineActive && segments[0]?.blob) {
         setIsProcessingTemplate(true);
-        setProcessingProgress({ percent: 5, message_fr: "Préparation export template..." });
+        setProcessingProgress({ percent: 5, message_fr: "Préparation export HD..." });
 
         try {
+          // ✅ NATIVE RESOLUTION: Extract resolution from captured video blob
+          let nativeResolution = { width: 1080, height: 1920 };
+          
+          if (capturedType === "video" && segments[0].blob) {
+            try {
+              const tempVideo = document.createElement("video");
+              tempVideo.muted = true;
+              tempVideo.playsInline = true;
+              tempVideo.src = URL.createObjectURL(segments[0].blob);
+              
+              await new Promise<void>((resolve) => {
+                tempVideo.onloadedmetadata = () => resolve();
+                setTimeout(resolve, 3000); // Timeout fallback
+              });
+              
+              if (tempVideo.videoWidth > 0 && tempVideo.videoHeight > 0) {
+                nativeResolution = {
+                  width: tempVideo.videoWidth,
+                  height: tempVideo.videoHeight
+                };
+                console.log(`[FullscreenCreator] Native resolution detected: ${nativeResolution.width}x${nativeResolution.height}`);
+              }
+              
+              URL.revokeObjectURL(tempVideo.src);
+            } catch (e) {
+              console.warn("[FullscreenCreator] Failed to probe video resolution, using default:", e);
+            }
+          }
+
           const exportResult = await kEngine.exportJob(
             {
               inputBlob: segments[0].blob,
@@ -1586,12 +1612,16 @@ export default function FullscreenCreator({
               outputType: capturedType === "photo" ? "image" : "video",
               preferMp4: false,
               renderCanvas: previewCanvasRef.current || undefined,
+              // ✅ NATIVE HD: Pass resolution and preserve quality flag
+              nativeResolution,
+              preserveQuality: true,
+              exportQuality: "high", // Force high quality for native resolution
               meta: { caption: finalCaption, template: activeMeta.label },
             },
             (progress) => {
               setProcessingProgress({
                 percent: clamp(progress.percent || 0, 0, 95),
-                message_fr: progress.message || "Export en cours...",
+                message_fr: progress.message || "Export HD en cours...",
               });
             }
           );
@@ -1601,7 +1631,7 @@ export default function FullscreenCreator({
             finalSegments = segments.map((seg, i) =>
               i === 0 ? { ...seg, blob: exportResult.outputBlob } : seg
             );
-            setToast(`✨ Template appliqué (${exportResult.used})`);
+            setToast(`✨ Template HD appliqué (${exportResult.used})`);
           }
         } catch (e: any) {
           console.warn("[FullscreenCreator] K-Engine export failed, using original:", e);
@@ -2389,6 +2419,7 @@ export default function FullscreenCreator({
               <CameraResolutionIndicator
                 videoRef={videoRef}
                 performanceTier={performanceInfo?.tier}
+                showQualityPreserved={isKEngineActive}
               />
             </div>
           )}
