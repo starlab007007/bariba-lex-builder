@@ -88,6 +88,9 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingMessage, setProcessingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  // ✅ NEW: Debug info for diagnostics
+  const [debugInfo, setDebugInfo] = useState<Record<string, any> | null>(null);
 
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -110,6 +113,83 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
       if (audioUrl) URL.revokeObjectURL(audioUrl);
     };
   }, [audioUrl]);
+  
+  // ==========================================
+  // UTILITY: Get accurate audio duration (handles Infinity)
+  // ==========================================
+  
+  const getAccurateAudioDuration = useCallback(async (blob: Blob, url: string): Promise<number> => {
+    console.log('🎵 Getting accurate audio duration...');
+    
+    // Method 1: AudioContext (most reliable)
+    try {
+      const audioCtx = new AudioContext();
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      const duration = audioBuffer.duration;
+      audioCtx.close();
+      
+      if (isFinite(duration) && duration > 0) {
+        console.log('✅ AudioContext duration:', duration);
+        return duration;
+      }
+    } catch (e) {
+      console.warn('⚠️ AudioContext decode failed:', e);
+    }
+    
+    // Method 2: Audio element with seek trick
+    return new Promise((resolve) => {
+      const audio = new Audio(url);
+      
+      const handleMetadata = () => {
+        if (isFinite(audio.duration) && audio.duration > 0) {
+          console.log('✅ Audio element duration:', audio.duration);
+          cleanup();
+          resolve(audio.duration);
+        } else {
+          // Infinity duration - use seek trick
+          console.log('⏳ Using seek trick for Infinity duration...');
+          audio.currentTime = 1e101;
+        }
+      };
+      
+      const handleTimeUpdate = () => {
+        if (isFinite(audio.duration) && audio.duration > 0) {
+          console.log('✅ Duration after seek:', audio.duration);
+          audio.currentTime = 0;
+          cleanup();
+          resolve(audio.duration);
+        }
+      };
+      
+      const handleError = () => {
+        console.warn('⚠️ Audio element error');
+        cleanup();
+        resolve(30); // Fallback to min duration
+      };
+      
+      const cleanup = () => {
+        audio.removeEventListener('loadedmetadata', handleMetadata);
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('durationchange', handleTimeUpdate);
+        audio.removeEventListener('error', handleError);
+      };
+      
+      audio.addEventListener('loadedmetadata', handleMetadata);
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('durationchange', handleTimeUpdate);
+      audio.addEventListener('error', handleError);
+      
+      // Timeout fallback
+      setTimeout(() => {
+        console.warn('⏰ Duration detection timeout');
+        cleanup();
+        resolve(30);
+      }, 5000);
+      
+      audio.load();
+    });
+  }, []);
 
   // ==========================================
   // AUDIO RECORDING
@@ -166,7 +246,7 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         // ✅ Use actual MIME type from recorder
         const blob = new Blob(audioChunksRef.current, { type: audioMimeType });
         const url = URL.createObjectURL(blob);
@@ -174,10 +254,10 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
         setAudioUrl(url);
         console.log('🎵 Audio recorded:', blob.size, 'bytes, type:', audioMimeType);
 
-        const audio = new Audio(url);
-        audio.onloadedmetadata = () => {
-          setAudioDuration(audio.duration);
-        };
+        // ✅ FIX: Use accurate duration detection (handles Infinity)
+        const duration = await getAccurateAudioDuration(blob, url);
+        console.log('📏 Accurate duration:', duration);
+        setAudioDuration(duration);
       };
 
       mediaRecorderRef.current = mediaRecorder;
@@ -258,7 +338,7 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
   // AUDIO UPLOAD
   // ==========================================
 
-  const handleAudioUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -268,15 +348,24 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
     }
 
     const url = URL.createObjectURL(file);
-    const audio = new Audio(url);
-
-    audio.onloadedmetadata = () => {
-      if (audio.duration < minDuration) {
+    
+    // ✅ FIX: Use accurate duration detection
+    try {
+      const duration = await getAccurateAudioDuration(file, url);
+      console.log('📏 Upload duration:', duration);
+      
+      if (!isFinite(duration) || duration <= 0) {
+        setError(language === 'fr' ? 'Durée audio inconnue' : 'Audio duration unknown');
+        URL.revokeObjectURL(url);
+        return;
+      }
+      
+      if (duration < minDuration) {
         setError(language === 'fr' ? `Audio trop court (min ${minDuration}s)` : `Audio trop court`);
         URL.revokeObjectURL(url);
         return;
       }
-      if (audio.duration > maxDuration) {
+      if (duration > maxDuration) {
         setError(language === 'fr' ? `Audio trop long (max ${maxDuration}s)` : `Audio trop long`);
         URL.revokeObjectURL(url);
         return;
@@ -284,15 +373,14 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
 
       setAudioBlob(file);
       setAudioUrl(url);
-      setAudioDuration(audio.duration);
+      setAudioDuration(duration);
       setError(null);
-    };
-
-    audio.onerror = () => {
+    } catch (err) {
+      console.error('Audio upload error:', err);
       setError(language === 'fr' ? 'Impossible de lire ce fichier' : 'File non valide');
       URL.revokeObjectURL(url);
-    };
-  }, [language]);
+    }
+  }, [language, getAccurateAudioDuration]);
 
   // ==========================================
   // AUDIO PLAYBACK
@@ -411,7 +499,21 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
 
   const startProcessing = useCallback(async () => {
     if (!audioBlob || !audioUrl) return;
-
+    
+    // ✅ Generate run ID for debugging
+    const runId = `rvp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    console.log(`🚀 [${runId}] Starting Radio Village Pro generation...`);
+    
+    // ✅ Validate duration before starting
+    if (!isFinite(audioDuration) || audioDuration <= 0) {
+      console.error(`❌ [${runId}] Invalid audioDuration:`, audioDuration);
+      setError(language === 'fr' 
+        ? 'Durée audio invalide. Veuillez réenregistrer.' 
+        : 'Audio duration bàn. Sɔ́ɔ̀n tɔ́ɔ́.');
+      return;
+    }
+    
+    setDebugInfo(null);
     setProcessingProgress(0);
     setProcessingMessage(language === 'fr' ? 'Préparation...' : 'Sɔ́ɔ̀n tɔ́ɔ́...');
 
@@ -426,11 +528,11 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
         duration: audioDuration
       });
       
-      console.log('🔍 Checking cache for:', cacheKey);
+      console.log(`🔍 [${runId}] Checking cache for:`, cacheKey);
       
       const cached = await templateVideoCache.get(cacheKey);
-      if (cached) {
-        console.log('✅ Cache hit! Using cached video');
+      if (cached && cached.blob.size > 1000) { // ✅ Validate cached blob size
+        console.log(`✅ [${runId}] Cache hit! Using cached video (${cached.blob.size} bytes)`);
         setProcessingProgress(100);
         setProcessingMessage(language === 'fr' ? 'Vidéo en cache!' : 'Video tɛ̀rɛ̀ cache!');
         
@@ -447,7 +549,7 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
         return;
       }
       
-      console.log('💫 No cache, generating new video...');
+      console.log(`💫 [${runId}] No cache, generating new video...`);
 
       // 1. Create canvas for video rendering
       const canvas = document.createElement('canvas');
@@ -493,32 +595,68 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
       setProcessingMessage(language === 'fr' ? 'Configuration vidéo...' : 'Video sɔ́ɔ̀n...');
       
       const mimeType = getCompatibleVideoMimeType();
-      console.log('📹 Using video format:', mimeType);
+      console.log(`📹 [${runId}] Using video format:`, mimeType);
       
       // Capture canvas stream at 30fps
       const canvasStream = canvas.captureStream(30);
       
+      // ✅ Verify canvas stream has video tracks
+      const videoTracks = canvasStream.getVideoTracks();
+      console.log(`📹 [${runId}] Canvas video tracks:`, videoTracks.length);
+      if (videoTracks.length === 0) {
+        throw new Error('Canvas has no video tracks');
+      }
+      
       // Create audio context to capture audio
       const audioContext = new AudioContext();
+      await audioContext.resume(); // ✅ Ensure context is not suspended
+      
       const source = audioContext.createMediaElementSource(audio);
       const dest = audioContext.createMediaStreamDestination();
       source.connect(dest);
       source.connect(audioContext.destination); // Also play through speakers
       
+      // ✅ Verify audio stream has tracks
+      const audioTracks = dest.stream.getAudioTracks();
+      console.log(`🔊 [${runId}] Audio tracks:`, audioTracks.length);
+      
       // Combine canvas video + audio into single stream
       const combinedStream = new MediaStream([
-        ...canvasStream.getVideoTracks(),
-        ...dest.stream.getAudioTracks()
+        ...videoTracks,
+        ...audioTracks
       ]);
+      
+      console.log(`📹 [${runId}] Combined stream tracks:`, combinedStream.getTracks().length);
 
       const chunks: Blob[] = [];
-      const recorder = new MediaRecorder(combinedStream, { 
-        mimeType,
-        videoBitsPerSecond: 2500000 // 2.5 Mbps
-      });
+      let chunkCount = 0;
+      
+      // ✅ Try to create MediaRecorder, with fallback
+      let recorder: MediaRecorder;
+      let actualMimeType = mimeType;
+      
+      try {
+        recorder = new MediaRecorder(combinedStream, { 
+          mimeType,
+          videoBitsPerSecond: 2500000 // 2.5 Mbps
+        });
+      } catch (recorderError) {
+        console.warn(`⚠️ [${runId}] MediaRecorder failed with ${mimeType}, trying without mimeType`);
+        actualMimeType = '';
+        recorder = new MediaRecorder(combinedStream, {
+          videoBitsPerSecond: 2500000
+        });
+        actualMimeType = recorder.mimeType || 'video/webm';
+      }
+      
+      console.log(`📹 [${runId}] MediaRecorder created with mimeType:`, actualMimeType);
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+          chunkCount++;
+          console.log(`📦 [${runId}] Chunk ${chunkCount}: ${e.data.size} bytes`);
+        }
       };
 
       // 5. Animation loop - draw frames
@@ -690,30 +828,63 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
         }
       }, 500);
 
-      // 8. Wait for audio to finish with timeout
+      // 8. Wait for audio to finish with PROPER MediaRecorder stop handling
+      console.log(`⏳ [${runId}] Waiting for audio (${audioDuration}s)...`);
+      
+      // ✅ Create Promise for MediaRecorder onstop event
+      const waitForRecorderStop = new Promise<Blob[]>((resolve) => {
+        recorder.onstop = () => {
+          console.log(`🏁 [${runId}] MediaRecorder stopped. Chunks: ${chunks.length}`);
+          resolve([...chunks]);
+        };
+      });
+      
       await Promise.race([
         new Promise<void>((resolve) => {
-          audio.onended = () => {
-            console.log('🏁 Audio ended normally');
+          audio.onended = async () => {
+            console.log(`🏁 [${runId}] Audio ended normally`);
             isRecording = false;
             clearInterval(progressInterval);
-            recorder.stop();
-            setTimeout(resolve, 200);
-          };
-        }),
-        // Timeout fallback based on audio duration + 5s buffer
-        new Promise<void>((resolve) => {
-          setTimeout(() => {
-            console.log('⏰ Timeout reached, stopping recorder');
-            isRecording = false;
-            clearInterval(progressInterval);
+            
+            // ✅ Request final data before stopping
+            if (recorder.state === 'recording' && typeof recorder.requestData === 'function') {
+              console.log(`📤 [${runId}] Requesting final data...`);
+              recorder.requestData();
+              await new Promise(r => setTimeout(r, 200)); // Wait for last chunk
+            }
+            
             if (recorder.state === 'recording') {
               recorder.stop();
             }
-            setTimeout(resolve, 200);
-          }, (audioDuration + 5) * 1000);
+            resolve();
+          };
+        }),
+        // Timeout fallback based on audio duration + 8s buffer
+        new Promise<void>((resolve) => {
+          setTimeout(async () => {
+            console.log(`⏰ [${runId}] Timeout reached, stopping recorder`);
+            isRecording = false;
+            clearInterval(progressInterval);
+            
+            if (recorder.state === 'recording') {
+              if (typeof recorder.requestData === 'function') {
+                recorder.requestData();
+                await new Promise(r => setTimeout(r, 200));
+              }
+              recorder.stop();
+            }
+            resolve();
+          }, (audioDuration + 8) * 1000);
         })
       ]);
+      
+      // ✅ Wait for recorder.onstop to fire and get final chunks
+      const finalChunks = await Promise.race([
+        waitForRecorderStop,
+        new Promise<Blob[]>((resolve) => setTimeout(() => resolve([...chunks]), 1000))
+      ]);
+      
+      console.log(`📊 [${runId}] Final chunks collected: ${finalChunks.length}`);
 
       // 9. Create final video blob
       setProcessingProgress(95);
@@ -721,13 +892,57 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
       
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      const videoBlob = new Blob(chunks, { type: mimeType });
-      console.log('✅ Video generated:', videoBlob.size, 'bytes, type:', mimeType);
+      const videoBlob = new Blob(finalChunks, { type: actualMimeType || mimeType });
+      console.log(`✅ [${runId}] Video generated:`, videoBlob.size, 'bytes, type:', actualMimeType || mimeType);
 
       // Cleanup
       audioContext.close();
+      
+      // ✅ CRITICAL: Validate blob is not empty
+      if (videoBlob.size === 0 || finalChunks.length === 0) {
+        console.error(`❌ [${runId}] Video blob is EMPTY!`);
+        
+        // Store debug info for user
+        setDebugInfo({
+          runId,
+          userAgent: navigator.userAgent,
+          mimeType: actualMimeType || mimeType,
+          chunksReceived: chunkCount,
+          finalChunks: finalChunks.length,
+          audioDuration,
+          audioSize: audioBlob.size,
+          timestamp: new Date().toISOString()
+        });
+        
+        setError(language === 'fr' 
+          ? 'La vidéo générée est vide (0 chunk). Veuillez réessayer.' 
+          : 'Video tɛ̀rɛ̀ bàn (0 chunk). Sɔ́ɔ̀n tɔ́ɔ́.');
+        setCurrentStep('style');
+        return;
+      }
+      
+      // ✅ Validate minimum size (at least 10KB)
+      if (videoBlob.size < 10000) {
+        console.warn(`⚠️ [${runId}] Video blob very small:`, videoBlob.size);
+        
+        setDebugInfo({
+          runId,
+          userAgent: navigator.userAgent,
+          mimeType: actualMimeType || mimeType,
+          blobSize: videoBlob.size,
+          chunksReceived: chunkCount,
+          audioDuration,
+          timestamp: new Date().toISOString()
+        });
+        
+        setError(language === 'fr' 
+          ? 'La vidéo générée est trop petite. Veuillez réessayer.' 
+          : 'Video tɛ̀rɛ̀ bàn. Sɔ́ɔ̀n tɔ́ɔ́.');
+        setCurrentStep('style');
+        return;
+      }
 
-      // ===== STORE IN CACHE =====
+      // ===== STORE IN CACHE (only valid blobs) =====
       const finalCacheKey = await templateVideoCache.generateCacheKey({
         templateId: 'radio_village_pro',
         audioBlob,
@@ -745,7 +960,7 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
         hasContext: !!photoContext,
         language
       });
-      console.log('💾 Video cached for future use');
+      console.log(`💾 [${runId}] Video cached for future use`);
 
       // 10. Complete
       setProcessingProgress(100);
@@ -760,10 +975,20 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
         language
       };
 
+      console.log(`✅ [${runId}] Generation complete, calling onComplete`);
       setTimeout(() => onComplete(videoBlob, metadata), 500);
 
-    } catch (error) {
-      console.error('❌ Video generation failed:', error);
+    } catch (error: any) {
+      console.error(`❌ [${runId}] Video generation failed:`, error);
+      
+      setDebugInfo({
+        runId,
+        error: error?.message || String(error),
+        userAgent: navigator.userAgent,
+        audioDuration,
+        timestamp: new Date().toISOString()
+      });
+      
       setError(language === 'fr' 
         ? 'Erreur lors de la génération vidéo. Veuillez réessayer.' 
         : 'Video tɛ̀rɛ̀ bàn. Sɔ́ɔ̀n tɔ́ɔ́.'
@@ -776,7 +1001,8 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
   // NAVIGATION
   // ==========================================
 
-  const canProceed = audioBlob && audioDuration >= minDuration;
+  // ✅ FIX: Stricter canProceed validation
+  const canProceed = audioBlob && isFinite(audioDuration) && audioDuration >= minDuration && audioDuration <= maxDuration;
 
   const goToNext = () => {
     switch (currentStep) {
@@ -790,7 +1016,11 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
   // UTILS
   // ==========================================
 
+  // ✅ FIX: Safe formatTime that handles Infinity/NaN
   const formatTime = (seconds: number): string => {
+    if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) {
+      return '--:--';
+    }
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;

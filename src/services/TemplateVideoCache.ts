@@ -176,6 +176,19 @@ export const templateVideoCache = {
     version: string = '1.0'
   ): Promise<boolean> {
     try {
+      // ✅ FIX: Skip empty blobs
+      if (blob.size === 0) {
+        console.warn('⚠️ Refusing to cache empty blob');
+        return false;
+      }
+      
+      // ✅ FIX: Skip invalid duration
+      const duration = metadata.duration;
+      if (duration !== undefined && (!isFinite(duration) || duration <= 0)) {
+        console.warn('⚠️ Refusing to cache blob with invalid duration:', duration);
+        return false;
+      }
+      
       // Skip if too large
       const sizeMB = blob.size / 1024 / 1024;
       if (sizeMB > 50) {
