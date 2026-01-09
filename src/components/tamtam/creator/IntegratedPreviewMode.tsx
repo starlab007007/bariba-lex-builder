@@ -1,9 +1,10 @@
 /**
  * IntegratedPreviewMode.tsx
  * Mode preview intégré dans FullscreenCreator après capture avec template
+ * ✅ FIX: useMemo for previewUrl to prevent infinite loop, robust duration calculation
  */
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, 
@@ -25,7 +26,7 @@ interface VideoSegment {
   id: string;
   blob: Blob;
   duration: number;
-  timestamp: number;
+  timestamp?: number;
 }
 
 interface IntegratedPreviewModeProps {
@@ -55,42 +56,53 @@ export const IntegratedPreviewMode: React.FC<IntegratedPreviewModeProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
 
-  // Créer l'URL de preview
-  useEffect(() => {
-    let url = '';
-    
-    if (previewBlob) {
-      url = URL.createObjectURL(previewBlob);
-    } else if (segments.length > 0) {
-      // Utiliser le premier segment comme preview
-      url = URL.createObjectURL(segments[0].blob);
+  // ✅ FIX: Use useMemo to create stable preview URL - prevents infinite loops
+  const previewUrl = useMemo(() => {
+    if (previewBlob && previewBlob.size > 0) {
+      console.log('🎬 Creating preview URL from previewBlob:', previewBlob.size, previewBlob.type);
+      return URL.createObjectURL(previewBlob);
+    } else if (segments.length > 0 && segments[0]?.blob && segments[0].blob.size > 0) {
+      console.log('🎬 Creating preview URL from segment:', segments[0].blob.size, segments[0].blob.type);
+      return URL.createObjectURL(segments[0].blob);
     }
-    
-    setPreviewUrl(url);
-    
-    return () => {
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [previewBlob, segments]);
+    console.warn('⚠️ No valid blob for preview');
+    return '';
+  }, [previewBlob, segments.length > 0 ? segments[0]?.blob : null]);
 
-  // Gérer le temps de lecture
+  // Cleanup URL on unmount or change
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        console.log('🧹 Revoking preview URL');
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  // Handle video time/state updates
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleTimeUpdate = () => setCurrentTime(video.currentTime);
-    const handleLoadedMetadata = () => setDuration(video.duration);
+    const handleLoadedMetadata = () => {
+      console.log('📹 Video metadata loaded, duration:', video.duration);
+      setDuration(video.duration);
+    };
     const handleEnded = () => setIsPlaying(false);
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
+    const handleError = (e: any) => {
+      console.error('❌ Video error:', e);
+    };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('ended', handleEnded);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
+    video.addEventListener('error', handleError);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -98,6 +110,7 @@ export const IntegratedPreviewMode: React.FC<IntegratedPreviewModeProps> = ({
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
+      video.removeEventListener('error', handleError);
     };
   }, []);
 
@@ -108,12 +121,27 @@ export const IntegratedPreviewMode: React.FC<IntegratedPreviewModeProps> = ({
     if (isPlaying) {
       video.pause();
     } else {
-      video.play();
+      video.play().catch(e => console.warn('Play failed:', e));
     }
   }, [isPlaying]);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const totalDuration = segments.reduce((sum, s) => sum + s.duration, 0) || duration;
+  
+  // ✅ FIX: Robust duration calculation with NaN/Infinity checks
+  const totalDuration = useMemo(() => {
+    const segmentDuration = segments.reduce((sum, s) => {
+      const dur = Number(s.duration);
+      return !isNaN(dur) && isFinite(dur) && dur > 0 ? sum + dur : sum;
+    }, 0);
+    
+    const videoDuration = Number(duration);
+    const finalDuration = segmentDuration > 0 
+      ? segmentDuration 
+      : (isFinite(videoDuration) && videoDuration > 0 ? videoDuration : 30);
+    
+    console.log('📏 Total duration:', finalDuration, '(segments:', segmentDuration, ', video:', videoDuration, ')');
+    return Math.max(1, finalDuration);
+  }, [segments, duration]);
 
   return (
     <motion.div

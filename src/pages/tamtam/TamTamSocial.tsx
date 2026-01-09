@@ -666,6 +666,13 @@ export default function TamTamSocial() {
   }, [createPost, createPostType, fetchPosts, toast]);
 
   const handleCreatorComplete = useCallback(async (d: any) => {
+    console.log('[TamTamSocial.handleCreatorComplete] Received:', {
+      segments: d.segments?.length,
+      mode: d.mode,
+      caption: d.caption,
+      templateId: d.effects?.templateId || d.exportJob?.templateId,
+    });
+    
     try {
       // Get user for upload
       const { data: userData } = await supabase.auth.getUser();
@@ -674,12 +681,41 @@ export default function TamTamSocial() {
       let mediaUrl = d.media_url || null;
       let audioUrl = d.audio_url || DEFAULT_AUDIO_URL;
       
+      // ✅ FIX: Detect Radio Village Pro explicitly and force video type
+      const isRadioVillagePro = d.exportJob?.templateId === 'radio_village_pro' 
+        || d.caption?.includes('Radio Village')
+        || d.effects?.templateId === 'radio_village_pro_01';
+      
       // Upload media blob if present
       if (d.segments && d.segments.length > 0) {
         const firstSegment = d.segments[0];
-        if (firstSegment.blob) {
+        if (firstSegment.blob && firstSegment.blob.size > 0) {
           try {
-            const mediaType = d.mode === 'video' ? 'video' : d.mode === 'photo' ? 'photo' : 'audio';
+            // ✅ FIX: Radio Village Pro always produces video
+            const blobType = firstSegment.blob.type || '';
+            let mediaType: 'video' | 'photo' | 'audio' = 'video';
+            
+            if (isRadioVillagePro) {
+              mediaType = 'video';
+              console.log('[TamTamSocial] Radio Village Pro detected, forcing video type');
+            } else if (blobType.includes('video')) {
+              mediaType = 'video';
+            } else if (blobType.includes('image')) {
+              mediaType = 'photo';
+            } else if (blobType.includes('audio')) {
+              mediaType = 'audio';
+            } else if (d.mode === 'photo') {
+              mediaType = 'photo';
+            } else {
+              mediaType = 'video';
+            }
+            
+            console.log('[TamTamSocial] Uploading blob:', {
+              size: firstSegment.blob.size,
+              type: firstSegment.blob.type,
+              mediaType
+            });
+            
             mediaUrl = await uploadMediaToStorage(firstSegment.blob, mediaType, userId);
             console.log('[TamTamSocial] Media uploaded:', mediaUrl);
             
@@ -689,20 +725,32 @@ export default function TamTamSocial() {
             }
           } catch (uploadError) {
             console.error('[TamTamSocial] Upload error:', uploadError);
-            // Continue with default URL if upload fails
+            toast({ title: "❌ Erreur upload", description: "Impossible d'uploader le média", variant: "destructive" });
+            return;
           }
+        } else {
+          console.error('[TamTamSocial] Segment blob is empty or missing');
+          toast({ title: "❌ Erreur", description: "Contenu vidéo manquant", variant: "destructive" });
+          return;
         }
+      } else {
+        console.error('[TamTamSocial] No segments to upload');
+        toast({ title: "❌ Erreur", description: "Aucun contenu à publier", variant: "destructive" });
+        return;
       }
       
       const postData = {
         audio_url: audioUrl,
-        media_type: d.mode || 'video',
+        media_type: isRadioVillagePro ? 'video' : (d.mode || 'video'),
         media_url: mediaUrl,
         transcript_fr: d.caption || '',
         transcript_ba: '',
         topic: 'creation',
-        template_id: d.effects?.templateId || null,
-        duration_seconds: d.segments?.reduce((sum: number, s: any) => sum + (s.endTime - s.startTime), 0) || 30,
+        template_id: d.effects?.templateId || d.exportJob?.templateId || null,
+        duration_seconds: d.segments?.reduce((sum: number, s: any) => {
+          const dur = s.duration || (s.endTime - s.startTime);
+          return sum + (isFinite(dur) ? dur : 0);
+        }, 0) || 30,
       };
       
       console.log('[TamTamSocial] Creating post with data:', postData);
