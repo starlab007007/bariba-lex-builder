@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Monitor, Smartphone, Zap } from 'lucide-react';
+import { Monitor, Smartphone, Zap, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PerformanceTier } from '@/hooks/useDevicePerformance';
 
@@ -13,6 +13,8 @@ interface CameraResolutionIndicatorProps {
   videoRef: React.RefObject<HTMLVideoElement>;
   performanceTier?: PerformanceTier | null;
   className?: string;
+  /** Show "HD Quality Preserved" indicator for native quality mode */
+  showQualityPreserved?: boolean;
 }
 
 function getResolutionLabel(width: number, height: number): { label: ResolutionLabel; color: string; description: string } {
@@ -61,6 +63,7 @@ export default function CameraResolutionIndicator({
   videoRef,
   performanceTier,
   className,
+  showQualityPreserved = false,
 }: CameraResolutionIndicatorProps) {
   const [resolution, setResolution] = useState<{ width: number; height: number } | null>(null);
 
@@ -123,6 +126,14 @@ export default function CameraResolutionIndicator({
         <span className="text-white/70 text-[10px] hidden sm:inline">
           {resolution.width}×{resolution.height}
         </span>
+
+        {/* ✅ Quality Preserved indicator (when K-Engine active with native quality) */}
+        {showQualityPreserved && (
+          <div className="flex items-center gap-0.5 pl-1.5 border-l border-white/20 text-green-400">
+            <Check className="w-3 h-3" />
+            <span className="text-[10px] hidden sm:inline">HD</span>
+          </div>
+        )}
 
         {/* Performance tier indicator */}
         {performanceTier && (
