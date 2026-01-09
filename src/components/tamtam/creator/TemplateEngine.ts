@@ -346,6 +346,25 @@ async function tryLoadFFmpegWasm(): Promise<
   }
 }
 
+// ✅ Quality settings for adaptive rendering
+export interface QualitySettings {
+  canvasScale: number;
+  effectsEnabled: boolean;
+  sparklesCount: number;
+  filmGrainEnabled: boolean;
+  shadowBlur: number;
+  targetFps: number;
+}
+
+const DEFAULT_QUALITY: QualitySettings = {
+  canvasScale: 1.0,
+  effectsEnabled: true,
+  sparklesCount: 16,
+  filmGrainEnabled: true,
+  shadowBlur: 12,
+  targetFps: 30,
+};
+
 export class TemplateEngine {
   // ---- state ----
   private state: EngineState = {
@@ -368,12 +387,26 @@ export class TemplateEngine {
   private imgEls = new Map<string, HTMLImageElement>();
   private objectUrls = new Set<string>(); // to revoke
 
+  // ✅ Quality settings for adaptive rendering
+  private qualitySettings: QualitySettings = { ...DEFAULT_QUALITY };
+
   // ============================================================
   // PUBLIC API
   // ============================================================
 
   getState(): EngineState {
     return this.state;
+  }
+
+  // ✅ Get current quality settings
+  getQualitySettings(): QualitySettings {
+    return { ...this.qualitySettings };
+  }
+
+  // ✅ Set quality settings for adaptive rendering
+  setQualitySettings(settings: Partial<QualitySettings>): void {
+    this.qualitySettings = { ...this.qualitySettings, ...settings };
+    console.log('[K-Engine] Quality updated:', this.qualitySettings);
   }
 
   subscribe(fn: (evt: EngineEvent, state: EngineState) => void): Unsubscribe {
@@ -816,6 +849,7 @@ export class TemplateEngine {
   // ============================================================
   // ✅ KUAISHOU HORSE ENHANCED K-ENGINE VISUAL EFFECTS
   // Extracted to shared method for use by both render paths
+  // ✅ NOW ADAPTIVE: Uses qualitySettings for performance optimization
   // ============================================================
   private applyVisualEffects(
     ctx: CanvasRenderingContext2D, 
@@ -824,6 +858,9 @@ export class TemplateEngine {
     h: number, 
     time: number
   ): void {
+    // ✅ Skip all effects if disabled by quality settings
+    if (!this.qualitySettings.effectsEnabled) return;
+
     ctx.save();
 
     const effects = tpl.effects || {};
@@ -865,9 +902,11 @@ export class TemplateEngine {
       ctx.fillRect(0, 0, w, h);
     }
 
-    // ---- 4. SPARKLES (16 animated particles) ----
+    // ---- 4. SPARKLES (animated particles - count adapts to device tier) ----
     if (effects.sparkles?.enabled !== false) {
-      const sparkleCount = effects.sparkles?.count || 16;
+      // ✅ ADAPTIVE: Use quality setting for sparkle count
+      const baseCount = effects.sparkles?.count || 16;
+      const sparkleCount = Math.min(baseCount, this.qualitySettings.sparklesCount);
       const sparkleColors = effects.sparkles?.colors || ['#FFD700', '#FFA500', '#FF6347', '#FFFFFF'];
       
       for (let i = 0; i < sparkleCount; i++) {
@@ -882,8 +921,12 @@ export class TemplateEngine {
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 12;
+        
+        // ✅ ADAPTIVE: Shadow blur based on device tier
+        if (this.qualitySettings.shadowBlur > 0) {
+          ctx.shadowColor = color;
+          ctx.shadowBlur = this.qualitySettings.shadowBlur;
+        }
         
         // 4-pointed star sparkle
         ctx.beginPath();
