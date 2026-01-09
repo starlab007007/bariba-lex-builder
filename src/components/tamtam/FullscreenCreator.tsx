@@ -37,6 +37,8 @@ import {
   ChevronLeft,
   Save,
   Check,
+  Video,
+  Images,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +71,8 @@ import TemplateSlotPicker from "./creator/TemplateSlotPicker";
 import RecognizingScreen from "./creator/RecognizingScreen";
 import OverridesEditor from "./creator/OverridesEditor";
 import TikTokEditingBar from "./creator/TikTokEditingBar";
-import TextOverlayEditor, { TextOverlay, TextOverlayRenderer } from "./creator/TextOverlayEditor";
+import TextOverlayEditor, { TextOverlay, TextOverlayRenderer, FONT_PRESETS, COLOR_PRESETS } from "./creator/TextOverlayEditor";
+import InlineTextEditor from "./creator/InlineTextEditor";
 import OptimizedExportScreen from "./creator/OptimizedExportScreen";
 import CameraResolutionIndicator from "./creator/CameraResolutionIndicator";
 import { useDevicePerformance, getKEngineQualitySettings } from "@/hooks/useDevicePerformance";
@@ -493,7 +496,7 @@ export default function FullscreenCreator({
 
   // ============= CAPTURED MEDIA STATE =============
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
-  const [capturedType, setCapturedType] = useState<"video" | "photo" | "audio">("video");
+  const [capturedType, setCapturedType] = useState<"video" | "photo" | "audio" | "text">("video");
   const [previewUrl, setPreviewUrl] = useState<string>("");
 
   // ============= TIMELINE/EDITING STATE =============
@@ -549,6 +552,18 @@ export default function FullscreenCreator({
   const [showTextEditor, setShowTextEditor] = useState(false);
   const [editingTextOverlay, setEditingTextOverlay] = useState<TextOverlay | undefined>(undefined);
   const [showExportScreen, setShowExportScreen] = useState(false);
+  
+  // ✅ NEW: Inline text editing state
+  const [showInlineTextEditor, setShowInlineTextEditor] = useState(false);
+  const [inlineTextPreview, setInlineTextPreview] = useState<{ text: string; style: React.CSSProperties } | null>(null);
+  
+  // ✅ NEW: Text mode style state (for text-only posts)
+  const [textModeFont, setTextModeFont] = useState("classic");
+  const [textModeColor, setTextModeColor] = useState("white");
+  const [textModeSize, setTextModeSize] = useState(32);
+  const [textModeBold, setTextModeBold] = useState(false);
+  const [textModeItalic, setTextModeItalic] = useState(false);
+  const [textModeAlign, setTextModeAlign] = useState<"left" | "center" | "right">("center");
 
   // ✅ Device Performance Detection
   const { performanceInfo, isDetecting: isDetectingPerformance } = useDevicePerformance();
@@ -2658,8 +2673,8 @@ export default function FullscreenCreator({
               <RailButton
                 icon={<Type className="h-5 w-5" />}
                 label="Texte"
-                onClick={() => setShowTextEditor(true)}
-                active={textOverlays.length > 0}
+                onClick={() => setShowInlineTextEditor(true)}
+                active={textOverlays.length > 0 || showInlineTextEditor}
               />
               <RailButton
                 icon={<Scissors className="h-5 w-5" />}
@@ -2730,19 +2745,122 @@ export default function FullscreenCreator({
           )}
         </AnimatePresence>
 
-        {/* ===== TEXT MODE INPUT ===== */}
+        {/* ===== TEXT MODE INPUT (Enhanced with live styling) ===== */}
         {mode === "text" && !hasCapture && (!activeTemplateAny || isTemplateManifest(activeTemplateAny)) && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 bg-gradient-to-br from-orange-900/80 via-red-900/80 to-purple-900/80">
-            <div className="w-full max-w-md px-6">
+          <div className="absolute inset-0 z-10 bg-gradient-to-br from-orange-900/80 via-red-900/80 to-purple-900/80">
+            {/* Live styled text preview */}
+            <div className="absolute inset-x-4 top-1/4 flex items-center justify-center">
+              <div
+                className="max-w-[90%] break-words px-4 py-2"
+                style={{
+                  fontFamily: (FONT_PRESETS.find(f => f.id === textModeFont) || FONT_PRESETS[0]).fontFamily,
+                  fontWeight: textModeBold ? "900" : (FONT_PRESETS.find(f => f.id === textModeFont) || FONT_PRESETS[0]).weight,
+                  fontStyle: textModeItalic ? "italic" : "normal",
+                  fontSize: `${textModeSize}px`,
+                  color: (COLOR_PRESETS.find(c => c.id === textModeColor) || COLOR_PRESETS[0]).text,
+                  textShadow: (COLOR_PRESETS.find(c => c.id === textModeColor) as any)?.glow
+                    ? `0 0 10px ${(COLOR_PRESETS.find(c => c.id === textModeColor) || COLOR_PRESETS[0]).stroke}, 0 0 20px ${(COLOR_PRESETS.find(c => c.id === textModeColor) || COLOR_PRESETS[0]).stroke}`
+                    : `2px 2px 4px rgba(0,0,0,0.5)`,
+                  textAlign: textModeAlign,
+                }}
+              >
+                {caption || "Tapez votre texte..."}
+              </div>
+            </div>
+
+            {/* Text input area */}
+            <div className="absolute inset-x-4 top-[45%]">
               <textarea
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 placeholder="Tapez votre texte ici..."
                 autoFocus
-                className="w-full min-h-[200px] bg-white/10 backdrop-blur-xl rounded-3xl p-6 text-white text-2xl font-semibold text-center placeholder:text-white/40 border border-white/20 outline-none resize-none"
+                className="w-full min-h-[100px] bg-white/10 backdrop-blur-xl rounded-2xl p-4 text-white text-xl text-center placeholder:text-white/40 border border-white/20 outline-none resize-none"
                 style={{ caretColor: "white" }}
               />
-              <p className="text-center text-white/60 text-sm mt-4">Appuyez sur le bouton pour capturer</p>
+            </div>
+
+            {/* ===== TEXT STYLING TOOLS (always visible in text mode) ===== */}
+            <div className="absolute bottom-36 left-0 right-0 px-3">
+              {/* Quick formatting bar */}
+              <div className="flex items-center justify-center gap-2 py-2 bg-black/40 backdrop-blur-xl rounded-2xl mb-2">
+                <button
+                  onClick={() => setTextModeAlign("left")}
+                  className={cn("w-9 h-9 rounded-full flex items-center justify-center", textModeAlign === "left" ? "bg-orange-500" : "bg-white/10")}
+                >
+                  <span className="text-xs">◀</span>
+                </button>
+                <button
+                  onClick={() => setTextModeAlign("center")}
+                  className={cn("w-9 h-9 rounded-full flex items-center justify-center", textModeAlign === "center" ? "bg-orange-500" : "bg-white/10")}
+                >
+                  <span className="text-xs">≡</span>
+                </button>
+                <button
+                  onClick={() => setTextModeAlign("right")}
+                  className={cn("w-9 h-9 rounded-full flex items-center justify-center", textModeAlign === "right" ? "bg-orange-500" : "bg-white/10")}
+                >
+                  <span className="text-xs">▶</span>
+                </button>
+                <div className="w-px h-5 bg-white/20" />
+                <button
+                  onClick={() => setTextModeBold(v => !v)}
+                  className={cn("w-9 h-9 rounded-full flex items-center justify-center font-bold", textModeBold ? "bg-orange-500" : "bg-white/10")}
+                >
+                  B
+                </button>
+                <button
+                  onClick={() => setTextModeItalic(v => !v)}
+                  className={cn("w-9 h-9 rounded-full flex items-center justify-center italic", textModeItalic ? "bg-orange-500" : "bg-white/10")}
+                >
+                  I
+                </button>
+                <div className="w-px h-5 bg-white/20" />
+                <input
+                  type="range"
+                  min="20"
+                  max="56"
+                  value={textModeSize}
+                  onChange={(e) => setTextModeSize(parseInt(e.target.value))}
+                  className="w-16 accent-orange-500"
+                />
+              </div>
+
+              {/* Font carousel */}
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {FONT_PRESETS.map((font) => (
+                  <button
+                    key={font.id}
+                    onClick={() => setTextModeFont(font.id)}
+                    className={cn(
+                      "flex-shrink-0 px-3 py-2 rounded-xl border transition-all min-w-[60px]",
+                      textModeFont === font.id ? "bg-orange-500/30 border-orange-400" : "bg-white/10 border-white/10"
+                    )}
+                  >
+                    <span className="text-white text-sm block text-center" style={{ fontFamily: font.fontFamily, fontWeight: font.weight }}>
+                      Aa
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Color carousel */}
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide mt-2">
+                {COLOR_PRESETS.map((color) => (
+                  <button
+                    key={color.id}
+                    onClick={() => setTextModeColor(color.id)}
+                    className={cn(
+                      "flex-shrink-0 w-10 h-10 rounded-xl border-2 transition-all",
+                      textModeColor === color.id ? "border-orange-400 scale-110" : "border-white/20"
+                    )}
+                    style={{
+                      background: color.bg !== "transparent" ? color.bg : color.text,
+                      boxShadow: (color as any).glow ? `0 0 10px ${color.stroke}` : undefined,
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -2804,24 +2922,46 @@ export default function FullscreenCreator({
                   <span className="text-[10px] text-white/80">Magic</span>
                 </button>
 
+                {/* ===== CAPTURE BUTTON (dynamic icon based on mode) ===== */}
                 <div className="relative">
-                  <button
-                    onClick={onPressCapture}
-                    className={cn(
-                      "w-[72px] h-[72px] rounded-full flex items-center justify-center border-4 transition-all",
-                      isRecording ? "bg-red-500 border-red-300/50 scale-110" : "bg-gradient-to-br from-orange-500 to-red-500 border-white/30 hover:scale-105"
-                    )}
-                  >
-                    {isRecording ? (
-                      mode === "burst" ? (
-                        <span className="text-white font-bold text-lg">{burstCount}</span>
+                  {mode === "text" ? (
+                    // Text mode: Publish button instead of capture
+                    <button
+                      onClick={() => {
+                        if (!caption.trim()) {
+                          setToast("Ajoutez du texte d'abord");
+                          return;
+                        }
+                        setHasCapture(true);
+                        setCapturedType("text");
+                        setShowPublish(true);
+                      }}
+                      className="w-[72px] h-[72px] rounded-full flex items-center justify-center border-4 bg-gradient-to-br from-green-500 to-emerald-600 border-white/30 hover:scale-105 transition-all"
+                    >
+                      <Send className="h-7 w-7 text-white" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={onPressCapture}
+                      className={cn(
+                        "w-[72px] h-[72px] rounded-full flex items-center justify-center border-4 transition-all",
+                        isRecording ? "bg-red-500 border-red-300/50 scale-110" : "bg-gradient-to-br from-orange-500 to-red-500 border-white/30 hover:scale-105"
+                      )}
+                    >
+                      {isRecording ? (
+                        mode === "burst" ? (
+                          <span className="text-white font-bold text-lg">{burstCount}</span>
+                        ) : (
+                          <div className="w-6 h-6 rounded bg-white" />
+                        )
                       ) : (
-                        <div className="w-6 h-6 rounded bg-white" />
-                      )
-                    ) : (
-                      <CameraIcon className="h-7 w-7 text-white" />
-                    )}
-                  </button>
+                        // Dynamic icon based on capture mode
+                        mode === "video" ? <Video className="h-7 w-7 text-white" /> :
+                        mode === "burst" ? <Images className="h-7 w-7 text-white" /> :
+                        <CameraIcon className="h-7 w-7 text-white" />
+                      )}
+                    </button>
+                  )}
                   {mode === "burst" && isRecording && (
                     <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-xs font-bold">
                       {burstCount}
@@ -2829,12 +2969,38 @@ export default function FullscreenCreator({
                   )}
                 </div>
 
-                <button onClick={() => albumInputRef.current?.click()} className="flex flex-col items-center gap-1">
-                  <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center border border-white/10">
-                    <FolderOpen className="h-5 w-5" />
+                {/* ===== TEMPLATE BUTTON (replaces Album) ===== */}
+                <button 
+                  onClick={() => {
+                    setTemplateFlowPhase('selecting');
+                    setDrawer('template');
+                  }} 
+                  className="flex flex-col items-center gap-1"
+                >
+                  <div className={cn(
+                    "w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-all",
+                    activeUnifiedTemplate ? "bg-orange-500/30 border-orange-400" : "bg-black/40 border-white/10"
+                  )}>
+                    <Layers className="h-5 w-5" />
                   </div>
-                  <span className="text-[10px] text-white/80">Album</span>
+                  <span className="text-[10px] text-white/80">Template</span>
                 </button>
+                
+                {/* Hidden Album input - still accessible */}
+                <input
+                  type="file"
+                  ref={albumInputRef}
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setCapturedBlob(file);
+                      setHasCapture(true);
+                      setCapturedType(file.type.startsWith("video") ? "video" : "photo");
+                    }
+                  }}
+                />
               </>
             ) : (
               <>
@@ -3010,7 +3176,42 @@ export default function FullscreenCreator({
           )}
         </AnimatePresence>
 
-        {/* Text Overlay Editor Modal */}
+        {/* Inline Text Editor (replaces modal - appears at bottom) */}
+        <InlineTextEditor
+          isOpen={showInlineTextEditor}
+          onClose={() => {
+            setShowInlineTextEditor(false);
+            setInlineTextPreview(null);
+          }}
+          onSave={(overlay) => {
+            setTextOverlays((prev) => {
+              const exists = prev.find((o) => o.id === overlay.id);
+              if (exists) {
+                return prev.map((o) => (o.id === overlay.id ? overlay : o));
+              }
+              return [...prev, overlay];
+            });
+            setShowInlineTextEditor(false);
+            setInlineTextPreview(null);
+          }}
+          onTextChange={(text, style) => {
+            setInlineTextPreview({ text, style });
+          }}
+          initialOverlay={editingTextOverlay}
+          videoDuration={totalDuration || lengthSec}
+        />
+
+        {/* Inline text preview overlay (shows live on video/photo) */}
+        {showInlineTextEditor && inlineTextPreview && inlineTextPreview.text && (
+          <div
+            className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none max-w-[80%]"
+            style={inlineTextPreview.style}
+          >
+            {inlineTextPreview.text}
+          </div>
+        )}
+
+        {/* Legacy Text Overlay Editor Modal (fallback) */}
         <TextOverlayEditor
           open={showTextEditor}
           onClose={() => {

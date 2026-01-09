@@ -26,6 +26,7 @@ export { default as KuaishouPreviewMode } from './KuaishouPreviewMode';
 export { default as IntegratedTemplateOverlay } from './IntegratedTemplateOverlay';
 export { default as IntegratedPreviewMode } from './IntegratedPreviewMode';
 export { default as UnifiedTemplateSelector } from './UnifiedTemplateSelector';
+export { default as InlineTextEditor } from './InlineTextEditor';
 
 // New services
 export { KaraokeSyncService } from '@/services/KaraokeSyncService';
