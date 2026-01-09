@@ -22,6 +22,7 @@ import {
   processingSteps,
   type RadioVillageStyle 
 } from '@/data/RadioVillageProData';
+import { templateVideoCache } from '@/services/TemplateVideoCache';
 
 // ==========================================
 // TYPES
@@ -387,6 +388,39 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
     setProcessingMessage(language === 'fr' ? 'Préparation...' : 'Sɔ́ɔ̀n tɔ́ɔ́...');
 
     try {
+      // ===== CHECK CACHE FIRST =====
+      const cacheKey = await templateVideoCache.generateCacheKey({
+        templateId: 'radio_village_pro',
+        audioBlob,
+        style: selectedStyle,
+        photos: [photoPortrait, photoVillage, photoContext],
+        language,
+        duration: audioDuration
+      });
+      
+      console.log('🔍 Checking cache for:', cacheKey);
+      
+      const cached = await templateVideoCache.get(cacheKey);
+      if (cached) {
+        console.log('✅ Cache hit! Using cached video');
+        setProcessingProgress(100);
+        setProcessingMessage(language === 'fr' ? 'Vidéo en cache!' : 'Video tɛ̀rɛ̀ cache!');
+        
+        const metadata: VideoMetadata = {
+          duration: audioDuration,
+          style: selectedStyle,
+          hasPortrait: !!photoPortrait,
+          hasVillage: !!photoVillage,
+          hasContext: !!photoContext,
+          language
+        };
+        
+        setTimeout(() => onComplete(cached.blob, metadata), 500);
+        return;
+      }
+      
+      console.log('💫 No cache, generating new video...');
+
       // 1. Create canvas for video rendering
       const canvas = document.createElement('canvas');
       canvas.width = 720;
@@ -577,6 +611,26 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
 
       // Cleanup
       audioContext.close();
+
+      // ===== STORE IN CACHE =====
+      const finalCacheKey = await templateVideoCache.generateCacheKey({
+        templateId: 'radio_village_pro',
+        audioBlob,
+        style: selectedStyle,
+        photos: [photoPortrait, photoVillage, photoContext],
+        language,
+        duration: audioDuration
+      });
+      
+      await templateVideoCache.set(finalCacheKey, videoBlob, {
+        duration: audioDuration,
+        style: selectedStyle,
+        hasPortrait: !!photoPortrait,
+        hasVillage: !!photoVillage,
+        hasContext: !!photoContext,
+        language
+      });
+      console.log('💾 Video cached for future use');
 
       // 10. Complete
       setProcessingProgress(100);
