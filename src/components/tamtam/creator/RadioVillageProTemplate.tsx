@@ -1,44 +1,39 @@
 /**
  * RadioVillageProTemplate.tsx
- * Template audio-first premium pour Radio Village
- * Workflow: Audio → Photos → Style → Processing
+ * Template audio-first premium - Radio Village Pro v2.0
+ * Workflow 4 étapes: Audio → Photos → Style → Processing
+ * Support bilingue FR/Bariba complet
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Mic, MicOff, Square, Upload, Play, Pause,
-  ChevronRight, ChevronLeft, SkipForward, RefreshCw,
-  Image, User, Home, Camera, X, Check, Loader2,
+  Mic, Square, Upload, Play, Pause,
+  ChevronRight, SkipForward, RefreshCw,
+  User, Building, Camera, X, Check, Loader2,
   Volume2, Sparkles, BookOpen, Megaphone, PartyPopper
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { 
+  radioVillageStyles, 
+  radioVillageLabels, 
+  processingSteps,
+  type RadioVillageStyle 
+} from '@/data/RadioVillageProData';
 
 // ==========================================
 // TYPES
 // ==========================================
 
 type Step = 'audio' | 'photos' | 'style' | 'processing';
-
-interface StylePreset {
-  id: string;
-  name: string;
-  description: string;
-  emoji: string;
-  colors: {
-    primary: string;
-    secondary: string;
-    accent: string;
-    gradient: string;
-  };
-  icon: React.ReactNode;
-}
+type Language = 'fr' | 'bariba';
 
 interface RadioVillageProTemplateProps {
   onComplete: (videoBlob: Blob, metadata: VideoMetadata) => void;
   onBack?: () => void;
+  language?: Language;
 }
 
 interface VideoMetadata {
@@ -47,83 +42,18 @@ interface VideoMetadata {
   hasPortrait: boolean;
   hasVillage: boolean;
   hasContext: boolean;
+  language: Language;
 }
 
 // ==========================================
-// STYLE PRESETS
+// STYLE ICONS MAPPING
 // ==========================================
 
-const stylePresets: StylePreset[] = [
-  {
-    id: 'sagesse',
-    name: 'Sagesse',
-    description: 'Ambiance chaleureuse pour paroles d\'anciens',
-    emoji: '💡',
-    colors: {
-      primary: '#FFD700',
-      secondary: '#FFA500',
-      accent: '#FF8C00',
-      gradient: 'from-amber-900/50 to-yellow-900/30'
-    },
-    icon: <Sparkles className="w-6 h-6" />
-  },
-  {
-    id: 'histoire',
-    name: 'Histoire',
-    description: 'Style vintage sépia pour les récits',
-    emoji: '📖',
-    colors: {
-      primary: '#D4A574',
-      secondary: '#C4956A',
-      accent: '#A0785A',
-      gradient: 'from-amber-950/50 to-orange-900/30'
-    },
-    icon: <BookOpen className="w-6 h-6" />
-  },
-  {
-    id: 'actualite',
-    name: 'Actualité',
-    description: 'Style moderne pour annonces',
-    emoji: '📢',
-    colors: {
-      primary: '#00BFFF',
-      secondary: '#1E90FF',
-      accent: '#4169E1',
-      gradient: 'from-blue-950/50 to-cyan-900/30'
-    },
-    icon: <Megaphone className="w-6 h-6" />
-  },
-  {
-    id: 'celebration',
-    name: 'Célébration',
-    description: 'Ambiance festive multicolore',
-    emoji: '🎉',
-    colors: {
-      primary: '#FF69B4',
-      secondary: '#9B59B6',
-      accent: '#FFD700',
-      gradient: 'from-purple-950/50 to-pink-900/30'
-    },
-    icon: <PartyPopper className="w-6 h-6" />
-  }
-];
-
-// ==========================================
-// UTILS
-// ==========================================
-
-const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
-
-const getSupportedMimeType = (): string => {
-  const types = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'];
-  for (const type of types) {
-    if (MediaRecorder.isTypeSupported(type)) return type;
-  }
-  return 'audio/webm';
+const styleIcons: Record<string, React.ReactNode> = {
+  sagesse: <Sparkles className="w-8 h-8" />,
+  histoire: <BookOpen className="w-8 h-8" />,
+  actualite: <Megaphone className="w-8 h-8" />,
+  celebration: <PartyPopper className="w-8 h-8" />
 };
 
 // ==========================================
@@ -132,8 +62,13 @@ const getSupportedMimeType = (): string => {
 
 export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = ({
   onComplete,
-  onBack
+  onBack,
+  language = 'fr'
 }) => {
+  // Get labels for current language
+  const labels = radioVillageLabels[language];
+  const styles = Object.values(radioVillageStyles);
+
   // State
   const [currentStep, setCurrentStep] = useState<Step>('audio');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -142,13 +77,13 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  
-  const [photoPortrait, setPhotoPortrait] = useState<File | null>(null);
-  const [photoVillage, setPhotoVillage] = useState<File | null>(null);
-  const [photoContext, setPhotoContext] = useState<File | null>(null);
-  
+  const [audioLevel, setAudioLevel] = useState(0);
+
+  const [photoPortrait, setPhotoPortrait] = useState<string | null>(null);
+  const [photoVillage, setPhotoVillage] = useState<string | null>(null);
+  const [photoContext, setPhotoContext] = useState<string | null>(null);
+
   const [selectedStyle, setSelectedStyle] = useState<string>('sagesse');
-  const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingMessage, setProcessingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -158,13 +93,18 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
+  const maxDuration = 60;
+  const minDuration = 30;
 
   // Cleanup
   useEffect(() => {
     return () => {
       if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       if (audioUrl) URL.revokeObjectURL(audioUrl);
     };
@@ -189,20 +129,22 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
       streamRef.current = stream;
       audioChunksRef.current = [];
 
-      const mimeType = getSupportedMimeType();
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+          ? 'audio/webm;codecs=opus' 
+          : 'audio/webm'
+      });
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
         setAudioBlob(blob);
         setAudioUrl(url);
-        
-        // Get duration
+
         const audio = new Audio(url);
         audio.onloadedmetadata = () => {
           setAudioDuration(audio.duration);
@@ -219,23 +161,46 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
       recordingIntervalRef.current = window.setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         setRecordingTime(elapsed);
-        
-        // Auto-stop at 60s
-        if (elapsed >= 60) {
-          stopRecording();
-        }
+        if (elapsed >= maxDuration) stopRecording();
       }, 1000);
+
+      // Audio level visualization
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyserRef.current = audioContext.createAnalyser();
+      analyserRef.current.fftSize = 256;
+      source.connect(analyserRef.current);
+
+      const updateLevel = () => {
+        if (analyserRef.current) {
+          const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+          analyserRef.current.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          setAudioLevel(avg / 255);
+        }
+        if (isRecording) {
+          animationFrameRef.current = requestAnimationFrame(updateLevel);
+        }
+      };
+      updateLevel();
 
     } catch (err: any) {
       console.error('Recording error:', err);
-      setError(err.message || 'Impossible d\'accéder au microphone');
+      setError(language === 'fr' 
+        ? 'Impossible d\'accéder au microphone' 
+        : 'Kɛ̀ microphone tɔ́ɔ́ bàn'
+      );
     }
-  }, []);
+  }, [language, isRecording]);
 
   const stopRecording = useCallback(() => {
     if (recordingIntervalRef.current) {
       clearInterval(recordingIntervalRef.current);
       recordingIntervalRef.current = null;
+    }
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
 
     if (mediaRecorderRef.current && isRecording) {
@@ -248,6 +213,7 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
     }
 
     setIsRecording(false);
+    setAudioLevel(0);
   }, [isRecording]);
 
   const resetRecording = useCallback(() => {
@@ -256,6 +222,7 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
     setAudioUrl(null);
     setAudioDuration(0);
     setRecordingTime(0);
+    setIsPlaying(false);
   }, [audioUrl]);
 
   // ==========================================
@@ -266,30 +233,22 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate format
-    const validFormats = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/ogg', 'audio/webm'];
-    if (!validFormats.some(f => file.type.includes(f.split('/')[1]))) {
-      setError('Format audio non supporté. Utilisez MP3, WAV, M4A ou OGG.');
-      return;
-    }
-
-    // Validate size (50MB max)
     if (file.size > 50 * 1024 * 1024) {
-      setError('Fichier trop volumineux. Maximum 50MB.');
+      setError(language === 'fr' ? 'Fichier trop volumineux (max 50MB)' : 'File trop grand');
       return;
     }
 
     const url = URL.createObjectURL(file);
     const audio = new Audio(url);
-    
+
     audio.onloadedmetadata = () => {
-      if (audio.duration < 30) {
-        setError('Audio trop court. Minimum 30 secondes.');
+      if (audio.duration < minDuration) {
+        setError(language === 'fr' ? `Audio trop court (min ${minDuration}s)` : `Audio trop court`);
         URL.revokeObjectURL(url);
         return;
       }
-      if (audio.duration > 60) {
-        setError('Audio trop long. Maximum 60 secondes.');
+      if (audio.duration > maxDuration) {
+        setError(language === 'fr' ? `Audio trop long (max ${maxDuration}s)` : `Audio trop long`);
         URL.revokeObjectURL(url);
         return;
       }
@@ -301,35 +260,75 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
     };
 
     audio.onerror = () => {
-      setError('Impossible de lire ce fichier audio.');
+      setError(language === 'fr' ? 'Impossible de lire ce fichier' : 'File non valide');
       URL.revokeObjectURL(url);
     };
-  }, []);
+  }, [language]);
+
+  // ==========================================
+  // AUDIO PLAYBACK
+  // ==========================================
+
+  const togglePlayback = useCallback(() => {
+    if (!audioUrl) return;
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.onended = () => setIsPlaying(false);
+    }
+
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  }, [audioUrl, isPlaying]);
 
   // ==========================================
   // PHOTO UPLOAD
   // ==========================================
 
-  const handlePhotoUpload = useCallback((type: 'portrait' | 'village' | 'context', file: File) => {
-    // Validate format
+  const handlePhotoUpload = useCallback((type: 'portrait' | 'village' | 'context', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     if (!file.type.startsWith('image/')) {
-      setError('Fichier non supporté. Utilisez JPG, PNG ou WEBP.');
+      setError(language === 'fr' ? 'Format image non supporté' : 'Format non valide');
       return;
     }
 
-    // Validate size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
-      setError('Image trop volumineuse. Maximum 10MB.');
+      setError(language === 'fr' ? 'Image trop volumineuse (max 10MB)' : 'Image trop grande');
       return;
     }
 
+    const url = URL.createObjectURL(file);
     setError(null);
+
     switch (type) {
-      case 'portrait': setPhotoPortrait(file); break;
-      case 'village': setPhotoVillage(file); break;
-      case 'context': setPhotoContext(file); break;
+      case 'portrait': setPhotoPortrait(url); break;
+      case 'village': setPhotoVillage(url); break;
+      case 'context': setPhotoContext(url); break;
     }
-  }, []);
+  }, [language]);
+
+  const removePhoto = useCallback((type: 'portrait' | 'village' | 'context') => {
+    switch (type) {
+      case 'portrait':
+        if (photoPortrait) URL.revokeObjectURL(photoPortrait);
+        setPhotoPortrait(null);
+        break;
+      case 'village':
+        if (photoVillage) URL.revokeObjectURL(photoVillage);
+        setPhotoVillage(null);
+        break;
+      case 'context':
+        if (photoContext) URL.revokeObjectURL(photoContext);
+        setPhotoContext(null);
+        break;
+    }
+  }, [photoPortrait, photoVillage, photoContext]);
 
   // ==========================================
   // PROCESSING
@@ -338,510 +337,448 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
   const startProcessing = useCallback(async () => {
     if (!audioBlob) return;
 
-    setIsProcessing(true);
     setProcessingProgress(0);
 
-    const steps = [
-      { progress: 10, message: 'Analyse de l\'audio...' },
-      { progress: 25, message: 'Génération des sous-titres...' },
-      { progress: 40, message: 'Création de la visualisation...' },
-      { progress: 55, message: 'Application du style...' },
-      { progress: 70, message: 'Ajout des effets...' },
-      { progress: 85, message: 'Rendu final...' },
-      { progress: 100, message: 'Terminé!' }
-    ];
-
-    for (const step of steps) {
-      await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
+    for (const step of processingSteps) {
+      await new Promise(resolve => setTimeout(resolve, 700 + Math.random() * 300));
       setProcessingProgress(step.progress);
-      setProcessingMessage(step.message);
+      setProcessingMessage(language === 'fr' ? step.messageFr : step.messageBa);
     }
 
-    // Simulate video output (in real implementation, this would be actual video rendering)
-    const fakeVideoBlob = new Blob([audioBlob], { type: 'video/mp4' });
-    
     const metadata: VideoMetadata = {
       duration: audioDuration,
       style: selectedStyle,
       hasPortrait: !!photoPortrait,
       hasVillage: !!photoVillage,
-      hasContext: !!photoContext
+      hasContext: !!photoContext,
+      language
     };
 
-    setTimeout(() => {
-      onComplete(fakeVideoBlob, metadata);
-    }, 500);
-  }, [audioBlob, audioDuration, selectedStyle, photoPortrait, photoVillage, photoContext, onComplete]);
+    // Simulate video blob (in production, this would be actual rendered video)
+    const fakeVideoBlob = new Blob([audioBlob], { type: 'video/mp4' });
+
+    setTimeout(() => onComplete(fakeVideoBlob, metadata), 500);
+  }, [audioBlob, audioDuration, selectedStyle, photoPortrait, photoVillage, photoContext, language, onComplete]);
 
   // ==========================================
   // NAVIGATION
   // ==========================================
 
-  const canProceedToPhotos = audioBlob && audioDuration >= 30;
-  const canProceedToStyle = true; // Photos are optional
-  const canProcess = selectedStyle;
+  const canProceed = audioBlob && audioDuration >= minDuration;
 
   const goToNext = () => {
     switch (currentStep) {
-      case 'audio': if (canProceedToPhotos) setCurrentStep('photos'); break;
+      case 'audio': if (canProceed) setCurrentStep('photos'); break;
       case 'photos': setCurrentStep('style'); break;
       case 'style': setCurrentStep('processing'); startProcessing(); break;
     }
   };
 
-  const goToPrevious = () => {
-    switch (currentStep) {
-      case 'photos': setCurrentStep('audio'); break;
-      case 'style': setCurrentStep('photos'); break;
-      case 'processing': setCurrentStep('style'); break;
-    }
+  // ==========================================
+  // UTILS
+  // ==========================================
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // ==========================================
-  // RENDER: STEP INDICATOR
-  // ==========================================
-
-  const renderStepIndicator = () => {
-    const steps = [
-      { key: 'audio', label: '🎙️', name: 'Audio' },
-      { key: 'photos', label: '📷', name: 'Photos' },
-      { key: 'style', label: '🎨', name: 'Style' },
-      { key: 'processing', label: '✨', name: 'Export' }
-    ];
-
-    const currentIndex = steps.findIndex(s => s.key === currentStep);
-
-    return (
-      <div className="flex items-center justify-center gap-2 mb-6">
-        {steps.map((step, index) => (
-          <React.Fragment key={step.key}>
-            <motion.div
-              className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all",
-                index === currentIndex
-                  ? "bg-primary text-primary-foreground scale-110 shadow-lg"
-                  : index < currentIndex
-                    ? "bg-primary/30 text-primary"
-                    : "bg-muted text-muted-foreground"
-              )}
-              animate={index === currentIndex ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ duration: 0.5, repeat: index === currentIndex ? Infinity : 0, repeatDelay: 1 }}
-            >
-              {step.label}
-            </motion.div>
-            {index < steps.length - 1 && (
-              <div className={cn(
-                "w-8 h-1 rounded-full transition-colors",
-                index < currentIndex ? "bg-primary" : "bg-muted"
-              )} />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-    );
+  const getStepNumber = () => {
+    return { audio: 1, photos: 2, style: 3, processing: 4 }[currentStep];
   };
 
-  // ==========================================
-  // RENDER: AUDIO STEP
-  // ==========================================
-
-  const renderAudioStep = () => (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="space-y-6"
-    >
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">🎙️ Enregistre ta voix</h2>
-        <p className="text-muted-foreground">30 à 60 secondes de parole</p>
-      </div>
-
-      {error && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-destructive text-sm">
-          {error}
-        </div>
-      )}
-
-      {!audioBlob ? (
-        <div className="space-y-6">
-          {/* Recording UI */}
-          <div className={cn(
-            "relative rounded-2xl p-8 text-center transition-all",
-            isRecording 
-              ? "bg-destructive/10 border-2 border-destructive/50" 
-              : "bg-card border border-border"
-          )}>
-            {isRecording && (
-              <motion.div
-                className="absolute top-4 right-4 flex items-center gap-2"
-                animate={{ opacity: [1, 0.5, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-              >
-                <span className="w-3 h-3 bg-destructive rounded-full" />
-                <span className="text-destructive font-medium">REC</span>
-              </motion.div>
-            )}
-
-            <div className="text-5xl font-mono font-bold text-foreground mb-6">
-              {formatTime(recordingTime)} / 01:00
-            </div>
-
-            {/* Waveform visualization */}
-            {isRecording && (
-              <div className="flex items-center justify-center gap-1 mb-6 h-16">
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className="w-2 bg-destructive rounded-full"
-                    animate={{ height: [20, 40 + Math.random() * 30, 20] }}
-                    transition={{ duration: 0.3 + Math.random() * 0.3, repeat: Infinity }}
-                  />
-                ))}
-              </div>
-            )}
-
-            <div className="flex items-center justify-center gap-4">
-              {!isRecording ? (
-                <Button
-                  size="lg"
-                  onClick={startRecording}
-                  className="bg-destructive hover:bg-destructive/90 text-white px-8 py-6 text-lg gap-3"
-                >
-                  <Mic className="w-6 h-6" />
-                  Commencer l'enregistrement
-                </Button>
-              ) : (
-                <Button
-                  size="lg"
-                  onClick={stopRecording}
-                  variant="outline"
-                  className="border-destructive text-destructive hover:bg-destructive/10 px-8 py-6 text-lg gap-3"
-                >
-                  <Square className="w-6 h-6" />
-                  Arrêter
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-muted-foreground text-sm">ou</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          {/* Upload button */}
-          <div className="text-center">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="audio/*"
-              onChange={handleAudioUpload}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => fileInputRef.current?.click()}
-              className="gap-3"
-            >
-              <Upload className="w-5 h-5" />
-              Uploader un fichier audio
-            </Button>
-            <p className="text-muted-foreground text-xs mt-2">MP3, WAV, M4A, OGG • Max 50MB • 30-60s</p>
-          </div>
-        </div>
-      ) : (
-        /* Audio Preview */
-        <div className="bg-card rounded-2xl p-6 border border-border space-y-4">
-          <div className="flex items-center gap-4">
-            <motion.div
-              className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center"
-              animate={isPlaying ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ duration: 0.5, repeat: isPlaying ? Infinity : 0 }}
-            >
-              <Volume2 className="w-8 h-8 text-primary" />
-            </motion.div>
-            <div className="flex-1">
-              <p className="font-medium text-foreground">Audio enregistré</p>
-              <p className="text-muted-foreground text-sm">Durée: {formatTime(audioDuration)}</p>
-            </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={resetRecording}
-              className="text-destructive hover:bg-destructive/10"
-            >
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
-
-          <audio
-            ref={audioPreviewRef}
-            src={audioUrl || undefined}
-            controls
-            className="w-full"
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            onEnded={() => setIsPlaying(false)}
-          />
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={resetRecording}
-              className="flex-1 gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Réenregistrer
-            </Button>
-            <Button
-              onClick={goToNext}
-              disabled={!canProceedToPhotos}
-              className="flex-1 gap-2"
-            >
-              Continuer
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </motion.div>
-  );
+  const selectedPreset = radioVillageStyles[selectedStyle];
 
   // ==========================================
-  // RENDER: PHOTOS STEP
-  // ==========================================
-
-  const renderPhotoUploader = (
-    type: 'portrait' | 'village' | 'context',
-    label: string,
-    icon: React.ReactNode,
-    file: File | null,
-    setFile: (f: File | null) => void
-  ) => {
-    const inputId = `photo-${type}`;
-    const previewUrl = file ? URL.createObjectURL(file) : null;
-
-    return (
-      <div className="relative">
-        <input
-          id={inputId}
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handlePhotoUpload(type, f);
-          }}
-          className="hidden"
-        />
-        
-        {file && previewUrl ? (
-          <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-primary">
-            <img src={previewUrl} alt={label} className="w-full h-full object-cover" />
-            <Button
-              size="icon"
-              variant="destructive"
-              className="absolute top-2 right-2 w-8 h-8"
-              onClick={() => setFile(null)}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        ) : (
-          <label
-            htmlFor={inputId}
-            className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 bg-card"
-          >
-            {icon}
-            <span className="text-sm text-muted-foreground">{label}</span>
-          </label>
-        )}
-      </div>
-    );
-  };
-
-  const renderPhotosStep = () => (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="space-y-6"
-    >
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">📷 Ajoute des photos</h2>
-        <p className="text-muted-foreground">Optionnel - Personnalise ta vidéo</p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        {renderPhotoUploader('portrait', 'Portrait', <User className="w-8 h-8 text-muted-foreground" />, photoPortrait, setPhotoPortrait)}
-        {renderPhotoUploader('village', 'Village', <Home className="w-8 h-8 text-muted-foreground" />, photoVillage, setPhotoVillage)}
-        {renderPhotoUploader('context', 'Contexte', <Camera className="w-8 h-8 text-muted-foreground" />, photoContext, setPhotoContext)}
-      </div>
-
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={goToPrevious} className="gap-2">
-          <ChevronLeft className="w-4 h-4" />
-          Retour
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => setCurrentStep('style')}
-          className="flex-1 gap-2"
-        >
-          <SkipForward className="w-4 h-4" />
-          Passer
-        </Button>
-        <Button onClick={goToNext} className="gap-2">
-          Continuer
-          <ChevronRight className="w-4 h-4" />
-        </Button>
-      </div>
-    </motion.div>
-  );
-
-  // ==========================================
-  // RENDER: STYLE STEP
-  // ==========================================
-
-  const renderStyleStep = () => (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="space-y-6"
-    >
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">🎨 Choisis ton style</h2>
-        <p className="text-muted-foreground">Quelle ambiance pour ta vidéo?</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        {stylePresets.map((style) => (
-          <motion.button
-            key={style.id}
-            onClick={() => setSelectedStyle(style.id)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className={cn(
-              "relative p-4 rounded-xl text-left transition-all border-2",
-              selectedStyle === style.id
-                ? "border-primary bg-primary/10 shadow-lg"
-                : "border-border bg-card hover:border-primary/50"
-            )}
-          >
-            {selectedStyle === style.id && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center"
-              >
-                <Check className="w-4 h-4 text-primary-foreground" />
-              </motion.div>
-            )}
-
-            <div className="text-3xl mb-2">{style.emoji}</div>
-            <h3 className="font-bold text-foreground mb-1">{style.name}</h3>
-            <p className="text-xs text-muted-foreground">{style.description}</p>
-            
-            {/* Color bar */}
-            <div 
-              className="h-2 rounded-full mt-3"
-              style={{
-                background: `linear-gradient(to right, ${style.colors.primary}, ${style.colors.secondary}, ${style.colors.accent})`
-              }}
-            />
-          </motion.button>
-        ))}
-      </div>
-
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={goToPrevious} className="gap-2">
-          <ChevronLeft className="w-4 h-4" />
-          Retour
-        </Button>
-        <Button
-          onClick={goToNext}
-          disabled={!canProcess}
-          className="flex-1 gap-2 bg-gradient-to-r from-primary to-primary/80"
-        >
-          <Sparkles className="w-4 h-4" />
-          Générer la vidéo
-        </Button>
-      </div>
-    </motion.div>
-  );
-
-  // ==========================================
-  // RENDER: PROCESSING STEP
-  // ==========================================
-
-  const renderProcessingStep = () => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center justify-center py-12 space-y-6"
-    >
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-        className="w-20 h-20 border-4 border-primary/30 border-t-primary rounded-full"
-      />
-
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-foreground mb-2">✨ Création en cours</h2>
-        <p className="text-muted-foreground">{processingMessage}</p>
-      </div>
-
-      <div className="w-full max-w-xs">
-        <Progress value={processingProgress} className="h-3" />
-        <p className="text-center text-sm text-muted-foreground mt-2">{processingProgress}%</p>
-      </div>
-
-      <div className="flex flex-wrap gap-2 justify-center">
-        {photoPortrait && <span className="text-xs bg-muted px-2 py-1 rounded">👤 Portrait</span>}
-        {photoVillage && <span className="text-xs bg-muted px-2 py-1 rounded">🏘️ Village</span>}
-        {photoContext && <span className="text-xs bg-muted px-2 py-1 rounded">📷 Contexte</span>}
-        <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">
-          {stylePresets.find(s => s.id === selectedStyle)?.emoji} {stylePresets.find(s => s.id === selectedStyle)?.name}
-        </span>
-      </div>
-    </motion.div>
-  );
-
-  // ==========================================
-  // MAIN RENDER
+  // RENDER
   // ==========================================
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between p-4 border-b border-white/10">
         {onBack && (
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
-            <ChevronLeft className="w-4 h-4" />
-            Retour
+          <Button variant="ghost" onClick={onBack} className="text-white/70 hover:text-white">
+            ← {labels.back}
           </Button>
         )}
-        <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
-          📻 Radio Village Pro
-          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">PRO</span>
-        </h1>
-        <div className="w-16" />
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">🎙️</span>
+          <h1 className="text-xl font-bold">{labels.title}</h1>
+        </div>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4].map(step => (
+            <div
+              key={step}
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all",
+                step === getStepNumber()
+                  ? "bg-gradient-to-r from-amber-400 to-orange-500 scale-110 shadow-lg shadow-orange-500/30"
+                  : step < getStepNumber()!
+                    ? "bg-green-500"
+                    : "bg-white/20"
+              )}
+            >
+              {step < getStepNumber()! ? <Check className="w-4 h-4" /> : step}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Step Indicator */}
-      {renderStepIndicator()}
-
       {/* Content */}
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-2xl mx-auto p-6">
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-sm"
+          >
+            {error}
+          </motion.div>
+        )}
+
         <AnimatePresence mode="wait">
-          {currentStep === 'audio' && renderAudioStep()}
-          {currentStep === 'photos' && renderPhotosStep()}
-          {currentStep === 'style' && renderStyleStep()}
-          {currentStep === 'processing' && renderProcessingStep()}
+          {/* STEP 1: AUDIO */}
+          {currentStep === 'audio' && (
+            <motion.div
+              key="audio"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2">{labels.recordMessage}</h2>
+                <p className="text-white/60">{labels.duration}: {minDuration}s - {maxDuration}s</p>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10">
+                {!audioBlob ? (
+                  <div className="space-y-6">
+                    {!isRecording ? (
+                      <>
+                        <button
+                          onClick={startRecording}
+                          className="w-full py-6 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 hover:scale-[1.02] transition-transform shadow-lg shadow-red-500/30"
+                        >
+                          <Mic className="w-6 h-6" />
+                          {labels.recordMessage}
+                        </button>
+
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1 h-px bg-white/20" />
+                          <span className="text-white/40">{language === 'fr' ? 'ou' : 'tàá'}</span>
+                          <div className="flex-1 h-px bg-white/20" />
+                        </div>
+
+                        <label className="block w-full py-6 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl font-bold text-lg text-center cursor-pointer hover:scale-[1.02] transition-transform shadow-lg shadow-emerald-500/30">
+                          <div className="flex items-center justify-center gap-3">
+                            <Upload className="w-6 h-6" />
+                            {labels.uploadAudio}
+                          </div>
+                          <input
+                            type="file"
+                            accept="audio/*"
+                            onChange={handleAudioUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </>
+                    ) : (
+                      <div className="space-y-6 text-center">
+                        {/* Recording visualization */}
+                        <div className="relative w-40 h-40 mx-auto">
+                          <div
+                            className="absolute inset-0 rounded-full bg-red-500/20 animate-ping"
+                            style={{ animationDuration: '1.5s' }}
+                          />
+                          <div
+                            className="absolute inset-2 rounded-full bg-red-500/30 transition-transform"
+                            style={{ transform: `scale(${1 + audioLevel * 0.3})` }}
+                          />
+                          <div className="absolute inset-4 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center shadow-lg shadow-red-500/50">
+                            <Mic className="w-12 h-12 text-white" />
+                          </div>
+                        </div>
+
+                        <div className="text-4xl font-mono font-bold text-red-400">
+                          {formatTime(recordingTime)} / {formatTime(maxDuration)}
+                        </div>
+
+                        <button
+                          onClick={stopRecording}
+                          className="py-4 px-8 bg-white/10 hover:bg-white/20 rounded-xl font-bold flex items-center justify-center gap-2 mx-auto transition-colors"
+                        >
+                          <Square className="w-5 h-5 fill-current" />
+                          {labels.stop}
+                        </button>
+
+                        {recordingTime >= minDuration && (
+                          <p className="text-green-400 text-sm">✓ {labels.minimumReached}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6 text-center">
+                    <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/30">
+                      <Check className="w-10 h-10 text-white" />
+                    </div>
+
+                    <div>
+                      <p className="text-xl font-bold text-green-400">{labels.audioRecorded}</p>
+                      <p className="text-white/60 mt-1">{labels.duration}: {formatTime(audioDuration)}</p>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-4">
+                      <button
+                        onClick={togglePlayback}
+                        className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                      >
+                        {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
+                      </button>
+                      <Volume2 className="w-5 h-5 text-white/40" />
+                    </div>
+
+                    <button
+                      onClick={resetRecording}
+                      className="py-3 px-6 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center gap-2 mx-auto transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      {labels.reRecord}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {canProceed && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                  <Button
+                    onClick={goToNext}
+                    className="w-full py-6 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-lg rounded-2xl hover:scale-[1.02] transition-transform"
+                  >
+                    {labels.continue}
+                    <ChevronRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+
+          {/* STEP 2: PHOTOS */}
+          {currentStep === 'photos' && (
+            <motion.div
+              key="photos"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2">{labels.addPhotos}</h2>
+                <p className="text-white/60">{labels.optional}</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { type: 'portrait' as const, icon: <User className="w-8 h-8" />, label: labels.portrait, photo: photoPortrait },
+                  { type: 'village' as const, icon: <Building className="w-8 h-8" />, label: labels.village, photo: photoVillage },
+                  { type: 'context' as const, icon: <Camera className="w-8 h-8" />, label: labels.context, photo: photoContext }
+                ].map(({ type, icon, label, photo }) => (
+                  <div key={type} className="relative aspect-square">
+                    <label className={cn(
+                      "absolute inset-0 rounded-2xl border-2 border-dashed cursor-pointer transition-all overflow-hidden",
+                      photo ? "border-green-400" : "border-white/30 hover:border-white/50 hover:bg-white/5"
+                    )}>
+                      {photo ? (
+                        <img src={photo} alt={label} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full gap-2 text-white/60">
+                          {icon}
+                          <span className="text-xs text-center px-2">{label}</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePhotoUpload(type, e)}
+                        className="hidden"
+                      />
+                    </label>
+                    {photo && (
+                      <button
+                        onClick={() => removePhoto(type)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-lg z-10"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-4">
+                <Button
+                  variant="outline"
+                  onClick={goToNext}
+                  className="flex-1 py-6 border-white/20 text-white hover:bg-white/10"
+                >
+                  <SkipForward className="w-5 h-5 mr-2" />
+                  {labels.skip}
+                </Button>
+                <Button
+                  onClick={goToNext}
+                  className="flex-1 py-6 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold"
+                >
+                  {labels.continue}
+                  <ChevronRight className="w-5 h-5 ml-2" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 3: STYLE */}
+          {currentStep === 'style' && (
+            <motion.div
+              key="style"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2">{labels.chooseStyle}</h2>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {styles.map(style => (
+                  <motion.button
+                    key={style.id}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedStyle(style.id)}
+                    className={cn(
+                      "relative p-6 rounded-2xl border-2 transition-all text-left overflow-hidden",
+                      selectedStyle === style.id
+                        ? "border-amber-400 bg-amber-400/10 shadow-lg shadow-amber-400/20"
+                        : "border-white/10 bg-white/5 hover:border-white/30"
+                    )}
+                  >
+                    {selectedStyle === style.id && (
+                      <div className="absolute top-3 right-3">
+                        <div className="w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center">
+                          <Check className="w-4 h-4 text-black" />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={cn(
+                      "w-14 h-14 rounded-xl bg-gradient-to-br flex items-center justify-center mb-3",
+                      style.gradient
+                    )}>
+                      {styleIcons[style.id]}
+                    </div>
+
+                    <h3 className="font-bold text-lg">
+                      {language === 'fr' ? style.name : style.nameBariba}
+                    </h3>
+                    <p className="text-sm text-white/60 mt-1">
+                      {language === 'fr' ? style.description : style.descriptionBariba}
+                    </p>
+
+                    <div
+                      className="h-2 rounded-full mt-4"
+                      style={{
+                        background: `linear-gradient(to right, ${style.colors.primary}, ${style.colors.secondary})`
+                      }}
+                    />
+                  </motion.button>
+                ))}
+              </div>
+
+              <Button
+                onClick={goToNext}
+                className="w-full py-6 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-lg rounded-2xl hover:scale-[1.02] transition-transform"
+              >
+                {labels.generateVideo}
+                <Sparkles className="w-5 h-5 ml-2" />
+              </Button>
+            </motion.div>
+          )}
+
+          {/* STEP 4: PROCESSING */}
+          {currentStep === 'processing' && (
+            <motion.div
+              key="processing"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-8 text-center py-12"
+            >
+              {processingProgress < 100 ? (
+                <>
+                  <div className="relative w-32 h-32 mx-auto">
+                    <div className="absolute inset-0 rounded-full border-4 border-white/10" />
+                    <motion.div
+                      className="absolute inset-0 rounded-full border-4 border-amber-400 border-t-transparent"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                    <div className="absolute inset-4 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                      <Loader2 className="w-10 h-10 text-white animate-spin" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">{labels.creatingVideo}</h2>
+                    <p className="text-white/60">{processingMessage}</p>
+                  </div>
+
+                  <div className="max-w-md mx-auto">
+                    <Progress value={processingProgress} className="h-3" />
+                    <p className="text-sm text-white/60 mt-2">{processingProgress}%</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", bounce: 0.5 }}
+                    className="w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-2xl shadow-green-500/30"
+                  >
+                    <Check className="w-16 h-16 text-white" />
+                  </motion.div>
+
+                  <div>
+                    <h2 className="text-3xl font-bold mb-2 text-green-400">{labels.videoReady}</h2>
+                  </div>
+
+                  {/* Style preview badge */}
+                  <div
+                    className="max-w-sm mx-auto p-4 rounded-2xl border border-white/10"
+                    style={{
+                      background: `linear-gradient(135deg, ${selectedPreset?.colors.primary}20, ${selectedPreset?.colors.secondary}20)`
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center", selectedPreset?.gradient)}>
+                        {styleIcons[selectedStyle]}
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold">
+                          {language === 'fr' ? selectedPreset?.name : selectedPreset?.nameBariba}
+                        </p>
+                        <p className="text-sm text-white/60">
+                          {formatTime(audioDuration)} • {(photoPortrait || photoVillage || photoContext) ? '📷' : '🎙️'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
     </div>
