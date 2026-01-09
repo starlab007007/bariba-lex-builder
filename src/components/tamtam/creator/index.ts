@@ -27,6 +27,7 @@ export { default as IntegratedTemplateOverlay } from './IntegratedTemplateOverla
 export { default as IntegratedPreviewMode } from './IntegratedPreviewMode';
 export { default as UnifiedTemplateSelector } from './UnifiedTemplateSelector';
 export { default as InlineTextEditor } from './InlineTextEditor';
+export { default as DraggableTextOverlay, DraggablePreviewOverlay } from './DraggableTextOverlay';
 
 // New services
 export { KaraokeSyncService } from '@/services/KaraokeSyncService';
