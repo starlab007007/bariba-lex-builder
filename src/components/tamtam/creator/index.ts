@@ -22,7 +22,13 @@ export { default as KuaishouTemplateSelector } from './KuaishouTemplateSelector'
 export { default as KuaishouCaptureMode } from './KuaishouCaptureMode';
 export { default as KuaishouPreviewMode } from './KuaishouPreviewMode';
 
+// Integrated Template Components
+export { default as IntegratedTemplateOverlay } from './IntegratedTemplateOverlay';
+export { default as IntegratedPreviewMode } from './IntegratedPreviewMode';
+export { default as UnifiedTemplateSelector } from './UnifiedTemplateSelector';
+
 // New services
 export { KaraokeSyncService } from '@/services/KaraokeSyncService';
 export { AIMusicGenerationService } from '@/services/AIMusicGenerationService';
 export { useCreatorDraft } from '@/hooks/useCreatorDraft';
+export { useTemplateCapture } from '@/hooks/useTemplateCapture';

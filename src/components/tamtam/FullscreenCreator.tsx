@@ -3,6 +3,7 @@
 // ✅ Updated to align with K-Engine TemplateEngine (TemplateManifest / EngineState / exportJob / pipeline fallback)
 // ✅ Keeps legacy AdvancedTemplate UX working (voice instructions, overlays) with safe type-guards
 // ✅ Adds K-Engine timeline preview + play/pause/seek + auto-bind captured media to slots + AI pipeline progress
+// ✅ NATIVE TEMPLATE INTEGRATION: Templates overlay on camera without page navigation
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
@@ -33,6 +34,9 @@ import {
   Type,
   Undo2,
   Redo2,
+  ChevronLeft,
+  Save,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +73,14 @@ import TextOverlayEditor, { TextOverlay, TextOverlayRenderer } from "./creator/T
 import OptimizedExportScreen from "./creator/OptimizedExportScreen";
 import CameraResolutionIndicator from "./creator/CameraResolutionIndicator";
 import { useDevicePerformance, getKEngineQualitySettings } from "@/hooks/useDevicePerformance";
+
+// ✅ NEW: Integrated template components
+import UnifiedTemplateSelector from "./creator/UnifiedTemplateSelector";
+import IntegratedTemplateOverlay from "./creator/IntegratedTemplateOverlay";
+import IntegratedPreviewMode from "./creator/IntegratedPreviewMode";
+import { UnifiedTemplate } from "@/types/UnifiedTemplateTypes";
+import FinalizationPanel from "./creator/FinalizationPanel";
+import SuccessScreen from "./creator/SuccessScreen";
 
 // Legacy AdvancedTemplate data (still used by some UI effects/voice instructions)
 import {
@@ -523,6 +535,14 @@ export default function FullscreenCreator({
   const [kuaishouPhase, setKuaishouPhase] = useState<KuaishouPhase>('idle');
   const [boundAssets, setBoundAssets] = useState<Record<string, BoundAsset>>({});
   const [activeKSEManifest, setActiveKSEManifest] = useState<TemplateManifest | null>(null);
+
+  // ============= INTEGRATED TEMPLATE FLOW STATE =============
+  type TemplateFlowPhase = 'idle' | 'selecting' | 'capturing' | 'reviewing' | 'finalizing' | 'publishing' | 'success';
+  const [templateFlowPhase, setTemplateFlowPhase] = useState<TemplateFlowPhase>('idle');
+  const [activeUnifiedTemplate, setActiveUnifiedTemplate] = useState<UnifiedTemplate | null>(null);
+  const [templateSegments, setTemplateSegments] = useState<{ id: string; blob: Blob; duration: number }[]>([]);
+  const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // ============= TEXT OVERLAYS & EXPORT =============
   const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
@@ -2066,6 +2086,139 @@ export default function FullscreenCreator({
         />
       )}
 
+      {/* ============ INTEGRATED TEMPLATE FLOW SCREENS ============ */}
+      
+      {/* Template Selector Drawer */}
+      <AnimatePresence>
+        {drawer === 'template' && templateFlowPhase === 'selecting' && (
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="absolute inset-0 z-[150] bg-background"
+          >
+            <UnifiedTemplateSelector
+              onSelect={(template) => {
+                setActiveUnifiedTemplate(template);
+                setTemplateFlowPhase('capturing');
+                setDrawer('none');
+                setTemplateSegments([]);
+                
+                // Also set duration based on template
+                if (template.duration <= 15) setLengthSec(15);
+                else if (template.duration <= 30) setLengthSec(30);
+                else if (template.duration <= 60) setLengthSec(60);
+                else setLengthSec(180);
+                
+                setToast(`${template.emoji} ${template.name} activé`);
+              }}
+              onClose={() => {
+                setDrawer('none');
+                setTemplateFlowPhase('idle');
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Template Capture Overlay (on top of native camera) */}
+      {templateFlowPhase === 'capturing' && activeUnifiedTemplate && !hasCapture && (
+        <IntegratedTemplateOverlay
+          template={activeUnifiedTemplate}
+          isRecording={isRecording}
+          recordingTime={recordingElapsed}
+          currentSegment={templateSegments.length}
+          totalSegments={1}
+          onClose={() => {
+            setActiveUnifiedTemplate(null);
+            setTemplateFlowPhase('idle');
+            setTemplateSegments([]);
+            setToast('Template désactivé');
+          }}
+        />
+      )}
+
+      {/* Integrated Review Mode */}
+      <AnimatePresence>
+        {templateFlowPhase === 'reviewing' && activeUnifiedTemplate && hasCapture && (
+          <IntegratedPreviewMode
+            segments={templateSegments.map(s => ({ ...s, timestamp: Date.now() }))}
+            template={activeUnifiedTemplate}
+            previewBlob={capturedBlob || undefined}
+            onBack={() => {
+              setTemplateFlowPhase('capturing');
+              retake();
+            }}
+            onRetake={() => {
+              retake();
+              setTemplateFlowPhase('capturing');
+            }}
+            onPublish={() => setTemplateFlowPhase('finalizing')}
+            onSaveDraft={() => {
+              setToast('Brouillon sauvegardé');
+            }}
+            onAddText={() => setShowTextEditor(true)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Finalization Panel */}
+      <AnimatePresence>
+        {templateFlowPhase === 'finalizing' && activeUnifiedTemplate && (
+          <FinalizationPanel
+            previewBlob={capturedBlob || undefined}
+            caption={caption}
+            onCaptionChange={setCaption}
+            onPublish={async () => {
+              setTemplateFlowPhase('publishing');
+              setIsPublishing(true);
+              
+              try {
+                await publish();
+                setTemplateFlowPhase('success');
+              } catch (e) {
+                setError('Erreur lors de la publication');
+                setTemplateFlowPhase('finalizing');
+              } finally {
+                setIsPublishing(false);
+              }
+            }}
+            onSaveAsDraft={() => {
+              setToast('Brouillon sauvegardé');
+              onClose?.();
+            }}
+            onBack={() => setTemplateFlowPhase('reviewing')}
+            isPublishing={isPublishing}
+            templateName={activeUnifiedTemplate?.name}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Success Screen */}
+      <AnimatePresence>
+        {templateFlowPhase === 'success' && (
+          <SuccessScreen
+            videoBlob={capturedBlob || undefined}
+            postId={publishedPostId || undefined}
+            templateName={activeUnifiedTemplate?.name}
+            onCreateAnother={() => {
+              setTemplateFlowPhase('idle');
+              setActiveUnifiedTemplate(null);
+              setTemplateSegments([]);
+              setCapturedBlob(null);
+              setHasCapture(false);
+              setCaption('');
+              startStream();
+            }}
+            onGoHome={() => {
+              onClose?.();
+              navigate('/tamtam');
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ============ PUBLISH OVERLAY ============ */}
       <AnimatePresence>
         {showPublish && (
@@ -2492,8 +2645,11 @@ export default function FullscreenCreator({
           <RailButton
             icon={<Layers className="h-5 w-5" />}
             label="Template"
-            onClick={() => navigate('/tamtam/creator')}
-            active={effects.templateId !== "free"}
+            onClick={() => {
+              setTemplateFlowPhase('selecting');
+              setDrawer('template');
+            }}
+            active={activeUnifiedTemplate !== null || effects.templateId !== "free"}
           />
 
           {hasCapture && (
