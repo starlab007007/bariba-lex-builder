@@ -26,6 +26,7 @@ export default function DraggableTextOverlay({
   onEdit,
   onDelete,
 }: DraggableTextOverlayProps) {
+  // ✅ FIX: All hooks MUST be declared BEFORE any conditional returns
   const [isDragging, setIsDragging] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null);
@@ -33,12 +34,6 @@ export default function DraggableTextOverlay({
 
   const font = FONT_PRESETS.find((f) => f.id === overlay.fontPreset) || FONT_PRESETS[0];
   const color = COLOR_PRESETS.find((c) => c.id === overlay.colorPreset) || COLOR_PRESETS[0];
-
-  // Check if visible based on time
-  if (currentTime !== undefined) {
-    if (overlay.startTime !== undefined && currentTime < overlay.startTime) return null;
-    if (overlay.endTime !== undefined && currentTime > overlay.endTime) return null;
-  }
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (!isEditing || !containerRef.current) return;
@@ -111,6 +106,12 @@ export default function DraggableTextOverlay({
     userSelect: "none",
     touchAction: "none",
   };
+
+  // ✅ FIX: Check visibility AFTER all hooks are declared
+  if (currentTime !== undefined) {
+    if (overlay.startTime !== undefined && currentTime < overlay.startTime) return null;
+    if (overlay.endTime !== undefined && currentTime > overlay.endTime) return null;
+  }
 
   return (
     <motion.div
