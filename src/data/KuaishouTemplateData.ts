@@ -1,11 +1,187 @@
 /**
  * KuaishouTemplateData.ts
  * Données de templates pour le système Kuaishou
- * 3 templates de base: Dance Challenge, Photo Story, Tutorial Quick
- * Version: 1.0.0
+ * 4 templates: One-Take Pro, Dance Challenge, Photo Story, Tutorial Quick
+ * Version: 2.0.0
  */
 
 import { KuaishouTemplateConfig } from '../types/KuaishouTypes';
+
+// ==========================================
+// TEMPLATE 0: ONE-TAKE PRO 🐴 (PREMIUM)
+// ==========================================
+
+export const oneTakePro: KuaishouTemplateConfig = {
+  id: 'one_take_pro',
+  name: 'One-Take Pro 🐴',
+  description: 'Template premium 15s avec effets Kuaishou Horse - Sparkles, Calligraphie, Beat Sync',
+  category: 'challenge',
+  contentType: 'video',
+  difficulty: 'beginner',
+
+  video: {
+    duration: 15,
+    format: '9:16',
+    targetSize: '50-150MB',
+    resolution: {
+      width: 1080,
+      height: 1920
+    },
+    frameRate: 30,
+    bitrate: 8000000
+  },
+
+  segments: [
+    {
+      id: 'video_main',
+      type: 'user_capture',
+      start: 0,
+      duration: 15,
+      minDuration: 5,
+      maxDuration: 60,
+      editable: true,
+      guidance: {
+        text: 'Filme ta scène en une seule prise! 🎬 Les effets Kuaishou s\'appliquent automatiquement.',
+        countdown: true,
+        beatIndicator: true,
+        visualCues: []
+      },
+      effects: ['ken_burns', 'color_grading', 'beat_sync', 'stabilization']
+    }
+  ],
+
+  music: {
+    trackUrl: '/audio/kuaishou_festive_beat.mp3',
+    title: 'Kuaishou Festive Beat',
+    bpm: 128,
+    beatMarkers: [],
+    autoSync: true,
+    cutOnBeat: true,
+    volume: 0.8,
+    fadeIn: 0.3,
+    fadeOut: 1.0
+  },
+
+  autoEffects: {
+    beauty: {
+      enabled: true,
+      intensity: 0.5,
+      skinSmooth: true,
+      eyeEnhance: true,
+      faceSlim: 0.15
+    },
+    stabilization: {
+      enabled: true,
+      strength: 0.9,
+      method: 'optical_flow',
+      cropFactor: 1.05
+    },
+    colorGrading: {
+      enabled: true,
+      lut: 'warm_glow',
+      intensity: 0.7,
+      temperature: 15,
+      saturation: 1.2,
+      contrast: 1.1,
+      brightness: 0.05
+    },
+    sharpness: {
+      enabled: true,
+      amount: 1.2,
+      radius: 1,
+      threshold: 0
+    },
+    hdrLike: {
+      enabled: true,
+      highlights: -0.2,
+      shadows: 0.3,
+      midtones: 0,
+      strength: 0.5
+    }
+  },
+
+  smartCuts: {
+    enabled: false,
+    algorithm: 'beat_only',
+    minSegmentDuration: 5,
+    maxSegmentDuration: 60,
+    rules: []
+  },
+
+  transitions: [],
+
+  overlays: {
+    stickers: [],
+    text: []
+  },
+
+  hooks: {
+    enabled: true,
+    autoDetect: false,
+    suggestions: []
+  },
+
+  hashtags: {
+    autoGenerate: true,
+    trending: ['#OneTakePro', '#TAMTAM', '#2026', '#HorseYear', '#Premium'],
+    aiSuggested: 'AUTO_DETECT',
+    maxHashtags: 5
+  },
+
+  metadata: {
+    createdAt: '2026-01-09T00:00:00Z',
+    updatedAt: '2026-01-09T00:00:00Z',
+    author: 'TAM-TAM Team',
+    version: '2.0.0',
+    popularity: 98,
+    usageCount: 25000,
+    rating: 4.9,
+    tags: ['kuaishou', 'horse', 'sparkles', 'calligraphy', 'beat-sync', 'premium', '2026'],
+    thumbnail: '/templates/thumbnails/one_take_pro.jpg',
+    previewVideo: '/templates/previews/one_take_pro.mp4'
+  },
+
+  // Effets Kuaishou natifs
+  kuaishouEffects: {
+    sparkles: {
+      enabled: true,
+      count: 16,
+      colors: ['#FFD700', '#FFA500', '#FF6347', '#FFFFFF'],
+      sizeRange: [3, 8],
+      twinkleSpeed: 0.5
+    },
+    horseSilhouette: {
+      enabled: true,
+      animation: 'gallop_across',
+      color: '#FFD700',
+      startTime: 5,
+      endTime: 10
+    },
+    calligraphy: {
+      enabled: true,
+      texts: ['2026', '蛇年大吉', '福满乾坤'],
+      font: 'Ma Shan Zheng, serif',
+      color: '#FFD700'
+    },
+    warmGlow: {
+      enabled: true,
+      intensity: 0.25,
+      color: 'rgba(255,200,100,0.25)'
+    },
+    beatGlow: {
+      enabled: true,
+      syncToBeat: true,
+      bpm: 128,
+      color: 'rgba(255,215,0,0.3)'
+    },
+    progressBar: {
+      enabled: true,
+      color: '#FFD700',
+      glowColor: 'rgba(255,215,0,0.5)',
+      height: 4
+    }
+  }
+};
 
 // ==========================================
 // TEMPLATE 1: DANCE CHALLENGE
@@ -830,6 +1006,7 @@ export const tutorialQuick01: KuaishouTemplateConfig = {
 // ==========================================
 
 export const kuaishouTemplates: KuaishouTemplateConfig[] = [
+  oneTakePro,      // Premium template first
   danceChallenge01,
   photoStory01,
   tutorialQuick01

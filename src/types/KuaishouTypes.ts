@@ -29,6 +29,66 @@ export interface WordTiming {
 // CONFIGURATION TEMPLATE PRINCIPALE
 // ==========================================
 
+// ==========================================
+// EFFETS NATIFS KUAISHOU
+// ==========================================
+
+export interface SparklesEffect {
+  enabled: boolean;
+  count: number;
+  colors: string[];
+  sizeRange?: [number, number];
+  twinkleSpeed?: number;
+}
+
+export interface HorseSilhouetteEffect {
+  enabled: boolean;
+  animation: 'gallop_across' | 'jump' | 'static';
+  color?: string;
+  startTime?: number;
+  endTime?: number;
+}
+
+export interface CalligraphyEffect {
+  enabled: boolean;
+  texts: string[];
+  font?: string;
+  color?: string;
+}
+
+export interface WarmGlowEffect {
+  enabled: boolean;
+  intensity?: number;
+  color?: string;
+}
+
+export interface BeatGlowEffect {
+  enabled: boolean;
+  syncToBeat: boolean;
+  bpm?: number;
+  color?: string;
+}
+
+export interface ProgressBarEffect {
+  enabled: boolean;
+  color?: string;
+  glowColor?: string;
+  height?: number;
+}
+
+export interface KuaishouNativeEffects {
+  sparkles?: SparklesEffect;
+  horseSilhouette?: HorseSilhouetteEffect;
+  calligraphy?: CalligraphyEffect;
+  warmGlow?: WarmGlowEffect;
+  beatGlow?: BeatGlowEffect;
+  progressBar?: ProgressBarEffect;
+}
+
+// ==========================================
+// CONFIGURATION TEMPLATE PRINCIPALE
+// ==========================================
+
 export interface KuaishouTemplateConfig {
   id: string;
   name: string;
@@ -66,6 +126,9 @@ export interface KuaishouTemplateConfig {
   
   // Métadonnées
   metadata: TemplateMetadata;
+  
+  // Effets Kuaishou natifs (sparkles, horse, calligraphy, etc.)
+  kuaishouEffects?: KuaishouNativeEffects;
 }
 
 export type TemplateCategory = 

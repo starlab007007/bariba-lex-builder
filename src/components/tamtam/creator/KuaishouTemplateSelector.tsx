@@ -188,18 +188,30 @@ interface KuaishouTemplateCardProps {
 
 const KuaishouTemplateCard: React.FC<KuaishouTemplateCardProps> = ({ template, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const isPremium = !!template.kuaishouEffects;
 
   return (
     <motion.div
-      className="relative rounded-xl overflow-hidden bg-card border border-border cursor-pointer group"
+      className={`relative rounded-xl overflow-hidden bg-card border cursor-pointer group ${
+        isPremium ? 'border-amber-500/50 ring-1 ring-amber-500/20' : 'border-border'
+      }`}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
+      {/* Premium glow effect */}
+      {isPremium && (
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10 pointer-events-none z-0" />
+      )}
+
       {/* Thumbnail / Preview */}
-      <div className="relative aspect-[9/16] bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20">
+      <div className={`relative aspect-[9/16] ${
+        isPremium 
+          ? 'bg-gradient-to-br from-amber-500/30 via-orange-500/20 to-red-500/30' 
+          : 'bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20'
+      }`}>
         {isHovered && template.metadata.previewVideo ? (
           <video
             src={template.metadata.previewVideo}
@@ -221,21 +233,60 @@ const KuaishouTemplateCard: React.FC<KuaishouTemplateCardProps> = ({ template, o
 
         {/* Fallback placeholder with emoji */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-6xl mb-2">{getCategoryEmoji(template.category)}</span>
-          <span className="text-sm font-medium text-foreground/60">{template.name}</span>
+          <span className="text-6xl mb-2">
+            {isPremium ? '🐴' : getCategoryEmoji(template.category)}
+          </span>
+          <span className={`text-sm font-medium ${isPremium ? 'text-amber-200' : 'text-foreground/60'}`}>
+            {template.name}
+          </span>
+          {isPremium && (
+            <div className="flex gap-1 mt-2">
+              {['✨', '🎬', '🎵'].map((emoji, i) => (
+                <motion.span
+                  key={i}
+                  className="text-lg"
+                  animate={{ y: [0, -5, 0] }}
+                  transition={{ duration: 1, delay: i * 0.2, repeat: Infinity }}
+                >
+                  {emoji}
+                </motion.span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Overlay badges */}
         <div className="absolute top-2 left-2 right-2 flex justify-between">
-          <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
-            {template.difficulty === 'beginner' && '⭐'}
-            {template.difficulty === 'intermediate' && '⭐⭐'}
-            {template.difficulty === 'advanced' && '⭐⭐⭐'}
-          </Badge>
+          {isPremium ? (
+            <Badge className="bg-amber-500 text-black font-bold animate-pulse">
+              🐴 Premium
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+              {template.difficulty === 'beginner' && '⭐'}
+              {template.difficulty === 'intermediate' && '⭐⭐'}
+              {template.difficulty === 'advanced' && '⭐⭐⭐'}
+            </Badge>
+          )}
           <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
             {getCategoryEmoji(template.category)}
           </Badge>
         </div>
+
+        {/* Premium features badges */}
+        {isPremium && template.kuaishouEffects && (
+          <div className="absolute left-2 bottom-10 flex flex-col gap-1">
+            {template.kuaishouEffects.sparkles?.enabled && (
+              <Badge className="bg-black/60 text-amber-300 text-[10px]">✨ Sparkles</Badge>
+            )}
+            {template.kuaishouEffects.beatGlow?.enabled && (
+              <Badge className="bg-black/60 text-amber-300 text-[10px]">🎵 Beat Sync</Badge>
+            )}
+            {template.kuaishouEffects.horseSilhouette?.enabled && (
+              <Badge className="bg-black/60 text-amber-300 text-[10px]">🐴 Horse</Badge>
+            )}
+          </div>
+        )}
 
         {/* Duration badge */}
         <div className="absolute bottom-2 right-2">
@@ -254,8 +305,14 @@ const KuaishouTemplateCard: React.FC<KuaishouTemplateCardProps> = ({ template, o
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-black/50 flex items-center justify-center"
             >
-              <Button size="sm" className="bg-primary text-primary-foreground">
-                Utiliser 🚀
+              <Button 
+                size="sm" 
+                className={isPremium 
+                  ? 'bg-amber-500 hover:bg-amber-600 text-black font-bold' 
+                  : 'bg-primary text-primary-foreground'
+                }
+              >
+                {isPremium ? 'Utiliser Premium 🐴' : 'Utiliser 🚀'}
               </Button>
             </motion.div>
           )}
@@ -263,8 +320,10 @@ const KuaishouTemplateCard: React.FC<KuaishouTemplateCardProps> = ({ template, o
       </div>
 
       {/* Card Info */}
-      <div className="p-3">
-        <h3 className="font-semibold text-sm text-foreground truncate">{template.name}</h3>
+      <div className="p-3 relative z-10">
+        <h3 className={`font-semibold text-sm truncate ${isPremium ? 'text-amber-400' : 'text-foreground'}`}>
+          {template.name}
+        </h3>
         <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{template.description}</p>
         
         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
@@ -281,7 +340,11 @@ const KuaishouTemplateCard: React.FC<KuaishouTemplateCardProps> = ({ template, o
         {/* Tags */}
         <div className="flex flex-wrap gap-1 mt-2">
           {template.metadata.tags.slice(0, 2).map(tag => (
-            <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+            <Badge 
+              key={tag} 
+              variant="outline" 
+              className={`text-[10px] px-1.5 py-0 ${isPremium ? 'border-amber-500/50 text-amber-400' : ''}`}
+            >
               {tag}
             </Badge>
           ))}
