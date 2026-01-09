@@ -651,12 +651,33 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
       
       console.log(`📹 [${runId}] MediaRecorder created with mimeType:`, actualMimeType);
 
+      // ✅ FIX: Create Promise for onstop BEFORE starting recorder
+      let resolveRecorderStop: (chunks: Blob[]) => void;
+      const waitForRecorderStop = new Promise<Blob[]>((resolve) => {
+        resolveRecorderStop = resolve;
+      });
+      
+      // ✅ Attach ALL event handlers BEFORE recorder.start()
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunks.push(e.data);
           chunkCount++;
           console.log(`📦 [${runId}] Chunk ${chunkCount}: ${e.data.size} bytes`);
         }
+      };
+      
+      recorder.onstop = () => {
+        console.log(`🏁 [${runId}] MediaRecorder stopped. Chunks: ${chunks.length}, Total size: ${chunks.reduce((acc, c) => acc + c.size, 0)}`);
+        resolveRecorderStop([...chunks]);
+      };
+      
+      recorder.onerror = (e: any) => {
+        console.error(`❌ [${runId}] MediaRecorder error:`, e?.error?.message || e);
+        setDebugInfo(prev => ({
+          ...prev,
+          recorderError: e?.error?.message || String(e),
+          recorderState: recorder.state
+        }));
       };
 
       // 5. Animation loop - draw frames
@@ -831,13 +852,7 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
       // 8. Wait for audio to finish with PROPER MediaRecorder stop handling
       console.log(`⏳ [${runId}] Waiting for audio (${audioDuration}s)...`);
       
-      // ✅ Create Promise for MediaRecorder onstop event
-      const waitForRecorderStop = new Promise<Blob[]>((resolve) => {
-        recorder.onstop = () => {
-          console.log(`🏁 [${runId}] MediaRecorder stopped. Chunks: ${chunks.length}`);
-          resolve([...chunks]);
-        };
-      });
+      // ✅ Event handlers already attached above - just use waitForRecorderStop
       
       await Promise.race([
         new Promise<void>((resolve) => {
@@ -1077,6 +1092,31 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
             className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-sm"
           >
             {error}
+            
+            {/* ✅ NEW: Diagnostic panel for debugging */}
+            {debugInfo && (
+              <details className="mt-3 border-t border-red-500/20 pt-3">
+                <summary className="cursor-pointer text-xs text-red-400 hover:text-red-300">
+                  {language === 'fr' ? '🔧 Diagnostic technique' : '🔧 Technical Diagnostic'}
+                </summary>
+                <div className="mt-2 bg-black/30 rounded p-2 text-xs font-mono text-white/70 max-h-48 overflow-auto">
+                  <pre className="whitespace-pre-wrap break-all">
+                    {JSON.stringify(debugInfo, null, 2)}
+                  </pre>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(debugInfo, null, 2));
+                    // Simple feedback
+                    const btn = document.activeElement as HTMLButtonElement;
+                    if (btn) btn.textContent = language === 'fr' ? '✅ Copié!' : '✅ Copied!';
+                  }}
+                  className="mt-2 px-3 py-1 bg-white/10 rounded text-xs hover:bg-white/20 transition-colors"
+                >
+                  {language === 'fr' ? '📋 Copier' : '📋 Copy'}
+                </button>
+              </details>
+            )}
           </motion.div>
         )}
 

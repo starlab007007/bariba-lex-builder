@@ -2,7 +2,7 @@
 // Inline text editing panel - appears at bottom of screen without hiding preview
 // ✅ Now includes predefined text templates and drag-to-position support
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -138,10 +138,26 @@ export default function InlineTextEditor({
     };
   }, [fontPreset, colorPreset, size, isBold, isItalic, align]);
 
-  // Notify parent of style changes for live preview
+  // ✅ FIX: Use ref for callback to prevent infinite loop
+  const onTextChangeRef = useRef(onTextChange);
   useEffect(() => {
-    onTextChange?.(text, getPreviewStyle(), { x: positionX, y: positionY });
-  }, [text, getPreviewStyle, onTextChange, positionX, positionY]);
+    onTextChangeRef.current = onTextChange;
+  }, [onTextChange]);
+
+  // ✅ FIX: Track last sent values to prevent duplicate calls
+  const lastSentRef = useRef<string | null>(null);
+
+  // Notify parent of style changes for live preview (without onTextChange in deps)
+  useEffect(() => {
+    const style = getPreviewStyle();
+    const payload = JSON.stringify({ text, style, x: positionX, y: positionY });
+    
+    // ✅ FIX: Skip if same as last sent (prevents infinite loop)
+    if (payload === lastSentRef.current) return;
+    lastSentRef.current = payload;
+    
+    onTextChangeRef.current?.(text, style, { x: positionX, y: positionY });
+  }, [text, getPreviewStyle, positionX, positionY]);
 
   // ✅ Apply a text template
   const applyTemplate = useCallback((template: typeof TEXT_TEMPLATES[number]) => {
