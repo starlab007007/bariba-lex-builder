@@ -786,16 +786,50 @@ export class TemplateEngine {
       ctx.restore();
     }
 
-    // ============================================================
-    // ✅ KUAISHOU HORSE ENHANCED K-ENGINE VISUAL EFFECTS
-    // ============================================================
+    // Apply visual effects on top of the video
+    this.applyVisualEffects(ctx, tpl, w, h, time);
+
+    ctx.restore();
+  }
+
+  // ============================================================
+  // ✅ NEW: Render ONLY effects as transparent overlay
+  // Video is displayed natively underneath for maximum quality
+  // ============================================================
+  renderEffectsOverlay(canvas: HTMLCanvasElement, time: number): void {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const tpl = this.state.template;
+    if (!tpl) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Clear with full transparency (video shows through)
+    ctx.clearRect(0, 0, w, h);
+
+    // Apply ONLY visual effects (no video drawing)
+    this.applyVisualEffects(ctx, tpl, w, h, time);
+  }
+
+  // ============================================================
+  // ✅ KUAISHOU HORSE ENHANCED K-ENGINE VISUAL EFFECTS
+  // Extracted to shared method for use by both render paths
+  // ============================================================
+  private applyVisualEffects(
+    ctx: CanvasRenderingContext2D, 
+    tpl: TemplateManifest, 
+    w: number, 
+    h: number, 
+    time: number
+  ): void {
     ctx.save();
 
-    // ✅ KUAISHOU HORSE: Access effects directly from normalized template
     const effects = tpl.effects || {};
     const duration = tpl.duration || 15;
     const bpm = tpl.music?.bpm || 128;
-    const beatPhase = Math.sin(time * Math.PI * (bpm / 30)) * 0.5 + 0.5; // BPM sync
+    const beatPhase = Math.sin(time * Math.PI * (bpm / 30)) * 0.5 + 0.5;
 
     // ---- 1. WARM GLOW OVERLAY (Kuaishou festive) ----
     if (effects.warm_glow?.enabled !== false) {
@@ -874,22 +908,20 @@ export class TemplateEngine {
 
     // ---- 5. HORSE SILHOUETTE ANIMATION (gallops across screen) ----
     if (effects.horse_silhouette?.enabled && time >= 5 && time <= 10) {
-      const horseProgress = (time - 5) / 5; // 0 to 1 over 5 seconds
+      const horseProgress = (time - 5) / 5;
       const horseX = -w * 0.3 + horseProgress * w * 1.6;
-      const horseY = h * 0.55 + Math.sin(time * 8) * 10; // Gallop bounce
+      const horseY = h * 0.55 + Math.sin(time * 8) * 10;
       const horseSize = w * 0.25;
       
       ctx.save();
       ctx.translate(horseX, horseY);
       ctx.scale(horseSize / 200, horseSize / 150);
       
-      // Golden glow
       ctx.shadowColor = '#FFD700';
       ctx.shadowBlur = 20;
       ctx.fillStyle = '#FFD700';
       ctx.globalAlpha = 0.7 + beatPhase * 0.3;
       
-      // Simplified horse silhouette path
       ctx.beginPath();
       ctx.moveTo(45, 95);
       ctx.quadraticCurveTo(35, 85, 30, 70);
@@ -909,18 +941,8 @@ export class TemplateEngine {
       ctx.restore();
     }
 
-    // ---- 6. FILM GRAIN (subtle organic texture) ----
-    const grainIntensity = 0.012;
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const data = imageData.data;
-    const frameNoise = Math.sin(time * 30) * 0.5 + 0.5;
-    for (let i = 0; i < data.length; i += 16) { // Sample every 4th pixel for performance
-      const noise = (Math.random() - 0.5) * grainIntensity * 255 * (0.8 + frameNoise * 0.4);
-      data[i] = clamp(data[i] + noise, 0, 255);
-      data[i + 1] = clamp(data[i + 1] + noise, 0, 255);
-      data[i + 2] = clamp(data[i + 2] + noise, 0, 255);
-    }
-    ctx.putImageData(imageData, 0, 0);
+    // ---- 6. FILM GRAIN (subtle organic texture) - DISABLED for overlay mode ----
+    // Film grain is skipped in overlay mode to avoid compositing artifacts
 
     // ---- 7. PROGRESS BAR (golden animated) ----
     if (effects.progress_bar?.enabled !== false) {
@@ -929,13 +951,11 @@ export class TemplateEngine {
       const progressHeight = 4;
       const progressPercent = time / duration;
       
-      // Background track
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
       ctx.beginPath();
       safeRoundRectPath(ctx, 20, progressY, progressWidth, progressHeight, 2);
       ctx.fill();
       
-      // Golden fill with glow
       const progressGradient = ctx.createLinearGradient(20, 0, 20 + progressWidth, 0);
       progressGradient.addColorStop(0, '#FFD700');
       progressGradient.addColorStop(0.5, '#FFA500');
@@ -948,8 +968,6 @@ export class TemplateEngine {
       ctx.fill();
       ctx.shadowBlur = 0;
     }
-
-    // Badge template supprimé pour vidéo finale propre
 
     ctx.restore();
   }
