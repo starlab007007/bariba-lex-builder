@@ -1,3 +1,24 @@
+// ==========================================
+// CAPTIONS
+// ==========================================
+
+export interface Caption {
+  text: string;
+  startTime: number;
+  endTime: number;
+  style: TextStyle;
+  animation: string;
+  position: Position;
+  words?: WordTiming[];
+}
+
+export interface WordTiming {
+  text: string;
+  startTime: number;
+  endTime: number;
+  confidence: number;
+}
+
 /**
  * KuaishouTypes.ts
  * Types TypeScript complets pour le système de templates vidéo Kuaishou
