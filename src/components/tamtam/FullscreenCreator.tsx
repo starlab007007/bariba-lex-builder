@@ -73,6 +73,7 @@ import OverridesEditor from "./creator/OverridesEditor";
 import TikTokEditingBar from "./creator/TikTokEditingBar";
 import TextOverlayEditor, { TextOverlay, TextOverlayRenderer, FONT_PRESETS, COLOR_PRESETS } from "./creator/TextOverlayEditor";
 import InlineTextEditor from "./creator/InlineTextEditor";
+import DraggableTextOverlay, { DraggablePreviewOverlay } from "./creator/DraggableTextOverlay";
 import OptimizedExportScreen from "./creator/OptimizedExportScreen";
 import CameraResolutionIndicator from "./creator/CameraResolutionIndicator";
 import { useDevicePerformance, getKEngineQualitySettings } from "@/hooks/useDevicePerformance";
@@ -555,7 +556,7 @@ export default function FullscreenCreator({
   
   // ✅ NEW: Inline text editing state
   const [showInlineTextEditor, setShowInlineTextEditor] = useState(false);
-  const [inlineTextPreview, setInlineTextPreview] = useState<{ text: string; style: React.CSSProperties } | null>(null);
+  const [inlineTextPreview, setInlineTextPreview] = useState<{ text: string; style: React.CSSProperties; position?: { x: number; y: number } } | null>(null);
   
   // ✅ NEW: Text mode style state (for text-only posts)
   const [textModeFont, setTextModeFont] = useState("classic");
@@ -2507,15 +2508,37 @@ export default function FullscreenCreator({
           containerRef={containerRef}
         />
 
-        {/* Text Overlays Layer */}
+        {/* Text Overlays Layer - now draggable when inline editor is open */}
         {textOverlays.map((overlay) => (
-          <TextOverlayRenderer
-            key={overlay.id}
-            overlay={overlay}
-            containerWidth={containerRef.current?.clientWidth || 0}
-            containerHeight={containerRef.current?.clientHeight || 0}
-            currentTime={currentTime}
-          />
+          hasCapture && showInlineTextEditor ? (
+            <DraggableTextOverlay
+              key={overlay.id}
+              overlay={overlay}
+              containerRef={containerRef}
+              currentTime={currentTime}
+              isEditing={true}
+              onPositionChange={(id, x, y) => {
+                setTextOverlays(prev => prev.map(o => 
+                  o.id === id ? { ...o, x, y } : o
+                ));
+              }}
+              onEdit={(o) => {
+                setEditingTextOverlay(o);
+                setShowInlineTextEditor(true);
+              }}
+              onDelete={(id) => {
+                setTextOverlays(prev => prev.filter(o => o.id !== id));
+              }}
+            />
+          ) : (
+            <TextOverlayRenderer
+              key={overlay.id}
+              overlay={overlay}
+              containerWidth={containerRef.current?.clientWidth || 0}
+              containerHeight={containerRef.current?.clientHeight || 0}
+              currentTime={currentTime}
+            />
+          )
         ))}
 
         {/* Flash simulation */}
@@ -3194,21 +3217,28 @@ export default function FullscreenCreator({
             setShowInlineTextEditor(false);
             setInlineTextPreview(null);
           }}
-          onTextChange={(text, style) => {
-            setInlineTextPreview({ text, style });
+          onTextChange={(text, style, position) => {
+            setInlineTextPreview({ 
+              text, 
+              style,
+              position: position || { x: 50, y: 50 }
+            });
           }}
           initialOverlay={editingTextOverlay}
           videoDuration={totalDuration || lengthSec}
         />
 
-        {/* Inline text preview overlay (shows live on video/photo) */}
+        {/* Inline text preview overlay (shows live on video/photo) - now draggable */}
         {showInlineTextEditor && inlineTextPreview && inlineTextPreview.text && (
-          <div
-            className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none max-w-[80%]"
+          <DraggablePreviewOverlay
+            text={inlineTextPreview.text}
             style={inlineTextPreview.style}
-          >
-            {inlineTextPreview.text}
-          </div>
+            position={inlineTextPreview.position || { x: 50, y: 50 }}
+            containerRef={containerRef}
+            onPositionChange={(x, y) => {
+              setInlineTextPreview(prev => prev ? { ...prev, position: { x, y } } : null);
+            }}
+          />
         )}
 
         {/* Legacy Text Overlay Editor Modal (fallback) */}
