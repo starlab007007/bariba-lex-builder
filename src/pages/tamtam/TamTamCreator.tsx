@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bug, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import { KuaishouTemplateConfig, VideoSegment, TemplateSegment, PreviewVideo } f
 
 const TamTamCreator: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Draft system
   const { 
@@ -69,6 +70,25 @@ const TamTamCreator: React.FC = () => {
       setShowDraftPrompt(true);
     }
   }, [hasRecentDraft, phase]);
+
+  // Handle pre-selected template from FullscreenCreator navigation
+  useEffect(() => {
+    const state = location.state as { preselectedTemplate?: UnifiedTemplate } | null;
+    if (state?.preselectedTemplate) {
+      console.log('📦 Template pré-sélectionné reçu depuis FullscreenCreator:', state.preselectedTemplate.name);
+      
+      // Apply the template
+      setSelectedTemplate(state.preselectedTemplate);
+      setCapturedSegments([]);
+      setCurrentSegmentIndex(0);
+      setFinalVideoBlob(null);
+      setPhase('capturing');
+      toast.success(`${state.preselectedTemplate.emoji} ${state.preselectedTemplate.name}`);
+      
+      // Clear navigation state to prevent re-triggers on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Sync draft status
   useEffect(() => {
