@@ -3354,13 +3354,16 @@ export default function FullscreenCreator({
             setShowInlineTextEditor(false);
             setInlineTextPreview(null);
           }}
-          onTextChange={(text, style, position) => {
-            setInlineTextPreview({ 
-              text, 
-              style,
-              position: position || { x: 50, y: 50 }
+          onTextChange={useCallback((text: string, style: React.CSSProperties, position?: { x: number; y: number }) => {
+            setInlineTextPreview(prev => {
+              const newPos = position || { x: 50, y: 50 };
+              // ✅ FIX: Guard against no-op updates to prevent re-render cascade
+              if (prev && prev.text === text && prev.position?.x === newPos.x && prev.position?.y === newPos.y) {
+                return prev;
+              }
+              return { text, style, position: newPos };
             });
-          }}
+          }, [])}
           initialOverlay={editingTextOverlay}
           videoDuration={totalDuration || lengthSec}
         />
