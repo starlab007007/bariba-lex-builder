@@ -854,7 +854,7 @@ export default function FullscreenCreator({
   const legacyTemplateActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
   
   // ✅ BLOCK A: K-Engine LIVE preview on camera (before capture)
-  // Automatically detects KSE templates and renders effects in real-time
+  // ✅ HYBRID HIGH-QUALITY MODE: Video native visible + canvas overlay for effects only
   useEffect(() => {
     if (hasCapture) return; // Only for live mode
     if (!isKEngineActive || !kState.template) return;
@@ -881,26 +881,28 @@ export default function FullscreenCreator({
 
     const draw = (now: number) => {
       try {
-        // Calculate delta time for smooth animation
         const dt = (now - lastTime) / 1000;
         lastTime = now;
 
-        const rect = canvas.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        const cw = Math.max(1, Math.floor(rect.width * dpr));
-        const ch = Math.max(1, Math.floor(rect.height * dpr));
+        // ✅ HIGH-QUALITY: Use native video dimensions for canvas (up to 1080p)
+        const videoW = video.videoWidth || 1080;
+        const videoH = video.videoHeight || 1920;
+        const maxDim = 1080;
+        const scale = Math.min(1, maxDim / Math.max(videoW, videoH));
+        const cw = Math.round(videoW * scale);
+        const ch = Math.round(videoH * scale);
+        
         if (canvas.width !== cw || canvas.height !== ch) {
           canvas.width = cw;
           canvas.height = ch;
         }
 
-        // Increment time for animations (use delta for smooth timing)
         time += dt;
         const tplDur = kState.template?.duration || 15;
         if (time > tplDur) time = 0;
 
-        // ✅ Render K-Engine frame with all effects applied
-        kEngine.renderFrameToCanvas(canvas, time);
+        // ✅ HYBRID MODE: Render ONLY effects overlay (video is visible natively underneath)
+        kEngine.renderEffectsOverlay(canvas, time);
       } catch (err) {
         // Silent fail to keep loop alive
       }
@@ -911,7 +913,6 @@ export default function FullscreenCreator({
     
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      // Unbind live stream when leaving live mode
       if (primarySlot) {
         kEngine.unbindLiveStream(primarySlot.id);
       }
@@ -2105,26 +2106,31 @@ export default function FullscreenCreator({
         <div className={cn("absolute inset-0", graphicsClasses)} style={graphicsStyles}>
           {!hasCapture ? (
             <>
+              {/* ✅ HIGH-QUALITY HYBRID MODE: Native video ALWAYS visible for maximum quality */}
               <video
                 ref={videoRef}
                 className="absolute inset-0 w-full h-full object-cover bg-black"
                 style={{
                   filter: isKEngineActive ? "none" : cssFilter,
                   transform: facing === "user" ? "scaleX(-1)" : "none",
-                  // ✅ Hide video when K-Engine active OR legacy template active (canvas shows effects)
-                  opacity: isKEngineActive || (legacyTemplateActive) ? 0 : 1,
+                  // ✅ HYBRID: Keep video visible when K-Engine active (effects rendered as overlay)
+                  opacity: legacyTemplateActive ? 0 : 1,
                 }}
                 playsInline
                 muted
                 autoPlay
               />
 
-              {/* ✅ K-Engine live canvas (renders template effects on camera) */}
+              {/* ✅ K-Engine TRANSPARENT overlay canvas (effects only, video shows through) */}
               {isKEngineActive && (
                 <canvas
                   ref={liveCanvasRef}
-                  className="absolute inset-0 w-full h-full"
-                  style={{ transform: facing === "user" ? "scaleX(-1)" : "none" }}
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  style={{ 
+                    transform: facing === "user" ? "scaleX(-1)" : "none",
+                    // ✅ Transparent overlay - video native quality visible underneath
+                    mixBlendMode: 'normal',
+                  }}
                   aria-hidden="true"
                 />
               )}
