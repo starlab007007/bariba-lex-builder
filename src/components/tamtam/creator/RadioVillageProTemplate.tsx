@@ -331,34 +331,277 @@ export const RadioVillageProTemplate: React.FC<RadioVillageProTemplateProps> = (
   }, [photoPortrait, photoVillage, photoContext]);
 
   // ==========================================
-  // PROCESSING
+  // UTILITY: Load image
+  // ==========================================
+
+  const loadImage = useCallback((src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }, []);
+
+  // ==========================================
+  // UTILITY: Get compatible video MIME type
+  // ==========================================
+
+  const getCompatibleVideoMimeType = useCallback((): string => {
+    const MR = window.MediaRecorder;
+    if (!MR) return 'video/webm';
+    
+    // Safari/iOS prefers MP4
+    const isSafari = /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    if (isSafari || isIOS) {
+      if (MR.isTypeSupported?.('video/mp4')) return 'video/mp4';
+    }
+    
+    // Prefer VP8 (more compatible) then VP9
+    const types = [
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8',
+      'video/webm',
+      'video/mp4'
+    ];
+    
+    for (const type of types) {
+      if (MR.isTypeSupported?.(type)) return type;
+    }
+    
+    return 'video/webm';
+  }, []);
+
+  // ==========================================
+  // PROCESSING - Real Video Generation
   // ==========================================
 
   const startProcessing = useCallback(async () => {
-    if (!audioBlob) return;
+    if (!audioBlob || !audioUrl) return;
 
     setProcessingProgress(0);
+    setProcessingMessage(language === 'fr' ? 'Préparation...' : 'Sɔ́ɔ̀n tɔ́ɔ́...');
 
-    for (const step of processingSteps) {
-      await new Promise(resolve => setTimeout(resolve, 700 + Math.random() * 300));
-      setProcessingProgress(step.progress);
-      setProcessingMessage(language === 'fr' ? step.messageFr : step.messageBa);
+    try {
+      // 1. Create canvas for video rendering
+      const canvas = document.createElement('canvas');
+      canvas.width = 720;
+      canvas.height = 1280;
+      const ctx = canvas.getContext('2d')!;
+
+      // 2. Load photos if available
+      setProcessingProgress(10);
+      setProcessingMessage(language === 'fr' ? 'Chargement des images...' : 'Photos tɔ́ɔ́ bàn...');
+      
+      const photos: (HTMLImageElement | null)[] = [];
+      for (const src of [photoPortrait, photoVillage, photoContext]) {
+        if (src) {
+          try {
+            photos.push(await loadImage(src));
+          } catch {
+            photos.push(null);
+          }
+        } else {
+          photos.push(null);
+        }
+      }
+
+      // 3. Prepare audio
+      setProcessingProgress(20);
+      setProcessingMessage(language === 'fr' ? 'Préparation audio...' : 'Audio sɔ́ɔ̀n...');
+      
+      const audio = document.createElement('audio');
+      audio.src = audioUrl;
+      audio.crossOrigin = 'anonymous';
+      audio.muted = false;
+      audio.volume = 1;
+
+      await new Promise<void>((resolve, reject) => {
+        audio.onloadedmetadata = () => resolve();
+        audio.onerror = () => reject(new Error('Audio load failed'));
+        audio.load();
+      });
+
+      // 4. Setup MediaRecorder with compatible format
+      setProcessingProgress(30);
+      setProcessingMessage(language === 'fr' ? 'Configuration vidéo...' : 'Video sɔ́ɔ̀n...');
+      
+      const mimeType = getCompatibleVideoMimeType();
+      console.log('📹 Using video format:', mimeType);
+      
+      // Capture canvas stream at 30fps
+      const canvasStream = canvas.captureStream(30);
+      
+      // Create audio context to capture audio
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaElementSource(audio);
+      const dest = audioContext.createMediaStreamDestination();
+      source.connect(dest);
+      source.connect(audioContext.destination); // Also play through speakers
+      
+      // Combine canvas video + audio into single stream
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...dest.stream.getAudioTracks()
+      ]);
+
+      const chunks: Blob[] = [];
+      const recorder = new MediaRecorder(combinedStream, { 
+        mimeType,
+        videoBitsPerSecond: 2500000 // 2.5 Mbps
+      });
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      // 5. Animation loop - draw frames
+      const selectedPresetData = radioVillageStyles[selectedStyle];
+      let animationFrame = 0;
+      let isRecording = true;
+
+      const drawFrame = () => {
+        if (!isRecording) return;
+        
+        // Background gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, selectedPresetData?.colors.primary || '#1a1a2e');
+        gradient.addColorStop(1, selectedPresetData?.colors.secondary || '#16213e');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw photos with Ken Burns effect (subtle zoom/pan)
+        const activePhoto = photos.find(p => p !== null);
+        if (activePhoto) {
+          const scale = 1.05 + Math.sin(animationFrame * 0.01) * 0.05;
+          const offsetX = Math.sin(animationFrame * 0.005) * 20;
+          const offsetY = Math.cos(animationFrame * 0.007) * 15;
+          
+          ctx.save();
+          ctx.globalAlpha = 0.6;
+          const imgAspect = activePhoto.width / activePhoto.height;
+          const canvasAspect = canvas.width / canvas.height;
+          
+          let drawW, drawH;
+          if (imgAspect > canvasAspect) {
+            drawH = canvas.height * scale;
+            drawW = drawH * imgAspect;
+          } else {
+            drawW = canvas.width * scale;
+            drawH = drawW / imgAspect;
+          }
+          
+          const x = (canvas.width - drawW) / 2 + offsetX;
+          const y = (canvas.height - drawH) / 2 + offsetY;
+          ctx.drawImage(activePhoto, x, y, drawW, drawH);
+          ctx.restore();
+        }
+
+        // Waveform visualization
+        const waveY = canvas.height * 0.5;
+        const barCount = 40;
+        const barWidth = canvas.width / (barCount * 2);
+        
+        ctx.fillStyle = selectedPresetData?.colors.accent || '#fbbf24';
+        for (let i = 0; i < barCount; i++) {
+          const height = 30 + Math.sin((animationFrame + i * 10) * 0.1) * 60 + Math.random() * 20;
+          const x = (canvas.width / 2) + (i - barCount / 2) * barWidth * 2;
+          ctx.fillRect(x, waveY - height / 2, barWidth, height);
+        }
+
+        // Template badge
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.font = 'bold 32px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🎙️ Radio Village', canvas.width / 2, 80);
+        
+        // Style name
+        ctx.font = '24px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        const styleName = language === 'fr' ? selectedPresetData?.name : selectedPresetData?.nameBariba;
+        ctx.fillText(styleName || 'Sagesse', canvas.width / 2, 120);
+
+        animationFrame++;
+        if (isRecording) {
+          requestAnimationFrame(drawFrame);
+        }
+      };
+
+      // 6. Start recording and playing
+      setProcessingProgress(40);
+      setProcessingMessage(language === 'fr' ? 'Génération en cours...' : 'Tɛ̀rɛ̀ tɔ́ɔ́...');
+      
+      recorder.start(100); // Collect chunks every 100ms
+      drawFrame();
+      await audio.play();
+
+      // 7. Progress updates during recording
+      const progressInterval = setInterval(() => {
+        if (audio.currentTime && audio.duration) {
+          const progress = 40 + (audio.currentTime / audio.duration) * 50;
+          setProcessingProgress(Math.min(90, progress));
+          
+          const stepIndex = Math.floor((audio.currentTime / audio.duration) * processingSteps.length);
+          if (processingSteps[stepIndex]) {
+            setProcessingMessage(
+              language === 'fr' 
+                ? processingSteps[stepIndex].messageFr 
+                : processingSteps[stepIndex].messageBa
+            );
+          }
+        }
+      }, 500);
+
+      // 8. Wait for audio to finish
+      await new Promise<void>((resolve) => {
+        audio.onended = () => {
+          isRecording = false;
+          clearInterval(progressInterval);
+          recorder.stop();
+          setTimeout(resolve, 200); // Give recorder time to finish
+        };
+      });
+
+      // 9. Create final video blob
+      setProcessingProgress(95);
+      setProcessingMessage(language === 'fr' ? 'Finalisation...' : 'Kɔ̀rɔ̀ tɔ́ɔ́...');
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const videoBlob = new Blob(chunks, { type: mimeType });
+      console.log('✅ Video generated:', videoBlob.size, 'bytes, type:', mimeType);
+
+      // Cleanup
+      audioContext.close();
+
+      // 10. Complete
+      setProcessingProgress(100);
+      setProcessingMessage(language === 'fr' ? 'Terminé!' : 'À tɛ̀rɛ̀!');
+
+      const metadata: VideoMetadata = {
+        duration: audioDuration,
+        style: selectedStyle,
+        hasPortrait: !!photoPortrait,
+        hasVillage: !!photoVillage,
+        hasContext: !!photoContext,
+        language
+      };
+
+      setTimeout(() => onComplete(videoBlob, metadata), 500);
+
+    } catch (error) {
+      console.error('❌ Video generation failed:', error);
+      setError(language === 'fr' 
+        ? 'Erreur lors de la génération vidéo. Veuillez réessayer.' 
+        : 'Video tɛ̀rɛ̀ bàn. Sɔ́ɔ̀n tɔ́ɔ́.'
+      );
+      setCurrentStep('style'); // Go back to style selection
     }
-
-    const metadata: VideoMetadata = {
-      duration: audioDuration,
-      style: selectedStyle,
-      hasPortrait: !!photoPortrait,
-      hasVillage: !!photoVillage,
-      hasContext: !!photoContext,
-      language
-    };
-
-    // Simulate video blob (in production, this would be actual rendered video)
-    const fakeVideoBlob = new Blob([audioBlob], { type: 'video/mp4' });
-
-    setTimeout(() => onComplete(fakeVideoBlob, metadata), 500);
-  }, [audioBlob, audioDuration, selectedStyle, photoPortrait, photoVillage, photoContext, language, onComplete]);
+  }, [audioBlob, audioUrl, audioDuration, selectedStyle, photoPortrait, photoVillage, photoContext, language, onComplete, loadImage, getCompatibleVideoMimeType]);
 
   // ==========================================
   // NAVIGATION
