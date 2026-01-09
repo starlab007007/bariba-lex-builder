@@ -1,7 +1,7 @@
 /**
  * KuaishouPreviewMode.tsx
- * Mode prévisualisation avec timeline et édition
- * Version: 1.0.0
+ * Mode prévisualisation avec timeline, effets Kuaishou et édition
+ * Version: 2.0.0
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -29,6 +29,7 @@ import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import { KuaishouTemplateConfig, VideoSegment, PreviewVideo } from '@/types/KuaishouTypes';
 import { HybridRenderingEngine } from '@/engines/HybridRenderingEngine';
+import { KuaishouEffectsOverlay } from './KuaishouEffects';
 
 interface KuaishouPreviewModeProps {
   template: KuaishouTemplateConfig;
@@ -261,6 +262,16 @@ export const KuaishouPreviewMode: React.FC<KuaishouPreviewModeProps> = ({
               onClick={togglePlay}
             />
 
+            {/* Kuaishou Effects Overlay */}
+            {template.kuaishouEffects && (
+              <KuaishouEffectsOverlay
+                effects={template.kuaishouEffects}
+                currentTime={currentTime}
+                duration={duration}
+                isRecording={false}
+              />
+            )}
+
             {/* Play/Pause Overlay */}
             <AnimatePresence>
               {!isPlaying && (
@@ -279,10 +290,15 @@ export const KuaishouPreviewMode: React.FC<KuaishouPreviewModeProps> = ({
             </AnimatePresence>
 
             {/* Current segment indicator */}
-            <div className="absolute top-4 left-4">
+            <div className="absolute top-4 left-4 flex items-center gap-2">
               <Badge variant="secondary" className="bg-black/70 text-white">
                 Segment {getCurrentSegmentIndex() + 1}/{template.segments.length}
               </Badge>
+              {template.kuaishouEffects && (
+                <Badge variant="secondary" className="bg-amber-500/80 text-white">
+                  🐴 Premium
+                </Badge>
+              )}
             </div>
           </div>
         ) : (

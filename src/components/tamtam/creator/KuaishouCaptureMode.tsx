@@ -1,7 +1,7 @@
 /**
  * KuaishouCaptureMode.tsx
- * Mode capture vidéo avec effets temps réel et guidance
- * Version: 1.0.0
+ * Mode capture vidéo avec effets temps réel Kuaishou et guidance
+ * Version: 2.0.0
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { KuaishouTemplateConfig, TemplateSegment, VideoSegment } from '@/types/KuaishouTypes';
 import { CaptureEngine } from '@/engines/CaptureEngine';
+import { KuaishouEffectsOverlay } from './KuaishouEffects';
 
 interface KuaishouCaptureModeProps {
   template: KuaishouTemplateConfig;
@@ -247,6 +248,14 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
   const progressPercent = (recordingTime / maxDuration) * 100;
   const canStop = recordingTime >= minDuration;
 
+  // Check if template has Kuaishou native effects
+  const hasKuaishouEffects = template.kuaishouEffects && (
+    template.kuaishouEffects.sparkles?.enabled ||
+    template.kuaishouEffects.warmGlow?.enabled ||
+    template.kuaishouEffects.beatGlow?.enabled ||
+    template.kuaishouEffects.progressBar?.enabled
+  );
+
   return (
     <div className="fixed inset-0 bg-black flex flex-col">
       {/* Camera Preview */}
@@ -260,6 +269,16 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
           style={{ transform: isFrontCamera ? 'scaleX(-1)' : 'none' }}
         />
 
+        {/* Kuaishou Effects Overlay */}
+        {hasKuaishouEffects && template.kuaishouEffects && (
+          <KuaishouEffectsOverlay
+            effects={template.kuaishouEffects}
+            currentTime={recordingTime}
+            duration={maxDuration}
+            isRecording={captureState === 'recording' || captureState === 'paused'}
+          />
+        )}
+
         {/* Top Bar */}
         <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/60 to-transparent">
           <div className="flex items-center justify-between">
@@ -271,6 +290,11 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
               <Badge variant="secondary" className="bg-black/50 text-white">
                 {segmentIndex + 1}/{totalSegments}
               </Badge>
+              {template.kuaishouEffects && (
+                <Badge variant="secondary" className="bg-amber-500/80 text-white">
+                  🐴 Premium
+                </Badge>
+              )}
               <Badge variant="secondary" className="bg-primary/80 text-primary-foreground">
                 {maxDuration}s max
               </Badge>
