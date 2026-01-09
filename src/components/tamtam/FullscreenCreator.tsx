@@ -5,6 +5,7 @@
 // ✅ Adds K-Engine timeline preview + play/pause/seek + auto-bind captured media to slots + AI pipeline progress
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -393,6 +394,8 @@ export default function FullscreenCreator({
   onClose,
   onPublish,
 }: FullscreenCreatorProps) {
+  const navigate = useNavigate();
+  
   // ============= UNIFIED STATE =============
   const [hasCapture, setHasCapture] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
@@ -2279,7 +2282,7 @@ export default function FullscreenCreator({
               className="absolute top-20 left-4 z-40"
             >
               <button
-                onClick={() => !isRecording && setDrawer(drawer === "template" ? "none" : "template")}
+                onClick={() => !isRecording && navigate('/tamtam/creator')}
                 disabled={isRecording}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-xl border transition-all",
@@ -2489,8 +2492,8 @@ export default function FullscreenCreator({
           <RailButton
             icon={<Layers className="h-5 w-5" />}
             label="Template"
-            onClick={() => setDrawer(drawer === "template" ? "none" : "template")}
-            active={drawer === "template" || effects.templateId !== "free"}
+            onClick={() => navigate('/tamtam/creator')}
+            active={effects.templateId !== "free"}
           />
 
           {hasCapture && (
@@ -2820,12 +2823,14 @@ export default function FullscreenCreator({
           }}
         />
 
-        {/* Advanced Template Drawer (now supports new manifest output; we accept any and type-guard) */}
+        {/* Advanced Template Drawer - disabled, now redirects to /tamtam/creator */}
+        {/* 
         <AdvancedTemplateDrawer
           isOpen={drawer === "template"}
           onClose={() => setDrawer("none")}
           onSelectTemplate={(tpl: any) => onSelectAnyTemplate(tpl)}
         />
+        */}
 
         {/* Sticker Picker */}
         <AnimatePresence>
