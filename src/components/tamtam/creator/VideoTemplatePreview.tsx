@@ -484,7 +484,7 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
     try {
       // ✅ Check cache with robust key
       const cached = await templateVideoCache.get(cacheKey);
-      if (cached && cached.frameCount === frames.length && cached.durationMs === durationMs) {
+      if (cached && cached.metadata?.frameCount === frames.length && cached.metadata?.durationMs === durationMs) {
         console.log('[VideoTemplatePreview] Using cached video for:', cacheKey);
         const url = URL.createObjectURL(cached.blob);
         setVideoUrl(url);
@@ -498,8 +498,12 @@ const VideoTemplatePreview: React.FC<VideoTemplatePreviewProps> = ({
       // Generate new video with scene support
       const blob = await generateVideoFromFrames(frames, durationMs, setProgress, scenes);
       
-      // ✅ Cache with robust key
-      await templateVideoCache.set(cacheKey, blob, durationMs, frames.length);
+      // ✅ Cache with robust key (pass metadata object)
+      await templateVideoCache.set(cacheKey, blob, { 
+        frameCount: frames.length, 
+        durationMs,
+        duration: durationMs
+      });
       
       // Create URL
       const url = URL.createObjectURL(blob);
