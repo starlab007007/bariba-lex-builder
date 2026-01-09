@@ -28,6 +28,7 @@ import TamTamEducation from "./pages/tamtam/TamTamEducation";
 import TamTamTranslator from "./pages/tamtam/TamTamTranslator";
 import TamTamHealth from "./pages/tamtam/TamTamHealth";
 import TamTamKuaishouTest from "./pages/tamtam/TamTamKuaishouTest";
+import TamTamCreator from "./pages/tamtam/TamTamCreator";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="health" element={<TamTamHealth />} />
               <Route path="translator" element={<TamTamTranslator />} />
               <Route path="kuaishou-test" element={<TamTamKuaishouTest />} />
+              <Route path="creator" element={<TamTamCreator />} />
               <Route path="sos" element={<TamTamSOS />} />
               <Route path="profile" element={<TamTamProfile />} />
               <Route path="dictionary" element={<TamTamDictionary />} />
