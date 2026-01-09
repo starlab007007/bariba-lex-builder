@@ -78,23 +78,40 @@ export const KuaishouPreviewMode: React.FC<KuaishouPreviewModeProps> = ({
     };
   }, []);
 
-  // Generate preview
+  // Generate preview from captured segments
   useEffect(() => {
     const generatePreview = async () => {
-      if (!renderEngineRef.current || segments.length === 0) return;
+      // If we have captured segments, create preview from them
+      if (segments.length > 0) {
+        setIsRendering(true);
+        try {
+          // Combine all segment blobs into one video
+          const segmentBlobs = segments
+            .filter(s => s.blob)
+            .map(s => s.blob!);
 
-      setIsRendering(true);
-      try {
-        const preview = await renderEngineRef.current.generateInstantPreview(
-          segments,
-          template
-        );
-        setPreviewVideo(preview);
-        setDuration(preview.duration);
-      } catch (error) {
-        console.error('Preview generation failed:', error);
+          if (segmentBlobs.length > 0) {
+            const combinedBlob = new Blob(segmentBlobs, { type: 'video/webm' });
+            const totalDuration = segments.reduce((acc, s) => acc + (s.duration || 0), 0);
+            
+            setPreviewVideo({
+              url: URL.createObjectURL(combinedBlob),
+              duration: totalDuration > 0 ? totalDuration : template.video.duration,
+              quality: 'preview',
+              size: combinedBlob.size,
+              readyTime: Date.now(),
+              format: 'webm'
+            });
+            setDuration(totalDuration > 0 ? totalDuration : template.video.duration);
+          }
+        } catch (error) {
+          console.error('Preview generation failed:', error);
+        }
+        setIsRendering(false);
+      } else {
+        // No segments yet - show placeholder or template preview
+        setPreviewVideo(null);
       }
-      setIsRendering(false);
     };
 
     generatePreview();
@@ -269,8 +286,12 @@ export const KuaishouPreviewMode: React.FC<KuaishouPreviewModeProps> = ({
             </div>
           </div>
         ) : (
-          <div className="text-center text-white/60">
-            <p>Aucune vidéo à prévisualiser</p>
+          <div className="text-center text-white/60 flex flex-col items-center gap-4">
+            <div className="w-24 h-24 rounded-full bg-muted/20 flex items-center justify-center">
+              <Play className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <p>Aucune vidéo capturée</p>
+            <p className="text-sm">Retourne à la capture pour enregistrer des segments</p>
           </div>
         )}
       </div>

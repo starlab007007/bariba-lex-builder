@@ -199,7 +199,7 @@ const KuaishouTemplateCard: React.FC<KuaishouTemplateCardProps> = ({ template, o
       whileTap={{ scale: 0.98 }}
     >
       {/* Thumbnail / Preview */}
-      <div className="relative aspect-[9/16] bg-muted">
+      <div className="relative aspect-[9/16] bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20">
         {isHovered && template.metadata.previewVideo ? (
           <video
             src={template.metadata.previewVideo}
@@ -208,14 +208,22 @@ const KuaishouTemplateCard: React.FC<KuaishouTemplateCardProps> = ({ template, o
             muted
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => (e.currentTarget.style.display = 'none')}
           />
-        ) : (
+        ) : template.metadata.thumbnail ? (
           <img
-            src={template.metadata.thumbnail || '/placeholder.svg'}
+            src={template.metadata.thumbnail}
             alt={template.name}
             className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => (e.currentTarget.style.display = 'none')}
           />
-        )}
+        ) : null}
+
+        {/* Fallback placeholder with emoji */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-6xl mb-2">{getCategoryEmoji(template.category)}</span>
+          <span className="text-sm font-medium text-foreground/60">{template.name}</span>
+        </div>
 
         {/* Overlay badges */}
         <div className="absolute top-2 left-2 right-2 flex justify-between">

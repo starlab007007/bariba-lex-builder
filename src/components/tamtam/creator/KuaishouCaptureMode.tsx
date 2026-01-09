@@ -53,44 +53,55 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
   const [isFrontCamera, setIsFrontCamera] = useState(true);
 
   const captureEngineRef = useRef<CaptureEngine | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
   const maxDuration = currentSegment.maxDuration || currentSegment.duration;
   const minDuration = currentSegment.minDuration || 3;
 
-  // Initialize capture engine
+  // Initialize camera directly
   useEffect(() => {
     const initCamera = async () => {
-      captureEngineRef.current = new CaptureEngine();
-      await captureEngineRef.current.initializeCamera(isFrontCamera ? 'user' : 'environment');
-      
-      // Apply default effects
-      activeEffects.forEach(effect => {
-        captureEngineRef.current?.enableEffect(effect);
-      });
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1080 },
+            height: { ideal: 1920 },
+            facingMode: isFrontCamera ? 'user' : 'environment'
+          },
+          audio: true
+        });
 
-      // Connect canvas
-      if (canvasRef.current) {
-        const engineCanvas = captureEngineRef.current.getCanvas();
-        const ctx = canvasRef.current.getContext('2d');
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+
+        // Initialize capture engine for recording
+        captureEngineRef.current = new CaptureEngine();
+        await captureEngineRef.current.initializeCamera(isFrontCamera ? 'user' : 'environment');
         
-        const renderLoop = () => {
-          if (ctx && engineCanvas) {
-            ctx.drawImage(engineCanvas, 0, 0, canvasRef.current!.width, canvasRef.current!.height);
-          }
-          requestAnimationFrame(renderLoop);
-        };
-        renderLoop();
+        // Apply default effects
+        activeEffects.forEach(effect => {
+          captureEngineRef.current?.enableEffect(effect);
+        });
+      } catch (error) {
+        console.error('Camera init error:', error);
       }
     };
 
     initCamera();
 
     return () => {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
       captureEngineRef.current?.destroy();
     };
-  }, []);
+  }, [isFrontCamera]);
 
   // Handle camera flip
   const handleFlipCamera = useCallback(async () => {
@@ -128,12 +139,34 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
     }, 1000);
   }, []);
 
-  // Start recording
+  // Start recording using the video stream directly
   const startRecording = useCallback(async () => {
     setCaptureState('recording');
     setRecordingTime(0);
+    recordedChunksRef.current = [];
 
-    await captureEngineRef.current?.startRecording(maxDuration);
+    const stream = videoRef.current?.srcObject as MediaStream;
+    if (!stream) {
+      console.error('No stream available');
+      return;
+    }
+
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
+      ? 'video/webm;codecs=vp9' 
+      : 'video/webm';
+
+    mediaRecorderRef.current = new MediaRecorder(stream, { 
+      mimeType,
+      videoBitsPerSecond: 5000000 
+    });
+
+    mediaRecorderRef.current.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        recordedChunksRef.current.push(e.data);
+      }
+    };
+
+    mediaRecorderRef.current.start(100); // collect data every 100ms
 
     recordingIntervalRef.current = setInterval(() => {
       setRecordingTime(prev => {
@@ -146,20 +179,43 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
     }, 100);
   }, [maxDuration]);
 
-  // Stop recording
+  // Stop recording and create segment
   const stopRecording = useCallback(async () => {
     if (recordingIntervalRef.current) {
       clearInterval(recordingIntervalRef.current);
     }
 
-    const segment = await captureEngineRef.current?.stopRecording();
-    if (segment) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      
+      // Wait for final data
+      await new Promise<void>((resolve) => {
+        if (mediaRecorderRef.current) {
+          mediaRecorderRef.current.onstop = () => resolve();
+        } else {
+          resolve();
+        }
+      });
+    }
+
+    // Create video segment from recorded chunks
+    if (recordedChunksRef.current.length > 0) {
+      const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+      
+      const segment: VideoSegment = {
+        id: `segment_${Date.now()}`,
+        blob,
+        duration: recordingTime,
+        timestamp: Date.now(),
+        effects: activeEffects as any[]
+      };
+
       onCapture(segment);
     }
     
     setCaptureState('preview');
     setRecordingTime(0);
-  }, [onCapture]);
+  }, [onCapture, recordingTime, activeEffects]);
 
   // Pause/Resume recording
   const togglePause = useCallback(() => {
@@ -168,8 +224,14 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current);
       }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.pause();
+      }
     } else if (captureState === 'paused') {
       setCaptureState('recording');
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
+        mediaRecorderRef.current.resume();
+      }
       recordingIntervalRef.current = setInterval(() => {
         setRecordingTime(prev => {
           if (prev >= maxDuration) {
@@ -189,11 +251,13 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
     <div className="fixed inset-0 bg-black flex flex-col">
       {/* Camera Preview */}
       <div className="flex-1 relative">
-        <canvas
-          ref={canvasRef}
-          width={1080}
-          height={1920}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
           className="absolute inset-0 w-full h-full object-cover"
+          style={{ transform: isFrontCamera ? 'scaleX(-1)' : 'none' }}
         />
 
         {/* Top Bar */}
