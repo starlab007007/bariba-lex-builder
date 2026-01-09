@@ -214,6 +214,7 @@ export type BlendMode =
   | 'soft-light';
 
 export interface ColorGradingConfig {
+  enabled?: boolean;
   lut: string;
   intensity: number;
   temperature?: number;
