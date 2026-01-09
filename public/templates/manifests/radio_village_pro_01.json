@@ -1,218 +1,365 @@
 {
   "id": "radio_village_pro_01",
   "name": "Radio Village Pro",
-  "description": "Template audio-first premium - Transforme ta voix en vidéo captivante",
-  "version": "2.0.0",
-  "duration": "auto",
-  "durationRange": { "min": 30, "max": 60 },
-  "ratio": "9:16",
-  "resolution": { "width": 1080, "height": 1920 },
+  "name_bariba": "Radio Kɔ́ɔ̀gbɛ̀",
+  "description": "Transforme ton message audio en vidéo captivante avec visualisations dynamiques. Parfait pour histoires orales, sagesse des anciens, annonces communautaires.",
+  "description_bariba": "Kɛ̀ nà sɔ́ɔ́ tíí kúú wáá ń nɪ̀ kɛ̀ video kúú ń pɪ̀ɪ̀sɪ́. Kɛ̀ tɔ́ nɪ̀ tíísɔ́ɔ́ bíkúú, kɔ́ɔ̀gbɛ̀ sɔ́ɔ́kúú ń nɪ̀ tɪ̀ɪ̀wáákúú.",
   "category": "audio_first",
-  "family": "vocal_radio",
-  "tags": ["radio", "audio", "waveform", "community", "elder", "village", "voice", "premium"],
+  "contentType": "audio",
+  "difficulty": "beginner",
+  "icon": "🎙️",
+  "version": "2.0.0",
+  "thumbnail": "/templates/thumbnails/radio_village_pro.jpg",
+  "previewVideo": "/templates/previews/radio_village_pro.mp4",
 
-  "slots": [
-    {
-      "id": "audio_main",
-      "description": "Message vocal principal",
-      "type": "audio",
-      "required": true,
-      "min": 1,
-      "max": 1,
-      "constraints": {
-        "minDurationSec": 30,
-        "maxDurationSec": 60,
-        "formats": ["audio/mp3", "audio/wav", "audio/m4a", "audio/ogg", "audio/webm"],
-        "maxSizeMB": 50
+  "video": {
+    "duration": "auto",
+    "minDuration": 30,
+    "maxDuration": 60,
+    "format": "9:16",
+    "targetSize": "20-50MB",
+    "resolution": { "width": 1080, "height": 1920 },
+    "frameRate": 30,
+    "bitrate": 5000000
+  },
+
+  "inputs": {
+    "required": [
+      {
+        "id": "audio_main",
+        "type": "audio",
+        "label": "Enregistre ton message",
+        "label_bariba": "Kɛ̀ tíí sɔ́ɔ́",
+        "placeholder": "Clique pour enregistrer...",
+        "minDuration": 30,
+        "maxDuration": 60,
+        "formats": ["mp3", "wav", "m4a", "ogg"],
+        "recordingOptions": {
+          "enabled": true,
+          "quality": "high",
+          "sampleRate": 44100,
+          "channels": 1
+        }
       }
-    },
-    {
-      "id": "photo_portrait",
-      "description": "Portrait du locuteur",
-      "type": "photo",
-      "required": false,
-      "min": 0,
-      "max": 1,
-      "constraints": {
-        "formats": ["image/jpeg", "image/png", "image/webp"],
-        "maxSizeMB": 10
-      }
-    },
-    {
-      "id": "photo_village",
-      "description": "Photo du village",
-      "type": "photo",
-      "required": false,
-      "min": 0,
-      "max": 1
-    },
-    {
-      "id": "photo_context",
-      "description": "Photo de contexte",
-      "type": "photo",
-      "required": false,
-      "min": 0,
-      "max": 1
-    }
-  ],
-
-  "stylePresets": [
-    {
-      "id": "sagesse",
-      "name": "💡 Sagesse",
-      "description": "Ambiance chaleureuse pour paroles d'anciens",
-      "colors": {
-        "primary": "#FFD700",
-        "secondary": "#FFA500",
-        "accent": "#FF8C00",
-        "background": "linear-gradient(135deg, #1a1a1a 0%, #2d1f00 100%)"
-      },
-      "particles": { "count": 30, "color": "#FFD700", "opacity": 0.6 },
-      "waveformColor": "#FFD700",
-      "avatarGlow": "rgba(255,215,0,0.5)"
-    },
-    {
-      "id": "histoire",
-      "name": "📖 Histoire",
-      "description": "Style vintage sépia pour les récits",
-      "colors": {
-        "primary": "#D4A574",
-        "secondary": "#C4956A",
-        "accent": "#A0785A",
-        "background": "linear-gradient(135deg, #2d2d2d 0%, #3d2d1f 100%)"
-      },
-      "particles": { "count": 20, "color": "#D4A574", "opacity": 0.4 },
-      "waveformColor": "#D4A574",
-      "avatarGlow": "rgba(212,165,116,0.5)"
-    },
-    {
-      "id": "actualite",
-      "name": "📢 Actualité",
-      "description": "Style moderne pour annonces",
-      "colors": {
-        "primary": "#00BFFF",
-        "secondary": "#1E90FF",
-        "accent": "#4169E1",
-        "background": "linear-gradient(135deg, #0a1628 0%, #1a2d50 100%)"
-      },
-      "particles": { "count": 25, "color": "#00BFFF", "opacity": 0.5 },
-      "waveformColor": "#00BFFF",
-      "avatarGlow": "rgba(0,191,255,0.5)"
-    },
-    {
-      "id": "celebration",
-      "name": "🎉 Célébration",
-      "description": "Ambiance festive multicolore",
-      "colors": {
-        "primary": "#FF69B4",
-        "secondary": "#9B59B6",
-        "accent": "#FFD700",
-        "background": "linear-gradient(135deg, #1a1a2e 0%, #2d1f3d 100%)"
-      },
-      "particles": { "count": 50, "color": "multicolor", "opacity": 0.7 },
-      "waveformColor": "#FF69B4",
-      "avatarGlow": "rgba(255,105,180,0.5)"
-    }
-  ],
-
-  "pipeline": [
-    { "op": "audio_enhance", "params": { "denoise": true, "normalize": true }, "output": "audioFx", "weight": 0.15 },
-    { "op": "asr_subtitles", "params": { "langs": ["fr", "ba"], "align": "forced" }, "output": "subtitleTrack", "weight": 0.25 },
-    { "op": "audio_waveform", "params": { "style": "circular", "bars": 48 }, "output": "waveformLayer", "weight": 0.15 },
-    { "op": "photo_parallax", "params": { "intensity": 0.05, "blur": 15 }, "output": "backgroundLayer", "weight": 0.10 },
-    { "op": "avatar_pulse", "params": { "syncToAudio": true }, "output": "avatarLayer", "weight": 0.10 },
-    { "op": "particle_system", "params": { "count": 50, "style": "floating" }, "output": "particleLayer", "weight": 0.10 },
-    { "op": "emoji_injection", "params": { "mode": "keyword_detection" }, "output": "emojiLayer", "weight": 0.10 },
-    { "op": "info_overlay", "params": { "showTitle": true, "showDate": true }, "output": "infoLayer", "weight": 0.05 }
-  ],
-
-  "timeline": {
-    "layers": [
+    ],
+    "optional": [
       {
-        "id": "bg_layer",
-        "type": "background",
-        "zIndex": 0,
-        "blend": "normal",
-        "content": "photo_with_blur_parallax"
+        "id": "photo_portrait",
+        "type": "photo",
+        "label": "Photo 1: Ton portrait",
+        "label_bariba": "Wárɪ́ 1: Ń tɪ̀ɪ̀ wárɪ́",
+        "placeholder": "+ Ajouter ton portrait",
+        "formats": ["jpg", "jpeg", "png", "webp"],
+        "maxSize": 10485760
       },
       {
-        "id": "waveform_layer",
-        "type": "visualization",
-        "zIndex": 1,
-        "style": "circular",
-        "position": { "x": 0.5, "y": 0.5 },
-        "size": 0.6
+        "id": "photo_village",
+        "type": "photo",
+        "label": "Photo 2: Ton village",
+        "label_bariba": "Wárɪ́ 2: Ń kɔ́ɔ̀gbɛ̀",
+        "placeholder": "+ Ajouter photo du village",
+        "formats": ["jpg", "jpeg", "png", "webp"],
+        "maxSize": 10485760
       },
       {
-        "id": "avatar_layer",
-        "type": "avatar",
-        "zIndex": 2,
-        "position": { "x": 0.5, "y": 0.5 },
-        "size": 0.25,
-        "animation": "pulse_to_audio"
+        "id": "photo_context",
+        "type": "photo",
+        "label": "Photo 3: Contexte",
+        "label_bariba": "Wárɪ́ 3: Kɛ̀ tɔ́ɔ́",
+        "placeholder": "+ Ajouter photo contexte",
+        "formats": ["jpg", "jpeg", "png", "webp"],
+        "maxSize": 10485760
       },
       {
-        "id": "caption_layer",
-        "type": "subtitles",
-        "zIndex": 3,
-        "position": { "x": 0.5, "y": 0.75 },
-        "style": "bilingual_karaoke",
-        "languages": ["fr", "ba"]
-      },
-      {
-        "id": "emoji_layer",
-        "type": "reactions",
-        "zIndex": 4,
-        "trigger": "keyword"
-      },
-      {
-        "id": "particle_layer",
-        "type": "particles",
-        "zIndex": 5,
-        "count": 50,
-        "animation": "float"
-      },
-      {
-        "id": "info_layer",
-        "type": "overlay",
-        "zIndex": 6,
-        "content": "title_date_location",
-        "position": { "x": 0.5, "y": 0.1 }
+        "id": "style_preset",
+        "type": "choice",
+        "label": "Choisis le style visuel",
+        "label_bariba": "Tɔ́ɔ́ kɛ̀ pɪ̀ɪ̀sɪ́ sɔ́ɔ́",
+        "default": "sagesse",
+        "options": [
+          {
+            "id": "sagesse",
+            "label": "Sagesse",
+            "label_bariba": "Sɔ́ɔ́ kɔ́ɔ̀",
+            "description": "Doré et chaleureux",
+            "description_bariba": "Wúrú ń nɪ̀ fúú",
+            "icon": "💡",
+            "colors": ["#FFD700", "#FF8C00"],
+            "preview": "/templates/previews/style_sagesse.jpg"
+          },
+          {
+            "id": "histoire",
+            "label": "Histoire",
+            "label_bariba": "Tíísɔ́ɔ́",
+            "description": "Sépia et vintage",
+            "description_bariba": "Kɔ́ɔ̀ bíkúú",
+            "icon": "📖",
+            "colors": ["#8B7355", "#D2B48C"],
+            "preview": "/templates/previews/style_histoire.jpg"
+          },
+          {
+            "id": "actualite",
+            "label": "Actualité",
+            "label_bariba": "Tɪ̀ɪ̀wáá yɛ̀ɛ̀",
+            "description": "Moderne et clean",
+            "description_bariba": "Yɛ̀ɛ̀ ń nɪ̀ pɛ́ɛ́",
+            "icon": "📢",
+            "colors": ["#2196F3", "#00BCD4"],
+            "preview": "/templates/previews/style_actualite.jpg"
+          },
+          {
+            "id": "celebration",
+            "label": "Célébration",
+            "label_bariba": "Sɪ́rɪ́kɪ́",
+            "description": "Coloré et festif",
+            "description_bariba": "Kɔ́ɔ̀kɔ́ɔ̀ ń nɪ̀ sɪ́rɪ́",
+            "icon": "🎉",
+            "colors": ["#FF4081", "#9C27B0", "#FFEB3B"],
+            "preview": "/templates/previews/style_celebration.jpg"
+          }
+        ]
       }
     ]
   },
 
-  "overrides": ["text", "subtitles", "cover", "style", "title"],
+  "segments": [
+    {
+      "id": "main_audio_visual",
+      "type": "audio_visualizer",
+      "start": 0,
+      "duration": "audio_duration",
+      "editable": false,
+      "layers": [
+        {
+          "id": "background_layer",
+          "type": "photo_background",
+          "source": "photo_village || photo_context || default_village",
+          "zIndex": 1,
+          "effects": {
+            "blur": { "enabled": true, "amount": 15, "algorithm": "gaussian" },
+            "brightness": { "enabled": true, "amount": -0.3 },
+            "parallax": { "enabled": true, "speed": "slow", "direction": "vertical", "amplitude": 20 },
+            "zoom": { "enabled": true, "from": 1.0, "to": 1.05, "duration": "full", "easing": "linear" }
+          }
+        },
+        {
+          "id": "waveform_layer",
+          "type": "audio_waveform",
+          "zIndex": 2,
+          "config": {
+            "style": "circular",
+            "position": { "x": 0.5, "y": 0.5 },
+            "size": { "width": "40%", "height": "40%" },
+            "visualization": { "type": "frequency_spectrum", "bars": 64, "smoothing": 0.8, "minDecibels": -90, "maxDecibels": -10 },
+            "appearance": {
+              "colorMode": "gradient",
+              "gradient": { "type": "radial", "colors": [{ "offset": 0, "color": "style_primary" }, { "offset": 1, "color": "style_secondary" }] },
+              "strokeWidth": 4,
+              "glowEnabled": true,
+              "glowColor": "style_primary",
+              "glowBlur": 20
+            },
+            "animation": { "reactive": true, "reactivityStrength": 1.2, "baseRotation": 0, "rotationSpeed": 0.5, "pulseEnabled": true, "pulseStrength": 0.3 }
+          }
+        },
+        {
+          "id": "avatar_layer",
+          "type": "photo_circle",
+          "source": "photo_portrait || default_avatar",
+          "zIndex": 3,
+          "config": {
+            "position": { "x": 0.5, "y": 0.3 },
+            "size": 120,
+            "border": { "enabled": true, "width": 4, "color": "style_primary", "style": "solid" },
+            "shadow": { "enabled": true, "color": "rgba(0,0,0,0.3)", "blur": 20, "offsetX": 0, "offsetY": 4 }
+          },
+          "effects": {
+            "glow": { "enabled": true, "color": "style_primary", "blur": 30, "opacity": 0.6 },
+            "pulse": { "enabled": true, "trigger": "voice_amplitude", "minScale": 1.0, "maxScale": 1.15, "smoothing": 0.3, "threshold": 0.3 }
+          }
+        },
+        {
+          "id": "captions_layer",
+          "type": "auto_captions",
+          "zIndex": 4,
+          "config": {
+            "enabled": true,
+            "languages": ["fr", "bariba"],
+            "speechRecognition": { "provider": "whisper_api", "language": "fr", "model": "medium", "wordTimestamps": true },
+            "translation": { "enabled": true, "targetLanguage": "bariba", "provider": "tam_tam_translator" },
+            "layout": {
+              "primary": { "language": "fr", "position": { "x": 0.5, "y": 0.75 }, "maxWidth": 0.9, "align": "center" },
+              "secondary": { "language": "bariba", "position": { "x": 0.5, "y": 0.82 }, "maxWidth": 0.9, "align": "center" }
+            },
+            "style": {
+              "primary": {
+                "fontFamily": "Montserrat",
+                "fontWeight": "bold",
+                "fontSize": 42,
+                "color": "#FFFFFF",
+                "stroke": { "enabled": true, "color": "#000000", "width": 4 },
+                "shadow": { "enabled": true, "color": "rgba(0,0,0,0.5)", "blur": 10, "offsetX": 0, "offsetY": 2 },
+                "background": { "enabled": false }
+              },
+              "secondary": {
+                "fontFamily": "Roboto",
+                "fontWeight": "normal",
+                "fontSize": 32,
+                "color": "#FFEB3B",
+                "stroke": { "enabled": true, "color": "#000000", "width": 3 },
+                "shadow": { "enabled": true, "color": "rgba(0,0,0,0.5)", "blur": 8, "offsetX": 0, "offsetY": 2 }
+              }
+            },
+            "animation": { "type": "word_by_word", "highlightColor": "style_primary", "highlightDuration": 200, "fadeInDuration": 150, "fadeOutDuration": 150 }
+          }
+        },
+        {
+          "id": "emoji_reactions_layer",
+          "type": "emoji_reactions",
+          "zIndex": 5,
+          "config": {
+            "enabled": true,
+            "trigger": "keyword_detection",
+            "keywordMapping": {
+              "sagesse": { "emoji": "💡", "keywords": ["sagesse", "sage", "conseil", "expérience"] },
+              "tradition": { "emoji": "🏛️", "keywords": ["tradition", "coutume", "ancien", "ancêtre"] },
+              "famille": { "emoji": "❤️", "keywords": ["famille", "enfant", "parent", "frère", "sœur"] },
+              "travail": { "emoji": "💪", "keywords": ["travail", "effort", "courage", "force"] },
+              "village": { "emoji": "🏘️", "keywords": ["village", "communauté", "ensemble"] },
+              "celebration": { "emoji": "🎉", "keywords": ["fête", "joie", "célébration", "bonheur"] },
+              "paix": { "emoji": "☮️", "keywords": ["paix", "harmonie", "calme", "tranquille"] },
+              "dieu": { "emoji": "🙏", "keywords": ["dieu", "allah", "prière", "bénédiction"] }
+            },
+            "appearance": { "size": 60, "opacity": 1.0 },
+            "animation": {
+              "entrance": { "type": "pop_bounce", "duration": 400, "easing": "easeOutBack" },
+              "floating": { "enabled": true, "amplitude": 10, "speed": 2 },
+              "exit": { "type": "fade_float_up", "duration": 600, "distance": 100 },
+              "lifetime": 2000
+            },
+            "positioning": { "randomArea": { "xMin": 0.2, "xMax": 0.8, "yMin": 0.4, "yMax": 0.65 }, "avoidOverlap": true, "minDistance": 80 }
+          }
+        },
+        {
+          "id": "particles_layer",
+          "type": "particles",
+          "zIndex": 6,
+          "config": {
+            "enabled": true,
+            "style": "floating_dust",
+            "count": 50,
+            "appearance": { "size": { "min": 2, "max": 6 }, "color": "style_primary", "opacity": { "min": 0.2, "max": 0.5 }, "blur": 1 },
+            "behavior": {
+              "motion": "slow_float_up",
+              "speed": { "min": 10, "max": 30 },
+              "direction": { "angle": -90, "variance": 20 },
+              "rotation": { "enabled": true, "speed": { "min": -30, "max": 30 } }
+            },
+            "reactive": { "enabled": true, "trigger": "voice_amplitude", "effect": "speed_boost", "multiplier": 2.0, "threshold": 0.4 },
+            "spawn": { "area": { "x": 0, "y": 1.1, "width": 1, "height": 0.1 }, "rate": 2, "burst": { "enabled": true, "trigger": "voice_peak", "count": 10, "threshold": 0.7 } },
+            "lifecycle": { "lifespan": { "min": 5000, "max": 8000 }, "fadeIn": 500, "fadeOut": 1000 }
+          }
+        },
+        {
+          "id": "info_overlay_layer",
+          "type": "text_overlay",
+          "zIndex": 7,
+          "config": {
+            "enabled": true,
+            "elements": [
+              {
+                "id": "title_text",
+                "type": "title",
+                "content": "AUTO_DETECT",
+                "position": { "x": 0.5, "y": 0.08 },
+                "style": {
+                  "fontFamily": "Montserrat",
+                  "fontWeight": "bold",
+                  "fontSize": 36,
+                  "color": "#FFFFFF",
+                  "stroke": { "enabled": true, "color": "#000000", "width": 3 },
+                  "shadow": { "enabled": true, "color": "rgba(0,0,0,0.6)", "blur": 12, "offsetY": 3 }
+                },
+                "animation": { "entrance": { "type": "fade_in", "delay": 0, "duration": 800 } }
+              },
+              {
+                "id": "location_date",
+                "type": "info",
+                "content": "AUTO_LOCATION • AUTO_DATE",
+                "position": { "x": 0.5, "y": 0.95 },
+                "style": {
+                  "fontFamily": "Roboto",
+                  "fontWeight": "normal",
+                  "fontSize": 24,
+                  "color": "rgba(255,255,255,0.8)",
+                  "background": { "enabled": true, "color": "rgba(0,0,0,0.5)", "padding": 8, "borderRadius": 12 }
+                },
+                "animation": { "entrance": { "type": "fade_in", "delay": 500, "duration": 600 } }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
 
-  "music": {
-    "enabled": false,
-    "beatSync": false
+  "stylePresets": {
+    "sagesse": {
+      "name": "Sagesse",
+      "name_bariba": "Sɔ́ɔ́ kɔ́ɔ̀",
+      "colors": { "primary": "#FFD700", "secondary": "#FF8C00", "accent": "#FFA500" },
+      "filters": { "temperature": 15, "tint": 5, "saturation": 1.1, "contrast": 1.05 }
+    },
+    "histoire": {
+      "name": "Histoire",
+      "name_bariba": "Tíísɔ́ɔ́",
+      "colors": { "primary": "#8B7355", "secondary": "#D2B48C", "accent": "#BC8F8F" },
+      "filters": { "temperature": 10, "tint": -5, "saturation": 0.8, "contrast": 1.1, "sepia": 0.4 }
+    },
+    "actualite": {
+      "name": "Actualité",
+      "name_bariba": "Tɪ̀ɪ̀wáá yɛ̀ɛ̀",
+      "colors": { "primary": "#2196F3", "secondary": "#00BCD4", "accent": "#03A9F4" },
+      "filters": { "temperature": 0, "tint": 0, "saturation": 1.0, "contrast": 1.0 }
+    },
+    "celebration": {
+      "name": "Célébration",
+      "name_bariba": "Sɪ́rɪ́kɪ́",
+      "colors": { "primary": "#FF4081", "secondary": "#9C27B0", "accent": "#FFEB3B" },
+      "filters": { "temperature": 5, "tint": 10, "saturation": 1.3, "contrast": 1.1, "vibrance": 0.2 }
+    }
   },
 
-  "publishDefaults": {
-    "allowDuo": false,
-    "hashtags": ["#RadioVillage", "#Voix", "#Patrimoine", "#TAMTAMRadio", "#Sagesse"]
+  "autoEffects": {
+    "audioEnhancement": {
+      "enabled": true,
+      "noiseReduction": { "enabled": true, "strength": 0.5 },
+      "normalization": { "enabled": true, "targetLevel": -14 },
+      "compression": { "enabled": true, "threshold": -20, "ratio": 3 },
+      "equalizer": { "enabled": true, "preset": "voice_enhance" }
+    },
+    "voiceDetection": { "enabled": true, "sensitivity": 0.3, "smoothing": 0.2 }
   },
 
-  "cardHint": {
-    "inputSummary": "1 Audio + Photos",
-    "timeLabel": "30-60s",
-    "badge": "PRO"
+  "exportSettings": {
+    "preview": { "resolution": { "width": 720, "height": 1280 }, "frameRate": 30, "bitrate": 2000000, "codec": "h264", "preset": "fast" },
+    "final": { "resolution": { "width": 1080, "height": 1920 }, "frameRate": 30, "bitrate": 5000000, "codec": "h264", "preset": "medium" }
   },
 
-  "export": {
-    "fps": 30,
-    "preset": "high",
-    "codec": "h264",
-    "crf": 18,
-    "bitrate": "5Mbps"
+  "hashtags": {
+    "autoGenerate": true,
+    "suggestions": ["#RadioVillage", "#HistoireOrale", "#CultureAfricaine", "#Tradition", "#SagesseAncienne", "#TAMTAMVoice"],
+    "maxHashtags": 5
   },
 
-  "emojiKeywords": {
-    "sagesse": ["ancien", "sagesse", "conseil", "expérience", "tradition"],
-    "celebration": ["fête", "joie", "bonheur", "célébration", "mariage"],
-    "nature": ["terre", "pluie", "soleil", "récolte", "champ", "village"],
-    "famille": ["enfant", "père", "mère", "famille", "maison"],
-    "communauté": ["village", "ensemble", "réunion", "communauté", "chef"]
+  "metadata": {
+    "createdAt": "2026-01-09T00:00:00Z",
+    "updatedAt": "2026-01-09T00:00:00Z",
+    "author": "TAM-TAM Team",
+    "version": "2.0.0",
+    "popularity": 95,
+    "usageCount": 0,
+    "rating": 5.0,
+    "tags": ["audio", "voix", "oral", "tradition", "culture", "communauté", "histoire", "bariba"]
   }
 }
