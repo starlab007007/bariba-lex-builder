@@ -2267,12 +2267,36 @@ export default function FullscreenCreator({
           >
             <RadioVillageProTemplate
               onComplete={(blob, metadata) => {
-                console.log('✅ Radio Village Pro terminé, blob reçu:', blob.size, 'bytes');
+                console.log('✅ Radio Village Pro terminé, blob reçu:', blob.size, 'bytes, type:', blob.type);
+                
+                // ✅ FIX: Set capturedBlob
                 setCapturedBlob(blob);
                 setCapturedType('video');
                 setHasCapture(true);
+                
+                // ✅ FIX: Create segment so publish() works
+                const duration = metadata?.duration || 30;
+                const newSegment: MiniTimelineSegment = {
+                  id: `rvp_${Date.now()}`,
+                  type: 'video',
+                  duration,
+                  startTime: 0,
+                  endTime: duration,
+                  isMuted: false,
+                  volume: 100,
+                  blob, // ✅ Critical: include blob for upload
+                };
+                setSegments([newSegment]);
+                setActiveSegmentId(newSegment.id);
+                
+                // ✅ Also set templateSegments for IntegratedPreviewMode
+                setTemplateSegments([{ id: newSegment.id, blob, duration }]);
+                console.log('📦 Segments created for publication:', newSegment.id);
+                
                 setIsRadioVillageMode(false);
-                setTemplateFlowPhase('finalizing');
+                
+                // ✅ FIX: Go to REVIEWING first (preview) instead of directly to finalizing
+                setTemplateFlowPhase('reviewing');
                 
                 // Pre-fill caption with template name and style
                 const styleName = metadata?.style || 'Radio Village';

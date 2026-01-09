@@ -68,19 +68,63 @@ export interface TamTamStory {
 }
 
 // Helper pour uploader les médias vers Supabase Storage
+// ✅ FIX: MIME-aware upload - respects blob.type for cross-device compatibility
 export async function uploadMediaToStorage(
   blob: Blob, 
   type: 'video' | 'photo' | 'audio',
   userId: string
 ): Promise<string> {
-  const ext = type === 'video' ? 'webm' : type === 'photo' ? 'jpg' : 'webm';
+  // ✅ Derive extension and contentType from actual blob.type
+  const blobType = blob.type || '';
+  
+  let ext: string;
+  let contentType: string;
+  
+  if (type === 'video') {
+    if (blobType.includes('mp4')) {
+      ext = 'mp4';
+      contentType = 'video/mp4';
+    } else if (blobType.includes('quicktime')) {
+      ext = 'mov';
+      contentType = 'video/quicktime';
+    } else {
+      ext = 'webm';
+      contentType = 'video/webm';
+    }
+  } else if (type === 'photo') {
+    if (blobType.includes('png')) {
+      ext = 'png';
+      contentType = 'image/png';
+    } else if (blobType.includes('webp')) {
+      ext = 'webp';
+      contentType = 'image/webp';
+    } else {
+      ext = 'jpg';
+      contentType = 'image/jpeg';
+    }
+  } else {
+    // Audio
+    if (blobType.includes('mp4') || blobType.includes('m4a')) {
+      ext = 'm4a';
+      contentType = 'audio/mp4';
+    } else if (blobType.includes('mpeg') || blobType.includes('mp3')) {
+      ext = 'mp3';
+      contentType = 'audio/mpeg';
+    } else {
+      ext = 'webm';
+      contentType = 'audio/webm';
+    }
+  }
+  
+  console.log(`📤 Upload: type=${type}, blob.type=${blobType} -> ext=${ext}, contentType=${contentType}`);
+  
   const fileName = `${type}_${userId}_${Date.now()}.${ext}`;
   const filePath = `posts/${fileName}`;
   
   const { data, error } = await supabase.storage
     .from('tamtam-media')
     .upload(filePath, blob, {
-      contentType: type === 'video' ? 'video/webm' : type === 'photo' ? 'image/jpeg' : 'audio/webm',
+      contentType,
       upsert: false
     });
     
@@ -90,6 +134,7 @@ export async function uploadMediaToStorage(
     .from('tamtam-media')
     .getPublicUrl(filePath);
     
+  console.log(`✅ Uploaded: ${filePath} -> ${urlData.publicUrl}`);
   return urlData.publicUrl;
 }
 
