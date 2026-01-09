@@ -85,6 +85,7 @@ import IntegratedPreviewMode from "./creator/IntegratedPreviewMode";
 import { UnifiedTemplate } from "@/types/UnifiedTemplateTypes";
 import FinalizationPanel from "./creator/FinalizationPanel";
 import SuccessScreen from "./creator/SuccessScreen";
+import RadioVillageProTemplate from "./creator/RadioVillageProTemplate";
 
 // Legacy AdvancedTemplate data (still used by some UI effects/voice instructions)
 import {
@@ -547,6 +548,9 @@ export default function FullscreenCreator({
   const [templateSegments, setTemplateSegments] = useState<{ id: string; blob: Blob; duration: number }[]>([]);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  
+  // ============= RADIO VILLAGE MODE (AUDIO-FIRST TEMPLATES) =============
+  const [isRadioVillageMode, setIsRadioVillageMode] = useState(false);
 
   // ============= TEXT OVERLAYS & EXPORT =============
   const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
@@ -2116,23 +2120,21 @@ export default function FullscreenCreator({
           >
             <UnifiedTemplateSelector
               onSelect={(template) => {
-                // Vérifier si c'est un template spécial qui nécessite TamTamCreator
+                // Vérifier si c'est un template audio-first (Radio Village Pro)
                 const specialSources = ['radio_village'];
                 const specialIds = ['radio_village_pro_01', 'radio_village'];
                 
                 if (specialSources.includes(template.source) || specialIds.includes(template.id)) {
-                  // Fermer le drawer et naviguer vers TamTamCreator avec le template pré-sélectionné
-                  console.log('🎙️ Template spécial détecté, redirection vers TamTamCreator:', template.name);
+                  // Mode Radio Village intégré - workflow audio-first sans redirection
+                  console.log('🎙️ Template Radio Village activé en mode intégré:', template.name);
+                  setActiveUnifiedTemplate(template);
+                  setIsRadioVillageMode(true);
                   setDrawer('none');
-                  navigate('/tamtam/creator', { 
-                    state: { 
-                      preselectedTemplate: template 
-                    } 
-                  });
+                  setToast(`${template.emoji} ${template.name} activé`);
                   return;
                 }
                 
-                // Templates standards: continuer avec le flux intégré
+                // Templates standards: continuer avec le flux intégré overlay
                 setActiveUnifiedTemplate(template);
                 setTemplateFlowPhase('capturing');
                 setDrawer('none');
@@ -2242,6 +2244,7 @@ export default function FullscreenCreator({
               setCapturedBlob(null);
               setHasCapture(false);
               setCaption('');
+              setIsRadioVillageMode(false);
               startStream();
             }}
             onGoHome={() => {
@@ -2249,6 +2252,42 @@ export default function FullscreenCreator({
               navigate('/tamtam');
             }}
           />
+        )}
+      </AnimatePresence>
+      
+      {/* ============ RADIO VILLAGE PRO - INTEGRATED AUDIO-FIRST WORKFLOW ============ */}
+      <AnimatePresence>
+        {isRadioVillageMode && activeUnifiedTemplate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 z-[200] bg-background"
+          >
+            <RadioVillageProTemplate
+              onComplete={(blob, metadata) => {
+                console.log('✅ Radio Village Pro terminé, blob reçu:', blob.size, 'bytes');
+                setCapturedBlob(blob);
+                setCapturedType('video');
+                setHasCapture(true);
+                setIsRadioVillageMode(false);
+                setTemplateFlowPhase('finalizing');
+                
+                // Pre-fill caption with template name and style
+                const styleName = metadata?.style || 'Radio Village';
+                setCaption(`${activeUnifiedTemplate.emoji} ${activeUnifiedTemplate.name} - ${styleName}`);
+              }}
+              onBack={() => {
+                console.log('↩️ Retour depuis Radio Village Pro');
+                setIsRadioVillageMode(false);
+                setActiveUnifiedTemplate(null);
+                setTemplateFlowPhase('idle');
+                setDrawer('template');
+              }}
+              language="fr"
+            />
+          </motion.div>
         )}
       </AnimatePresence>
 
