@@ -438,6 +438,11 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   onHover,
   featured 
 }) => {
+  const handleClick = () => {
+    console.log('🎯 Template cliqué:', template.id, template.name, 'source:', template.source);
+    onSelect(template);
+  };
+
   return (
     <motion.button
       initial={{ opacity: 0, y: 20 }}
@@ -445,7 +450,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
       transition={{ delay: index * 0.05 }}
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
-      onClick={() => onSelect(template)}
+      onClick={handleClick}
       onMouseEnter={() => onHover(template.id)}
       onMouseLeave={() => onHover(null)}
       className={`

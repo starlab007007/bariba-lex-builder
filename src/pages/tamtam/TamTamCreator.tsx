@@ -158,32 +158,55 @@ const TamTamCreator: React.FC = () => {
     } as unknown as KuaishouTemplateConfig;
   }, [selectedTemplate]);
 
-  // Obtenir le segment courant
-  const getCurrentSegment = useCallback((): TemplateSegment | null => {
+  // Obtenir le segment courant (avec fallback)
+  const getCurrentSegment = useCallback((): TemplateSegment => {
     const config = getKuaishouConfig();
-    if (!config || !config.segments[currentSegmentIndex]) return null;
+    if (!config || !config.segments || !config.segments[currentSegmentIndex]) {
+      // Fallback segment par défaut
+      return {
+        id: 'default_segment',
+        type: 'user_capture' as const,
+        start: 0,
+        duration: selectedTemplate?.duration || 15,
+        editable: true,
+        effects: []
+      };
+    }
     return config.segments[currentSegmentIndex];
-  }, [getKuaishouConfig, currentSegmentIndex]);
+  }, [getKuaishouConfig, currentSegmentIndex, selectedTemplate]);
 
   // Gérer la sélection d'un template
   const handleTemplateSelect = useCallback((template: UnifiedTemplate) => {
+    console.log('🎬 Template sélectionné:', template.id, template.name, 'source:', template.source);
     setSelectedTemplate(template);
     setCapturedSegments([]);
     setCurrentSegmentIndex(0);
+    setFinalVideoBlob(null);
     setPhase('capturing');
     toast.success(`${template.emoji} ${template.name}`);
   }, []);
 
   // Gérer la capture d'un segment
   const handleSegmentCapture = useCallback((segment: VideoSegment) => {
+    console.log('🎥 Segment capturé:', segment.id, 'duration:', segment.duration, 'blob size:', segment.blob?.size);
+    
     setCapturedSegments(prev => [...prev, segment]);
     
     const config = getKuaishouConfig();
-    if (!config) return;
+    if (!config) {
+      console.log('⚠️ Pas de config, transition directe vers reviewing');
+      setPhase('reviewing');
+      toast.success('Capture terminée !');
+      return;
+    }
     
-    if (currentSegmentIndex < config.segments.length - 1) {
+    const totalSegments = config.segments?.length || 1;
+    console.log(`📊 Segment ${currentSegmentIndex + 1}/${totalSegments}`);
+    
+    if (currentSegmentIndex < totalSegments - 1) {
       setCurrentSegmentIndex(prev => prev + 1);
     } else {
+      console.log('✅ Tous les segments capturés, transition vers reviewing');
       setPhase('reviewing');
       toast.success('Capture terminée !');
     }
@@ -205,11 +228,24 @@ const TamTamCreator: React.FC = () => {
   // Handle preview complete -> go to finalization
   const handlePreviewPublish = useCallback((video: PreviewVideo) => {
     const videoAny = video as any;
+    console.log('📹 Transition vers finalizing avec vidéo:', video.url ? 'URL présente' : 'pas d\'URL', 'blob:', videoAny.blob ? `${videoAny.blob.size} bytes` : 'absent');
+    
     if (videoAny.blob) {
       setFinalVideoBlob(videoAny.blob);
+    } else if (capturedSegments.length > 0) {
+      // Fallback: créer un blob à partir des segments capturés
+      const segmentBlobs = capturedSegments
+        .filter(s => s.blob)
+        .map(s => s.blob!);
+      
+      if (segmentBlobs.length > 0) {
+        const combinedBlob = new Blob(segmentBlobs, { type: 'video/webm' });
+        console.log('📹 Blob créé depuis segments:', combinedBlob.size, 'bytes');
+        setFinalVideoBlob(combinedBlob);
+      }
     }
     setPhase('finalizing');
-  }, []);
+  }, [capturedSegments]);
 
   // Full publish handler
   const handleFullPublish = useCallback(async () => {
@@ -479,8 +515,8 @@ const TamTamCreator: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Phase: Capture - Kuaishou Standard */}
-          {phase === 'capturing' && selectedTemplate && selectedTemplate.source !== 'radio_village' && kuaishouConfig && currentSegment && (
+          {/* Phase: Capture - Kuaishou Standard (inclut advanced et ai_generated) */}
+          {phase === 'capturing' && selectedTemplate && selectedTemplate.source !== 'radio_village' && (
             <motion.div
               key="kuaishou-capture"
               variants={pageVariants}
@@ -491,7 +527,24 @@ const TamTamCreator: React.FC = () => {
               className="absolute inset-0"
             >
               <KuaishouCaptureMode
-                template={kuaishouConfig}
+                template={kuaishouConfig || {
+                  id: selectedTemplate.id,
+                  name: selectedTemplate.name,
+                  description: selectedTemplate.description,
+                  category: selectedTemplate.category as any,
+                  contentType: selectedTemplate.contentType as any,
+                  difficulty: selectedTemplate.difficulty as any,
+                  video: { duration: selectedTemplate.duration, format: '9:16', targetSize: '10MB', resolution: selectedTemplate.resolution, frameRate: 30, bitrate: 5000000 },
+                  segments: [{ id: 'main', type: 'user_capture', start: 0, duration: selectedTemplate.duration, editable: true, effects: [] }],
+                  music: { trackUrl: '', bpm: 120, beatMarkers: [], autoSync: false, cutOnBeat: false, volume: 0.8 },
+                  autoEffects: { beauty: { enabled: false, intensity: 0, skinSmooth: false, eyeEnhance: false, faceSlim: 0 }, stabilization: { enabled: true, strength: 0.5, method: 'optical_flow', cropFactor: 1.1 }, colorGrading: { lut: '', intensity: 0 }, sharpness: { enabled: false, amount: 0, radius: 0, threshold: 0 }, hdrLike: { enabled: false, highlights: 0, shadows: 0, midtones: 0, strength: 0 } },
+                  smartCuts: { enabled: false, algorithm: 'motion_only', rules: [], minSegmentDuration: 1, maxSegmentDuration: 10 },
+                  transitions: [],
+                  overlays: { stickers: [], text: [] },
+                  hooks: { enabled: false, autoDetect: false, suggestions: [], openingHook: { enabled: false, type: 'text_flash', duration: 0 } },
+                  hashtags: { autoGenerate: true, suggestions: [], maxHashtags: 5 },
+                  metadata: { createdAt: new Date().toISOString(), author: 'TAM-TAM', version: '1.0.0', tags: selectedTemplate.tags }
+                } as any}
                 currentSegment={currentSegment}
                 segmentIndex={currentSegmentIndex}
                 totalSegments={totalSegments}
@@ -503,7 +556,7 @@ const TamTamCreator: React.FC = () => {
           )}
 
           {/* Phase: Reviewing (Preview) */}
-          {phase === 'reviewing' && kuaishouConfig && (
+          {phase === 'reviewing' && selectedTemplate && (
             <motion.div
               key="reviewing"
               variants={pageVariants}
@@ -514,7 +567,24 @@ const TamTamCreator: React.FC = () => {
               className="absolute inset-0"
             >
               <KuaishouPreviewMode
-                template={kuaishouConfig}
+                template={kuaishouConfig || {
+                  id: selectedTemplate.id,
+                  name: selectedTemplate.name,
+                  description: selectedTemplate.description,
+                  category: selectedTemplate.category as any,
+                  contentType: selectedTemplate.contentType as any,
+                  difficulty: selectedTemplate.difficulty as any,
+                  video: { duration: selectedTemplate.duration, format: '9:16', targetSize: '10MB', resolution: selectedTemplate.resolution, frameRate: 30, bitrate: 5000000 },
+                  segments: [{ id: 'main', type: 'user_capture', start: 0, duration: selectedTemplate.duration, editable: true, effects: [] }],
+                  music: { trackUrl: '', bpm: 120, beatMarkers: [], autoSync: false, cutOnBeat: false, volume: 0.8 },
+                  autoEffects: { beauty: { enabled: false, intensity: 0, skinSmooth: false, eyeEnhance: false, faceSlim: 0 }, stabilization: { enabled: true, strength: 0.5, method: 'optical_flow', cropFactor: 1.1 }, colorGrading: { lut: '', intensity: 0 }, sharpness: { enabled: false, amount: 0, radius: 0, threshold: 0 }, hdrLike: { enabled: false, highlights: 0, shadows: 0, midtones: 0, strength: 0 } },
+                  smartCuts: { enabled: false, algorithm: 'motion_only', rules: [], minSegmentDuration: 1, maxSegmentDuration: 10 },
+                  transitions: [],
+                  overlays: { stickers: [], text: [] },
+                  hooks: { enabled: false, autoDetect: false, suggestions: [], openingHook: { enabled: false, type: 'text_flash', duration: 0 } },
+                  hashtags: { autoGenerate: true, suggestions: [], maxHashtags: 5 },
+                  metadata: { createdAt: new Date().toISOString(), author: 'TAM-TAM', version: '1.0.0', tags: selectedTemplate.tags }
+                } as any}
                 segments={capturedSegments}
                 onPublish={handlePreviewPublish}
                 onBack={handleBack}
