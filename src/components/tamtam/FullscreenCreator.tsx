@@ -2116,6 +2116,23 @@ export default function FullscreenCreator({
           >
             <UnifiedTemplateSelector
               onSelect={(template) => {
+                // Vérifier si c'est un template spécial qui nécessite TamTamCreator
+                const specialSources = ['radio_village'];
+                const specialIds = ['radio_village_pro_01', 'radio_village'];
+                
+                if (specialSources.includes(template.source) || specialIds.includes(template.id)) {
+                  // Fermer le drawer et naviguer vers TamTamCreator avec le template pré-sélectionné
+                  console.log('🎙️ Template spécial détecté, redirection vers TamTamCreator:', template.name);
+                  setDrawer('none');
+                  navigate('/tamtam/creator', { 
+                    state: { 
+                      preselectedTemplate: template 
+                    } 
+                  });
+                  return;
+                }
+                
+                // Templates standards: continuer avec le flux intégré
                 setActiveUnifiedTemplate(template);
                 setTemplateFlowPhase('capturing');
                 setDrawer('none');
