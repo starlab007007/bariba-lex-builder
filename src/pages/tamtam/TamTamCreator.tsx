@@ -1,14 +1,16 @@
 /**
  * TamTamCreator.tsx
- * Page unifiée de création avec workflow Kuaishou complet
+ * Page unifiée de création avec workflow fluide et harmonisé
+ * Phases: discover → capturing → reviewing → finalizing → success
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Bug } from 'lucide-react';
+import { Bug, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 // Components
 import UnifiedTemplateSelector from '@/components/tamtam/creator/UnifiedTemplateSelector';
@@ -17,33 +19,75 @@ import { KuaishouPreviewMode } from '@/components/tamtam/creator/KuaishouPreview
 import KuaishouDebugPanel from '@/components/tamtam/creator/KuaishouDebugPanel';
 import OptimizedExportScreen from '@/components/tamtam/creator/OptimizedExportScreen';
 import RadioVillageProTemplate from '@/components/tamtam/creator/RadioVillageProTemplate';
+import CreatorProgressBar, { CreatorPhaseType } from '@/components/tamtam/creator/CreatorProgressBar';
+import DraftPromptModal from '@/components/tamtam/creator/DraftPromptModal';
+import SuccessScreen from '@/components/tamtam/creator/SuccessScreen';
+import FinalizationPanel from '@/components/tamtam/creator/FinalizationPanel';
+
+// Hooks
+import { useCreatorDraft } from '@/hooks/useCreatorDraft';
 
 // Types
-import { UnifiedTemplate, CreatorPhase } from '@/types/UnifiedTemplateTypes';
+import { UnifiedTemplate } from '@/types/UnifiedTemplateTypes';
 import { KuaishouTemplateConfig, VideoSegment, TemplateSegment, PreviewVideo } from '@/types/KuaishouTypes';
 
 const TamTamCreator: React.FC = () => {
   const navigate = useNavigate();
   
-  // State
-  const [phase, setPhase] = useState<CreatorPhase>('templates');
+  // Draft system
+  const { 
+    drafts, 
+    saveDraft, 
+    restoreDraft, 
+    hasRecentDraft, 
+    formatLastSaved,
+    clearCurrentDraft,
+    isSaving: isDraftSaving
+  } = useCreatorDraft();
+
+  // Core State
+  const [phase, setPhase] = useState<CreatorPhaseType>('discover');
   const [selectedTemplate, setSelectedTemplate] = useState<UnifiedTemplate | null>(null);
   const [capturedSegments, setCapturedSegments] = useState<VideoSegment[]>([]);
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
   const [finalVideoBlob, setFinalVideoBlob] = useState<Blob | null>(null);
   const [showExport, setShowExport] = useState(false);
+  
+  // Finalization state
+  const [caption, setCaption] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
+  
+  // Draft prompt
+  const [showDraftPrompt, setShowDraftPrompt] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<'saving' | 'saved' | null>(null);
+
+  // Check for recent draft on mount
+  useEffect(() => {
+    if (hasRecentDraft() && phase === 'discover') {
+      setShowDraftPrompt(true);
+    }
+  }, [hasRecentDraft, phase]);
+
+  // Sync draft status
+  useEffect(() => {
+    if (isDraftSaving) {
+      setDraftStatus('saving');
+    } else if (draftStatus === 'saving') {
+      setDraftStatus('saved');
+      setTimeout(() => setDraftStatus(null), 2000);
+    }
+  }, [isDraftSaving, draftStatus]);
 
   // Obtenir la config Kuaishou à partir du template sélectionné
   const getKuaishouConfig = useCallback((): KuaishouTemplateConfig | null => {
     if (!selectedTemplate) return null;
     
-    // Si c'est déjà une config Kuaishou
     if (selectedTemplate.originalConfig && 'segments' in (selectedTemplate.originalConfig as any)) {
       return selectedTemplate.originalConfig as KuaishouTemplateConfig;
     }
     
-    // Créer une config Kuaishou basique pour les templates non-Kuaishou
     return {
       id: selectedTemplate.id,
       name: selectedTemplate.name,
@@ -126,16 +170,8 @@ const TamTamCreator: React.FC = () => {
     setSelectedTemplate(template);
     setCapturedSegments([]);
     setCurrentSegmentIndex(0);
-    
-    // Si c'est Radio Village Pro, utiliser son workflow spécial
-    if (template.source === 'radio_village') {
-      setPhase('capturing');
-    } else {
-      // Workflow Kuaishou standard
-      setPhase('capturing');
-    }
-    
-    toast.success(`Template "${template.name}" sélectionné`);
+    setPhase('capturing');
+    toast.success(`${template.emoji} ${template.name}`);
   }, []);
 
   // Gérer la capture d'un segment
@@ -145,12 +181,10 @@ const TamTamCreator: React.FC = () => {
     const config = getKuaishouConfig();
     if (!config) return;
     
-    // Passer au segment suivant ou à la preview
     if (currentSegmentIndex < config.segments.length - 1) {
       setCurrentSegmentIndex(prev => prev + 1);
     } else {
-      // Tous les segments capturés
-      setPhase('previewing');
+      setPhase('reviewing');
       toast.success('Capture terminée !');
     }
   }, [getKuaishouConfig, currentSegmentIndex]);
@@ -164,31 +198,133 @@ const TamTamCreator: React.FC = () => {
       setCurrentSegmentIndex(prev => prev + 1);
       toast.info('Segment ignoré');
     } else {
-      setPhase('previewing');
+      setPhase('reviewing');
     }
   }, [getKuaishouConfig, currentSegmentIndex]);
 
-  // Gérer la publication depuis preview
-  const handlePublish = useCallback((video: PreviewVideo) => {
+  // Handle preview complete -> go to finalization
+  const handlePreviewPublish = useCallback((video: PreviewVideo) => {
     const videoAny = video as any;
     if (videoAny.blob) {
       setFinalVideoBlob(videoAny.blob);
-    } else if (videoAny.url) {
-      // Fallback: create blob from URL if needed
     }
-    setShowExport(true);
-    setPhase('exporting');
+    setPhase('finalizing');
   }, []);
 
-  // Gérer l'export terminé
+  // Full publish handler
+  const handleFullPublish = useCallback(async () => {
+    if (!finalVideoBlob) {
+      toast.error('Aucune vidéo à publier');
+      return;
+    }
+
+    setIsPublishing(true);
+    setPhase('publishing');
+
+    try {
+      // 1. Upload video to Supabase Storage
+      const videoPath = `videos/${Date.now()}_${selectedTemplate?.id || 'custom'}.webm`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('tamtam-media')
+        .upload(videoPath, finalVideoBlob, {
+          contentType: 'video/webm',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        // Continue anyway with local blob for demo
+      }
+
+      // 2. Get public URL
+      let mediaUrl = '';
+      if (uploadData) {
+        const { data: urlData } = supabase.storage
+          .from('tamtam-media')
+          .getPublicUrl(videoPath);
+        mediaUrl = urlData.publicUrl;
+      }
+
+      // 3. Create post in tamtam_posts
+      const { data: postData, error: postError } = await supabase
+        .from('tamtam_posts')
+        .insert({
+          content: caption || '',
+          audio_url: mediaUrl || 'local://preview',
+          media_type: 'video',
+          media_url: mediaUrl,
+          template_id: selectedTemplate?.id,
+          feeling_emoji: selectedTemplate?.emoji || '🎬',
+          duration_seconds: Math.floor((selectedTemplate?.duration || 15)),
+        })
+        .select()
+        .single();
+
+      if (postError) {
+        console.warn('Post creation error:', postError);
+      }
+
+      // 4. Clear draft
+      clearCurrentDraft();
+
+      // 5. Transition to success
+      setPhase('success');
+      setPublishedPostId(postData?.id || null);
+      toast.success('Vidéo publiée !');
+
+    } catch (error) {
+      console.error('Publication error:', error);
+      toast.error('Erreur lors de la publication');
+      setPhase('finalizing');
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [finalVideoBlob, caption, selectedTemplate, clearCurrentDraft]);
+
+  // Save as draft
+  const handleSaveDraft = useCallback(() => {
+    saveDraft({
+      segments: capturedSegments.map((s, i) => ({
+        id: s.id,
+        type: 'video' as const,
+        src: '',
+        duration: s.duration || 0,
+        startTime: i * (s.duration || 0),
+        endTime: (i + 1) * (s.duration || 0),
+        isMuted: false,
+        volume: 1
+      })),
+      effects: {} as any,
+      caption,
+      captions: [],
+      selectedMusic: null,
+      transcript: '',
+      transcriptBa: '',
+      mode: 'video',
+      canvasRatio: '9:16'
+    });
+    toast.success('Brouillon sauvegardé');
+  }, [saveDraft, capturedSegments, caption]);
+
+  // Handle draft restoration
+  const handleRestoreDraft = useCallback((draftId: string) => {
+    const draft = restoreDraft(draftId);
+    if (draft) {
+      setCaption(draft.caption || '');
+      setShowDraftPrompt(false);
+      setPhase('reviewing');
+      toast.success('Brouillon restauré');
+    }
+  }, [restoreDraft]);
+
+  // Export complete handler
   const handleExportComplete = useCallback((blob: Blob) => {
     setFinalVideoBlob(blob);
     setShowExport(false);
-    setPhase('published');
-    toast.success('Vidéo exportée avec succès !');
+    setPhase('finalizing');
   }, []);
 
-  // Retour arrière
+  // Navigation handlers
   const handleBack = useCallback(() => {
     switch (phase) {
       case 'capturing':
@@ -196,19 +332,21 @@ const TamTamCreator: React.FC = () => {
           setCurrentSegmentIndex(prev => prev - 1);
           setCapturedSegments(prev => prev.slice(0, -1));
         } else {
-          setPhase('templates');
+          setPhase('discover');
           setSelectedTemplate(null);
           setCapturedSegments([]);
         }
         break;
-      case 'previewing':
+      case 'reviewing':
         setPhase('capturing');
         break;
-      case 'exporting':
-        setShowExport(false);
-        setPhase('previewing');
+      case 'finalizing':
+        setPhase('reviewing');
         break;
-      case 'published':
+      case 'publishing':
+        // Can't go back during publish
+        break;
+      case 'success':
         navigate('/tamtam');
         break;
       default:
@@ -216,53 +354,101 @@ const TamTamCreator: React.FC = () => {
     }
   }, [phase, currentSegmentIndex, navigate]);
 
+  const handleNext = useCallback(() => {
+    switch (phase) {
+      case 'discover':
+        // Handled by template selection
+        break;
+      case 'capturing':
+        if (capturedSegments.length > 0) {
+          setPhase('reviewing');
+        }
+        break;
+      case 'reviewing':
+        setPhase('finalizing');
+        break;
+      case 'finalizing':
+        handleFullPublish();
+        break;
+      default:
+        break;
+    }
+  }, [phase, capturedSegments.length, handleFullPublish]);
+
+  // Can proceed to next phase?
+  const canProceed = useCallback(() => {
+    switch (phase) {
+      case 'capturing':
+        return capturedSegments.length > 0;
+      case 'reviewing':
+        return finalVideoBlob !== null || capturedSegments.length > 0;
+      case 'finalizing':
+        return !isPublishing;
+      default:
+        return true;
+    }
+  }, [phase, capturedSegments.length, finalVideoBlob, isPublishing]);
+
+  // Reset for new creation
+  const handleCreateAnother = useCallback(() => {
+    setPhase('discover');
+    setSelectedTemplate(null);
+    setCapturedSegments([]);
+    setCurrentSegmentIndex(0);
+    setFinalVideoBlob(null);
+    setCaption('');
+    setPublishedPostId(null);
+  }, []);
+
   const kuaishouConfig = getKuaishouConfig();
   const currentSegment = getCurrentSegment();
   const totalSegments = kuaishouConfig?.segments?.length || 1;
 
+  // Phase transition variants
+  const pageVariants = {
+    initial: { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 }
+  };
+
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      {/* Header - Visible sauf pendant la sélection de template */}
-      {phase !== 'templates' && (
-        <motion.header
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="flex items-center justify-between p-3 bg-background/95 backdrop-blur-sm border-b border-border z-10"
+      {/* Close button - always visible except success */}
+      {phase !== 'success' && phase !== 'publishing' && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+          onClick={() => navigate('/tamtam')}
         >
-          <Button variant="ghost" size="sm" onClick={handleBack}>
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Retour
-          </Button>
-          
-          <div className="flex items-center gap-2">
-            {selectedTemplate && (
-              <span className="text-sm font-medium text-foreground">
-                {selectedTemplate.emoji} {selectedTemplate.name}
-              </span>
-            )}
-          </div>
-          
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowDebug(prev => !prev)}
-            className={showDebug ? 'text-primary' : 'text-muted-foreground'}
-          >
-            <Bug className="w-4 h-4" />
-          </Button>
-        </motion.header>
+          <X className="w-5 h-5" />
+        </motion.button>
+      )}
+
+      {/* Debug button */}
+      {phase !== 'discover' && phase !== 'success' && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute top-4 left-4 z-50 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+          onClick={() => setShowDebug(prev => !prev)}
+        >
+          <Bug className="w-4 h-4" />
+        </motion.button>
       )}
 
       {/* Main Content */}
       <div className="flex-1 relative overflow-hidden">
         <AnimatePresence mode="wait">
-          {/* Phase 1: Sélection de template */}
-          {phase === 'templates' && (
+          {/* Phase: Discover (Template Selection) */}
+          {phase === 'discover' && (
             <motion.div
-              key="templates"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
+              key="discover"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="absolute inset-0"
             >
               <UnifiedTemplateSelector
@@ -272,32 +458,36 @@ const TamTamCreator: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Phase 2: Capture - Radio Village Pro */}
+          {/* Phase: Capture - Radio Village Pro */}
           {phase === 'capturing' && selectedTemplate?.source === 'radio_village' && (
             <motion.div
               key="radio-capture"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="absolute inset-0"
             >
               <RadioVillageProTemplate
                 onComplete={(blob) => {
                   setFinalVideoBlob(blob);
-                  setPhase('published');
+                  setPhase('finalizing');
                 }}
                 onBack={handleBack}
               />
             </motion.div>
           )}
 
-          {/* Phase 2: Capture - Kuaishou Standard */}
+          {/* Phase: Capture - Kuaishou Standard */}
           {phase === 'capturing' && selectedTemplate && selectedTemplate.source !== 'radio_village' && kuaishouConfig && currentSegment && (
             <motion.div
               key="kuaishou-capture"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="absolute inset-0"
             >
               <KuaishouCaptureMode
@@ -312,98 +502,132 @@ const TamTamCreator: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Phase 3: Preview */}
-          {phase === 'previewing' && kuaishouConfig && (
+          {/* Phase: Reviewing (Preview) */}
+          {phase === 'reviewing' && kuaishouConfig && (
             <motion.div
-              key="preview"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              key="reviewing"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="absolute inset-0"
             >
               <KuaishouPreviewMode
                 template={kuaishouConfig}
                 segments={capturedSegments}
-                onPublish={handlePublish}
+                onPublish={handlePreviewPublish}
                 onBack={handleBack}
               />
             </motion.div>
           )}
 
-          {/* Phase 4: Export */}
-          {phase === 'exporting' && (
-            <OptimizedExportScreen
-              open={showExport}
-              onComplete={handleExportComplete}
-              onCancel={handleBack}
-              sourceBlob={finalVideoBlob || undefined}
-              templateName={selectedTemplate?.name}
-              quality="medium"
-            />
+          {/* Phase: Finalizing */}
+          {phase === 'finalizing' && (
+            <motion.div
+              key="finalizing"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="absolute inset-0"
+            >
+              <FinalizationPanel
+                previewBlob={finalVideoBlob}
+                caption={caption}
+                onCaptionChange={setCaption}
+                onPublish={handleFullPublish}
+                onSaveAsDraft={handleSaveDraft}
+                onBack={handleBack}
+                isPublishing={isPublishing}
+                templateName={selectedTemplate?.name}
+                suggestedHashtags={selectedTemplate?.tags?.map(t => `#${t}`) || []}
+              />
+            </motion.div>
           )}
 
-          {/* Phase 5: Published */}
-          {phase === 'published' && (
+          {/* Phase: Publishing (Loading) */}
+          {phase === 'publishing' && (
             <motion.div
-              key="published"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="absolute inset-0 flex flex-col items-center justify-center bg-background p-6"
+              key="publishing"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 flex flex-col items-center justify-center bg-background"
             >
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', delay: 0.2 }}
-                className="text-7xl mb-6"
-              >
-                🎉
-              </motion.div>
-              
-              <h1 className="text-2xl font-bold text-foreground mb-2">
-                Vidéo créée !
-              </h1>
-              
-              <p className="text-muted-foreground text-center mb-8">
-                Ta vidéo a été exportée avec succès
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full mb-6"
+              />
+              <p className="text-foreground font-medium">Publication en cours...</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Ta vidéo sera bientôt visible
               </p>
-
-              {finalVideoBlob && (
-                <video
-                  src={URL.createObjectURL(finalVideoBlob)}
-                  controls
-                  className="w-full max-w-sm rounded-xl mb-6"
-                  style={{ maxHeight: '40vh' }}
-                />
-              )}
-
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setPhase('templates');
-                    setSelectedTemplate(null);
-                    setCapturedSegments([]);
-                    setCurrentSegmentIndex(0);
-                    setFinalVideoBlob(null);
-                  }}
-                >
-                  Créer une autre
-                </Button>
-                
-                <Button onClick={() => navigate('/tamtam')}>
-                  Retour à l'accueil
-                </Button>
-              </div>
             </motion.div>
+          )}
+
+          {/* Phase: Success */}
+          {phase === 'success' && (
+            <SuccessScreen
+              videoBlob={finalVideoBlob}
+              postId={publishedPostId}
+              templateName={selectedTemplate?.name}
+              onCreateAnother={handleCreateAnother}
+              onGoHome={() => navigate('/tamtam')}
+            />
           )}
         </AnimatePresence>
       </div>
+
+      {/* Progress Bar - visible during workflow phases */}
+      <AnimatePresence>
+        {['capturing', 'reviewing'].includes(phase) && (
+          <CreatorProgressBar
+            phase={phase}
+            onBack={handleBack}
+            onNext={handleNext}
+            onSaveDraft={handleSaveDraft}
+            canProceed={canProceed()}
+            canGoBack={phase !== 'capturing' || currentSegmentIndex > 0 || capturedSegments.length === 0}
+            draftStatus={draftStatus}
+            lastSaved={formatLastSaved()}
+            showDraftButton={capturedSegments.length > 0}
+            hideOnPhases={['discover', 'finalizing', 'publishing', 'success']}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Export Screen */}
+      {showExport && (
+        <OptimizedExportScreen
+          open={showExport}
+          onComplete={handleExportComplete}
+          onCancel={() => {
+            setShowExport(false);
+            setPhase('reviewing');
+          }}
+          sourceBlob={finalVideoBlob || undefined}
+          templateName={selectedTemplate?.name}
+          quality="medium"
+        />
+      )}
+
+      {/* Draft Prompt Modal */}
+      <DraftPromptModal
+        isOpen={showDraftPrompt}
+        drafts={drafts}
+        onRestoreDraft={handleRestoreDraft}
+        onStartNew={() => setShowDraftPrompt(false)}
+        onClose={() => setShowDraftPrompt(false)}
+      />
 
       {/* Debug Panel */}
       <AnimatePresence>
         {showDebug && kuaishouConfig && (
           <KuaishouDebugPanel
-            phase={phase}
+            phase={phase as any}
             template={kuaishouConfig}
             capturedSegments={capturedSegments}
             currentSegmentIndex={capturedSegments.length}
