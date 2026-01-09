@@ -66,6 +66,8 @@ import OverridesEditor from "./creator/OverridesEditor";
 import TikTokEditingBar from "./creator/TikTokEditingBar";
 import TextOverlayEditor, { TextOverlay, TextOverlayRenderer } from "./creator/TextOverlayEditor";
 import OptimizedExportScreen from "./creator/OptimizedExportScreen";
+import CameraResolutionIndicator from "./creator/CameraResolutionIndicator";
+import { useDevicePerformance, getKEngineQualitySettings } from "@/hooks/useDevicePerformance";
 
 // Legacy AdvancedTemplate data (still used by some UI effects/voice instructions)
 import {
@@ -525,6 +527,13 @@ export default function FullscreenCreator({
   const [editingTextOverlay, setEditingTextOverlay] = useState<TextOverlay | undefined>(undefined);
   const [showExportScreen, setShowExportScreen] = useState(false);
 
+  // ✅ Device Performance Detection
+  const { performanceInfo, isDetecting: isDetectingPerformance } = useDevicePerformance();
+  const kEngineQuality = useMemo(
+    () => performanceInfo ? getKEngineQualitySettings(performanceInfo.tier) : getKEngineQualitySettings('medium'),
+    [performanceInfo]
+  );
+
   // Publish
   const [caption, setCaption] = useState("");
 
@@ -855,6 +864,7 @@ export default function FullscreenCreator({
   
   // ✅ BLOCK A: K-Engine LIVE preview on camera (before capture)
   // ✅ HYBRID HIGH-QUALITY MODE: Video native visible + canvas overlay for effects only
+  // ✅ ADAPTIVE QUALITY: Uses device performance tier for optimal rendering
   useEffect(() => {
     if (hasCapture) return; // Only for live mode
     if (!isKEngineActive || !kState.template) return;
@@ -878,16 +888,30 @@ export default function FullscreenCreator({
     let raf: number | null = null;
     let time = 0;
     let lastTime = performance.now();
+    let frameCount = 0;
+
+    // ✅ ADAPTIVE FPS: Skip frames based on device performance
+    const targetFps = kEngineQuality.targetFps;
+    const frameInterval = 1000 / targetFps;
 
     const draw = (now: number) => {
       try {
-        const dt = (now - lastTime) / 1000;
+        const dt = (now - lastTime);
+        
+        // ✅ FPS limiting for low-end devices
+        if (dt < frameInterval) {
+          raf = requestAnimationFrame(draw);
+          return;
+        }
+        
         lastTime = now;
+        frameCount++;
 
-        // ✅ HIGH-QUALITY: Use native video dimensions for canvas (up to 1080p)
+        // ✅ ADAPTIVE RESOLUTION: Scale based on device tier
         const videoW = video.videoWidth || 1080;
         const videoH = video.videoHeight || 1920;
-        const maxDim = 1080;
+        const qualityScale = kEngineQuality.canvasScale;
+        const maxDim = Math.round(1080 * qualityScale);
         const scale = Math.min(1, maxDim / Math.max(videoW, videoH));
         const cw = Math.round(videoW * scale);
         const ch = Math.round(videoH * scale);
@@ -895,9 +919,10 @@ export default function FullscreenCreator({
         if (canvas.width !== cw || canvas.height !== ch) {
           canvas.width = cw;
           canvas.height = ch;
+          console.log(`[K-Engine] Canvas sized to ${cw}x${ch} (${performanceInfo?.tier || 'medium'} tier, ${targetFps}fps)`);
         }
 
-        time += dt;
+        time += dt / 1000;
         const tplDur = kState.template?.duration || 15;
         if (time > tplDur) time = 0;
 
@@ -917,7 +942,7 @@ export default function FullscreenCreator({
         kEngine.unbindLiveStream(primarySlot.id);
       }
     };
-  }, [hasCapture, isKEngineActive, kState.template, legacyTemplateActive]);
+  }, [hasCapture, isKEngineActive, kState.template, legacyTemplateActive, kEngineQuality, performanceInfo?.tier]);
 
   // ✅ Helper: Rendu hybride vidéo + effets K-Engine overlay
   const renderVideoWithKEngineOverlay = useCallback((
@@ -2357,6 +2382,16 @@ export default function FullscreenCreator({
               </button>
             )}
           </div>
+          
+          {/* ✅ Camera Resolution & Performance Indicator */}
+          {!hasCapture && videoRef.current && (
+            <div className="absolute top-14 right-4 z-40">
+              <CameraResolutionIndicator
+                videoRef={videoRef}
+                performanceTier={performanceInfo?.tier}
+              />
+            </div>
+          )}
         </div>
 
         {/* ===== RIGHT RAIL ===== */}
