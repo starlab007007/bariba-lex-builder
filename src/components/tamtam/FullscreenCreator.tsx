@@ -667,43 +667,110 @@ export default function FullscreenCreator({
   }, []);
 
   const startStream = useCallback(async () => {
+    console.log('[Camera] startStream called, facing:', facing, 'mode:', mode);
     setError(null);
     stopStream();
+    
     try {
+      // ✅ Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("L'API caméra n'est pas disponible sur ce navigateur.");
+      }
+      
       const constraints: MediaStreamConstraints = {
         video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: mode === "video",
       };
+      
+      console.log('[Camera] Requesting stream with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('[Camera] Stream obtained:', stream.getTracks().map(t => `${t.kind}:${t.readyState}`));
+      
       streamRef.current = stream;
 
-      if (videoRef.current) {
-        const video = videoRef.current;
+      // ✅ Wait a tick for React to render the video element if needed
+      await new Promise(r => setTimeout(r, 50));
 
-        await new Promise<void>((resolve) => {
-          const onLoaded = () => {
-            video.removeEventListener("loadedmetadata", onLoaded);
-            video.play().then(resolve).catch(() => resolve());
-          };
-          video.addEventListener("loadedmetadata", onLoaded);
-          video.srcObject = stream;
-        });
+      const video = videoRef.current;
+      if (!video) {
+        console.warn('[Camera] videoRef.current is null, stream acquired but cannot attach');
+        // Keep the stream alive - the video element might mount later
+        return;
       }
+
+      // ✅ Assign srcObject BEFORE adding listener (correct order)
+      video.srcObject = stream;
+      console.log('[Camera] srcObject assigned to video element');
+
+      // ✅ Wait for metadata with timeout fallback
+      await new Promise<void>((resolve) => {
+        let resolved = false;
+        
+        const done = () => {
+          if (resolved) return;
+          resolved = true;
+          video.removeEventListener("loadedmetadata", onLoaded);
+          video.removeEventListener("canplay", onLoaded);
+          clearTimeout(timeout);
+          console.log('[Camera] Video ready, attempting play');
+          video.play()
+            .then(() => console.log('[Camera] Video playing'))
+            .catch(e => console.warn('[Camera] Play failed (autoplay policy?):', e.message))
+            .finally(resolve);
+        };
+        
+        const onLoaded = () => done();
+        
+        // ✅ Timeout fallback - some browsers don't fire loadedmetadata reliably
+        const timeout = setTimeout(() => {
+          console.warn('[Camera] Metadata timeout, forcing play attempt');
+          done();
+        }, 3000);
+        
+        video.addEventListener("loadedmetadata", onLoaded);
+        video.addEventListener("canplay", onLoaded);
+        
+        // ✅ If already has metadata (e.g. reusing element), resolve immediately
+        if (video.readyState >= 1) {
+          console.log('[Camera] Video already has metadata');
+          done();
+        }
+      });
+      
+      console.log('[Camera] Stream setup complete');
     } catch (e: any) {
-      setError(e?.message || "Impossible d'accéder à la caméra.");
+      console.error('[Camera] Error:', e);
+      const message = e?.name === 'NotAllowedError' 
+        ? "Permission caméra refusée. Veuillez autoriser l'accès à la caméra."
+        : e?.name === 'NotFoundError'
+        ? "Aucune caméra trouvée sur cet appareil."
+        : e?.name === 'NotReadableError'
+        ? "La caméra est utilisée par une autre application."
+        : e?.message || "Impossible d'accéder à la caméra.";
+      setError(message);
     }
   }, [facing, mode, stopStream]);
 
   // Camera startup only when open and not in edit mode and not text
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      console.log('[Camera] Effect: not open, skipping');
+      return;
+    }
     if (mode === "text") {
+      console.log('[Camera] Effect: text mode, stopping stream');
       stopStream();
       return;
     }
-    if (!hasCapture) startStream();
+    if (!hasCapture) {
+      console.log('[Camera] Effect: starting stream');
+      startStream();
+    }
     return () => {
-      if (!hasCapture) stopStream();
+      if (!hasCapture) {
+        console.log('[Camera] Effect cleanup: stopping stream');
+        stopStream();
+      }
     };
   }, [open, hasCapture, facing, mode, startStream, stopStream]);
 
