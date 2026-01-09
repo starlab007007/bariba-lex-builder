@@ -403,8 +403,10 @@ const TamTamCreator: React.FC = () => {
       <AnimatePresence>
         {showDebug && kuaishouConfig && (
           <KuaishouDebugPanel
+            phase={phase}
             template={kuaishouConfig}
             capturedSegments={capturedSegments}
+            currentSegmentIndex={capturedSegments.length}
             onClose={() => setShowDebug(false)}
           />
         )}
