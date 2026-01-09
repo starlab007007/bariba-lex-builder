@@ -184,12 +184,32 @@ export const KuaishouPreviewMode: React.FC<KuaishouPreviewModeProps> = ({
     };
   }, []);
 
-  // Publish handler
+  // Publish handler - Ensure blob is passed with the video
   const handlePublish = useCallback(async () => {
-    if (previewVideo) {
+    if (previewVideo && segments.length > 0) {
+      // Combine all segment blobs
+      const segmentBlobs = segments
+        .filter(s => s.blob)
+        .map(s => s.blob!);
+      
+      if (segmentBlobs.length > 0) {
+        const combinedBlob = new Blob(segmentBlobs, { type: 'video/webm' });
+        // Add blob to previewVideo for downstream consumption
+        const videoWithBlob = {
+          ...previewVideo,
+          blob: combinedBlob
+        };
+        console.log('📹 Publishing with blob:', combinedBlob.size, 'bytes');
+        onPublish(videoWithBlob);
+      } else {
+        console.warn('⚠️ No blobs available for publish');
+        onPublish(previewVideo);
+      }
+    } else if (previewVideo) {
+      console.log('📹 Publishing without segments');
       onPublish(previewVideo);
     }
-  }, [previewVideo, onPublish]);
+  }, [previewVideo, segments, onPublish]);
 
   // Format time
   const formatTime = (time: number): string => {
