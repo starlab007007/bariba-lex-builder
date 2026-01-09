@@ -1,11 +1,12 @@
 /**
  * KuaishouTemplateData.ts
  * Données de templates pour le système Kuaishou
- * 4 templates: One-Take Pro, Dance Challenge, Photo Story, Tutorial Quick
- * Version: 2.0.0
+ * 5 templates: Radio Village Pro, One-Take Pro, Dance Challenge, Photo Story, Tutorial Quick
+ * Version: 2.1.0
  */
 
 import { KuaishouTemplateConfig } from '../types/KuaishouTypes';
+import { radioVillagePro } from './RadioVillageProData';
 
 // ==========================================
 // TEMPLATE 0: ONE-TAKE PRO 🐴 (PREMIUM)
@@ -1006,7 +1007,8 @@ export const tutorialQuick01: KuaishouTemplateConfig = {
 // ==========================================
 
 export const kuaishouTemplates: KuaishouTemplateConfig[] = [
-  oneTakePro,      // Premium template first
+  radioVillagePro, // NEW: Audio-first template
+  oneTakePro,      // Premium template
   danceChallenge01,
   photoStory01,
   tutorialQuick01

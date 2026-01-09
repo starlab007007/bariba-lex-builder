@@ -1,0 +1,218 @@
+{
+  "id": "radio_village_pro_01",
+  "name": "Radio Village Pro",
+  "description": "Template audio-first premium - Transforme ta voix en vidéo captivante",
+  "version": "2.0.0",
+  "duration": "auto",
+  "durationRange": { "min": 30, "max": 60 },
+  "ratio": "9:16",
+  "resolution": { "width": 1080, "height": 1920 },
+  "category": "audio_first",
+  "family": "vocal_radio",
+  "tags": ["radio", "audio", "waveform", "community", "elder", "village", "voice", "premium"],
+
+  "slots": [
+    {
+      "id": "audio_main",
+      "description": "Message vocal principal",
+      "type": "audio",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "constraints": {
+        "minDurationSec": 30,
+        "maxDurationSec": 60,
+        "formats": ["audio/mp3", "audio/wav", "audio/m4a", "audio/ogg", "audio/webm"],
+        "maxSizeMB": 50
+      }
+    },
+    {
+      "id": "photo_portrait",
+      "description": "Portrait du locuteur",
+      "type": "photo",
+      "required": false,
+      "min": 0,
+      "max": 1,
+      "constraints": {
+        "formats": ["image/jpeg", "image/png", "image/webp"],
+        "maxSizeMB": 10
+      }
+    },
+    {
+      "id": "photo_village",
+      "description": "Photo du village",
+      "type": "photo",
+      "required": false,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "photo_context",
+      "description": "Photo de contexte",
+      "type": "photo",
+      "required": false,
+      "min": 0,
+      "max": 1
+    }
+  ],
+
+  "stylePresets": [
+    {
+      "id": "sagesse",
+      "name": "💡 Sagesse",
+      "description": "Ambiance chaleureuse pour paroles d'anciens",
+      "colors": {
+        "primary": "#FFD700",
+        "secondary": "#FFA500",
+        "accent": "#FF8C00",
+        "background": "linear-gradient(135deg, #1a1a1a 0%, #2d1f00 100%)"
+      },
+      "particles": { "count": 30, "color": "#FFD700", "opacity": 0.6 },
+      "waveformColor": "#FFD700",
+      "avatarGlow": "rgba(255,215,0,0.5)"
+    },
+    {
+      "id": "histoire",
+      "name": "📖 Histoire",
+      "description": "Style vintage sépia pour les récits",
+      "colors": {
+        "primary": "#D4A574",
+        "secondary": "#C4956A",
+        "accent": "#A0785A",
+        "background": "linear-gradient(135deg, #2d2d2d 0%, #3d2d1f 100%)"
+      },
+      "particles": { "count": 20, "color": "#D4A574", "opacity": 0.4 },
+      "waveformColor": "#D4A574",
+      "avatarGlow": "rgba(212,165,116,0.5)"
+    },
+    {
+      "id": "actualite",
+      "name": "📢 Actualité",
+      "description": "Style moderne pour annonces",
+      "colors": {
+        "primary": "#00BFFF",
+        "secondary": "#1E90FF",
+        "accent": "#4169E1",
+        "background": "linear-gradient(135deg, #0a1628 0%, #1a2d50 100%)"
+      },
+      "particles": { "count": 25, "color": "#00BFFF", "opacity": 0.5 },
+      "waveformColor": "#00BFFF",
+      "avatarGlow": "rgba(0,191,255,0.5)"
+    },
+    {
+      "id": "celebration",
+      "name": "🎉 Célébration",
+      "description": "Ambiance festive multicolore",
+      "colors": {
+        "primary": "#FF69B4",
+        "secondary": "#9B59B6",
+        "accent": "#FFD700",
+        "background": "linear-gradient(135deg, #1a1a2e 0%, #2d1f3d 100%)"
+      },
+      "particles": { "count": 50, "color": "multicolor", "opacity": 0.7 },
+      "waveformColor": "#FF69B4",
+      "avatarGlow": "rgba(255,105,180,0.5)"
+    }
+  ],
+
+  "pipeline": [
+    { "op": "audio_enhance", "params": { "denoise": true, "normalize": true }, "output": "audioFx", "weight": 0.15 },
+    { "op": "asr_subtitles", "params": { "langs": ["fr", "ba"], "align": "forced" }, "output": "subtitleTrack", "weight": 0.25 },
+    { "op": "audio_waveform", "params": { "style": "circular", "bars": 48 }, "output": "waveformLayer", "weight": 0.15 },
+    { "op": "photo_parallax", "params": { "intensity": 0.05, "blur": 15 }, "output": "backgroundLayer", "weight": 0.10 },
+    { "op": "avatar_pulse", "params": { "syncToAudio": true }, "output": "avatarLayer", "weight": 0.10 },
+    { "op": "particle_system", "params": { "count": 50, "style": "floating" }, "output": "particleLayer", "weight": 0.10 },
+    { "op": "emoji_injection", "params": { "mode": "keyword_detection" }, "output": "emojiLayer", "weight": 0.10 },
+    { "op": "info_overlay", "params": { "showTitle": true, "showDate": true }, "output": "infoLayer", "weight": 0.05 }
+  ],
+
+  "timeline": {
+    "layers": [
+      {
+        "id": "bg_layer",
+        "type": "background",
+        "zIndex": 0,
+        "blend": "normal",
+        "content": "photo_with_blur_parallax"
+      },
+      {
+        "id": "waveform_layer",
+        "type": "visualization",
+        "zIndex": 1,
+        "style": "circular",
+        "position": { "x": 0.5, "y": 0.5 },
+        "size": 0.6
+      },
+      {
+        "id": "avatar_layer",
+        "type": "avatar",
+        "zIndex": 2,
+        "position": { "x": 0.5, "y": 0.5 },
+        "size": 0.25,
+        "animation": "pulse_to_audio"
+      },
+      {
+        "id": "caption_layer",
+        "type": "subtitles",
+        "zIndex": 3,
+        "position": { "x": 0.5, "y": 0.75 },
+        "style": "bilingual_karaoke",
+        "languages": ["fr", "ba"]
+      },
+      {
+        "id": "emoji_layer",
+        "type": "reactions",
+        "zIndex": 4,
+        "trigger": "keyword"
+      },
+      {
+        "id": "particle_layer",
+        "type": "particles",
+        "zIndex": 5,
+        "count": 50,
+        "animation": "float"
+      },
+      {
+        "id": "info_layer",
+        "type": "overlay",
+        "zIndex": 6,
+        "content": "title_date_location",
+        "position": { "x": 0.5, "y": 0.1 }
+      }
+    ]
+  },
+
+  "overrides": ["text", "subtitles", "cover", "style", "title"],
+
+  "music": {
+    "enabled": false,
+    "beatSync": false
+  },
+
+  "publishDefaults": {
+    "allowDuo": false,
+    "hashtags": ["#RadioVillage", "#Voix", "#Patrimoine", "#TAMTAMRadio", "#Sagesse"]
+  },
+
+  "cardHint": {
+    "inputSummary": "1 Audio + Photos",
+    "timeLabel": "30-60s",
+    "badge": "PRO"
+  },
+
+  "export": {
+    "fps": 30,
+    "preset": "high",
+    "codec": "h264",
+    "crf": 18,
+    "bitrate": "5Mbps"
+  },
+
+  "emojiKeywords": {
+    "sagesse": ["ancien", "sagesse", "conseil", "expérience", "tradition"],
+    "celebration": ["fête", "joie", "bonheur", "célébration", "mariage"],
+    "nature": ["terre", "pluie", "soleil", "récolte", "champ", "village"],
+    "famille": ["enfant", "père", "mère", "famille", "maison"],
+    "communauté": ["village", "ensemble", "réunion", "communauté", "chef"]
+  }
+}
