@@ -1604,9 +1604,38 @@ export default function FullscreenCreator({
 
   // ============= PUBLISH =============
   const publish = async () => {
+    console.log('📤 [publish] Starting publication...', {
+      segmentsCount: segments.length,
+      capturedBlobSize: capturedBlob?.size,
+      capturedBlobType: capturedBlob?.type,
+      capturedType
+    });
+    
     try {
       setError(null);
-      if (!segments.length) throw new Error("Aucun contenu à publier.");
+      
+      // ✅ FIX: Enhanced validation - check segments AND blob existence
+      if (!segments.length) {
+        console.error('❌ [publish] No segments');
+        throw new Error("Aucun contenu à publier.");
+      }
+      
+      const firstSegment = segments[0];
+      if (!firstSegment.blob || firstSegment.blob.size === 0) {
+        console.error('❌ [publish] First segment has no valid blob:', {
+          hasBlob: !!firstSegment.blob,
+          blobSize: firstSegment.blob?.size
+        });
+        throw new Error("Contenu vidéo manquant ou invalide.");
+      }
+      
+      console.log('✅ [publish] Validated segment:', {
+        id: firstSegment.id,
+        type: firstSegment.type,
+        duration: firstSegment.duration,
+        blobSize: firstSegment.blob.size,
+        blobType: firstSegment.blob.type
+      });
 
       const challenge = effects.challengeId ? CHALLENGES.find((c) => c.id === effects.challengeId) : null;
       const finalCaption = challenge ? `${caption} ${challenge.hashtag}`.trim() : caption;
@@ -2267,40 +2296,68 @@ export default function FullscreenCreator({
           >
             <RadioVillageProTemplate
               onComplete={(blob, metadata) => {
-                console.log('✅ Radio Village Pro terminé, blob reçu:', blob.size, 'bytes, type:', blob.type);
+                console.log('✅ Radio Village Pro terminé:', {
+                  blobSize: blob.size,
+                  blobType: blob.type,
+                  metadataDuration: metadata?.duration,
+                  metadataStyle: metadata?.style
+                });
                 
-                // ✅ FIX: Set capturedBlob
+                // ✅ Validate blob
+                if (!blob || blob.size === 0) {
+                  console.error('❌ Radio Village Pro returned empty blob');
+                  setError('La vidéo générée est vide. Veuillez réessayer.');
+                  return;
+                }
+                
+                // ✅ Validate duration
+                const rawDuration = metadata?.duration;
+                const duration = typeof rawDuration === 'number' && isFinite(rawDuration) && rawDuration > 0 
+                  ? rawDuration 
+                  : 30;
+                console.log('📏 Validated duration:', duration);
+                
+                // ✅ Set captured blob
                 setCapturedBlob(blob);
                 setCapturedType('video');
                 setHasCapture(true);
                 
-                // ✅ FIX: Create segment so publish() works
-                const duration = metadata?.duration || 30;
+                // ✅ Create segment with validated data
+                const segmentId = `rvp_${Date.now()}`;
                 const newSegment: MiniTimelineSegment = {
-                  id: `rvp_${Date.now()}`,
+                  id: segmentId,
                   type: 'video',
                   duration,
                   startTime: 0,
                   endTime: duration,
                   isMuted: false,
                   volume: 100,
-                  blob, // ✅ Critical: include blob for upload
+                  blob, // Critical: include blob for upload
                 };
-                setSegments([newSegment]);
-                setActiveSegmentId(newSegment.id);
                 
-                // ✅ Also set templateSegments for IntegratedPreviewMode
-                setTemplateSegments([{ id: newSegment.id, blob, duration }]);
-                console.log('📦 Segments created for publication:', newSegment.id);
+                console.log('📦 Creating segment:', {
+                  id: segmentId,
+                  duration,
+                  blobSize: blob.size,
+                  blobType: blob.type
+                });
+                
+                setSegments([newSegment]);
+                setActiveSegmentId(segmentId);
+                
+                // ✅ Set templateSegments for IntegratedPreviewMode
+                setTemplateSegments([{ id: segmentId, blob, duration }]);
                 
                 setIsRadioVillageMode(false);
                 
-                // ✅ FIX: Go to REVIEWING first (preview) instead of directly to finalizing
+                // ✅ Go to REVIEWING for preview before finalizing
                 setTemplateFlowPhase('reviewing');
                 
-                // Pre-fill caption with template name and style
+                // Pre-fill caption
                 const styleName = metadata?.style || 'Radio Village';
                 setCaption(`${activeUnifiedTemplate.emoji} ${activeUnifiedTemplate.name} - ${styleName}`);
+                
+                console.log('✅ Ready for preview phase');
               }}
               onBack={() => {
                 console.log('↩️ Retour depuis Radio Village Pro');
