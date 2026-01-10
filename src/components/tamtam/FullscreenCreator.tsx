@@ -1725,6 +1725,18 @@ export default function FullscreenCreator({
     if (albumInputRef.current) albumInputRef.current.value = "";
   };
 
+  // ✅ FIX: Handler for inline text editor preview changes (moved from JSX to avoid hook in render)
+  const handleInlineTextChange = useCallback((text: string, style: React.CSSProperties, position?: { x: number; y: number }) => {
+    setInlineTextPreview(prev => {
+      const newPos = position || { x: 50, y: 50 };
+      // Guard against no-op updates to prevent re-render cascade
+      if (prev && prev.text === text && prev.position?.x === newPos.x && prev.position?.y === newPos.y) {
+        return prev;
+      }
+      return { text, style, position: newPos };
+    });
+  }, []);
+
   const activeSegment = segments.find((s) => s.id === activeSegmentId);
 
   // ============= PUBLISH =============
@@ -3490,16 +3502,7 @@ export default function FullscreenCreator({
             setShowInlineTextEditor(false);
             setInlineTextPreview(null);
           }}
-          onTextChange={useCallback((text: string, style: React.CSSProperties, position?: { x: number; y: number }) => {
-            setInlineTextPreview(prev => {
-              const newPos = position || { x: 50, y: 50 };
-              // ✅ FIX: Guard against no-op updates to prevent re-render cascade
-              if (prev && prev.text === text && prev.position?.x === newPos.x && prev.position?.y === newPos.y) {
-                return prev;
-              }
-              return { text, style, position: newPos };
-            });
-          }, [])}
+          onTextChange={handleInlineTextChange}
           initialOverlay={editingTextOverlay}
           videoDuration={totalDuration || lengthSec}
         />
