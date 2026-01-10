@@ -233,7 +233,7 @@ function AppContent() {
 
   return (
     <SideMenuContext.Provider value={menuContext}>
-      <div className="min-h-screen" style={{ background: '#0B0B0B' }}>
+      <div className="min-h-screen kuaishou-bg">
         <SideMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
         <main><Outlet /></main>
       </div>
