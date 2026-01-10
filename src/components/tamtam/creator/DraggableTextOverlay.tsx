@@ -190,6 +190,7 @@ export function DraggablePreviewOverlay({
   containerRef: React.RefObject<HTMLDivElement>;
   onPositionChange?: (x: number, y: number) => void;
 }) {
+  // ✅ FIX: All hooks MUST be declared BEFORE any conditional returns
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null);
 
@@ -233,6 +234,7 @@ export function DraggablePreviewOverlay({
     }
   }, [isDragging]);
 
+  // ✅ FIX: Conditional return MUST be AFTER all hooks
   if (!text) return null;
 
   return (
