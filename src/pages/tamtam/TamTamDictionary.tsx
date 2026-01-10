@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Keyboard, Volume2, ArrowLeft, Loader2, Search, BookOpen, Plus } from 'lucide-react';
+import { Mic, Keyboard, Volume2, Loader2, Search, BookOpen, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
@@ -9,6 +9,7 @@ import { BaribaKeyboardInput, SearchLanguage } from '@/components/tamtam/BaribaK
 import { VocalDictionaryResult } from '@/components/tamtam/VocalDictionaryResult';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { NewWordSubmission } from '@/components/tamtam/NewWordSubmission';
+import { KuaishouLayout } from '@/components/tamtam/KuaishouLayout';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 
 type InputMode = 'voice' | 'keyboard';
@@ -160,44 +161,23 @@ export default function TamTamDictionary() {
   };
 
   return (
-    <div className="min-h-screen bg-tamtam-bg pb-24">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-purple-500 px-4 py-6 pb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={() => navigate('/tamtam/home')}
-            className="p-2 rounded-full bg-white/20 text-white"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <BookOpen className="w-6 h-6" />
-              {currentLang === 'ba' ? "Gbɛ́-sɔ́ɔ̀rù" : "Dictionnaire"}
-            </h1>
-            <p className="text-white/80 text-sm">
-              {totalEntries > 0 ? `${totalEntries.toLocaleString()} mots` : 'Chargement...'}
-            </p>
-          </div>
-          
-          {/* Bouton audio titre */}
-          <button
-            onClick={() => speakCurrentLang(currentLang === 'ba' ? "Gbɛ́-sɔ́ɔ̀rù Bàátɔ̀nú" : "Dictionnaire Bariba")}
-            className="p-2 rounded-full bg-white/20 text-white"
-          >
-            <Volume2 className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Toggles mode et direction */}
+    <KuaishouLayout
+      titleFr="Dictionnaire"
+      titleBa="Gbɛ́-sɔ́ɔ̀rù"
+      emoji="📖"
+      showBack={true}
+      showMenu={true}
+    >
+      {/* Toggles mode et direction */}
+      <div className="px-4 pt-4 pb-2">
         <div className="flex gap-2">
           {/* Toggle mode */}
           <button
             onClick={toggleInputMode}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${
               inputMode === 'voice' 
-                ? 'bg-white text-purple-600' 
-                : 'bg-white/20 text-white'
+                ? 'kuaishou-btn-primary' 
+                : 'kuaishou-btn-secondary'
             }`}
           >
             {inputMode === 'voice' ? <Mic className="w-5 h-5" /> : <Keyboard className="w-5 h-5" />}
@@ -209,7 +189,7 @@ export default function TamTamDictionary() {
           {/* Toggle direction */}
           <button
             onClick={toggleDirection}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/20 text-white font-medium"
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl kuaishou-btn-secondary"
           >
             {searchDirection === 'ba-fr' ? (
               <>🇧🇯 → 🇫🇷</>
@@ -218,14 +198,21 @@ export default function TamTamDictionary() {
             )}
           </button>
         </div>
+        
+        {/* Word count badge */}
+        <div className="mt-3 text-center">
+          <span className="text-white/50 text-sm">
+            {totalEntries > 0 ? `${totalEntries.toLocaleString()} mots` : 'Chargement...'}
+          </span>
+        </div>
       </div>
 
       {/* Contenu principal */}
       <div className="px-4 -mt-4">
-        {/* Zone d'entrée */}
+        {/* Zone d'entrée - updated styling */}
         <motion.div
           layout
-          className="bg-tamtam-surface rounded-3xl shadow-tamtam-soft p-4 mb-4"
+          className="kuaishou-card p-4 mb-4"
         >
           {inputMode === 'voice' ? (
             /* Mode vocal */
@@ -348,6 +335,6 @@ export default function TamTamDictionary() {
           </div>
         )}
       </div>
-    </div>
+    </KuaishouLayout>
   );
 }
