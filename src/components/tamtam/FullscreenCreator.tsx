@@ -433,6 +433,9 @@ export default function FullscreenCreator({
 
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  
+  // ✅ NEW: Camera loading state for robust startup
+  const [cameraLoading, setCameraLoading] = useState(false);
 
   // ============= EFFECTS STATE =============
   const [effects, setEffects] = useState<CaptureEffects>({ ...DEFAULT_EFFECTS });
@@ -669,6 +672,7 @@ export default function FullscreenCreator({
   const startStream = useCallback(async () => {
     console.log('[Camera] startStream called, facing:', facing, 'mode:', mode);
     setError(null);
+    setCameraLoading(true);
     stopStream();
     
     try {
@@ -687,59 +691,14 @@ export default function FullscreenCreator({
       console.log('[Camera] Stream obtained:', stream.getTracks().map(t => `${t.kind}:${t.readyState}`));
       
       streamRef.current = stream;
-
-      // ✅ Wait a tick for React to render the video element if needed
-      await new Promise(r => setTimeout(r, 50));
-
-      const video = videoRef.current;
-      if (!video) {
-        console.warn('[Camera] videoRef.current is null, stream acquired but cannot attach');
-        // Keep the stream alive - the video element might mount later
-        return;
-      }
-
-      // ✅ Assign srcObject BEFORE adding listener (correct order)
-      video.srcObject = stream;
-      console.log('[Camera] srcObject assigned to video element');
-
-      // ✅ Wait for metadata with timeout fallback
-      await new Promise<void>((resolve) => {
-        let resolved = false;
-        
-        const done = () => {
-          if (resolved) return;
-          resolved = true;
-          video.removeEventListener("loadedmetadata", onLoaded);
-          video.removeEventListener("canplay", onLoaded);
-          clearTimeout(timeout);
-          console.log('[Camera] Video ready, attempting play');
-          video.play()
-            .then(() => console.log('[Camera] Video playing'))
-            .catch(e => console.warn('[Camera] Play failed (autoplay policy?):', e.message))
-            .finally(resolve);
-        };
-        
-        const onLoaded = () => done();
-        
-        // ✅ Timeout fallback - some browsers don't fire loadedmetadata reliably
-        const timeout = setTimeout(() => {
-          console.warn('[Camera] Metadata timeout, forcing play attempt');
-          done();
-        }, 3000);
-        
-        video.addEventListener("loadedmetadata", onLoaded);
-        video.addEventListener("canplay", onLoaded);
-        
-        // ✅ If already has metadata (e.g. reusing element), resolve immediately
-        if (video.readyState >= 1) {
-          console.log('[Camera] Video already has metadata');
-          done();
-        }
-      });
+      console.log('[Camera] Stream stored in ref, waiting for video element attachment via useEffect');
       
-      console.log('[Camera] Stream setup complete');
+      // ✅ DON'T attach here - let the dedicated useEffect handle it
+      // This ensures the video element is mounted before we try to attach
+      
     } catch (e: any) {
       console.error('[Camera] Error:', e);
+      setCameraLoading(false);
       const message = e?.name === 'NotAllowedError' 
         ? "Permission caméra refusée. Veuillez autoriser l'accès à la caméra."
         : e?.name === 'NotFoundError'
@@ -755,10 +714,12 @@ export default function FullscreenCreator({
   useEffect(() => {
     if (!open) {
       console.log('[Camera] Effect: not open, skipping');
+      setCameraLoading(false);
       return;
     }
     if (mode === "text") {
       console.log('[Camera] Effect: text mode, stopping stream');
+      setCameraLoading(false);
       stopStream();
       return;
     }
@@ -773,6 +734,103 @@ export default function FullscreenCreator({
       }
     };
   }, [open, hasCapture, facing, mode, startStream, stopStream]);
+
+  // ✅ NEW: Robust stream attachment with polling/retry mechanism
+  useEffect(() => {
+    if (!open || hasCapture || mode === "text") return;
+    
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds max (50 * 100ms)
+    let intervalId: number | null = null;
+    
+    const tryAttach = () => {
+      const video = videoRef.current;
+      const stream = streamRef.current;
+      
+      if (!video || !stream) {
+        console.log('[Camera Attach] Waiting for video/stream...', { hasVideo: !!video, hasStream: !!stream });
+        return false;
+      }
+      
+      if (video.srcObject === stream) {
+        console.log('[Camera Attach] Already attached');
+        setCameraLoading(false);
+        return true;
+      }
+      
+      console.log('[Camera Attach] Attaching stream to video element');
+      video.srcObject = stream;
+      
+      // Wait for metadata then play
+      const onReady = () => {
+        console.log('[Camera Attach] Video ready, playing');
+        video.play()
+          .then(() => {
+            console.log('[Camera Attach] Video playing successfully');
+            setCameraLoading(false);
+          })
+          .catch(e => {
+            console.warn('[Camera Attach] Play failed:', e.message);
+            setCameraLoading(false);
+          });
+      };
+      
+      if (video.readyState >= 1) {
+        onReady();
+      } else {
+        video.addEventListener('loadedmetadata', onReady, { once: true });
+        video.addEventListener('canplay', onReady, { once: true });
+        
+        // Timeout fallback
+        setTimeout(() => {
+          if (video.srcObject === stream && !video.paused) return;
+          console.warn('[Camera Attach] Forcing play after timeout');
+          video.play().catch(() => {}).finally(() => setCameraLoading(false));
+        }, 2000);
+      }
+      
+      return true;
+    };
+    
+    // Try immediately
+    if (tryAttach()) return;
+    
+    // Retry every 100ms
+    intervalId = window.setInterval(() => {
+      attempts++;
+      if (tryAttach() || attempts >= maxAttempts) {
+        if (intervalId) window.clearInterval(intervalId);
+        if (attempts >= maxAttempts) {
+          console.error('[Camera Attach] Failed after max attempts');
+          setCameraLoading(false);
+          if (!videoRef.current?.srcObject) {
+            setError("La caméra n'a pas pu démarrer. Réessayez.");
+          }
+        }
+      }
+    }, 100);
+    
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [open, hasCapture, mode]);
+
+  // ✅ NEW: Safety timeout - show error if camera takes too long
+  useEffect(() => {
+    if (!cameraLoading) return;
+    
+    const timeout = setTimeout(() => {
+      if (cameraLoading) {
+        console.error('[Camera] Loading timeout exceeded');
+        setCameraLoading(false);
+        if (!videoRef.current?.srcObject) {
+          setError("La caméra met trop de temps à démarrer. Vérifiez vos permissions et réessayez.");
+        }
+      }
+    }, 8000); // 8 seconds safety timeout
+    
+    return () => clearTimeout(timeout);
+  }, [cameraLoading]);
 
   // Global cleanup on unmount
   useEffect(() => {
@@ -2574,6 +2632,17 @@ export default function FullscreenCreator({
                   style={{ transform: facing === "user" ? "scaleX(-1)" : "none" }}
                   aria-hidden="true"
                 />
+              )}
+
+              {/* ✅ NEW: Camera loading spinner */}
+              {cameraLoading && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-white/80 text-sm font-medium">Démarrage caméra...</span>
+                    <span className="text-white/50 text-xs">Yeera sobu...</span>
+                  </div>
+                </div>
               )}
             </>
           ) : capturedType === "video" ? (
