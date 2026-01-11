@@ -15,6 +15,7 @@ export { default as CaptionsDrawer } from './CaptionsDrawer';
 export type { Caption, CaptionStyle, CaptionAnimation } from './CaptionsDrawer';
 export { default as MusicDrawer } from './MusicDrawer';
 export type { SelectedMusic } from './MusicDrawer';
+export { default as AudioLibrary } from './AudioLibrary';
 export { default as PublishScreen } from './PublishScreen';
 
 // Kuaishou Creator Components

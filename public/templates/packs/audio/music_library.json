@@ -1,0 +1,221 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-01-11",
+  "categories": [
+    {
+      "id": "traditional",
+      "name": {
+        "fr": "Musique Traditionnelle",
+        "bariba": "Baatɔnu gukɔ gbèta"
+      },
+      "emoji": "🥁",
+      "description": {
+        "fr": "Rythmes ancestraux du peuple Bariba",
+        "bariba": "Baatɔnu gukɔ nɛ wèè yiru"
+      },
+      "tracks": [
+        {
+          "id": "yaru_diguidiru",
+          "title": "Yaru Diguidiru",
+          "artist": "Griots Bariba",
+          "duration": 320,
+          "bpm": 95,
+          "mood": ["traditional", "storytelling", "ancestral"],
+          "tags": ["bariba", "tradition", "histoire", "griot"],
+          "language": "bariba",
+          "description": {
+            "fr": "Récit ancestral du peuple Bariba",
+            "bariba": "Baatɔnu gbe sɔ́ɔ̀rù"
+          },
+          "source": {
+            "type": "url",
+            "url": "https://cdn.pixabay.com/audio/2022/10/25/audio_d828b10c1a.mp3",
+            "preload": true
+          }
+        },
+        {
+          "id": "yaru_diguidiru_benin",
+          "title": "Yaru Diguidiru (Bénin)",
+          "artist": "Orchestre Traditionnel de Nikki",
+          "duration": 324,
+          "bpm": 92,
+          "mood": ["traditional", "ceremonial", "village"],
+          "tags": ["bariba", "benin", "nikki", "orchestre"],
+          "language": "bariba",
+          "description": {
+            "fr": "Version béninoise avec orchestration traditionnelle",
+            "bariba": "Bɛnɛ tɛ gukɔ"
+          },
+          "source": {
+            "type": "url",
+            "url": "https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3",
+            "preload": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "praise",
+      "name": {
+        "fr": "Louanges & Célébrations",
+        "bariba": "Dↄↄbu kparo"
+      },
+      "emoji": "🙏",
+      "description": {
+        "fr": "Chants de louanges et célébrations traditionnelles",
+        "bariba": "Dↄↄbu nɛ barka gbekà"
+      },
+      "tracks": [
+        {
+          "id": "louanges_tinguidou",
+          "title": "Louanges aux Tinguidou",
+          "artist": "Chorale Bariba",
+          "duration": 396,
+          "bpm": 88,
+          "mood": ["spiritual", "praise", "protective"],
+          "tags": ["louange", "tinguidou", "esprit", "protection"],
+          "language": "bariba",
+          "description": {
+            "fr": "Louanges aux esprits protecteurs Tinguidou",
+            "bariba": "Tinguidou dↄↄbu"
+          },
+          "source": {
+            "type": "url",
+            "url": "https://cdn.pixabay.com/audio/2023/09/05/audio_7c2e7a6b1d.mp3",
+            "preload": false
+          }
+        },
+        {
+          "id": "louanges_bio_guera",
+          "title": "Louanges à Bio Guera",
+          "artist": "Griots de Kandi",
+          "duration": 249,
+          "bpm": 105,
+          "mood": ["heroic", "celebratory", "historical"],
+          "tags": ["bio guera", "heros", "kandi", "histoire"],
+          "language": "bariba",
+          "description": {
+            "fr": "Hommage au héros Bio Guera",
+            "bariba": "Bio Guera dↄↄbu"
+          },
+          "source": {
+            "type": "url",
+            "url": "https://cdn.pixabay.com/audio/2022/08/02/audio_884fe92c21.mp3",
+            "preload": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "griot",
+      "name": {
+        "fr": "Chants de Griot",
+        "bariba": "Gbèsↄru gukɔ"
+      },
+      "emoji": "🎭",
+      "description": {
+        "fr": "Récits et chants des griots traditionnels",
+        "bariba": "Gbèsↄru nɛ sɔ́ɔ̀rù gbekà"
+      },
+      "tracks": [
+        {
+          "id": "tchatchou_griot_botombu",
+          "title": "Tchatchou - Griot de Botombu",
+          "artist": "Maître Tchatchou",
+          "duration": 115,
+          "bpm": 78,
+          "mood": ["storytelling", "wisdom", "ancestral"],
+          "tags": ["griot", "botombu", "sagesse", "tradition"],
+          "language": "bariba",
+          "description": {
+            "fr": "Récit du griot, transmission de sagesse",
+            "bariba": "Gbèsↄru sɔ́ɔ̀rù"
+          },
+          "source": {
+            "type": "url",
+            "url": "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3",
+            "preload": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "inspirational",
+      "name": {
+        "fr": "Inspiration & Sagesse",
+        "bariba": "Sɔ́ɔ kɔ́ɔ̀ gukɔ"
+      },
+      "emoji": "✨",
+      "description": {
+        "fr": "Musiques inspirantes et messages de sagesse",
+        "bariba": "Sɔ́ɔ kɔ́ɔ̀ nɛ gbèta"
+      },
+      "tracks": [
+        {
+          "id": "ne_te_laisse_pas_insulter",
+          "title": "Ne Te Laisse Pas Insulter",
+          "artist": "Orchestre de Parakou",
+          "duration": 180,
+          "bpm": 110,
+          "mood": ["motivational", "dignity", "strength"],
+          "tags": ["dignite", "respect", "force", "motivation"],
+          "language": "french",
+          "description": {
+            "fr": "Message sur la dignité et le respect",
+            "bariba": "Gbɛ̀rù tèè wera"
+          },
+          "source": {
+            "type": "url",
+            "url": "https://cdn.pixabay.com/audio/2022/10/30/audio_6b7e2a0b1c.mp3",
+            "preload": false
+          }
+        },
+        {
+          "id": "seko_le_forgeron",
+          "title": "Seko Le Forgeron",
+          "artist": "Troupe Artistique de N'Dali",
+          "duration": 137,
+          "bpm": 98,
+          "mood": ["work", "craft", "celebration"],
+          "tags": ["forgeron", "travail", "artisan", "celebration"],
+          "language": "bariba",
+          "description": {
+            "fr": "Histoire du forgeron, célébration du travail",
+            "bariba": "Seko tàaru sɔ́ɔ̀rù"
+          },
+          "source": {
+            "type": "url",
+            "url": "https://cdn.pixabay.com/audio/2022/11/22/audio_6e9a0d4d3e.mp3",
+            "preload": false
+          }
+        },
+        {
+          "id": "kokoman_orchestre",
+          "title": "KOKOMAN - Orchestre de Tchori",
+          "artist": "Orchestre de Tchori",
+          "duration": 286,
+          "bpm": 115,
+          "mood": ["festive", "dance", "joyful"],
+          "tags": ["fete", "danse", "joie", "orchestre"],
+          "language": "bariba",
+          "description": {
+            "fr": "Musique festive pour célébrations",
+            "bariba": "Barka gukɔ"
+          },
+          "source": {
+            "type": "url",
+            "url": "https://cdn.pixabay.com/audio/2022/08/31/audio_4e9d5f9a4c.mp3",
+            "preload": true
+          }
+        }
+      ]
+    }
+  ],
+  "featured": ["yaru_diguidiru", "kokoman_orchestre", "tchatchou_griot_botombu"],
+  "metadata": {
+    "totalTracks": 8,
+    "totalDuration": 2007,
+    "languages": ["bariba", "french"],
+    "avgBpm": 97
+  }
+}
