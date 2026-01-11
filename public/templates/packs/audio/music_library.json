@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2025-01-11",
+  "lastUpdated": "2026-01-11",
   "categories": [
     {
       "id": "traditional",
@@ -28,8 +28,8 @@
             "bariba": "Baatɔnu gbe sɔ́ɔ̀rù"
           },
           "source": {
-            "type": "url",
-            "url": "https://cdn.pixabay.com/audio/2022/10/25/audio_d828b10c1a.mp3",
+            "type": "local",
+            "path": "/templates/packs/audio/tracks/traditional/yaru_diguidiru.mp3",
             "preload": true
           }
         },
@@ -47,8 +47,8 @@
             "bariba": "Bɛnɛ tɛ gukɔ"
           },
           "source": {
-            "type": "url",
-            "url": "https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3",
+            "type": "local",
+            "path": "/templates/packs/audio/tracks/traditional/yaru_diguidiru_benin.mp3",
             "preload": false
           }
         }
@@ -80,8 +80,8 @@
             "bariba": "Tinguidou dↄↄbu"
           },
           "source": {
-            "type": "url",
-            "url": "https://cdn.pixabay.com/audio/2023/09/05/audio_7c2e7a6b1d.mp3",
+            "type": "local",
+            "path": "/templates/packs/audio/tracks/praise/louanges_tinguidou.mp3",
             "preload": false
           }
         },
@@ -99,8 +99,8 @@
             "bariba": "Bio Guera dↄↄbu"
           },
           "source": {
-            "type": "url",
-            "url": "https://cdn.pixabay.com/audio/2022/08/02/audio_884fe92c21.mp3",
+            "type": "local",
+            "path": "/templates/packs/audio/tracks/praise/louanges_bio_guera.mp3",
             "preload": false
           }
         }
@@ -132,8 +132,8 @@
             "bariba": "Gbèsↄru sɔ́ɔ̀rù"
           },
           "source": {
-            "type": "url",
-            "url": "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3",
+            "type": "local",
+            "path": "/templates/packs/audio/tracks/griot/tchatchou_griot_botombu.mp3",
             "preload": true
           }
         }
@@ -165,8 +165,8 @@
             "bariba": "Gbɛ̀rù tèè wera"
           },
           "source": {
-            "type": "url",
-            "url": "https://cdn.pixabay.com/audio/2022/10/30/audio_6b7e2a0b1c.mp3",
+            "type": "local",
+            "path": "/templates/packs/audio/tracks/inspirational/ne_te_laisse_pas_insulter.mp3",
             "preload": false
           }
         },
@@ -184,15 +184,15 @@
             "bariba": "Seko tàaru sɔ́ɔ̀rù"
           },
           "source": {
-            "type": "url",
-            "url": "https://cdn.pixabay.com/audio/2022/11/22/audio_6e9a0d4d3e.mp3",
+            "type": "local",
+            "path": "/templates/packs/audio/tracks/inspirational/seko_le_forgeron.mp3",
             "preload": false
           }
         },
         {
           "id": "kokoman_orchestre",
           "title": "KOKOMAN - Orchestre de Tchori",
-          "artist": "Orchestre de Tchori",
+          "artist": "Orchestre de Tchori Faaba",
           "duration": 286,
           "bpm": 115,
           "mood": ["festive", "dance", "joyful"],
@@ -203,8 +203,8 @@
             "bariba": "Barka gukɔ"
           },
           "source": {
-            "type": "url",
-            "url": "https://cdn.pixabay.com/audio/2022/08/31/audio_4e9d5f9a4c.mp3",
+            "type": "local",
+            "path": "/templates/packs/audio/tracks/inspirational/kokoman_orchestre.mp3",
             "preload": true
           }
         }
