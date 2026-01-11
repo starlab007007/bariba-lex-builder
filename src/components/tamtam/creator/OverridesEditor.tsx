@@ -1,7 +1,7 @@
 // ============================================================
 // OVERRIDES EDITOR - Kuaishou-style simplified editor (6 buttons max)
 // Shows only the allowed overrides after template is applied
-// ✅ Connected: Real MusicDrawer + CaptionsDrawer
+// ✅ Connected: Real MusicDrawer + CaptionsDrawer + AudioLibrary
 // ============================================================
 
 import React, { useState, useCallback, useRef } from "react";
@@ -25,6 +25,8 @@ import { AdvancedTemplate, KSEOverride } from "./AdvancedTemplateData";
 import { kEngine, TemplateManifest, BoundAsset } from "./TemplateEngine";
 import MusicDrawer, { SelectedMusic } from "./MusicDrawer";
 import CaptionsDrawer, { Caption } from "./CaptionsDrawer";
+import AudioLibrary from "./AudioLibrary";
+import type { AudioTrack } from "@/types/audio";
 
 interface OverridesEditorProps {
   template: AdvancedTemplate;
@@ -77,6 +79,8 @@ const OverridesEditor: React.FC<OverridesEditorProps> = ({
 
   // Music state
   const [selectedMusic, setSelectedMusic] = useState<SelectedMusic | null>(null);
+  const [showAudioLibrary, setShowAudioLibrary] = useState(false);
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState<AudioTrack | null>(null);
   
   // Captions state
   const [captions, setCaptions] = useState<Caption[]>([]);
@@ -103,9 +107,43 @@ const OverridesEditor: React.FC<OverridesEditorProps> = ({
 
   // Handle override button click
   const handleOverrideClick = useCallback((action: KSEOverride) => {
-    setActiveDrawer(action);
+    if (action === 'music') {
+      // Show AudioLibrary instead of MusicDrawer
+      setShowAudioLibrary(true);
+    } else {
+      setActiveDrawer(action);
+    }
     onOverride(action);
   }, [onOverride]);
+
+  // Handle audio track selection from AudioLibrary
+  const handleAudioTrackSelect = useCallback((track: AudioTrack) => {
+    setSelectedAudioTrack(track);
+    setShowAudioLibrary(false);
+    
+    // Convert to SelectedMusic format for compatibility
+    const musicData: SelectedMusic = {
+      track: {
+        id: track.id,
+        name: track.title,
+        name_ba: track.description?.bariba,
+        category: 'traditional',
+        mood: track.mood[0] as any || 'calm',
+        duration: track.duration,
+        bpm: track.bpm,
+        tags: track.tags,
+        url: track.source.url || track.source.path || '',
+      },
+      volume: 0.8,
+      fadeIn: true,
+      fadeOut: true,
+      startOffset: 0,
+      trimmedDuration: track.duration,
+    };
+    
+    setSelectedMusic(musicData);
+    onMusicChange?.(musicData);
+  }, [onMusicChange]);
 
   // Handle music selection
   const handleMusicSelect = useCallback((music: SelectedMusic | null) => {
@@ -266,6 +304,15 @@ const OverridesEditor: React.FC<OverridesEditorProps> = ({
         
         {activeDrawer === "text" && (
           <TextDrawer onClose={() => setActiveDrawer(null)} />
+        )}
+        
+        {showAudioLibrary && (
+          <AudioLibrary
+            isOpen={true}
+            onClose={() => setShowAudioLibrary(false)}
+            onSelectTrack={handleAudioTrackSelect}
+            selectedTrackId={selectedAudioTrack?.id}
+          />
         )}
       </AnimatePresence>
     </motion.div>
