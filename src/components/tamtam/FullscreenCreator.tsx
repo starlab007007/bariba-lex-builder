@@ -118,6 +118,10 @@ export type CreatorOutputPayload = {
   // ✅ New (optional): if a K-Engine template is active, pass export job + engine snapshot
   exportJob?: ExportJob;
   engineState?: EngineState;
+  
+  // ✅ Selected audio track for publication
+  selectedAudioTrack?: AudioTrack;
+  musicUrl?: string;
 };
 
 type TopTab = "15s" | "30s" | "45s" | "60s" | "story" | "album" | "template";
@@ -1899,6 +1903,9 @@ export default function FullscreenCreator({
           challengeHashtag: challenge?.hashtag,
           exportJob,
           engineState: engineSnapshot,
+          // ✅ Include selected audio track for publication
+          selectedAudioTrack: selectedAudioTrack || undefined,
+          musicUrl: selectedAudioTrack?.source?.path || selectedAudioTrack?.source?.url || undefined,
         });
       }
 
