@@ -92,7 +92,7 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
       animate={{ y: 0 }}
       exit={{ y: '100%' }}
       transition={{ type: 'spring', damping: 28, stiffness: 350 }}
-      className="absolute inset-0 z-[70] bg-gradient-to-b from-gray-900 to-black flex flex-col"
+      className="fixed inset-0 z-[9999] bg-gradient-to-b from-gray-900 to-black flex flex-col"
     >
       {/* Header with glassmorphism */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/40 backdrop-blur-xl">
