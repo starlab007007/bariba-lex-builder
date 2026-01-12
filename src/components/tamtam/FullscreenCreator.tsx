@@ -86,6 +86,8 @@ import { UnifiedTemplate } from "@/types/UnifiedTemplateTypes";
 import FinalizationPanel from "./creator/FinalizationPanel";
 import SuccessScreen from "./creator/SuccessScreen";
 import RadioVillageProTemplate from "./creator/RadioVillageProTemplate";
+import AudioLibrary from "./creator/AudioLibrary";
+import type { AudioTrack } from "@/types/audio";
 
 // Legacy AdvancedTemplate data (still used by some UI effects/voice instructions)
 import {
@@ -467,6 +469,8 @@ export default function FullscreenCreator({
 
   // Music
   const [musicTrack, setMusicTrack] = useState<string | null>(null);
+  const [showAudioLibrary, setShowAudioLibrary] = useState(false);
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState<AudioTrack | null>(null);
 
   // Sticker picker
   const [showStickerPicker, setShowStickerPicker] = useState(false);
@@ -876,6 +880,15 @@ export default function FullscreenCreator({
       if (kEngine.getState().loaded) kEngine.pause();
     }
   }, [open, stopStream]);
+
+  // ============= AUDIO LIBRARY HANDLER =============
+  const handleAudioTrackSelect = useCallback((track: AudioTrack) => {
+    setSelectedAudioTrack(track);
+    setShowAudioLibrary(false);
+    setMusicTrack(track.title);
+    setToast(`🎵 ${track.title}`);
+    console.log('[FullscreenCreator] Music selected:', track.id, track.title);
+  }, []);
 
   // Cleanup URLs
   useEffect(() => {
@@ -2859,15 +2872,18 @@ export default function FullscreenCreator({
 
             {musicTrack ? (
               <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl rounded-full px-4 py-2">
-                <Music className="h-4 w-4" />
+                <Music className="h-4 w-4 text-orange-400" />
                 <span className="text-sm max-w-[120px] truncate">{musicTrack}</span>
-                <button onClick={() => setMusicTrack(null)}>
+                <button onClick={() => { 
+                  setMusicTrack(null); 
+                  setSelectedAudioTrack(null); 
+                }}>
                   <X className="h-4 w-4" />
                 </button>
               </div>
             ) : (
               <button
-                onClick={() => setToast("Music picker")}
+                onClick={() => setShowAudioLibrary(true)}
                 className="flex items-center gap-2 bg-black/40 backdrop-blur-xl rounded-full px-4 py-2"
               >
                 <Music className="h-4 w-4" />
@@ -3554,6 +3570,18 @@ export default function FullscreenCreator({
           quality="medium"
           fastExport={true}
         />
+
+        {/* ===== AUDIO LIBRARY MODAL ===== */}
+        <AnimatePresence>
+          {showAudioLibrary && (
+            <AudioLibrary
+              isOpen={true}
+              onClose={() => setShowAudioLibrary(false)}
+              onSelectTrack={handleAudioTrackSelect}
+              selectedTrackId={selectedAudioTrack?.id}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Toast */}
         <AnimatePresence>
