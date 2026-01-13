@@ -11,13 +11,12 @@ export class AssetManager {
   private assets = new Map<string, Asset>();
   private basePath = '/templates/one-take-pro/assets/';
   
-  // ⚠️ IMPORTANT : Ajustez ces nombres selon vos assets téléchargés
-  // Pour connaître vos nombres : ls public/templates/one-take-pro/assets/lens-flare/png/ | wc -l
-  private readonly LENS_FLARE_PNG_COUNT = 50;  // ← Ajustez avec votre nombre
-  private readonly LENS_FLARE_VIDEO_COUNT = 10; // ← Ajustez avec votre nombre
-  private readonly LIGHT_LEAK_COUNT = 30;       // ← Ajustez avec votre nombre
-  private readonly SMOKE_COUNT = 25;            // ← Ajustez avec votre nombre
-  private readonly FIRE_COUNT = 15;             // ← Ajustez avec votre nombre
+  // ✅ Asset counts based on actual files in public/templates/one-take-pro/assets/
+  private readonly LENS_FLARE_PNG_COUNT = 22;   // flare-001.png to flare-022.png
+  private readonly LENS_FLARE_VIDEO_COUNT = 28; // flare-001.mp4 to flare-028.mp4
+  private readonly LIGHT_LEAK_COUNT = 57;       // leak-001.mp4 to leak-057.mp4
+  private readonly SMOKE_COUNT = 19;            // smoke-001.mov to smoke-019.mov
+  private readonly FIRE_COUNT = 5;              // fire-001.mov to fire-005.mov
   
   constructor() {
     this.initializeAssetPaths();
