@@ -1,6 +1,6 @@
 // src/components/tamtam/templates/OneTakePro/index.tsx
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { AssetManager } from './AssetManager';
 import { EffectsRenderer, Beat } from './EffectsRenderer';
 
@@ -11,6 +11,140 @@ interface OneTakeProProps {
   onComplete?: (videoBlob: Blob) => void;
   onError?: (error: Error) => void;
 }
+
+// Inline styles (compatible Vite/React - no styled-jsx)
+const styles = {
+  container: {
+    position: 'fixed' as const,
+    inset: 0,
+    width: '100%',
+    height: '100vh',
+    background: '#000',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+  },
+  canvas: {
+    maxWidth: '100%',
+    maxHeight: '80vh',
+    border: '2px solid #333',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+  },
+  loadingOverlay: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    background: 'rgba(0, 0, 0, 0.9)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  loadingContent: {
+    textAlign: 'center' as const,
+    color: '#fff',
+  },
+  loadingSpinner: {
+    width: 50,
+    height: 50,
+    border: '4px solid rgba(255, 255, 255, 0.3)',
+    borderTopColor: '#fff',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    margin: '0 auto 20px',
+  },
+  loadingText: {
+    fontSize: 16,
+    marginBottom: 15,
+    color: '#fff',
+  },
+  loadingBar: {
+    width: 300,
+    height: 4,
+    background: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 2,
+    overflow: 'hidden' as const,
+    margin: '0 auto',
+  },
+  loadingProgress: {
+    height: '100%',
+    background: 'linear-gradient(90deg, #FF6B6B, #4ECDC4)',
+    transition: 'width 0.3s ease',
+  },
+  errorMessage: {
+    position: 'absolute' as const,
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    background: 'rgba(255, 0, 0, 0.9)',
+    color: 'white',
+    padding: 20,
+    borderRadius: 8,
+    textAlign: 'center' as const,
+    zIndex: 1000,
+  },
+  errorButton: {
+    marginTop: 10,
+    padding: '8px 16px',
+    background: 'white',
+    color: 'red',
+    border: 'none',
+    borderRadius: 4,
+    cursor: 'pointer',
+  },
+  controls: {
+    marginTop: 20,
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+  },
+  controlButton: {
+    padding: '12px 24px',
+    fontSize: 16,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+    transition: 'transform 0.2s',
+  },
+  exportButton: {
+    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+  },
+  info: {
+    color: '#fff',
+    fontSize: 14,
+    marginLeft: 20,
+  },
+  closeButton: {
+    position: 'absolute' as const,
+    top: 20,
+    right: 20,
+    width: 44,
+    height: 44,
+    background: 'rgba(0, 0, 0, 0.6)',
+    border: 'none',
+    borderRadius: '50%',
+    color: '#fff',
+    fontSize: 24,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1001,
+  },
+};
+
+// CSS keyframes for spinner (injected once)
+const spinnerKeyframes = `
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
 
 export const OneTakePro: React.FC<OneTakeProProps> = ({
   audioUrl,
@@ -25,6 +159,7 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
   const animationFrameRef = useRef<number>();
   const assetManagerRef = useRef<AssetManager>();
   const effectsRendererRef = useRef<EffectsRenderer>();
+  const isPlayingRef = useRef(false);
   
   // States
   const [loading, setLoading] = useState(true);
@@ -34,7 +169,20 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
   
   // Beat detection state
   const [beats, setBeats] = useState<Beat[]>([]);
-  const [currentBeatIndex, setCurrentBeatIndex] = useState(0);
+  const currentBeatIndexRef = useRef(0);
+  
+  /**
+   * Inject keyframes CSS
+   */
+  useEffect(() => {
+    const styleId = 'one-take-pro-keyframes';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = spinnerKeyframes;
+      document.head.appendChild(style);
+    }
+  }, []);
   
   /**
    * Initialisation du template
@@ -54,7 +202,7 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
   /**
    * Initialiser le template
    */
-  const initializeTemplate = async () => {
+  const initializeTemplate = useCallback(async () => {
     try {
       setLoading(true);
       setProgress(10);
@@ -87,9 +235,6 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       setBeats(detectedBeats);
       setProgress(80);
       
-      // 5. Optionnel : Ajouter effets continus
-      // await effectsRenderer.addContinuousSmoke();
-      
       setProgress(100);
       setLoading(false);
       
@@ -102,17 +247,12 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       setLoading(false);
       onError?.(err instanceof Error ? err : new Error(errorMsg));
     }
-  };
+  }, [audioUrl, onError]);
   
   /**
    * Analyse audio simplifiée pour détecter beats
-   * NOTE: Ceci est une version simplifiée. Pour une vraie détection,
-   * utilisez Web Audio API avec analyse spectrale.
    */
-  const analyzeBeatsSample = async (url: string): Promise<Beat[]> => {
-    // Pour l'exemple, on génère des beats synthétiques
-    // Dans votre vraie implémentation, utilisez Web Audio API
-    
+  const analyzeBeatsSample = useCallback(async (url: string): Promise<Beat[]> => {
     return new Promise((resolve) => {
       const audio = new Audio(url);
       audio.addEventListener('loadedmetadata', () => {
@@ -120,11 +260,10 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
         const sampleBeats: Beat[] = [];
         
         // Générer beats tous les 0.5s avec force variable
-        // NOTE: Remplacez ceci par votre vraie logique de détection
         for (let t = 0; t < duration; t += 0.5) {
           sampleBeats.push({
             time: t,
-            strength: 0.5 + Math.random() * 0.5 // 0.5 à 1.0
+            strength: 0.5 + Math.random() * 0.5
           });
         }
         
@@ -134,50 +273,53 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       
       audio.addEventListener('error', () => {
         console.warn('⚠️ Impossible de charger audio pour analyse');
-        resolve([]); // Retourner tableau vide en cas d'erreur
+        resolve([]);
       });
     });
-  };
+  }, []);
   
   /**
    * Démarrer la lecture et le rendu
    */
-  const startPlayback = () => {
+  const startPlayback = useCallback(() => {
     if (!audioRef.current || !canvasRef.current) return;
     
     setIsPlaying(true);
+    isPlayingRef.current = true;
     audioRef.current.play();
     
     const startTime = Date.now();
-    setCurrentBeatIndex(0);
+    currentBeatIndexRef.current = 0;
     
     // Démarrer render loop
     startRenderLoop(startTime);
-  };
+  }, []);
   
   /**
    * Loop de rendu principal
    */
-  const startRenderLoop = (startTime: number) => {
+  const startRenderLoop = useCallback((startTime: number) => {
     if (!canvasRef.current || !effectsRendererRef.current) return;
     
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
     
     const render = () => {
+      if (!isPlayingRef.current || !canvasRef.current) return;
+      
       // Calculer temps actuel
       const currentTime = (Date.now() - startTime) / 1000;
       
       // 1. Clear canvas
       ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+      ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       
       // 2. Dessiner contenu de base
       drawBaseContent(ctx);
       
       // 3. Checker et déclencher beats
-      if (beats.length > 0 && currentBeatIndex < beats.length) {
-        const currentBeat = beats[currentBeatIndex];
+      if (beats.length > 0 && currentBeatIndexRef.current < beats.length) {
+        const currentBeat = beats[currentBeatIndexRef.current];
         
         // Si on est proche du temps du beat (±50ms)
         if (Math.abs(currentBeat.time - currentTime) < 0.05) {
@@ -192,7 +334,7 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
           }
           
           // Passer au beat suivant
-          setCurrentBeatIndex(prev => prev + 1);
+          currentBeatIndexRef.current += 1;
         }
       }
       
@@ -200,18 +342,16 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       effectsRendererRef.current?.render();
       
       // 5. Continuer la boucle
-      if (isPlaying) {
-        animationFrameRef.current = requestAnimationFrame(render);
-      }
+      animationFrameRef.current = requestAnimationFrame(render);
     };
     
     render();
-  };
+  }, [beats]);
   
   /**
    * Dessiner le contenu de base (texte, logo, etc.)
    */
-  const drawBaseContent = (ctx: CanvasRenderingContext2D) => {
+  const drawBaseContent = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!canvasRef.current) return;
     
     const width = canvasRef.current.width;
@@ -251,13 +391,14 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       
       ctx.restore();
     }
-  };
+  }, [userText, userName]);
   
   /**
    * Arrêter la lecture
    */
-  const stopPlayback = () => {
+  const stopPlayback = useCallback(() => {
     setIsPlaying(false);
+    isPlayingRef.current = false;
     
     if (audioRef.current) {
       audioRef.current.pause();
@@ -268,13 +409,13 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       cancelAnimationFrame(animationFrameRef.current);
     }
     
-    setCurrentBeatIndex(0);
-  };
+    currentBeatIndexRef.current = 0;
+  }, []);
   
   /**
    * Export vidéo
    */
-  const exportVideo = async () => {
+  const exportVideo = useCallback(async () => {
     if (!canvasRef.current) return;
     
     try {
@@ -285,13 +426,17 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       
       // Ajouter piste audio
       if (audioRef.current) {
-        const audioContext = new AudioContext();
-        const source = audioContext.createMediaElementSource(audioRef.current);
-        const dest = audioContext.createMediaStreamDestination();
-        source.connect(dest);
-        source.connect(audioContext.destination);
-        
-        stream.addTrack(dest.stream.getAudioTracks()[0]);
+        try {
+          const audioContext = new AudioContext();
+          const source = audioContext.createMediaElementSource(audioRef.current);
+          const dest = audioContext.createMediaStreamDestination();
+          source.connect(dest);
+          source.connect(audioContext.destination);
+          
+          stream.addTrack(dest.stream.getAudioTracks()[0]);
+        } catch (audioErr) {
+          console.warn('⚠️ Audio non ajouté:', audioErr);
+        }
       }
       
       const recorder = new MediaRecorder(stream, {
@@ -328,23 +473,35 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       console.error('❌ Erreur export vidéo:', err);
       onError?.(err instanceof Error ? err : new Error('Erreur export'));
     }
-  };
+  }, [onComplete, onError, startPlayback, stopPlayback]);
+  
+  /**
+   * Fermer le composant
+   */
+  const handleClose = useCallback(() => {
+    stopPlayback();
+    onError?.(new Error('Fermé par l\'utilisateur'));
+  }, [stopPlayback, onError]);
   
   // Render
   return (
-    <div className="one-take-pro-container">
+    <div style={styles.container}>
+      {/* Close button */}
+      <button style={styles.closeButton} onClick={handleClose}>
+        ✕
+      </button>
+      
       {/* Loading overlay */}
       {loading && (
-        <div className="loading-overlay">
-          <div className="loading-content">
-            <div className="loading-spinner" />
-            <p className="loading-text">
+        <div style={styles.loadingOverlay}>
+          <div style={styles.loadingContent}>
+            <div style={styles.loadingSpinner} />
+            <p style={styles.loadingText}>
               Chargement des effets visuels... {progress}%
             </p>
-            <div className="loading-bar">
+            <div style={styles.loadingBar}>
               <div 
-                className="loading-progress" 
-                style={{ width: `${progress}%` }}
+                style={{ ...styles.loadingProgress, width: `${progress}%` }}
               />
             </div>
           </div>
@@ -353,9 +510,11 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       
       {/* Error message */}
       {error && (
-        <div className="error-message">
+        <div style={styles.errorMessage}>
           <p>❌ Erreur : {error}</p>
-          <button onClick={initializeTemplate}>Réessayer</button>
+          <button style={styles.errorButton} onClick={initializeTemplate}>
+            Réessayer
+          </button>
         </div>
       )}
       
@@ -364,7 +523,7 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
         ref={canvasRef}
         width={1080}
         height={1920}
-        className="template-canvas"
+        style={styles.canvas}
       />
       
       {/* Audio element (caché) */}
@@ -377,164 +536,28 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       
       {/* Contrôles */}
       {!loading && !error && (
-        <div className="controls">
+        <div style={styles.controls}>
           <button 
             onClick={isPlaying ? stopPlayback : startPlayback}
-            className="control-button"
+            style={styles.controlButton}
           >
             {isPlaying ? '⏸ Pause' : '▶ Play'}
           </button>
           
           <button 
             onClick={exportVideo}
-            className="control-button export-button"
+            style={{ ...styles.controlButton, ...styles.exportButton }}
             disabled={isPlaying}
           >
             📹 Export Vidéo
           </button>
           
-          <div className="info">
-            <p>Beats détectés : {beats.length}</p>
-            <p>Beat actuel : {currentBeatIndex} / {beats.length}</p>
+          <div style={styles.info}>
+            <p style={{ margin: '2px 0' }}>Beats détectés : {beats.length}</p>
+            <p style={{ margin: '2px 0' }}>Beat actuel : {currentBeatIndexRef.current} / {beats.length}</p>
           </div>
         </div>
       )}
-      
-      <style jsx>{`
-        .one-take-pro-container {
-          position: relative;
-          width: 100%;
-          height: 100vh;
-          background: #000;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .template-canvas {
-          max-width: 100%;
-          max-height: 80vh;
-          border: 2px solid #333;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        }
-        
-        .loading-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.9);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-        
-        .loading-content {
-          text-align: center;
-          color: #fff;
-        }
-        
-        .loading-spinner {
-          width: 50px;
-          height: 50px;
-          border: 4px solid rgba(255, 255, 255, 0.3);
-          border-top-color: #fff;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin: 0 auto 20px;
-        }
-        
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        
-        .loading-text {
-          font-size: 16px;
-          margin-bottom: 15px;
-        }
-        
-        .loading-bar {
-          width: 300px;
-          height: 4px;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 2px;
-          overflow: hidden;
-          margin: 0 auto;
-        }
-        
-        .loading-progress {
-          height: 100%;
-          background: linear-gradient(90deg, #FF6B6B, #4ECDC4);
-          transition: width 0.3s ease;
-        }
-        
-        .error-message {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          background: rgba(255, 0, 0, 0.9);
-          color: white;
-          padding: 20px;
-          border-radius: 8px;
-          text-align: center;
-          z-index: 1000;
-        }
-        
-        .error-message button {
-          margin-top: 10px;
-          padding: 8px 16px;
-          background: white;
-          color: red;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-        
-        .controls {
-          margin-top: 20px;
-          display: flex;
-          gap: 10px;
-          align-items: center;
-        }
-        
-        .control-button {
-          padding: 12px 24px;
-          font-size: 16px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: transform 0.2s;
-        }
-        
-        .control-button:hover {
-          transform: scale(1.05);
-        }
-        
-        .control-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        
-        .export-button {
-          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-        
-        .info {
-          color: #fff;
-          font-size: 14px;
-          margin-left: 20px;
-        }
-        
-        .info p {
-          margin: 2px 0;
-        }
-      `}</style>
     </div>
   );
 };
