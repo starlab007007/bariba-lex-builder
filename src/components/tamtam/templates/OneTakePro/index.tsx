@@ -105,6 +105,8 @@ const styles = {
     display: 'flex',
     gap: 10,
     alignItems: 'center',
+    flexWrap: 'wrap' as const,
+    justifyContent: 'center',
   },
   controlButton: {
     padding: '12px 24px',
@@ -121,7 +123,7 @@ const styles = {
   },
   info: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     marginLeft: 20,
   },
   closeButton: {
@@ -141,6 +143,32 @@ const styles = {
     justifyContent: 'center',
     zIndex: 1001,
   },
+  debugOverlay: {
+    position: 'absolute' as const,
+    bottom: 10,
+    right: 10,
+    background: 'rgba(0,0,0,0.7)',
+    color: '#0f0',
+    padding: 8,
+    borderRadius: 4,
+    fontSize: 10,
+    fontFamily: 'monospace',
+    maxWidth: 280,
+    zIndex: 1002,
+  },
+  autoplayOverlay: {
+    position: 'absolute' as const,
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    background: 'rgba(0, 0, 0, 0.8)',
+    color: '#FFD700',
+    padding: 20,
+    borderRadius: 12,
+    textAlign: 'center' as const,
+    zIndex: 1003,
+    cursor: 'pointer',
+  },
 };
 
 // CSS keyframes for spinner (injected once)
@@ -152,6 +180,8 @@ const spinnerKeyframes = `
 
 export const OneTakePro: React.FC<OneTakeProProps> = ({
   audioUrl,
+  videoRef,
+  mirror = false,
   userText = 'TAM-TAM',
   userName,
   onComplete,
@@ -164,12 +194,21 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
   const assetManagerRef = useRef<AssetManager>();
   const effectsRendererRef = useRef<EffectsRenderer>();
   const isPlayingRef = useRef(false);
+  const lastIdleEffectTimeRef = useRef(0);
   
   // States
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<{
+    assetsLoaded: number;
+    assetsTotal: number;
+    continuousEffects: number;
+    activeEffects: number;
+    videoErrors: string[];
+  }>({ assetsLoaded: 0, assetsTotal: 0, continuousEffects: 0, activeEffects: 0, videoErrors: [] });
   
   // Beat detection state
   const [beats, setBeats] = useState<Beat[]>([]);
@@ -210,6 +249,7 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
     try {
       setLoading(true);
       setProgress(10);
+      setAutoplayBlocked(false);
       
       // 1. Créer AssetManager
       console.log('📦 Création AssetManager...');
@@ -220,6 +260,8 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       // 2. Précharger assets essentiels
       console.log('⏳ Préchargement assets...');
       await assetManager.preloadEssentials();
+      const stats = assetManager.getStats();
+      setDebugInfo(prev => ({ ...prev, assetsLoaded: stats.loaded, assetsTotal: stats.total }));
       setProgress(40);
       
       // 3. Créer EffectsRenderer
@@ -232,9 +274,33 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
         effectsRendererRef.current = effectsRenderer;
         
         // ✅ CRITICAL: Add continuous background effects (smoke + fire)
-        console.log('🔥 Ajout effets continus (smoke, fire)...');
-        await effectsRenderer.addContinuousSmoke().catch(err => console.warn('Smoke failed:', err));
-        await effectsRenderer.addContinuousFire().catch(err => console.warn('Fire failed:', err));
+        console.log('🔥 Ajout effets continus (smoke, fire, light-leaks)...');
+        
+        // Try smoke
+        const smokeResult = await effectsRenderer.addContinuousSmoke()
+          .then(() => ({ ok: true, error: '' }))
+          .catch((err: Error) => ({ ok: false, error: `Smoke: ${err.message}` }));
+        
+        // Try fire
+        const fireResult = await effectsRenderer.addContinuousFire()
+          .then(() => ({ ok: true, error: '' }))
+          .catch((err: Error) => ({ ok: false, error: `Fire: ${err.message}` }));
+        
+        // Collect errors
+        const videoErrors: string[] = [];
+        if (!smokeResult.ok) videoErrors.push(smokeResult.error);
+        if (!fireResult.ok) videoErrors.push(fireResult.error);
+        
+        // Check if autoplay was blocked
+        if (effectsRenderer.isAutoplayBlocked()) {
+          setAutoplayBlocked(true);
+        }
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          videoErrors,
+          continuousEffects: effectsRenderer.getStats().continuous,
+        }));
       }
       setProgress(60);
       
@@ -294,6 +360,61 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
   }, []);
   
   /**
+   * Draw camera video as base layer (cover mode)
+   */
+  const drawCameraLayer = useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const cameraVideo = videoRef?.current;
+    
+    // If camera is available and has data
+    if (cameraVideo && cameraVideo.readyState >= 2 && cameraVideo.videoWidth > 0) {
+      ctx.save();
+      
+      // Apply mirror if selfie
+      if (mirror) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      
+      // Calculate cover dimensions
+      const videoAspect = cameraVideo.videoWidth / cameraVideo.videoHeight;
+      const canvasAspect = canvas.width / canvas.height;
+      
+      let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
+      
+      if (videoAspect > canvasAspect) {
+        // Video is wider - crop sides
+        drawHeight = canvas.height;
+        drawWidth = drawHeight * videoAspect;
+        offsetX = (canvas.width - drawWidth) / 2;
+        offsetY = 0;
+      } else {
+        // Video is taller - crop top/bottom
+        drawWidth = canvas.width;
+        drawHeight = drawWidth / videoAspect;
+        offsetX = 0;
+        offsetY = (canvas.height - drawHeight) / 2;
+      }
+      
+      ctx.drawImage(cameraVideo, offsetX, offsetY, drawWidth, drawHeight);
+      ctx.restore();
+    } else {
+      // Fallback: draw gradient background
+      const gradient = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 3, 0,
+        canvas.width / 2, canvas.height / 3, canvas.height
+      );
+      gradient.addColorStop(0, 'rgba(100, 50, 20, 0.4)');
+      gradient.addColorStop(0.5, 'rgba(50, 25, 10, 0.3)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  }, [videoRef, mirror]);
+  
+  /**
    * Idle render loop - shows effects preview without audio
    */
   const startIdleRenderLoop = useCallback(() => {
@@ -305,26 +426,27 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
     const idleRender = () => {
       if (isPlayingRef.current || !canvasRef.current) return;
       
+      const now = Date.now();
+      
       // Clear canvas
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       
-      // Draw gradient background
+      // 1. Draw camera as base layer
+      drawCameraLayer(ctx);
+      
+      // 2. Add warm glow overlay
       const gradient = ctx.createRadialGradient(
-        canvasRef.current.width / 2, canvasRef.current.height / 3, 0,
-        canvasRef.current.width / 2, canvasRef.current.height / 3, canvasRef.current.height
+        canvasRef.current.width / 2, canvasRef.current.height * 0.3, 0,
+        canvasRef.current.width / 2, canvasRef.current.height * 0.3, canvasRef.current.height
       );
-      gradient.addColorStop(0, 'rgba(255, 100, 50, 0.15)');
-      gradient.addColorStop(0.5, 'rgba(100, 50, 20, 0.1)');
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+      gradient.addColorStop(0, 'rgba(255, 150, 80, 0.15)');
+      gradient.addColorStop(0.5, 'rgba(255, 100, 50, 0.08)');
+      gradient.addColorStop(1, 'transparent');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       
-      // Draw base content (inline)
-      const width = canvasRef.current.width;
-      const height = canvasRef.current.height;
-      
-      // Draw user text
+      // 3. Draw user text
       if (userText) {
         ctx.save();
         ctx.fillStyle = '#FFFFFF';
@@ -333,19 +455,61 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
         ctx.textBaseline = 'middle';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.shadowBlur = 10;
-        ctx.fillText(userText, width / 2, height / 2);
+        ctx.fillText(userText, canvasRef.current.width / 2, canvasRef.current.height / 2);
         ctx.restore();
       }
       
-      // Render continuous effects (smoke, fire)
+      // 4. Periodically trigger lens flares and light leaks for preview
+      if (now - lastIdleEffectTimeRef.current > 2000) { // Every 2 seconds
+        lastIdleEffectTimeRef.current = now;
+        
+        // Trigger a lens flare
+        effectsRendererRef.current?.triggerLensFlare({ time: 0, strength: 0.7 });
+        
+        // 40% chance of light leak
+        if (Math.random() > 0.6) {
+          effectsRendererRef.current?.triggerLightLeak({ time: 0, strength: 0.9 });
+        }
+      }
+      
+      // 5. Render continuous effects (smoke, fire) and active effects
       effectsRendererRef.current?.render();
+      
+      // Update debug info periodically
+      if (now % 500 < 20) {
+        const stats = effectsRendererRef.current?.getStats();
+        if (stats) {
+          setDebugInfo(prev => ({
+            ...prev,
+            continuousEffects: stats.continuous,
+            activeEffects: stats.active,
+          }));
+        }
+      }
       
       // Continue loop if not playing
       animationFrameRef.current = requestAnimationFrame(idleRender);
     };
     
     idleRender();
-  }, [userText]);
+  }, [userText, drawCameraLayer]);
+  
+  /**
+   * Handle user interaction to unlock autoplay
+   */
+  const handleUnlockAutoplay = useCallback(async () => {
+    if (!effectsRendererRef.current) return;
+    
+    console.log('🔓 Tentative déblocage autoplay...');
+    const success = await effectsRendererRef.current.primeOrResumeVideos();
+    
+    if (success) {
+      setAutoplayBlocked(false);
+      console.log('✅ Autoplay débloqué');
+    } else {
+      console.warn('⚠️ Échec déblocage autoplay');
+    }
+  }, []);
   
   /**
    * Démarrer la lecture et le rendu
@@ -388,10 +552,13 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       
-      // 2. Dessiner contenu de base
+      // 2. Draw camera as base
+      drawCameraLayer(ctx);
+      
+      // 3. Dessiner contenu de base (text overlay)
       drawBaseContent(ctx);
       
-      // 3. Checker et déclencher beats
+      // 4. Checker et déclencher beats
       if (beats.length > 0 && currentBeatIndexRef.current < beats.length) {
         const currentBeat = beats[currentBeatIndexRef.current];
         
@@ -412,15 +579,15 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
         }
       }
       
-      // 4. Render tous les effets visuels
+      // 5. Render tous les effets visuels
       effectsRendererRef.current?.render();
       
-      // 5. Continuer la boucle
+      // 6. Continuer la boucle
       animationFrameRef.current = requestAnimationFrame(render);
     };
     
     render();
-  }, [beats]);
+  }, [beats, drawCameraLayer]);
   
   /**
    * Dessiner le contenu de base (texte, logo, etc.)
@@ -484,7 +651,10 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
     }
     
     currentBeatIndexRef.current = 0;
-  }, []);
+    
+    // Restart idle loop
+    startIdleRenderLoop();
+  }, [startIdleRenderLoop]);
   
   /**
    * Export vidéo
@@ -582,6 +752,14 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
         </div>
       )}
       
+      {/* Autoplay blocked overlay */}
+      {autoplayBlocked && !loading && (
+        <div style={styles.autoplayOverlay} onClick={handleUnlockAutoplay}>
+          <p style={{ fontSize: 18, marginBottom: 10 }}>🎬 Touchez pour activer les effets</p>
+          <p style={{ fontSize: 12, color: '#ccc' }}>Les effets vidéo nécessitent votre interaction</p>
+        </div>
+      )}
+      
       {/* Error message */}
       {error && (
         <div style={styles.errorMessage}>
@@ -625,13 +803,19 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
           >
             📹 Export Vidéo
           </button>
-          
-          <div style={styles.info}>
-            <p style={{ margin: '2px 0' }}>Beats détectés : {beats.length}</p>
-            <p style={{ margin: '2px 0' }}>Beat actuel : {currentBeatIndexRef.current} / {beats.length}</p>
-          </div>
         </div>
       )}
+      
+      {/* Debug overlay */}
+      <div style={styles.debugOverlay}>
+        <p>📦 Assets: {debugInfo.assetsLoaded}/{debugInfo.assetsTotal}</p>
+        <p>🔥 Continus: {debugInfo.continuousEffects} | Actifs: {debugInfo.activeEffects}</p>
+        <p>🎵 Beats: {beats.length}</p>
+        <p>📹 Caméra: {videoRef?.current?.readyState ?? 'N/A'}</p>
+        {debugInfo.videoErrors.length > 0 && (
+          <p style={{ color: '#f66' }}>⚠️ {debugInfo.videoErrors.join(', ')}</p>
+        )}
+      </div>
     </div>
   );
 };
