@@ -89,7 +89,7 @@ export class EffectsRenderer {
    */
   async triggerLensFlare(beat: Beat): Promise<void> {
     // Ne déclencher que sur beats moyens/forts
-    if (beat.strength < 0.6) return;
+    if (beat.strength < 0.5) return;
     
     // Throttle : minimum 250ms entre effets
     const now = Date.now();
@@ -105,8 +105,8 @@ export class EffectsRenderer {
       if (!asset.element) return;
       
       // Position aléatoire dans coin supérieur droit
-      const x = this.canvas.width * (0.6 + Math.random() * 0.3);
-      const y = this.canvas.height * (0.05 + Math.random() * 0.2);
+      const x = this.canvas.width * (0.5 + Math.random() * 0.4);
+      const y = this.canvas.height * (0.05 + Math.random() * 0.25);
       
       // Créer effet
       const effect: Effect = {
@@ -114,13 +114,13 @@ export class EffectsRenderer {
         element: asset.element as HTMLImageElement,
         x,
         y,
-        scale: 0.6 + Math.random() * 0.5,
+        scale: 0.7 + Math.random() * 0.6,
         opacity: 0,
-        targetOpacity: 0.5 + beat.strength * 0.4,
+        targetOpacity: 0.6 + beat.strength * 0.35,
         fadeIn: true,
         fadeOut: false,
         startTime: now,
-        duration: 500 + Math.random() * 300,
+        duration: 600 + Math.random() * 400,
         blendMode: 'screen'
       };
       
@@ -140,27 +140,32 @@ export class EffectsRenderer {
    * Déclencher light leak sur beat fort
    */
   async triggerLightLeak(beat: Beat): Promise<void> {
-    // Seulement sur beats très forts
-    if (beat.strength < 0.8) return;
+    // Trigger on strong beats
+    if (beat.strength < 0.7) return;
     
-    // 30% de chance seulement
-    if (Math.random() > 0.3) return;
+    // 50% chance (increased from 30%)
+    if (Math.random() > 0.5) return;
     
-    const assetId = this.assetManager.getRandomAsset('light-leak');
+    // Find a playable light leak
+    const assetId = await this.assetManager.findFirstPlayableVideo('light-leak') 
+      || this.assetManager.getRandomAsset('light-leak');
     
     try {
       const asset = await this.assetManager.loadAsset(assetId);
-      if (!asset.element) return;
+      if (!asset.element) {
+        this.videoErrors.push(`Light leak ${assetId}: element not loaded`);
+        return;
+      }
       
       const video = asset.element as HTMLVideoElement;
       video.currentTime = 0;
       
-      const playPromise = video.play();
-      if (playPromise) {
-        playPromise.catch(err => {
-          console.warn('⚠️ Autoplay bloqué:', err);
-          this.autoplayBlocked = true;
-        });
+      try {
+        await video.play();
+      } catch (err) {
+        console.warn('⚠️ Light leak autoplay bloqué:', err);
+        this.autoplayBlocked = true;
+        return;
       }
       
       const effect: Effect = {
@@ -170,7 +175,7 @@ export class EffectsRenderer {
         y: 0,
         scale: 1,
         opacity: 0,
-        targetOpacity: 0.6 + beat.strength * 0.2,
+        targetOpacity: 0.6 + beat.strength * 0.25,
         fadeIn: true,
         fadeOut: false,
         startTime: Date.now(),
@@ -185,17 +190,23 @@ export class EffectsRenderer {
       }, { once: true });
       
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.videoErrors.push(`Light leak: ${errMsg}`);
       console.error('❌ Erreur chargement light leak:', error);
     }
   }
   
   /**
-   * Ajouter smoke continu (appelé une fois au début)
-   * Note: .mov files may not be supported, using fallback
+   * Ajouter smoke continu - with smart fallback
    */
   async addContinuousSmoke(): Promise<void> {
-    // Try light-leak as fallback since smoke is .mov
-    const assetId = this.assetManager.getRandomAsset('light-leak');
+    // Try to find a playable video (will fallback to light-leak if .mov not supported)
+    const assetId = await this.assetManager.findFirstPlayableVideo('smoke');
+    
+    if (!assetId) {
+      this.videoErrors.push('Smoke: No playable video found');
+      throw new Error('Smoke: No playable video found');
+    }
     
     try {
       const asset = await this.assetManager.loadAsset(assetId);
@@ -219,10 +230,10 @@ export class EffectsRenderer {
         type: 'smoke',
         element: video,
         x: 0,
-        y: this.canvas.height - 400,
+        y: this.canvas.height - 450,
         scale: 1,
         opacity: 0,
-        targetOpacity: 0.2,
+        targetOpacity: 0.25,
         fadeIn: true,
         fadeOut: false,
         startTime: Date.now(),
@@ -231,21 +242,27 @@ export class EffectsRenderer {
       };
       
       this.continuousEffects.push(effect);
-      console.log('✅ Smoke continu ajouté (using light-leak fallback)');
+      const isFallback = assetId.startsWith('leak-') ? ' (light-leak fallback)' : '';
+      console.log(`✅ Smoke continu ajouté${isFallback}`);
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.videoErrors.push(`Smoke: ${errMsg}`);
       console.error('❌ Erreur chargement smoke:', error);
-      this.videoErrors.push(`Smoke: ${error}`);
       throw error;
     }
   }
   
   /**
-   * Ajouter fire continu (appelé une fois au début)
-   * Note: .mov files may not be supported, using fallback
+   * Ajouter fire continu - with smart fallback
    */
   async addContinuousFire(): Promise<void> {
-    // Try another light-leak as fallback since fire is .mov
-    const assetId = this.assetManager.getRandomAsset('light-leak');
+    // Try to find a playable video (will fallback to light-leak if .mov not supported)
+    const assetId = await this.assetManager.findFirstPlayableVideo('fire');
+    
+    if (!assetId) {
+      this.videoErrors.push('Fire: No playable video found');
+      throw new Error('Fire: No playable video found');
+    }
     
     try {
       const asset = await this.assetManager.loadAsset(assetId);
@@ -269,10 +286,10 @@ export class EffectsRenderer {
         type: 'fire',
         element: video,
         x: 0,
-        y: this.canvas.height - 300,
+        y: this.canvas.height - 350,
         scale: 1,
         opacity: 0,
-        targetOpacity: 0.25,
+        targetOpacity: 0.3,
         fadeIn: true,
         fadeOut: false,
         startTime: Date.now(),
@@ -281,10 +298,12 @@ export class EffectsRenderer {
       };
       
       this.continuousEffects.push(effect);
-      console.log('✅ Fire continu ajouté (using light-leak fallback)');
+      const isFallback = assetId.startsWith('leak-') ? ' (light-leak fallback)' : '';
+      console.log(`✅ Fire continu ajouté${isFallback}`);
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.videoErrors.push(`Fire: ${errMsg}`);
       console.error('❌ Erreur chargement fire:', error);
-      this.videoErrors.push(`Fire: ${error}`);
       throw error;
     }
   }
@@ -309,7 +328,7 @@ export class EffectsRenderer {
     this.activeEffects = this.activeEffects.filter(effect => {
       // Fade in
       if (effect.fadeIn && effect.opacity < effect.targetOpacity) {
-        effect.opacity += 0.08;
+        effect.opacity += 0.1;
         if (effect.opacity >= effect.targetOpacity) {
           effect.fadeIn = false;
         }
@@ -317,7 +336,7 @@ export class EffectsRenderer {
       
       // Fade out
       if (effect.fadeOut && effect.opacity > 0) {
-        effect.opacity -= 0.06;
+        effect.opacity -= 0.08;
       }
       
       // Supprimer si terminé
@@ -341,7 +360,7 @@ export class EffectsRenderer {
     // Skip if video not ready
     if (effect.element instanceof HTMLVideoElement) {
       const video = effect.element;
-      if (video.readyState < 2 || video.paused || video.videoWidth === 0) {
+      if (video.readyState < 2 || video.videoWidth === 0) {
         return; // Not ready to draw
       }
     }
@@ -358,15 +377,16 @@ export class EffectsRenderer {
     
     if (effect.element instanceof HTMLImageElement) {
       const aspectRatio = effect.element.height / effect.element.width;
-      width = this.canvas.width * effect.scale * 0.4;
+      width = this.canvas.width * effect.scale * 0.45;
       height = width * aspectRatio;
     } else {
       if (effect.type === 'light-leak') {
         width = this.canvas.width;
         height = this.canvas.height;
       } else {
+        // smoke/fire - cover width, fixed height
         width = this.canvas.width;
-        height = 400;
+        height = 500;
       }
     }
     
@@ -379,7 +399,7 @@ export class EffectsRenderer {
         width,
         height
       );
-    } catch (error) {
+    } catch {
       // Silently fail if video not ready
     }
     
@@ -407,5 +427,22 @@ export class EffectsRenderer {
       active: this.activeEffects.length,
       continuous: this.continuousEffects.length
     };
+  }
+  
+  /**
+   * Get detailed video status for debugging
+   */
+  getVideoStatus(): { type: string; paused: boolean; readyState: number; currentTime: number }[] {
+    return this.continuousEffects
+      .filter(e => e.element instanceof HTMLVideoElement)
+      .map(e => {
+        const video = e.element as HTMLVideoElement;
+        return {
+          type: e.type,
+          paused: video.paused,
+          readyState: video.readyState,
+          currentTime: video.currentTime
+        };
+      });
   }
 }
