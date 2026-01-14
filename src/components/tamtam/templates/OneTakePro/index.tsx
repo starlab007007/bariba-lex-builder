@@ -6,6 +6,10 @@ import { EffectsRenderer, Beat } from './EffectsRenderer';
 
 interface OneTakeProProps {
   audioUrl: string;
+  /** caméra existante du FullscreenCreator (stream déjà prêt) */
+  videoRef?: React.RefObject<HTMLVideoElement>;
+  /** miroir selfie */
+  mirror?: boolean;
   userText?: string;
   userName?: string;
   onComplete?: (videoBlob: Blob) => void;
