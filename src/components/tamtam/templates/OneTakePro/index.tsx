@@ -226,6 +226,11 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
           assetManager
         );
         effectsRendererRef.current = effectsRenderer;
+        
+        // ✅ CRITICAL: Add continuous background effects (smoke + fire)
+        console.log('🔥 Ajout effets continus (smoke, fire)...');
+        await effectsRenderer.addContinuousSmoke().catch(err => console.warn('Smoke failed:', err));
+        await effectsRenderer.addContinuousFire().catch(err => console.warn('Fire failed:', err));
       }
       setProgress(60);
       
@@ -235,10 +240,16 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       setBeats(detectedBeats);
       setProgress(80);
       
+      // ✅ Start idle render loop for preview (before user clicks Play)
+      if (canvasRef.current && effectsRendererRef.current) {
+        console.log('🎬 Démarrage rendu preview...');
+        startIdleRenderLoop();
+      }
+      
       setProgress(100);
       setLoading(false);
       
-      console.log('✅ Template One-Take Pro initialisé');
+      console.log('✅ Template One-Take Pro initialisé avec effets visuels');
       
     } catch (err) {
       console.error('❌ Erreur initialisation:', err);
@@ -279,10 +290,69 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
   }, []);
   
   /**
+   * Idle render loop - shows effects preview without audio
+   */
+  const startIdleRenderLoop = useCallback(() => {
+    if (!canvasRef.current || !effectsRendererRef.current) return;
+    
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+    
+    const idleRender = () => {
+      if (isPlayingRef.current || !canvasRef.current) return;
+      
+      // Clear canvas
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      
+      // Draw gradient background
+      const gradient = ctx.createRadialGradient(
+        canvasRef.current.width / 2, canvasRef.current.height / 3, 0,
+        canvasRef.current.width / 2, canvasRef.current.height / 3, canvasRef.current.height
+      );
+      gradient.addColorStop(0, 'rgba(255, 100, 50, 0.15)');
+      gradient.addColorStop(0.5, 'rgba(100, 50, 20, 0.1)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      
+      // Draw base content (inline)
+      const width = canvasRef.current.width;
+      const height = canvasRef.current.height;
+      
+      // Draw user text
+      if (userText) {
+        ctx.save();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 72px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 10;
+        ctx.fillText(userText, width / 2, height / 2);
+        ctx.restore();
+      }
+      
+      // Render continuous effects (smoke, fire)
+      effectsRendererRef.current?.render();
+      
+      // Continue loop if not playing
+      animationFrameRef.current = requestAnimationFrame(idleRender);
+    };
+    
+    idleRender();
+  }, [userText]);
+  
+  /**
    * Démarrer la lecture et le rendu
    */
   const startPlayback = useCallback(() => {
     if (!audioRef.current || !canvasRef.current) return;
+    
+    // Stop idle render loop
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
     
     setIsPlaying(true);
     isPlayingRef.current = true;
