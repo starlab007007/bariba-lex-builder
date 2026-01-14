@@ -29,6 +29,8 @@ export class EffectsRenderer {
   private activeEffects: Effect[] = [];
   private lastEffectTime = 0;
   private continuousEffects: Effect[] = [];
+  private autoplayBlocked = false;
+  private videoErrors: string[] = [];
   
   constructor(canvas: HTMLCanvasElement, assetManager: AssetManager) {
     this.canvas = canvas;
@@ -38,6 +40,48 @@ export class EffectsRenderer {
     }
     this.ctx = ctx;
     this.assetManager = assetManager;
+  }
+  
+  /**
+   * Check if autoplay was blocked
+   */
+  isAutoplayBlocked(): boolean {
+    return this.autoplayBlocked;
+  }
+  
+  /**
+   * Get video errors
+   */
+  getVideoErrors(): string[] {
+    return this.videoErrors;
+  }
+  
+  /**
+   * Attempt to resume all video effects (call on user interaction)
+   */
+  async primeOrResumeVideos(): Promise<boolean> {
+    let allSuccess = true;
+    
+    for (const effect of this.continuousEffects) {
+      if (effect.element instanceof HTMLVideoElement) {
+        try {
+          const video = effect.element;
+          if (video.paused) {
+            await video.play();
+            console.log(`✅ Video resumed: ${effect.type}`);
+          }
+        } catch (err) {
+          console.warn(`⚠️ Could not resume ${effect.type}:`, err);
+          allSuccess = false;
+        }
+      }
+    }
+    
+    if (allSuccess) {
+      this.autoplayBlocked = false;
+    }
+    
+    return allSuccess;
   }
   
   /**
@@ -115,6 +159,7 @@ export class EffectsRenderer {
       if (playPromise) {
         playPromise.catch(err => {
           console.warn('⚠️ Autoplay bloqué:', err);
+          this.autoplayBlocked = true;
         });
       }
       
@@ -129,7 +174,7 @@ export class EffectsRenderer {
         fadeIn: true,
         fadeOut: false,
         startTime: Date.now(),
-        duration: video.duration * 1000,
+        duration: (video.duration || 2) * 1000,
         blendMode: 'screen'
       };
       
@@ -146,74 +191,38 @@ export class EffectsRenderer {
   
   /**
    * Ajouter smoke continu (appelé une fois au début)
+   * Note: .mov files may not be supported, using fallback
    */
   async addContinuousSmoke(): Promise<void> {
-    const assetId = this.assetManager.getRandomAsset('smoke');
+    // Try light-leak as fallback since smoke is .mov
+    const assetId = this.assetManager.getRandomAsset('light-leak');
     
     try {
       const asset = await this.assetManager.loadAsset(assetId);
-      if (!asset.element) return;
+      if (!asset.element) {
+        throw new Error('Element not loaded');
+      }
       
       const video = asset.element as HTMLVideoElement;
       video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
       
-      const playPromise = video.play();
-      if (playPromise) {
-        playPromise.catch(err => {
-          console.warn('⚠️ Smoke autoplay bloqué:', err);
-        });
+      try {
+        await video.play();
+      } catch (err) {
+        console.warn('⚠️ Smoke autoplay bloqué:', err);
+        this.autoplayBlocked = true;
       }
       
       const effect: Effect = {
         type: 'smoke',
         element: video,
         x: 0,
-        y: this.canvas.height - 300,
+        y: this.canvas.height - 400,
         scale: 1,
         opacity: 0,
-        targetOpacity: 0.3,
-        fadeIn: true,
-        fadeOut: false,
-        startTime: Date.now(),
-        duration: Infinity,
-        blendMode: 'multiply'
-      };
-      
-      this.continuousEffects.push(effect);
-      console.log('✅ Smoke continu ajouté');
-    } catch (error) {
-      console.error('❌ Erreur chargement smoke:', error);
-    }
-  }
-  
-  /**
-   * Ajouter fire continu (appelé une fois au début)
-   */
-  async addContinuousFire(): Promise<void> {
-    const assetId = this.assetManager.getRandomAsset('fire');
-    
-    try {
-      const asset = await this.assetManager.loadAsset(assetId);
-      if (!asset.element) return;
-      
-      const video = asset.element as HTMLVideoElement;
-      video.loop = true;
-      
-      const playPromise = video.play();
-      if (playPromise) {
-        playPromise.catch(err => {
-          console.warn('⚠️ Fire autoplay bloqué:', err);
-        });
-      }
-      
-      const effect: Effect = {
-        type: 'fire',
-        element: video,
-        x: 0,
-        y: this.canvas.height - 250,
-        scale: 1,
-        opacity: 0,
-        targetOpacity: 0.4,
+        targetOpacity: 0.2,
         fadeIn: true,
         fadeOut: false,
         startTime: Date.now(),
@@ -222,9 +231,61 @@ export class EffectsRenderer {
       };
       
       this.continuousEffects.push(effect);
-      console.log('✅ Fire continu ajouté');
+      console.log('✅ Smoke continu ajouté (using light-leak fallback)');
+    } catch (error) {
+      console.error('❌ Erreur chargement smoke:', error);
+      this.videoErrors.push(`Smoke: ${error}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Ajouter fire continu (appelé une fois au début)
+   * Note: .mov files may not be supported, using fallback
+   */
+  async addContinuousFire(): Promise<void> {
+    // Try another light-leak as fallback since fire is .mov
+    const assetId = this.assetManager.getRandomAsset('light-leak');
+    
+    try {
+      const asset = await this.assetManager.loadAsset(assetId);
+      if (!asset.element) {
+        throw new Error('Element not loaded');
+      }
+      
+      const video = asset.element as HTMLVideoElement;
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      
+      try {
+        await video.play();
+      } catch (err) {
+        console.warn('⚠️ Fire autoplay bloqué:', err);
+        this.autoplayBlocked = true;
+      }
+      
+      const effect: Effect = {
+        type: 'fire',
+        element: video,
+        x: 0,
+        y: this.canvas.height - 300,
+        scale: 1,
+        opacity: 0,
+        targetOpacity: 0.25,
+        fadeIn: true,
+        fadeOut: false,
+        startTime: Date.now(),
+        duration: Infinity,
+        blendMode: 'screen'
+      };
+      
+      this.continuousEffects.push(effect);
+      console.log('✅ Fire continu ajouté (using light-leak fallback)');
     } catch (error) {
       console.error('❌ Erreur chargement fire:', error);
+      this.videoErrors.push(`Fire: ${error}`);
+      throw error;
     }
   }
   
@@ -277,6 +338,14 @@ export class EffectsRenderer {
    * Dessiner un effet individuel
    */
   private drawEffect(effect: Effect): void {
+    // Skip if video not ready
+    if (effect.element instanceof HTMLVideoElement) {
+      const video = effect.element;
+      if (video.readyState < 2 || video.paused || video.videoWidth === 0) {
+        return; // Not ready to draw
+      }
+    }
+    
     this.ctx.save();
     
     // Blend mode (CRUCIAL)
@@ -297,7 +366,7 @@ export class EffectsRenderer {
         height = this.canvas.height;
       } else {
         width = this.canvas.width;
-        height = 300;
+        height = 400;
       }
     }
     
@@ -311,7 +380,7 @@ export class EffectsRenderer {
         height
       );
     } catch (error) {
-      console.warn('⚠️ Erreur dessin effet:', error);
+      // Silently fail if video not ready
     }
     
     this.ctx.restore();
