@@ -2319,10 +2319,25 @@ export default function FullscreenCreator({
           >
             <UnifiedTemplateSelector
               onSelect={(template) => {
+                // ✅ One‑Take Pro: utiliser le moteur dédié (assets lens‑flare/light‑leak/smoke/fire)
+                if (template.id === 'one_take_pro' || template.templateKey === 'one_take_pro') {
+                  console.log('🐴 One‑Take Pro sélectionné (mode dédié)');
+                  setActiveUnifiedTemplate(template);
+                  setTemplateFlowPhase('idle');
+                  setTemplateSegments([]);
+                  setDrawer('none');
+                  setMode('video');
+                  setCanvasRatio('9:16');
+                  setLengthSec(15);
+                  setShowOneTakeProMode(true);
+                  setToast('🐴 One‑Take Pro activé');
+                  return;
+                }
+
                 // Vérifier si c'est un template audio-first (Radio Village Pro)
                 const specialSources = ['radio_village'];
                 const specialIds = ['radio_village_pro_01', 'radio_village'];
-                
+
                 if (specialSources.includes(template.source) || specialIds.includes(template.id)) {
                   // Mode Radio Village intégré - workflow audio-first sans redirection
                   console.log('🎙️ Template Radio Village activé en mode intégré:', template.name);
@@ -2332,19 +2347,19 @@ export default function FullscreenCreator({
                   setToast(`${template.emoji} ${template.name} activé`);
                   return;
                 }
-                
+
                 // Templates standards: continuer avec le flux intégré overlay
                 setActiveUnifiedTemplate(template);
                 setTemplateFlowPhase('capturing');
                 setDrawer('none');
                 setTemplateSegments([]);
-                
+
                 // Also set duration based on template
                 if (template.duration <= 15) setLengthSec(15);
                 else if (template.duration <= 30) setLengthSec(30);
                 else if (template.duration <= 60) setLengthSec(60);
                 else setLengthSec(180);
-                
+
                 setToast(`${template.emoji} ${template.name} activé`);
               }}
               onClose={() => {
@@ -3608,6 +3623,8 @@ export default function FullscreenCreator({
           {showOneTakeProMode && (
             <OneTakePro
               audioUrl={selectedAudioTrack?.source?.path || selectedAudioTrack?.source?.url || '/audio/kuaishou_festive_beat.mp3'}
+              videoRef={videoRef}
+              mirror={facing === 'user'}
               userText={caption || 'TAM-TAM'}
               userName={undefined}
               onComplete={(videoBlob) => {
