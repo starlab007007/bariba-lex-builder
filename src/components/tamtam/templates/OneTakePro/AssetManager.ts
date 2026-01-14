@@ -36,11 +36,11 @@ export class AssetManager {
       });
     }
     
-    // Lens Flare Video (optionnel)
+    // Lens Flare Video - actual filenames: flare-001.mp4 to flare-028.mp4
     for (let i = 1; i <= this.LENS_FLARE_VIDEO_COUNT; i++) {
       const id = `flare-video-${i}`;
       this.assets.set(id, {
-        path: `${this.basePath}lens-flare/video/flare-video-${this.pad(i)}.mp4`,
+        path: `${this.basePath}lens-flare/video/flare-${this.pad(i)}.mp4`,
         type: 'video',
         loaded: false
       });

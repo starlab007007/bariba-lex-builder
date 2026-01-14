@@ -89,6 +89,9 @@ import RadioVillageProTemplate from "./creator/RadioVillageProTemplate";
 import AudioLibrary from "./creator/AudioLibrary";
 import type { AudioTrack } from "@/types/audio";
 
+// ✅ OneTakePro: Premium template with baked-in visual effects (lens-flare, light-leak, smoke, fire)
+import { OneTakePro } from "./templates/OneTakePro";
+
 // Legacy AdvancedTemplate data (still used by some UI effects/voice instructions)
 import {
   AdvancedTemplate,
@@ -562,6 +565,9 @@ export default function FullscreenCreator({
   
   // ============= RADIO VILLAGE MODE (AUDIO-FIRST TEMPLATES) =============
   const [isRadioVillageMode, setIsRadioVillageMode] = useState(false);
+  
+  // ============= ONE-TAKE PRO MODE (PREMIUM VISUAL EFFECTS) =============
+  const [showOneTakeProMode, setShowOneTakeProMode] = useState(false);
 
   // ============= TEXT OVERLAYS & EXPORT =============
   const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
@@ -1966,91 +1972,59 @@ export default function FullscreenCreator({
       // Also update the simple overlay templateId so TemplateOverlay stays coherent
       if (tpl?.id) updateEffects({ templateId: tpl.id });
 
-      // ✅ GOLDEN PATH: one_take_pro - load directly from manifest JSON AND activate unified flow
+      // ✅ GOLDEN PATH: one_take_pro - Activate dedicated OneTakePro component with visual effects
       const templateId = tpl?.id || tpl?.template_key;
       if (templateId === 'one_take_pro') {
-        console.log('[FullscreenCreator] 🎯 GOLDEN PATH: one_take_pro detected');
-        try {
-          const resp = await fetch('/templates/manifests/one_take_pro.json');
-          if (!resp.ok) throw new Error('Failed to fetch one_take_pro.json');
-          const manifestJson = await resp.json();
-          
-          console.log('[FullscreenCreator] 📄 Manifest loaded:', manifestJson);
-          
-          // Load into K-Engine
-          kEngine.loadTemplate(manifestJson as TemplateManifest);
-          kEngine.setTime(0);
-          kEngine.pause();
-          
-          // ✅ CRITICAL FIX: Set activeTemplateAny to the MANIFEST so isTemplateManifest() returns true
-          setActiveTemplateAny(manifestJson as TemplateManifest);
-          setActiveKSEManifest(manifestJson as TemplateManifest);
-          setCanvasRatio((manifestJson.ratio as CanvasRatio) || "9:16");
-          setMode("video");
-          
-          // ✅ CRITICAL: Create UnifiedTemplate for IntegratedTemplateOverlay
-          const unifiedOneTakePro: UnifiedTemplate = {
-            id: 'one_take_pro',
-            templateKey: 'one_take_pro',
-            name: manifestJson.name || 'One-Take Pro 🐴',
-            name_bariba: 'One-Take Pro 🐴',
-            emoji: '🐴',
-            icon: '🐴',
-            color: '#FFD700',
-            description: manifestJson.description || 'Template premium avec effets Kuaishou',
-            description_bariba: 'Template premium avec effets Kuaishou',
-            category: 'premium',
-            contentType: 'video',
-            difficulty: 'beginner',
-            tags: ['kuaishou', 'premium', 'beatSync', 'sparkles'],
-            duration: manifestJson.duration || 15,
-            format: '9:16',
-            resolution: { width: 1080, height: 1920 },
-            rating: 5,
-            usageCount: 0,
-            downloadCount: 0,
-            isPremium: true,
-            isNew: true,
-            isFeatured: true,
-            isActive: true,
-            source: 'kuaishou',
-            originalConfig: null,
-            kuaishouEffects: {
-              sparkles: true,
-              glow: true,
-              beatSync: true,
-              calligraphy: true,
-            },
-            voiceInstructions: {
-              fr: 'Filmez votre moment magique avec les effets One-Take Pro',
-              bariba: 'Yɛ bɛ tɛ a sɔ kɛ One-Take Pro',
-            },
-          };
-          
-          // ✅ Activate unified template flow for overlay display
-          setActiveUnifiedTemplate(unifiedOneTakePro);
-          setTemplateFlowPhase('capturing');
-          
-          // ✅ Bind live stream immediately if camera active
-          if (!hasCapture && streamRef.current && videoRef.current) {
-            const primarySlot = manifestJson.slots?.find((s: any) => s.type === "video" && s.required)
-              || manifestJson.slots?.find((s: any) => s.type === "video")
-              || manifestJson.slots?.[0];
-            
-            if (primarySlot) {
-              console.log('[FullscreenCreator] 🔗 Binding live stream to slot:', primarySlot.id);
-              kEngine.bindLiveStream(primarySlot.id, videoRef.current);
-            }
-          }
-          
-          setKuaishouPhase('idle');
-          setDrawer("none");
-          setToast(`✨ One-Take Pro - Effets activés!`);
-          return;
-        } catch (e: any) {
-          console.error('[FullscreenCreator] Failed to load one_take_pro:', e);
-          setError('Erreur chargement template One-Take Pro');
-        }
+        console.log('[FullscreenCreator] 🎯 GOLDEN PATH: one_take_pro - Activating OneTakePro component');
+        
+        // ✅ CRITICAL: Activate the OneTakePro fullscreen mode with visual effects
+        setShowOneTakeProMode(true);
+        setDrawer("none");
+        setMode("video");
+        setCanvasRatio("9:16");
+        setLengthSec(15);
+        
+        // Create unified template for tracking
+        const unifiedOneTakePro: UnifiedTemplate = {
+          id: 'one_take_pro',
+          templateKey: 'one_take_pro',
+          name: 'One-Take Pro 🐴',
+          name_bariba: 'One-Take Pro 🐴',
+          emoji: '🐴',
+          icon: '🐴',
+          color: '#FFD700',
+          description: 'Template premium avec effets Kuaishou - Lens Flares, Light Leaks, Smoke, Fire',
+          description_bariba: 'Template premium avec effets Kuaishou',
+          category: 'premium',
+          contentType: 'video',
+          difficulty: 'beginner',
+          tags: ['kuaishou', 'premium', 'beatSync', 'sparkles', 'lensFlare', 'lightLeak'],
+          duration: 15,
+          format: '9:16',
+          resolution: { width: 1080, height: 1920 },
+          rating: 5,
+          usageCount: 0,
+          downloadCount: 0,
+          isPremium: true,
+          isNew: true,
+          isFeatured: true,
+          isActive: true,
+          source: 'kuaishou',
+          originalConfig: null,
+          kuaishouEffects: {
+            sparkles: true,
+            glow: true,
+            beatSync: true,
+            calligraphy: true,
+          },
+          voiceInstructions: {
+            fr: 'Filmez votre moment magique avec les effets One-Take Pro',
+            bariba: 'Yɛ bɛ tɛ a sɔ kɛ One-Take Pro',
+          },
+        };
+        
+        setActiveUnifiedTemplate(unifiedOneTakePro);
+        setToast(`🎬 One-Take Pro - Effets visuels activés!`);
         return;
       }
 
@@ -3625,6 +3599,31 @@ export default function FullscreenCreator({
               onClose={() => setShowAudioLibrary(false)}
               onSelectTrack={handleAudioTrackSelect}
               selectedTrackId={selectedAudioTrack?.id}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ===== ONE-TAKE PRO FULLSCREEN MODE ===== */}
+        <AnimatePresence>
+          {showOneTakeProMode && (
+            <OneTakePro
+              audioUrl={selectedAudioTrack?.source?.path || selectedAudioTrack?.source?.url || '/audio/kuaishou_festive_beat.mp3'}
+              userText={caption || 'TAM-TAM'}
+              userName={undefined}
+              onComplete={(videoBlob) => {
+                console.log('[FullscreenCreator] OneTakePro complete, blob size:', videoBlob.size);
+                setShowOneTakeProMode(false);
+                setCapturedBlob(videoBlob);
+                setCapturedType('video');
+                setHasCapture(true);
+                setPreviewUrl(URL.createObjectURL(videoBlob));
+                setToast('✅ Vidéo One-Take Pro créée!');
+              }}
+              onError={(error) => {
+                console.error('[FullscreenCreator] OneTakePro error:', error);
+                setShowOneTakeProMode(false);
+                setError(`Erreur One-Take Pro: ${error.message}`);
+              }}
             />
           )}
         </AnimatePresence>
