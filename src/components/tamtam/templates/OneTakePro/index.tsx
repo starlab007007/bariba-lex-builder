@@ -657,6 +657,29 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
   }, [startIdleRenderLoop]);
   
   /**
+   * Get supported mimeType for MediaRecorder
+   */
+  const getSupportedMimeType = useCallback((): string => {
+    const mimeTypes = [
+      'video/mp4',
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=vp8',
+      'video/webm;codecs=vp9',
+      'video/webm'
+    ];
+    
+    for (const mimeType of mimeTypes) {
+      if (MediaRecorder.isTypeSupported(mimeType)) {
+        console.log(`✅ Using mimeType: ${mimeType}`);
+        return mimeType;
+      }
+    }
+    
+    console.warn('⚠️ No preferred mimeType supported, using default');
+    return '';
+  }, []);
+
+  /**
    * Export vidéo
    */
   const exportVideo = useCallback(async () => {
@@ -683,10 +706,21 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
         }
       }
       
-      const recorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9',
-        videoBitsPerSecond: 2500000
-      });
+      // Get compatible mimeType
+      const mimeType = getSupportedMimeType();
+      
+      let recorder: MediaRecorder;
+      try {
+        const options: MediaRecorderOptions = { videoBitsPerSecond: 2500000 };
+        if (mimeType) options.mimeType = mimeType;
+        recorder = new MediaRecorder(stream, options);
+      } catch {
+        // Fallback without mimeType
+        console.warn('⚠️ Creating MediaRecorder without mimeType');
+        recorder = new MediaRecorder(stream, { videoBitsPerSecond: 2500000 });
+      }
+      
+      console.log(`📹 MediaRecorder using: ${recorder.mimeType}`);
       
       const chunks: Blob[] = [];
       
@@ -697,9 +731,10 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       };
       
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
+        const finalMimeType = recorder.mimeType || 'video/webm';
+        const blob = new Blob(chunks, { type: finalMimeType });
         onComplete?.(blob);
-        console.log('✅ Vidéo exportée');
+        console.log(`✅ Vidéo exportée (${finalMimeType})`);
       };
       
       recorder.start();
@@ -717,7 +752,7 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
       console.error('❌ Erreur export vidéo:', err);
       onError?.(err instanceof Error ? err : new Error('Erreur export'));
     }
-  }, [onComplete, onError, startPlayback, stopPlayback]);
+  }, [onComplete, onError, startPlayback, stopPlayback, getSupportedMimeType]);
   
   /**
    * Fermer le composant
@@ -811,9 +846,14 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
         <p>📦 Assets: {debugInfo.assetsLoaded}/{debugInfo.assetsTotal}</p>
         <p>🔥 Continus: {debugInfo.continuousEffects} | Actifs: {debugInfo.activeEffects}</p>
         <p>🎵 Beats: {beats.length}</p>
-        <p>📹 Caméra: {videoRef?.current?.readyState ?? 'N/A'}</p>
+        <p>📹 Cam: {videoRef?.current ? `ready=${videoRef.current.readyState} ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}` : 'N/A'}</p>
+        {effectsRendererRef.current?.getVideoStatus().map((v, i) => (
+          <p key={i} style={{ color: v.paused ? '#f66' : '#6f6' }}>
+            {v.type}: {v.paused ? '⏸' : '▶'} rs={v.readyState} t={v.currentTime.toFixed(1)}s
+          </p>
+        ))}
         {debugInfo.videoErrors.length > 0 && (
-          <p style={{ color: '#f66' }}>⚠️ {debugInfo.videoErrors.join(', ')}</p>
+          <p style={{ color: '#f66', fontSize: 9 }}>⚠️ {debugInfo.videoErrors.slice(0, 2).join(' | ')}</p>
         )}
       </div>
     </div>
