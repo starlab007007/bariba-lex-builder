@@ -17,7 +17,7 @@ export interface SlotDefinition {
   placeholder?: string;
   min?: number;
   max?: number;
-  constraints?: Record<string, unknown>;
+  constraints?: { min_duration?: number; [key: string]: unknown };
   [key: string]: unknown;
 }
 
@@ -26,6 +26,9 @@ export interface TimelineLayer {
 }
 
 export interface PipelineStep {
+  op?: string;
+  label?: string;
+  weight?: number;
   [key: string]: unknown;
 }
 
@@ -40,8 +43,8 @@ export interface TemplateManifest {
   slots?: SlotDefinition[];
   layers?: TimelineLayer[];
   timeline?: TimelineLayer[];
-  pipeline?: unknown;
-  overrides?: unknown;
+  pipeline?: PipelineStep[];
+  overrides?: string[];
   usage?: unknown;
   export?: Record<string, unknown>;
   [key: string]: unknown;
@@ -74,6 +77,15 @@ export interface EngineState {
 }
 
 export interface ExportOptions {
+  inputBlob?: Blob;
+  inputType?: string;
+  meta?: Record<string, unknown>;
+  fastExport?: boolean;
+  exportQuality?: string;
+  renderCanvas?: HTMLCanvasElement;
+  nativeResolution?: { width: number; height: number };
+  preserveQuality?: boolean;
+  preferMp4?: boolean;
   [key: string]: unknown;
 }
 
@@ -83,19 +95,32 @@ export interface ExportJob {
   progress: number;
   outputUrl?: string;
   outputBlob?: Blob;
-  used?: boolean | string;
+  used?: string;
   error?: string;
 }
 
 export interface VoiceInstruction {
+  id?: string;
+  step?: number;
+  action?: string | 'record_video' | 'record_audio' | 'take_photo' | 'add_text' | 'wait' | 'confirm';
   text?: string;
+  text_fr?: string;
+  text_ba?: string;
   lang?: string;
   fr?: string;
   ba?: string;
+  durationHint?: number;
+}
+
+export interface EngineEvent {
+  type: string;
+  currentTime?: number;
   [key: string]: unknown;
 }
 
-type AnyListener = (...args: unknown[]) => void;
+type StateListener = (state: EngineState) => void;
+type EventStateListener = (event: { type: string; [key: string]: unknown }, state: EngineState) => void;
+type ProgressCallback = (progress: { percent?: number; stage?: string; message?: string }) => void;
 
 // K-Engine Runtime
 class KEngineRuntime {
@@ -112,18 +137,13 @@ class KEngineRuntime {
     pipelineProgress: 0
   };
 
-  private listeners: Set<AnyListener> = new Set();
+  private listeners: Set<StateListener | EventStateListener> = new Set();
   private liveStream: MediaStream | null = null;
 
-  subscribe(listener: AnyListener): () => void {
+  subscribe(listener: EventStateListener): () => void {
     this.listeners.add(listener);
-    // Support différentes signatures
     try {
-      if (listener.length >= 2) {
-        listener('state', this.state);
-      } else {
-        listener(this.state);
-      }
+      listener({ type: 'state' }, this.state);
     } catch (e) {
       // Ignorer
     }
@@ -131,13 +151,10 @@ class KEngineRuntime {
   }
 
   private notify(event: string = 'state'): void {
+    const evt: EngineEvent = { type: event, currentTime: this.state.currentTime };
     this.listeners.forEach(l => {
       try {
-        if (l.length >= 2) {
-          l(event, this.state);
-        } else {
-          l(this.state);
-        }
+        (l as EventStateListener)(evt, this.state);
       } catch (e) {
         // Ignorer
       }
@@ -197,9 +214,9 @@ class KEngineRuntime {
     if (blobOrAsset instanceof Blob) {
       this.bindAsset(slotId, blobOrAsset, kind || 'file');
     } else {
-      // Ajouter les champs requis si manquants
       const asset: BoundAsset = {
         ...blobOrAsset,
+        slotId,
         type: blobOrAsset.type || 'video',
         data: blobOrAsset.data || blobOrAsset.blob || ''
       };
@@ -213,21 +230,28 @@ class KEngineRuntime {
     }
   }
 
-  bindLiveStream(streamOrSlotId: MediaStream | string | HTMLVideoElement, slotId?: string): void {
-    if (streamOrSlotId instanceof MediaStream) {
-      this.liveStream = streamOrSlotId;
+  bindLiveStream(slotId: string, videoOrStream?: HTMLVideoElement | MediaStream): void {
+    if (videoOrStream instanceof MediaStream) {
+      this.liveStream = videoOrStream;
+    } else if (videoOrStream instanceof HTMLVideoElement && videoOrStream.srcObject instanceof MediaStream) {
+      this.liveStream = videoOrStream.srcObject;
     }
     
-    const actualSlotId = typeof streamOrSlotId === 'string' ? streamOrSlotId : slotId || 'live';
     const boundAsset: BoundAsset = {
-      slotId: actualSlotId,
+      slotId,
       type: 'video',
       data: 'live://stream',
       url: 'live://stream',
       kind: 'live'
     };
-    this.state.userAssets.push(boundAsset);
-    console.log('🎥 K-Engine: Live stream bound');
+    
+    const existing = this.state.userAssets.findIndex(a => a.slotId === slotId);
+    if (existing >= 0) {
+      this.state.userAssets[existing] = boundAsset;
+    } else {
+      this.state.userAssets.push(boundAsset);
+    }
+    console.log('🎥 K-Engine: Live stream bound to', slotId);
     this.notify('state');
   }
 
@@ -252,7 +276,7 @@ class KEngineRuntime {
 
   seek(time: number): void {
     this.state.currentTime = Math.max(0, Math.min(time, this.state.template?.duration || 0));
-    this.notify('state');
+    this.notify('TIME_UPDATE');
   }
 
   setTime(time: number): void {
@@ -285,34 +309,29 @@ class KEngineRuntime {
     }
   }
 
-  async runAIPipeline(progressCallback?: AnyListener): Promise<void> {
+  async runAIPipeline(progressCallback?: (progress: number, step?: { stage?: string }) => void): Promise<void> {
     console.log('🤖 Running AI pipeline...');
     for (let i = 0; i <= 100; i += 10) {
       this.state.pipelineProgress = i;
       this.state.renderProgress = i;
-      progressCallback?.(i, { stage: 'processing', percent: i });
+      progressCallback?.(i, { stage: 'processing' });
       this.notify('progress');
       await new Promise(r => setTimeout(r, 50));
     }
     this.notify('complete');
   }
 
-  async exportJob(optionsOrCallback?: unknown, quality?: string): Promise<ExportJob> {
+  async exportJob(options?: ExportOptions, progressCallback?: ProgressCallback): Promise<ExportJob> {
     const job: ExportJob = {
       id: `export_${Date.now()}`,
       status: 'processing',
       progress: 0,
-      used: false
+      used: 'kengine'
     };
-
-    const progressCallback = typeof optionsOrCallback === 'function' ? optionsOrCallback : undefined;
-    const options = typeof optionsOrCallback === 'object' ? optionsOrCallback as ExportOptions : undefined;
 
     for (let i = 0; i <= 100; i += 10) {
       job.progress = i;
-      if (typeof progressCallback === 'function') {
-        progressCallback({ progress: i, percent: i, stage: 'exporting' });
-      }
+      progressCallback?.({ percent: i, stage: 'exporting', message: 'Export en cours...' });
       await new Promise(r => setTimeout(r, 30));
     }
 
@@ -360,7 +379,7 @@ class TemplateEngineService {
     if (typeof instruction === 'string') {
       text = instruction;
     } else if (instruction) {
-      text = instruction.text || instruction.fr || '';
+      text = instruction.text || instruction.text_fr || instruction.fr || '';
       language = instruction.lang || language;
     }
 

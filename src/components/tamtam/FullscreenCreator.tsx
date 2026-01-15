@@ -1894,7 +1894,7 @@ export default function FullscreenCreator({
       }
 
       // Generate export job metadata for K-Engine templates
-      const exportJob = isKEngineActive ? kEngine.exportJob() : undefined;
+      const exportJob = isKEngineActive ? await kEngine.exportJob() : undefined;
       const engineSnapshot = isKEngineActive ? kEngine.getState() : undefined;
 
       if (onPublish) {
