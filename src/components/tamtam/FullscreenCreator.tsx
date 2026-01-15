@@ -108,6 +108,13 @@ import templateEngine, {
   type BoundAsset,
 } from "./creator/TemplateEngine";
 
+// ✅ NEW: Unified TemplateSystem v3.0
+import { 
+  TemplateEngine as TemplateEngineV3,
+  TemplateSelector as TemplateSelectorV3,
+  templateEngine as templateEngineV3,
+  type Template as TemplateV3,
+} from "./creator/TemplateSystem";
 export type CreatorOutputPayload = {
   segments: MiniTimelineSegment[];
   caption: string;
@@ -568,6 +575,12 @@ export default function FullscreenCreator({
   
   // ============= ONE-TAKE PRO MODE (PREMIUM VISUAL EFFECTS) =============
   const [showOneTakeProMode, setShowOneTakeProMode] = useState(false);
+
+  // ============= NEW TEMPLATE SYSTEM V3.0 =============
+  const [showTemplateSelectorV3, setShowTemplateSelectorV3] = useState(false);
+  const [selectedTemplateV3, setSelectedTemplateV3] = useState<TemplateV3 | null>(null);
+  const templateCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const templateEngineV3Ref = useRef<TemplateEngineV3 | null>(null);
 
   // ============= TEXT OVERLAYS & EXPORT =============
   const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
@@ -2225,6 +2238,47 @@ export default function FullscreenCreator({
     [updateEffects]
   );
 
+  // ============= NEW TEMPLATE SYSTEM V3.0 HANDLER =============
+  const handleTemplateSelectV3 = useCallback(async (template: TemplateV3) => {
+    console.log('[FullscreenCreator] TemplateSystem V3 selection:', template.id);
+    
+    // Initialize engine if needed
+    if (!templateEngineV3Ref.current && templateCanvasRef.current) {
+      templateEngineV3Ref.current = new TemplateEngineV3(templateCanvasRef.current);
+    }
+    
+    setSelectedTemplateV3(template);
+    setShowTemplateSelectorV3(false);
+    
+    // Apply template settings
+    if (template.duration) {
+      const dur = template.duration;
+      if (dur <= 15) setLengthSec(15);
+      else if (dur <= 30) setLengthSec(30);
+      else if (dur <= 60) setLengthSec(60);
+      else setLengthSec(180);
+    }
+    
+    // Set mode based on template
+    setMode("video");
+    setCanvasRatio("9:16");
+    
+    // Try to load template config
+    if (templateEngineV3Ref.current) {
+      try {
+        await templateEngineV3Ref.current.loadTemplate(template.id);
+        setToast(`🎬 ${template.name} chargé`);
+      } catch (e) {
+        console.warn('[TemplateSystem V3] Failed to load template config:', e);
+        // Template will still work with default effects
+        templateEngineV3Ref.current.loadTemplateObject(template);
+        setToast(`✨ ${template.name} activé`);
+      }
+    } else {
+      setToast(`✨ ${template.name} sélectionné`);
+    }
+  }, []);
+
   // ============= RENDER =============
   if (!open) return null;
 
@@ -3025,6 +3079,13 @@ export default function FullscreenCreator({
             }}
             active={activeUnifiedTemplate !== null || effects.templateId !== "free"}
           />
+          {/* ✅ NEW: Template System V3.0 Button */}
+          <RailButton
+            icon={<Sparkles className="h-5 w-5" />}
+            label="V3"
+            onClick={() => setShowTemplateSelectorV3(true)}
+            active={selectedTemplateV3 !== null}
+          />
 
           {hasCapture && (
             <>
@@ -3658,6 +3719,46 @@ export default function FullscreenCreator({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ============ NEW TEMPLATE SYSTEM V3.0 SELECTOR ============ */}
+        <AnimatePresence>
+          {showTemplateSelectorV3 && (
+            <TemplateSelectorV3
+              onSelect={handleTemplateSelectV3}
+              onClose={() => setShowTemplateSelectorV3(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Hidden canvas for TemplateSystem V3.0 rendering */}
+        <canvas
+          ref={templateCanvasRef}
+          width={1080}
+          height={1920}
+          className="hidden"
+          aria-hidden="true"
+        />
+
+        {/* Active Template V3 Indicator */}
+        {selectedTemplateV3 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute top-32 right-4 z-40"
+          >
+            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 border border-white/30 backdrop-blur-xl">
+              <span className="text-white text-sm font-medium truncate max-w-[100px]">
+                {selectedTemplateV3.name}
+              </span>
+              <button
+                onClick={() => setSelectedTemplateV3(null)}
+                className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center"
+              >
+                <X className="w-3 h-3 text-white" />
+              </button>
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   );
