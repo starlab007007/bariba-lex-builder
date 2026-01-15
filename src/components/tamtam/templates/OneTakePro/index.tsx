@@ -1,6 +1,5 @@
 /**
- * OneTakePro - Placeholder component
- * Le composant complet sera implémenté avec le nouveau TemplateSystem
+ * OneTakePro - Placeholder component rétrocompatible
  */
 
 import React from 'react';
@@ -11,16 +10,22 @@ interface OneTakeProProps {
   videoRef?: React.RefObject<HTMLVideoElement>;
   audioUrl?: string;
   mirror?: boolean;
+  userText?: string;
+  userName?: string;
   onComplete?: (blob: Blob) => void;
   onProgress?: (progress: number) => void;
+  onError?: (error: Error) => void;
 }
 
 export const OneTakePro: React.FC<OneTakeProProps> = ({
   videoRef,
   audioUrl,
   mirror,
+  userText,
+  userName,
   onComplete,
-  onProgress
+  onProgress,
+  onError
 }) => {
   return (
     <motion.div
@@ -42,8 +47,11 @@ export const OneTakePro: React.FC<OneTakeProProps> = ({
           <h2 className="text-xl font-bold text-foreground">One-Take Pro</h2>
         </div>
         <p className="text-muted-foreground text-sm">
-          Template en cours de reconstruction avec le nouveau système...
+          Template en cours de reconstruction...
         </p>
+        {userText && (
+          <p className="text-primary text-sm mt-2">"{userText}"</p>
+        )}
       </div>
     </motion.div>
   );
