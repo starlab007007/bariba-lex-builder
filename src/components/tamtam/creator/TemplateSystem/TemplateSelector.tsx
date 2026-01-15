@@ -10,7 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Template, TemplateCategory } from './types';
+import { Template } from './types';
+
+// Local category type
+type LocalCategory = 'all' | 'storytelling' | 'music' | 'business' | 'education' | 'future';
 
 interface TemplateSelectorProps {
   onSelect: (template: Template) => void;
@@ -80,7 +83,7 @@ export function TemplateSelector({
   templates = DEFAULT_TEMPLATES 
 }: TemplateSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<LocalCategory>('all');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   // Filter templates
