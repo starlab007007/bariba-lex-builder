@@ -19,7 +19,7 @@ export { default as AudioLibrary } from './AudioLibrary';
 export { default as PublishScreen } from './PublishScreen';
 
 // Kuaishou Creator Components
-export { default as KuaishouTemplateSelector } from './KuaishouTemplateSelector';
+export { default as KuaishouTemplateSelector, KuaishouTemplateSelector as KuaishouTemplateSelectorComponent } from './KuaishouTemplateSelector';
 export { default as KuaishouCaptureMode } from './KuaishouCaptureMode';
 export { default as KuaishouPreviewMode } from './KuaishouPreviewMode';
 
@@ -27,6 +27,9 @@ export { default as KuaishouPreviewMode } from './KuaishouPreviewMode';
 export { default as IntegratedTemplateOverlay } from './IntegratedTemplateOverlay';
 export { default as IntegratedPreviewMode } from './IntegratedPreviewMode';
 export { default as UnifiedTemplateSelector } from './UnifiedTemplateSelector';
+
+// New Template System
+export * from './TemplateSystem';
 export { default as InlineTextEditor } from './InlineTextEditor';
 export { default as DraggableTextOverlay, DraggablePreviewOverlay } from './DraggableTextOverlay';
 
