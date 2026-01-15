@@ -1,5 +1,5 @@
 /**
- * Template Renderer v2.0
+ * Template Renderer v3.0
  * Moteur de rendu simplifié - Version compatible
  */
 
@@ -50,6 +50,19 @@ class TemplateRendererService {
 
   getState(): TemplateState {
     return { ...this.state };
+  }
+
+  // Layer management for composition
+  createLayer(config: Partial<TemplateLayer>): TemplateLayer {
+    return {
+      id: config.id || crypto.randomUUID(),
+      type: config.type || 'video',
+      zIndex: config.zIndex || 0,
+      visible: config.visible ?? true,
+      opacity: config.opacity ?? 1,
+      timing: config.timing || { start: 0, duration: 10 },
+      transform: config.transform
+    };
   }
 
   dispose(): void {

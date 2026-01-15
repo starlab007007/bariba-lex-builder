@@ -1,14 +1,14 @@
 /**
- * Template System v2.0
- * Architecture modulaire pour templates créatifs premium
- * Supérieur à Kuaishou - Optimisé pour l'Afrique
+ * Template System v3.0
+ * Unified template system for TAM-TAM video creation
  */
 
 // Core exports
 export * from './types';
-export * from './TemplateRegistry';
-export * from './TemplateRenderer';
-export * from './TemplateSelector';
+export { AssetManager, assetManager } from './AssetManager';
+export { EffectsRenderer } from './EffectsRenderer';
+export { TemplateEngine, templateEngine } from './TemplateEngine';
+export { TemplateSelector } from './TemplateSelector';
 
-// Re-export placeholder components
-export { default as UnifiedTemplateSelector } from './TemplateSelector';
+// Default export for convenience
+export { TemplateSelector as default } from './TemplateSelector';
