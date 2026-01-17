@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Chorale Collective
  * Group singing/choir format
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,38 +19,51 @@ export const choraleCollectiveTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Music notes flare - REAL ASSET
     {
-      id: 'music-notes',
-      type: 'particles',
-      assetId: 'procedural:floating-notes',
+      id: 'music-notes-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-130.png',
       trigger: 'beat',
       config: {
-        opacity: 0.6,
+        x: 0.3,
+        y: 0.3,
+        scale: 0.8,
+        opacity: 0.5,
         blendMode: 'screen',
         beatThreshold: 0.4
       }
     },
+    // Choir frame flare - REAL ASSET
     {
-      id: 'choir-frame',
-      type: 'texture',
-      assetId: 'procedural:ornate-gold-frame',
+      id: 'choir-frame-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-050.png',
       trigger: 'always',
       config: {
-        opacity: 0.5,
-        blendMode: 'source-over'
+        x: 0.5,
+        y: 0.2,
+        scale: 1.0,
+        opacity: 0.4,
+        blendMode: 'screen'
       }
     },
+    // Harmony glow flare - REAL ASSET
     {
       id: 'harmony-glow',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-warm',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-060.png',
       trigger: 'beat',
       config: {
-        opacity: 0.25,
+        x: 0.7,
+        y: 0.4,
+        scale: 1.2,
+        opacity: 0.3,
         blendMode: 'screen',
         beatThreshold: 0.6
       }
     },
+    // Lyrics display - TEXT EFFECT
     {
       id: 'lyrics-display',
       type: 'text',
@@ -73,7 +87,7 @@ export const choraleCollectiveTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['choir', 'singing', 'collective', 'music']
   }
 };

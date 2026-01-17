@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: One-Take Pro (Kuaishou Horse Collection)
  * Premium single-shot video with dynamic transitions and effects
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,7 +19,7 @@ export const oneTakeProTemplate: Template = {
   isNew: false,
   
   effects: [
-    // Opening flash
+    // Opening flash - REAL ASSET
     {
       id: 'opening-flash',
       type: 'lens-flare',
@@ -33,18 +34,21 @@ export const oneTakeProTemplate: Template = {
         timeRange: [0, 0.5]
       }
     },
-    // Dynamic light leak throughout
+    // Dynamic accent flare - REAL ASSET
     {
-      id: 'dynamic-leak',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-animated',
+      id: 'dynamic-accent',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-280.png',
       trigger: 'always',
       config: {
+        x: 0.2,
+        y: 0.4,
+        scale: 0.8,
         opacity: 0.3,
         blendMode: 'screen'
       }
     },
-    // Text: Title overlay
+    // Title text - TEXT EFFECT
     {
       id: 'title-text',
       type: 'text',
@@ -63,7 +67,7 @@ export const oneTakeProTemplate: Template = {
         timeRange: [0.5, 4]
       }
     },
-    // Midpoint emphasis flare
+    // Midpoint emphasis flare - REAL ASSET
     {
       id: 'mid-flare',
       type: 'lens-flare',
@@ -78,26 +82,33 @@ export const oneTakeProTemplate: Template = {
         timeRange: [25, 35]
       }
     },
-    // Closing transition
+    // Closing transition flare - REAL ASSET
     {
-      id: 'closing-fade',
-      type: 'transition',
-      assetId: 'procedural:fade-to-black',
+      id: 'closing-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-290.png',
       trigger: 'time',
       config: {
-        opacity: 1.0,
+        x: 0.5,
+        y: 0.5,
+        scale: 2.5,
+        opacity: 0.9,
+        blendMode: 'screen',
         timeRange: [55, 60]
       }
     },
-    // Subtle vignette
+    // Subtle corner flare - REAL ASSET
     {
-      id: 'pro-vignette',
-      type: 'texture',
-      assetId: 'procedural:vignette',
+      id: 'pro-corner',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-300.png',
       trigger: 'always',
       config: {
-        opacity: 0.4,
-        blendMode: 'multiply'
+        x: 0.9,
+        y: 0.9,
+        scale: 0.5,
+        opacity: 0.25,
+        blendMode: 'screen'
       }
     }
   ],
@@ -110,7 +121,7 @@ export const oneTakeProTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['pro', 'business', 'kuaishou', 'premium', 'one-take']
   }
 };

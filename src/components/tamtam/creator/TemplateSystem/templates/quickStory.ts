@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Quick Story
  * Fast-paced storytelling for short social content
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,7 +19,7 @@ export const quickStoryTemplate: Template = {
   isNew: true,
   
   effects: [
-    // Quick intro flash
+    // Quick intro flash - REAL ASSET
     {
       id: 'intro-flash',
       type: 'lens-flare',
@@ -33,19 +34,37 @@ export const quickStoryTemplate: Template = {
         timeRange: [0, 0.3]
       }
     },
-    // Beat-reactive sparkles
+    // Beat-reactive sparkles flare - REAL ASSET
     {
       id: 'sparkle-beats',
-      type: 'particles',
-      assetId: 'procedural:sparkles',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-340.png',
       trigger: 'beat',
       config: {
+        x: 0.3,
+        y: 0.5,
+        scale: 0.8,
         opacity: 0.6,
         blendMode: 'screen',
         beatThreshold: 0.5
       }
     },
-    // Text call-to-action
+    // Secondary sparkle - REAL ASSET
+    {
+      id: 'sparkle-beats-2',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-350.png',
+      trigger: 'beat',
+      config: {
+        x: 0.7,
+        y: 0.6,
+        scale: 0.7,
+        opacity: 0.5,
+        blendMode: 'screen',
+        beatThreshold: 0.5
+      }
+    },
+    // CTA text - TEXT EFFECT
     {
       id: 'cta-text',
       type: 'text',
@@ -64,15 +83,18 @@ export const quickStoryTemplate: Template = {
         timeRange: [12, 15]
       }
     },
-    // Light vignette
+    // Corner accent - REAL ASSET
     {
-      id: 'light-vignette',
-      type: 'texture',
-      assetId: 'procedural:vignette',
+      id: 'corner-accent',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-360.png',
       trigger: 'always',
       config: {
+        x: 0.9,
+        y: 0.1,
+        scale: 0.4,
         opacity: 0.3,
-        blendMode: 'multiply'
+        blendMode: 'screen'
       }
     }
   ],
@@ -84,7 +106,7 @@ export const quickStoryTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['quick', 'short', 'social', 'story', 'tiktok']
   }
 };

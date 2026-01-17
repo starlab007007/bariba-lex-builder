@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Histoire Vraie
  * True story documentary style
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,16 +19,21 @@ export const histoireVraieTemplate: Template = {
   isNew: false,
   
   effects: [
+    // Testimony frame flare - REAL ASSET
     {
       id: 'testimony-frame',
-      type: 'texture',
-      assetId: 'procedural:soft-vignette',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-055.png',
       trigger: 'always',
       config: {
-        opacity: 0.5,
+        x: 0.5,
+        y: 0.5,
+        scale: 1.8,
+        opacity: 0.3,
         blendMode: 'multiply'
       }
     },
+    // Quote marks - TEXT EFFECT
     {
       id: 'quote-marks',
       type: 'text',
@@ -43,13 +49,17 @@ export const histoireVraieTemplate: Template = {
         align: 'left'
       }
     },
+    // Film grain accent flare - REAL ASSET
     {
-      id: 'film-grain',
-      type: 'texture',
-      assetId: 'procedural:film-grain',
+      id: 'film-grain-accent',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-440.png',
       trigger: 'always',
       config: {
-        opacity: 0.1,
+        x: 0.8,
+        y: 0.2,
+        scale: 0.5,
+        opacity: 0.15,
         blendMode: 'overlay'
       }
     }
@@ -62,7 +72,7 @@ export const histoireVraieTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['testimony', 'true-story', 'documentary']
   }
 };

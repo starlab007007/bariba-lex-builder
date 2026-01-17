@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Beat Sync Ultra
  * High-energy beat-synchronized effects for music videos
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,7 +19,7 @@ export const beatSyncUltraTemplate: Template = {
   isNew: true,
   
   effects: [
-    // Beat-triggered lens flare
+    // Beat-triggered lens flare - REAL ASSET
     {
       id: 'beat-flare-main',
       type: 'lens-flare',
@@ -33,7 +34,7 @@ export const beatSyncUltraTemplate: Template = {
         beatThreshold: 0.7
       }
     },
-    // Secondary beat flare
+    // Secondary beat flare - REAL ASSET
     {
       id: 'beat-flare-secondary',
       type: 'lens-flare',
@@ -48,40 +49,47 @@ export const beatSyncUltraTemplate: Template = {
         beatThreshold: 0.5
       }
     },
-    // Constant light leak overlay
+    // Light leak replacement with lens-flare - REAL ASSET
     {
       id: 'light-leak-pulse',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-animated',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-025.png',
       trigger: 'beat',
       config: {
+        x: 0.3,
+        y: 0.4,
+        scale: 1.2,
         opacity: 0.4,
         blendMode: 'screen',
         beatThreshold: 0.6
       }
     },
-    // Particles on strong beats
+    // Particles replacement with lens-flare burst - REAL ASSET
     {
       id: 'beat-particles',
-      type: 'particles',
-      assetId: 'procedural:sparkle-burst',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-040.png',
       trigger: 'beat',
       config: {
         x: 0.5,
         y: 0.5,
         scale: 2,
         opacity: 0.8,
+        blendMode: 'screen',
         beatThreshold: 0.8
       }
     },
-    // Vignette for focus
+    // Vignette replacement with corner flare - REAL ASSET
     {
-      id: 'vignette-constant',
-      type: 'texture',
-      assetId: 'procedural:vignette',
+      id: 'vignette-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-055.png',
       trigger: 'always',
       config: {
-        opacity: 0.5,
+        x: 0.5,
+        y: 0.5,
+        scale: 1.8,
+        opacity: 0.3,
         blendMode: 'multiply'
       }
     }
@@ -94,7 +102,7 @@ export const beatSyncUltraTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['music', 'beat-sync', 'energy', 'clip', 'dance']
   }
 };

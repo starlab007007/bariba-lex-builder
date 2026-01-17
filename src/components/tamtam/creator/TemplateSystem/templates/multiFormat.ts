@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Multi-Format Export
  * Optimized for multiple social media aspect ratios
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,18 +19,7 @@ export const multiFormatTemplate: Template = {
   isNew: false,
   
   effects: [
-    // Safe zone guides (development only)
-    {
-      id: 'safe-zone',
-      type: 'texture',
-      assetId: 'procedural:safe-zone-guide',
-      trigger: 'always',
-      config: {
-        opacity: 0.0, // Hidden in production
-        blendMode: 'source-over'
-      }
-    },
-    // Center-focused lens flare
+    // Center-focused lens flare - REAL ASSET
     {
       id: 'center-flare',
       type: 'lens-flare',
@@ -44,7 +34,7 @@ export const multiFormatTemplate: Template = {
         timeRange: [0, 2]
       }
     },
-    // Branded text overlay
+    // Branded text overlay - TEXT EFFECT
     {
       id: 'brand-text',
       type: 'text',
@@ -62,27 +52,33 @@ export const multiFormatTemplate: Template = {
         shadow: true
       }
     },
-    // Universal light leak (centered)
+    // Universal accent flare - REAL ASSET
     {
-      id: 'universal-leak',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-centered',
+      id: 'universal-accent',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-260.png',
       trigger: 'beat',
       config: {
-        opacity: 0.25,
+        x: 0.3,
+        y: 0.3,
+        scale: 0.8,
+        opacity: 0.35,
         blendMode: 'screen',
         beatThreshold: 0.6
       }
     },
-    // Light vignette
+    // Corner accent flare - REAL ASSET
     {
-      id: 'universal-vignette',
-      type: 'texture',
-      assetId: 'procedural:vignette',
+      id: 'corner-accent',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-270.png',
       trigger: 'always',
       config: {
-        opacity: 0.35,
-        blendMode: 'multiply'
+        x: 0.85,
+        y: 0.15,
+        scale: 0.5,
+        opacity: 0.3,
+        blendMode: 'screen'
       }
     }
   ],
@@ -94,7 +90,7 @@ export const multiFormatTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['multi-format', 'business', 'social', 'brand', 'universal']
   }
 };

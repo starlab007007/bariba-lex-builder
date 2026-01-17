@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Radio Village Pro
  * Professional radio broadcast style
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,20 +19,22 @@ export const radioVillageTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Radio waves flare - REAL ASSET
     {
       id: 'radio-waves',
-      type: 'particles',
-      assetId: 'procedural:radio-waves',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-370.png',
       trigger: 'beat',
       config: {
         x: 0.5,
         y: 0.5,
-        scale: 2,
+        scale: 1.5,
         opacity: 0.4,
         blendMode: 'screen',
         beatThreshold: 0.4
       }
     },
+    // On-air badge - TEXT EFFECT
     {
       id: 'on-air-badge',
       type: 'text',
@@ -47,27 +50,32 @@ export const radioVillageTemplate: Template = {
         animation: 'pulse'
       }
     },
+    // Waveform visualizer flare - REAL ASSET
     {
       id: 'waveform-visualizer',
-      type: 'particles',
-      assetId: 'procedural:waveform',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-380.png',
       trigger: 'always',
       config: {
         x: 0.5,
         y: 0.8,
-        scale: 1.5,
-        opacity: 0.7,
+        scale: 1.2,
+        opacity: 0.5,
         blendMode: 'screen'
       }
     },
+    // Radio corner accent - REAL ASSET
     {
-      id: 'radio-vignette',
-      type: 'texture',
-      assetId: 'procedural:dark-vignette',
+      id: 'radio-corner',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-390.png',
       trigger: 'always',
       config: {
-        opacity: 0.5,
-        blendMode: 'multiply'
+        x: 0.1,
+        y: 0.9,
+        scale: 0.5,
+        opacity: 0.35,
+        blendMode: 'screen'
       }
     }
   ],
@@ -79,7 +87,7 @@ export const radioVillageTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['radio', 'broadcast', 'professional', 'audio']
   }
 };

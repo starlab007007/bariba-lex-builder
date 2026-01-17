@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Photo Slideshow
  * Animated photo montage with transitions
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,37 +19,51 @@ export const photoSlideshowTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Slide transition flare - REAL ASSET
     {
-      id: 'slide-transition',
-      type: 'transition',
-      assetId: 'procedural:slide-fade',
+      id: 'slide-transition-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-310.png',
       trigger: 'time',
       config: {
-        interval: 5,
-        duration: 0.5
+        x: 0.5,
+        y: 0.5,
+        scale: 2.0,
+        opacity: 0.8,
+        blendMode: 'screen',
+        timeRange: [5, 5.5]
       }
     },
+    // Photo border flare - REAL ASSET
     {
-      id: 'photo-border',
-      type: 'texture',
-      assetId: 'procedural:clean-border',
+      id: 'photo-border-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-320.png',
       trigger: 'always',
       config: {
-        opacity: 0.8,
-        blendMode: 'source-over'
+        x: 0.1,
+        y: 0.1,
+        scale: 0.4,
+        opacity: 0.5,
+        blendMode: 'screen'
       }
     },
+    // Memory sparkle flare - REAL ASSET
     {
       id: 'memory-sparkle',
-      type: 'particles',
-      assetId: 'procedural:sparkles',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-330.png',
       trigger: 'beat',
       config: {
-        opacity: 0.3,
+        x: 0.7,
+        y: 0.3,
+        scale: 0.6,
+        opacity: 0.4,
         blendMode: 'screen',
         beatThreshold: 0.7
       }
     },
+    // Date stamp - TEXT EFFECT
     {
       id: 'date-stamp',
       type: 'text',
@@ -73,7 +88,7 @@ export const photoSlideshowTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['photos', 'slideshow', 'memories', 'montage']
   }
 };

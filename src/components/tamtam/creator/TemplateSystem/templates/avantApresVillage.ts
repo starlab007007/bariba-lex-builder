@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Avant/Après Village
  * Before/After comparison for village development
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,17 +19,21 @@ export const avantApresVillageTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Split line flare - REAL ASSET
     {
-      id: 'split-line',
-      type: 'texture',
-      assetId: 'procedural:split-vertical',
+      id: 'split-line-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-100.png',
       trigger: 'always',
       config: {
         x: 0.5,
-        opacity: 1.0,
-        blendMode: 'source-over'
+        y: 0.5,
+        scale: 0.3,
+        opacity: 0.8,
+        blendMode: 'screen'
       }
     },
+    // Before label - TEXT EFFECT
     {
       id: 'before-label',
       type: 'text',
@@ -43,6 +48,7 @@ export const avantApresVillageTemplate: Template = {
         align: 'center'
       }
     },
+    // After label - TEXT EFFECT
     {
       id: 'after-label',
       type: 'text',
@@ -57,14 +63,19 @@ export const avantApresVillageTemplate: Template = {
         align: 'center'
       }
     },
+    // Transition flare - REAL ASSET
     {
-      id: 'transition-wipe',
-      type: 'transition',
-      assetId: 'procedural:wipe-horizontal',
+      id: 'transition-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-110.png',
       trigger: 'time',
       config: {
-        timeRange: [10, 15],
-        direction: 'left-to-right'
+        x: 0.5,
+        y: 0.5,
+        scale: 2.0,
+        opacity: 0.9,
+        blendMode: 'screen',
+        timeRange: [10, 15]
       }
     }
   ],
@@ -76,7 +87,7 @@ export const avantApresVillageTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['before-after', 'comparison', 'development']
   }
 };
