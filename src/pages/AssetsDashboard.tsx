@@ -31,6 +31,8 @@ import TemplateAssetAnalyzer from '@/components/tamtam/admin/TemplateAssetAnalyz
 import SmartDownloadPanel from '@/components/tamtam/admin/SmartDownloadPanel';
 import { ENVATO_ASSET_MAP } from '@/lib/EnvatoDownloader';
 import { useAssetSync } from '@/services/AssetSyncService';
+import { useAssetCleanup } from '@/services/AssetCleanupService';
+import { useAssetCorrection } from '@/services/AssetCorrectionService';
 
 // ============================================================================
 // TYPES
@@ -163,21 +165,32 @@ const AssetsDashboard: React.FC = () => {
     toast.info('Déconnecté de Envato Elements');
   };
 
-  // Quick fix handler
+  // Real Quick Fix using actual services
+  const { analyze, fix } = useAssetCleanup();
+  const { runCorrection, summary: correctionSummary } = useAssetCorrection();
+  
   const handleQuickFix = async () => {
     setIsQuickFixing(true);
-    toast.info('Analyse des problèmes en cours...');
+    toast.info('🔍 Analyse des problèmes en cours...');
     
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    toast.info('Téléchargement des assets manquants critiques...');
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    toast.info('Validation et optimisation...');
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setIsQuickFixing(false);
-    toast.success('Quick Fix terminé! 12 problèmes résolus.');
+    try {
+      // Step 1: Analyze issues
+      const analysisResult = await analyze();
+      toast.info(`📋 ${analysisResult.totalIssues} problèmes détectés`);
+      
+      // Step 2: Run auto-corrections
+      await runCorrection();
+      
+      // Step 3: Apply fixes
+      const fixResult = await fix();
+      
+      toast.success(`✅ Quick Fix terminé! ${fixResult.fixedIssues} problèmes traités.`);
+    } catch (error) {
+      toast.error('Erreur lors du Quick Fix');
+      console.error('Quick Fix error:', error);
+    } finally {
+      setIsQuickFixing(false);
+    }
   };
 
   // Format file size

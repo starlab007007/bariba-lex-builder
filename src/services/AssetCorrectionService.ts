@@ -4,6 +4,14 @@
  */
 
 import { toast } from 'sonner';
+import { 
+  ASSET_CATEGORIES, 
+  KNOWN_ISSUES, 
+  getEnvatoSearchUrl,
+  matchesNamingPattern,
+  detectFileCategory,
+  isLikelyLFSPointer
+} from '@/lib/AssetConfig';
 
 // ============================================================================
 // TYPES
@@ -38,172 +46,58 @@ export interface DownloadedAsset {
 }
 
 // ============================================================================
-// ASSET CORRECTION MAPPINGS
+// ASSET CORRECTION MAPPINGS - Generated from KNOWN_ISSUES
 // ============================================================================
 
-// Maps problematic files to their Envato equivalents
-export const ASSET_CORRECTIONS: AssetCorrection[] = [
-  // 3D Models - Currently has leak-XXX.webm files that should be GLB
-  ...Array.from({ length: 22 }, (_, i) => ({
-    id: `3d-model-fix-${i + 1}`,
-    category: '3d-models',
-    problemType: 'misplaced' as const,
-    currentFile: `leak-${String(i + 1).padStart(3, '0')}.webm`,
-    suggestedFix: `model-${String(i + 1).padStart(3, '0')}.glb`,
-    envatoSearchQuery: i < 5 ? 'african mask 3d' : i < 10 ? 'drum 3d model' : i < 15 ? 'tribal pattern 3d' : 'african sculpture 3d',
-    envatoCategory: '3d-models',
-    priority: 'critical' as const,
-    status: 'pending' as const,
-  })),
+function generateCorrectionsFromKnownIssues(): AssetCorrection[] {
+  const corrections: AssetCorrection[] = [];
+  // Generate corrections from known issues
+  KNOWN_ISSUES.forEach(issue => {
+    const config = ASSET_CATEGORIES[issue.category];
+    if (!config) return;
+    
+    for (let i = 1; i <= issue.affectedCount; i++) {
+      const currentFile = issue.currentPattern?.replace('XXX', String(i).padStart(3, '0'));
+      const suggestedFix = issue.expectedPattern.replace('XXX', String(i).padStart(3, '0'));
+      
+      corrections.push({
+        id: `${issue.id}-${i}`,
+        category: issue.category,
+        problemType: issue.problemType as AssetCorrection['problemType'],
+        currentFile,
+        suggestedFix,
+        envatoSearchQuery: config.envatoSearchTerms[i % config.envatoSearchTerms.length],
+        envatoCategory: config.envatoCategory,
+        priority: issue.priority,
+        status: 'pending'
+      });
+    }
+  });
+  
+  return corrections;
+}
 
-  // Particles - Has leak-XXX.webm files that should be particle-XXX.webm
-  ...Array.from({ length: 37 }, (_, i) => ({
-    id: `particle-fix-${i + 1}`,
-    category: 'particles',
-    problemType: 'wrong-naming' as const,
-    currentFile: `leak-${String(i + 1).padStart(3, '0')}.webm`,
-    suggestedFix: `particle-${String(i + 1).padStart(3, '0')}.webm`,
-    envatoSearchQuery: i < 10 ? 'dust particles overlay' : i < 20 ? 'bokeh particles' : i < 30 ? 'sparkle particles' : 'confetti particles',
-    envatoCategory: 'particles',
-    priority: 'high' as const,
-    status: 'pending' as const,
-  })),
+export const ASSET_CORRECTIONS: AssetCorrection[] = generateCorrectionsFromKnownIssues();
 
-  // Transitions - Has 20 leak-XXX.webm files mixed in
-  ...Array.from({ length: 20 }, (_, i) => ({
-    id: `transition-fix-${i + 1}`,
-    category: 'transitions',
-    problemType: 'misplaced' as const,
-    currentFile: `leak-${String(i + 1).padStart(3, '0')}.webm`,
-    suggestedFix: `transition-${String(i + 11).padStart(3, '0')}.mp4`,
-    envatoSearchQuery: i < 5 ? 'cinematic transition' : i < 10 ? 'glitch transition' : i < 15 ? 'zoom transition' : 'wipe transition',
-    envatoCategory: 'transitions',
-    priority: 'medium' as const,
-    status: 'pending' as const,
-  })),
-
-  // Light Leak - Some may be LFS pointers
-  ...Array.from({ length: 17 }, (_, i) => ({
-    id: `lightleak-verify-${i + 1}`,
-    category: 'light-leak',
-    problemType: 'lfs-pointer' as const,
-    currentFile: `leak-${String(i + 1).padStart(3, '0')}.${i < 5 ? 'webm' : 'mp4'}`,
-    suggestedFix: `leak-${String(i + 1).padStart(3, '0')}.webm`,
-    envatoSearchQuery: i < 5 ? 'orange light leak 4k' : i < 10 ? 'blue light leak cinematic' : 'warm light leak overlay',
-    envatoCategory: 'light-leak',
-    priority: 'medium' as const,
-    status: 'pending' as const,
-  })),
-
-  // Fonts - Empty folder, need to download
-  {
-    id: 'font-orbitron',
-    category: 'fonts',
-    problemType: 'missing' as const,
-    suggestedFix: 'Orbitron-Regular.ttf',
-    envatoSearchQuery: 'orbitron font',
-    envatoCategory: 'fonts',
-    priority: 'high' as const,
-    status: 'pending' as const,
-  },
-  {
-    id: 'font-oswald',
-    category: 'fonts',
-    problemType: 'missing' as const,
-    suggestedFix: 'Oswald-Regular.ttf',
-    envatoSearchQuery: 'oswald font',
-    envatoCategory: 'fonts',
-    priority: 'high' as const,
-    status: 'pending' as const,
-  },
-  {
-    id: 'font-bebas',
-    category: 'fonts',
-    problemType: 'missing' as const,
-    suggestedFix: 'BebasNeue-Regular.ttf',
-    envatoSearchQuery: 'bebas neue font',
-    envatoCategory: 'fonts',
-    priority: 'high' as const,
-    status: 'pending' as const,
-  },
-  {
-    id: 'font-montserrat',
-    category: 'fonts',
-    problemType: 'missing' as const,
-    suggestedFix: 'Montserrat-Regular.ttf',
-    envatoSearchQuery: 'montserrat font',
-    envatoCategory: 'fonts',
-    priority: 'medium' as const,
-    status: 'pending' as const,
-  },
-  {
-    id: 'font-playfair',
-    category: 'fonts',
-    problemType: 'missing' as const,
-    suggestedFix: 'PlayfairDisplay-Regular.ttf',
-    envatoSearchQuery: 'playfair display font',
-    envatoCategory: 'fonts',
-    priority: 'medium' as const,
-    status: 'pending' as const,
-  },
-];
-
-// ============================================================================
-// ENVATO EQUIVALENT MAPPINGS
-// ============================================================================
-
-export interface EnvatoEquivalent {
+// Re-export ENVATO_EQUIVALENTS from centralized config for backward compatibility
+export const ENVATO_EQUIVALENTS: Record<string, {
   category: string;
   searchTerms: string[];
   expectedFormat: string;
   namingPattern: string;
   minCount: number;
-}
-
-export const ENVATO_EQUIVALENTS: Record<string, EnvatoEquivalent> = {
-  '3d-models': {
-    category: '3d',
-    searchTerms: ['african mask 3d', 'drum 3d model glb', 'tribal sculpture 3d', 'baobab tree 3d', 'adinkra symbol 3d'],
-    expectedFormat: '.glb',
-    namingPattern: 'model-XXX.glb',
-    minCount: 20,
-  },
-  'particles': {
-    category: 'motion-graphics',
-    searchTerms: ['dust particles overlay', 'bokeh particles 4k', 'sparkle magic particles', 'confetti celebration overlay', 'fire embers particles'],
-    expectedFormat: '.webm',
-    namingPattern: 'particle-XXX.webm',
-    minCount: 30,
-  },
-  'transitions': {
-    category: 'motion-graphics',
-    searchTerms: ['cinematic transitions pack', 'glitch transition', 'zoom transition overlay', 'ink transition alpha'],
-    expectedFormat: '.mp4',
-    namingPattern: 'transition-XXX.mp4',
-    minCount: 20,
-  },
-  'light-leak': {
-    category: 'motion-graphics',
-    searchTerms: ['light leak overlay 4k', 'cinematic light leak', 'film burn overlay', 'anamorphic flare'],
-    expectedFormat: '.webm',
-    namingPattern: 'leak-XXX.webm',
-    minCount: 40,
-  },
-  'textures': {
-    category: 'motion-graphics',
-    searchTerms: ['abstract texture loop', 'organic texture 4k', 'noise grain overlay', 'paper texture video'],
-    expectedFormat: '.mp4',
-    namingPattern: 'video-XXX.mp4',
-    minCount: 50,
-  },
-  'fonts': {
-    category: 'fonts',
-    searchTerms: ['modern sans serif', 'display font', 'african inspired font'],
-    expectedFormat: '.ttf',
-    namingPattern: 'FontName.ttf',
-    minCount: 5,
-  },
-};
+}> = Object.fromEntries(
+  Object.entries(ASSET_CATEGORIES).map(([id, config]) => [
+    id,
+    {
+      category: config.envatoCategory,
+      searchTerms: config.envatoSearchTerms,
+      expectedFormat: config.expectedFormats[0],
+      namingPattern: config.namingPattern,
+      minCount: config.expectedCount
+    }
+  ])
+);
 
 // ============================================================================
 // SERVICE CLASS

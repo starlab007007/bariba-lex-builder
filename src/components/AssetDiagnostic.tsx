@@ -11,6 +11,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { 
+  ASSET_CATEGORIES, 
+  AUDIO_SUBFOLDERS,
+  generateExpectedFiles 
+} from "@/lib/AssetConfig";
 
 interface AssetCategory {
   id: string;
@@ -31,43 +36,34 @@ interface ScanResult {
   files: { name: string; isLfs: boolean }[];
 }
 
-const ASSET_CATEGORIES: AssetCategory[] = [
-  { id: "lens-flare", name: "Lens Flare", path: "/assets/envato/lens-flare/", expectedCount: 455, expectedFormats: ["PNG"], icon: <FileImage className="h-4 w-4" /> },
-  { id: "light-leak", name: "Light Leak", path: "/assets/envato/light-leak/", expectedCount: 17, expectedFormats: ["WebM", "MP4"], icon: <FileVideo className="h-4 w-4" /> },
-  { id: "particles", name: "Particles", path: "/assets/envato/particles/", expectedCount: 37, expectedFormats: ["WebM", "MP4"], icon: <FileVideo className="h-4 w-4" /> },
-  { id: "transitions", name: "Transitions", path: "/assets/envato/transitions/", expectedCount: 32, expectedFormats: ["MP4"], icon: <FileVideo className="h-4 w-4" /> },
-  { id: "textures", name: "Textures", path: "/assets/envato/textures/", expectedCount: 215, expectedFormats: ["PNG", "MP4"], icon: <FileImage className="h-4 w-4" /> },
-  { id: "3d-models", name: "3D Models", path: "/assets/envato/3d-models/", expectedCount: 22, expectedFormats: ["GLB"], icon: <Folder className="h-4 w-4" /> },
-  { id: "fonts", name: "Fonts", path: "/assets/envato/fonts/", expectedCount: 9, expectedFormats: ["TTF"], icon: <FileType className="h-4 w-4" /> },
-  { id: "audio-modern", name: "Audio Modern", path: "/assets/envato/audio/modern/", expectedCount: 10, expectedFormats: ["MP3"], icon: <FileAudio className="h-4 w-4" /> },
-  { id: "audio-traditional", name: "Audio Traditional", path: "/assets/envato/audio/traditional/", expectedCount: 8, expectedFormats: ["MP3"], icon: <FileAudio className="h-4 w-4" /> },
-  { id: "audio-percussion", name: "Audio Percussion", path: "/assets/envato/audio/percussion/", expectedCount: 8, expectedFormats: ["MP3"], icon: <FileAudio className="h-4 w-4" /> },
-];
+// Générer la configuration depuis AssetConfig
+const ASSET_CATEGORY_LIST: AssetCategory[] = Object.entries(ASSET_CATEGORIES).map(([id, config]) => {
+  const iconMap: Record<string, React.ReactNode> = {
+    'lens-flare': <FileImage className="h-4 w-4" />,
+    'light-leak': <FileVideo className="h-4 w-4" />,
+    'particles': <FileVideo className="h-4 w-4" />,
+    'transitions': <FileVideo className="h-4 w-4" />,
+    'textures': <FileImage className="h-4 w-4" />,
+    '3d-models': <Folder className="h-4 w-4" />,
+    'fonts': <FileType className="h-4 w-4" />,
+    'audio': <FileAudio className="h-4 w-4" />,
+  };
+  
+  return {
+    id,
+    name: config.displayName,
+    path: config.basePath,
+    expectedCount: config.expectedCount,
+    expectedFormats: config.expectedFormats.map(f => f.replace('.', '').toUpperCase()),
+    icon: iconMap[id] || <Folder className="h-4 w-4" />
+  };
+});
 
-// Known files per category (for static checking since we can't list directories in browser)
-const KNOWN_FILES: Record<string, string[]> = {
-  "lens-flare": Array.from({ length: 455 }, (_, i) => `flare-${String(i + 1).padStart(3, '0')}.png`),
-  "light-leak": [
-    "leak-001.webm", "leak-002.webm", "leak-012.webm", "leak-013.webm", "leak-014.webm",
-    "leak-015.webm", "leak-017.webm", "leak-020.webm", "leak-001.mp4", "leak-002.mp4",
-    "leak-003.mp4", "leak-004.mp4", "leak-005.mp4", "leak-006.mp4", "leak-007.mp4",
-    "leak-008.mp4", "leak-009.mp4"
-  ],
-  "particles": Array.from({ length: 37 }, (_, i) => `particle-${String(i + 1).padStart(3, '0')}.webm`),
-  "transitions": Array.from({ length: 32 }, (_, i) => `transition-${String(i + 1).padStart(3, '0')}.mp4`),
-  "textures": [
-    ...Array.from({ length: 215 }, (_, i) => `video-${String(i + 1).padStart(3, '0')}.mp4`),
-  ],
-  "3d-models": Array.from({ length: 22 }, (_, i) => `model-${String(i + 1).padStart(3, '0')}.glb`),
-  "fonts": [
-    "AfricanSpirit.ttf", "BaribaScript.ttf", "KanembuDisplay.ttf",
-    "SahelSans.ttf", "WestAfricaBold.ttf", "ZarmaRegular.ttf",
-    "DendiBold.ttf", "FulfuldeLight.ttf", "HausaMedium.ttf"
-  ],
-  "audio-modern": Array.from({ length: 10 }, (_, i) => `audio-${String(i + 9).padStart(4, '0')}.mp3`),
-  "audio-traditional": Array.from({ length: 8 }, (_, i) => `audio-${String(i + 1).padStart(4, '0')}.mp3`),
-  "audio-percussion": Array.from({ length: 8 }, (_, i) => `audio-${String(i + 5).padStart(4, '0')}.mp3`),
-};
+// Générer les fichiers connus depuis AssetConfig
+const KNOWN_FILES: Record<string, string[]> = {};
+Object.keys(ASSET_CATEGORIES).forEach(categoryId => {
+  KNOWN_FILES[categoryId] = generateExpectedFiles(categoryId);
+});
 
 async function checkIfLfsPointer(url: string): Promise<{ exists: boolean; isLfs: boolean }> {
   try {
@@ -117,7 +113,7 @@ export function AssetDiagnostic() {
     let totalChecked = 0;
     const totalFiles = Object.values(KNOWN_FILES).reduce((sum, arr) => sum + arr.length, 0);
     
-    for (const category of ASSET_CATEGORIES) {
+    for (const category of ASSET_CATEGORY_LIST) {
       setCurrentCategory(category.name);
       const files = KNOWN_FILES[category.id] || [];
       const categoryResult: ScanResult = {
@@ -156,7 +152,7 @@ export function AssetDiagnostic() {
         }
         
         totalChecked++;
-        setScanProgress(Math.round((totalChecked / (ASSET_CATEGORIES.length * sampleSize)) * 100));
+        setScanProgress(Math.round((totalChecked / (ASSET_CATEGORY_LIST.length * sampleSize)) * 100));
       }
       
       // Extrapolate to full count
@@ -224,7 +220,7 @@ export function AssetDiagnostic() {
     return "bg-red-500";
   };
 
-  const totalExpected = ASSET_CATEGORIES.reduce((sum, cat) => sum + cat.expectedCount, 0);
+  const totalExpected = ASSET_CATEGORY_LIST.reduce((sum, cat) => sum + cat.expectedCount, 0);
   const totalReal = results.reduce((sum, r) => sum + r.realFileCount, 0);
   const totalLfs = results.reduce((sum, r) => sum + r.lfsPointerCount, 0);
 
@@ -301,7 +297,7 @@ export function AssetDiagnostic() {
               </TableRow>
             ) : (
               results.map((result) => {
-                const category = ASSET_CATEGORIES.find(c => c.name === result.category);
+                const category = ASSET_CATEGORY_LIST.find(c => c.name === result.category);
                 const percentage = Math.round((result.realFileCount / result.expectedCount) * 100);
                 
                 return (
