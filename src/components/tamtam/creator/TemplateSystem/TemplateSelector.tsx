@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Template } from './types';
+import { allTemplates } from './templates';
 
 // Local category type
 type LocalCategory = 'all' | 'storytelling' | 'music' | 'business' | 'education' | 'future';
@@ -31,56 +32,10 @@ const CATEGORIES = [
   { id: 'future' as const, label: 'Futur', emoji: '🚀' },
 ];
 
-// Default templates (placeholder)
-const DEFAULT_TEMPLATES: Template[] = [
-  {
-    id: 'griot-digital',
-    name: 'Griot Digital',
-    nameBa: 'Griot Numérique',
-    category: 'storytelling',
-    description: 'Traditional storytelling with 3D Adinkra symbols',
-    thumbnail: '/assets/templates/griot-digital/thumbnail.jpg',
-    demoVideo: '/assets/templates/griot-digital/demo.mp4',
-    effects: [],
-    duration: 30,
-    isNew: true,
-  },
-  {
-    id: 'afrobeat-pulse',
-    name: 'Afrobeat Pulse',
-    category: 'music',
-    description: 'Dynamic music video with beat-synced effects',
-    thumbnail: '/assets/templates/afrobeat-pulse/thumbnail.jpg',
-    effects: [],
-    duration: 60,
-    isPremium: true,
-  },
-  {
-    id: 'market-pro',
-    name: 'Market Pro',
-    nameBa: 'Marché Pro',
-    category: 'business',
-    description: 'Professional product showcase template',
-    thumbnail: '/assets/templates/market-pro/thumbnail.jpg',
-    effects: [],
-    duration: 15,
-  },
-  {
-    id: 'learn-easy',
-    name: 'Learn Easy',
-    nameBa: 'Apprendre Facile',
-    category: 'education',
-    description: 'Educational content with clear visuals',
-    thumbnail: '/assets/templates/learn-easy/thumbnail.jpg',
-    effects: [],
-    duration: 45,
-  },
-];
-
 export function TemplateSelector({ 
   onSelect, 
   onClose,
-  templates = DEFAULT_TEMPLATES 
+  templates = allTemplates 
 }: TemplateSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<LocalCategory>('all');
