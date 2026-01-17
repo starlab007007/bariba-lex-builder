@@ -28,6 +28,7 @@ import AssetHealthDashboard from '@/components/tamtam/admin/AssetHealthDashboard
 import AssetCleanupPanel from '@/components/tamtam/admin/AssetCleanupPanel';
 import FontManagerPanel from '@/components/tamtam/admin/FontManagerPanel';
 import TemplateAssetAnalyzer from '@/components/tamtam/admin/TemplateAssetAnalyzer';
+import SmartDownloadPanel from '@/components/tamtam/admin/SmartDownloadPanel';
 import { ENVATO_ASSET_MAP } from '@/lib/EnvatoDownloader';
 import { useAssetSync } from '@/services/AssetSyncService';
 
@@ -659,6 +660,11 @@ const AssetsDashboard: React.FC = () => {
           {/* ============ TAB 6: VALIDATION ============ */}
           <TabsContent value="validation">
             <AssetValidator />
+          </TabsContent>
+
+          {/* ============ TAB 7: ANALYZER ============ */}
+          <TabsContent value="analyzer">
+            <TemplateAssetAnalyzer />
           </TabsContent>
 
           {/* ============ TAB 7: SETTINGS ============ */}
