@@ -8,22 +8,25 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, RotateCcw, Sparkles, Zap, Layers,
-  Activity, Clock, Eye, EyeOff, Settings, ChevronDown,
-  ChevronRight, Volume2, VolumeX, Maximize, RefreshCw,
+  Activity, Clock, ChevronDown, ChevronRight, Volume2, VolumeX,
   CheckCircle2, XCircle, Loader2, AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
-import { TemplateEngine } from '@/components/tamtam/creator/TemplateSystem/TemplateEngine';
-import { assetManager } from '@/components/tamtam/creator/TemplateSystem/AssetManager';
-import { allTemplates } from '@/components/tamtam/creator/TemplateSystem/templates';
-import type { Template, RenderState, EngineState } from '@/components/tamtam/creator/TemplateSystem/types';
+import { 
+  TemplateEngine, 
+  templateEngine,
+  assetManager,
+  allTemplates,
+  type Template,
+  type RenderState,
+  type EngineState
+} from '@/components/tamtam/creator/TemplateSystem';
 
 // ============================================================================
 // TYPES
@@ -59,7 +62,6 @@ export default function TemplateTest() {
   const [showEffectsList, setShowEffectsList] = useState(true);
   const [showAssetsList, setShowAssetsList] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
-  const [volume, setVolume] = useState(30);
   
   // FPS calculation
   const fpsRef = useRef({ frames: 0, lastTime: performance.now() });
@@ -71,17 +73,17 @@ export default function TemplateTest() {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    // Initialize engine with canvas only (AssetManager is used internally)
+    // Initialize engine with canvas
     const engine = new TemplateEngine(canvasRef.current);
     engineRef.current = engine;
     setIsEngineReady(true);
 
     // Subscribe to state changes
-    const unsubState = engine.subscribe((state) => {
+    const unsubState = engine.subscribe((state: EngineState) => {
       setEngineState(state);
     });
 
-    const unsubRender = engine.onRenderState((state) => {
+    const unsubRender = engine.onRenderState((state: RenderState) => {
       setRenderState(state);
       setCurrentTime(state.currentTime);
     });
@@ -127,7 +129,7 @@ export default function TemplateTest() {
     }
 
     setAssetStatuses(
-      Array.from(assetIds).map(id => ({ id, status: 'pending' }))
+      Array.from(assetIds).map(id => ({ id, status: 'pending' as const }))
     );
 
     try {
@@ -136,17 +138,18 @@ export default function TemplateTest() {
       // Update asset statuses as they load
       for (const assetId of assetIds) {
         setAssetStatuses(prev => 
-          prev.map(a => a.id === assetId ? { ...a, status: 'loading' } : a)
+          prev.map(a => a.id === assetId ? { ...a, status: 'loading' as const } : a)
         );
         
         try {
           await assetManager.load(assetId);
           setAssetStatuses(prev => 
-            prev.map(a => a.id === assetId ? { ...a, status: 'loaded' } : a)
+            prev.map(a => a.id === assetId ? { ...a, status: 'loaded' as const } : a)
           );
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const errorMsg = err instanceof Error ? err.message : 'Unknown error';
           setAssetStatuses(prev => 
-            prev.map(a => a.id === assetId ? { ...a, status: 'error', error: err.message } : a)
+            prev.map(a => a.id === assetId ? { ...a, status: 'error' as const, error: errorMsg } : a)
           );
           console.warn(`[TemplateTest] Asset failed: ${assetId}`, err);
         }
@@ -155,9 +158,10 @@ export default function TemplateTest() {
       await engineRef.current.loadTemplate(template);
       console.log('[TemplateTest] Template loaded successfully');
       
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load template';
       console.error('[TemplateTest] Failed to load template:', err);
-      setError(err.message || 'Failed to load template');
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -189,9 +193,7 @@ export default function TemplateTest() {
           fpsRef.current.lastTime = now;
         }
         
-        if (isPlaying) {
-          animationRef.current = requestAnimationFrame(trackFps);
-        }
+        animationRef.current = requestAnimationFrame(trackFps);
       };
       animationRef.current = requestAnimationFrame(trackFps);
     }
@@ -202,12 +204,10 @@ export default function TemplateTest() {
     engineRef.current.stop();
     setIsPlaying(false);
     setCurrentTime(0);
-    // Reset engine time if method exists
-  }, []);
-
-  const seek = useCallback((time: number) => {
-    setCurrentTime(time);
-    // Seek engine if method exists
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
   }, []);
 
   // ============================================================================
@@ -288,7 +288,7 @@ export default function TemplateTest() {
               <CardContent className="p-0">
                 <ScrollArea className="h-[300px]">
                   <div className="p-3 space-y-2">
-                    {allTemplates.map(template => (
+                    {allTemplates.map((template: Template) => (
                       <motion.button
                         key={template.id}
                         onClick={() => loadTemplate(template)}
@@ -439,13 +439,15 @@ export default function TemplateTest() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center"
+                        className="absolute inset-0 bg-black/70 flex items-center justify-center"
                       >
-                        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-                        <p className="text-white text-sm">Loading template...</p>
-                        <p className="text-white/60 text-xs mt-1">
-                          {assetStatuses.filter(a => a.status === 'loaded').length}/{assetStatuses.length} assets
-                        </p>
+                        <div className="text-center">
+                          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+                          <p className="text-white text-sm">Loading template...</p>
+                          <p className="text-white/60 text-xs mt-1">
+                            {renderState?.loadedAssets || 0} / {renderState?.totalAssets || 0} assets
+                          </p>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -457,100 +459,75 @@ export default function TemplateTest() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center p-4"
+                        className="absolute inset-0 bg-black/70 flex items-center justify-center"
                       >
-                        <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-                        <p className="text-red-400 text-sm text-center">{error}</p>
+                        <div className="text-center p-4">
+                          <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                          <p className="text-white text-sm font-medium">Error Loading Template</p>
+                          <p className="text-white/60 text-xs mt-2 max-w-xs">{error}</p>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  {/* No Template Overlay */}
+                  {/* No Template Selected */}
                   {!selectedTemplate && !isLoading && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60">
-                      <Sparkles className="w-16 h-16 mb-4 opacity-30" />
-                      <p className="text-sm">Select a template to preview</p>
-                    </div>
-                  )}
-
-                  {/* Stats Overlay */}
-                  <div className="absolute top-3 left-3 right-3 flex justify-between">
-                    <Badge variant="secondary" className="bg-black/60 text-white text-xs">
-                      {formatTime(currentTime)} / {formatTime(selectedTemplate?.duration || 0)}
-                    </Badge>
-                    <Badge variant="secondary" className="bg-black/60 text-white text-xs font-mono">
-                      {fps} FPS
-                    </Badge>
-                  </div>
-
-                  {/* Template Info */}
-                  {selectedTemplate && (
-                    <div className="absolute bottom-3 left-3 right-3">
-                      <div className="bg-black/60 backdrop-blur-sm rounded-lg p-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-white text-sm font-medium">
-                            {selectedTemplate.name}
-                          </span>
-                          <Badge variant="outline" className="text-white border-white/30 text-xs">
-                            {selectedTemplate.category}
-                          </Badge>
-                        </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <Sparkles className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+                        <p className="text-muted-foreground">Select a template to preview</p>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Controls */}
-                <div className="p-4 bg-muted/30 border-t border-border">
-                  {/* Progress Bar */}
-                  <div className="mb-4">
-                    <Slider
-                      value={[currentTime]}
-                      min={0}
-                      max={selectedTemplate?.duration || 30}
-                      step={0.1}
-                      onValueChange={([v]) => seek(v)}
-                      disabled={!selectedTemplate}
-                      className="cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Control Buttons */}
+                {/* Controls Bar */}
+                <div className="p-4 border-t border-border bg-card">
                   <div className="flex items-center justify-between">
+                    {/* Playback Controls */}
                     <div className="flex items-center gap-2">
                       <Button
-                        size="sm"
-                        variant={isPlaying ? "default" : "secondary"}
+                        variant="outline"
+                        size="icon"
                         onClick={togglePlayPause}
                         disabled={!selectedTemplate || isLoading}
                       >
                         {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       </Button>
-                      
                       <Button
-                        size="sm"
                         variant="outline"
+                        size="icon"
                         onClick={reset}
-                        disabled={!selectedTemplate}
+                        disabled={!selectedTemplate || isLoading}
                       >
                         <RotateCcw className="w-4 h-4" />
                       </Button>
-
-                      <div className="w-px h-6 bg-border mx-2" />
-
                       <Button
-                        size="sm"
-                        variant="ghost"
+                        variant="outline"
+                        size="icon"
                         onClick={() => setIsMuted(!isMuted)}
                       >
                         {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                       </Button>
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>Render: {renderState?.loadedAssets || 0}/{renderState?.totalAssets || 0}</span>
-                      <span>•</span>
-                      <span>{isPlaying ? '▶ Playing' : '⏸ Paused'}</span>
+                    {/* Time Display */}
+                    <div className="flex items-center gap-4">
+                      <span className="font-mono text-sm">
+                        {formatTime(currentTime)} / {formatTime(selectedTemplate?.duration || 0)}
+                      </span>
+                    </div>
+
+                    {/* Status */}
+                    <div className="flex items-center gap-2">
+                      {isPlaying && (
+                        <Badge className="bg-green-600 animate-pulse">
+                          ● PLAYING
+                        </Badge>
+                      )}
+                      {engineState?.isLoaded && !isPlaying && (
+                        <Badge variant="secondary">READY</Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -561,7 +538,7 @@ export default function TemplateTest() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
+                  <Zap className="w-4 h-4" />
                   Debug Info
                 </CardTitle>
               </CardHeader>
@@ -582,20 +559,10 @@ export default function TemplateTest() {
                   <div className="p-2 rounded bg-muted/30">
                     <div className="text-muted-foreground mb-1">Assets</div>
                     <div className="font-mono">
-                      {assetStatuses.filter(a => a.status === 'loaded').length}/{assetStatuses.length}
+                      {assetStatuses.filter(a => a.status === 'loaded').length} / {assetStatuses.length}
                     </div>
                   </div>
                 </div>
-
-                {/* Engine State JSON */}
-                <details className="mt-4">
-                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                    Engine State (JSON)
-                  </summary>
-                  <pre className="mt-2 p-2 rounded bg-muted/30 text-xs overflow-auto max-h-[200px] font-mono">
-                    {JSON.stringify({ engineState, renderState }, null, 2)}
-                  </pre>
-                </details>
               </CardContent>
             </Card>
           </div>
