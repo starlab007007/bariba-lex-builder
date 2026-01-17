@@ -1,54 +1,89 @@
 /**
- * Template System Types v3.0
- * Core interfaces for TAM-TAM video creation platform
+ * TAM-TAM Template System Types v4.0
+ * Comprehensive type definitions for video creation platform
  */
 
 // Re-export from UnifiedTemplateTypes for compatibility
 export * from '@/types/UnifiedTemplateTypes';
 
-// Asset categories matching Envato structure
-export type AssetCategory = 
-  | '3d-models'
-  | 'audio'
-  | 'fonts'
-  | 'particles'
-  | 'transitions'
-  | 'textures'
-  | 'lens-flare'
-  | 'light-leak';
+// ============================================================================
+// ASSET TYPES
+// ============================================================================
 
-// Effect trigger types
+export type AssetCategory = 
+  | '3d-models' | 'audio' | 'fonts' | 'particles' 
+  | 'transitions' | 'textures' | 'lens-flare' | 'light-leak';
+
+// ============================================================================
+// TEMPLATE CATEGORIES
+// ============================================================================
+
+export type TemplateCategory = 
+  | 'storytelling' | 'music' | 'business' | 'education' | 'future';
+
+// ============================================================================
+// EFFECT TYPES
+// ============================================================================
+
+export type EffectType = 
+  | 'lens-flare' | 'light-leak' | '3d-object' | 'particles' 
+  | 'text' | 'transition' | 'texture';
+
 export type EffectTrigger = 'beat' | 'keyword' | 'time' | 'always';
 
-// Effect types
-export type EffectType = 
-  | 'lens-flare' 
-  | 'light-leak' 
-  | '3d-object' 
-  | 'particles' 
-  | 'text' 
-  | 'transition' 
-  | 'texture';
+export type BlendMode = GlobalCompositeOperation;
 
-// Effect configuration
+// ============================================================================
+// EFFECT CONFIGURATION
+// ============================================================================
+
 export interface EffectConfig {
-  x?: number;
-  y?: number;
+  // Position
+  x?: number; 
+  y?: number; 
+  z?: number;
+  
+  // Transform
   scale?: number;
-  opacity?: number;
   rotation?: number;
-  blendMode?: GlobalCompositeOperation;
-  content?: string;
-  font?: string;
+  rotationX?: number; 
+  rotationY?: number; 
+  rotationZ?: number;
+  
+  // Appearance
+  opacity?: number;
+  blendMode?: BlendMode;
+  
+  // Animation
+  duration?: number; 
+  delay?: number; 
+  loop?: boolean;
+  
+  // Text-specific
+  text?: string; 
+  font?: string; 
   color?: string;
-  align?: CanvasTextAlign;
+  align?: 'left' | 'center' | 'right';
+  strokeColor?: string; 
+  strokeWidth?: number;
+  shadow?: boolean;
+  
+  // Trigger-specific
+  keywords?: string[];
+  timeRange?: [number, number];
+  beatThreshold?: number;
+  
+  // Legacy support
   startTime?: number;
   endTime?: number;
-  duration?: number;
+  content?: string;
   [key: string]: unknown;
 }
 
-// Single effect definition
+// ============================================================================
+// EFFECT DEFINITION
+// ============================================================================
+
 export interface Effect {
   id?: string;
   type: EffectType;
@@ -57,7 +92,10 @@ export interface Effect {
   config: EffectConfig;
 }
 
-// Audio configuration
+// ============================================================================
+// AUDIO CONFIGURATION
+// ============================================================================
+
 export interface AudioConfig {
   backgroundMusic?: string;
   volume?: number;
@@ -65,7 +103,53 @@ export interface AudioConfig {
   beatDetection?: boolean;
 }
 
-// Text overlay configuration
+// ============================================================================
+// TEMPLATE DEFINITION
+// ============================================================================
+
+export interface Template {
+  id: string;
+  name: string;
+  nameBa?: string; // Bariba name
+  category: TemplateCategory;
+  description: string;
+  descriptionBa?: string; // Bariba description
+  thumbnail: string;
+  demoVideo?: string;
+  effects: Effect[];
+  audio?: AudioConfig;
+  metadata?: {
+    author?: string;
+    version?: string;
+    tags?: string[];
+  };
+  // Legacy support
+  text?: TextConfig[];
+  slots?: TemplateSlot[];
+  duration?: number;
+  tags?: string[];
+  isPremium?: boolean;
+  isNew?: boolean;
+  usageCount?: number;
+}
+
+// ============================================================================
+// RENDER STATE
+// ============================================================================
+
+export interface RenderState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  fps: number;
+  loadedAssets: number;
+  totalAssets: number;
+}
+
+// ============================================================================
+// LEGACY TYPES (for backward compatibility)
+// ============================================================================
+
 export interface TextConfig {
   content: string;
   font: string;
@@ -75,7 +159,6 @@ export interface TextConfig {
   animation?: 'fade' | 'slide' | 'typewriter' | 'none';
 }
 
-// Template slot for user content
 export interface TemplateSlot {
   id: string;
   type: 'video' | 'audio' | 'image' | 'text';
@@ -89,28 +172,6 @@ export interface TemplateSlot {
   };
 }
 
-// Local template definition (simpler than UnifiedTemplate)
-export interface Template {
-  id: string;
-  name: string;
-  nameBa?: string; // Bariba name
-  category: 'storytelling' | 'music' | 'business' | 'education' | 'future';
-  description: string;
-  descriptionBa?: string; // Bariba description
-  thumbnail: string;
-  demoVideo?: string;
-  effects: Effect[];
-  audio?: AudioConfig;
-  text?: TextConfig[];
-  slots?: TemplateSlot[];
-  duration?: number;
-  tags?: string[];
-  isPremium?: boolean;
-  isNew?: boolean;
-  usageCount?: number;
-}
-
-// Template state for rendering
 export interface TemplateState {
   template: unknown;
   isLoading: boolean;
@@ -121,7 +182,6 @@ export interface TemplateState {
   error: string | null;
 }
 
-// Template layer for composition
 export interface TemplateLayer {
   id: string;
   type: string;
@@ -140,7 +200,6 @@ export interface TemplateLayer {
   };
 }
 
-// Template engine state
 export interface EngineState {
   isLoaded: boolean;
   isRendering: boolean;
@@ -149,7 +208,6 @@ export interface EngineState {
   error: string | null;
 }
 
-// Export job tracking
 export interface ExportJob {
   id: string;
   status: 'pending' | 'processing' | 'complete' | 'error';
@@ -158,7 +216,6 @@ export interface ExportJob {
   error?: string;
 }
 
-// Asset loading result
 export interface LoadedAsset {
   id: string;
   type: AssetCategory;
@@ -166,7 +223,6 @@ export interface LoadedAsset {
   loaded: boolean;
 }
 
-// Render frame options
 export interface RenderOptions {
   width?: number;
   height?: number;
@@ -174,9 +230,8 @@ export interface RenderOptions {
   quality?: 'low' | 'medium' | 'high';
 }
 
-// Template selector filter
 export interface TemplateFilter {
-  category?: 'storytelling' | 'music' | 'business' | 'education' | 'future' | 'all';
+  category?: TemplateCategory | 'all';
   search?: string;
   isPremium?: boolean;
   tags?: string[];
