@@ -1,8 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Menu, Bell, Volume2 } from 'lucide-react';
+import { ArrowLeft, Menu, Bell, Volume2, Shield } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSideMenu } from '@/pages/tamtam/TamTamApp';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
@@ -30,6 +31,7 @@ export const KuaishouHeader: React.FC<KuaishouHeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   const { currentLang } = useTamTamLanguage();
+  const { isAdmin } = useAuth();
   const { open: openMenu } = useSideMenu();
   const { speakCurrentLang, isSpeaking } = useBilingualAudio();
 
@@ -91,6 +93,17 @@ export const KuaishouHeader: React.FC<KuaishouHeaderProps> = ({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
+          {/* Admin Badge */}
+          {isAdmin && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => navigate('/admin')}
+              className="w-10 h-10 rounded-full flex items-center justify-center border border-[#FF7A00]/30 bg-[#FF7A00]/20 backdrop-blur-md"
+            >
+              <Shield className="w-5 h-5 text-[#FF7A00]" />
+            </motion.button>
+          )}
+
           {showVoiceHelp && (
             <motion.button
               whileTap={{ scale: 0.9 }}

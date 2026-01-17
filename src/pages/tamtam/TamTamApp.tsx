@@ -3,8 +3,10 @@ import { useState, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TamTamLanguageProvider, useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
-import { Home, User, Settings, X, Bell, Globe, BookOpen, Languages } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 TAM-TAM APP V7 - MENU SIMPLIFIÉ
@@ -34,6 +36,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   const navigate = useNavigate();
   const location = useLocation();
   const { currentLang, setLanguage } = useTamTamLanguage();
+  const { isAdmin } = useAuth();
 
   // Navigation simplifiée : Accueil + Profil uniquement
   const navItems = [
@@ -203,6 +206,44 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
               </div>
             </div>
 
+            {/* Section Admin - Visible uniquement pour les admins */}
+            {isAdmin && (
+              <div className="p-4 border-t border-white/10">
+                <div className="flex items-center gap-2 mb-3 px-2">
+                  <Shield className="w-4 h-4 text-red-400" />
+                  <p className="text-red-400 text-[10px] font-bold uppercase tracking-wider">🔒 Administration</p>
+                </div>
+                <div className="space-y-2">
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleNavigate('/admin')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 hover:border-purple-500/50 transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
+                      <LayoutDashboard className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-white text-sm font-medium">Tableau de bord</p>
+                      <p className="text-white/40 text-[10px]">Gestion globale</p>
+                    </div>
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleNavigate('/assets')}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 hover:border-emerald-500/50 transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-white text-sm font-medium">Gestion Assets</p>
+                      <p className="text-white/40 text-[10px]">Télécharger & Optimiser</p>
+                    </div>
+                  </motion.button>
+                </div>
+              </div>
+            )}
+
             {/* Footer */}
             <div className="p-4 border-t border-white/10">
               <motion.button whileTap={{ scale: 0.98 }} onClick={() => handleNavigate('/tamtam/settings')} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5">
@@ -236,6 +277,7 @@ function AppContent() {
       <div className="min-h-screen kuaishou-bg">
         <SideMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
         <main><Outlet /></main>
+        <AdminFloatingButton />
       </div>
     </SideMenuContext.Provider>
   );
