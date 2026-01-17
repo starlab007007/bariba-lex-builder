@@ -8,7 +8,10 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "download:envato": "node scripts/envato-downloader.js",
+    "download:envato:all": "node scripts/envato-downloader.js --all",
+    "download:envato:resume": "node scripts/envato-downloader.js --resume"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
