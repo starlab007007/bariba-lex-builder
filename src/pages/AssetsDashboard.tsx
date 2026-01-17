@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Key, Download, MousePointer, BookOpen, 
   CheckCircle, Settings, Zap, Bell, RefreshCw, HardDrive,
   AlertTriangle, TrendingUp, Package, Wifi, WifiOff,
-  ChevronRight, Play, Pause, Trash2, FolderOpen
+  ChevronRight, Play, Pause, Trash2, FolderOpen, Shield, Type, FolderSync
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,9 @@ import EnvatoBrowserHelper from '@/components/EnvatoBrowserHelper';
 import EnvatoAssetCatalog from '@/components/EnvatoAssetCatalog';
 import AssetValidator from '@/components/AssetValidator';
 import AutoDownloadPanel from '@/components/tamtam/admin/AutoDownloadPanel';
+import AssetHealthDashboard from '@/components/tamtam/admin/AssetHealthDashboard';
+import AssetCleanupPanel from '@/components/tamtam/admin/AssetCleanupPanel';
+import FontManagerPanel from '@/components/tamtam/admin/FontManagerPanel';
 import { ENVATO_ASSET_MAP } from '@/lib/EnvatoDownloader';
 import { useAssetSync } from '@/services/AssetSyncService';
 
@@ -269,18 +272,30 @@ const AssetsDashboard: React.FC = () => {
       {/* Main Content */}
       <main className="container px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+          <TabsList className="flex flex-wrap gap-1 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <LayoutDashboard className="w-4 h-4" />
               <span className="hidden sm:inline">Dashboard</span>
             </TabsTrigger>
+            <TabsTrigger value="health" className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Santé</span>
+            </TabsTrigger>
             <TabsTrigger value="connection" className="flex items-center gap-2">
               <Key className="w-4 h-4" />
-              <span className="hidden sm:inline">Connection</span>
+              <span className="hidden sm:inline">Envato</span>
             </TabsTrigger>
             <TabsTrigger value="download" className="flex items-center gap-2">
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Download</span>
+            </TabsTrigger>
+            <TabsTrigger value="cleanup" className="flex items-center gap-2">
+              <FolderSync className="w-4 h-4" />
+              <span className="hidden sm:inline">Cleanup</span>
+            </TabsTrigger>
+            <TabsTrigger value="fonts" className="flex items-center gap-2">
+              <Type className="w-4 h-4" />
+              <span className="hidden sm:inline">Fonts</span>
             </TabsTrigger>
             <TabsTrigger value="manual" className="flex items-center gap-2">
               <MousePointer className="w-4 h-4" />
@@ -606,10 +621,24 @@ const AssetsDashboard: React.FC = () => {
             </Card>
           </TabsContent>
 
-          {/* ============ TAB 3: AUTO DOWNLOAD ============ */}
-          {/* ============ TAB 3: AUTO DOWNLOAD ============ */}
+          {/* ============ TAB: HEALTH DASHBOARD ============ */}
+          <TabsContent value="health" className="space-y-6">
+            <AssetHealthDashboard />
+          </TabsContent>
+
+          {/* ============ TAB: AUTO DOWNLOAD ============ */}
           <TabsContent value="download" className="space-y-6">
             <AutoDownloadPanel />
+          </TabsContent>
+
+          {/* ============ TAB: CLEANUP ============ */}
+          <TabsContent value="cleanup" className="space-y-6">
+            <AssetCleanupPanel />
+          </TabsContent>
+
+          {/* ============ TAB: FONTS ============ */}
+          <TabsContent value="fonts" className="space-y-6">
+            <FontManagerPanel />
           </TabsContent>
 
           {/* ============ TAB 4: MANUAL IMPORT ============ */}
