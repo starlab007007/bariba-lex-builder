@@ -27,7 +27,7 @@ export type TemplateCategory =
 
 export type EffectType = 
   | 'lens-flare' | 'light-leak' | '3d-object' | 'particles' 
-  | 'text' | 'transition' | 'texture';
+  | 'text' | 'transition' | 'texture' | 'color-grade' | 'sticker';
 
 export type EffectTrigger = 'beat' | 'keyword' | 'time' | 'always';
 
