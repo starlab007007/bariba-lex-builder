@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Download, 
   RefreshCw, 
@@ -19,8 +20,10 @@ import {
   ChevronDown,
   Lock,
   Loader2,
-  FolderOpen
+  FolderOpen,
+  Scan
 } from 'lucide-react';
+import { EnvatoDownloadInterface } from './EnvatoDownloadInterface';
 
 interface AssetCategory {
   id: string;
@@ -223,7 +226,23 @@ export function EnvatoAssetManager() {
   const totalMissing = categoryStatuses.reduce((sum, s) => sum + s.missing, 0);
 
   return (
-    <div className="space-y-6">
+    <Tabs defaultValue="scan" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="scan" className="flex items-center gap-2">
+          <Scan className="h-4 w-4" />
+          Scan Assets
+        </TabsTrigger>
+        <TabsTrigger value="download" className="flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          📥 Download
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="download">
+        <EnvatoDownloadInterface />
+      </TabsContent>
+      
+      <TabsContent value="scan" className="space-y-6">
       {/* Envato Authentication */}
       <Card className="bg-card/50 backdrop-blur border-primary/20">
         <CardHeader>
@@ -456,6 +475,7 @@ export function EnvatoAssetManager() {
           </CardContent>
         )}
       </Card>
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 }
