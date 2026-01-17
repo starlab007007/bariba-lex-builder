@@ -23,7 +23,9 @@ import { toast } from 'sonner';
 import EnvatoBrowserHelper from '@/components/EnvatoBrowserHelper';
 import EnvatoAssetCatalog from '@/components/EnvatoAssetCatalog';
 import AssetValidator from '@/components/AssetValidator';
+import AutoDownloadPanel from '@/components/tamtam/admin/AutoDownloadPanel';
 import { ENVATO_ASSET_MAP } from '@/lib/EnvatoDownloader';
+import { useAssetSync } from '@/services/AssetSyncService';
 
 // ============================================================================
 // TYPES
@@ -605,95 +607,9 @@ const AssetsDashboard: React.FC = () => {
           </TabsContent>
 
           {/* ============ TAB 3: AUTO DOWNLOAD ============ */}
+          {/* ============ TAB 3: AUTO DOWNLOAD ============ */}
           <TabsContent value="download" className="space-y-6">
-            <Alert>
-              <Download className="h-4 w-4" />
-              <AlertTitle>Téléchargement automatique</AlertTitle>
-              <AlertDescription>
-                Cette fonctionnalité télécharge automatiquement les assets manquants depuis votre compte Envato Elements.
-                {!isConnected && (
-                  <Button 
-                    variant="link" 
-                    className="p-0 h-auto ml-2"
-                    onClick={() => setActiveTab('connection')}
-                  >
-                    Connectez-vous d'abord →
-                  </Button>
-                )}
-              </AlertDescription>
-            </Alert>
-
-            <div className="grid gap-6 md:grid-cols-3">
-              {/* Category Selection */}
-              <Card className="md:col-span-1">
-                <CardHeader>
-                  <CardTitle>Catégories à télécharger</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {categoryStats.map((cat) => (
-                      <div key={cat.name} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span>{cat.icon}</span>
-                          <span className="text-sm capitalize">{cat.name.replace('-', ' ')}</span>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Download Progress */}
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Progression</CardTitle>
-                  <CardDescription>Téléchargement en cours...</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>light-leak-orange-cinematic-4k.mov</span>
-                      <span>67%</span>
-                    </div>
-                    <Progress value={67} />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="p-3 rounded-lg bg-muted">
-                      <p className="text-muted-foreground">Vitesse</p>
-                      <p className="font-bold">2.4 MB/s</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted">
-                      <p className="text-muted-foreground">Temps restant</p>
-                      <p className="font-bold">~3 min</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted">
-                      <p className="text-muted-foreground">Téléchargés</p>
-                      <p className="font-bold">12 / 45</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted">
-                      <p className="text-muted-foreground">Échecs</p>
-                      <p className="font-bold text-red-500">2</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button disabled={!isConnected} className="flex-1">
-                      <Play className="w-4 h-4 mr-2" />
-                      Démarrer
-                    </Button>
-                    <Button variant="outline">
-                      <Pause className="w-4 h-4 mr-2" />
-                      Pause
-                    </Button>
-                    <Button variant="destructive">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <AutoDownloadPanel />
           </TabsContent>
 
           {/* ============ TAB 4: MANUAL IMPORT ============ */}
