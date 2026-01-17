@@ -8,6 +8,7 @@ import { PhraseTranslator } from "@/components/PhraseTranslator";
 import { SelectedEntryDisplay } from "@/components/SelectedEntryDisplay";
 import { SimilarSuggestions } from "@/components/SimilarSuggestions";
 import { AssetDiagnostic } from "@/components/AssetDiagnostic";
+import { EnvatoAssetManager } from "@/components/EnvatoAssetManager";
 
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
 import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy, Mic, MessagesSquare, HardDrive } from "lucide-react";
@@ -142,6 +143,7 @@ const Index = () => {
 
           <TabsContent value="assets" className="space-y-8">
             <AssetDiagnostic />
+            <EnvatoAssetManager />
           </TabsContent>
 
           <TabsContent value="dictionary" className="space-y-8">
