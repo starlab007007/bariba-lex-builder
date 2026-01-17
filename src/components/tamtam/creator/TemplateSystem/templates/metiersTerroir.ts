@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Métiers du Terroir
- * Showcase traditional crafts and trades
+ * Showcase traditional crafts and trades - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,16 +19,6 @@ export const metiersTerroirTemplate: Template = {
   
   effects: [
     {
-      id: 'craft-frame',
-      type: 'texture',
-      assetId: 'procedural:wood-border',
-      trigger: 'always',
-      config: {
-        opacity: 0.8,
-        blendMode: 'source-over'
-      }
-    },
-    {
       id: 'title-banner',
       type: 'text',
       assetId: 'text:craft-title',
@@ -44,21 +34,27 @@ export const metiersTerroirTemplate: Template = {
       }
     },
     {
-      id: 'warm-overlay',
-      type: 'color-grade',
-      assetId: 'procedural:warm-earth',
+      id: 'warm-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-080.png',
       trigger: 'always',
       config: {
+        x: 0.8,
+        y: 0.2,
+        scale: 0.5,
         opacity: 0.15,
-        blendMode: 'overlay'
+        blendMode: 'screen'
       }
     },
     {
-      id: 'dust-particles',
-      type: 'particles',
-      assetId: 'procedural:dust-motes',
+      id: 'dust-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-105.png',
       trigger: 'always',
       config: {
+        x: 0.3,
+        y: 0.6,
+        scale: 0.4,
         opacity: 0.3,
         blendMode: 'screen'
       }
@@ -72,7 +68,7 @@ export const metiersTerroirTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['craft', 'tradition', 'artisan', 'education']
   }
 };

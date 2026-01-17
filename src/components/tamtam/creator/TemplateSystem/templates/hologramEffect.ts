@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Hologram Effect
- * Sci-fi holographic visual style
+ * Sci-fi holographic visual style - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,42 +19,41 @@ export const hologramEffectTemplate: Template = {
   
   effects: [
     {
-      id: 'hologram-lines',
-      type: 'texture',
-      assetId: 'procedural:hologram-scanlines',
+      id: 'hologram-flare-1',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-100.png',
       trigger: 'always',
       config: {
+        x: 0.5,
+        y: 0.3,
+        scale: 1.0,
         opacity: 0.4,
         blendMode: 'screen'
       }
     },
     {
-      id: 'blue-tint',
-      type: 'color-grade',
-      assetId: 'procedural:cyan-tint',
-      trigger: 'always',
-      config: {
-        opacity: 0.5,
-        blendMode: 'overlay'
-      }
-    },
-    {
-      id: 'glitch-effect',
-      type: 'particles',
-      assetId: 'procedural:glitch-blocks',
+      id: 'hologram-flare-2',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-150.png',
       trigger: 'beat',
       config: {
+        x: 0.3,
+        y: 0.6,
+        scale: 0.8,
         opacity: 0.6,
         blendMode: 'screen',
         beatThreshold: 0.8
       }
     },
     {
-      id: 'holo-frame',
-      type: 'texture',
-      assetId: 'procedural:holo-border',
+      id: 'holo-corner-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-200.png',
       trigger: 'always',
       config: {
+        x: 0.9,
+        y: 0.1,
+        scale: 0.5,
         opacity: 0.8,
         blendMode: 'screen'
       }
@@ -82,7 +81,7 @@ export const hologramEffectTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['hologram', 'sci-fi', 'future', 'tech']
   }
 };

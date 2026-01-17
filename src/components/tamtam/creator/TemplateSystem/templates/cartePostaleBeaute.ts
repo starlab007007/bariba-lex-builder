@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Carte Postale Beauté
- * Beautiful postcard-style landscape showcase
+ * Beautiful postcard-style landscape showcase - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,26 +19,16 @@ export const cartePostaleBeauteTemplate: Template = {
   
   effects: [
     {
-      id: 'postcard-frame',
-      type: 'texture',
-      assetId: 'procedural:postcard-border',
-      trigger: 'always',
-      config: {
-        opacity: 0.9,
-        blendMode: 'source-over'
-      }
-    },
-    {
-      id: 'stamp',
-      type: 'texture',
-      assetId: 'procedural:vintage-stamp',
+      id: 'sun-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-425.png',
       trigger: 'always',
       config: {
         x: 0.9,
         y: 0.1,
-        scale: 0.15,
+        scale: 0.8,
         opacity: 0.8,
-        blendMode: 'source-over'
+        blendMode: 'screen'
       }
     },
     {
@@ -56,13 +46,16 @@ export const cartePostaleBeauteTemplate: Template = {
       }
     },
     {
-      id: 'warm-filter',
-      type: 'color-grade',
-      assetId: 'procedural:vintage-warm',
+      id: 'warm-corner',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-450.png',
       trigger: 'always',
       config: {
+        x: 0.1,
+        y: 0.9,
+        scale: 0.3,
         opacity: 0.25,
-        blendMode: 'overlay'
+        blendMode: 'screen'
       }
     }
   ],
@@ -74,7 +67,7 @@ export const cartePostaleBeauteTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['postcard', 'landscape', 'beauty', 'travel']
   }
 };

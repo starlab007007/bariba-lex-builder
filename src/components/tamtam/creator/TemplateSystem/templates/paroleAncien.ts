@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Parole d'Ancien
- * Wisdom from elders format
+ * Wisdom from elders format - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,46 +19,30 @@ export const paroleAncienTemplate: Template = {
   
   effects: [
     {
-      id: 'parchment-bg',
-      type: 'texture',
-      assetId: 'procedural:parchment',
-      trigger: 'always',
-      config: {
-        opacity: 0.25,
-        blendMode: 'overlay'
-      }
-    },
-    {
-      id: 'adinkra-wisdom',
-      type: '3d-object',
-      assetId: '3d-models:adinkra-nyansapo.glb',
+      id: 'wisdom-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-325.png',
       trigger: 'keyword',
       config: {
         x: 0.85,
         y: 0.15,
         scale: 0.6,
         opacity: 0.7,
+        blendMode: 'screen',
         keywords: ['sagesse', 'wisdom', 'ọgbọ́n']
       }
     },
     {
-      id: 'elder-frame',
-      type: 'texture',
-      assetId: 'procedural:ornate-frame',
+      id: 'warm-glow',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-350.png',
       trigger: 'always',
       config: {
-        opacity: 0.4,
-        blendMode: 'source-over'
-      }
-    },
-    {
-      id: 'sepia-tone',
-      type: 'color-grade',
-      assetId: 'procedural:sepia',
-      trigger: 'always',
-      config: {
+        x: 0.5,
+        y: 0.5,
+        scale: 1.0,
         opacity: 0.2,
-        blendMode: 'overlay'
+        blendMode: 'screen'
       }
     }
   ],
@@ -70,7 +54,7 @@ export const paroleAncienTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['elder', 'wisdom', 'tradition', 'advice']
   }
 };

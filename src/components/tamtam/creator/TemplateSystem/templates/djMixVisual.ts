@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: DJ Mix Visual
- * Professional DJ/music producer aesthetic
+ * Professional DJ/music producer aesthetic - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,9 +19,9 @@ export const djMixVisualTemplate: Template = {
   
   effects: [
     {
-      id: 'eq-bars',
-      type: 'particles',
-      assetId: 'procedural:equalizer-bars',
+      id: 'eq-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-320.png',
       trigger: 'beat',
       config: {
         x: 0.5,
@@ -33,23 +33,27 @@ export const djMixVisualTemplate: Template = {
       }
     },
     {
-      id: 'waveform',
-      type: 'particles',
-      assetId: 'procedural:audio-waveform',
+      id: 'waveform-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-340.png',
       trigger: 'always',
       config: {
         x: 0.5,
         y: 0.5,
+        scale: 1.0,
         opacity: 0.4,
         blendMode: 'screen'
       }
     },
     {
-      id: 'strobe-effect',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-strobe',
+      id: 'strobe-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-360.png',
       trigger: 'beat',
       config: {
+        x: 0.5,
+        y: 0.3,
+        scale: 2.0,
         opacity: 0.6,
         blendMode: 'screen',
         beatThreshold: 0.8
@@ -78,7 +82,7 @@ export const djMixVisualTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['dj', 'music', 'producer', 'mix']
   }
 };

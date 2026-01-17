@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Doc Express Patrimoine
- * Quick heritage documentation
+ * Quick heritage documentation - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,15 +19,16 @@ export const docExpressPatrimoineTemplate: Template = {
   
   effects: [
     {
-      id: 'heritage-badge',
-      type: 'texture',
-      assetId: 'procedural:heritage-badge',
+      id: 'heritage-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-030.png',
       trigger: 'time',
       config: {
         x: 0.9,
         y: 0.1,
-        scale: 0.15,
+        scale: 0.5,
         opacity: 0.9,
+        blendMode: 'screen',
         timeRange: [0, 30]
       }
     },
@@ -47,13 +48,16 @@ export const docExpressPatrimoineTemplate: Template = {
       }
     },
     {
-      id: 'golden-overlay',
-      type: 'color-grade',
-      assetId: 'procedural:golden-hour',
+      id: 'golden-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-055.png',
       trigger: 'always',
       config: {
+        x: 0.5,
+        y: 0.3,
+        scale: 0.6,
         opacity: 0.15,
-        blendMode: 'overlay'
+        blendMode: 'screen'
       }
     }
   ],
@@ -65,7 +69,7 @@ export const docExpressPatrimoineTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['heritage', 'culture', 'documentation', 'quick']
   }
 };

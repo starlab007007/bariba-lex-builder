@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Voix de Famille
- * Family voice messages and memories
+ * Family voice messages and memories - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,34 +19,30 @@ export const voixDeFamilleTemplate: Template = {
   
   effects: [
     {
-      id: 'family-frame',
-      type: 'texture',
-      assetId: 'procedural:wooden-frame',
-      trigger: 'always',
-      config: {
-        opacity: 0.8,
-        blendMode: 'source-over'
-      }
-    },
-    {
-      id: 'heart-particles',
-      type: 'particles',
-      assetId: 'procedural:floating-hearts',
+      id: 'heart-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-375.png',
       trigger: 'beat',
       config: {
+        x: 0.5,
+        y: 0.5,
+        scale: 0.6,
         opacity: 0.4,
         blendMode: 'screen',
         beatThreshold: 0.7
       }
     },
     {
-      id: 'warm-memory',
-      type: 'color-grade',
-      assetId: 'procedural:warm-memory',
+      id: 'warm-memory-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-400.png',
       trigger: 'always',
       config: {
+        x: 0.8,
+        y: 0.2,
+        scale: 0.5,
         opacity: 0.2,
-        blendMode: 'overlay'
+        blendMode: 'screen'
       }
     },
     {
@@ -73,7 +69,7 @@ export const voixDeFamilleTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['family', 'voice', 'memories', 'love']
   }
 };

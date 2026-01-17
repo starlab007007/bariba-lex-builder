@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Mini-Doc Village
- * Documentary-style template for village stories
+ * Documentary-style template for village stories - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,16 +19,6 @@ export const miniDocVillageTemplate: Template = {
   
   effects: [
     {
-      id: 'doc-frame',
-      type: 'texture',
-      assetId: 'procedural:letterbox-16-9',
-      trigger: 'always',
-      config: {
-        opacity: 1.0,
-        blendMode: 'source-over'
-      }
-    },
-    {
       id: 'location-text',
       type: 'text',
       assetId: 'text:location',
@@ -44,23 +34,29 @@ export const miniDocVillageTemplate: Template = {
       }
     },
     {
-      id: 'sepia-grade',
-      type: 'color-grade',
-      assetId: 'procedural:sepia-warm',
+      id: 'warm-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-275.png',
       trigger: 'always',
       config: {
+        x: 0.8,
+        y: 0.2,
+        scale: 0.6,
         opacity: 0.2,
-        blendMode: 'overlay'
+        blendMode: 'screen'
       }
     },
     {
-      id: 'vignette',
-      type: 'texture',
-      assetId: 'procedural:vignette',
+      id: 'corner-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-300.png',
       trigger: 'always',
       config: {
+        x: 0.1,
+        y: 0.9,
+        scale: 0.4,
         opacity: 0.4,
-        blendMode: 'multiply'
+        blendMode: 'screen'
       }
     }
   ],
@@ -72,7 +68,7 @@ export const miniDocVillageTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['documentary', 'village', 'culture', 'story']
   }
 };

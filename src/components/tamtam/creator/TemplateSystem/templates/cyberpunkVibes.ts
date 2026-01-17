@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Cyberpunk Vibes
- * Neon-drenched cyberpunk aesthetic
+ * Neon-drenched cyberpunk aesthetic - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,45 +19,44 @@ export const cyberpunkVibesTemplate: Template = {
   
   effects: [
     {
-      id: 'neon-pink',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-pink',
+      id: 'neon-pink-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-420.png',
       trigger: 'beat',
       config: {
+        x: 0.2,
+        y: 0.3,
+        scale: 0.8,
         opacity: 0.4,
         blendMode: 'screen',
         beatThreshold: 0.5
       }
     },
     {
-      id: 'neon-blue',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-cyan',
+      id: 'neon-blue-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-430.png',
       trigger: 'beat',
       config: {
+        x: 0.8,
+        y: 0.4,
+        scale: 0.7,
         opacity: 0.4,
         blendMode: 'screen',
         beatThreshold: 0.6
       }
     },
     {
-      id: 'rain-overlay',
-      type: 'particles',
-      assetId: 'procedural:rain-streaks',
+      id: 'center-glow',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-440.png',
       trigger: 'always',
       config: {
+        x: 0.5,
+        y: 0.5,
+        scale: 1.2,
         opacity: 0.3,
         blendMode: 'screen'
-      }
-    },
-    {
-      id: 'scanlines',
-      type: 'texture',
-      assetId: 'procedural:crt-scanlines',
-      trigger: 'always',
-      config: {
-        opacity: 0.2,
-        blendMode: 'overlay'
       }
     },
     {
@@ -84,7 +83,7 @@ export const cyberpunkVibesTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['cyberpunk', 'neon', 'dark', 'future']
   }
 };

@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Concert Live
- * Live concert experience effect
+ * Live concert experience effect - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,45 +19,45 @@ export const concertLiveTemplate: Template = {
   
   effects: [
     {
-      id: 'stage-lights',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-stage',
+      id: 'stage-lights-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-125.png',
       trigger: 'beat',
       config: {
+        x: 0.5,
+        y: 0.2,
+        scale: 1.5,
         opacity: 0.6,
         blendMode: 'screen',
         beatThreshold: 0.4
       }
     },
     {
-      id: 'crowd-overlay',
-      type: 'texture',
-      assetId: 'procedural:crowd-silhouette',
-      trigger: 'always',
+      id: 'side-flare-left',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-150.png',
+      trigger: 'beat',
       config: {
-        y: 0.9,
-        opacity: 0.4,
-        blendMode: 'source-over'
-      }
-    },
-    {
-      id: 'phone-lights',
-      type: 'particles',
-      assetId: 'procedural:phone-flashlights',
-      trigger: 'always',
-      config: {
+        x: 0.1,
+        y: 0.3,
+        scale: 0.8,
         opacity: 0.5,
-        blendMode: 'screen'
+        blendMode: 'screen',
+        beatThreshold: 0.5
       }
     },
     {
-      id: 'smoke-effect',
-      type: 'particles',
-      assetId: 'procedural:stage-smoke',
-      trigger: 'always',
+      id: 'side-flare-right',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-175.png',
+      trigger: 'beat',
       config: {
-        opacity: 0.3,
-        blendMode: 'screen'
+        x: 0.9,
+        y: 0.3,
+        scale: 0.8,
+        opacity: 0.5,
+        blendMode: 'screen',
+        beatThreshold: 0.5
       }
     },
     {
@@ -84,7 +84,7 @@ export const concertLiveTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['concert', 'live', 'stage', 'performance']
   }
 };
