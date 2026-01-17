@@ -882,10 +882,22 @@ export default function FullscreenCreator({
         burstIntervalRef.current = null;
       }
 
-      // Clear K-Engine
+      // Clear K-Engine (legacy)
       try {
         kEngine.clearTemplate();
       } catch {}
+
+      // ✅ Cleanup Template System V3
+      if (templateEngineV3Ref.current) {
+        try {
+          templateEngineV3Ref.current.stop();
+          templateEngineV3Ref.current.dispose();
+          templateEngineV3Ref.current = null;
+          console.log('[TemplateSystemV3] Disposed on unmount');
+        } catch (e) {
+          console.warn('[TemplateSystemV3] Cleanup error:', e);
+        }
+      }
     };
   }, []);
 
@@ -1362,6 +1374,12 @@ export default function FullscreenCreator({
       rec.start(200);
       setIsRecording(true);
       setToast("● REC");
+
+      // ✅ Start Template V3 rendering with recording
+      if (templateEngineV3Ref.current && selectedTemplateV3) {
+        templateEngineV3Ref.current.start();
+        console.log('[TemplateSystemV3] Started rendering with recording');
+      }
     } catch (e: any) {
       setError(e?.message || "Impossible de démarrer l'enregistrement.");
     }
@@ -1402,6 +1420,15 @@ export default function FullscreenCreator({
     setIsRecording(false);
     return blob;
   };
+
+  // ✅ Stop recording and Template V3 rendering
+  const stopRecordingAndTemplates = useCallback(() => {
+    // Stop Template V3 rendering when recording stops
+    if (templateEngineV3Ref.current) {
+      templateEngineV3Ref.current.stop();
+      console.log('[TemplateSystemV3] Stopped rendering after recording');
+    }
+  }, []);
 
   // ============= CAPTURE ACTIONS =============
   const runTimerIfNeeded = async () => {
@@ -1463,6 +1490,9 @@ export default function FullscreenCreator({
   const finishCapture = useCallback(
     async (blob: Blob, type: "video" | "photo" | "audio", duration: number) => {
       stopStream();
+      
+      // ✅ Stop Template V3 rendering when capture finishes
+      stopRecordingAndTemplates();
 
       setCapturedBlob(blob);
       setCapturedType(type);
@@ -1492,7 +1522,7 @@ export default function FullscreenCreator({
         setKuaishouPhase('idle');
       }
     },
-    [bindCaptureToKEngine, isKEngineActive, kState.template, stopStream]
+    [bindCaptureToKEngine, isKEngineActive, kState.template, stopStream, stopRecordingAndTemplates]
   );
 
   const onPressCapture = async () => {
@@ -3739,23 +3769,52 @@ export default function FullscreenCreator({
           aria-hidden="true"
         />
 
-        {/* Active Template V3 Indicator */}
-        {selectedTemplateV3 && (
+        {/* Active Template V3 Badge with Category & Effects Count */}
+        {selectedTemplateV3 && !hasCapture && !isRecording && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
             className="absolute top-32 right-4 z-40"
           >
-            <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 border border-white/30 backdrop-blur-xl">
-              <span className="text-white text-sm font-medium truncate max-w-[100px]">
-                {selectedTemplateV3.name}
-              </span>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-purple-600/90 to-pink-600/90 border border-white/20 backdrop-blur-xl shadow-lg shadow-purple-500/30">
+              <Sparkles className="w-4 h-4 text-white/90" />
+              <div className="flex flex-col">
+                <span className="text-white text-sm font-semibold truncate max-w-[120px]">
+                  {selectedTemplateV3.name}
+                </span>
+                <span className="text-white/70 text-[10px]">
+                  {selectedTemplateV3.effects?.length || 0} effets • {selectedTemplateV3.category || 'Template'}
+                </span>
+              </div>
               <button
-                onClick={() => setSelectedTemplateV3(null)}
-                className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center"
+                onClick={() => {
+                  setSelectedTemplateV3(null);
+                  if (templateEngineV3Ref.current) {
+                    templateEngineV3Ref.current.stop();
+                    templateEngineV3Ref.current.clearTemplate();
+                  }
+                }}
+                className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors ml-1"
               >
-                <X className="w-3 h-3 text-white" />
+                <X className="w-3.5 h-3.5 text-white" />
               </button>
+            </div>
+          </motion.div>
+        )}
+        
+        {/* Recording Template V3 Indicator */}
+        {selectedTemplateV3 && isRecording && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="absolute top-32 left-1/2 -translate-x-1/2 z-40"
+          >
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/90 border border-red-400/50 backdrop-blur-xl">
+              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              <span className="text-white text-sm font-medium">
+                {selectedTemplateV3.name} • REC
+              </span>
             </div>
           </motion.div>
         )}
