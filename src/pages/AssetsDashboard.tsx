@@ -27,6 +27,7 @@ import AutoDownloadPanel from '@/components/tamtam/admin/AutoDownloadPanel';
 import AssetHealthDashboard from '@/components/tamtam/admin/AssetHealthDashboard';
 import AssetCleanupPanel from '@/components/tamtam/admin/AssetCleanupPanel';
 import FontManagerPanel from '@/components/tamtam/admin/FontManagerPanel';
+import TemplateAssetAnalyzer from '@/components/tamtam/admin/TemplateAssetAnalyzer';
 import { ENVATO_ASSET_MAP } from '@/lib/EnvatoDownloader';
 import { useAssetSync } from '@/services/AssetSyncService';
 
@@ -308,6 +309,10 @@ const AssetsDashboard: React.FC = () => {
             <TabsTrigger value="validation" className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Validation</span>
+            </TabsTrigger>
+            <TabsTrigger value="analyzer" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              <span className="hidden sm:inline">Analyzer</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
