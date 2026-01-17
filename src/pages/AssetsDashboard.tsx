@@ -632,9 +632,9 @@ const AssetsDashboard: React.FC = () => {
             <AssetHealthDashboard />
           </TabsContent>
 
-          {/* ============ TAB: AUTO DOWNLOAD ============ */}
+          {/* ============ TAB: SMART DOWNLOAD ============ */}
           <TabsContent value="download" className="space-y-6">
-            <AutoDownloadPanel />
+            <SmartDownloadPanel isEnvatoConnected={isConnected} />
           </TabsContent>
 
           {/* ============ TAB: CLEANUP ============ */}

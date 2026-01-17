@@ -43,6 +43,10 @@ import {
 // TYPES
 // ============================================================================
 
+interface SmartDownloadPanelProps {
+  isEnvatoConnected?: boolean;
+}
+
 interface DroppedFile {
   file: File;
   category: string;
@@ -56,7 +60,7 @@ interface DroppedFile {
 // COMPONENT
 // ============================================================================
 
-export const SmartDownloadPanel: React.FC = () => {
+export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvatoConnected = false }) => {
   const {
     progress,
     corrections,
