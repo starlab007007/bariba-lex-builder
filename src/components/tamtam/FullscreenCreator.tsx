@@ -2266,7 +2266,7 @@ export default function FullscreenCreator({
     // Try to load template config
     if (templateEngineV3Ref.current) {
       try {
-        await templateEngineV3Ref.current.loadTemplate(template.id);
+        await templateEngineV3Ref.current.loadTemplateById(template.id);
         setToast(`🎬 ${template.name} chargé`);
       } catch (e) {
         console.warn('[TemplateSystem V3] Failed to load template config:', e);
