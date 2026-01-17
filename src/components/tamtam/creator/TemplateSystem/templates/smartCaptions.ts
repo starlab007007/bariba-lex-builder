@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Smart Captions
  * Auto-generated captions with stylish text animations
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,19 +19,21 @@ export const smartCaptionsTemplate: Template = {
   isNew: true,
   
   effects: [
-    // Caption background bar
+    // Caption background flare - REAL ASSET
     {
-      id: 'caption-bg',
-      type: 'texture',
-      assetId: 'procedural:caption-bar',
+      id: 'caption-bg-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-400.png',
       trigger: 'always',
       config: {
+        x: 0.5,
         y: 0.85,
-        opacity: 0.7,
-        blendMode: 'source-over'
+        scale: 2.0,
+        opacity: 0.15,
+        blendMode: 'screen'
       }
     },
-    // Dynamic caption text (placeholder - real text from ASR)
+    // Dynamic caption text - TEXT EFFECT
     {
       id: 'caption-text',
       type: 'text',
@@ -47,7 +50,7 @@ export const smartCaptionsTemplate: Template = {
         align: 'center'
       }
     },
-    // Subtle highlight on keywords
+    // Subtle highlight on keywords - REAL ASSET
     {
       id: 'keyword-highlight',
       type: 'lens-flare',
@@ -62,15 +65,18 @@ export const smartCaptionsTemplate: Template = {
         keywords: ['important', 'attention', 'noter', 'clé', 'key']
       }
     },
-    // Soft vignette for focus on text
+    // Soft focus flare - REAL ASSET
     {
-      id: 'text-focus-vignette',
-      type: 'texture',
-      assetId: 'procedural:vignette',
+      id: 'text-focus-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-410.png',
       trigger: 'always',
       config: {
-        opacity: 0.25,
-        blendMode: 'multiply'
+        x: 0.5,
+        y: 0.5,
+        scale: 1.5,
+        opacity: 0.15,
+        blendMode: 'screen'
       }
     }
   ],
@@ -83,7 +89,7 @@ export const smartCaptionsTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['captions', 'subtitles', 'accessibility', 'text', 'education']
   }
 };

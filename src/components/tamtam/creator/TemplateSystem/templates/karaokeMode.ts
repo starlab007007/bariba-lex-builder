@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Karaoke Mode
  * Lyric video with synchronized text
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,6 +19,7 @@ export const karaokeModeTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Lyrics main - TEXT EFFECT
     {
       id: 'lyrics-main',
       type: 'text',
@@ -33,6 +35,7 @@ export const karaokeModeTemplate: Template = {
         fontSize: 32
       }
     },
+    // Lyrics highlight - TEXT EFFECT
     {
       id: 'lyrics-highlight',
       type: 'text',
@@ -49,26 +52,47 @@ export const karaokeModeTemplate: Template = {
         beatThreshold: 0.3
       }
     },
+    // Music visualizer flare - REAL ASSET
     {
       id: 'music-visualizer',
-      type: 'particles',
-      assetId: 'procedural:eq-bars',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-130.png',
       trigger: 'beat',
       config: {
         x: 0.5,
         y: 0.9,
+        scale: 1.5,
         opacity: 0.6,
         blendMode: 'screen',
         beatThreshold: 0.2
       }
     },
+    // Stage lights flare - REAL ASSET
     {
       id: 'stage-lights',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-multicolor',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-140.png',
       trigger: 'beat',
       config: {
-        opacity: 0.3,
+        x: 0.2,
+        y: 0.3,
+        scale: 1.2,
+        opacity: 0.4,
+        blendMode: 'screen',
+        beatThreshold: 0.6
+      }
+    },
+    // Secondary stage light - REAL ASSET
+    {
+      id: 'stage-lights-2',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-150.png',
+      trigger: 'beat',
+      config: {
+        x: 0.8,
+        y: 0.3,
+        scale: 1.2,
+        opacity: 0.4,
         blendMode: 'screen',
         beatThreshold: 0.6
       }
@@ -82,7 +106,7 @@ export const karaokeModeTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['karaoke', 'lyrics', 'music', 'sing']
   }
 };

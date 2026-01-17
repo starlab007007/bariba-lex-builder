@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Auto B-Roll Booster
  * Enhances videos with automatic B-roll style cuts and transitions
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,7 +19,7 @@ export const autoBrollBoosterTemplate: Template = {
   isNew: true,
   
   effects: [
-    // Transition flash between cuts
+    // Transition flash between cuts - REAL ASSET
     {
       id: 'cut-flash',
       type: 'lens-flare',
@@ -33,32 +34,22 @@ export const autoBrollBoosterTemplate: Template = {
         beatThreshold: 0.75
       }
     },
-    // Smooth light leak transitions
+    // Smooth transition with lens-flare - REAL ASSET
     {
       id: 'smooth-transition-leak',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-smooth',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-060.png',
       trigger: 'beat',
       config: {
+        x: 0.3,
+        y: 0.3,
+        scale: 1.5,
         opacity: 0.5,
         blendMode: 'screen',
         beatThreshold: 0.7
       }
     },
-    // Professional lower third
-    {
-      id: 'lower-third-bg',
-      type: 'texture',
-      assetId: 'procedural:lower-third',
-      trigger: 'time',
-      config: {
-        y: 0.85,
-        opacity: 0.8,
-        blendMode: 'source-over',
-        timeRange: [2, 8]
-      }
-    },
-    // Lower third text
+    // Lower third text - TEXT EFFECT (no asset needed)
     {
       id: 'lower-third-text',
       type: 'text',
@@ -75,26 +66,32 @@ export const autoBrollBoosterTemplate: Template = {
         timeRange: [2, 8]
       }
     },
-    // Film grain for professional look
+    // Pro accent flare - REAL ASSET
     {
-      id: 'pro-grain',
-      type: 'texture',
-      assetId: 'procedural:grain',
+      id: 'pro-accent',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-070.png',
       trigger: 'always',
       config: {
-        opacity: 0.08,
-        blendMode: 'overlay'
+        x: 0.8,
+        y: 0.2,
+        scale: 0.6,
+        opacity: 0.3,
+        blendMode: 'screen'
       }
     },
-    // Subtle vignette
+    // Subtle corner flare - REAL ASSET
     {
       id: 'pro-vignette',
-      type: 'texture',
-      assetId: 'procedural:vignette',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-080.png',
       trigger: 'always',
       config: {
-        opacity: 0.4,
-        blendMode: 'multiply'
+        x: 0.1,
+        y: 0.9,
+        scale: 0.5,
+        opacity: 0.25,
+        blendMode: 'screen'
       }
     }
   ],
@@ -107,7 +104,7 @@ export const autoBrollBoosterTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['broll', 'professional', 'transitions', 'business', 'editing']
   }
 };

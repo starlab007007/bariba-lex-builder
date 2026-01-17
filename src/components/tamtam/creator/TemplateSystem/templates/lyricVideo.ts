@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Lyric Video
  * Professional lyric video format
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,6 +19,7 @@ export const lyricVideoTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Lyrics center - TEXT EFFECT
     {
       id: 'lyrics-center',
       type: 'text',
@@ -33,35 +35,47 @@ export const lyricVideoTemplate: Template = {
         fontSize: 48
       }
     },
+    // Word highlight flare - REAL ASSET
     {
       id: 'word-highlight',
-      type: 'particles',
-      assetId: 'procedural:word-glow',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-190.png',
       trigger: 'beat',
       config: {
-        opacity: 0.7,
+        x: 0.5,
+        y: 0.5,
+        scale: 0.8,
+        opacity: 0.5,
         blendMode: 'screen',
         beatThreshold: 0.3
       }
     },
+    // Ambient particles flare - REAL ASSET
     {
-      id: 'ambient-particles',
-      type: 'particles',
-      assetId: 'procedural:floating-dust',
+      id: 'ambient-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-200.png',
       trigger: 'always',
       config: {
+        x: 0.2,
+        y: 0.3,
+        scale: 0.6,
         opacity: 0.3,
         blendMode: 'screen'
       }
     },
+    // Secondary ambient - REAL ASSET
     {
-      id: 'cinematic-bars',
-      type: 'texture',
-      assetId: 'procedural:letterbox',
+      id: 'ambient-flare-2',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-210.png',
       trigger: 'always',
       config: {
-        opacity: 1.0,
-        blendMode: 'source-over'
+        x: 0.8,
+        y: 0.7,
+        scale: 0.6,
+        opacity: 0.3,
+        blendMode: 'screen'
       }
     }
   ],
@@ -73,7 +87,7 @@ export const lyricVideoTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['lyrics', 'video', 'music', 'professional']
   }
 };

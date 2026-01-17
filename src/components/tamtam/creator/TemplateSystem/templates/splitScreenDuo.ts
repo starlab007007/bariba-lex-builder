@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Split Screen Duo
  * Dual screen for reactions and collaborations
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,16 +19,21 @@ export const splitScreenDuoTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Split divider flare - REAL ASSET
     {
-      id: 'split-divider',
-      type: 'texture',
-      assetId: 'procedural:split-horizontal',
+      id: 'split-divider-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-420.png',
       trigger: 'always',
       config: {
-        opacity: 1.0,
-        blendMode: 'source-over'
+        x: 0.5,
+        y: 0.5,
+        scale: 0.3,
+        opacity: 0.7,
+        blendMode: 'screen'
       }
     },
+    // Top label - TEXT EFFECT
     {
       id: 'top-label',
       type: 'text',
@@ -42,6 +48,7 @@ export const splitScreenDuoTemplate: Template = {
         align: 'left'
       }
     },
+    // Bottom label - TEXT EFFECT
     {
       id: 'bottom-label',
       type: 'text',
@@ -56,14 +63,16 @@ export const splitScreenDuoTemplate: Template = {
         align: 'left'
       }
     },
+    // Sync indicator flare - REAL ASSET
     {
       id: 'sync-indicator',
-      type: 'particles',
-      assetId: 'procedural:sync-waves',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-430.png',
       trigger: 'beat',
       config: {
         x: 0.5,
         y: 0.5,
+        scale: 1.2,
         opacity: 0.4,
         blendMode: 'screen',
         beatThreshold: 0.5
@@ -78,7 +87,7 @@ export const splitScreenDuoTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['split', 'duo', 'collaboration', 'reaction']
   }
 };

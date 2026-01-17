@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Annonce Communautaire
  * Community announcement format
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,6 +19,7 @@ export const annonceCommunautaireTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Megaphone icon - TEXT EFFECT
     {
       id: 'megaphone-icon',
       type: 'text',
@@ -33,28 +35,36 @@ export const annonceCommunautaireTemplate: Template = {
         animation: 'bounce'
       }
     },
+    // Announcement banner flare - REAL ASSET
     {
-      id: 'announcement-banner',
-      type: 'texture',
-      assetId: 'procedural:banner-stripe',
+      id: 'announcement-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-045.png',
       trigger: 'always',
       config: {
+        x: 0.5,
         y: 0.1,
-        opacity: 0.9,
-        blendMode: 'source-over'
+        scale: 1.5,
+        opacity: 0.6,
+        blendMode: 'screen'
       }
     },
+    // Urgent pulse flare - REAL ASSET
     {
       id: 'urgent-pulse',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-red',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-090.png',
       trigger: 'beat',
       config: {
-        opacity: 0.2,
+        x: 0.5,
+        y: 0.5,
+        scale: 1.8,
+        opacity: 0.3,
         blendMode: 'screen',
         beatThreshold: 0.5
       }
     },
+    // Info text - TEXT EFFECT
     {
       id: 'info-text',
       type: 'text',
@@ -78,7 +88,7 @@ export const annonceCommunautaireTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['announcement', 'community', 'news', 'info']
   }
 };

@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Histoire en Images
  * Photo slideshow storytelling
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,36 +19,50 @@ export const histoireEnImagesTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Photo frame flare - REAL ASSET
     {
-      id: 'photo-frame',
-      type: 'texture',
-      assetId: 'procedural:polaroid-frame',
+      id: 'photo-frame-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-320.png',
       trigger: 'always',
       config: {
-        opacity: 0.9,
-        blendMode: 'source-over'
+        x: 0.1,
+        y: 0.1,
+        scale: 0.4,
+        opacity: 0.6,
+        blendMode: 'screen'
       }
     },
+    // Ken Burns motion flare - REAL ASSET
     {
-      id: 'ken-burns',
-      type: 'transition',
-      assetId: 'procedural:ken-burns',
-      trigger: 'always',
+      id: 'ken-burns-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-310.png',
+      trigger: 'time',
       config: {
-        duration: 5,
-        zoomRange: [1.0, 1.2]
-      }
-    },
-    {
-      id: 'soft-vignette',
-      type: 'texture',
-      assetId: 'procedural:soft-vignette',
-      trigger: 'always',
-      config: {
+        x: 0.5,
+        y: 0.5,
+        scale: 1.5,
         opacity: 0.4,
+        blendMode: 'screen',
+        timeRange: [0, 5]
+      }
+    },
+    // Soft vignette flare - REAL ASSET
+    {
+      id: 'soft-vignette-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-055.png',
+      trigger: 'always',
+      config: {
+        x: 0.5,
+        y: 0.5,
+        scale: 1.8,
+        opacity: 0.25,
         blendMode: 'multiply'
       }
     },
+    // Caption area - TEXT EFFECT
     {
       id: 'caption-area',
       type: 'text',
@@ -72,7 +87,7 @@ export const histoireEnImagesTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['slideshow', 'photos', 'narration', 'story']
   }
 };

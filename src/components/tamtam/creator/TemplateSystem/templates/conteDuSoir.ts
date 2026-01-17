@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Conte du Soir
  * Evening storytelling for children
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,16 +19,21 @@ export const conteDuSoirTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Starry sky flare - REAL ASSET
     {
-      id: 'night-sky',
-      type: 'texture',
-      assetId: 'procedural:starry-night',
+      id: 'starry-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-120.png',
       trigger: 'always',
       config: {
-        opacity: 0.3,
+        x: 0.3,
+        y: 0.2,
+        scale: 0.5,
+        opacity: 0.4,
         blendMode: 'screen'
       }
     },
+    // Moon glow - REAL ASSET
     {
       id: 'moon-glow',
       type: 'lens-flare',
@@ -41,6 +47,7 @@ export const conteDuSoirTemplate: Template = {
         blendMode: 'screen'
       }
     },
+    // Story title - TEXT EFFECT
     {
       id: 'story-title',
       type: 'text',
@@ -56,14 +63,18 @@ export const conteDuSoirTemplate: Template = {
         timeRange: [0, 4]
       }
     },
+    // Warm ambient flare - REAL ASSET
     {
-      id: 'warm-vignette',
-      type: 'texture',
-      assetId: 'procedural:vignette-warm',
+      id: 'warm-ambient',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-050.png',
       trigger: 'always',
       config: {
-        opacity: 0.6,
-        blendMode: 'multiply'
+        x: 0.5,
+        y: 0.8,
+        scale: 1.0,
+        opacity: 0.3,
+        blendMode: 'screen'
       }
     }
   ],
@@ -75,7 +86,7 @@ export const conteDuSoirTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['tale', 'children', 'night', 'storytelling']
   }
 };

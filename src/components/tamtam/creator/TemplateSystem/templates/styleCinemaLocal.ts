@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Style Cinéma Local
  * Cinematic African storytelling with film grain and warm tones
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,40 +19,49 @@ export const styleCinemaLocalTemplate: Template = {
   isNew: true,
   
   effects: [
-    // Film grain overlay
+    // Film grain flare overlay - REAL ASSET
     {
-      id: 'film-grain',
-      type: 'texture',
-      assetId: 'procedural:grain',
+      id: 'film-grain-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-440.png',
       trigger: 'always',
       config: {
-        opacity: 0.15,
+        x: 0.5,
+        y: 0.5,
+        scale: 2.0,
+        opacity: 0.1,
         blendMode: 'overlay'
       }
     },
-    // Warm color grade (sepia-ish)
+    // Warm color grade flare - REAL ASSET
     {
-      id: 'warm-grade',
-      type: 'texture',
-      assetId: 'procedural:sepia',
+      id: 'warm-grade-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-050.png',
       trigger: 'always',
       config: {
-        opacity: 0.25,
-        blendMode: 'overlay'
+        x: 0.3,
+        y: 0.3,
+        scale: 1.5,
+        opacity: 0.2,
+        blendMode: 'screen'
       }
     },
-    // Vignette for cinematic look
+    // Vignette corner flare - REAL ASSET
     {
-      id: 'cinema-vignette',
-      type: 'texture',
-      assetId: 'procedural:vignette',
+      id: 'cinema-vignette-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-450.png',
       trigger: 'always',
       config: {
-        opacity: 0.6,
+        x: 0.1,
+        y: 0.9,
+        scale: 0.6,
+        opacity: 0.4,
         blendMode: 'multiply'
       }
     },
-    // Subtle lens flare on keyword
+    // Subtle emotion flare on keyword - REAL ASSET
     {
       id: 'emotion-flare',
       type: 'lens-flare',
@@ -65,17 +75,6 @@ export const styleCinemaLocalTemplate: Template = {
         blendMode: 'screen',
         keywords: ['amour', 'love', 'espoir', 'hope', 'lumière', 'light']
       }
-    },
-    // Letterbox bars for cinematic aspect
-    {
-      id: 'letterbox-top',
-      type: 'texture',
-      assetId: 'procedural:letterbox',
-      trigger: 'always',
-      config: {
-        opacity: 1.0,
-        blendMode: 'source-over'
-      }
     }
   ],
   
@@ -87,7 +86,7 @@ export const styleCinemaLocalTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['cinema', 'film', 'storytelling', 'african', 'warm']
   }
 };

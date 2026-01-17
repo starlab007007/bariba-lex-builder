@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Template: Leçon du Jour
  * Daily lesson educational format
+ * REAL ASSETS ONLY - No procedural fallbacks
  */
 
 import { Template } from '../types';
@@ -18,16 +19,21 @@ export const leconDuJourTemplate: Template = {
   isNew: true,
   
   effects: [
+    // Chalkboard accent flare - REAL ASSET
     {
-      id: 'chalkboard-bg',
-      type: 'texture',
-      assetId: 'procedural:chalkboard',
+      id: 'chalkboard-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-160.png',
       trigger: 'always',
       config: {
-        opacity: 0.15,
-        blendMode: 'overlay'
+        x: 0.9,
+        y: 0.1,
+        scale: 0.5,
+        opacity: 0.3,
+        blendMode: 'screen'
       }
     },
+    // Lesson title - TEXT EFFECT
     {
       id: 'lesson-title',
       type: 'text',
@@ -43,26 +49,32 @@ export const leconDuJourTemplate: Template = {
         timeRange: [0, 5]
       }
     },
+    // Pointer flare - REAL ASSET
     {
-      id: 'pointer',
-      type: 'texture',
-      assetId: 'procedural:pointer-hand',
+      id: 'pointer-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-170.png',
       trigger: 'beat',
       config: {
         x: 0.1,
         y: 0.5,
-        scale: 0.3,
-        opacity: 0.8,
+        scale: 0.4,
+        opacity: 0.6,
+        blendMode: 'screen',
         beatThreshold: 0.7
       }
     },
+    // Highlight flare - REAL ASSET
     {
-      id: 'highlight-box',
-      type: 'texture',
-      assetId: 'procedural:highlight-box',
+      id: 'highlight-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-180.png',
       trigger: 'keyword',
       config: {
-        opacity: 0.3,
+        x: 0.5,
+        y: 0.5,
+        scale: 1.5,
+        opacity: 0.4,
         blendMode: 'screen',
         keywords: ['important', 'attention', 'retenez']
       }
@@ -76,7 +88,7 @@ export const leconDuJourTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['education', 'lesson', 'daily', 'learning']
   }
 };
