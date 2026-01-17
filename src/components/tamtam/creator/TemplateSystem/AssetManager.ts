@@ -259,11 +259,29 @@ class AssetManagerClass {
 
   /**
    * Preload all assets required by a template
+   * Filters out virtual asset categories that don't require file loading
    */
   async preloadForTemplate(effects: Array<{ assetId: string }>): Promise<void> {
     const assetIds = effects.map(e => e.assetId).filter(Boolean);
-    const uniqueIds = [...new Set(assetIds)];
+    
+    // Filter out virtual asset categories that don't need file loading
+    const virtualCategories = ['text', 'procedural', 'dynamic', 'virtual'];
+    const loadableAssetIds = assetIds.filter(id => {
+      const category = id.split(':')[0];
+      return !virtualCategories.includes(category);
+    });
+    
+    const uniqueIds = [...new Set(loadableAssetIds)];
     await this.loadMultiple(uniqueIds);
+  }
+
+  /**
+   * Check if an asset ID represents a virtual (non-file) asset
+   */
+  isVirtualAsset(assetId: string): boolean {
+    const virtualCategories = ['text', 'procedural', 'dynamic', 'virtual'];
+    const category = assetId.split(':')[0];
+    return virtualCategories.includes(category);
   }
 
   /**
