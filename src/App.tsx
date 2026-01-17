@@ -29,6 +29,7 @@ import TamTamTranslator from "./pages/tamtam/TamTamTranslator";
 import TamTamHealth from "./pages/tamtam/TamTamHealth";
 import TamTamKuaishouTest from "./pages/tamtam/TamTamKuaishouTest";
 import TamTamCreator from "./pages/tamtam/TamTamCreator";
+import TemplateTest from "./pages/TemplateTest";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/dictionary" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/gamification" element={<Gamification />} />
+            <Route path="/template-test" element={<TemplateTest />} />
             
             {/* TAM-TAM Platform Routes - 8 optimized screens */}
             <Route path="/tamtam" element={<TamTamApp />}>
