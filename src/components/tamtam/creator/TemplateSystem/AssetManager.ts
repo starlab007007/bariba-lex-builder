@@ -483,43 +483,69 @@ class AssetManagerClass {
     url: string, 
     descriptor: AssetDescriptor
   ): Promise<{ element: HTMLVideoElement; objectUrl: string; size: number }> {
-    // Use fetch-to-blob pipeline for CORS compatibility
-    const response = await this.fetchWithTimeout(url);
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
+    // Try original format first, then fallback to alternatives
+    const urlsToTry = [url];
+    
+    // Add fallback URLs for WebM (try MP4) and MOV (try WebM/MP4)
+    if (descriptor.format === 'webm') {
+      const mp4Url = url.replace('.webm', '.mp4');
+      urlsToTry.push(mp4Url);
+    } else if (descriptor.format === 'mov') {
+      const webmUrl = url.replace('.mov', '.webm');
+      const mp4Url = url.replace('.mov', '.mp4');
+      if (browserSupport.webm) urlsToTry.push(webmUrl);
+      urlsToTry.push(mp4Url);
+    }
 
-    return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
-      video.crossOrigin = 'anonymous';
-      video.muted = true;
-      video.loop = true;
-      video.playsInline = true;
+    let lastError: Error | null = null;
 
-      const timeout = setTimeout(() => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error(`Video load timeout: ${url}`));
-      }, this.config.timeout);
+    for (const tryUrl of urlsToTry) {
+      try {
+        const response = await this.fetchWithTimeout(tryUrl);
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
 
-      video.onloadeddata = () => {
-        clearTimeout(timeout);
-        resolve({ element: video, objectUrl, size: blob.size });
-      };
+        const result = await new Promise<{ element: HTMLVideoElement; objectUrl: string; size: number }>((resolve, reject) => {
+          const video = document.createElement('video');
+          video.crossOrigin = 'anonymous';
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
 
-      video.onerror = () => {
-        clearTimeout(timeout);
-        URL.revokeObjectURL(objectUrl);
-        
-        // Try fallback format if available
-        if (descriptor.format === 'mov' && browserSupport.webm) {
-          console.warn(`[AssetManager] MOV not supported, no WebM fallback for: ${url}`);
+          const timeout = setTimeout(() => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error(`Video load timeout: ${tryUrl}`));
+          }, this.config.timeout);
+
+          video.onloadeddata = () => {
+            clearTimeout(timeout);
+            resolve({ element: video, objectUrl, size: blob.size });
+          };
+
+          video.onerror = () => {
+            clearTimeout(timeout);
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error(`Failed to decode video: ${tryUrl}`));
+          };
+
+          video.src = objectUrl;
+          video.load();
+        });
+
+        // Success - log if we used fallback
+        if (tryUrl !== url) {
+          console.log(`[AssetManager] Used fallback format: ${tryUrl} (original: ${url})`);
         }
-        
-        reject(new Error(`Failed to load video: ${url}`));
-      };
+        return result;
 
-      video.src = objectUrl;
-      video.load();
-    });
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.warn(`[AssetManager] Failed to load video: ${tryUrl}`, error);
+        // Continue to next fallback
+      }
+    }
+
+    throw lastError || new Error(`Failed to load video: ${url}`);
   }
 
   private async loadAudio(url: string): Promise<{ buffer: AudioBuffer; size: number }> {

@@ -20,7 +20,7 @@ export const griotDigitalTemplate: Template = {
   isPremium: false,
   
   effects: [
-    // === LIGHT LEAKS (WebM VP9 with alpha) ===
+    // === LIGHT LEAKS (with MP4 fallback support) ===
     {
       id: 'leak-ambient',
       type: 'light-leak',
@@ -38,7 +38,7 @@ export const griotDigitalTemplate: Template = {
     {
       id: 'leak-beat-pulse',
       type: 'light-leak',
-      assetId: 'light-leak:leak-002.webm',
+      assetId: 'light-leak:leak-002.mp4',
       trigger: 'beat',
       config: {
         opacity: 0.6,
@@ -68,7 +68,7 @@ export const griotDigitalTemplate: Template = {
     {
       id: 'leak-climax',
       type: 'light-leak',
-      assetId: 'light-leak:leak-004.webm',
+      assetId: 'light-leak:leak-004.mp4',
       trigger: 'time',
       config: {
         opacity: 0.7,
