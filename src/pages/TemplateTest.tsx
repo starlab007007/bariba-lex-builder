@@ -4,10 +4,10 @@
  * Access: /template-test
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Play, Pause, RotateCcw, Sparkles, Zap, Layers, 
+import {
+  Play, Pause, RotateCcw, Sparkles, Zap, Layers,
   Activity, Clock, Eye, EyeOff, Settings, ChevronDown,
   ChevronRight, Volume2, VolumeX, Maximize, RefreshCw,
   CheckCircle2, XCircle, Loader2, AlertTriangle
@@ -20,14 +20,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
-import { 
-  TemplateEngine, 
-  assetManager,
-  allTemplates,
-  type Template,
-  type RenderState,
-  type EngineState
-} from '@/components/tamtam/creator/TemplateSystem';
+import { TemplateEngine } from '@/components/tamtam/creator/TemplateSystem/TemplateEngine';
+import { assetManager } from '@/components/tamtam/creator/TemplateSystem/AssetManager';
+import { allTemplates } from '@/components/tamtam/creator/TemplateSystem/templates';
+import type { Template, RenderState, EngineState } from '@/components/tamtam/creator/TemplateSystem/types';
 
 // ============================================================================
 // TYPES
