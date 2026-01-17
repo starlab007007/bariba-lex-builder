@@ -27,7 +27,7 @@ function getSupportedMimeType(): string {
 }
 
 export class TemplateEngine {
-  private assetManager: AssetManager;
+  private assetManager: typeof AssetManager;
   private effectsRenderer: EffectsRenderer | null = null;
   private animationId: number | null = null;
   private currentTemplate: Template | null = null;

@@ -1,241 +1,344 @@
 /**
- * Asset Manager v3.0
- * Handles loading, caching, and management of template assets
+ * TAM-TAM Asset Manager v4.0
+ * Flexible asset loading with support for mixed naming conventions
+ * Handles: 3d-models, audio/*, fonts, particles, transitions, textures, lens-flare, light-leak
  */
 
-import { AssetCategory } from './types';
+import type { AssetCategory } from './types';
 
-export class AssetManager {
-  private cache = new Map<string, unknown>();
-  private loadingPromises = new Map<string, Promise<unknown>>();
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface AssetDescriptor {
+  id: string; // Format: "category:filename" or "category/subfolder:filename"
+  category: AssetCategory | string;
+  subfolder?: string;
+  filename: string;
+  format: AssetFormat;
+}
+
+export type AssetFormat = 
+  | 'webm' | 'mp4' | 'mov'
+  | 'png' | 'jpg' | 'jpeg' | 'webp'
+  | 'glb' | 'gltf'
+  | 'mp3' | 'wav' | 'ogg'
+  | 'ttf' | 'otf' | 'woff' | 'woff2';
+
+export type LoadedAssetData = 
+  | HTMLImageElement 
+  | HTMLVideoElement 
+  | AudioBuffer 
+  | FontFace 
+  | Blob
+  | ArrayBuffer;
+
+export interface LoadedAsset {
+  id: string;
+  descriptor: AssetDescriptor;
+  data: LoadedAssetData;
+  objectUrl?: string;
+  loadedAt: number;
+  size: number;
+}
+
+export interface LoadProgress {
+  total: number;
+  loaded: number;
+  current: string;
+  percent: number;
+  errors: string[];
+}
+
+export interface AssetManagerConfig {
+  basePath: string;
+  timeout: number;
+  maxCacheSize: number; // in MB
+  maxCacheAge: number; // in ms
+  enableIndexedDB: boolean;
+}
+
+// ============================================================================
+// DEFAULT CONFIG
+// ============================================================================
+
+const DEFAULT_CONFIG: AssetManagerConfig = {
+  basePath: '/assets/envato',
+  timeout: 30000, // 30 seconds
+  maxCacheSize: 200, // 200MB
+  maxCacheAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  enableIndexedDB: true,
+};
+
+// ============================================================================
+// FORMAT DETECTION
+// ============================================================================
+
+const VIDEO_FORMATS: AssetFormat[] = ['webm', 'mp4', 'mov'];
+const IMAGE_FORMATS: AssetFormat[] = ['png', 'jpg', 'jpeg', 'webp'];
+const AUDIO_FORMATS: AssetFormat[] = ['mp3', 'wav', 'ogg'];
+const FONT_FORMATS: AssetFormat[] = ['ttf', 'otf', 'woff', 'woff2'];
+const MODEL_FORMATS: AssetFormat[] = ['glb', 'gltf'];
+
+function getFormatFromFilename(filename: string): AssetFormat {
+  const ext = filename.split('.').pop()?.toLowerCase() as AssetFormat;
+  return ext || 'png';
+}
+
+function getAssetType(format: AssetFormat): 'video' | 'image' | 'audio' | 'font' | 'model' | 'unknown' {
+  if (VIDEO_FORMATS.includes(format)) return 'video';
+  if (IMAGE_FORMATS.includes(format)) return 'image';
+  if (AUDIO_FORMATS.includes(format)) return 'audio';
+  if (FONT_FORMATS.includes(format)) return 'font';
+  if (MODEL_FORMATS.includes(format)) return 'model';
+  return 'unknown';
+}
+
+// ============================================================================
+// BROWSER SUPPORT DETECTION
+// ============================================================================
+
+const browserSupport = {
+  webm: false,
+  mp4: false,
+  mov: false,
+  webp: false,
+};
+
+function detectBrowserSupport(): void {
+  const video = document.createElement('video');
+  browserSupport.webm = video.canPlayType('video/webm; codecs="vp9"') !== '';
+  browserSupport.mp4 = video.canPlayType('video/mp4; codecs="avc1.42E01E"') !== '';
+  browserSupport.mov = video.canPlayType('video/quicktime') !== '';
   
-  private readonly ASSET_PATHS: Record<AssetCategory, string> = {
-    '3d-models': '/assets/envato/3d-models/',
-    'audio': '/assets/envato/audio/',
-    'fonts': '/assets/envato/fonts/',
-    'particles': '/assets/envato/particles/',
-    'transitions': '/assets/envato/transitions/',
-    'textures': '/assets/envato/textures/',
-    'lens-flare': '/assets/envato/lens-flare/',
-    'light-leak': '/assets/envato/light-leak/'
-  };
+  // WebP support
+  const canvas = document.createElement('canvas');
+  browserSupport.webp = canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+}
 
-  private readonly EXTENSIONS: Record<AssetCategory, string> = {
-    '3d-models': 'glb',
-    'audio': 'mp3',
-    'fonts': 'woff2',
-    'particles': 'webm',
-    'transitions': 'mp4',
-    'textures': 'png',
-    'lens-flare': 'png',
-    'light-leak': 'mp4'
+// Initialize on load
+if (typeof window !== 'undefined') {
+  detectBrowserSupport();
+}
+
+// ============================================================================
+// ASSET MANAGER CLASS
+// ============================================================================
+
+class AssetManagerClass {
+  private config: AssetManagerConfig;
+  private cache: Map<string, LoadedAsset> = new Map();
+  private loadingPromises: Map<string, Promise<LoadedAsset>> = new Map();
+  private audioContext: AudioContext | null = null;
+  private progress: LoadProgress = {
+    total: 0,
+    loaded: 0,
+    current: '',
+    percent: 0,
+    errors: [],
   };
+  private listeners: Set<(progress: LoadProgress) => void> = new Set();
+
+  constructor(config: Partial<AssetManagerConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  // ==========================================================================
+  // PUBLIC API
+  // ==========================================================================
 
   /**
-   * Load an asset by ID
-   * @param assetId Format: "category:filename" (e.g., "lens-flare:flare-001.png")
+   * Parse asset ID into descriptor
+   * Supports formats:
+   * - "category:filename" → /assets/envato/category/filename
+   * - "category/subfolder:filename" → /assets/envato/category/subfolder/filename
+   * - "audio/modern:track.mp3" → /assets/envato/audio/modern/track.mp3
    */
-  async load(assetId: string): Promise<unknown> {
-    // Return cached asset
-    if (this.cache.has(assetId)) {
-      return this.cache.get(assetId);
-    }
+  parseAssetId(assetId: string): AssetDescriptor {
+    const [path, filename] = assetId.split(':');
     
-    // Return existing loading promise to prevent duplicate loads
-    if (this.loadingPromises.has(assetId)) {
-      return this.loadingPromises.get(assetId);
-    }
-    
-    // Parse assetId
-    const [category, filename] = assetId.split(':') as [AssetCategory, string];
-    
-    if (!category || !filename) {
+    if (!filename) {
       throw new Error(`Invalid asset ID format: ${assetId}. Expected "category:filename"`);
     }
+
+    const pathParts = path.split('/');
+    const category = pathParts[0] as AssetCategory;
+    const subfolder = pathParts.length > 1 ? pathParts.slice(1).join('/') : undefined;
+    const format = getFormatFromFilename(filename);
+
+    return {
+      id: assetId,
+      category,
+      subfolder,
+      filename,
+      format,
+    };
+  }
+
+  /**
+   * Build full URL for an asset
+   */
+  buildAssetUrl(descriptor: AssetDescriptor): string {
+    const { category, subfolder, filename } = descriptor;
+    const pathParts = [this.config.basePath, category];
     
-    if (!this.ASSET_PATHS[category]) {
-      throw new Error(`Unknown asset category: ${category}`);
+    if (subfolder) {
+      pathParts.push(subfolder);
     }
     
-    const path = this.ASSET_PATHS[category] + filename;
-    
-    // Create loading promise
-    const loadingPromise = this.loadAsset(category, path, filename);
-    this.loadingPromises.set(assetId, loadingPromise);
-    
+    pathParts.push(filename);
+    return pathParts.join('/');
+  }
+
+  /**
+   * Load a single asset by ID
+   */
+  async load(assetId: string): Promise<LoadedAsset> {
+    // Check cache first
+    const cached = this.cache.get(assetId);
+    if (cached && Date.now() - cached.loadedAt < this.config.maxCacheAge) {
+      return cached;
+    }
+
+    // Check if already loading
+    const existing = this.loadingPromises.get(assetId);
+    if (existing) {
+      return existing;
+    }
+
+    // Start loading
+    const loadPromise = this.loadAsset(assetId);
+    this.loadingPromises.set(assetId, loadPromise);
+
     try {
-      const asset = await loadingPromise;
-      this.cache.set(assetId, asset);
-      return asset;
+      const result = await loadPromise;
+      this.cache.set(assetId, result);
+      return result;
     } finally {
       this.loadingPromises.delete(assetId);
     }
   }
 
   /**
-   * Load asset based on category
+   * Load multiple assets with progress tracking
    */
-  private async loadAsset(category: AssetCategory, path: string, filename: string): Promise<unknown> {
-    switch (category) {
-      case '3d-models':
-        return this.load3DModel(path);
-      case 'audio':
-        return this.loadAudio(path);
-      case 'fonts':
-        return this.loadFont(filename.replace(/\.[^/.]+$/, ''), path);
-      case 'particles':
-      case 'transitions':
-      case 'light-leak':
-        return this.loadVideo(path);
-      case 'lens-flare':
-      case 'textures':
-        return this.loadImage(path);
-      default:
-        // Try to infer from extension
-        if (path.match(/\.(mp4|webm|mov)$/i)) {
-          return this.loadVideo(path);
+  async loadMultiple(assetIds: string[]): Promise<Map<string, LoadedAsset>> {
+    this.progress = {
+      total: assetIds.length,
+      loaded: 0,
+      current: '',
+      percent: 0,
+      errors: [],
+    };
+    this.notifyProgress();
+
+    const results = new Map<string, LoadedAsset>();
+
+    await Promise.all(
+      assetIds.map(async (id) => {
+        try {
+          this.progress.current = id;
+          this.notifyProgress();
+
+          const asset = await this.load(id);
+          results.set(id, asset);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.progress.errors.push(`${id}: ${message}`);
+          console.warn(`[AssetManager] Failed to load ${id}:`, error);
+        } finally {
+          this.progress.loaded++;
+          this.progress.percent = Math.round((this.progress.loaded / this.progress.total) * 100);
+          this.notifyProgress();
         }
-        return this.loadImage(path);
-    }
+      })
+    );
+
+    return results;
   }
 
   /**
-   * Load 3D model (GLTF/GLB)
+   * Preload all assets required by a template
    */
-  private async load3DModel(path: string): Promise<unknown> {
-    // Dynamic import to avoid loading Three.js unless needed
-    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-    const loader = new GLTFLoader();
-    
-    return new Promise((resolve, reject) => {
-      loader.load(
-        path,
-        (gltf) => resolve(gltf.scene),
-        undefined,
-        (error) => {
-          console.warn(`3D model load failed: ${path}`, error);
-          reject(new Error(`Failed to load 3D model: ${path}`));
-        }
-      );
-    });
+  async preloadForTemplate(effects: Array<{ assetId: string }>): Promise<void> {
+    const assetIds = effects.map(e => e.assetId).filter(Boolean);
+    const uniqueIds = [...new Set(assetIds)];
+    await this.loadMultiple(uniqueIds);
   }
 
   /**
-   * Load audio file
+   * Get a loaded asset (must be already loaded)
    */
-  private async loadAudio(path: string): Promise<AudioBuffer> {
-    try {
-      const response = await fetch(path);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+  get(assetId: string): LoadedAsset | undefined {
+    return this.cache.get(assetId);
+  }
+
+  /**
+   * Get asset as specific type
+   */
+  getAsImage(assetId: string): HTMLImageElement | null {
+    const asset = this.cache.get(assetId);
+    return asset?.data instanceof HTMLImageElement ? asset.data : null;
+  }
+
+  getAsVideo(assetId: string): HTMLVideoElement | null {
+    const asset = this.cache.get(assetId);
+    return asset?.data instanceof HTMLVideoElement ? asset.data : null;
+  }
+
+  getAsAudio(assetId: string): AudioBuffer | null {
+    const asset = this.cache.get(assetId);
+    return asset?.data instanceof AudioBuffer ? asset.data : null;
+  }
+
+  getAsFont(assetId: string): FontFace | null {
+    const asset = this.cache.get(assetId);
+    return asset?.data instanceof FontFace ? asset.data : null;
+  }
+
+  getAsBlob(assetId: string): Blob | null {
+    const asset = this.cache.get(assetId);
+    return asset?.data instanceof Blob ? asset.data : null;
+  }
+
+  /**
+   * Subscribe to progress updates
+   */
+  onProgress(callback: (progress: LoadProgress) => void): () => void {
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  }
+
+  /**
+   * Get current progress
+   */
+  getProgress(): LoadProgress {
+    return { ...this.progress };
+  }
+
+  /**
+   * Clear cache (with optional pattern matching)
+   */
+  clearCache(pattern?: string): void {
+    if (!pattern) {
+      // Revoke all object URLs
+      for (const asset of this.cache.values()) {
+        if (asset.objectUrl) {
+          URL.revokeObjectURL(asset.objectUrl);
+        }
       }
-      
-      const arrayBuffer = await response.arrayBuffer();
-      const audioContext = new AudioContext();
-      
-      return await audioContext.decodeAudioData(arrayBuffer);
-    } catch (error) {
-      console.warn(`Audio load failed: ${path}`, error);
-      throw new Error(`Failed to load audio: ${path}`);
+      this.cache.clear();
+      return;
     }
-  }
 
-  /**
-   * Load font file
-   */
-  private async loadFont(fontName: string, path: string): Promise<FontFace> {
-    try {
-      const font = new FontFace(fontName, `url(${path})`);
-      await font.load();
-      document.fonts.add(font);
-      return font;
-    } catch (error) {
-      console.warn(`Font load failed: ${path}`, error);
-      throw new Error(`Failed to load font: ${path}`);
-    }
-  }
-
-  /**
-   * Load video file
-   */
-  private async loadVideo(path: string): Promise<HTMLVideoElement> {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
-      video.src = path;
-      video.loop = true;
-      video.muted = true;
-      video.playsInline = true;
-      video.crossOrigin = 'anonymous';
-      
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Video load timeout: ${path}`));
-      }, 30000);
-      
-      video.addEventListener('loadeddata', () => {
-        clearTimeout(timeoutId);
-        resolve(video);
-      });
-      
-      video.addEventListener('error', () => {
-        clearTimeout(timeoutId);
-        console.warn(`Video load failed: ${path}`);
-        reject(new Error(`Failed to load video: ${path}`));
-      });
-      
-      video.load();
-    });
-  }
-
-  /**
-   * Load image file
-   */
-  private async loadImage(path: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Image load timeout: ${path}`));
-      }, 15000);
-      
-      img.onload = () => {
-        clearTimeout(timeoutId);
-        resolve(img);
-      };
-      
-      img.onerror = () => {
-        clearTimeout(timeoutId);
-        console.warn(`Image load failed: ${path}`);
-        reject(new Error(`Failed to load image: ${path}`));
-      };
-      
-      img.src = path;
-    });
-  }
-
-  /**
-   * Get random assets from a category
-   */
-  getRandomAssetIds(category: AssetCategory, count: number = 1): string[] {
-    const ext = this.EXTENSIONS[category];
-    return Array.from({ length: count }, (_, i) => 
-      `${category}:asset-${String(i + 1).padStart(3, '0')}.${ext}`
-    );
-  }
-
-  /**
-   * Preload assets for a template
-   */
-  async preloadForTemplate(templateId: string, assetIds: string[]): Promise<void> {
-    console.log(`Preloading ${assetIds.length} assets for template: ${templateId}`);
-    
-    const results = await Promise.allSettled(
-      assetIds.map(id => this.load(id))
-    );
-    
-    const failed = results.filter(r => r.status === 'rejected');
-    if (failed.length > 0) {
-      console.warn(`${failed.length} assets failed to preload for ${templateId}`);
+    // Clear matching entries
+    for (const [key, asset] of this.cache.entries()) {
+      if (key.includes(pattern)) {
+        if (asset.objectUrl) {
+          URL.revokeObjectURL(asset.objectUrl);
+        }
+        this.cache.delete(key);
+      }
     }
   }
 
@@ -247,27 +350,288 @@ export class AssetManager {
   }
 
   /**
-   * Get cache size
+   * Get cache stats
    */
-  getCacheSize(): number {
-    return this.cache.size;
+  getCacheStats(): { count: number; sizeBytes: number; sizeMB: number } {
+    let sizeBytes = 0;
+    for (const asset of this.cache.values()) {
+      sizeBytes += asset.size;
+    }
+    return {
+      count: this.cache.size,
+      sizeBytes,
+      sizeMB: Math.round(sizeBytes / (1024 * 1024) * 100) / 100,
+    };
   }
 
   /**
-   * Clear specific asset from cache
+   * Enforce cache size limit (LRU eviction)
    */
-  clearAsset(assetId: string): void {
-    this.cache.delete(assetId);
+  private enforceMaxCacheSize(): void {
+    const stats = this.getCacheStats();
+    if (stats.sizeMB <= this.config.maxCacheSize) return;
+
+    // Sort by loadedAt (oldest first) and remove until under limit
+    const entries = [...this.cache.entries()].sort(
+      (a, b) => a[1].loadedAt - b[1].loadedAt
+    );
+
+    let currentSize = stats.sizeBytes;
+    const maxBytes = this.config.maxCacheSize * 1024 * 1024;
+
+    for (const [key, asset] of entries) {
+      if (currentSize <= maxBytes) break;
+      
+      if (asset.objectUrl) {
+        URL.revokeObjectURL(asset.objectUrl);
+      }
+      this.cache.delete(key);
+      currentSize -= asset.size;
+    }
   }
 
-  /**
-   * Clear entire cache
-   */
-  clearCache(): void {
-    this.cache.clear();
-    this.loadingPromises.clear();
+  // ==========================================================================
+  // PRIVATE LOADING METHODS
+  // ==========================================================================
+
+  private async loadAsset(assetId: string): Promise<LoadedAsset> {
+    const descriptor = this.parseAssetId(assetId);
+    const url = this.buildAssetUrl(descriptor);
+    const assetType = getAssetType(descriptor.format);
+
+    let data: LoadedAssetData;
+    let objectUrl: string | undefined;
+    let size = 0;
+
+    switch (assetType) {
+      case 'image':
+        const imageResult = await this.loadImage(url);
+        data = imageResult.element;
+        size = imageResult.size;
+        break;
+
+      case 'video':
+        const videoResult = await this.loadVideo(url, descriptor);
+        data = videoResult.element;
+        objectUrl = videoResult.objectUrl;
+        size = videoResult.size;
+        break;
+
+      case 'audio':
+        const audioResult = await this.loadAudio(url);
+        data = audioResult.buffer;
+        size = audioResult.size;
+        break;
+
+      case 'font':
+        const fontResult = await this.loadFont(url, descriptor.filename);
+        data = fontResult.font;
+        size = fontResult.size;
+        break;
+
+      case 'model':
+        const modelResult = await this.loadModel(url);
+        data = modelResult.data;
+        size = modelResult.size;
+        break;
+
+      default:
+        const blobResult = await this.loadBlob(url);
+        data = blobResult.blob;
+        size = blobResult.size;
+    }
+
+    const loadedAsset: LoadedAsset = {
+      id: assetId,
+      descriptor,
+      data,
+      objectUrl,
+      loadedAt: Date.now(),
+      size,
+    };
+
+    this.enforceMaxCacheSize();
+    return loadedAsset;
+  }
+
+  private async loadImage(url: string): Promise<{ element: HTMLImageElement; size: number }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      const timeout = setTimeout(() => {
+        reject(new Error(`Image load timeout: ${url}`));
+      }, this.config.timeout);
+
+      img.onload = () => {
+        clearTimeout(timeout);
+        // Estimate size from dimensions (rough)
+        const size = (img.width * img.height * 4); // RGBA
+        resolve({ element: img, size });
+      };
+
+      img.onerror = () => {
+        clearTimeout(timeout);
+        reject(new Error(`Failed to load image: ${url}`));
+      };
+
+      img.src = url;
+    });
+  }
+
+  private async loadVideo(
+    url: string, 
+    descriptor: AssetDescriptor
+  ): Promise<{ element: HTMLVideoElement; objectUrl: string; size: number }> {
+    // Use fetch-to-blob pipeline for CORS compatibility
+    const response = await this.fetchWithTimeout(url);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+
+      const timeout = setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error(`Video load timeout: ${url}`));
+      }, this.config.timeout);
+
+      video.onloadeddata = () => {
+        clearTimeout(timeout);
+        resolve({ element: video, objectUrl, size: blob.size });
+      };
+
+      video.onerror = () => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(objectUrl);
+        
+        // Try fallback format if available
+        if (descriptor.format === 'mov' && browserSupport.webm) {
+          console.warn(`[AssetManager] MOV not supported, no WebM fallback for: ${url}`);
+        }
+        
+        reject(new Error(`Failed to load video: ${url}`));
+      };
+
+      video.src = objectUrl;
+      video.load();
+    });
+  }
+
+  private async loadAudio(url: string): Promise<{ buffer: AudioBuffer; size: number }> {
+    if (!this.audioContext) {
+      this.audioContext = new AudioContext();
+    }
+
+    const response = await this.fetchWithTimeout(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+
+    return { buffer, size: arrayBuffer.byteLength };
+  }
+
+  private async loadFont(url: string, filename: string): Promise<{ font: FontFace; size: number }> {
+    const response = await this.fetchWithTimeout(url);
+    const arrayBuffer = await response.arrayBuffer();
+    
+    // Extract font family name from filename
+    const fontFamily = filename.replace(/\.(ttf|otf|woff|woff2)$/i, '');
+    
+    const font = new FontFace(fontFamily, arrayBuffer);
+    await font.load();
+    document.fonts.add(font);
+
+    return { font, size: arrayBuffer.byteLength };
+  }
+
+  private async loadModel(url: string): Promise<{ data: ArrayBuffer; size: number }> {
+    const response = await this.fetchWithTimeout(url);
+    const data = await response.arrayBuffer();
+    return { data, size: data.byteLength };
+  }
+
+  private async loadBlob(url: string): Promise<{ blob: Blob; size: number }> {
+    const response = await this.fetchWithTimeout(url);
+    const blob = await response.blob();
+    return { blob, size: blob.size };
+  }
+
+  private async fetchWithTimeout(url: string): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        mode: 'cors',
+        credentials: 'omit',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private notifyProgress(): void {
+    for (const listener of this.listeners) {
+      try {
+        listener({ ...this.progress });
+      } catch (e) {
+        console.error('[AssetManager] Progress listener error:', e);
+      }
+    }
   }
 }
 
-// Singleton instance
-export const assetManager = new AssetManager();
+// ============================================================================
+// SINGLETON EXPORTS
+// ============================================================================
+
+export const AssetManager = new AssetManagerClass();
+
+// Legacy export for backward compatibility
+export const assetManager = AssetManager;
+
+// Also export class for custom instances
+export { AssetManagerClass };
+
+// ============================================================================
+// CONVENIENCE FUNCTIONS
+// ============================================================================
+
+/**
+ * Quick load helper
+ */
+export async function loadAsset(assetId: string): Promise<LoadedAsset> {
+  return AssetManager.load(assetId);
+}
+
+/**
+ * Quick preload helper
+ */
+export async function preloadAssets(assetIds: string[]): Promise<Map<string, LoadedAsset>> {
+  return AssetManager.loadMultiple(assetIds);
+}
+
+/**
+ * Check if video format is supported
+ */
+export function isVideoFormatSupported(format: 'webm' | 'mp4' | 'mov'): boolean {
+  return browserSupport[format];
+}
+
+/**
+ * Get best video format for current browser
+ */
+export function getBestVideoFormat(): 'webm' | 'mp4' {
+  return browserSupport.webm ? 'webm' : 'mp4';
+}
