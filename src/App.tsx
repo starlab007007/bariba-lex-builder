@@ -31,6 +31,7 @@ import TamTamKuaishouTest from "./pages/tamtam/TamTamKuaishouTest";
 import TamTamCreator from "./pages/tamtam/TamTamCreator";
 import TemplateTest from "./pages/TemplateTest";
 import SystemValidation from "./pages/SystemValidation";
+import AssetsDashboard from "./pages/AssetsDashboard";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/gamification" element={<Gamification />} />
             <Route path="/template-test" element={<TemplateTest />} />
             <Route path="/system-validation" element={<SystemValidation />} />
+            <Route path="/assets" element={<AssetsDashboard />} />
             
             {/* TAM-TAM Platform Routes - 8 optimized screens */}
             <Route path="/tamtam" element={<TamTamApp />}>
