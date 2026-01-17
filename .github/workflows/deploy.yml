@@ -5,8 +5,32 @@ on:
       - main
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Build successful
+        run: echo "✅ Build completed successfully!"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Only deploy if VPS secrets are configured
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     steps:
       - name: Déployer sur le VPS avec Docker Compose
         uses: appleboy/ssh-action@v0.1.10
