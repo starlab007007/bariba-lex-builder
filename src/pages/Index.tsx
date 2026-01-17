@@ -7,9 +7,10 @@ import { DictionaryStats } from "@/components/DictionaryStats";
 import { PhraseTranslator } from "@/components/PhraseTranslator";
 import { SelectedEntryDisplay } from "@/components/SelectedEntryDisplay";
 import { SimilarSuggestions } from "@/components/SimilarSuggestions";
+import { AssetDiagnostic } from "@/components/AssetDiagnostic";
 
 import { useSmartDictionarySearch } from "@/hooks/useSmartDictionarySearch";
-import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy, Mic, MessagesSquare } from "lucide-react";
+import { Book, Languages, Globe, ArrowLeftRight, MessageSquare, LogIn, Shield, LogOut, Trophy, Mic, MessagesSquare, HardDrive } from "lucide-react";
 import { VoiceTab } from "@/components/voice/VoiceTab";
 import { ConversationMode } from "@/components/voice/ConversationMode";
 import { Badge } from "@/components/ui/badge";
@@ -110,8 +111,13 @@ const Index = () => {
 
       {/* Main Content with Tabs - Responsive */}
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
-        <Tabs defaultValue="dictionary" className="w-full">
-          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4 mb-4 sm:mb-6 lg:mb-8">
+        <Tabs defaultValue="assets" className="w-full">
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-5 mb-4 sm:mb-6 lg:mb-8">
+            <TabsTrigger value="assets" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+              <HardDrive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Assets</span>
+              <span className="sm:hidden">📁</span>
+            </TabsTrigger>
             <TabsTrigger value="dictionary" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
               <Book className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Dictionnaire</span>
@@ -133,6 +139,10 @@ const Index = () => {
               <span className="sm:hidden">💬</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="assets" className="space-y-8">
+            <AssetDiagnostic />
+          </TabsContent>
 
           <TabsContent value="dictionary" className="space-y-8">
             {/* Search Section */}
