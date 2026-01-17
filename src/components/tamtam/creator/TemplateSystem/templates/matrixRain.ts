@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Matrix Rain
- * Iconic falling code effect
+ * Iconic falling code effect - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,34 +19,44 @@ export const matrixRainTemplate: Template = {
   
   effects: [
     {
-      id: 'code-rain',
-      type: 'particles',
-      assetId: 'procedural:matrix-rain',
+      id: 'matrix-flare-1',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-175.png',
       trigger: 'always',
       config: {
-        opacity: 0.7,
+        x: 0.5,
+        y: 0.2,
+        scale: 0.7,
+        opacity: 0.5,
         blendMode: 'screen'
       }
     },
     {
-      id: 'green-tint',
-      type: 'color-grade',
-      assetId: 'procedural:matrix-green',
-      trigger: 'always',
-      config: {
-        opacity: 0.3,
-        blendMode: 'overlay'
-      }
-    },
-    {
-      id: 'digital-glitch',
-      type: 'particles',
-      assetId: 'procedural:digital-noise',
+      id: 'matrix-flare-2',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-225.png',
       trigger: 'beat',
       config: {
+        x: 0.3,
+        y: 0.5,
+        scale: 0.4,
         opacity: 0.4,
         blendMode: 'screen',
         beatThreshold: 0.7
+      }
+    },
+    {
+      id: 'matrix-flare-3',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-275.png',
+      trigger: 'beat',
+      config: {
+        x: 0.7,
+        y: 0.4,
+        scale: 0.5,
+        opacity: 0.3,
+        blendMode: 'screen',
+        beatThreshold: 0.6
       }
     },
     {
@@ -73,7 +83,7 @@ export const matrixRainTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['matrix', 'code', 'rain', 'hacker']
   }
 };

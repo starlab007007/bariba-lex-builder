@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Dance Challenge
- * TikTok-style dance challenge format
+ * TikTok-style dance challenge format - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,22 +19,28 @@ export const danceChallengeTemplate: Template = {
   
   effects: [
     {
-      id: 'beat-flash',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-flash',
+      id: 'beat-flash-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-050.png',
       trigger: 'beat',
       config: {
+        x: 0.5,
+        y: 0.5,
+        scale: 1.5,
         opacity: 0.5,
         blendMode: 'screen',
         beatThreshold: 0.5
       }
     },
     {
-      id: 'confetti',
-      type: 'particles',
-      assetId: 'procedural:confetti-burst',
+      id: 'confetti-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-075.png',
       trigger: 'beat',
       config: {
+        x: 0.3,
+        y: 0.3,
+        scale: 0.8,
         opacity: 0.6,
         blendMode: 'screen',
         beatThreshold: 0.8
@@ -55,11 +61,14 @@ export const danceChallengeTemplate: Template = {
       }
     },
     {
-      id: 'energy-border',
-      type: 'texture',
-      assetId: 'procedural:energy-frame',
+      id: 'energy-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-100.png',
       trigger: 'beat',
       config: {
+        x: 0.7,
+        y: 0.7,
+        scale: 0.7,
         opacity: 0.7,
         blendMode: 'screen',
         beatThreshold: 0.6
@@ -74,7 +83,7 @@ export const danceChallengeTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['dance', 'challenge', 'tiktok', 'viral']
   }
 };

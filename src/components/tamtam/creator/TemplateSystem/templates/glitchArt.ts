@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Glitch Art
- * Artistic digital glitch effects
+ * Artistic digital glitch effects - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,46 +19,44 @@ export const glitchArtTemplate: Template = {
   
   effects: [
     {
-      id: 'rgb-split',
-      type: 'particles',
-      assetId: 'procedural:rgb-shift',
+      id: 'glitch-flare-1',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-350.png',
       trigger: 'beat',
       config: {
+        x: 0.5,
+        y: 0.5,
+        scale: 0.8,
         opacity: 0.8,
         blendMode: 'screen',
         beatThreshold: 0.6
       }
     },
     {
-      id: 'scanline-noise',
-      type: 'texture',
-      assetId: 'procedural:static-noise',
+      id: 'glitch-flare-2',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-375.png',
       trigger: 'beat',
       config: {
-        opacity: 0.3,
-        blendMode: 'overlay',
-        beatThreshold: 0.7
-      }
-    },
-    {
-      id: 'displacement',
-      type: 'particles',
-      assetId: 'procedural:pixel-sort',
-      trigger: 'beat',
-      config: {
+        x: 0.3,
+        y: 0.4,
+        scale: 0.3,
         opacity: 0.5,
         blendMode: 'screen',
         beatThreshold: 0.8
       }
     },
     {
-      id: 'vhs-frame',
-      type: 'texture',
-      assetId: 'procedural:vhs-border',
+      id: 'glitch-corner',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-400.png',
       trigger: 'always',
       config: {
+        x: 0.9,
+        y: 0.1,
+        scale: 0.6,
         opacity: 0.6,
-        blendMode: 'source-over'
+        blendMode: 'screen'
       }
     }
   ],
@@ -70,7 +68,7 @@ export const glitchArtTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['glitch', 'art', 'digital', 'distortion']
   }
 };

@@ -1,7 +1,7 @@
 /**
  * Griot Digital Template
  * Traditional African storytelling meets modern technology
- * Features: light leaks (WebM VP9 alpha), lens flares (PNG alpha), audio beat sync
+ * Uses ONLY real assets: lens-flare PNG files and audio MP3
  */
 
 import { Template } from '../types';
@@ -20,68 +20,63 @@ export const griotDigitalTemplate: Template = {
   isPremium: false,
   
   effects: [
-    // === LIGHT LEAKS (with MP4 fallback support) ===
+    // === LENS FLARES (Real PNG assets) ===
     {
-      id: 'leak-ambient',
-      type: 'light-leak',
-      assetId: 'light-leak:leak-001.webm',
+      id: 'flare-ambient',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-050.png',
       trigger: 'always',
       config: {
+        x: 0.85,
+        y: 0.15,
+        scale: 1.2,
         opacity: 0.4,
         blendMode: 'screen',
-        scale: 1.2,
-        x: 0,
-        y: 0,
-        loop: true
+        rotation: 0
       }
     },
     {
-      id: 'leak-beat-pulse',
-      type: 'light-leak',
-      assetId: 'light-leak:leak-002.mp4',
+      id: 'flare-beat-pulse',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-075.png',
       trigger: 'beat',
       config: {
-        opacity: 0.6,
-        blendMode: 'lighter',
-        scale: 1.0,
         x: 0.5,
         y: 0.5,
-        beatThreshold: 0.7,
-        loop: true
+        scale: 1.0,
+        opacity: 0.6,
+        blendMode: 'screen',
+        beatThreshold: 0.7
       }
     },
     {
-      id: 'leak-midstory',
-      type: 'light-leak',
-      assetId: 'light-leak:leak-003.webm',
+      id: 'flare-midstory',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-100.png',
       trigger: 'time',
       config: {
+        x: 0.2,
+        y: 0.3,
+        scale: 0.8,
         opacity: 0.5,
-        blendMode: 'overlay',
-        scale: 1.1,
-        x: 0,
-        y: 0,
-        timeRange: [3, 25],
-        loop: true
+        blendMode: 'screen',
+        timeRange: [3, 25]
       }
     },
     {
-      id: 'leak-climax',
-      type: 'light-leak',
-      assetId: 'light-leak:leak-004.mp4',
+      id: 'flare-climax',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-125.png',
       trigger: 'time',
       config: {
+        x: 0.5,
+        y: 0.4,
+        scale: 1.3,
         opacity: 0.7,
         blendMode: 'screen',
-        scale: 1.3,
-        x: 0,
-        y: 0,
-        timeRange: [20, 28],
-        loop: true
+        timeRange: [20, 28]
       }
     },
-
-    // === LENS FLARES (PNG with alpha) ===
     {
       id: 'flare-corner',
       type: 'lens-flare',
@@ -106,7 +101,7 @@ export const griotDigitalTemplate: Template = {
         y: 0.7,
         scale: 0.6,
         opacity: 0.8,
-        blendMode: 'lighter',
+        blendMode: 'screen',
         rotation: 45,
         beatThreshold: 0.75
       }
@@ -215,7 +210,7 @@ export const griotDigitalTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['storytelling', 'african', 'oral-tradition', 'griot', 'cultural', 'bariba']
   },
   

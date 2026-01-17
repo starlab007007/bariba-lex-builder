@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: Afrobeat Pulse
- * African music visualizer
+ * African music visualizer - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,19 +19,22 @@ export const afrobeatPulseTemplate: Template = {
   
   effects: [
     {
-      id: 'african-pattern',
-      type: 'texture',
-      assetId: 'procedural:kente-border',
+      id: 'african-flare-main',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-150.png',
       trigger: 'always',
       config: {
+        x: 0.5,
+        y: 0.3,
+        scale: 1.2,
         opacity: 0.6,
-        blendMode: 'source-over'
+        blendMode: 'screen'
       }
     },
     {
-      id: 'drum-pulse',
-      type: 'particles',
-      assetId: 'procedural:circular-pulse',
+      id: 'drum-pulse-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-200.png',
       trigger: 'beat',
       config: {
         x: 0.5,
@@ -43,26 +46,30 @@ export const afrobeatPulseTemplate: Template = {
       }
     },
     {
-      id: 'warm-glow',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-orange',
+      id: 'warm-glow-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-250.png',
       trigger: 'beat',
       config: {
+        x: 0.7,
+        y: 0.2,
+        scale: 0.8,
         opacity: 0.3,
         blendMode: 'screen',
         beatThreshold: 0.6
       }
     },
     {
-      id: 'adinkra-symbol',
-      type: '3d-object',
-      assetId: '3d-models:adinkra-sankofa.glb',
+      id: 'symbol-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-300.png',
       trigger: 'beat',
       config: {
         x: 0.5,
         y: 0.3,
         scale: 0.5,
         opacity: 0.6,
+        blendMode: 'screen',
         beatThreshold: 0.8
       }
     }
@@ -75,7 +82,7 @@ export const afrobeatPulseTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['afrobeat', 'music', 'african', 'pulse']
   }
 };

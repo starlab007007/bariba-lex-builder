@@ -1,6 +1,6 @@
 /**
  * TAM-TAM Template: AI Portrait Pro
- * AI-enhanced portrait effects
+ * AI-enhanced portrait effects - Real assets only
  */
 
 import { Template } from '../types';
@@ -19,22 +19,28 @@ export const aiPortraitProTemplate: Template = {
   
   effects: [
     {
-      id: 'ai-scan',
-      type: 'particles',
-      assetId: 'procedural:scan-lines',
+      id: 'ai-scan-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-200.png',
       trigger: 'time',
       config: {
+        x: 0.5,
+        y: 0.3,
+        scale: 0.5,
         opacity: 0.5,
         blendMode: 'screen',
         timeRange: [0, 3]
       }
     },
     {
-      id: 'beauty-glow',
-      type: 'light-leak',
-      assetId: 'procedural:light-leak-soft',
+      id: 'beauty-glow-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-225.png',
       trigger: 'always',
       config: {
+        x: 0.5,
+        y: 0.5,
+        scale: 1.2,
         opacity: 0.2,
         blendMode: 'screen'
       }
@@ -54,11 +60,14 @@ export const aiPortraitProTemplate: Template = {
       }
     },
     {
-      id: 'tech-frame',
-      type: 'texture',
-      assetId: 'procedural:tech-corners',
+      id: 'tech-corner-flare',
+      type: 'lens-flare',
+      assetId: 'lens-flare:flare-250.png',
       trigger: 'always',
       config: {
+        x: 0.1,
+        y: 0.1,
+        scale: 0.4,
         opacity: 0.7,
         blendMode: 'screen'
       }
@@ -72,7 +81,7 @@ export const aiPortraitProTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '1.0.0',
+    version: '2.0.0',
     tags: ['ai', 'portrait', 'enhancement', 'beauty']
   }
 };
