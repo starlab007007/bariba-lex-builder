@@ -1,6 +1,6 @@
 /**
- * TAM-TAM Template: Débat Express
- * Quick debate/discussion format
+ * TAM-TAM Template: Débat Express v3.0
+ * Quick debate/discussion format - Full Envato assets
  * REAL ASSETS ONLY - No procedural fallbacks
  */
 
@@ -19,64 +19,61 @@ export const debatExpressTemplate: Template = {
   isNew: true,
   
   effects: [
-    // VS badge - TEXT EFFECT
-    {
-      id: 'vs-badge',
-      type: 'text',
-      assetId: 'text:versus',
-      trigger: 'time',
-      config: {
-        x: 0.5,
-        y: 0.5,
-        text: 'VS',
-        font: 'Impact',
-        color: '#FFD700',
-        scale: 1.5,
-        timeRange: [0, 3]
-      }
-    },
-    // Split screen flare - REAL ASSET
+    // === LENS FLARES ===
     {
       id: 'split-screen-flare',
       type: 'lens-flare',
       assetId: 'lens-flare:flare-420.png',
       trigger: 'always',
-      config: {
-        x: 0.5,
-        y: 0.5,
-        scale: 0.4,
-        opacity: 0.6,
-        blendMode: 'screen'
-      }
+      config: { x: 0.5, y: 0.5, scale: 0.4, opacity: 0.6, blendMode: 'screen' }
     },
-    // Timer bar flare - REAL ASSET
     {
       id: 'timer-bar-flare',
       type: 'lens-flare',
       assetId: 'lens-flare:flare-100.png',
       trigger: 'always',
-      config: {
-        x: 0.5,
-        y: 0.05,
-        scale: 2.0,
-        opacity: 0.5,
-        blendMode: 'screen'
-      }
+      config: { x: 0.5, y: 0.05, scale: 2.0, opacity: 0.5, blendMode: 'screen' }
     },
-    // Energy pulse flare - REAL ASSET
     {
       id: 'energy-pulse',
       type: 'lens-flare',
       assetId: 'lens-flare:flare-090.png',
       trigger: 'beat',
-      config: {
-        x: 0.5,
-        y: 0.5,
-        scale: 1.5,
-        opacity: 0.3,
-        blendMode: 'screen',
-        beatThreshold: 0.6
-      }
+      config: { x: 0.5, y: 0.5, scale: 1.5, opacity: 0.3, blendMode: 'screen', beatThreshold: 0.6 }
+    },
+
+    // === LIGHT LEAKS - Dramatic debate lighting ===
+    {
+      id: 'debate-leak-left',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-025.webm',
+      trigger: 'beat',
+      config: { x: 0.2, y: 0.5, scale: 1.2, opacity: 0.3, blendMode: 'screen', beatThreshold: 0.7 }
+    },
+    {
+      id: 'debate-leak-right',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-030.webm',
+      trigger: 'beat',
+      config: { x: 0.8, y: 0.5, scale: 1.2, opacity: 0.3, blendMode: 'screen', beatThreshold: 0.7 }
+    },
+
+    // === TRANSITIONS - For point scoring ===
+    {
+      id: 'point-transition',
+      type: 'transition',
+      assetId: 'transitions:transition-005.mp4',
+      trigger: 'beat',
+      config: { x: 0.5, y: 0.5, scale: 1.0, opacity: 0.6, blendMode: 'screen', beatThreshold: 0.85, duration: 0.3 }
+    },
+
+    // === TEXT ===
+    {
+      id: 'vs-badge',
+      type: 'text',
+      assetId: 'text:versus',
+      trigger: 'time',
+      config: { x: 0.5, y: 0.5, text: 'VS', font: 'Impact', color: '#FFD700', scale: 1.5, timeRange: [0, 3] }
     }
   ],
   
@@ -87,7 +84,7 @@ export const debatExpressTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '2.0.0',
+    version: '3.0.0',
     tags: ['debate', 'discussion', 'versus', 'quick']
   }
 };
