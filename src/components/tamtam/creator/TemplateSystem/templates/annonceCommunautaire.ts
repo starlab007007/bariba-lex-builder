@@ -1,6 +1,6 @@
 /**
- * TAM-TAM Template: Annonce Communautaire
- * Community announcement format
+ * TAM-TAM Template: Annonce Communautaire v3.0
+ * Community announcement format - Full Envato assets integration
  * REAL ASSETS ONLY - No procedural fallbacks
  */
 
@@ -19,65 +19,54 @@ export const annonceCommunautaireTemplate: Template = {
   isNew: true,
   
   effects: [
-    // Megaphone icon - TEXT EFFECT
-    {
-      id: 'megaphone-icon',
-      type: 'text',
-      assetId: 'text:megaphone',
-      trigger: 'time',
-      config: {
-        x: 0.5,
-        y: 0.15,
-        text: '📢',
-        font: 'System',
-        scale: 2,
-        timeRange: [0, 3],
-        animation: 'bounce'
-      }
-    },
-    // Announcement banner flare - REAL ASSET
+    // === LENS FLARES ===
     {
       id: 'announcement-flare',
       type: 'lens-flare',
       assetId: 'lens-flare:flare-045.png',
       trigger: 'always',
-      config: {
-        x: 0.5,
-        y: 0.1,
-        scale: 1.5,
-        opacity: 0.6,
-        blendMode: 'screen'
-      }
+      config: { x: 0.5, y: 0.1, scale: 1.5, opacity: 0.6, blendMode: 'screen' }
     },
-    // Urgent pulse flare - REAL ASSET
     {
       id: 'urgent-pulse',
       type: 'lens-flare',
       assetId: 'lens-flare:flare-090.png',
       trigger: 'beat',
-      config: {
-        x: 0.5,
-        y: 0.5,
-        scale: 1.8,
-        opacity: 0.3,
-        blendMode: 'screen',
-        beatThreshold: 0.5
-      }
+      config: { x: 0.5, y: 0.5, scale: 1.8, opacity: 0.3, blendMode: 'screen', beatThreshold: 0.5 }
     },
-    // Info text - TEXT EFFECT
+
+    // === LIGHT LEAKS ===
+    {
+      id: 'announce-leak-1',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-005.mp4',
+      trigger: 'beat',
+      config: { x: 0.5, y: 0.5, scale: 1.4, opacity: 0.35, blendMode: 'screen', beatThreshold: 0.6 }
+    },
+
+    // === PARTICLES ===
+    {
+      id: 'announce-particles',
+      type: 'particles',
+      assetId: 'particles:particle-015.webm',
+      trigger: 'always',
+      config: { x: 0.5, y: 0.5, scale: 1.2, opacity: 0.25, blendMode: 'screen' }
+    },
+
+    // === TEXT ===
+    {
+      id: 'megaphone-icon',
+      type: 'text',
+      assetId: 'text:megaphone',
+      trigger: 'time',
+      config: { x: 0.5, y: 0.15, text: '📢', font: 'System', scale: 2, timeRange: [0, 3], animation: 'bounce' }
+    },
     {
       id: 'info-text',
       type: 'text',
       assetId: 'text:info',
       trigger: 'always',
-      config: {
-        x: 0.5,
-        y: 0.9,
-        text: 'Information Importante',
-        font: 'Roboto',
-        color: '#FFFFFF',
-        align: 'center'
-      }
+      config: { x: 0.5, y: 0.9, text: 'Information Importante', font: 'Roboto', color: '#FFFFFF', align: 'center' }
     }
   ],
   
@@ -88,7 +77,7 @@ export const annonceCommunautaireTemplate: Template = {
   
   metadata: {
     author: 'TAM-TAM Team',
-    version: '2.0.0',
+    version: '3.0.0',
     tags: ['announcement', 'community', 'news', 'info']
   }
 };
