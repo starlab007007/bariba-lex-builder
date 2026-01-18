@@ -24,6 +24,49 @@ export interface EnvatoAssetMapping {
   envatoSlug?: string;
   envatoSearchQuery?: string;
   expectedSpecs?: ExpectedSpecs;
+  format?: string;
+}
+
+export interface EnvatoCredentials {
+  email?: string;
+  password?: string;
+  token?: string;
+}
+
+export interface EnvatoAsset {
+  id: string;
+  name: string;
+  category: string;
+  previewUrl: string;
+  author: string;
+  license: string;
+}
+
+export interface DownloadProgress {
+  category: string;
+  current: number;
+  total: number;
+  currentFile: string;
+  bytesDownloaded: number;
+  totalBytes: number;
+  speed: number;
+  eta: number;
+  status: 'idle' | 'downloading' | 'completed' | 'error' | 'paused';
+  errors: DownloadError[];
+}
+
+export interface DownloadError {
+  file: string;
+  error: string;
+  attempt: number;
+  timestamp: Date;
+}
+
+export interface DownloadState {
+  category: string;
+  completedFiles: string[];
+  failedFiles: string[];
+  lastUpdated: Date;
 }
 
 // ============================================================================
@@ -354,7 +397,7 @@ export const ENVATO_ASSET_MAP: Record<string, EnvatoAssetMapping[]> = {
 };
 
 // ============================================================================
-// URL GENERATION - Avec redirection exacte
+// URL GENERATION
 // ============================================================================
 
 const CATEGORY_PATH_MAP: Record<string, string> = {
@@ -369,12 +412,10 @@ const CATEGORY_PATH_MAP: Record<string, string> = {
  * Génère l'URL Envato exacte pour un asset
  */
 export function getEnvatoUrl(category: string, searchTerm: string, mapping?: EnvatoAssetMapping): string {
-  // Si on a un slug direct, l'utiliser
   if (mapping?.envatoSlug) {
     return `https://elements.envato.com/${mapping.envatoSlug}`;
   }
   
-  // Utiliser la recherche précise si disponible
   const query = mapping?.envatoSearchQuery || searchTerm;
   const categoryPath = CATEGORY_PATH_MAP[category] || 'all-items';
   
@@ -418,75 +459,11 @@ export function getCategoryStats(): Record<string, { total: number; withSpecs: n
   
   return stats;
 }
-/**
- * Génère le mapping pour les lens-flare (455 fichiers)
- */
-function generateLensFlareMapping(count: number): EnvatoAssetMapping[] {
-  const flareTypes = [
-    'Anamorphic Flare', 'Cinematic Flare', 'Sun Flare', 'Bokeh Flare', 
-    'Light Streak', 'Prism Flare', 'Warm Flare', 'Cool Flare',
-    'Golden Flare', 'Blue Flare', 'Rainbow Flare', 'Soft Flare',
-    'Sharp Flare', 'Circular Flare', 'Linear Flare', 'Natural Flare'
-  ];
-  
-  const mapping: EnvatoAssetMapping[] = [];
-  for (let i = 1; i <= count; i++) {
-    const typeIndex = (i - 1) % flareTypes.length;
-    const packNumber = Math.floor((i - 1) / 30) + 1;
-    mapping.push({
-      local: `flare-${String(i).padStart(3, '0')}.png`,
-      envato: `${flareTypes[typeIndex]} Pack ${packNumber}`,
-      id: `FLARE${String(i).padStart(3, '0')}`,
-      category: 'graphics',
-    });
-  }
-  return mapping;
-}
-
-/**
- * Génère le mapping pour les textures (215 fichiers)
- */
-function generateTextureMapping(count: number): EnvatoAssetMapping[] {
-  const textureTypes = [
-    { name: 'Film Grain', format: 'png' },
-    { name: 'Noise Texture', format: 'png' },
-    { name: 'Paper Texture', format: 'png' },
-    { name: 'Fabric Texture', format: 'png' },
-    { name: 'Metal Texture', format: 'png' },
-    { name: 'Wood Texture', format: 'png' },
-    { name: 'Stone Texture', format: 'png' },
-    { name: 'Abstract Pattern', format: 'png' },
-    { name: 'Geometric Pattern', format: 'png' },
-    { name: 'African Pattern', format: 'png' },
-    { name: 'Animated Texture', format: 'mp4' },
-    { name: 'Moving Grain', format: 'mp4' },
-  ];
-
-  const mapping: EnvatoAssetMapping[] = [];
-  for (let i = 1; i <= count; i++) {
-    const typeIndex = (i - 1) % textureTypes.length;
-    const textureType = textureTypes[typeIndex];
-    const packNumber = Math.floor((i - 1) / 20) + 1;
-    const ext = i > 180 ? 'mp4' : 'png'; // Last 35 are video textures
-    mapping.push({
-      local: `texture-${String(i).padStart(3, '0')}.${ext}`,
-      envato: `${textureType.name} Pack ${packNumber}`,
-      id: `TEXT${String(i).padStart(3, '0')}`,
-      category: ext === 'mp4' ? 'stock-video' : 'graphics',
-      format: ext,
-    });
-  }
-  return mapping;
-}
 
 // ============================================================================
 // ENVATO API CLIENT
 // ============================================================================
 
-/**
- * Client pour l'API Envato Elements
- * Gère l'authentification et les téléchargements
- */
 export class EnvatoClient {
   private credentials: EnvatoCredentials;
   private isAuthenticated = false;
@@ -498,13 +475,8 @@ export class EnvatoClient {
     this.credentials = credentials;
   }
 
-  /**
-   * Authentifie l'utilisateur avec Envato Elements
-   * @returns true si l'authentification réussit
-   */
   async authenticate(): Promise<boolean> {
     try {
-      // Si un token est fourni, l'utiliser directement
       if (this.credentials.token) {
         this.authToken = this.credentials.token;
         const isValid = await this.verifySubscription();
@@ -512,16 +484,10 @@ export class EnvatoClient {
         return isValid;
       }
 
-      // Sinon, simuler une authentification (en production, utiliser OAuth)
       console.log('[EnvatoClient] Authenticating with email:', this.credentials.email);
-      
-      // Simulation - en production, appeler l'API OAuth Envato
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Pour le développement, on simule un token
       this.authToken = `simulated_token_${Date.now()}`;
       this.isAuthenticated = true;
-      
       console.log('[EnvatoClient] Authentication successful');
       return true;
     } catch (error) {
@@ -531,12 +497,6 @@ export class EnvatoClient {
     }
   }
 
-  /**
-   * Recherche des assets sur Envato Elements
-   * @param query - Terme de recherche
-   * @param category - Catégorie (stock-video, graphics, audio, etc.)
-   * @returns Liste des assets trouvés
-   */
   async searchAsset(query: string, category: string): Promise<EnvatoAsset[]> {
     if (!this.isAuthenticated) {
       throw new Error('Not authenticated. Call authenticate() first.');
@@ -544,11 +504,8 @@ export class EnvatoClient {
 
     try {
       console.log(`[EnvatoClient] Searching for: ${query} in ${category}`);
-      
-      // Simulation de recherche - en production, appeler l'API Envato
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Retourner des résultats simulés basés sur la query
       return [
         {
           id: `search_${Date.now()}`,
@@ -565,11 +522,6 @@ export class EnvatoClient {
     }
   }
 
-  /**
-   * Obtient l'URL de téléchargement pour un item
-   * @param itemId - ID de l'item Envato
-   * @returns URL de téléchargement
-   */
   async getDownloadUrl(itemId: string): Promise<string> {
     if (!this.isAuthenticated) {
       throw new Error('Not authenticated. Call authenticate() first.');
@@ -577,11 +529,7 @@ export class EnvatoClient {
 
     try {
       console.log(`[EnvatoClient] Getting download URL for item: ${itemId}`);
-      
-      // Simulation - en production, appeler l'API Envato pour obtenir le lien
       await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // URL simulée - en production, c'est l'API qui fournit le lien temporaire
       return `${this.ELEMENTS_BASE}/downloads/${itemId}/download`;
     } catch (error) {
       console.error('[EnvatoClient] Failed to get download URL:', error);
@@ -589,12 +537,6 @@ export class EnvatoClient {
     }
   }
 
-  /**
-   * Télécharge un asset depuis Envato
-   * @param url - URL de téléchargement
-   * @param localPath - Chemin local de destination
-   * @param onProgress - Callback de progression
-   */
   async downloadAsset(
     url: string, 
     localPath: string, 
@@ -606,15 +548,11 @@ export class EnvatoClient {
 
     try {
       console.log(`[EnvatoClient] Downloading asset to: ${localPath}`);
-      
-      // Simulation de téléchargement avec progression
-      // En production, utiliser fetch avec streaming ou une API backend
       const totalSteps = 10;
       for (let i = 0; i <= totalSteps; i++) {
         await new Promise(resolve => setTimeout(resolve, 200));
         onProgress((i / totalSteps) * 100);
       }
-      
       console.log(`[EnvatoClient] Download complete: ${localPath}`);
     } catch (error) {
       console.error('[EnvatoClient] Download failed:', error);
@@ -622,20 +560,11 @@ export class EnvatoClient {
     }
   }
 
-  /**
-   * Vérifie si l'utilisateur a un abonnement Envato Elements actif
-   * @returns true si l'abonnement est valide
-   */
   async verifySubscription(): Promise<boolean> {
     try {
       console.log('[EnvatoClient] Verifying subscription...');
-      
-      // Simulation - en production, appeler l'API Envato
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // En production, vérifier le statut réel de l'abonnement
-      const hasValidSubscription = true; // Simulé
-      
+      const hasValidSubscription = true;
       console.log('[EnvatoClient] Subscription valid:', hasValidSubscription);
       return hasValidSubscription;
     } catch (error) {
@@ -644,9 +573,6 @@ export class EnvatoClient {
     }
   }
 
-  /**
-   * Retourne si le client est authentifié
-   */
   get authenticated(): boolean {
     return this.isAuthenticated;
   }
@@ -656,9 +582,6 @@ export class EnvatoClient {
 // DOWNLOAD MANAGER
 // ============================================================================
 
-/**
- * Gestionnaire de téléchargements avec queue, retry et progression
- */
 export class DownloadManager {
   private client: EnvatoClient | null = null;
   private isPaused = false;
@@ -669,18 +592,10 @@ export class DownloadManager {
   private downloadQueue: Array<{ mapping: EnvatoAssetMapping; category: string }> = [];
   private downloadState: Map<string, DownloadState> = new Map();
 
-  /**
-   * Configure le client Envato
-   */
   setClient(client: EnvatoClient): void {
     this.client = client;
   }
 
-  /**
-   * Télécharge tous les assets manquants d'une catégorie
-   * @param category - Catégorie à télécharger
-   * @param onProgress - Callback de progression
-   */
   async downloadMissingAssets(
     category: string,
     onProgress: (progress: DownloadProgress) => void
@@ -694,7 +609,6 @@ export class DownloadManager {
       throw new Error(`Unknown category: ${category}`);
     }
 
-    // Vérifier quels fichiers sont manquants ou LFS
     const missingAssets = await this.getMissingAssets(category, mappings);
     
     if (missingAssets.length === 0) {
@@ -736,7 +650,6 @@ export class DownloadManager {
         errors,
       });
 
-      // Télécharger avec retry
       let success = false;
       for (let attempt = 1; attempt <= this.MAX_RETRIES && !success; attempt++) {
         try {
@@ -769,8 +682,6 @@ export class DownloadManager {
       }
 
       completed++;
-      
-      // Mettre à jour l'état de téléchargement
       this.updateDownloadState(category, mapping.local, success);
     }
 
@@ -788,9 +699,6 @@ export class DownloadManager {
     });
   }
 
-  /**
-   * Télécharge tous les assets manquants de toutes les catégories
-   */
   async downloadAll(onProgress: (progress: DownloadProgress) => void): Promise<void> {
     const categories = Object.keys(ENVATO_ASSET_MAP);
     
@@ -800,45 +708,29 @@ export class DownloadManager {
     }
   }
 
-  /**
-   * Met en pause les téléchargements
-   */
   pause(): void {
     console.log('[DownloadManager] Pausing downloads');
     this.isPaused = true;
   }
 
-  /**
-   * Reprend les téléchargements
-   */
   resume(): void {
     console.log('[DownloadManager] Resuming downloads');
     this.isPaused = false;
   }
 
-  /**
-   * Annule tous les téléchargements
-   */
   cancel(): void {
     console.log('[DownloadManager] Cancelling downloads');
     this.isCancelled = true;
     this.isPaused = false;
   }
 
-  /**
-   * Réinitialise l'état du gestionnaire
-   */
   reset(): void {
     this.isCancelled = false;
     this.isPaused = false;
     this.downloadQueue = [];
   }
 
-  /**
-   * Récupère l'état de téléchargement sauvegardé
-   */
   getSavedState(category: string): DownloadState | null {
-    // Charger depuis localStorage
     try {
       const key = `envato_download_state_${category}`;
       const saved = localStorage.getItem(key);
@@ -851,9 +743,6 @@ export class DownloadManager {
     return null;
   }
 
-  /**
-   * Vérifie quels assets sont manquants ou LFS
-   */
   private async getMissingAssets(
     category: string, 
     mappings: EnvatoAssetMapping[]
@@ -874,18 +763,13 @@ export class DownloadManager {
     return missing;
   }
 
-  /**
-   * Vérifie si un fichier est un pointeur LFS ou manquant
-   */
   private async checkIfLfsOrMissing(path: string): Promise<boolean> {
     try {
       const response = await fetch(path, { method: 'HEAD' });
       if (!response.ok) return true;
       
-      // Vérifier la taille (les pointeurs LFS font ~130 bytes)
       const contentLength = response.headers.get('content-length');
       if (contentLength && parseInt(contentLength) < 200) {
-        // Potentiellement un pointeur LFS, vérifier le contenu
         const textResponse = await fetch(path);
         const text = await textResponse.text();
         if (text.includes('version https://git-lfs.github.com')) {
@@ -899,9 +783,6 @@ export class DownloadManager {
     }
   }
 
-  /**
-   * Télécharge un seul asset
-   */
   private async downloadSingleAsset(
     category: string,
     mapping: EnvatoAssetMapping,
@@ -911,21 +792,14 @@ export class DownloadManager {
       throw new Error('No Envato client configured');
     }
 
-    // Obtenir l'URL de téléchargement
     const downloadUrl = await this.client.getDownloadUrl(mapping.id);
-    
-    // Chemin local
     const localPath = category === 'audio'
       ? `/assets/envato/${mapping.local}`
       : `/assets/envato/${category}/${mapping.local}`;
     
-    // Télécharger
     await this.client.downloadAsset(downloadUrl, localPath, onProgress);
   }
 
-  /**
-   * Met à jour l'état de téléchargement
-   */
   private updateDownloadState(category: string, file: string, success: boolean): void {
     const key = `envato_download_state_${category}`;
     let state = this.downloadState.get(category);
@@ -948,7 +822,6 @@ export class DownloadManager {
     state.lastUpdated = new Date();
     this.downloadState.set(category, state);
     
-    // Sauvegarder dans localStorage
     try {
       localStorage.setItem(key, JSON.stringify(state));
     } catch (e) {
@@ -961,45 +834,10 @@ export class DownloadManager {
 // UTILITY FUNCTIONS
 // ============================================================================
 
-/**
- * Génère l'URL Envato Elements pour un item
- * @param category - Catégorie de l'asset
- * @param name - Nom de l'asset
- * @returns URL vers la page Envato Elements
- */
-export function getEnvatoUrl(category: string, name: string, mapping?: EnvatoAssetMapping): string {
-  // Si on a un slug direct, utiliser le lien direct
-  if (mapping?.envatoSlug) {
-    return `https://elements.envato.com/${mapping.envatoSlug}`;
-  }
-  
-  // Utiliser la query de recherche précise si disponible
-  const searchQuery = mapping?.envatoSearchQuery || name;
-  
-  const categoryMap: Record<string, string> = {
-    'stock-video': 'stock-video',
-    'graphics': 'graphic-templates',
-    '3d-models': '3d',
-    'fonts': 'fonts',
-    'audio': 'royalty-free-music',
-  };
-  
-  const envatoCategory = categoryMap[category] || 'all-items';
-  return `https://elements.envato.com/${envatoCategory}?q=${encodeURIComponent(searchQuery)}`;
-}
-
-/**
- * Calcule le checksum d'un fichier
- * @param data - Données du fichier
- * @returns Checksum en hexadécimal
- */
 export async function calculateChecksum(data: ArrayBuffer): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * Instance singleton du DownloadManager
- */
 export const downloadManager = new DownloadManager();
