@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   ExternalLink, 
   Upload, 
@@ -24,7 +26,9 @@ import {
   FolderOpen,
   Loader2,
   Trash2,
-  FileCheck
+  FileCheck,
+  Info,
+  Wand2
 } from 'lucide-react';
 import { ENVATO_ASSET_MAP, EnvatoAssetMapping, getEnvatoUrl } from '@/lib/EnvatoDownloader';
 import { useToast } from '@/hooks/use-toast';
@@ -358,7 +362,7 @@ export const EnvatoBrowserHelper: React.FC = () => {
   };
 
   /**
-   * Importe un fichier vers un asset slot
+   * Importe un fichier vers un asset slot (version simplifiée)
    */
   const importFile = async (file: File, asset: AssetStatus) => {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -366,23 +370,18 @@ export const EnvatoBrowserHelper: React.FC = () => {
     
     // Vérifier si conversion nécessaire
     if (ext !== targetExt && FORMAT_CONVERSIONS[ext] === targetExt) {
-      // Simuler une conversion
+      // Simuler une conversion avec progression locale
       setAssets(prev => prev.map(a => 
         a.mapping.id === asset.mapping.id ? { ...a, status: 'converting', progress: 0 } : a
       ));
-      setConverting(asset.mapping.id);
       
       // Simuler la progression de conversion
       for (let i = 0; i <= 100; i += 10) {
         await new Promise(resolve => setTimeout(resolve, 200));
-        setConversionProgress(i);
         setAssets(prev => prev.map(a => 
           a.mapping.id === asset.mapping.id ? { ...a, progress: i } : a
         ));
       }
-      
-      setConverting(null);
-      setConversionProgress(0);
     }
 
     // Marquer comme uploadé
@@ -548,9 +547,112 @@ export const EnvatoBrowserHelper: React.FC = () => {
               <Badge variant="outline">MP3</Badge>
               <Badge variant="outline">GLB</Badge>
             </div>
+            {/* Bouton d'upload manuel */}
+            <div className="pt-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".webm,.mp4,.mov,.png,.jpg,.jpeg,.mp3,.wav,.glb,.gltf,.ttf,.otf"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+              <Button variant="outline" onClick={openFileSelector}>
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Ou parcourir les fichiers
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Fichiers importés en attente de confirmation */}
+      {importedAssets.length > 0 && (
+        <Card className="border-green-500/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileCheck className="h-5 w-5 text-green-500" />
+                Fichiers à confirmer ({importedAssets.filter(a => a.status === 'ready').length})
+              </CardTitle>
+              <div className="flex gap-2">
+                {importedAssets.filter(a => a.status === 'ready').length > 0 && (
+                  <Button size="sm" onClick={confirmAllImports} className="bg-green-600 hover:bg-green-700">
+                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                    Confirmer tout ({importedAssets.filter(a => a.status === 'ready').length})
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={clearAll}>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Effacer
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="max-h-[300px]">
+              <div className="space-y-2">
+                {importedAssets.map((asset) => (
+                  <div 
+                    key={asset.id} 
+                    className={`p-3 rounded-lg border flex items-center justify-between ${
+                      asset.status === 'ready' ? 'bg-green-500/10 border-green-500/50' :
+                      asset.status === 'confirmed' ? 'bg-blue-500/10 border-blue-500/50' :
+                      asset.status === 'error' ? 'bg-red-500/10 border-red-500/50' :
+                      'bg-muted'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {asset.status === 'ready' && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                      {asset.status === 'confirmed' && <Check className="h-5 w-5 text-blue-500" />}
+                      {asset.status === 'error' && <AlertCircle className="h-5 w-5 text-red-500" />}
+                      {asset.previewUrl && asset.file.type.startsWith('image/') && (
+                        <img src={asset.previewUrl} alt="" className="w-10 h-10 rounded object-cover" />
+                      )}
+                      <div>
+                        <div className="font-medium text-sm">{asset.originalName}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                          <ArrowRight className="h-3 w-3" />
+                          <code className="bg-muted px-1 rounded">{asset.targetPath}</code>
+                        </div>
+                        {asset.error && (
+                          <div className="text-xs text-red-500 mt-1">{asset.error}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {ASSET_CATEGORIES[asset.category]?.icon} {asset.category}
+                      </Badge>
+                      {asset.status === 'ready' && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => confirmImport(asset.id)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Confirmer
+                        </Button>
+                      )}
+                      {asset.status === 'confirmed' && (
+                        <Badge className="bg-blue-500/20 text-blue-400">✓ Importé</Badge>
+                      )}
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-8 w-8"
+                        onClick={() => removeAsset(asset.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Téléchargements détectés en attente d'assignation */}
       {detectedDownloads.length > 0 && (
