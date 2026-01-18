@@ -41,7 +41,8 @@ export const ImportHistoryPanel: React.FC = () => {
     importStats,
     loadImportHistory, 
     loadImportStats,
-    retryImport 
+    retryImport,
+    deleteImportRecord
   } = useAssetImport();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -72,7 +73,15 @@ export const ImportHistoryPanel: React.FC = () => {
   const handleRetry = async (importId: string) => {
     const success = await retryImport(importId);
     if (success) {
-      toast.success('Import relancé');
+      handleRefresh();
+    }
+  };
+
+  const handleDelete = async (importId: string, fileName: string) => {
+    if (!confirm(`Supprimer l'enregistrement pour "${fileName}" ?`)) return;
+    
+    const success = await deleteImportRecord(importId);
+    if (success) {
       handleRefresh();
     }
   };
@@ -321,21 +330,32 @@ export const ImportHistoryPanel: React.FC = () => {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           {entry.status === 'failed' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => handleRetry(entry.id)}
-                              title="Réessayer"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                            </Button>
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleRetry(entry.id)}
+                                title="Réessayer l'import"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleDelete(entry.id, entry.original_name)}
+                                title="Supprimer l'enregistrement"
+                                className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
                           )}
                           {entry.public_url && (
                             <Button 
                               variant="ghost" 
                               size="icon"
                               onClick={() => window.open(entry.public_url!, '_blank')}
-                              title="Ouvrir"
+                              title="Ouvrir le fichier"
                             >
                               <ExternalLink className="h-4 w-4" />
                             </Button>
