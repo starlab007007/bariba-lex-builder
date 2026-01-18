@@ -245,7 +245,18 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             )}
 
             {/* Footer */}
-            <div className="p-4 border-t border-white/10">
+            <div className="p-4 border-t border-white/10 space-y-2">
+              {/* Admin link in settings section for admins */}
+              {isAdmin && (
+                <motion.button 
+                  whileTap={{ scale: 0.98 }} 
+                  onClick={() => handleNavigate('/assets')} 
+                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 border border-[#FF7A00]/20"
+                >
+                  <Package className="w-5 h-5 text-[#FF7A00]" />
+                  <span className="text-[#FF7A00] text-sm font-medium">Gestion Assets</span>
+                </motion.button>
+              )}
               <motion.button whileTap={{ scale: 0.98 }} onClick={() => handleNavigate('/tamtam/settings')} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5">
                 <Settings className="w-5 h-5 text-white/50" />
                 <span className="text-white/50 text-sm">Paramètres</span>
