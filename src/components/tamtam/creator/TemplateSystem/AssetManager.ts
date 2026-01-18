@@ -1,10 +1,12 @@
 /**
- * TAM-TAM Asset Manager v4.0
+ * TAM-TAM Asset Manager v4.1
  * Flexible asset loading with support for mixed naming conventions
+ * Includes automatic path resolution for misnamed assets
  * Handles: 3d-models, audio/*, fonts, particles, transitions, textures, lens-flare, light-leak
  */
 
 import type { AssetCategory } from './types';
+import { resolveAssetPath, isAssetAvailable } from '@/lib/AssetRealMapping';
 
 // ============================================================================
 // TYPES
@@ -194,28 +196,34 @@ class AssetManagerClass {
    * Load a single asset by ID
    */
   async load(assetId: string): Promise<LoadedAsset> {
+    // Resolve asset path using real mapping (handles misnamed files)
+    const resolvedId = resolveAssetPath(assetId);
+    const cacheKey = assetId; // Keep original ID for cache consistency
+    
     // Check cache first
-    const cached = this.cache.get(assetId);
+    const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.loadedAt < this.config.maxCacheAge) {
       return cached;
     }
 
     // Check if already loading
-    const existing = this.loadingPromises.get(assetId);
+    const existing = this.loadingPromises.get(cacheKey);
     if (existing) {
       return existing;
     }
 
-    // Start loading
-    const loadPromise = this.loadAsset(assetId);
-    this.loadingPromises.set(assetId, loadPromise);
+    // Start loading with resolved path
+    const loadPromise = this.loadAsset(resolvedId);
+    this.loadingPromises.set(cacheKey, loadPromise);
 
     try {
       const result = await loadPromise;
-      this.cache.set(assetId, result);
+      // Store with original ID for consistency
+      result.id = assetId;
+      this.cache.set(cacheKey, result);
       return result;
     } finally {
-      this.loadingPromises.delete(assetId);
+      this.loadingPromises.delete(cacheKey);
     }
   }
 
