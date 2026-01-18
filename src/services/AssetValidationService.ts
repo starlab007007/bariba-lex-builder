@@ -295,7 +295,9 @@ export async function validateAssetFile(
   // Validation de la résolution pour vidéos/images
   if (spec.minWidth && spec.minHeight) {
     try {
-      if (file.type.startsWith('video/')) {
+      // Support video/quicktime (MOV) et autres formats vidéo
+      const isVideo = file.type.startsWith('video/') || file.type === 'video/quicktime' || ['webm', 'mp4', 'mov', 'avi'].includes(ext);
+      if (isVideo) {
         const videoMeta = await getVideoMetadata(file);
         const resValid = videoMeta.width >= spec.minWidth && videoMeta.height >= spec.minHeight;
         
@@ -330,7 +332,7 @@ export async function validateAssetFile(
             }
           }
         }
-      } else if (file.type.startsWith('image/')) {
+      } else if (file.type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
         const imgMeta = await getImageMetadata(file);
         const resValid = imgMeta.width >= spec.minWidth && imgMeta.height >= spec.minHeight;
         
