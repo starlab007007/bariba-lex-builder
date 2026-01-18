@@ -1,6 +1,7 @@
 /**
  * TAM-TAM Smart Asset Download Panel
  * Downloads assets directly from Envato and places them in correct folders with proper naming
+ * Now integrated with useAssetImport for real uploads to Supabase Storage
  */
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -11,6 +12,8 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   Download, 
   Upload, 
@@ -30,7 +33,8 @@ import {
   Type,
   Sparkles,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -38,6 +42,7 @@ import {
   AssetCorrection,
   ENVATO_EQUIVALENTS 
 } from '@/services/AssetCorrectionService';
+import { useAssetImport, canConvertMovToWebM } from '@/hooks/useAssetImport';
 
 // ============================================================================
 // TYPES
@@ -47,35 +52,41 @@ interface SmartDownloadPanelProps {
   isEnvatoConnected?: boolean;
 }
 
-interface DroppedFile {
-  file: File;
-  category: string;
-  targetName: string;
-  targetPath: string;
-  status: 'pending' | 'processing' | 'success' | 'error';
-  error?: string;
-}
-
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
 export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvatoConnected = false }) => {
   const {
-    progress,
+    progress: correctionProgress,
     corrections,
     summary,
     runCorrection,
-    processFile,
-    validateFile,
+    processFile: processCorrectionFile,
+    validateFile: validateCorrectionFile,
     getSearchUrl,
     markCompleted,
     getAllSearchUrls,
   } = useAssetCorrection();
 
+  // Use the real import hook for actual uploads
+  const {
+    importedAssets,
+    progress: importProgress,
+    processFiles,
+    confirmImport,
+    confirmAllImports,
+    removeAsset,
+    clearAll,
+    autoConvertMov,
+    setAutoConvertMov,
+    canConvertMov,
+    importStats,
+  } = useAssetImport();
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
   // Category config
@@ -103,8 +114,8 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
     setIsDragging(false);
   }, []);
 
-  // Handle file drop
-  const handleDrop = useCallback((e: React.DragEvent, targetCategory?: string) => {
+  // Handle file drop - now using useAssetImport for real uploads
+  const handleDrop = useCallback(async (e: React.DragEvent, targetCategory?: string) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -117,67 +128,32 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
       return;
     }
 
-    const newDroppedFiles: DroppedFile[] = [];
-
-    files.forEach(file => {
-      // Validate file
-      const validation = validateFile(file, category);
-      
-      if (!validation.valid) {
-        newDroppedFiles.push({
-          file,
-          category,
-          targetName: file.name,
-          targetPath: '',
-          status: 'error',
-          error: validation.error,
-        });
-        return;
-      }
-
-      // Process file for proper placement
-      const processed = processFile(file, category);
-      
-      if (processed) {
-        newDroppedFiles.push({
-          file,
-          category: processed.category,
-          targetName: processed.targetName,
-          targetPath: processed.targetPath,
-          status: 'success',
-        });
-        
-        // Mark relevant correction as completed
-        const relatedCorrection = corrections.find(
-          c => c.category === category && c.status === 'pending'
-        );
-        if (relatedCorrection) {
-          markCompleted(relatedCorrection.id);
-        }
-      } else {
-        newDroppedFiles.push({
-          file,
-          category,
-          targetName: file.name,
-          targetPath: '',
-          status: 'error',
-          error: 'Impossible de traiter ce fichier',
-        });
-      }
-    });
-
-    setDroppedFiles(prev => [...prev, ...newDroppedFiles]);
-
-    const successCount = newDroppedFiles.filter(f => f.status === 'success').length;
-    const errorCount = newDroppedFiles.filter(f => f.status === 'error').length;
-
-    if (successCount > 0) {
-      toast.success(`${successCount} fichier(s) traité(s) avec succès`);
+    // Process files through useAssetImport for real storage upload
+    await processFiles(files, category);
+    
+    // Mark relevant corrections as completed
+    const relatedCorrection = corrections.find(
+      c => c.category === category && c.status === 'pending'
+    );
+    if (relatedCorrection) {
+      markCompleted(relatedCorrection.id);
     }
-    if (errorCount > 0) {
-      toast.error(`${errorCount} fichier(s) rejeté(s)`);
+  }, [selectedCategory, processFiles, corrections, markCompleted]);
+
+  // Upload all ready assets
+  const handleUploadAll = useCallback(async () => {
+    setIsUploading(true);
+    try {
+      const count = await confirmAllImports();
+      if (count > 0) {
+        toast.success(`${count} fichier(s) uploadé(s) vers le storage!`);
+      }
+    } catch (error) {
+      toast.error('Erreur lors de l\'upload');
+    } finally {
+      setIsUploading(false);
     }
-  }, [selectedCategory, validateFile, processFile, corrections, markCompleted]);
+  }, [confirmAllImports]);
 
   // Open Envato search
   const openEnvatoSearch = (category: string) => {
