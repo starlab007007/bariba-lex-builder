@@ -16,10 +16,15 @@ export interface AssetCategoryConfig {
   expectedFormats: string[];
   namingPattern: string;
   minFileSize: number; // bytes - pour détecter LFS pointers
+  maxFileSize: number; // bytes - limite haute
   expectedCount: number;
   basePath: string;
   envatoCategory: string;
   envatoSearchTerms: string[];
+  // Validation specs
+  minResolution?: { width: number; height: number };
+  durationRange?: { min: number; max: number }; // seconds
+  requiresAlpha?: boolean;
 }
 
 export interface AssetFileDefinition {
@@ -42,11 +47,13 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-yellow-500',
     expectedFormats: ['.png', '.webp'],
     namingPattern: 'flare-XXX.png',
-    minFileSize: 5000,
+    minFileSize: 10 * 1024,           // 10 KB
+    maxFileSize: 50 * 1024 * 1024,    // 50 MB
     expectedCount: 455,
     basePath: '/assets/envato/lens-flare/',
     envatoCategory: 'graphics',
-    envatoSearchTerms: ['lens flare overlay', 'anamorphic flare', 'cinematic flare png']
+    envatoSearchTerms: ['lens flare overlay', 'anamorphic flare', 'cinematic flare png'],
+    minResolution: { width: 1920, height: 1080 },
   },
   
   'light-leak': {
@@ -57,11 +64,15 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-orange-500',
     expectedFormats: ['.webm', '.mp4', '.mov'],
     namingPattern: 'leak-XXX.webm',
-    minFileSize: 100000,
+    minFileSize: 500 * 1024,          // 500 KB
+    maxFileSize: 200 * 1024 * 1024,   // 200 MB
     expectedCount: 40,
     basePath: '/assets/envato/light-leak/',
     envatoCategory: 'stock-video',
-    envatoSearchTerms: ['light leak overlay 4k', 'cinematic light leak', 'film burn overlay']
+    envatoSearchTerms: ['light leak overlay 4k alpha', 'cinematic light leak webm', 'film burn overlay transparent'],
+    minResolution: { width: 1920, height: 1080 },
+    durationRange: { min: 2, max: 30 },
+    requiresAlpha: true,
   },
   
   'particles': {
@@ -72,11 +83,15 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-purple-500',
     expectedFormats: ['.webm', '.mp4'],
     namingPattern: 'particle-XXX.webm',
-    minFileSize: 50000,
+    minFileSize: 200 * 1024,          // 200 KB
+    maxFileSize: 150 * 1024 * 1024,   // 150 MB
     expectedCount: 37,
     basePath: '/assets/envato/particles/',
     envatoCategory: 'stock-video',
-    envatoSearchTerms: ['dust particles overlay', 'bokeh particles 4k', 'magic particles']
+    envatoSearchTerms: ['dust particles overlay 4k', 'bokeh particles alpha', 'magic particles transparent'],
+    minResolution: { width: 1920, height: 1080 },
+    durationRange: { min: 3, max: 30 },
+    requiresAlpha: true,
   },
   
   'transitions': {
@@ -87,11 +102,14 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-blue-500',
     expectedFormats: ['.mp4', '.webm', '.mov'],
     namingPattern: 'transition-XXX.mp4',
-    minFileSize: 50000,
+    minFileSize: 100 * 1024,          // 100 KB
+    maxFileSize: 100 * 1024 * 1024,   // 100 MB
     expectedCount: 32,
     basePath: '/assets/envato/transitions/',
     envatoCategory: 'stock-video',
-    envatoSearchTerms: ['cinematic transition', 'glitch transition', 'zoom transition']
+    envatoSearchTerms: ['cinematic transition 4k', 'glitch transition pack', 'zoom transition overlay'],
+    minResolution: { width: 1920, height: 1080 },
+    durationRange: { min: 1, max: 10 },
   },
   
   'textures': {
@@ -102,11 +120,13 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-green-500',
     expectedFormats: ['.mp4', '.webm', '.jpg', '.png'],
     namingPattern: 'texture-XXX.mp4',
-    minFileSize: 10000,
+    minFileSize: 10 * 1024,           // 10 KB
+    maxFileSize: 100 * 1024 * 1024,   // 100 MB
     expectedCount: 215,
     basePath: '/assets/envato/textures/',
     envatoCategory: 'stock-video',
-    envatoSearchTerms: ['abstract texture loop', 'organic texture 4k', 'noise grain overlay']
+    envatoSearchTerms: ['abstract texture loop 4k', 'organic texture overlay', 'noise grain texture'],
+    minResolution: { width: 1920, height: 1080 },
   },
   
   '3d-models': {
@@ -117,11 +137,12 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-cyan-500',
     expectedFormats: ['.glb', '.gltf'],
     namingPattern: 'model-XXX.glb',
-    minFileSize: 1000,
+    minFileSize: 1024,                // 1 KB
+    maxFileSize: 100 * 1024 * 1024,   // 100 MB
     expectedCount: 22,
     basePath: '/assets/envato/3d-models/',
     envatoCategory: '3d-models',
-    envatoSearchTerms: ['african mask 3d', 'drum 3d model glb', 'tribal sculpture 3d']
+    envatoSearchTerms: ['african mask 3d glb', 'drum 3d model', 'tribal sculpture 3d'],
   },
   
   'fonts': {
@@ -132,11 +153,12 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-indigo-500',
     expectedFormats: ['.ttf', '.otf', '.woff', '.woff2'],
     namingPattern: 'FontName.ttf',
-    minFileSize: 5000,
+    minFileSize: 5 * 1024,            // 5 KB
+    maxFileSize: 10 * 1024 * 1024,    // 10 MB
     expectedCount: 5,
     basePath: '/assets/envato/fonts/',
     envatoCategory: 'fonts',
-    envatoSearchTerms: ['modern sans serif', 'display font bold', 'african inspired font']
+    envatoSearchTerms: ['modern sans serif font', 'display font bold', 'african inspired typeface'],
   },
   
   'audio': {
@@ -147,11 +169,12 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-pink-500',
     expectedFormats: ['.mp3', '.wav', '.ogg', '.m4a'],
     namingPattern: 'audio-XXX.mp3',
-    minFileSize: 10000,
+    minFileSize: 50 * 1024,           // 50 KB
+    maxFileSize: 50 * 1024 * 1024,    // 50 MB
     expectedCount: 26,
     basePath: '/assets/envato/audio/',
     envatoCategory: 'audio',
-    envatoSearchTerms: ['afrobeat music', 'african drums', 'tribal percussion']
+    envatoSearchTerms: ['afrobeat music royalty free', 'african drums percussion', 'tribal music loop'],
   }
 };
 

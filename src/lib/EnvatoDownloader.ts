@@ -14,6 +14,16 @@ export interface EnvatoAssetMapping {
   category: 'stock-video' | 'graphics' | '3d-models' | 'fonts' | 'audio';
   format?: string;
   fallbackUrl?: string;
+  // Enhanced URL generation
+  envatoSlug?: string;           // Direct slug if known (e.g., 'light-leak-orange-4k-XXXXXX')
+  envatoSearchQuery?: string;    // Precise search query for exact match
+  expectedSpecs?: {
+    minSize?: number;            // bytes
+    maxSize?: number;            // bytes
+    resolution?: string;         // e.g., '4K', '1080p'
+    duration?: string;           // e.g., '5-10s'
+    hasAlpha?: boolean;
+  };
 }
 
 export interface EnvatoAsset {
@@ -65,23 +75,23 @@ export interface DownloadState {
 
 export const ENVATO_ASSET_MAP: Record<string, EnvatoAssetMapping[]> = {
   'light-leak': [
-    { local: 'leak-001.webm', envato: 'Light Leak Orange 4K with Alpha', id: 'LLEAK001', category: 'stock-video' },
-    { local: 'leak-002.webm', envato: 'Blue Light Leak Cinematic 4K', id: 'LLEAK002', category: 'stock-video' },
-    { local: 'leak-003.webm', envato: 'Golden Light Leak Film Look', id: 'LLEAK003', category: 'stock-video' },
-    { local: 'leak-004.webm', envato: 'Purple Light Leak Overlay', id: 'LLEAK004', category: 'stock-video' },
-    { local: 'leak-005.webm', envato: 'Rainbow Light Leak Pack', id: 'LLEAK005', category: 'stock-video' },
-    { local: 'leak-006.webm', envato: 'Vintage Film Light Leak', id: 'LLEAK006', category: 'stock-video' },
-    { local: 'leak-007.webm', envato: 'Warm Light Leak Transition', id: 'LLEAK007', category: 'stock-video' },
-    { local: 'leak-008.webm', envato: 'Cool Blue Light Leak', id: 'LLEAK008', category: 'stock-video' },
-    { local: 'leak-009.webm', envato: 'Soft Light Leak Overlay', id: 'LLEAK009', category: 'stock-video' },
-    { local: 'leak-010.webm', envato: 'Dynamic Light Leak Motion', id: 'LLEAK010', category: 'stock-video' },
-    { local: 'leak-011.webm', envato: 'Neon Light Leak Effect', id: 'LLEAK011', category: 'stock-video' },
-    { local: 'leak-012.webm', envato: 'Sunset Light Leak Orange', id: 'LLEAK012', category: 'stock-video' },
-    { local: 'leak-013.webm', envato: 'Abstract Light Leak Art', id: 'LLEAK013', category: 'stock-video' },
-    { local: 'leak-014.webm', envato: 'Film Burn Light Leak', id: 'LLEAK014', category: 'stock-video' },
-    { local: 'leak-015.webm', envato: 'Prism Light Leak Rainbow', id: 'LLEAK015', category: 'stock-video' },
-    { local: 'leak-016.webm', envato: 'Anamorphic Light Leak', id: 'LLEAK016', category: 'stock-video' },
-    { local: 'leak-017.webm', envato: 'Retro Light Leak Pack', id: 'LLEAK017', category: 'stock-video' },
+    { local: 'leak-001.webm', envato: 'Light Leak Orange 4K with Alpha', id: 'LLEAK001', category: 'stock-video', envatoSearchQuery: 'light leak orange 4k alpha overlay transparent', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-002.webm', envato: 'Blue Light Leak Cinematic 4K', id: 'LLEAK002', category: 'stock-video', envatoSearchQuery: 'blue light leak cinematic 4k overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-003.webm', envato: 'Golden Light Leak Film Look', id: 'LLEAK003', category: 'stock-video', envatoSearchQuery: 'golden light leak film look overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-004.webm', envato: 'Purple Light Leak Overlay', id: 'LLEAK004', category: 'stock-video', envatoSearchQuery: 'purple light leak overlay 4k', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-005.webm', envato: 'Rainbow Light Leak Pack', id: 'LLEAK005', category: 'stock-video', envatoSearchQuery: 'rainbow light leak prism overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-006.webm', envato: 'Vintage Film Light Leak', id: 'LLEAK006', category: 'stock-video', envatoSearchQuery: 'vintage film light leak retro overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-007.webm', envato: 'Warm Light Leak Transition', id: 'LLEAK007', category: 'stock-video', envatoSearchQuery: 'warm light leak transition overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-008.webm', envato: 'Cool Blue Light Leak', id: 'LLEAK008', category: 'stock-video', envatoSearchQuery: 'cool blue light leak overlay 4k', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-009.webm', envato: 'Soft Light Leak Overlay', id: 'LLEAK009', category: 'stock-video', envatoSearchQuery: 'soft light leak subtle overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-010.webm', envato: 'Dynamic Light Leak Motion', id: 'LLEAK010', category: 'stock-video', envatoSearchQuery: 'dynamic light leak motion overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-011.webm', envato: 'Neon Light Leak Effect', id: 'LLEAK011', category: 'stock-video', envatoSearchQuery: 'neon light leak effect overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-012.webm', envato: 'Sunset Light Leak Orange', id: 'LLEAK012', category: 'stock-video', envatoSearchQuery: 'sunset orange light leak overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-013.webm', envato: 'Abstract Light Leak Art', id: 'LLEAK013', category: 'stock-video', envatoSearchQuery: 'abstract light leak artistic overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-014.webm', envato: 'Film Burn Light Leak', id: 'LLEAK014', category: 'stock-video', envatoSearchQuery: 'film burn light leak vintage overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-015.webm', envato: 'Prism Light Leak Rainbow', id: 'LLEAK015', category: 'stock-video', envatoSearchQuery: 'prism rainbow light leak overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-016.webm', envato: 'Anamorphic Light Leak', id: 'LLEAK016', category: 'stock-video', envatoSearchQuery: 'anamorphic light leak cinematic overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { local: 'leak-017.webm', envato: 'Retro Light Leak Pack', id: 'LLEAK017', category: 'stock-video', envatoSearchQuery: 'retro light leak pack overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
   ],
 
   'particles': [
@@ -782,8 +792,15 @@ export class DownloadManager {
  * @param name - Nom de l'asset
  * @returns URL vers la page Envato Elements
  */
-export function getEnvatoUrl(category: string, name: string): string {
-  const slug = name.toLowerCase().replace(/\s+/g, '-');
+export function getEnvatoUrl(category: string, name: string, mapping?: EnvatoAssetMapping): string {
+  // Si on a un slug direct, utiliser le lien direct
+  if (mapping?.envatoSlug) {
+    return `https://elements.envato.com/${mapping.envatoSlug}`;
+  }
+  
+  // Utiliser la query de recherche précise si disponible
+  const searchQuery = mapping?.envatoSearchQuery || name;
+  
   const categoryMap: Record<string, string> = {
     'stock-video': 'stock-video',
     'graphics': 'graphic-templates',
@@ -791,8 +808,9 @@ export function getEnvatoUrl(category: string, name: string): string {
     'fonts': 'fonts',
     'audio': 'royalty-free-music',
   };
-  const envatoCategory = categoryMap[category] || category;
-  return `https://elements.envato.com/${envatoCategory}/${slug}`;
+  
+  const envatoCategory = categoryMap[category] || 'all-items';
+  return `https://elements.envato.com/${envatoCategory}?q=${encodeURIComponent(searchQuery)}`;
 }
 
 /**

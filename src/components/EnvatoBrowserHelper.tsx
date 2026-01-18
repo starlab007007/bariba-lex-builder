@@ -34,6 +34,7 @@ import { ENVATO_ASSET_MAP, EnvatoAssetMapping, getEnvatoUrl } from '@/lib/Envato
 import { useToast } from '@/hooks/use-toast';
 import { useAssetImport, ImportedAsset } from '@/hooks/useAssetImport';
 import { ASSET_CATEGORIES } from '@/lib/AssetConfig';
+import { formatFileSize, VALIDATION_SPECS } from '@/services/AssetValidationService';
 
 // ============================================================================
 // TYPES
@@ -268,10 +269,10 @@ export const EnvatoBrowserHelper: React.FC = () => {
   }, [assets]);
 
   /**
-   * Ouvre un asset dans Envato Elements
+   * Ouvre un asset dans Envato Elements avec recherche précise
    */
   const openInEnvato = (asset: AssetStatus) => {
-    const url = getEnvatoUrl(asset.mapping.category, asset.mapping.envato);
+    const url = getEnvatoUrl(asset.mapping.category, asset.mapping.envato, asset.mapping);
     window.open(url, '_blank');
     
     // Marquer comme en cours de téléchargement
@@ -279,9 +280,12 @@ export const EnvatoBrowserHelper: React.FC = () => {
       a.mapping.id === asset.mapping.id ? { ...a, status: 'downloading' } : a
     ));
     
+    const specs = asset.mapping.expectedSpecs;
+    const specsInfo = specs ? ` (${specs.resolution || '4K'}, ${specs.hasAlpha ? 'avec alpha' : ''})` : '';
+    
     toast({
-      title: "Page Envato ouverte",
-      description: `Téléchargez "${asset.mapping.envato}" puis glissez-le ici.`,
+      title: "🔗 Page Envato ouverte",
+      description: `Téléchargez "${asset.mapping.envato}"${specsInfo} puis glissez-le ici.`,
     });
   };
 
@@ -779,9 +783,18 @@ export const EnvatoBrowserHelper: React.FC = () => {
                                   {asset.mapping.local}
                                 </span>
                                 {renderStatusBadge(asset.status)}
+                                {asset.mapping.expectedSpecs && (
+                                  <Badge variant="outline" className="text-xs bg-muted/50">
+                                    {asset.mapping.expectedSpecs.resolution || '4K'}
+                                    {asset.mapping.expectedSpecs.hasAlpha && ' α'}
+                                  </Badge>
+                                )}
                               </div>
-                              <div className="text-sm text-muted-foreground truncate">
-                                {asset.mapping.envato}
+                              <div className="text-sm text-muted-foreground truncate flex items-center gap-2">
+                                <span>{asset.mapping.envato}</span>
+                                {asset.mapping.envatoSearchQuery && (
+                                  <span className="text-xs opacity-60">→ recherche exacte</span>
+                                )}
                               </div>
                             </div>
                           </div>
