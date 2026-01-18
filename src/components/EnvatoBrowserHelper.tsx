@@ -3,11 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   ExternalLink, 
   Upload, 
@@ -19,7 +16,6 @@ import {
   FileAudio,
   File,
   ChevronDown,
-  ChevronRight,
   RefreshCw,
   Sparkles,
   ArrowRight,
@@ -27,11 +23,13 @@ import {
   AlertCircle,
   FolderOpen,
   Loader2,
-  Wand2,
-  Info
+  Trash2,
+  FileCheck
 } from 'lucide-react';
 import { ENVATO_ASSET_MAP, EnvatoAssetMapping, getEnvatoUrl } from '@/lib/EnvatoDownloader';
 import { useToast } from '@/hooks/use-toast';
+import { useAssetImport, ImportedAsset } from '@/hooks/useAssetImport';
+import { ASSET_CATEGORIES } from '@/lib/AssetConfig';
 
 // ============================================================================
 // TYPES
@@ -195,6 +193,22 @@ export const EnvatoBrowserHelper: React.FC = () => {
   const { toast } = useToast();
   const dropZoneRef = useRef<HTMLDivElement>(null);
   
+  // Hook d'import d'assets
+  const {
+    importedAssets,
+    progress: importProgress,
+    selectedCategory: importCategory,
+    fileInputRef,
+    setSelectedCategory: setImportCategory,
+    processFiles,
+    confirmImport,
+    confirmAllImports,
+    removeAsset,
+    clearAll,
+    openFileSelector,
+    handleFileInputChange,
+  } = useAssetImport();
+  
   // État des assets
   const [assets, setAssets] = useState<AssetStatus[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('light-leak');
@@ -202,15 +216,9 @@ export const EnvatoBrowserHelper: React.FC = () => {
   
   // État des téléchargements détectés
   const [detectedDownloads, setDetectedDownloads] = useState<DetectedDownload[]>([]);
-  const [isMonitoring, setIsMonitoring] = useState(false);
   
   // État du drag & drop
   const [isDragging, setIsDragging] = useState(false);
-  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
-  
-  // État de conversion
-  const [converting, setConverting] = useState<string | null>(null);
-  const [conversionProgress, setConversionProgress] = useState(0);
 
   // Initialiser les assets au montage
   useEffect(() => {
@@ -302,7 +310,7 @@ export const EnvatoBrowserHelper: React.FC = () => {
   }, []);
 
   /**
-   * Gère le drop de fichiers
+   * Gère le drop de fichiers - utilise le nouveau hook d'import
    */
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -312,13 +320,9 @@ export const EnvatoBrowserHelper: React.FC = () => {
     const files = Array.from(e.dataTransfer.files);
     if (files.length === 0) return;
 
-    setDroppedFiles(files);
-
-    // Pour chaque fichier, trouver un match
-    for (const file of files) {
-      await processDroppedFile(file);
-    }
-  }, [assets]);
+    // Utiliser le hook d'import pour traiter les fichiers
+    await processFiles(files, selectedCategory);
+  }, [processFiles, selectedCategory]);
 
   /**
    * Traite un fichier déposé
