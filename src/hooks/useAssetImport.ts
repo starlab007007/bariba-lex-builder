@@ -420,7 +420,8 @@ export function useAssetImport() {
   }, []);
 
   /**
-   * Retry a failed import
+   * Retry a failed import by re-uploading
+   * Note: This requires the original file to be available again
    */
   const retryImport = useCallback(async (importId: string): Promise<boolean> => {
     const record = importHistory.find(h => h.id === importId);
@@ -429,19 +430,48 @@ export function useAssetImport() {
       return false;
     }
     
-    toast.info(`Réessai de l'import de ${record.original_name}...`);
+    toast.info(`🔄 Préparation du réessai pour ${record.original_name}...`);
     
-    // Reset status to pending
+    // Reset status to pending for manual re-upload
     await updateImportRecord(importId, { 
       status: 'pending',
-      error_message: ''
+      error_message: null
     });
     
     // Refresh history
     await loadImportHistory();
+    await loadImportStats();
+    
+    toast.info(`Le fichier "${record.original_name}" est maintenant en attente. Veuillez le déposer à nouveau.`);
     
     return true;
-  }, [importHistory, updateImportRecord, loadImportHistory]);
+  }, [importHistory, updateImportRecord, loadImportHistory, loadImportStats]);
+
+  /**
+   * Delete a failed import record
+   */
+  const deleteImportRecord = useCallback(async (importId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('asset_imports')
+        .delete()
+        .eq('id', importId);
+      
+      if (error) {
+        console.error('Error deleting import record:', error);
+        toast.error('Erreur lors de la suppression');
+        return false;
+      }
+      
+      toast.success('Enregistrement supprimé');
+      await loadImportHistory();
+      await loadImportStats();
+      return true;
+    } catch (err) {
+      console.error('Exception deleting import record:', err);
+      return false;
+    }
+  }, [loadImportHistory, loadImportStats]);
 
   /**
    * Initialise les compteurs d'assets par catégorie
@@ -715,7 +745,7 @@ export function useAssetImport() {
   const uploadToStorage = useCallback(async (
     asset: ImportedAsset,
     fileToUpload?: File | Blob
-  ): Promise<{ success: boolean; publicUrl?: string; error?: string }> => {
+  ): Promise<{ success: boolean; publicUrl?: string; error?: string; errorCode?: string }> => {
     try {
       const file = fileToUpload || asset.file;
       
@@ -737,7 +767,27 @@ export function useAssetImport() {
 
       if (error) {
         console.error('Upload error:', error);
-        return { success: false, error: error.message };
+        
+        // Handle specific error types for better user feedback
+        const errorMessage = error.message.toLowerCase();
+        let userFriendlyError = error.message;
+        let errorCode = 'UPLOAD_ERROR';
+        
+        if (errorMessage.includes('mime type') || errorMessage.includes('mime_type')) {
+          userFriendlyError = `Format "${asset.mimeType || asset.file.type}" non autorisé. Formats acceptés: PNG, JPG, WebM, MP4, MOV, MP3, WAV, etc.`;
+          errorCode = 'MIME_TYPE_ERROR';
+        } else if (errorMessage.includes('payload too large') || errorMessage.includes('file size')) {
+          userFriendlyError = `Fichier trop volumineux (${(asset.size / 1024 / 1024).toFixed(2)} MB). Maximum: 500 MB`;
+          errorCode = 'FILE_SIZE_ERROR';
+        } else if (errorMessage.includes('permission') || errorMessage.includes('policy')) {
+          userFriendlyError = 'Permission refusée. Vérifiez les politiques RLS du bucket.';
+          errorCode = 'PERMISSION_ERROR';
+        } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+          userFriendlyError = 'Erreur réseau. Vérifiez votre connexion et réessayez.';
+          errorCode = 'NETWORK_ERROR';
+        }
+        
+        return { success: false, error: userFriendlyError, errorCode };
       }
 
       // Obtenir l'URL publique
@@ -748,7 +798,11 @@ export function useAssetImport() {
       return { success: true, publicUrl };
     } catch (err) {
       console.error('Upload exception:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Erreur inconnue' };
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Erreur inconnue lors de l\'upload',
+        errorCode: 'EXCEPTION'
+      };
     }
   }, []);
 
@@ -1016,6 +1070,7 @@ export function useAssetImport() {
     loadImportHistory,
     loadImportStats,
     retryImport,
+    deleteImportRecord,
     
     // Utils
     getCategoryStats,
