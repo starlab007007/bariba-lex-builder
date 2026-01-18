@@ -46,9 +46,6 @@ interface AssetDropZoneProps {
   onOpenFileSelector?: () => void;
   onFileInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
-  onOpenFileSelector?: () => void;
-  onFileInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
 
 // ============================================================================
 // HELPERS
