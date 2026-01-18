@@ -170,6 +170,69 @@ export type Database = {
         }
         Relationships: []
       }
+      asset_imports: {
+        Row: {
+          category: string
+          conversion_progress: number | null
+          converted_at: string | null
+          converted_format: string | null
+          created_at: string | null
+          error_message: string | null
+          file_size: number
+          id: string
+          mime_type: string | null
+          needs_conversion: boolean | null
+          original_format: string | null
+          original_name: string
+          public_url: string | null
+          status: string | null
+          storage_path: string
+          target_name: string
+          uploaded_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          conversion_progress?: number | null
+          converted_at?: string | null
+          converted_format?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_size: number
+          id?: string
+          mime_type?: string | null
+          needs_conversion?: boolean | null
+          original_format?: string | null
+          original_name: string
+          public_url?: string | null
+          status?: string | null
+          storage_path: string
+          target_name: string
+          uploaded_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          conversion_progress?: number | null
+          converted_at?: string | null
+          converted_format?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          needs_conversion?: boolean | null
+          original_format?: string | null
+          original_name?: string
+          public_url?: string | null
+          status?: string | null
+          storage_path?: string
+          target_name?: string
+          uploaded_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           created_at: string | null

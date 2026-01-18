@@ -1,10 +1,10 @@
 /**
  * TAM-TAM Asset Import Hook
  * Gère l'upload, le renommage automatique et le placement des fichiers Envato
- * Upload réel vers Supabase Storage pour disponibilité immédiate
+ * Upload réel vers Supabase Storage + tracking dans asset_imports table
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ASSET_CATEGORIES, detectFileCategory, getTargetPath, AUDIO_SUBFOLDERS } from '@/lib/AssetConfig';
@@ -23,13 +23,14 @@ export interface ImportedAsset {
   category: string;
   file: File;
   blob?: Blob;
-  status: 'pending' | 'processing' | 'ready' | 'confirmed' | 'error';
+  status: 'pending' | 'processing' | 'ready' | 'uploading' | 'confirmed' | 'converting' | 'error';
   error?: string;
   size: number;
   previewUrl?: string;
   publicUrl?: string;
   needsConversion: boolean;
   conversionProgress?: number;
+  mimeType?: string;
 }
 
 export interface ImportProgress {
@@ -46,6 +47,36 @@ export interface ImportResult {
   message: string;
 }
 
+export interface ImportHistoryEntry {
+  id: string;
+  user_id: string | null;
+  original_name: string;
+  target_name: string;
+  category: string;
+  storage_path: string;
+  public_url: string | null;
+  file_size: number;
+  mime_type: string | null;
+  status: string;
+  error_message: string | null;
+  needs_conversion: boolean;
+  original_format: string | null;
+  converted_format: string | null;
+  conversion_progress: number;
+  created_at: string;
+  uploaded_at: string | null;
+  converted_at: string | null;
+}
+
+export interface ImportStats {
+  total: number;
+  uploaded: number;
+  failed: number;
+  converting: number;
+  byCategory: Record<string, { total: number; uploaded: number; failed: number }>;
+  recentErrors: Array<{ id: string; error: string; file: string; date: string }>;
+}
+
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -53,25 +84,124 @@ export interface ImportResult {
 const FORMAT_CONVERSIONS: Record<string, string> = {
   'mov': 'webm',
   'avi': 'webm',
-  'mp4': 'webm',
   'tiff': 'png',
   'tif': 'png',
   'bmp': 'png',
-  'wav': 'mp3',
   'aiff': 'mp3',
   'flac': 'mp3',
 };
 
+// MOV files are now accepted directly - conversion is optional
 const VALID_EXTENSIONS: Record<string, string[]> = {
-  'lens-flare': ['png', 'webp'],
+  'lens-flare': ['png', 'webp', 'jpg', 'jpeg'],
   'light-leak': ['webm', 'mp4', 'mov'],
   'particles': ['webm', 'mp4', 'mov'],
   'transitions': ['mp4', 'webm', 'mov'],
-  'textures': ['mp4', 'webm', 'mov', 'jpg', 'png'],
+  'textures': ['mp4', 'webm', 'mov', 'jpg', 'png', 'webp'],
   '3d-models': ['glb', 'gltf'],
   'fonts': ['ttf', 'otf', 'woff', 'woff2'],
   'audio': ['mp3', 'wav', 'ogg', 'm4a'],
 };
+
+// ============================================================================
+// CONVERSION UTILITIES
+// ============================================================================
+
+/**
+ * Check if browser supports MOV to WebM conversion
+ */
+export function canConvertMovToWebM(): boolean {
+  if (typeof MediaRecorder === 'undefined') return false;
+  try {
+    return MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ||
+           MediaRecorder.isTypeSupported('video/webm;codecs=vp8');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Convert MOV to WebM (client-side)
+ * Returns the converted blob or null if conversion fails
+ */
+async function convertMovToWebM(
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<Blob | null> {
+  if (!canConvertMovToWebM()) {
+    console.warn('Browser does not support MOV to WebM conversion');
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    
+    const objectUrl = URL.createObjectURL(file);
+    video.src = objectUrl;
+    
+    video.onloadedmetadata = async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        URL.revokeObjectURL(objectUrl);
+        resolve(null);
+        return;
+      }
+      
+      const stream = canvas.captureStream(30);
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm;codecs=vp8';
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const chunks: Blob[] = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      
+      mediaRecorder.onstop = () => {
+        URL.revokeObjectURL(objectUrl);
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        resolve(blob);
+      };
+      
+      mediaRecorder.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(null);
+      };
+      
+      mediaRecorder.start();
+      video.play();
+      
+      const duration = video.duration;
+      const interval = setInterval(() => {
+        if (!video.paused && video.currentTime > 0) {
+          const progress = (video.currentTime / duration) * 100;
+          onProgress?.(Math.min(progress, 99));
+          
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        }
+      }, 1000 / 30);
+      
+      video.onended = () => {
+        clearInterval(interval);
+        mediaRecorder.stop();
+        onProgress?.(100);
+      };
+    };
+    
+    video.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(null);
+    };
+  });
+}
 
 // ============================================================================
 // HOOK
@@ -87,22 +217,264 @@ export function useAssetImport() {
     isProcessing: false,
   });
   const [selectedCategory, setSelectedCategory] = useState<string>('auto');
+  const [autoConvertMov, setAutoConvertMov] = useState<boolean>(false);
+  const [importHistory, setImportHistory] = useState<ImportHistoryEntry[]>([]);
+  const [importStats, setImportStats] = useState<ImportStats | null>(null);
   
   const assetCounterRef = useRef<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /**
+   * Load import history from database
+   */
+  const loadImportHistory = useCallback(async (filters?: {
+    category?: string;
+    status?: string;
+    limit?: number;
+  }) => {
+    try {
+      let query = supabase
+        .from('asset_imports')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (filters?.category) {
+        query = query.eq('category', filters.category);
+      }
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
+      } else {
+        query = query.limit(100);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error loading import history:', error);
+        return [];
+      }
+      
+      setImportHistory(data || []);
+      return data || [];
+    } catch (err) {
+      console.error('Exception loading import history:', err);
+      return [];
+    }
+  }, []);
+
+  /**
+   * Load import stats from database
+   */
+  const loadImportStats = useCallback(async (): Promise<ImportStats> => {
+    try {
+      const { data, error } = await supabase
+        .from('asset_imports')
+        .select('*');
+      
+      if (error) {
+        console.error('Error loading import stats:', error);
+        return {
+          total: 0,
+          uploaded: 0,
+          failed: 0,
+          converting: 0,
+          byCategory: {},
+          recentErrors: [],
+        };
+      }
+      
+      const imports = data || [];
+      
+      const byCategory: Record<string, { total: number; uploaded: number; failed: number }> = {};
+      
+      for (const imp of imports) {
+        if (!byCategory[imp.category]) {
+          byCategory[imp.category] = { total: 0, uploaded: 0, failed: 0 };
+        }
+        byCategory[imp.category].total++;
+        if (imp.status === 'uploaded' || imp.status === 'converted') {
+          byCategory[imp.category].uploaded++;
+        }
+        if (imp.status === 'failed') {
+          byCategory[imp.category].failed++;
+        }
+      }
+      
+      const recentErrors = imports
+        .filter(i => i.status === 'failed' && i.error_message)
+        .slice(0, 10)
+        .map(i => ({
+          id: i.id,
+          error: i.error_message || 'Unknown error',
+          file: i.original_name,
+          date: i.created_at,
+        }));
+      
+      const stats: ImportStats = {
+        total: imports.length,
+        uploaded: imports.filter(i => i.status === 'uploaded' || i.status === 'converted').length,
+        failed: imports.filter(i => i.status === 'failed').length,
+        converting: imports.filter(i => i.status === 'converting').length,
+        byCategory,
+        recentErrors,
+      };
+      
+      setImportStats(stats);
+      return stats;
+    } catch (err) {
+      console.error('Exception loading import stats:', err);
+      return {
+        total: 0,
+        uploaded: 0,
+        failed: 0,
+        converting: 0,
+        byCategory: {},
+        recentErrors: [],
+      };
+    }
+  }, []);
+
+  /**
+   * Get current user ID
+   */
+  const getCurrentUserId = useCallback(async (): Promise<string | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id || null;
+  }, []);
+
+  /**
+   * Insert import record into database
+   */
+  const insertImportRecord = useCallback(async (
+    asset: ImportedAsset,
+    status: 'pending' | 'uploading' | 'uploaded' | 'converting' | 'converted' | 'failed',
+    errorMessage?: string
+  ): Promise<string | null> => {
+    try {
+      const userId = await getCurrentUserId();
+      const storagePath = `${asset.category}/${asset.targetName}`;
+      
+      const { data, error } = await supabase
+        .from('asset_imports')
+        .insert({
+          user_id: userId,
+          original_name: asset.originalName,
+          target_name: asset.targetName,
+          category: asset.category,
+          storage_path: storagePath,
+          public_url: asset.publicUrl || null,
+          file_size: asset.size,
+          mime_type: asset.mimeType || asset.file.type,
+          status,
+          error_message: errorMessage || null,
+          needs_conversion: asset.needsConversion,
+          original_format: asset.originalName.split('.').pop()?.toLowerCase() || null,
+          converted_format: asset.needsConversion ? 'webm' : null,
+          conversion_progress: 0,
+          uploaded_at: status === 'uploaded' || status === 'converted' ? new Date().toISOString() : null,
+        })
+        .select('id')
+        .single();
+      
+      if (error) {
+        console.error('Error inserting import record:', error);
+        return null;
+      }
+      
+      return data?.id || null;
+    } catch (err) {
+      console.error('Exception inserting import record:', err);
+      return null;
+    }
+  }, [getCurrentUserId]);
+
+  /**
+   * Update import record status
+   */
+  const updateImportRecord = useCallback(async (
+    recordId: string,
+    updates: Partial<{
+      status: string;
+      error_message: string;
+      public_url: string;
+      conversion_progress: number;
+      uploaded_at: string;
+      converted_at: string;
+    }>
+  ) => {
+    try {
+      const { error } = await supabase
+        .from('asset_imports')
+        .update(updates)
+        .eq('id', recordId);
+      
+      if (error) {
+        console.error('Error updating import record:', error);
+      }
+    } catch (err) {
+      console.error('Exception updating import record:', err);
+    }
+  }, []);
+
+  /**
+   * Retry a failed import
+   */
+  const retryImport = useCallback(async (importId: string): Promise<boolean> => {
+    const record = importHistory.find(h => h.id === importId);
+    if (!record || record.status !== 'failed') {
+      toast.error('Impossible de réessayer cet import');
+      return false;
+    }
+    
+    toast.info(`Réessai de l'import de ${record.original_name}...`);
+    
+    // Reset status to pending
+    await updateImportRecord(importId, { 
+      status: 'pending',
+      error_message: ''
+    });
+    
+    // Refresh history
+    await loadImportHistory();
+    
+    return true;
+  }, [importHistory, updateImportRecord, loadImportHistory]);
+
+  /**
    * Initialise les compteurs d'assets par catégorie
    */
-  const initializeCounters = useCallback(() => {
-    // Charge les compteurs existants depuis localStorage ou les initialise
-    const stored = localStorage.getItem('tamtam_asset_counters');
-    if (stored) {
-      assetCounterRef.current = JSON.parse(stored);
-    } else {
-      Object.keys(ASSET_CATEGORIES).forEach(cat => {
-        assetCounterRef.current[cat] = 0;
-      });
+  const initializeCounters = useCallback(async () => {
+    // Charge les compteurs depuis la base de données
+    try {
+      const { data, error } = await supabase
+        .from('asset_imports')
+        .select('category')
+        .in('status', ['uploaded', 'converted']);
+      
+      if (!error && data) {
+        const counters: Record<string, number> = {};
+        for (const item of data) {
+          counters[item.category] = (counters[item.category] || 0) + 1;
+        }
+        assetCounterRef.current = counters;
+      }
+    } catch (err) {
+      console.error('Error initializing counters from DB:', err);
+    }
+    
+    // Fallback to localStorage
+    if (Object.keys(assetCounterRef.current).length === 0) {
+      const stored = localStorage.getItem('tamtam_asset_counters');
+      if (stored) {
+        assetCounterRef.current = JSON.parse(stored);
+      } else {
+        Object.keys(ASSET_CATEGORIES).forEach(cat => {
+          assetCounterRef.current[cat] = 0;
+        });
+      }
     }
   }, []);
 
@@ -188,8 +560,18 @@ export function useAssetImport() {
       };
     }
 
-    // Pattern standard
-    const name = config.namingPattern.replace('XXX', String(index).padStart(3, '0'));
+    // Pattern standard - keep original extension if MOV and not converting
+    const ext = originalName.split('.').pop()?.toLowerCase() || '';
+    let targetExt = config.namingPattern.split('.').pop() || '';
+    
+    // Keep .mov if it's a valid extension for this category and not auto-converting
+    if (ext === 'mov' && VALID_EXTENSIONS[category]?.includes('mov')) {
+      targetExt = 'mov';
+    }
+    
+    const namePattern = config.namingPattern.replace(/\.[^.]+$/, '');
+    const name = `${namePattern.replace('XXX', String(index).padStart(3, '0'))}.${targetExt}`;
+    
     return {
       name,
       path: `${config.basePath}${name}`,
@@ -230,7 +612,7 @@ export function useAssetImport() {
    * Traite un fichier déposé
    */
   const processFile = useCallback(async (file: File, categoryOverride?: string): Promise<ImportedAsset | null> => {
-    initializeCounters();
+    await initializeCounters();
     
     const category = categoryOverride || detectCategory(file, selectedCategory);
     
@@ -253,6 +635,7 @@ export function useAssetImport() {
         error: validation.error,
         size: file.size,
         needsConversion: false,
+        mimeType: file.type,
       };
       return errorAsset;
     }
@@ -260,9 +643,9 @@ export function useAssetImport() {
     // Génération du nom cible
     const { name: targetName, path: targetPath } = generateTargetName(category, file.name);
 
-    // Vérifier si conversion nécessaire
+    // Vérifier si conversion MOV optionnelle demandée
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const needsConversion = !!FORMAT_CONVERSIONS[ext];
+    const needsConversion = autoConvertMov && ext === 'mov' && canConvertMovToWebM();
 
     // Créer preview URL
     let previewUrl: string | undefined;
@@ -281,10 +664,11 @@ export function useAssetImport() {
       size: file.size,
       previewUrl,
       needsConversion,
+      mimeType: file.type,
     };
 
     return asset;
-  }, [selectedCategory, detectCategory, validateFile, generateTargetName, initializeCounters]);
+  }, [selectedCategory, detectCategory, validateFile, generateTargetName, initializeCounters, autoConvertMov]);
 
   /**
    * Traite plusieurs fichiers
@@ -328,15 +712,25 @@ export function useAssetImport() {
   /**
    * Upload un fichier vers Supabase Storage
    */
-  const uploadToStorage = useCallback(async (asset: ImportedAsset): Promise<{ success: boolean; publicUrl?: string; error?: string }> => {
+  const uploadToStorage = useCallback(async (
+    asset: ImportedAsset,
+    fileToUpload?: File | Blob
+  ): Promise<{ success: boolean; publicUrl?: string; error?: string }> => {
     try {
+      const file = fileToUpload || asset.file;
+      
       // Construire le path de stockage (category/filename)
-      const storagePath = `${asset.category}/${asset.targetName}`;
+      let storagePath = `${asset.category}/${asset.targetName}`;
+      
+      // If converted, change extension
+      if (fileToUpload && asset.needsConversion) {
+        storagePath = storagePath.replace(/\.[^.]+$/, '.webm');
+      }
       
       // Upload vers Supabase Storage
       const { data, error } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(storagePath, asset.file, {
+        .upload(storagePath, file, {
           cacheControl: '31536000', // 1 an de cache
           upsert: true, // Remplacer si existe
         });
@@ -372,38 +766,87 @@ export function useAssetImport() {
       return { success: false, asset, message: 'Asset non prêt pour confirmation' };
     }
 
+    // Create DB record first
+    const recordId = await insertImportRecord(asset, 'uploading');
+
     // Marquer comme en cours de traitement
     setImportedAssets(prev => prev.map(a => 
-      a.id === assetId ? { ...a, status: 'processing' as const } : a
+      a.id === assetId ? { ...a, status: 'uploading' as const } : a
     ));
 
+    let fileToUpload: File | Blob = asset.file;
+    let finalTargetName = asset.targetName;
+
+    // Handle MOV conversion if needed
+    if (asset.needsConversion && autoConvertMov) {
+      setImportedAssets(prev => prev.map(a => 
+        a.id === assetId ? { ...a, status: 'converting' as const } : a
+      ));
+      
+      if (recordId) {
+        await updateImportRecord(recordId, { status: 'converting' });
+      }
+      
+      toast.info(`🔄 Conversion MOV→WebM en cours pour ${asset.originalName}...`);
+      
+      const convertedBlob = await convertMovToWebM(asset.file, (progress) => {
+        setImportedAssets(prev => prev.map(a => 
+          a.id === assetId ? { ...a, conversionProgress: progress } : a
+        ));
+        if (recordId) {
+          updateImportRecord(recordId, { conversion_progress: progress });
+        }
+      });
+      
+      if (convertedBlob) {
+        fileToUpload = convertedBlob;
+        finalTargetName = asset.targetName.replace(/\.[^.]+$/, '.webm');
+        toast.success(`✅ Conversion réussie pour ${asset.originalName}`);
+      } else {
+        toast.warning(`⚠️ Conversion échouée pour ${asset.originalName}, upload du MOV original`);
+      }
+    }
+
     // Upload vers Supabase Storage
-    const uploadResult = await uploadToStorage(asset);
+    const uploadResult = await uploadToStorage(
+      { ...asset, targetName: finalTargetName },
+      fileToUpload !== asset.file ? fileToUpload : undefined
+    );
 
     if (!uploadResult.success) {
       setImportedAssets(prev => prev.map(a => 
         a.id === assetId ? { ...a, status: 'error' as const, error: uploadResult.error } : a
       ));
+      
+      if (recordId) {
+        await updateImportRecord(recordId, { 
+          status: 'failed',
+          error_message: uploadResult.error || 'Upload failed'
+        });
+      }
+      
       toast.error(`Erreur upload: ${uploadResult.error}`);
       return { success: false, asset, message: uploadResult.error || 'Erreur upload' };
     }
 
-    // Sauvegarder en localStorage pour référence rapide
-    const confirmedAssets = JSON.parse(localStorage.getItem('tamtam_confirmed_assets') || '[]');
-    confirmedAssets.push({
-      id: asset.id,
-      targetPath: asset.targetPath,
-      targetName: asset.targetName,
-      category: asset.category,
-      size: asset.size,
-      publicUrl: uploadResult.publicUrl,
-      confirmedAt: new Date().toISOString(),
-    });
-    localStorage.setItem('tamtam_confirmed_assets', JSON.stringify(confirmedAssets));
+    // Update DB record with success
+    if (recordId) {
+      await updateImportRecord(recordId, {
+        status: asset.needsConversion && fileToUpload !== asset.file ? 'converted' : 'uploaded',
+        public_url: uploadResult.publicUrl,
+        uploaded_at: new Date().toISOString(),
+        converted_at: asset.needsConversion ? new Date().toISOString() : undefined,
+      });
+    }
 
     // Mettre à jour le statut
     setImportedAssets(prev => prev.map(a => 
-      a.id === assetId ? { ...a, status: 'confirmed' as const } : a
+      a.id === assetId ? { 
+        ...a, 
+        status: 'confirmed' as const,
+        targetName: finalTargetName,
+        publicUrl: uploadResult.publicUrl
+      } : a
     ));
 
     setProgress(prev => ({
@@ -414,21 +857,24 @@ export function useAssetImport() {
     // Déclencher un événement personnalisé pour notifier les autres composants
     window.dispatchEvent(new CustomEvent('asset-imported', {
       detail: { 
-        asset, 
+        asset: { ...asset, targetName: finalTargetName }, 
         targetPath: asset.targetPath, 
         category: asset.category,
         publicUrl: uploadResult.publicUrl
       }
     }));
 
-    toast.success(`✅ ${asset.targetName} uploadé et prêt!`);
+    toast.success(`✅ ${finalTargetName} uploadé et prêt!`);
+
+    // Refresh stats
+    loadImportStats();
 
     return { 
       success: true, 
-      asset: { ...asset, status: 'confirmed' }, 
-      message: `✅ ${asset.targetName} importé dans ${asset.category}` 
+      asset: { ...asset, status: 'confirmed', targetName: finalTargetName }, 
+      message: `✅ ${finalTargetName} importé dans ${asset.category}` 
     };
-  }, [importedAssets, uploadToStorage]);
+  }, [importedAssets, uploadToStorage, autoConvertMov, insertImportRecord, updateImportRecord, loadImportStats]);
 
   /**
    * Confirme tous les assets prêts (upload séquentiel)
@@ -539,15 +985,25 @@ export function useAssetImport() {
     return stats;
   }, [importedAssets]);
 
+  // Load stats on mount
+  useEffect(() => {
+    loadImportStats();
+  }, [loadImportStats]);
+
   return {
     // State
     importedAssets,
     progress,
     selectedCategory,
     fileInputRef,
+    autoConvertMov,
+    importHistory,
+    importStats,
+    canConvertMov: canConvertMovToWebM(),
     
     // Actions
     setSelectedCategory,
+    setAutoConvertMov,
     processFiles,
     processFile,
     confirmImport,
@@ -557,11 +1013,15 @@ export function useAssetImport() {
     changeCategory,
     openFileSelector,
     handleFileInputChange,
+    loadImportHistory,
+    loadImportStats,
+    retryImport,
     
     // Utils
     getCategoryStats,
     detectCategory,
     validateFile,
+    uploadToStorage,
   };
 }
 
