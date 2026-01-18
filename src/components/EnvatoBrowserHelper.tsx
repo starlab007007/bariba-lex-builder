@@ -32,9 +32,10 @@ import {
 } from 'lucide-react';
 import { ENVATO_ASSET_MAP, EnvatoAssetMapping, getEnvatoUrl } from '@/lib/EnvatoDownloader';
 import { useToast } from '@/hooks/use-toast';
-import { useAssetImport, ImportedAsset } from '@/hooks/useAssetImport';
+import { useAssetImport } from '@/hooks/useAssetImport';
 import { ASSET_CATEGORIES } from '@/lib/AssetConfig';
 import { formatFileSize, VALIDATION_SPECS } from '@/services/AssetValidationService';
+import { AssetDropZone } from '@/components/AssetDropZone';
 
 // ============================================================================
 // TYPES
@@ -520,55 +521,15 @@ export const EnvatoBrowserHelper: React.FC = () => {
         </AlertDescription>
       </Alert>
 
-      {/* Zone de drop principale */}
-      <Card 
-        ref={dropZoneRef}
-        className={`transition-all ${isDragging ? 'border-primary border-2 bg-primary/5' : 'border-dashed'}`}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-      >
-        <CardContent className="py-12">
-          <div className="text-center space-y-4">
-            <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-              isDragging ? 'bg-primary text-primary-foreground scale-110' : 'bg-muted'
-            }`}>
-              <Upload className="h-8 w-8" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">
-                {isDragging ? 'Déposez les fichiers ici !' : 'Glissez-déposez vos fichiers Envato'}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Les fichiers seront automatiquement renommés et placés au bon endroit
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              <Badge variant="outline">WebM</Badge>
-              <Badge variant="outline">MOV → WebM</Badge>
-              <Badge variant="outline">PNG</Badge>
-              <Badge variant="outline">MP3</Badge>
-              <Badge variant="outline">GLB</Badge>
-            </div>
-            {/* Bouton d'upload manuel */}
-            <div className="pt-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".webm,.mp4,.mov,.png,.jpg,.jpeg,.mp3,.wav,.glb,.gltf,.ttf,.otf"
-                onChange={handleFileInputChange}
-                className="hidden"
-              />
-              <Button variant="outline" onClick={openFileSelector}>
-                <FolderOpen className="h-4 w-4 mr-2" />
-                Ou parcourir les fichiers
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Zone de drop améliorée avec validation temps réel */}
+      <AssetDropZone
+        onFilesProcessed={processFiles}
+        onAutoConfirm={confirmAllImports}
+        selectedCategory={selectedCategory}
+        fileInputRef={fileInputRef}
+        onOpenFileSelector={openFileSelector}
+        onFileInputChange={handleFileInputChange}
+      />
 
       {/* Fichiers importés en attente de confirmation */}
       {importedAssets.length > 0 && (

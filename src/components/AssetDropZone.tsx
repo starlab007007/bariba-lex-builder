@@ -40,9 +40,12 @@ interface DroppedFile {
 
 interface AssetDropZoneProps {
   onFilesProcessed: (files: File[], category?: string) => Promise<void>;
-  onAutoConfirm?: () => Promise<void>;
+  onAutoConfirm?: () => Promise<number | void>;
   selectedCategory?: string;
   fileInputRef?: React.RefObject<HTMLInputElement>;
+  onOpenFileSelector?: () => void;
+  onFileInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
   onOpenFileSelector?: () => void;
   onFileInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
