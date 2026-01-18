@@ -1,7 +1,28 @@
 /**
- * TAM-TAM Asset Real Mapping - Mappage des assets réellement présents
- * Ce fichier résout les problèmes de nommage en mappant les noms attendus vers les noms réels
+ * TAM-TAM Asset Real Mapping v4.2
+ * Mappage des assets réellement présents avec support cross-dossier
+ * Récupère automatiquement les Light Leaks depuis le dossier 3d-models
  */
+
+// ============================================================================
+// CROSS-FOLDER MAPPING (Light Leaks dans 3d-models)
+// Les fichiers leak-XXX.webm dans 3d-models sont en fait des Light Leaks
+// ============================================================================
+
+/**
+ * Mapping cross-dossier: fichiers dans le mauvais dossier
+ * Format: 'target-category:expected-name' -> 'actual-category:actual-name'
+ */
+export const CROSS_FOLDER_MAPPING: Record<string, string> = {
+  // Light Leaks 018-039 sont dans le dossier 3d-models
+  ...Object.fromEntries(
+    Array.from({ length: 22 }, (_, i) => {
+      const targetNum = String(i + 18).padStart(3, '0'); // leak-018 to leak-039
+      const sourceNum = String(i + 1).padStart(3, '0'); // leak-001 to leak-022 in 3d-models
+      return [`light-leak:leak-${targetNum}.webm`, `3d-models:leak-${sourceNum}.webm`];
+    })
+  ),
+};
 
 // ============================================================================
 // INVENTAIRE RÉEL DES ASSETS
@@ -91,7 +112,7 @@ export const ASSET_REAL_MAPPING: Record<string, string> = {
   'audio/percussion:percussion-008.mp3': 'audio/percussion:audio-0008.mp3',
 
   // =========================================================================
-  // LIGHT-LEAK - Formats mixtes (MP4 et WebM)
+  // LIGHT-LEAK - Formats mixtes (MP4 et WebM) + cross-folder mapping
   // =========================================================================
   'light-leak:leak-001.webm': 'light-leak:leak-001.webm',
   'light-leak:leak-002.webm': 'light-leak:leak-002.webm',
@@ -113,6 +134,9 @@ export const ASSET_REAL_MAPPING: Record<string, string> = {
   'light-leak:leak-015.mp4': 'light-leak:leak-015.mp4',
   'light-leak:leak-016.mp4': 'light-leak:leak-016.mp4',
   'light-leak:leak-017.mp4': 'light-leak:leak-017.mp4',
+
+  // Cross-folder: Light Leaks 018-039 depuis le dossier 3d-models
+  ...CROSS_FOLDER_MAPPING,
 };
 
 // ============================================================================
@@ -125,6 +149,7 @@ export interface AssetInventory {
   expected: number;
   files: string[];
   status: 'complete' | 'partial' | 'empty';
+  crossFolderFiles?: string[]; // Fichiers récupérés d'autres dossiers
 }
 
 export const ASSET_INVENTORY: Record<string, AssetInventory> = {
@@ -158,16 +183,26 @@ export const ASSET_INVENTORY: Record<string, AssetInventory> = {
   },
   'light-leak': {
     category: 'light-leak',
-    available: 17,
+    available: 39, // 17 originaux + 22 récupérés de 3d-models
     expected: 40,
     files: [
+      // Fichiers originaux dans light-leak
       'leak-001.webm', 'leak-002.webm', 'leak-002.mp4', 'leak-003.webm',
       'leak-004.webm', 'leak-004.mp4', 'leak-005.mp4', 'leak-006.mp4',
       'leak-007.mp4', 'leak-008.mp4', 'leak-009.mp4', 'leak-010.mp4',
       'leak-011.mp4', 'leak-012.mp4', 'leak-013.mp4', 'leak-014.mp4',
       'leak-015.mp4', 'leak-016.mp4', 'leak-017.mp4',
     ],
-    status: 'partial',
+    crossFolderFiles: [
+      // Fichiers récupérés depuis 3d-models
+      'leak-018.webm', 'leak-019.webm', 'leak-020.webm', 'leak-021.webm',
+      'leak-022.webm', 'leak-023.webm', 'leak-024.webm', 'leak-025.webm',
+      'leak-026.webm', 'leak-027.webm', 'leak-028.webm', 'leak-029.webm',
+      'leak-030.webm', 'leak-031.webm', 'leak-032.webm', 'leak-033.webm',
+      'leak-034.webm', 'leak-035.webm', 'leak-036.webm', 'leak-037.webm',
+      'leak-038.webm', 'leak-039.webm',
+    ],
+    status: 'partial', // 39/40 = 97.5%
   },
   'particles': {
     category: 'particles',
@@ -200,8 +235,9 @@ export const ASSET_INVENTORY: Record<string, AssetInventory> = {
     category: '3d-models',
     available: 0,
     expected: 22,
-    files: [], // Fichiers leak-XXX.webm incorrects, pas de vrais modèles 3D
+    files: [], // Fichiers leak-XXX.webm redirigés vers light-leak
     status: 'empty',
+    // Note: Les 22 fichiers leak-XXX.webm sont maintenant utilisés comme Light Leaks
   },
   'fonts': {
     category: 'fonts',
@@ -217,30 +253,69 @@ export const ASSET_INVENTORY: Record<string, AssetInventory> = {
 // ============================================================================
 
 /**
- * Résout un ID d'asset vers le chemin réel
+ * Résout un ID d'asset vers le chemin réel (incluant cross-folder)
  */
 export function resolveAssetPath(assetId: string): string {
-  return ASSET_REAL_MAPPING[assetId] || assetId;
+  // Priorité 1: Vérifier le mapping cross-folder
+  if (CROSS_FOLDER_MAPPING[assetId]) {
+    return CROSS_FOLDER_MAPPING[assetId];
+  }
+  
+  // Priorité 2: Vérifier le mapping standard
+  if (ASSET_REAL_MAPPING[assetId]) {
+    return ASSET_REAL_MAPPING[assetId];
+  }
+  
+  return assetId;
 }
 
 /**
- * Vérifie si un asset est disponible
+ * Construit le chemin complet vers un asset résolu
+ * Gère automatiquement les changements de catégorie
+ */
+export function buildResolvedAssetUrl(assetId: string, basePath = '/assets/envato'): string {
+  const resolvedId = resolveAssetPath(assetId);
+  const [categoryPath, filename] = resolvedId.split(':');
+  
+  // Gérer les sous-dossiers (ex: audio/modern)
+  const pathParts = categoryPath.split('/');
+  
+  return `${basePath}/${pathParts.join('/')}/${filename}`;
+}
+
+/**
+ * Vérifie si un asset est disponible (y compris cross-folder)
  */
 export function isAssetAvailable(assetId: string): boolean {
   const [category, filename] = assetId.split(':');
   const inventory = ASSET_INVENTORY[category];
   if (!inventory) return false;
   
-  // Vérifier dans le mapping ou directement
-  const resolvedId = resolveAssetPath(assetId);
-  const [, resolvedFilename] = resolvedId.split(':');
-  
-  return inventory.files.some(f => 
-    f === filename || 
-    f === resolvedFilename || 
-    f.endsWith(`/${filename}`) ||
-    f.endsWith(`/${resolvedFilename}`)
+  // Vérifier dans les fichiers directs
+  const directMatch = inventory.files.some(f => 
+    f === filename || f.endsWith(`/${filename}`)
   );
+  if (directMatch) return true;
+  
+  // Vérifier dans les fichiers cross-folder
+  if (inventory.crossFolderFiles) {
+    const crossMatch = inventory.crossFolderFiles.some(f => f === filename);
+    if (crossMatch) return true;
+  }
+  
+  // Vérifier si le mapping existe
+  const resolvedId = resolveAssetPath(assetId);
+  if (resolvedId !== assetId) {
+    const [resolvedCategory, resolvedFilename] = resolvedId.split(':');
+    const resolvedInventory = ASSET_INVENTORY[resolvedCategory];
+    if (resolvedInventory) {
+      return resolvedInventory.files.some(f => 
+        f === resolvedFilename || f.endsWith(`/${resolvedFilename}`)
+      );
+    }
+  }
+  
+  return false;
 }
 
 /**
@@ -250,19 +325,24 @@ export function getAssetStats(): {
   totalAvailable: number;
   totalExpected: number;
   completionRate: number;
-  byCategory: Record<string, { available: number; expected: number; rate: number }>;
+  byCategory: Record<string, { available: number; expected: number; rate: number; crossFolder?: number }>;
 } {
   let totalAvailable = 0;
   let totalExpected = 0;
-  const byCategory: Record<string, { available: number; expected: number; rate: number }> = {};
+  const byCategory: Record<string, { available: number; expected: number; rate: number; crossFolder?: number }> = {};
 
   for (const [key, inventory] of Object.entries(ASSET_INVENTORY)) {
-    totalAvailable += inventory.available;
+    const crossFolderCount = inventory.crossFolderFiles?.length || 0;
+    const effectiveAvailable = inventory.available;
+    
+    totalAvailable += effectiveAvailable;
     totalExpected += inventory.expected;
+    
     byCategory[key] = {
-      available: inventory.available,
+      available: effectiveAvailable,
       expected: inventory.expected,
-      rate: inventory.expected > 0 ? Math.round((inventory.available / inventory.expected) * 100) : 0,
+      rate: inventory.expected > 0 ? Math.round((effectiveAvailable / inventory.expected) * 100) : 0,
+      crossFolder: crossFolderCount > 0 ? crossFolderCount : undefined,
     };
   }
 
@@ -276,19 +356,33 @@ export function getAssetStats(): {
 
 /**
  * Obtient les assets disponibles par catégorie pour les templates
+ * Inclut les fichiers cross-folder
  */
 export function getAvailableAssetsForCategory(category: string): string[] {
   const inventory = ASSET_INVENTORY[category];
   if (!inventory || inventory.status === 'empty') return [];
 
-  return inventory.files.map(file => {
+  const assets: string[] = [];
+
+  // Fichiers directs
+  for (const file of inventory.files) {
     if (file.includes('/')) {
       // Audio avec sous-dossier
       const [subfolder, filename] = file.split('/');
-      return `${category}/${subfolder}:${filename}`;
+      assets.push(`${category}/${subfolder}:${filename}`);
+    } else {
+      assets.push(`${category}:${file}`);
     }
-    return `${category}:${file}`;
-  });
+  }
+
+  // Fichiers cross-folder
+  if (inventory.crossFolderFiles) {
+    for (const file of inventory.crossFolderFiles) {
+      assets.push(`${category}:${file}`);
+    }
+  }
+
+  return assets;
 }
 
 /**
@@ -300,4 +394,18 @@ export function pickRandomAssets(category: string, count: number): string[] {
 
   const shuffled = [...available].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, shuffled.length));
+}
+
+/**
+ * Obtient les Light Leaks recommandés pour les templates premium
+ */
+export function getRecommendedLightLeaks(): string[] {
+  return [
+    'light-leak:leak-005.mp4',
+    'light-leak:leak-008.mp4',
+    'light-leak:leak-012.mp4',
+    'light-leak:leak-020.webm', // Cross-folder
+    'light-leak:leak-025.webm', // Cross-folder
+    'light-leak:leak-030.webm', // Cross-folder
+  ];
 }

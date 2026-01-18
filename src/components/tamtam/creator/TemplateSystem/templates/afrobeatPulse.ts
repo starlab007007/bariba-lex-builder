@@ -23,55 +23,36 @@ export const afrobeatPulseTemplate: Template = {
       type: 'lens-flare',
       assetId: 'lens-flare:flare-150.png',
       trigger: 'always',
-      config: {
-        x: 0.5,
-        y: 0.3,
-        scale: 1.2,
-        opacity: 0.6,
-        blendMode: 'screen'
-      }
+      config: { x: 0.5, y: 0.3, scale: 1.2, opacity: 0.6, blendMode: 'screen' }
     },
     {
       id: 'drum-pulse-flare',
       type: 'lens-flare',
       assetId: 'lens-flare:flare-200.png',
       trigger: 'beat',
-      config: {
-        x: 0.5,
-        y: 0.5,
-        scale: 2,
-        opacity: 0.5,
-        blendMode: 'screen',
-        beatThreshold: 0.4
-      }
+      config: { x: 0.5, y: 0.5, scale: 2, opacity: 0.5, blendMode: 'screen', beatThreshold: 0.4 }
     },
     {
       id: 'warm-glow-flare',
       type: 'lens-flare',
       assetId: 'lens-flare:flare-250.png',
       trigger: 'beat',
-      config: {
-        x: 0.7,
-        y: 0.2,
-        scale: 0.8,
-        opacity: 0.3,
-        blendMode: 'screen',
-        beatThreshold: 0.6
-      }
+      config: { x: 0.7, y: 0.2, scale: 0.8, opacity: 0.3, blendMode: 'screen', beatThreshold: 0.6 }
+    },
+    // Light Leak effects - beat-triggered for dynamic visuals
+    {
+      id: 'afro-light-leak-1',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-020.webm',
+      trigger: 'beat',
+      config: { x: 0.5, y: 0.5, scale: 1.5, opacity: 0.4, blendMode: 'screen', beatThreshold: 0.5 }
     },
     {
-      id: 'symbol-flare',
-      type: 'lens-flare',
-      assetId: 'lens-flare:flare-300.png',
+      id: 'afro-light-leak-2',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-008.mp4',
       trigger: 'beat',
-      config: {
-        x: 0.5,
-        y: 0.3,
-        scale: 0.5,
-        opacity: 0.6,
-        blendMode: 'screen',
-        beatThreshold: 0.8
-      }
+      config: { x: 0.3, y: 0.7, scale: 1.2, opacity: 0.35, blendMode: 'screen', beatThreshold: 0.7 }
     }
   ],
   

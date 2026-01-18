@@ -6,7 +6,7 @@
  */
 
 import type { AssetCategory } from './types';
-import { resolveAssetPath, isAssetAvailable } from '@/lib/AssetRealMapping';
+import { resolveAssetPath, isAssetAvailable, buildResolvedAssetUrl } from '@/lib/AssetRealMapping';
 
 // ============================================================================
 // TYPES

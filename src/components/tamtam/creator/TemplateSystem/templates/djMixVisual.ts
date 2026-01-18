@@ -23,55 +23,36 @@ export const djMixVisualTemplate: Template = {
       type: 'lens-flare',
       assetId: 'lens-flare:flare-320.png',
       trigger: 'beat',
-      config: {
-        x: 0.5,
-        y: 0.85,
-        scale: 1.5,
-        opacity: 0.8,
-        blendMode: 'screen',
-        beatThreshold: 0.2
-      }
+      config: { x: 0.5, y: 0.85, scale: 1.5, opacity: 0.8, blendMode: 'screen', beatThreshold: 0.2 }
     },
     {
       id: 'waveform-flare',
       type: 'lens-flare',
       assetId: 'lens-flare:flare-340.png',
       trigger: 'always',
-      config: {
-        x: 0.5,
-        y: 0.5,
-        scale: 1.0,
-        opacity: 0.4,
-        blendMode: 'screen'
-      }
+      config: { x: 0.5, y: 0.5, scale: 1.0, opacity: 0.4, blendMode: 'screen' }
+    },
+    // Light Leak effects - strobe/club effect
+    {
+      id: 'strobe-leak-1',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-030.webm',
+      trigger: 'beat',
+      config: { x: 0.5, y: 0.5, scale: 2.0, opacity: 0.5, blendMode: 'screen', beatThreshold: 0.4 }
     },
     {
-      id: 'strobe-flare',
-      type: 'lens-flare',
-      assetId: 'lens-flare:flare-360.png',
+      id: 'strobe-leak-2',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-005.mp4',
       trigger: 'beat',
-      config: {
-        x: 0.5,
-        y: 0.3,
-        scale: 2.0,
-        opacity: 0.6,
-        blendMode: 'screen',
-        beatThreshold: 0.8
-      }
+      config: { x: 0.7, y: 0.3, scale: 1.5, opacity: 0.4, blendMode: 'screen', beatThreshold: 0.8 }
     },
     {
       id: 'dj-badge',
       type: 'text',
       assetId: 'text:dj',
       trigger: 'always',
-      config: {
-        x: 0.5,
-        y: 0.1,
-        text: '🎧 NOW PLAYING',
-        font: 'Bebas Neue',
-        color: '#FFFFFF',
-        align: 'center'
-      }
+      config: { x: 0.5, y: 0.1, text: '🎧 NOW PLAYING', font: 'Bebas Neue', color: '#FFFFFF', align: 'center' }
     }
   ],
   
