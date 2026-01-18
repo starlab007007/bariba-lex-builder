@@ -63,14 +63,14 @@ const FORMAT_CONVERSIONS: Record<string, string> = {
 };
 
 const VALID_EXTENSIONS: Record<string, string[]> = {
-  'lens-flare': ['png', 'jpg', 'jpeg', 'webp'],
+  'lens-flare': ['png', 'webp'],
   'light-leak': ['webm', 'mp4', 'mov'],
   'particles': ['webm', 'mp4', 'mov'],
   'transitions': ['mp4', 'webm', 'mov'],
-  'textures': ['mp4', 'webm', 'jpg', 'png'],
+  'textures': ['mp4', 'webm', 'mov', 'jpg', 'png'],
   '3d-models': ['glb', 'gltf'],
   'fonts': ['ttf', 'otf', 'woff', 'woff2'],
-  'audio': ['mp3', 'wav', 'm4a', 'ogg'],
+  'audio': ['mp3', 'wav', 'ogg', 'm4a'],
 };
 
 // ============================================================================

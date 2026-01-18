@@ -47,7 +47,7 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-yellow-500',
     expectedFormats: ['.png', '.webp'],
     namingPattern: 'flare-XXX.png',
-    minFileSize: 10 * 1024,           // 10 KB
+    minFileSize: 5 * 1024,            // 5 KB - selon spécification
     maxFileSize: 50 * 1024 * 1024,    // 50 MB
     expectedCount: 455,
     basePath: '/assets/envato/lens-flare/',
@@ -64,7 +64,7 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-orange-500',
     expectedFormats: ['.webm', '.mp4', '.mov'],
     namingPattern: 'leak-XXX.webm',
-    minFileSize: 500 * 1024,          // 500 KB
+    minFileSize: 100 * 1024,          // 100 KB - selon spécification
     maxFileSize: 200 * 1024 * 1024,   // 200 MB
     expectedCount: 40,
     basePath: '/assets/envato/light-leak/',
@@ -81,9 +81,9 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     displayNameFr: 'Particules',
     icon: '💫',
     color: 'text-purple-500',
-    expectedFormats: ['.webm', '.mp4'],
+    expectedFormats: ['.webm', '.mp4', '.mov'],
     namingPattern: 'particle-XXX.webm',
-    minFileSize: 200 * 1024,          // 200 KB
+    minFileSize: 50 * 1024,           // 50 KB - selon spécification
     maxFileSize: 150 * 1024 * 1024,   // 150 MB
     expectedCount: 37,
     basePath: '/assets/envato/particles/',
@@ -102,7 +102,7 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-blue-500',
     expectedFormats: ['.mp4', '.webm', '.mov'],
     namingPattern: 'transition-XXX.mp4',
-    minFileSize: 100 * 1024,          // 100 KB
+    minFileSize: 50 * 1024,           // 50 KB - selon spécification
     maxFileSize: 100 * 1024 * 1024,   // 100 MB
     expectedCount: 32,
     basePath: '/assets/envato/transitions/',
@@ -118,9 +118,9 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     displayNameFr: 'Textures',
     icon: '🎨',
     color: 'text-green-500',
-    expectedFormats: ['.mp4', '.webm', '.jpg', '.png'],
+    expectedFormats: ['.mp4', '.webm', '.mov', '.jpg', '.png'],
     namingPattern: 'texture-XXX.mp4',
-    minFileSize: 10 * 1024,           // 10 KB
+    minFileSize: 10 * 1024,           // 10 KB - selon spécification
     maxFileSize: 100 * 1024 * 1024,   // 100 MB
     expectedCount: 215,
     basePath: '/assets/envato/textures/',
@@ -169,7 +169,7 @@ export const ASSET_CATEGORIES: Record<string, AssetCategoryConfig> = {
     color: 'text-pink-500',
     expectedFormats: ['.mp3', '.wav', '.ogg', '.m4a'],
     namingPattern: 'audio-XXX.mp3',
-    minFileSize: 50 * 1024,           // 50 KB
+    minFileSize: 10 * 1024,           // 10 KB - selon spécification
     maxFileSize: 50 * 1024 * 1024,    // 50 MB
     expectedCount: 26,
     basePath: '/assets/envato/audio/',
@@ -256,15 +256,21 @@ export function matchesNamingPattern(filename: string, categoryId: string): bool
  */
 export function detectFileCategory(filename: string): string | null {
   const name = filename.toLowerCase();
+  const ext = name.split('.').pop() || '';
   
-  if (name.startsWith('flare-') && name.endsWith('.png')) return 'lens-flare';
-  if (name.startsWith('leak-') && (name.endsWith('.webm') || name.endsWith('.mp4'))) return 'light-leak';
-  if (name.startsWith('particle-') && name.endsWith('.webm')) return 'particles';
-  if (name.startsWith('transition-') && name.endsWith('.mp4')) return 'transitions';
-  if (name.startsWith('texture-') || name.startsWith('video-')) return 'textures';
-  if (name.startsWith('model-') && name.endsWith('.glb')) return '3d-models';
-  if (name.endsWith('.ttf') || name.endsWith('.otf') || name.endsWith('.woff2')) return 'fonts';
-  if (name.endsWith('.mp3') || name.endsWith('.wav')) return 'audio';
+  // Détection par préfixe et extension
+  if (name.startsWith('flare-') && ['png', 'webp'].includes(ext)) return 'lens-flare';
+  if (name.startsWith('leak-') && ['webm', 'mp4', 'mov'].includes(ext)) return 'light-leak';
+  if (name.startsWith('particle-') && ['webm', 'mp4', 'mov'].includes(ext)) return 'particles';
+  if (name.startsWith('transition-') && ['mp4', 'webm', 'mov'].includes(ext)) return 'transitions';
+  if ((name.startsWith('texture-') || name.startsWith('video-')) && ['mp4', 'webm', 'mov', 'jpg', 'png'].includes(ext)) return 'textures';
+  if (name.startsWith('model-') && ['glb', 'gltf'].includes(ext)) return '3d-models';
+  
+  // Détection par extension seule
+  if (['ttf', 'otf', 'woff', 'woff2'].includes(ext)) return 'fonts';
+  if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) return 'audio';
+  if (['glb', 'gltf'].includes(ext)) return '3d-models';
+  if (['png', 'webp'].includes(ext)) return 'lens-flare';
   
   return null;
 }
