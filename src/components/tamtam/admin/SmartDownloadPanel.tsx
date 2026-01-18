@@ -34,7 +34,8 @@ import {
   Sparkles,
   Layers,
   ArrowRight,
-  Settings
+  Settings,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -62,8 +63,6 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
     corrections,
     summary,
     runCorrection,
-    processFile: processCorrectionFile,
-    validateFile: validateCorrectionFile,
     getSearchUrl,
     markCompleted,
     getAllSearchUrls,
@@ -175,9 +174,9 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
     await runCorrection(category);
   };
 
-  // Clear dropped files
-  const clearDroppedFiles = () => {
-    setDroppedFiles([]);
+  // Clear all imported assets
+  const handleClearAll = () => {
+    clearAll();
   };
 
   // Get filtered corrections
@@ -191,6 +190,11 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
     high: corrections.filter(c => c.priority === 'high' && c.status === 'pending').length,
     medium: corrections.filter(c => c.priority === 'medium' && c.status === 'pending').length,
   };
+
+  // Get status counts from importedAssets
+  const readyCount = importedAssets.filter(a => a.status === 'ready').length;
+  const confirmedCount = importedAssets.filter(a => a.status === 'confirmed').length;
+  const errorCount = importedAssets.filter(a => a.status === 'error').length;
 
   return (
     <div className="space-y-6">
@@ -226,9 +230,9 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
               <CheckCircle className="h-8 w-8 text-green-500" />
               <div>
                 <p className="text-2xl font-bold">
-                  {corrections.filter(c => c.status === 'completed').length}
+                  {confirmedCount + (importStats?.uploaded || 0)}
                 </p>
-                <p className="text-xs text-muted-foreground">Completed</p>
+                <p className="text-xs text-muted-foreground">Uploadés</p>
               </div>
             </div>
           </CardContent>
@@ -239,8 +243,8 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
             <div className="flex items-center gap-2">
               <Download className="h-8 w-8 text-blue-500" />
               <div>
-                <p className="text-2xl font-bold">{droppedFiles.length}</p>
-                <p className="text-xs text-muted-foreground">Downloaded</p>
+                <p className="text-2xl font-bold">{readyCount}</p>
+                <p className="text-xs text-muted-foreground">En attente</p>
               </div>
             </div>
           </CardContent>
@@ -248,19 +252,30 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
       </div>
 
       {/* Progress bar when running */}
-      {progress.isRunning && (
+      {correctionProgress.isRunning && (
         <Alert>
           <RefreshCw className="h-4 w-4 animate-spin" />
           <AlertTitle>Correction en cours...</AlertTitle>
           <AlertDescription className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>{progress.currentCorrection?.suggestedFix || 'Préparation...'}</span>
-              <span>{progress.completedCorrections}/{progress.totalCorrections}</span>
+              <span>{correctionProgress.currentCorrection?.suggestedFix || 'Préparation...'}</span>
+              <span>{correctionProgress.completedCorrections}/{correctionProgress.totalCorrections}</span>
             </div>
             <Progress 
-              value={(progress.completedCorrections / progress.totalCorrections) * 100} 
+              value={(correctionProgress.completedCorrections / correctionProgress.totalCorrections) * 100} 
               className="h-2"
             />
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Import progress */}
+      {importProgress.isProcessing && (
+        <Alert>
+          <Upload className="h-4 w-4 animate-pulse" />
+          <AlertTitle>Traitement des fichiers...</AlertTitle>
+          <AlertDescription>
+            {importProgress.processed} / {importProgress.total} fichiers traités
           </AlertDescription>
         </Alert>
       )}
@@ -274,10 +289,36 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
               Drop Zone Intelligent
             </CardTitle>
             <CardDescription>
-              Glissez-déposez vos fichiers Envato - ils seront automatiquement placés et renommés
+              Glissez-déposez vos fichiers Envato - ils seront automatiquement uploadés vers le storage
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* MOV Conversion toggle */}
+            {canConvertMov && (
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <FileVideo className="h-4 w-4 text-purple-500" />
+                  <Label htmlFor="mov-convert" className="text-sm">
+                    Conversion auto MOV→WebM
+                  </Label>
+                </div>
+                <Switch
+                  id="mov-convert"
+                  checked={autoConvertMov}
+                  onCheckedChange={setAutoConvertMov}
+                />
+              </div>
+            )}
+            
+            {!canConvertMov && (
+              <Alert className="bg-yellow-500/10 border-yellow-500/30">
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                <AlertDescription className="text-xs">
+                  Votre navigateur ne supporte pas la conversion MOV→WebM. Les fichiers MOV seront uploadés directement.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Category selector */}
             <div className="flex flex-wrap gap-2">
               <Button
@@ -325,6 +366,9 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
               <p className="text-sm text-muted-foreground">
                 Format attendu: {ENVATO_EQUIVALENTS[selectedCategory]?.expectedFormat || 'Sélectionnez une catégorie'}
               </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Max 500MB par fichier • MOV, MP4, WebM, PNG, etc.
+              </p>
             </div>
 
             {/* Quick Envato links */}
@@ -349,60 +393,113 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
           </CardContent>
         </Card>
 
-        {/* Dropped Files List */}
+        {/* Imported Files List - Real uploads */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <FolderOpen className="h-5 w-5" />
-                Fichiers Traités ({droppedFiles.length})
+                Fichiers Importés ({importedAssets.length})
               </CardTitle>
-              {droppedFiles.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearDroppedFiles}>
-                  Clear
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {readyCount > 0 && (
+                  <Button 
+                    size="sm" 
+                    onClick={handleUploadAll}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4 mr-1" />
+                    )}
+                    Upload ({readyCount})
+                  </Button>
+                )}
+                {importedAssets.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleClearAll}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[300px]">
-              {droppedFiles.length === 0 ? (
+              {importedAssets.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
-                  Aucun fichier traité
+                  <Upload className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p>Aucun fichier importé</p>
+                  <p className="text-xs mt-1">Déposez des fichiers dans la zone ci-dessus</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {droppedFiles.map((df, index) => (
+                  {importedAssets.map((asset) => (
                     <div
-                      key={index}
+                      key={asset.id}
                       className={`p-3 rounded-lg border ${
-                        df.status === 'success' ? 'bg-green-500/10 border-green-500/50' :
-                        df.status === 'error' ? 'bg-red-500/10 border-red-500/50' :
+                        asset.status === 'confirmed' ? 'bg-green-500/10 border-green-500/50' :
+                        asset.status === 'error' ? 'bg-red-500/10 border-red-500/50' :
+                        asset.status === 'uploading' || asset.status === 'converting' ? 'bg-blue-500/10 border-blue-500/50' :
                         'bg-muted'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          {df.status === 'success' ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-red-500" />
-                          )}
-                          <span className="text-sm font-medium">{df.file.name}</span>
+                          {asset.status === 'confirmed' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                          {asset.status === 'error' && <XCircle className="h-4 w-4 text-red-500" />}
+                          {asset.status === 'ready' && <Download className="h-4 w-4 text-blue-500" />}
+                          {asset.status === 'uploading' && <Upload className="h-4 w-4 text-blue-500 animate-pulse" />}
+                          {asset.status === 'converting' && <FileVideo className="h-4 w-4 text-purple-500 animate-spin" />}
+                          <span className="text-sm font-medium truncate max-w-[150px]" title={asset.originalName}>
+                            {asset.originalName}
+                          </span>
                         </div>
-                        <Badge variant="outline">{df.category}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">{asset.category}</Badge>
+                          {asset.status === 'ready' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => confirmImport(asset.id)}
+                            >
+                              <Upload className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => removeAsset(asset.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                       
-                      {df.status === 'success' && (
+                      {asset.status === 'confirmed' && asset.publicUrl && (
                         <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
                           <ArrowRight className="h-3 w-3" />
-                          <code>{df.targetPath}</code>
+                          <code className="truncate max-w-[200px]">{asset.targetName}</code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 ml-1"
+                            onClick={() => window.open(asset.publicUrl, '_blank')}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
                         </div>
                       )}
                       
-                      {df.error && (
+                      {asset.status === 'converting' && asset.conversionProgress !== undefined && (
+                        <Progress value={asset.conversionProgress} className="h-1 mt-2" />
+                      )}
+                      
+                      {asset.error && (
                         <div className="mt-2 text-xs text-red-500">
-                          {df.error}
+                          {asset.error}
                         </div>
                       )}
                     </div>
@@ -426,9 +523,9 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
             </div>
             <Button 
               onClick={() => handleAutoCorrect()}
-              disabled={progress.isRunning}
+              disabled={correctionProgress.isRunning}
             >
-              {progress.isRunning ? (
+              {correctionProgress.isRunning ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                   En cours...
@@ -498,7 +595,7 @@ export const SmartDownloadPanel: React.FC<SmartDownloadPanelProps> = ({ isEnvato
                   </Button>
                   <Button
                     onClick={() => handleAutoCorrect(cat)}
-                    disabled={progress.isRunning || stats.pending === 0}
+                    disabled={correctionProgress.isRunning || stats.pending === 0}
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Corriger {cat}

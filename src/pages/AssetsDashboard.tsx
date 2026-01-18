@@ -3,7 +3,8 @@ import {
   LayoutDashboard, Key, Download, MousePointer, BookOpen, 
   CheckCircle, Settings, Zap, Bell, RefreshCw, HardDrive,
   AlertTriangle, TrendingUp, Package, Wifi, WifiOff,
-  ChevronRight, Play, Pause, Trash2, FolderOpen, Shield, Type, FolderSync
+  ChevronRight, Play, Pause, Trash2, FolderOpen, Shield, Type, FolderSync,
+  History
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ import AssetCleanupPanel from '@/components/tamtam/admin/AssetCleanupPanel';
 import FontManagerPanel from '@/components/tamtam/admin/FontManagerPanel';
 import TemplateAssetAnalyzer from '@/components/tamtam/admin/TemplateAssetAnalyzer';
 import SmartDownloadPanel from '@/components/tamtam/admin/SmartDownloadPanel';
+import ImportHistoryPanel from '@/components/admin/ImportHistoryPanel';
 import { ENVATO_ASSET_MAP } from '@/lib/EnvatoDownloader';
 import { useAssetSync } from '@/services/AssetSyncService';
 import { useAssetCleanup } from '@/services/AssetCleanupService';
@@ -327,6 +329,10 @@ const AssetsDashboard: React.FC = () => {
             <TabsTrigger value="analyzer" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               <span className="hidden sm:inline">Analyzer</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline">Historique</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
@@ -680,7 +686,12 @@ const AssetsDashboard: React.FC = () => {
             <TemplateAssetAnalyzer />
           </TabsContent>
 
-          {/* ============ TAB 7: SETTINGS ============ */}
+          {/* ============ TAB 8: HISTORY ============ */}
+          <TabsContent value="history" className="space-y-6">
+            <ImportHistoryPanel />
+          </TabsContent>
+
+          {/* ============ TAB 9: SETTINGS ============ */}
           <TabsContent value="settings" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
               {/* Download Settings */}
