@@ -29,7 +29,9 @@ import {
   FileCheck,
   Info,
   Wand2,
-  FolderInput
+  FolderInput,
+  FolderSync,
+  AlertTriangle
 } from 'lucide-react';
 import { ENVATO_ASSET_MAP, EnvatoAssetMapping, getEnvatoUrl } from '@/lib/EnvatoDownloader';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +40,7 @@ import { ASSET_CATEGORIES } from '@/lib/AssetConfig';
 import { formatFileSize, VALIDATION_SPECS } from '@/services/AssetValidationService';
 import { AssetDropZone } from '@/components/AssetDropZone';
 import { supabase } from '@/integrations/supabase/client';
+import { getAssetStats, ASSET_INVENTORY } from '@/lib/AssetRealMapping';
 
 // ============================================================================
 // TYPES
@@ -448,6 +451,94 @@ export const EnvatoBrowserHelper: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Cross-folder recovery alert */}
+      <Alert className="border-blue-500/50 bg-blue-500/5">
+        <FolderSync className="h-4 w-4 text-blue-500" />
+        <AlertTitle className="text-blue-500">Récupération Cross-Folder Active</AlertTitle>
+        <AlertDescription>
+          <strong>22 Light Leaks</strong> ont été automatiquement récupérés depuis le dossier 3d-models.
+          La bibliothèque Light Leaks passe de 17/40 à <strong>39/40 (97.5%)</strong>.
+          <div className="mt-2 flex gap-2">
+            <Badge variant="outline" className="text-xs">leak-018 → leak-039</Badge>
+            <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-500">leak-040 manquant</Badge>
+          </div>
+        </AlertDescription>
+      </Alert>
+
+      {/* Missing assets priority panel */}
+      <Card className="border-orange-500/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <AlertTriangle className="h-5 w-5 text-orange-500" />
+            Assets prioritaires à télécharger
+          </CardTitle>
+          <CardDescription>
+            Ces assets manquants empêchent certaines fonctionnalités avancées
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Light Leak - Only 1 missing */}
+          <div className="p-3 rounded-lg bg-muted/50 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileVideo className="h-5 w-5 text-orange-500" />
+              <div>
+                <div className="font-medium">Light Leak #40</div>
+                <code className="text-xs bg-muted px-1 rounded">leak-040.webm</code>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => window.open('https://elements.envato.com/video-templates/compatible-with-after-effects/light+leak+alpha+4k', '_blank')}
+            >
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Télécharger depuis Envato
+            </Button>
+          </div>
+
+          {/* 3D Models */}
+          <div className="p-3 rounded-lg bg-muted/50 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <File className="h-5 w-5 text-red-500" />
+              <div>
+                <div className="font-medium">3D Models (22 fichiers)</div>
+                <div className="text-xs text-muted-foreground">
+                  model-001.glb à model-022.glb - Format GLB/GLTF requis
+                </div>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.open('https://elements.envato.com/3d/african+model+glb', '_blank')}
+            >
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Rechercher sur Envato
+            </Button>
+          </div>
+
+          {/* Audio - 4 missing */}
+          <div className="p-3 rounded-lg bg-muted/50 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileAudio className="h-5 w-5 text-yellow-500" />
+              <div>
+                <div className="font-medium">Audio (4 pistes manquantes)</div>
+                <div className="text-xs text-muted-foreground">
+                  22/26 disponibles - Ajoutez 4 pistes Afrobeat
+                </div>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.open('https://elements.envato.com/music/afrobeat', '_blank')}
+            >
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Afrobeat Music
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Instructions */}
       <Alert>
         <Info className="h-4 w-4" />
@@ -791,6 +882,42 @@ export const EnvatoBrowserHelper: React.FC = () => {
               <RefreshCw className="h-4 w-4 mr-2" />
               Rafraîchir stats
             </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Show asset stats from mapping
+                const stats = getAssetStats();
+                toast({
+                  title: `📊 Statistiques des assets`,
+                  description: `${stats.totalAvailable}/${stats.totalExpected} (${stats.completionRate}%) - Cross-folder: ${stats.byCategory['light-leak']?.crossFolder || 0} Light Leaks récupérés`,
+                });
+              }}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Voir mapping stats
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Final summary card */}
+      <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-6 w-6 text-primary" />
+              <div>
+                <div className="font-medium">Système de mapping intelligent actif</div>
+                <div className="text-sm text-muted-foreground">
+                  {(() => {
+                    const stats = getAssetStats();
+                    return `${stats.totalAvailable} assets fonctionnels • ${stats.completionRate}% de complétion • 5 templates enrichis`;
+                  })()}
+                </div>
+              </div>
+            </div>
+            <Badge className="bg-primary/20 text-primary">v4.2</Badge>
           </div>
         </CardContent>
       </Card>

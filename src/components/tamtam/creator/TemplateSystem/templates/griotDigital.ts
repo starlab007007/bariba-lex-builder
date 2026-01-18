@@ -122,7 +122,28 @@ export const griotDigitalTemplate: Template = {
       }
     },
 
-    // === TEXT OVERLAYS ===
+    // === LIGHT LEAKS (Cross-folder recovered) ===
+    {
+      id: 'griot-leak-ambient',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-022.webm',
+      trigger: 'always',
+      config: { x: 0.5, y: 0.5, scale: 1.4, opacity: 0.25, blendMode: 'screen' }
+    },
+    {
+      id: 'griot-leak-beat',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-010.mp4',
+      trigger: 'beat',
+      config: { x: 0.5, y: 0.4, scale: 1.6, opacity: 0.35, blendMode: 'screen', beatThreshold: 0.6 }
+    },
+    {
+      id: 'griot-leak-climax',
+      type: 'light-leak',
+      assetId: 'light-leak:leak-028.webm',
+      trigger: 'time',
+      config: { x: 0.5, y: 0.5, scale: 1.8, opacity: 0.4, blendMode: 'screen', timeRange: [18, 28] }
+    },
     {
       id: 'title-main',
       type: 'text',
