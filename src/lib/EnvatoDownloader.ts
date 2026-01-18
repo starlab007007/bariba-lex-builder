@@ -1,248 +1,423 @@
 /**
- * EnvatoDownloader - Service de téléchargement d'assets depuis Envato Elements
- * Gère l'authentification, le mapping des assets, et les téléchargements avec retry
+ * TAM-TAM Envato Asset Downloader
+ * Mapping complet des assets Envato avec URLs précises et specs attendues
  */
 
 // ============================================================================
-// TYPES & INTERFACES
+// TYPES
 // ============================================================================
+
+export interface ExpectedSpecs {
+  minSize: number;
+  maxSize: number;
+  resolution?: string;
+  duration?: string;
+  hasAlpha?: boolean;
+  format: string;
+}
 
 export interface EnvatoAssetMapping {
   local: string;
   envato: string;
   id: string;
-  category: 'stock-video' | 'graphics' | '3d-models' | 'fonts' | 'audio';
-  format?: string;
-  fallbackUrl?: string;
-  // Enhanced URL generation
-  envatoSlug?: string;           // Direct slug if known (e.g., 'light-leak-orange-4k-XXXXXX')
-  envatoSearchQuery?: string;    // Precise search query for exact match
-  expectedSpecs?: {
-    minSize?: number;            // bytes
-    maxSize?: number;            // bytes
-    resolution?: string;         // e.g., '4K', '1080p'
-    duration?: string;           // e.g., '5-10s'
-    hasAlpha?: boolean;
-  };
-}
-
-export interface EnvatoAsset {
-  id: string;
-  name: string;
   category: string;
-  previewUrl?: string;
-  downloadUrl?: string;
-  author?: string;
-  license?: string;
-}
-
-export interface DownloadProgress {
-  category: string;
-  current: number;
-  total: number;
-  currentFile: string;
-  bytesDownloaded: number;
-  totalBytes: number;
-  speed: number; // bytes/sec
-  eta: number; // seconds
-  status: 'pending' | 'downloading' | 'completed' | 'error' | 'paused';
-  errors: DownloadError[];
-}
-
-export interface DownloadError {
-  file: string;
-  error: string;
-  attempt: number;
-  timestamp: Date;
-}
-
-export interface EnvatoCredentials {
-  email: string;
-  password?: string;
-  token?: string;
-}
-
-export interface DownloadState {
-  category: string;
-  completedFiles: string[];
-  failedFiles: string[];
-  lastUpdated: Date;
+  envatoSlug?: string;
+  envatoSearchQuery?: string;
+  expectedSpecs?: ExpectedSpecs;
 }
 
 // ============================================================================
-// ENVATO ASSET MAP - Mapping complet TAM-TAM → Envato Elements
+// ENVATO ASSET MAP - Avec recherches exactes et specs
 // ============================================================================
 
 export const ENVATO_ASSET_MAP: Record<string, EnvatoAssetMapping[]> = {
   'light-leak': [
-    { local: 'leak-001.webm', envato: 'Light Leak Orange 4K with Alpha', id: 'LLEAK001', category: 'stock-video', envatoSearchQuery: 'light leak orange 4k alpha overlay transparent', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-002.webm', envato: 'Blue Light Leak Cinematic 4K', id: 'LLEAK002', category: 'stock-video', envatoSearchQuery: 'blue light leak cinematic 4k overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-003.webm', envato: 'Golden Light Leak Film Look', id: 'LLEAK003', category: 'stock-video', envatoSearchQuery: 'golden light leak film look overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-004.webm', envato: 'Purple Light Leak Overlay', id: 'LLEAK004', category: 'stock-video', envatoSearchQuery: 'purple light leak overlay 4k', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-005.webm', envato: 'Rainbow Light Leak Pack', id: 'LLEAK005', category: 'stock-video', envatoSearchQuery: 'rainbow light leak prism overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-006.webm', envato: 'Vintage Film Light Leak', id: 'LLEAK006', category: 'stock-video', envatoSearchQuery: 'vintage film light leak retro overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-007.webm', envato: 'Warm Light Leak Transition', id: 'LLEAK007', category: 'stock-video', envatoSearchQuery: 'warm light leak transition overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-008.webm', envato: 'Cool Blue Light Leak', id: 'LLEAK008', category: 'stock-video', envatoSearchQuery: 'cool blue light leak overlay 4k', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-009.webm', envato: 'Soft Light Leak Overlay', id: 'LLEAK009', category: 'stock-video', envatoSearchQuery: 'soft light leak subtle overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-010.webm', envato: 'Dynamic Light Leak Motion', id: 'LLEAK010', category: 'stock-video', envatoSearchQuery: 'dynamic light leak motion overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-011.webm', envato: 'Neon Light Leak Effect', id: 'LLEAK011', category: 'stock-video', envatoSearchQuery: 'neon light leak effect overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-012.webm', envato: 'Sunset Light Leak Orange', id: 'LLEAK012', category: 'stock-video', envatoSearchQuery: 'sunset orange light leak overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-013.webm', envato: 'Abstract Light Leak Art', id: 'LLEAK013', category: 'stock-video', envatoSearchQuery: 'abstract light leak artistic overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-014.webm', envato: 'Film Burn Light Leak', id: 'LLEAK014', category: 'stock-video', envatoSearchQuery: 'film burn light leak vintage overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-015.webm', envato: 'Prism Light Leak Rainbow', id: 'LLEAK015', category: 'stock-video', envatoSearchQuery: 'prism rainbow light leak overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-016.webm', envato: 'Anamorphic Light Leak', id: 'LLEAK016', category: 'stock-video', envatoSearchQuery: 'anamorphic light leak cinematic overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
-    { local: 'leak-017.webm', envato: 'Retro Light Leak Pack', id: 'LLEAK017', category: 'stock-video', envatoSearchQuery: 'retro light leak pack overlay', expectedSpecs: { minSize: 500000, resolution: '4K', hasAlpha: true } },
+    { 
+      local: 'leak-001.webm', 
+      envato: 'Light Leak Orange 4K Alpha', 
+      id: 'LLEAK001', 
+      category: 'stock-video',
+      envatoSearchQuery: 'light leak orange 4k alpha overlay prores',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
+    { 
+      local: 'leak-002.webm', 
+      envato: 'Light Leak Blue Anamorphic', 
+      id: 'LLEAK002', 
+      category: 'stock-video',
+      envatoSearchQuery: 'light leak blue anamorphic 4k alpha channel',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
+    { 
+      local: 'leak-003.webm', 
+      envato: 'Light Leak Warm Film', 
+      id: 'LLEAK003', 
+      category: 'stock-video',
+      envatoSearchQuery: 'film light leak warm vintage overlay 4k alpha',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
+    { 
+      local: 'leak-004.webm', 
+      envato: 'Light Leak Golden Hour', 
+      id: 'LLEAK004', 
+      category: 'stock-video',
+      envatoSearchQuery: 'golden hour light leak overlay 4k transparent',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
+    { 
+      local: 'leak-005.webm', 
+      envato: 'Light Leak Rainbow Prism', 
+      id: 'LLEAK005', 
+      category: 'stock-video',
+      envatoSearchQuery: 'prism light leak rainbow 4k alpha overlay',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
+    { 
+      local: 'leak-006.webm', 
+      envato: 'Light Leak Red Flare', 
+      id: 'LLEAK006', 
+      category: 'stock-video',
+      envatoSearchQuery: 'red light leak flare overlay 4k alpha prores',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
+    { 
+      local: 'leak-007.webm', 
+      envato: 'Light Leak Cinematic Streak', 
+      id: 'LLEAK007', 
+      category: 'stock-video',
+      envatoSearchQuery: 'cinematic streak light leak 4k alpha transition',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
+    { 
+      local: 'leak-008.webm', 
+      envato: 'Light Leak Purple Haze', 
+      id: 'LLEAK008', 
+      category: 'stock-video',
+      envatoSearchQuery: 'purple haze light leak overlay 4k alpha',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
+    { 
+      local: 'leak-009.webm', 
+      envato: 'Light Leak Soft Glow', 
+      id: 'LLEAK009', 
+      category: 'stock-video',
+      envatoSearchQuery: 'soft glow light leak overlay 4k transparent alpha',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
+    { 
+      local: 'leak-010.webm', 
+      envato: 'Light Leak Neon', 
+      id: 'LLEAK010', 
+      category: 'stock-video',
+      envatoSearchQuery: 'neon light leak overlay 4k alpha channel prores',
+      expectedSpecs: { minSize: 5000000, maxSize: 200000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-15s' }
+    },
   ],
-
   'particles': [
-    { local: 'particle-001.webm', envato: 'Golden Bokeh Particles 4K', id: 'PART001', category: 'stock-video' },
-    { local: 'particle-002.webm', envato: 'Dust Particles Floating', id: 'PART002', category: 'stock-video' },
-    { local: 'particle-003.webm', envato: 'Snow Particles Overlay', id: 'PART003', category: 'stock-video' },
-    { local: 'particle-004.webm', envato: 'Sparkle Particles Gold', id: 'PART004', category: 'stock-video' },
-    { local: 'particle-005.webm', envato: 'Fire Embers Particles', id: 'PART005', category: 'stock-video' },
-    { local: 'particle-006.webm', envato: 'Magic Dust Particles', id: 'PART006', category: 'stock-video' },
-    { local: 'particle-007.webm', envato: 'Confetti Particles Celebration', id: 'PART007', category: 'stock-video' },
-    { local: 'particle-008.webm', envato: 'Rain Particles Overlay', id: 'PART008', category: 'stock-video' },
-    { local: 'particle-009.webm', envato: 'Smoke Particles Dark', id: 'PART009', category: 'stock-video' },
-    { local: 'particle-010.webm', envato: 'Glitter Particles Silver', id: 'PART010', category: 'stock-video' },
-    { local: 'particle-011.webm', envato: 'Organic Particles Float', id: 'PART011', category: 'stock-video' },
-    { local: 'particle-012.webm', envato: 'Abstract Particles Motion', id: 'PART012', category: 'stock-video' },
-    { local: 'particle-013.webm', envato: 'Bubble Particles Water', id: 'PART013', category: 'stock-video' },
-    { local: 'particle-014.webm', envato: 'Star Particles Twinkle', id: 'PART014', category: 'stock-video' },
-    { local: 'particle-015.webm', envato: 'Pollen Particles Nature', id: 'PART015', category: 'stock-video' },
-    { local: 'particle-016.webm', envato: 'Ash Particles Volcanic', id: 'PART016', category: 'stock-video' },
-    { local: 'particle-017.webm', envato: 'Fairy Dust Particles', id: 'PART017', category: 'stock-video' },
-    { local: 'particle-018.webm', envato: 'Sand Particles Desert', id: 'PART018', category: 'stock-video' },
-    { local: 'particle-019.webm', envato: 'Leaves Particles Autumn', id: 'PART019', category: 'stock-video' },
-    { local: 'particle-020.webm', envato: 'Petals Particles Cherry', id: 'PART020', category: 'stock-video' },
-    { local: 'particle-021.webm', envato: 'Feather Particles Float', id: 'PART021', category: 'stock-video' },
-    { local: 'particle-022.webm', envato: 'Seeds Particles Wind', id: 'PART022', category: 'stock-video' },
-    { local: 'particle-023.webm', envato: 'Fireflies Particles Night', id: 'PART023', category: 'stock-video' },
-    { local: 'particle-024.webm', envato: 'Motes Particles Light', id: 'PART024', category: 'stock-video' },
-    { local: 'particle-025.webm', envato: 'Nebula Particles Space', id: 'PART025', category: 'stock-video' },
-    { local: 'particle-026.webm', envato: 'Electric Particles Energy', id: 'PART026', category: 'stock-video' },
-    { local: 'particle-027.webm', envato: 'Ice Particles Frozen', id: 'PART027', category: 'stock-video' },
-    { local: 'particle-028.webm', envato: 'Powder Particles Explosion', id: 'PART028', category: 'stock-video' },
-    { local: 'particle-029.webm', envato: 'Liquid Particles Splash', id: 'PART029', category: 'stock-video' },
-    { local: 'particle-030.webm', envato: 'Digital Particles Tech', id: 'PART030', category: 'stock-video' },
-    { local: 'particle-031.webm', envato: 'Ink Particles Water', id: 'PART031', category: 'stock-video' },
-    { local: 'particle-032.webm', envato: 'Fog Particles Atmosphere', id: 'PART032', category: 'stock-video' },
-    { local: 'particle-033.webm', envato: 'Crystal Particles Shine', id: 'PART033', category: 'stock-video' },
-    { local: 'particle-034.webm', envato: 'Geometric Particles Abstract', id: 'PART034', category: 'stock-video' },
-    { local: 'particle-035.webm', envato: 'Plasma Particles Glow', id: 'PART035', category: 'stock-video' },
-    { local: 'particle-036.webm', envato: 'Neon Particles Bright', id: 'PART036', category: 'stock-video' },
-    { local: 'particle-037.webm', envato: 'Aurora Particles Northern', id: 'PART037', category: 'stock-video' },
+    { 
+      local: 'particle-001.webm', 
+      envato: 'Floating Dust Particles 4K', 
+      id: 'PART001', 
+      category: 'stock-video',
+      envatoSearchQuery: 'floating dust particles 4k alpha overlay atmospheric',
+      expectedSpecs: { minSize: 3000000, maxSize: 150000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '10-30s' }
+    },
+    { 
+      local: 'particle-002.webm', 
+      envato: 'Magic Sparkles Alpha', 
+      id: 'PART002', 
+      category: 'stock-video',
+      envatoSearchQuery: 'magic sparkles particles 4k alpha channel overlay',
+      expectedSpecs: { minSize: 3000000, maxSize: 150000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '10-30s' }
+    },
+    { 
+      local: 'particle-003.webm', 
+      envato: 'Golden Bokeh Particles', 
+      id: 'PART003', 
+      category: 'stock-video',
+      envatoSearchQuery: 'golden bokeh particles 4k alpha transparent overlay',
+      expectedSpecs: { minSize: 3000000, maxSize: 150000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '10-30s' }
+    },
+    { 
+      local: 'particle-004.webm', 
+      envato: 'Snow Falling Alpha', 
+      id: 'PART004', 
+      category: 'stock-video',
+      envatoSearchQuery: 'snow falling particles 4k alpha channel overlay realistic',
+      expectedSpecs: { minSize: 3000000, maxSize: 150000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '10-30s' }
+    },
+    { 
+      local: 'particle-005.webm', 
+      envato: 'Fire Embers Particles', 
+      id: 'PART005', 
+      category: 'stock-video',
+      envatoSearchQuery: 'fire embers particles 4k alpha overlay sparks',
+      expectedSpecs: { minSize: 3000000, maxSize: 150000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '10-30s' }
+    },
+    { 
+      local: 'particle-006.webm', 
+      envato: 'Confetti Celebration Alpha', 
+      id: 'PART006', 
+      category: 'stock-video',
+      envatoSearchQuery: 'confetti celebration particles 4k alpha overlay colorful',
+      expectedSpecs: { minSize: 3000000, maxSize: 150000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '5-20s' }
+    },
+    { 
+      local: 'particle-007.webm', 
+      envato: 'Smoke Particles Rising', 
+      id: 'PART007', 
+      category: 'stock-video',
+      envatoSearchQuery: 'smoke particles rising 4k alpha channel overlay',
+      expectedSpecs: { minSize: 3000000, maxSize: 150000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '10-30s' }
+    },
+    { 
+      local: 'particle-008.webm', 
+      envato: 'Glitter Particles Alpha', 
+      id: 'PART008', 
+      category: 'stock-video',
+      envatoSearchQuery: 'glitter particles shimmer 4k alpha overlay',
+      expectedSpecs: { minSize: 3000000, maxSize: 150000000, resolution: '3840x2160', hasAlpha: true, format: 'webm', duration: '10-30s' }
+    },
   ],
-
-  'lens-flare': generateLensFlareMapping(455),
-
+  'lens-flare': [
+    { 
+      local: 'flare-001.png', 
+      envato: 'Optical Lens Flare Blue', 
+      id: 'FLARE001', 
+      category: 'graphics',
+      envatoSearchQuery: 'optical lens flare blue png transparent overlay',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, resolution: '4000x4000', hasAlpha: true, format: 'png' }
+    },
+    { 
+      local: 'flare-002.png', 
+      envato: 'Anamorphic Flare Orange', 
+      id: 'FLARE002', 
+      category: 'graphics',
+      envatoSearchQuery: 'anamorphic lens flare orange png alpha transparent',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, resolution: '4000x4000', hasAlpha: true, format: 'png' }
+    },
+    { 
+      local: 'flare-003.png', 
+      envato: 'Sun Flare Natural', 
+      id: 'FLARE003', 
+      category: 'graphics',
+      envatoSearchQuery: 'sun lens flare natural png transparent overlay high resolution',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, resolution: '4000x4000', hasAlpha: true, format: 'png' }
+    },
+    { 
+      local: 'flare-004.png', 
+      envato: 'Rainbow Prism Flare', 
+      id: 'FLARE004', 
+      category: 'graphics',
+      envatoSearchQuery: 'rainbow prism lens flare png transparent colorful',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, resolution: '4000x4000', hasAlpha: true, format: 'png' }
+    },
+    { 
+      local: 'flare-005.png', 
+      envato: 'Golden Cinematic Flare', 
+      id: 'FLARE005', 
+      category: 'graphics',
+      envatoSearchQuery: 'cinematic golden lens flare png transparent overlay',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, resolution: '4000x4000', hasAlpha: true, format: 'png' }
+    },
+    { 
+      local: 'flare-006.png', 
+      envato: 'Neon Light Flare', 
+      id: 'FLARE006', 
+      category: 'graphics',
+      envatoSearchQuery: 'neon light flare png transparent overlay glow',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, resolution: '4000x4000', hasAlpha: true, format: 'png' }
+    },
+    { 
+      local: 'flare-007.png', 
+      envato: 'Warm Vintage Flare', 
+      id: 'FLARE007', 
+      category: 'graphics',
+      envatoSearchQuery: 'vintage warm lens flare png transparent retro',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, resolution: '4000x4000', hasAlpha: true, format: 'png' }
+    },
+    { 
+      local: 'flare-008.png', 
+      envato: 'Cool Blue Streak Flare', 
+      id: 'FLARE008', 
+      category: 'graphics',
+      envatoSearchQuery: 'blue streak lens flare png transparent cold',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, resolution: '4000x4000', hasAlpha: true, format: 'png' }
+    },
+  ],
   'transitions': [
-    { local: 'transition-001.mp4', envato: 'Dynamic Transitions Pack', id: 'TRANS001', category: 'stock-video' },
-    { local: 'transition-002.mp4', envato: 'Smooth Slide Transition', id: 'TRANS002', category: 'stock-video' },
-    { local: 'transition-003.mp4', envato: 'Zoom Transition Effect', id: 'TRANS003', category: 'stock-video' },
-    { local: 'transition-004.mp4', envato: 'Glitch Transition Digital', id: 'TRANS004', category: 'stock-video' },
-    { local: 'transition-005.mp4', envato: 'Ink Transition Artistic', id: 'TRANS005', category: 'stock-video' },
-    { local: 'transition-006.mp4', envato: 'Wipe Transition Clean', id: 'TRANS006', category: 'stock-video' },
-    { local: 'transition-007.mp4', envato: 'Flash Transition White', id: 'TRANS007', category: 'stock-video' },
-    { local: 'transition-008.mp4', envato: 'Spin Transition Rotate', id: 'TRANS008', category: 'stock-video' },
-    { local: 'transition-009.mp4', envato: 'Fade Transition Smooth', id: 'TRANS009', category: 'stock-video' },
-    { local: 'transition-010.mp4', envato: 'Shape Transition Circle', id: 'TRANS010', category: 'stock-video' },
-    { local: 'transition-011.mp4', envato: 'Blur Transition Soft', id: 'TRANS011', category: 'stock-video' },
-    { local: 'transition-012.mp4', envato: 'Split Transition Dual', id: 'TRANS012', category: 'stock-video' },
-    { local: 'transition-013.mp4', envato: 'Pixel Transition Retro', id: 'TRANS013', category: 'stock-video' },
-    { local: 'transition-014.mp4', envato: 'Brush Transition Paint', id: 'TRANS014', category: 'stock-video' },
-    { local: 'transition-015.mp4', envato: 'Shake Transition Impact', id: 'TRANS015', category: 'stock-video' },
-    { local: 'transition-016.mp4', envato: 'Distort Transition Wave', id: 'TRANS016', category: 'stock-video' },
-    { local: 'transition-017.mp4', envato: 'Fold Transition Paper', id: 'TRANS017', category: 'stock-video' },
-    { local: 'transition-018.mp4', envato: 'Dissolve Transition Film', id: 'TRANS018', category: 'stock-video' },
-    { local: 'transition-019.mp4', envato: 'Push Transition Slide', id: 'TRANS019', category: 'stock-video' },
-    { local: 'transition-020.mp4', envato: 'Reveal Transition Mask', id: 'TRANS020', category: 'stock-video' },
-    { local: 'transition-021.mp4', envato: 'Morph Transition Liquid', id: 'TRANS021', category: 'stock-video' },
-    { local: 'transition-022.mp4', envato: 'Stripe Transition Lines', id: 'TRANS022', category: 'stock-video' },
-    { local: 'transition-023.mp4', envato: 'Cube Transition 3D', id: 'TRANS023', category: 'stock-video' },
-    { local: 'transition-024.mp4', envato: 'Swirl Transition Spiral', id: 'TRANS024', category: 'stock-video' },
-    { local: 'transition-025.mp4', envato: 'Cross Transition X', id: 'TRANS025', category: 'stock-video' },
-    { local: 'transition-026.mp4', envato: 'Door Transition Open', id: 'TRANS026', category: 'stock-video' },
-    { local: 'transition-027.mp4', envato: 'Shatter Transition Break', id: 'TRANS027', category: 'stock-video' },
-    { local: 'transition-028.mp4', envato: 'Elastic Transition Bounce', id: 'TRANS028', category: 'stock-video' },
-    { local: 'transition-029.mp4', envato: 'Grid Transition Tiles', id: 'TRANS029', category: 'stock-video' },
-    { local: 'transition-030.mp4', envato: 'Light Transition Flash', id: 'TRANS030', category: 'stock-video' },
-    { local: 'transition-031.mp4', envato: 'Energy Transition Power', id: 'TRANS031', category: 'stock-video' },
-    { local: 'transition-032.mp4', envato: 'Nature Transition Organic', id: 'TRANS032', category: 'stock-video' },
+    { 
+      local: 'trans-001.mp4', 
+      envato: 'Glitch Transition 4K', 
+      id: 'TRANS001', 
+      category: 'stock-video',
+      envatoSearchQuery: 'glitch transition 4k digital distortion video',
+      expectedSpecs: { minSize: 1000000, maxSize: 100000000, resolution: '3840x2160', format: 'mp4', duration: '1-5s' }
+    },
+    { 
+      local: 'trans-002.mp4', 
+      envato: 'Ink Reveal Transition', 
+      id: 'TRANS002', 
+      category: 'stock-video',
+      envatoSearchQuery: 'ink reveal transition 4k alpha matte luma',
+      expectedSpecs: { minSize: 1000000, maxSize: 100000000, resolution: '3840x2160', format: 'mp4', duration: '1-5s' }
+    },
+    { 
+      local: 'trans-003.mp4', 
+      envato: 'Light Wipe Transition', 
+      id: 'TRANS003', 
+      category: 'stock-video',
+      envatoSearchQuery: 'light wipe transition 4k clean smooth video',
+      expectedSpecs: { minSize: 1000000, maxSize: 100000000, resolution: '3840x2160', format: 'mp4', duration: '1-5s' }
+    },
+    { 
+      local: 'trans-004.mp4', 
+      envato: 'Zoom Blur Transition', 
+      id: 'TRANS004', 
+      category: 'stock-video',
+      envatoSearchQuery: 'zoom blur transition 4k fast motion video',
+      expectedSpecs: { minSize: 1000000, maxSize: 100000000, resolution: '3840x2160', format: 'mp4', duration: '1-5s' }
+    },
   ],
-
-  'textures': generateTextureMapping(215),
-
+  'textures': [
+    { 
+      local: 'texture-001.mp4', 
+      envato: 'Film Grain Overlay 4K', 
+      id: 'TEXT001', 
+      category: 'stock-video',
+      envatoSearchQuery: 'film grain overlay 4k vintage texture loop',
+      expectedSpecs: { minSize: 500000, maxSize: 100000000, resolution: '3840x2160', format: 'mp4', duration: '10-60s' }
+    },
+    { 
+      local: 'texture-002.mp4', 
+      envato: 'VHS Noise Texture', 
+      id: 'TEXT002', 
+      category: 'stock-video',
+      envatoSearchQuery: 'vhs noise texture overlay 4k retro vintage loop',
+      expectedSpecs: { minSize: 500000, maxSize: 100000000, resolution: '3840x2160', format: 'mp4', duration: '10-60s' }
+    },
+    { 
+      local: 'texture-003.jpg', 
+      envato: 'Paper Texture Seamless', 
+      id: 'TEXT003', 
+      category: 'graphics',
+      envatoSearchQuery: 'paper texture seamless tileable high resolution background',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, resolution: '4000x4000', format: 'jpg' }
+    },
+  ],
   '3d-models': [
-    { local: 'model-001.glb', envato: 'Low Poly 3D Objects Pack', id: 'MODEL001', category: '3d-models' },
-    { local: 'model-002.glb', envato: 'Geometric Shapes 3D', id: 'MODEL002', category: '3d-models' },
-    { local: 'model-003.glb', envato: 'African Art 3D Models', id: 'MODEL003', category: '3d-models' },
-    { local: 'model-004.glb', envato: 'Traditional Mask 3D', id: 'MODEL004', category: '3d-models' },
-    { local: 'model-005.glb', envato: 'Drum 3D Model Djembe', id: 'MODEL005', category: '3d-models' },
-    { local: 'model-006.glb', envato: 'Kora Instrument 3D', id: 'MODEL006', category: '3d-models' },
-    { local: 'model-007.glb', envato: 'Baobab Tree 3D', id: 'MODEL007', category: '3d-models' },
-    { local: 'model-008.glb', envato: 'Village Hut 3D', id: 'MODEL008', category: '3d-models' },
-    { local: 'model-009.glb', envato: 'Pottery 3D African', id: 'MODEL009', category: '3d-models' },
-    { local: 'model-010.glb', envato: 'Calabash 3D Model', id: 'MODEL010', category: '3d-models' },
-    { local: 'model-011.glb', envato: 'Tribal Pattern 3D', id: 'MODEL011', category: '3d-models' },
-    { local: 'model-012.glb', envato: 'Sun Symbol 3D', id: 'MODEL012', category: '3d-models' },
-    { local: 'model-013.glb', envato: 'Moon Symbol 3D', id: 'MODEL013', category: '3d-models' },
-    { local: 'model-014.glb', envato: 'Star Cluster 3D', id: 'MODEL014', category: '3d-models' },
-    { local: 'model-015.glb', envato: 'Abstract Shape 3D', id: 'MODEL015', category: '3d-models' },
-    { local: 'model-016.glb', envato: 'Logo 3D Extruded', id: 'MODEL016', category: '3d-models' },
-    { local: 'model-017.glb', envato: 'Text 3D Typography', id: 'MODEL017', category: '3d-models' },
-    { local: 'model-018.glb', envato: 'Icon Set 3D Pack', id: 'MODEL018', category: '3d-models' },
-    { local: 'model-019.glb', envato: 'Frame 3D Decorative', id: 'MODEL019', category: '3d-models' },
-    { local: 'model-020.glb', envato: 'Ring 3D Circular', id: 'MODEL020', category: '3d-models' },
-    { local: 'model-021.glb', envato: 'Wave 3D Motion', id: 'MODEL021', category: '3d-models' },
-    { local: 'model-022.glb', envato: 'Particle System 3D', id: 'MODEL022', category: '3d-models' },
+    { 
+      local: 'model-001.glb', 
+      envato: 'Abstract 3D Shapes Pack', 
+      id: 'MODEL001', 
+      category: '3d',
+      envatoSearchQuery: 'abstract 3d shapes pack glb gltf modern',
+      expectedSpecs: { minSize: 10000, maxSize: 100000000, format: 'glb' }
+    },
   ],
-
   'fonts': [
-    { local: 'font-001.ttf', envato: 'Montserrat Bold', id: 'FONT001', category: 'fonts', fallbackUrl: 'https://fonts.google.com/specimen/Montserrat' },
-    { local: 'font-002.ttf', envato: 'Montserrat Regular', id: 'FONT002', category: 'fonts', fallbackUrl: 'https://fonts.google.com/specimen/Montserrat' },
-    { local: 'font-003.ttf', envato: 'Montserrat Light', id: 'FONT003', category: 'fonts', fallbackUrl: 'https://fonts.google.com/specimen/Montserrat' },
-    { local: 'font-004.ttf', envato: 'Open Sans Bold', id: 'FONT004', category: 'fonts', fallbackUrl: 'https://fonts.google.com/specimen/Open+Sans' },
-    { local: 'font-005.ttf', envato: 'Open Sans Regular', id: 'FONT005', category: 'fonts', fallbackUrl: 'https://fonts.google.com/specimen/Open+Sans' },
-    { local: 'font-006.ttf', envato: 'Lobster Regular', id: 'FONT006', category: 'fonts', fallbackUrl: 'https://fonts.google.com/specimen/Lobster' },
-    { local: 'font-007.ttf', envato: 'Playfair Display Bold', id: 'FONT007', category: 'fonts', fallbackUrl: 'https://fonts.google.com/specimen/Playfair+Display' },
-    { local: 'font-008.ttf', envato: 'Roboto Bold', id: 'FONT008', category: 'fonts', fallbackUrl: 'https://fonts.google.com/specimen/Roboto' },
-    { local: 'font-009.ttf', envato: 'African Script Decorative', id: 'FONT009', category: 'fonts' },
+    { 
+      local: 'Montserrat.ttf', 
+      envato: 'Montserrat Font Family', 
+      id: 'FONT001', 
+      category: 'fonts',
+      envatoSearchQuery: 'montserrat font family modern sans serif',
+      expectedSpecs: { minSize: 10000, maxSize: 10000000, format: 'ttf' }
+    },
   ],
-
   'audio': [
-    // Modern
-    { local: 'audio/modern/afrobeat-001.mp3', envato: 'Afrobeat Modern Groove', id: 'AUDIO001', category: 'audio' },
-    { local: 'audio/modern/afrobeat-002.mp3', envato: 'Afrobeat Dance Floor', id: 'AUDIO002', category: 'audio' },
-    { local: 'audio/modern/afrobeat-003.mp3', envato: 'Afrobeat Party Mix', id: 'AUDIO003', category: 'audio' },
-    { local: 'audio/modern/afrobeat-004.mp3', envato: 'Afrobeat Chill Vibes', id: 'AUDIO004', category: 'audio' },
-    { local: 'audio/modern/afrobeat-005.mp3', envato: 'Afrobeat Urban Beat', id: 'AUDIO005', category: 'audio' },
-    { local: 'audio/modern/afrobeat-006.mp3', envato: 'Afrobeat Summer', id: 'AUDIO006', category: 'audio' },
-    { local: 'audio/modern/afrobeat-007.mp3', envato: 'Afrobeat Sunset', id: 'AUDIO007', category: 'audio' },
-    { local: 'audio/modern/afrobeat-008.mp3', envato: 'Afrobeat Festival', id: 'AUDIO008', category: 'audio' },
-    { local: 'audio/modern/afrobeat-009.mp3', envato: 'Afrobeat Night', id: 'AUDIO009', category: 'audio' },
-    { local: 'audio/modern/afrobeat-010.mp3', envato: 'Afrobeat Energy', id: 'AUDIO010', category: 'audio' },
-    // Traditional
-    { local: 'audio/traditional/traditional-001.mp3', envato: 'African Traditional Drums', id: 'AUDIO011', category: 'audio' },
-    { local: 'audio/traditional/traditional-002.mp3', envato: 'Village Celebration Music', id: 'AUDIO012', category: 'audio' },
-    { local: 'audio/traditional/traditional-003.mp3', envato: 'Tribal Chant Ensemble', id: 'AUDIO013', category: 'audio' },
-    { local: 'audio/traditional/traditional-004.mp3', envato: 'Kora Meditation', id: 'AUDIO014', category: 'audio' },
-    { local: 'audio/traditional/traditional-005.mp3', envato: 'Balafon Rhythms', id: 'AUDIO015', category: 'audio' },
-    { local: 'audio/traditional/traditional-006.mp3', envato: 'Sacred Ceremony', id: 'AUDIO016', category: 'audio' },
-    { local: 'audio/traditional/traditional-007.mp3', envato: 'Griot Storytelling', id: 'AUDIO017', category: 'audio' },
-    { local: 'audio/traditional/traditional-008.mp3', envato: 'Harvest Dance', id: 'AUDIO018', category: 'audio' },
-    // Percussion
-    { local: 'audio/percussion/djembe-001.mp3', envato: 'Djembe Solo Performance', id: 'AUDIO019', category: 'audio' },
-    { local: 'audio/percussion/djembe-002.mp3', envato: 'Djembe Ensemble', id: 'AUDIO020', category: 'audio' },
-    { local: 'audio/percussion/dunun-001.mp3', envato: 'Dunun Bass Rhythms', id: 'AUDIO021', category: 'audio' },
-    { local: 'audio/percussion/dunun-002.mp3', envato: 'Dunun Polyrhythm', id: 'AUDIO022', category: 'audio' },
-    { local: 'audio/percussion/shekere-001.mp3', envato: 'Shekere Shake Pattern', id: 'AUDIO023', category: 'audio' },
-    { local: 'audio/percussion/talking-drum-001.mp3', envato: 'Talking Drum Message', id: 'AUDIO024', category: 'audio' },
-    { local: 'audio/percussion/conga-001.mp3', envato: 'Conga Latin African', id: 'AUDIO025', category: 'audio' },
-    { local: 'audio/percussion/bongo-001.mp3', envato: 'Bongo Rhythms Pack', id: 'AUDIO026', category: 'audio' },
+    { 
+      local: 'audio-001.mp3', 
+      envato: 'Afrobeat Percussion Loop', 
+      id: 'AUDIO001', 
+      category: 'music',
+      envatoSearchQuery: 'afrobeat percussion loop drums african rhythm',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, format: 'mp3', duration: '30-180s' }
+    },
+    { 
+      local: 'audio-002.mp3', 
+      envato: 'Modern Hip Hop Beat', 
+      id: 'AUDIO002', 
+      category: 'music',
+      envatoSearchQuery: 'modern hip hop beat trap instrumental urban',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, format: 'mp3', duration: '30-180s' }
+    },
+    { 
+      local: 'audio-003.mp3', 
+      envato: 'Traditional African Music', 
+      id: 'AUDIO003', 
+      category: 'music',
+      envatoSearchQuery: 'traditional african music ethnic cultural world',
+      expectedSpecs: { minSize: 100000, maxSize: 50000000, format: 'mp3', duration: '30-180s' }
+    },
   ],
 };
 
+// ============================================================================
+// URL GENERATION - Avec redirection exacte
+// ============================================================================
+
+const CATEGORY_PATH_MAP: Record<string, string> = {
+  'stock-video': 'stock-video',
+  'graphics': 'graphic-templates',
+  '3d': '3d',
+  'fonts': 'fonts',
+  'music': 'royalty-free-music',
+};
+
+/**
+ * Génère l'URL Envato exacte pour un asset
+ */
+export function getEnvatoUrl(category: string, searchTerm: string, mapping?: EnvatoAssetMapping): string {
+  // Si on a un slug direct, l'utiliser
+  if (mapping?.envatoSlug) {
+    return `https://elements.envato.com/${mapping.envatoSlug}`;
+  }
+  
+  // Utiliser la recherche précise si disponible
+  const query = mapping?.envatoSearchQuery || searchTerm;
+  const categoryPath = CATEGORY_PATH_MAP[category] || 'all-items';
+  
+  return `https://elements.envato.com/${categoryPath}?q=${encodeURIComponent(query)}`;
+}
+
+/**
+ * Obtient tous les assets d'une catégorie avec leurs URLs
+ */
+export function getCategoryAssetsWithUrls(category: string): (EnvatoAssetMapping & { url: string })[] {
+  const assets = ENVATO_ASSET_MAP[category] || [];
+  return assets.map(asset => ({
+    ...asset,
+    url: getEnvatoUrl(asset.category, asset.envato, asset),
+  }));
+}
+
+/**
+ * Trouve un asset par son nom local
+ */
+export function findAssetByLocalName(localName: string): EnvatoAssetMapping | undefined {
+  for (const assets of Object.values(ENVATO_ASSET_MAP)) {
+    const found = assets.find(a => a.local === localName);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
+ * Obtient les stats par catégorie
+ */
+export function getCategoryStats(): Record<string, { total: number; withSpecs: number }> {
+  const stats: Record<string, { total: number; withSpecs: number }> = {};
+  
+  for (const [category, assets] of Object.entries(ENVATO_ASSET_MAP)) {
+    stats[category] = {
+      total: assets.length,
+      withSpecs: assets.filter(a => a.expectedSpecs).length,
+    };
+  }
+  
+  return stats;
+}
 /**
  * Génère le mapping pour les lens-flare (455 fichiers)
  */
