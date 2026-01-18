@@ -1,9 +1,11 @@
 /**
  * AssetSyncService - Service de synchronisation centralisé pour les assets
  * Gère le téléchargement automatique, la mise à jour et l'actualisation
+ * Now reconciles with asset_imports database table
  */
 
 import { ENVATO_ASSET_MAP, EnvatoAssetMapping } from '@/lib/EnvatoDownloader';
+import { supabase } from '@/integrations/supabase/client';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -183,12 +185,34 @@ class AssetSyncService {
 
     const assets: AssetInfo[] = [];
 
+    // First, get assets from database (asset_imports table)
+    const dbAssets = await this.getImportedAssetsFromDB();
+
     for (const [category, mappings] of Object.entries(ENVATO_ASSET_MAP)) {
       if (!Array.isArray(mappings)) continue;
 
       for (const mapping of mappings) {
-        const assetInfo = await this.checkAssetStatus(mapping, category);
-        assets.push(assetInfo);
+        // Check if this asset exists in DB imports
+        const dbAsset = dbAssets.find(
+          a => a.category === category && 
+          (a.target_name === mapping.local || a.target_name.replace(/\.[^.]+$/, '') === mapping.local.replace(/\.[^.]+$/, ''))
+        );
+
+        if (dbAsset && (dbAsset.status === 'uploaded' || dbAsset.status === 'converted')) {
+          // Asset is in database - mark as installed
+          assets.push({
+            id: mapping.id,
+            local: mapping.local,
+            category,
+            status: 'installed',
+            size: dbAsset.file_size,
+            lastUpdated: new Date(dbAsset.uploaded_at || dbAsset.created_at),
+          });
+        } else {
+          // Check local file system
+          const assetInfo = await this.checkAssetStatus(mapping, category);
+          assets.push(assetInfo);
+        }
       }
     }
 
@@ -199,6 +223,33 @@ class AssetSyncService {
     this.notifyListeners();
 
     console.log(`✅ Scan complete: ${assets.filter(a => a.status === 'installed').length}/${assets.length} assets installed`);
+  }
+
+  private async getImportedAssetsFromDB(): Promise<Array<{
+    id: string;
+    category: string;
+    target_name: string;
+    status: string;
+    file_size: number;
+    uploaded_at: string | null;
+    created_at: string;
+  }>> {
+    try {
+      const { data, error } = await supabase
+        .from('asset_imports')
+        .select('id, category, target_name, status, file_size, uploaded_at, created_at')
+        .in('status', ['uploaded', 'converted']);
+      
+      if (error) {
+        console.error('Error fetching imported assets from DB:', error);
+        return [];
+      }
+      
+      return data || [];
+    } catch (err) {
+      console.error('Exception fetching imported assets:', err);
+      return [];
+    }
   }
 
   private async checkAssetStatus(mapping: EnvatoAssetMapping, category: string): Promise<AssetInfo> {
