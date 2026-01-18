@@ -1,11 +1,15 @@
 /**
  * TAM-TAM Asset Import Hook
  * Gère l'upload, le renommage automatique et le placement des fichiers Envato
+ * Upload réel vers Supabase Storage pour disponibilité immédiate
  */
 
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { ASSET_CATEGORIES, detectFileCategory, getTargetPath, AUDIO_SUBFOLDERS } from '@/lib/AssetConfig';
+
+const STORAGE_BUCKET = 'envato-assets';
 
 // ============================================================================
 // TYPES
@@ -23,6 +27,7 @@ export interface ImportedAsset {
   error?: string;
   size: number;
   previewUrl?: string;
+  publicUrl?: string;
   needsConversion: boolean;
   conversionProgress?: number;
 }
@@ -321,9 +326,42 @@ export function useAssetImport() {
   }, [processFile, saveCounters]);
 
   /**
-   * Confirme l'import d'un asset (le rend disponible pour utilisation)
+   * Upload un fichier vers Supabase Storage
    */
-  const confirmImport = useCallback((assetId: string): ImportResult => {
+  const uploadToStorage = useCallback(async (asset: ImportedAsset): Promise<{ success: boolean; publicUrl?: string; error?: string }> => {
+    try {
+      // Construire le path de stockage (category/filename)
+      const storagePath = `${asset.category}/${asset.targetName}`;
+      
+      // Upload vers Supabase Storage
+      const { data, error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(storagePath, asset.file, {
+          cacheControl: '31536000', // 1 an de cache
+          upsert: true, // Remplacer si existe
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        return { success: false, error: error.message };
+      }
+
+      // Obtenir l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(storagePath);
+
+      return { success: true, publicUrl };
+    } catch (err) {
+      console.error('Upload exception:', err);
+      return { success: false, error: err instanceof Error ? err.message : 'Erreur inconnue' };
+    }
+  }, []);
+
+  /**
+   * Confirme l'import d'un asset (upload réel vers Supabase Storage)
+   */
+  const confirmImport = useCallback(async (assetId: string): Promise<ImportResult> => {
     const asset = importedAssets.find(a => a.id === assetId);
     
     if (!asset) {
@@ -334,8 +372,23 @@ export function useAssetImport() {
       return { success: false, asset, message: 'Asset non prêt pour confirmation' };
     }
 
-    // Simuler la sauvegarde (dans un vrai projet, cela irait vers un backend/storage)
-    // Pour l'instant, on marque comme confirmé et on stocke en localStorage
+    // Marquer comme en cours de traitement
+    setImportedAssets(prev => prev.map(a => 
+      a.id === assetId ? { ...a, status: 'processing' as const } : a
+    ));
+
+    // Upload vers Supabase Storage
+    const uploadResult = await uploadToStorage(asset);
+
+    if (!uploadResult.success) {
+      setImportedAssets(prev => prev.map(a => 
+        a.id === assetId ? { ...a, status: 'error' as const, error: uploadResult.error } : a
+      ));
+      toast.error(`Erreur upload: ${uploadResult.error}`);
+      return { success: false, asset, message: uploadResult.error || 'Erreur upload' };
+    }
+
+    // Sauvegarder en localStorage pour référence rapide
     const confirmedAssets = JSON.parse(localStorage.getItem('tamtam_confirmed_assets') || '[]');
     confirmedAssets.push({
       id: asset.id,
@@ -343,6 +396,7 @@ export function useAssetImport() {
       targetName: asset.targetName,
       category: asset.category,
       size: asset.size,
+      publicUrl: uploadResult.publicUrl,
       confirmedAt: new Date().toISOString(),
     });
     localStorage.setItem('tamtam_confirmed_assets', JSON.stringify(confirmedAssets));
@@ -359,30 +413,37 @@ export function useAssetImport() {
 
     // Déclencher un événement personnalisé pour notifier les autres composants
     window.dispatchEvent(new CustomEvent('asset-imported', {
-      detail: { asset, targetPath: asset.targetPath, category: asset.category }
+      detail: { 
+        asset, 
+        targetPath: asset.targetPath, 
+        category: asset.category,
+        publicUrl: uploadResult.publicUrl
+      }
     }));
+
+    toast.success(`✅ ${asset.targetName} uploadé et prêt!`);
 
     return { 
       success: true, 
       asset: { ...asset, status: 'confirmed' }, 
       message: `✅ ${asset.targetName} importé dans ${asset.category}` 
     };
-  }, [importedAssets]);
+  }, [importedAssets, uploadToStorage]);
 
   /**
-   * Confirme tous les assets prêts
+   * Confirme tous les assets prêts (upload séquentiel)
    */
-  const confirmAllImports = useCallback((): number => {
+  const confirmAllImports = useCallback(async (): Promise<number> => {
     const readyAssets = importedAssets.filter(a => a.status === 'ready');
     let confirmed = 0;
 
-    readyAssets.forEach(asset => {
-      const result = confirmImport(asset.id);
+    for (const asset of readyAssets) {
+      const result = await confirmImport(asset.id);
       if (result.success) confirmed++;
-    });
+    }
 
     if (confirmed > 0) {
-      toast.success(`${confirmed} asset(s) confirmé(s) et prêt(s) à l'emploi!`);
+      toast.success(`🎉 ${confirmed} asset(s) uploadé(s) et prêt(s) à l'emploi!`);
     }
 
     return confirmed;

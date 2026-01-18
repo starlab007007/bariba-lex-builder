@@ -634,8 +634,14 @@ export const EnvatoBrowserHelper: React.FC = () => {
                           Confirmer
                         </Button>
                       )}
+                      {asset.status === 'processing' && (
+                        <Badge className="bg-orange-500/20 text-orange-400">
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Upload...
+                        </Badge>
+                      )}
                       {asset.status === 'confirmed' && (
-                        <Badge className="bg-blue-500/20 text-blue-400">✓ Importé</Badge>
+                        <Badge className="bg-blue-500/20 text-blue-400">✓ Uploadé</Badge>
                       )}
                       <Button 
                         size="icon" 
