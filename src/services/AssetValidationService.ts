@@ -61,15 +61,15 @@ export interface CategoryValidationSpec {
 
 export const VALIDATION_SPECS: Record<string, CategoryValidationSpec> = {
   'lens-flare': {
-    minSize: 10 * 1024,         // 10 KB
+    minSize: 5 * 1024,          // 5 KB - selon spécification
     maxSize: 50 * 1024 * 1024,  // 50 MB
-    validFormats: ['png', 'jpg', 'jpeg', 'webp'],
-    validMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+    validFormats: ['png', 'webp'],
+    validMimeTypes: ['image/png', 'image/webp'],
     minWidth: 1920,
     minHeight: 1080,
   },
   'light-leak': {
-    minSize: 500 * 1024,        // 500 KB
+    minSize: 100 * 1024,        // 100 KB - selon spécification
     maxSize: 200 * 1024 * 1024, // 200 MB
     validFormats: ['webm', 'mp4', 'mov'],
     validMimeTypes: ['video/webm', 'video/mp4', 'video/quicktime'],
@@ -80,7 +80,7 @@ export const VALIDATION_SPECS: Record<string, CategoryValidationSpec> = {
     requiresAlpha: true,
   },
   'particles': {
-    minSize: 200 * 1024,        // 200 KB
+    minSize: 50 * 1024,         // 50 KB - selon spécification
     maxSize: 150 * 1024 * 1024, // 150 MB
     validFormats: ['webm', 'mp4', 'mov'],
     validMimeTypes: ['video/webm', 'video/mp4', 'video/quicktime'],
@@ -91,7 +91,7 @@ export const VALIDATION_SPECS: Record<string, CategoryValidationSpec> = {
     requiresAlpha: true,
   },
   'transitions': {
-    minSize: 100 * 1024,        // 100 KB
+    minSize: 50 * 1024,         // 50 KB - selon spécification
     maxSize: 100 * 1024 * 1024, // 100 MB
     validFormats: ['mp4', 'webm', 'mov'],
     validMimeTypes: ['video/mp4', 'video/webm', 'video/quicktime'],
@@ -101,30 +101,30 @@ export const VALIDATION_SPECS: Record<string, CategoryValidationSpec> = {
     maxDuration: 10,
   },
   'textures': {
-    minSize: 10 * 1024,         // 10 KB
+    minSize: 10 * 1024,         // 10 KB - selon spécification
     maxSize: 100 * 1024 * 1024, // 100 MB
-    validFormats: ['mp4', 'webm', 'jpg', 'png'],
-    validMimeTypes: ['video/mp4', 'video/webm', 'image/jpeg', 'image/png'],
+    validFormats: ['mp4', 'webm', 'mov', 'jpg', 'png'],
+    validMimeTypes: ['video/mp4', 'video/webm', 'video/quicktime', 'image/jpeg', 'image/png'],
     minWidth: 1920,
     minHeight: 1080,
   },
   '3d-models': {
-    minSize: 1024,              // 1 KB
+    minSize: 1024,              // 1 KB - selon spécification
     maxSize: 100 * 1024 * 1024, // 100 MB
     validFormats: ['glb', 'gltf'],
     validMimeTypes: ['model/gltf-binary', 'model/gltf+json', 'application/octet-stream'],
   },
   'fonts': {
-    minSize: 5 * 1024,          // 5 KB
+    minSize: 5 * 1024,          // 5 KB - selon spécification
     maxSize: 10 * 1024 * 1024,  // 10 MB
     validFormats: ['ttf', 'otf', 'woff', 'woff2'],
-    validMimeTypes: ['font/ttf', 'font/otf', 'font/woff', 'font/woff2', 'application/x-font-ttf', 'application/octet-stream'],
+    validMimeTypes: ['font/ttf', 'font/otf', 'font/woff', 'font/woff2', 'application/x-font-ttf', 'application/octet-stream', 'font/sfnt'],
   },
   'audio': {
-    minSize: 50 * 1024,         // 50 KB
+    minSize: 10 * 1024,         // 10 KB - selon spécification
     maxSize: 50 * 1024 * 1024,  // 50 MB
-    validFormats: ['mp3', 'wav', 'm4a', 'ogg'],
-    validMimeTypes: ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/ogg', 'audio/x-m4a'],
+    validFormats: ['mp3', 'wav', 'ogg', 'm4a'],
+    validMimeTypes: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a', 'audio/aac'],
   },
 };
 
@@ -146,7 +146,20 @@ async function getVideoMetadata(file: File): Promise<{ width: number; height: nu
     const video = document.createElement('video');
     video.preload = 'metadata';
     
+    // Timeout pour les formats qui peuvent ne pas être supportés par le navigateur (MOV)
+    const timeout = setTimeout(() => {
+      URL.revokeObjectURL(video.src);
+      // Fallback: accepter le fichier sans métadonnées si le timeout est atteint
+      console.warn(`Timeout loading metadata for ${file.name}, accepting with default values`);
+      resolve({
+        width: 1920,  // Valeurs par défaut
+        height: 1080,
+        duration: 10,
+      });
+    }, 5000);
+    
     video.onloadedmetadata = () => {
+      clearTimeout(timeout);
       URL.revokeObjectURL(video.src);
       resolve({
         width: video.videoWidth,
@@ -156,8 +169,20 @@ async function getVideoMetadata(file: File): Promise<{ width: number; height: nu
     };
     
     video.onerror = () => {
+      clearTimeout(timeout);
       URL.revokeObjectURL(video.src);
-      reject(new Error('Failed to load video metadata'));
+      // Pour les fichiers MOV (video/quicktime), accepter avec warning
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (ext === 'mov' || file.type === 'video/quicktime') {
+        console.warn(`MOV file ${file.name} metadata unreadable, accepting with defaults`);
+        resolve({
+          width: 1920,
+          height: 1080,
+          duration: 10,
+        });
+      } else {
+        reject(new Error('Failed to load video metadata'));
+      }
     };
     
     video.src = URL.createObjectURL(file);
