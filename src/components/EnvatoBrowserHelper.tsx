@@ -28,14 +28,16 @@ import {
   Trash2,
   FileCheck,
   Info,
-  Wand2
+  Wand2,
+  FolderInput
 } from 'lucide-react';
 import { ENVATO_ASSET_MAP, EnvatoAssetMapping, getEnvatoUrl } from '@/lib/EnvatoDownloader';
 import { useToast } from '@/hooks/use-toast';
-import { useAssetImport } from '@/hooks/useAssetImport';
+import { useAssetImport, ImportStats } from '@/hooks/useAssetImport';
 import { ASSET_CATEGORIES } from '@/lib/AssetConfig';
 import { formatFileSize, VALIDATION_SPECS } from '@/services/AssetValidationService';
 import { AssetDropZone } from '@/components/AssetDropZone';
+import { supabase } from '@/integrations/supabase/client';
 
 // ============================================================================
 // TYPES
@@ -48,6 +50,7 @@ interface AssetStatus {
   progress?: number;
   detectedFile?: string;
   error?: string;
+  publicUrl?: string;
 }
 
 interface DetectedDownload {
@@ -93,26 +96,10 @@ const CATEGORY_NAMES: Record<string, string> = {
   'audio': 'Audio',
 };
 
-const FORMAT_CONVERSIONS: Record<string, string> = {
-  'mov': 'webm',
-  'avi': 'webm',
-  'mp4': 'webm',
-  'tiff': 'png',
-  'tif': 'png',
-  'bmp': 'png',
-  'psd': 'png',
-  'wav': 'mp3',
-  'aiff': 'mp3',
-  'flac': 'mp3',
-};
-
 // ============================================================================
 // SMART MATCHING UTILITIES
 // ============================================================================
 
-/**
- * Normalise un nom de fichier pour le matching
- */
 function normalizeFilename(filename: string): string {
   return filename
     .toLowerCase()
@@ -122,9 +109,6 @@ function normalizeFilename(filename: string): string {
     .trim();
 }
 
-/**
- * Calcule un score de similarité entre deux chaînes
- */
 function similarityScore(a: string, b: string): number {
   const wordsA = normalizeFilename(a).split(' ').filter(w => w.length > 2);
   const wordsB = normalizeFilename(b).split(' ').filter(w => w.length > 2);
@@ -142,62 +126,12 @@ function similarityScore(a: string, b: string): number {
   return wordsA.length > 0 ? matches / wordsA.length : 0;
 }
 
-/**
- * Trouve le meilleur match pour un fichier téléchargé
- */
-function findBestMatch(
-  filename: string, 
-  pendingAssets: AssetStatus[]
-): { asset: AssetStatus; confidence: number } | null {
-  let bestMatch: AssetStatus | null = null;
-  let bestScore = 0;
-
-  for (const asset of pendingAssets) {
-    const score = similarityScore(filename, asset.mapping.envato);
-    if (score > bestScore && score > 0.3) {
-      bestScore = score;
-      bestMatch = asset;
-    }
-  }
-
-  return bestMatch ? { asset: bestMatch, confidence: bestScore } : null;
-}
-
-/**
- * Détermine la catégorie d'un fichier selon son extension
- */
-function detectFileCategory(filename: string): string | null {
-  const ext = filename.split('.').pop()?.toLowerCase();
-  
-  if (['webm', 'mov', 'mp4', 'avi'].includes(ext || '')) {
-    // Pourrait être light-leak, particles ou transitions
-    if (filename.toLowerCase().includes('leak')) return 'light-leak';
-    if (filename.toLowerCase().includes('particle')) return 'particles';
-    if (filename.toLowerCase().includes('transition')) return 'transitions';
-    return 'light-leak'; // Par défaut pour vidéos
-  }
-  
-  if (['png', 'jpg', 'jpeg'].includes(ext || '')) {
-    if (filename.toLowerCase().includes('flare') || filename.toLowerCase().includes('lens')) {
-      return 'lens-flare';
-    }
-    return 'textures';
-  }
-  
-  if (['mp3', 'wav', 'aiff', 'flac'].includes(ext || '')) return 'audio';
-  if (['glb', 'gltf', 'obj', 'fbx'].includes(ext || '')) return '3d-models';
-  if (['ttf', 'otf', 'woff', 'woff2'].includes(ext || '')) return 'fonts';
-  
-  return null;
-}
-
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
 export const EnvatoBrowserHelper: React.FC = () => {
   const { toast } = useToast();
-  const dropZoneRef = useRef<HTMLDivElement>(null);
   
   // Hook d'import d'assets
   const {
@@ -205,31 +139,100 @@ export const EnvatoBrowserHelper: React.FC = () => {
     progress: importProgress,
     selectedCategory: importCategory,
     fileInputRef,
+    importStats,
     setSelectedCategory: setImportCategory,
     processFiles,
+    processFile,
     confirmImport,
     confirmAllImports,
     removeAsset,
     clearAll,
     openFileSelector,
     handleFileInputChange,
+    loadImportStats,
+    uploadToStorage,
   } = useAssetImport();
   
-  // État des assets
+  // État des assets depuis ENVATO_ASSET_MAP
   const [assets, setAssets] = useState<AssetStatus[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('light-leak');
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['light-leak']));
+  const [targetedAsset, setTargetedAsset] = useState<string | null>(null);
   
-  // État des téléchargements détectés
-  const [detectedDownloads, setDetectedDownloads] = useState<DetectedDownload[]>([]);
+  // Refs pour inputs file par asset
+  const assetFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   
-  // État du drag & drop
-  const [isDragging, setIsDragging] = useState(false);
+  // Charger les stats depuis la DB
+  const [dbStats, setDbStats] = useState<Record<string, { uploaded: number; total: number }>>({});
 
-  // Initialiser les assets au montage
+  // Initialiser les assets et charger les stats depuis DB
   useEffect(() => {
     initializeAssets();
+    loadDbStats();
   }, []);
+
+  // Écouter les événements d'import pour mettre à jour en temps réel
+  useEffect(() => {
+    const handleAssetImported = (event: CustomEvent) => {
+      const { asset, category } = event.detail;
+      
+      // Mettre à jour l'asset correspondant comme uploadé
+      setAssets(prev => prev.map(a => {
+        // Match par nom local approximatif
+        if (a.category === category && a.status !== 'uploaded') {
+          const targetName = asset.targetName?.toLowerCase() || '';
+          const localName = a.mapping.local?.toLowerCase() || '';
+          if (targetName.includes(localName.replace(/\.[^.]+$/, '').replace(/-\d+/, '')) ||
+              localName.includes(targetName.replace(/\.[^.]+$/, '').replace(/-\d+/, ''))) {
+            return { ...a, status: 'uploaded' as const, publicUrl: asset.publicUrl };
+          }
+        }
+        return a;
+      }));
+      
+      // Recharger les stats
+      loadDbStats();
+    };
+
+    window.addEventListener('asset-imported', handleAssetImported as EventListener);
+    return () => {
+      window.removeEventListener('asset-imported', handleAssetImported as EventListener);
+    };
+  }, []);
+
+  /**
+   * Charge les stats depuis la base de données
+   */
+  const loadDbStats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('asset_imports')
+        .select('category, status')
+        .in('status', ['uploaded', 'converted']);
+      
+      if (!error && data) {
+        const stats: Record<string, { uploaded: number; total: number }> = {};
+        
+        // Initialiser avec les totaux de ENVATO_ASSET_MAP
+        for (const [cat, mappings] of Object.entries(ENVATO_ASSET_MAP)) {
+          stats[cat] = { 
+            uploaded: 0, 
+            total: mappings.length 
+          };
+        }
+        
+        // Compter les uploads par catégorie
+        for (const item of data) {
+          if (stats[item.category]) {
+            stats[item.category].uploaded++;
+          }
+        }
+        
+        setDbStats(stats);
+      }
+    } catch (err) {
+      console.error('Error loading DB stats:', err);
+    }
+  };
 
   /**
    * Initialise la liste des assets depuis le mapping
@@ -238,11 +241,7 @@ export const EnvatoBrowserHelper: React.FC = () => {
     const allAssets: AssetStatus[] = [];
     
     for (const [category, mappings] of Object.entries(ENVATO_ASSET_MAP)) {
-      // Limiter à un échantillon représentatif pour l'UI
-      const sampleMappings = mappings.slice(0, category === 'lens-flare' ? 20 : 
-                                             category === 'textures' ? 30 : mappings.length);
-      
-      for (const mapping of sampleMappings) {
+      for (const mapping of mappings) {
         allAssets.push({
           mapping,
           category,
@@ -262,174 +261,117 @@ export const EnvatoBrowserHelper: React.FC = () => {
     const completed = categoryAssets.filter(a => a.status === 'uploaded').length;
     const pending = categoryAssets.filter(a => a.status === 'pending').length;
     
+    // Use DB stats if available
+    const dbCatStats = dbStats[category];
+    
     return {
-      total: categoryAssets.length,
-      completed,
-      pending,
+      total: dbCatStats?.total || categoryAssets.length,
+      completed: dbCatStats?.uploaded || completed,
+      pending: (dbCatStats?.total || categoryAssets.length) - (dbCatStats?.uploaded || completed),
     };
-  }, [assets]);
+  }, [assets, dbStats]);
 
   /**
-   * Ouvre un asset dans Envato Elements avec recherche précise
+   * Ouvre un asset dans Envato Elements
    */
   const openInEnvato = (asset: AssetStatus) => {
     const url = getEnvatoUrl(asset.mapping.category, asset.mapping.envato, asset.mapping);
     window.open(url, '_blank');
     
-    // Marquer comme en cours de téléchargement
+    // Marquer comme en cours de téléchargement et ciblé
     setAssets(prev => prev.map(a => 
       a.mapping.id === asset.mapping.id ? { ...a, status: 'downloading' } : a
     ));
+    setTargetedAsset(asset.mapping.id);
     
     const specs = asset.mapping.expectedSpecs;
     const specsInfo = specs ? ` (${specs.resolution || '4K'}, ${specs.hasAlpha ? 'avec alpha' : ''})` : '';
     
     toast({
       title: "🔗 Page Envato ouverte",
-      description: `Téléchargez "${asset.mapping.envato}"${specsInfo} puis glissez-le ici.`,
+      description: `Téléchargez "${asset.mapping.envato}"${specsInfo} puis cliquez sur 📥 Upload`,
     });
   };
 
   /**
-   * Gère le drag enter
+   * Handle direct file upload for a specific asset
    */
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  /**
-   * Gère le drag leave
-   */
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.currentTarget === e.target) {
-      setIsDragging(false);
-    }
-  }, []);
-
-  /**
-   * Gère le drag over
-   */
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  /**
-   * Gère le drop de fichiers - utilise le nouveau hook d'import
-   */
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length === 0) return;
-
-    // Utiliser le hook d'import pour traiter les fichiers
-    await processFiles(files, selectedCategory);
-  }, [processFiles, selectedCategory]);
-
-  /**
-   * Traite un fichier déposé
-   */
-  const processDroppedFile = async (file: File) => {
-    const pendingAssets = assets.filter(a => a.status === 'pending' || a.status === 'downloading');
-    const match = findBestMatch(file.name, pendingAssets);
+  const handleAssetFileUpload = async (asset: AssetStatus, file: File) => {
+    setTargetedAsset(asset.mapping.id);
     
-    if (match && match.confidence > 0.5) {
-      // Match trouvé avec bonne confiance
-      await importFile(file, match.asset);
-    } else {
-      // Demander confirmation
-      const detectedCategory = detectFileCategory(file.name);
-      
-      setDetectedDownloads(prev => [...prev, {
-        filename: file.name,
-        size: file.size,
-        timestamp: new Date(),
-        suggestedMatch: match ? {
-          category: match.asset.category,
-          mapping: match.asset.mapping,
-          confidence: match.confidence,
-        } : undefined,
-      }]);
-
-      toast({
-        title: "Fichier détecté",
-        description: `"${file.name}" - Sélectionnez le slot de destination`,
-        variant: "default",
-      });
-    }
-  };
-
-  /**
-   * Importe un fichier vers un asset slot (version simplifiée)
-   */
-  const importFile = async (file: File, asset: AssetStatus) => {
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const targetExt = asset.mapping.local.split('.').pop()?.toLowerCase() || '';
-    
-    // Vérifier si conversion nécessaire
-    if (ext !== targetExt && FORMAT_CONVERSIONS[ext] === targetExt) {
-      // Simuler une conversion avec progression locale
-      setAssets(prev => prev.map(a => 
-        a.mapping.id === asset.mapping.id ? { ...a, status: 'converting', progress: 0 } : a
-      ));
-      
-      // Simuler la progression de conversion
-      for (let i = 0; i <= 100; i += 10) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        setAssets(prev => prev.map(a => 
-          a.mapping.id === asset.mapping.id ? { ...a, progress: i } : a
-        ));
-      }
-    }
-
-    // Marquer comme uploadé
+    // Marquer comme en cours
     setAssets(prev => prev.map(a => 
-      a.mapping.id === asset.mapping.id ? { 
-        ...a, 
-        status: 'uploaded', 
-        progress: 100,
-        detectedFile: file.name 
-      } : a
+      a.mapping.id === asset.mapping.id ? { ...a, status: 'converting', progress: 50 } : a
     ));
 
-    toast({
-      title: "✅ Asset importé",
-      description: `"${file.name}" → ${asset.mapping.local}`,
-    });
-  };
-
-  /**
-   * Assigne manuellement un fichier à un slot
-   */
-  const assignFileToSlot = async (download: DetectedDownload, asset: AssetStatus) => {
-    // Simuler un fichier pour l'import
-    const mockFileData = { name: download.filename, size: download.size } as File;
-    await importFile(mockFileData, asset);
+    // Process the file
+    const processedAsset = await processFile(file, asset.category);
     
-    // Retirer de la liste des téléchargements détectés
-    setDetectedDownloads(prev => prev.filter(d => d.filename !== download.filename));
+    if (processedAsset && processedAsset.status === 'ready') {
+      // Upload directly
+      const result = await uploadToStorage(processedAsset);
+      
+      if (result.success) {
+        setAssets(prev => prev.map(a => 
+          a.mapping.id === asset.mapping.id ? { 
+            ...a, 
+            status: 'uploaded', 
+            progress: 100,
+            publicUrl: result.publicUrl,
+            detectedFile: file.name
+          } : a
+        ));
+        
+        // Insert DB record
+        const { error } = await supabase
+          .from('asset_imports')
+          .insert({
+            original_name: file.name,
+            target_name: processedAsset.targetName,
+            category: asset.category,
+            storage_path: `${asset.category}/${processedAsset.targetName}`,
+            public_url: result.publicUrl,
+            file_size: file.size,
+            mime_type: file.type,
+            status: 'uploaded',
+            uploaded_at: new Date().toISOString(),
+          });
+        
+        if (!error) {
+          loadDbStats();
+        }
+        
+        toast({
+          title: "✅ Asset uploadé!",
+          description: `${file.name} → ${asset.mapping.local}`,
+        });
+      } else {
+        setAssets(prev => prev.map(a => 
+          a.mapping.id === asset.mapping.id ? { ...a, status: 'error', error: result.error } : a
+        ));
+        toast({
+          title: "❌ Erreur upload",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } else {
+      setAssets(prev => prev.map(a => 
+        a.mapping.id === asset.mapping.id ? { ...a, status: 'error', error: processedAsset?.error || 'Validation échouée' } : a
+      ));
+    }
+    
+    setTargetedAsset(null);
   };
 
   /**
-   * Toggle l'expansion d'une catégorie
+   * Trigger file input for a specific asset
    */
-  const toggleCategory = (category: string) => {
-    setExpandedCategories(prev => {
-      const next = new Set(prev);
-      if (next.has(category)) {
-        next.delete(category);
-      } else {
-        next.add(category);
-      }
-      return next;
-    });
+  const triggerAssetUpload = (assetId: string) => {
+    const input = assetFileInputRefs.current[assetId];
+    if (input) {
+      input.click();
+    }
   };
 
   /**
@@ -468,15 +410,15 @@ export const EnvatoBrowserHelper: React.FC = () => {
     }
   };
 
-  // Calculer les stats globales
-  const totalAssets = assets.length;
-  const uploadedAssets = assets.filter(a => a.status === 'uploaded').length;
-  const pendingAssets = assets.filter(a => a.status === 'pending').length;
+  // Calculer les stats globales depuis DB
+  const totalAssets = Object.values(dbStats).reduce((sum, s) => sum + s.total, 0) || assets.length;
+  const uploadedAssets = Object.values(dbStats).reduce((sum, s) => sum + s.uploaded, 0) || assets.filter(a => a.status === 'uploaded').length;
+  const pendingAssets = totalAssets - uploadedAssets;
   const categories = Object.keys(ENVATO_ASSET_MAP);
 
   return (
     <div className="space-y-6">
-      {/* En-tête avec stats */}
+      {/* En-tête avec stats temps réel depuis DB */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -514,14 +456,14 @@ export const EnvatoBrowserHelper: React.FC = () => {
           <ol className="list-decimal list-inside space-y-1 text-sm">
             <li>📍 Cliquez sur <strong>"Open in Envato"</strong> pour un asset</li>
             <li>📍 Téléchargez l'asset depuis Envato (vous êtes connecté)</li>
-            <li>📍 Glissez-déposez le fichier dans la zone ci-dessous</li>
+            <li>📍 Cliquez sur <strong>📥 Upload</strong> à côté de l'asset ou glissez dans la zone ci-dessous</li>
             <li>📍 Confirmez l'import - le fichier sera renommé automatiquement</li>
             <li>✅ Terminé ! L'asset est prêt à utiliser</li>
           </ol>
         </AlertDescription>
       </Alert>
 
-      {/* Zone de drop améliorée avec validation temps réel */}
+      {/* Zone de drop globale */}
       <AssetDropZone
         onFilesProcessed={processFiles}
         onAutoConfirm={confirmAllImports}
@@ -625,57 +567,6 @@ export const EnvatoBrowserHelper: React.FC = () => {
         </Card>
       )}
 
-      {/* Téléchargements détectés en attente d'assignation */}
-      {detectedDownloads.length > 0 && (
-        <Card className="border-orange-500/50">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Wand2 className="h-5 w-5 text-orange-500" />
-              Fichiers à assigner ({detectedDownloads.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {detectedDownloads.map((download, idx) => (
-              <div key={idx} className="p-3 bg-muted rounded-lg flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{download.filename}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {(download.size / 1024 / 1024).toFixed(1)} MB
-                    {download.suggestedMatch && (
-                      <span className="ml-2 text-orange-500">
-                        → Suggestion: {download.suggestedMatch.mapping.local} 
-                        ({Math.round(download.suggestedMatch.confidence * 100)}%)
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {download.suggestedMatch && (
-                    <Button 
-                      size="sm" 
-                      onClick={() => {
-                        const asset = assets.find(a => a.mapping.id === download.suggestedMatch?.mapping.id);
-                        if (asset) assignFileToSlot(download, asset);
-                      }}
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      Confirmer
-                    </Button>
-                  )}
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => setDetectedDownloads(prev => prev.filter(d => d.filename !== download.filename))}
-                  >
-                    Ignorer
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Tabs par catégorie */}
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
         <TabsList className="flex flex-wrap h-auto gap-1">
@@ -723,15 +614,17 @@ export const EnvatoBrowserHelper: React.FC = () => {
               <CardContent>
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-2">
-                    {assets.filter(a => a.category === category).map((asset, idx) => (
+                    {assets.filter(a => a.category === category).map((asset) => (
                       <div 
                         key={asset.mapping.id}
                         className={`p-3 rounded-lg border transition-all ${
                           asset.status === 'uploaded' 
                             ? 'bg-green-500/5 border-green-500/30' 
-                            : asset.status === 'downloading'
-                              ? 'bg-blue-500/5 border-blue-500/30'
-                              : 'bg-muted/30 border-border'
+                            : asset.status === 'downloading' || targetedAsset === asset.mapping.id
+                              ? 'bg-blue-500/10 border-blue-500/50 ring-2 ring-blue-500/30'
+                              : asset.status === 'converting'
+                                ? 'bg-orange-500/5 border-orange-500/30'
+                                : 'bg-muted/30 border-border'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-4">
@@ -739,7 +632,7 @@ export const EnvatoBrowserHelper: React.FC = () => {
                             <Checkbox checked={asset.status === 'uploaded'} disabled />
                             {renderStatusIcon(asset.status)}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-mono text-sm truncate">
                                   {asset.mapping.local}
                                 </span>
@@ -748,6 +641,11 @@ export const EnvatoBrowserHelper: React.FC = () => {
                                   <Badge variant="outline" className="text-xs bg-muted/50">
                                     {asset.mapping.expectedSpecs.resolution || '4K'}
                                     {asset.mapping.expectedSpecs.hasAlpha && ' α'}
+                                  </Badge>
+                                )}
+                                {targetedAsset === asset.mapping.id && (
+                                  <Badge className="bg-blue-500 text-white text-xs animate-pulse">
+                                    🎯 Ciblé
                                   </Badge>
                                 )}
                               </div>
@@ -764,15 +662,42 @@ export const EnvatoBrowserHelper: React.FC = () => {
                             {asset.status === 'converting' && (
                               <Progress value={asset.progress} className="w-20 h-2" />
                             )}
+                            
+                            {/* Hidden file input for this specific asset */}
+                            <input
+                              type="file"
+                              ref={el => assetFileInputRefs.current[asset.mapping.id] = el}
+                              className="hidden"
+                              accept="video/*,image/*,audio/*,.glb,.gltf,.ttf,.otf,.woff,.woff2"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleAssetFileUpload(asset, file);
+                                }
+                                e.target.value = '';
+                              }}
+                            />
+                            
                             {(asset.status === 'pending' || asset.status === 'downloading') && (
-                              <Button
-                                size="sm"
-                                variant={asset.status === 'downloading' ? 'outline' : 'default'}
-                                onClick={() => openInEnvato(asset)}
-                              >
-                                <ExternalLink className="h-4 w-4 mr-1" />
-                                Open in Envato
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => triggerAssetUpload(asset.mapping.id)}
+                                  className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30"
+                                >
+                                  <Upload className="h-4 w-4 mr-1" />
+                                  Upload
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant={asset.status === 'downloading' ? 'outline' : 'default'}
+                                  onClick={() => openInEnvato(asset)}
+                                >
+                                  <ExternalLink className="h-4 w-4 mr-1" />
+                                  Open in Envato
+                                </Button>
+                              </>
                             )}
                             {asset.status === 'uploaded' && (
                               <Badge className="bg-green-500/20 text-green-500">
@@ -780,11 +705,22 @@ export const EnvatoBrowserHelper: React.FC = () => {
                                 Importé
                               </Badge>
                             )}
+                            {asset.status === 'error' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => triggerAssetUpload(asset.mapping.id)}
+                                className="bg-red-500/10 hover:bg-red-500/20"
+                              >
+                                <RefreshCw className="h-4 w-4 mr-1" />
+                                Réessayer
+                              </Button>
+                            )}
                           </div>
                         </div>
                         
-                        {/* Instructions étape par étape pour les assets en attente */}
-                        {asset.status === 'downloading' && (
+                        {/* Instructions étape par étape pour les assets ciblés */}
+                        {(asset.status === 'downloading' || targetedAsset === asset.mapping.id) && asset.status !== 'uploaded' && (
                           <div className="mt-3 pl-8 border-l-2 border-blue-500/30 ml-4">
                             <div className="text-sm space-y-1">
                               <div className="flex items-center gap-2 text-blue-500">
@@ -795,11 +731,18 @@ export const EnvatoBrowserHelper: React.FC = () => {
                                 <span className="font-medium">📍 Étape 2:</span> 
                                 Téléchargez l'asset depuis Envato
                               </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">📍 Étape 3:</span> 
-                                Glissez-déposez le fichier ici ↑
+                              <div className="flex items-center gap-2 font-medium text-green-600">
+                                <span>📍 Étape 3:</span> 
+                                Cliquez sur "Upload" ci-dessus ou glissez le fichier ↑
                               </div>
                             </div>
+                          </div>
+                        )}
+                        
+                        {/* Error message display */}
+                        {asset.status === 'error' && asset.error && (
+                          <div className="mt-2 text-sm text-red-500 bg-red-500/10 p-2 rounded">
+                            ❌ {asset.error}
                           </div>
                         )}
                       </div>
@@ -822,7 +765,6 @@ export const EnvatoBrowserHelper: React.FC = () => {
             <Button 
               variant="outline"
               onClick={() => {
-                // Ouvrir tous les assets en attente de la catégorie sélectionnée
                 const pendingInCategory = assets.filter(
                   a => a.category === selectedCategory && a.status === 'pending'
                 ).slice(0, 5);
@@ -831,7 +773,7 @@ export const EnvatoBrowserHelper: React.FC = () => {
                 
                 toast({
                   title: `${pendingInCategory.length} pages ouvertes`,
-                  description: "Téléchargez les assets puis glissez-les ici",
+                  description: "Téléchargez les assets puis utilisez Upload pour chacun",
                 });
               }}
             >
@@ -841,25 +783,13 @@ export const EnvatoBrowserHelper: React.FC = () => {
             
             <Button 
               variant="outline"
-              onClick={initializeAssets}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Réinitialiser
-            </Button>
-            
-            <Button 
-              variant="outline"
               onClick={() => {
-                // Simuler l'import de tous les assets pour démo
-                setAssets(prev => prev.map(a => ({ ...a, status: 'uploaded' })));
-                toast({
-                  title: "✅ Simulation",
-                  description: "Tous les assets marqués comme importés (démo)",
-                });
+                initializeAssets();
+                loadDbStats();
               }}
             >
-              <Wand2 className="h-4 w-4 mr-2" />
-              Simuler import complet
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Rafraîchir stats
             </Button>
           </div>
         </CardContent>
