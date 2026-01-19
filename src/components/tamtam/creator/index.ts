@@ -27,6 +27,7 @@ export { default as KuaishouPreviewMode } from './KuaishouPreviewMode';
 export { default as IntegratedTemplateOverlay } from './IntegratedTemplateOverlay';
 export { default as IntegratedPreviewMode } from './IntegratedPreviewMode';
 export { default as UnifiedTemplateSelector } from './UnifiedTemplateSelector';
+export { default as UnifiedTemplateCatalog } from './UnifiedTemplateCatalog';
 
 // New Template System
 export * from './TemplateSystem';

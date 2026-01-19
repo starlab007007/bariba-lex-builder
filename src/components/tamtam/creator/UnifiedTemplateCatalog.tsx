@@ -567,7 +567,8 @@ export function UnifiedTemplateCatalog({ onSelect, onClose }: UnifiedTemplateCat
       // For demo, mark templates without required assets as ready
       const ready = new Set<string>();
       for (const template of ALL_TEMPLATES) {
-        if (!template.requiredAssets || Object.keys(template.requiredAssets).length === 0) {
+        const assets = (template as Template).requiredAssets;
+        if (!assets || Object.keys(assets).length === 0) {
           ready.add(template.id);
         }
       }
