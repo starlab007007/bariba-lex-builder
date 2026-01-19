@@ -122,25 +122,25 @@ export const griotDigitalTemplate: Template = {
       }
     },
 
-    // === LIGHT LEAKS (Cross-folder recovered) ===
+    // === LIGHT LEAKS (Cross-folder recovered - assets réels confirmés) ===
     {
       id: 'griot-leak-ambient',
       type: 'light-leak',
-      assetId: 'light-leak:leak-022.webm',
+      assetId: 'light-leak:leak-015.webm', // Fichier réel dans 3d-models
       trigger: 'always',
       config: { x: 0.5, y: 0.5, scale: 1.4, opacity: 0.25, blendMode: 'screen' }
     },
     {
       id: 'griot-leak-beat',
       type: 'light-leak',
-      assetId: 'light-leak:leak-010.mp4',
+      assetId: 'light-leak:leak-008.mp4', // MP4 confirmé dans light-leak
       trigger: 'beat',
       config: { x: 0.5, y: 0.4, scale: 1.6, opacity: 0.35, blendMode: 'screen', beatThreshold: 0.6 }
     },
     {
       id: 'griot-leak-climax',
       type: 'light-leak',
-      assetId: 'light-leak:leak-028.webm',
+      assetId: 'light-leak:leak-020.webm', // Fichier réel dans 3d-models
       trigger: 'time',
       config: { x: 0.5, y: 0.5, scale: 1.8, opacity: 0.4, blendMode: 'screen', timeRange: [18, 28] }
     },
