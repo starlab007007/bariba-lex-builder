@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { sanitizeSearchInput, validateAllowedValue } from '@/lib/sanitize';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,21 +52,34 @@ export default function BulkEditPanel() {
     try {
       let query = supabase.from('dictionary_entries').select('*');
 
-      // Appliquer les filtres
+      // Appliquer les filtres avec validation et sanitization
+      const validNominalClasses = ['b', 'g', 'm', 'n', 's', 't', 'w', 'y'] as const;
+      const validVerbalGroups = ['1', '2', '3', '4', '5'] as const;
+      const validVerbTypes = ['v.tr', 'v.int', 'vd', 'veq', 'v.inv', 'v.stat', 'lv'] as const;
+      
       if (filters.nominalClass) {
-        query = query.eq('nominal_class', filters.nominalClass);
+        const validated = validateAllowedValue(filters.nominalClass, validNominalClasses);
+        if (validated) query = query.eq('nominal_class', validated);
       }
       if (filters.verbalGroup) {
-        query = query.eq('verbal_group', parseInt(filters.verbalGroup));
+        const validated = validateAllowedValue(filters.verbalGroup, validVerbalGroups);
+        if (validated) query = query.eq('verbal_group', parseInt(validated));
       }
       if (filters.verbType) {
-        query = query.ilike('verb_type', `%${filters.verbType}%`);
+        // Validate against known verb types instead of using ilike
+        const validated = validateAllowedValue(filters.verbType, validVerbTypes);
+        if (validated) query = query.eq('verb_type', validated);
       }
       if (filters.partOfSpeech) {
-        query = query.ilike('part_of_speech', `%${filters.partOfSpeech}%`);
+        // Sanitize input for LIKE query
+        const sanitized = sanitizeSearchInput(filters.partOfSpeech, 50);
+        if (sanitized) query = query.ilike('part_of_speech', `%${sanitized}%`);
       }
       if (filters.missingField) {
-        query = query.is(filters.missingField, null);
+        // Validate field name against known fields
+        const validMissingFields = ['nominal_class', 'verb_root', 'tone_pattern', 'plural_form', 'accomplished_form'] as const;
+        const validated = validateAllowedValue(filters.missingField, validMissingFields);
+        if (validated) query = query.is(validated, null);
       }
 
       const { data, error } = await query.limit(100);
