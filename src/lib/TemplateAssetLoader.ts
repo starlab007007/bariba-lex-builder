@@ -276,7 +276,14 @@ class TemplateAssetLoaderService {
         const url = buildResolvedAssetUrl(assetId, ASSET_BASE_URL);
         
         try {
-          const response = await fetch(url, { signal: controller.signal });
+          // Détecter si l'URL est externe (CDN) et ajouter le mode CORS
+          const isExternalUrl = url.startsWith('http');
+          const fetchOptions: RequestInit = { 
+            signal: controller.signal,
+            ...(isExternalUrl ? { mode: 'cors' } : {})
+          };
+          
+          const response = await fetch(url, fetchOptions);
           if (response.ok) {
             const blob = await response.blob();
             // Detect LFS pointer (text file starting with "version https://git-lfs")

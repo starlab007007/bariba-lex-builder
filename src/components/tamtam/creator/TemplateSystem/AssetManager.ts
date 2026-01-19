@@ -6,7 +6,13 @@
  */
 
 import type { AssetCategory } from './types';
-import { resolveAssetPath, isAssetAvailable, buildResolvedAssetUrl } from '@/lib/AssetRealMapping';
+import { 
+  resolveAssetPath, 
+  isAssetAvailable, 
+  buildResolvedAssetUrl,
+  isCdnCategory,
+  SUPABASE_ASSET_CDN_URL
+} from '@/lib/AssetRealMapping';
 
 // ============================================================================
 // TYPES
@@ -179,15 +185,25 @@ class AssetManagerClass {
 
   /**
    * Build full URL for an asset
+   * Uses CDN for video categories, local path otherwise
    */
   buildAssetUrl(descriptor: AssetDescriptor): string {
     const { category, subfolder, filename } = descriptor;
-    const pathParts = [this.config.basePath, category];
     
+    // Vérifier si cette catégorie utilise le CDN cloud
+    if (isCdnCategory(category)) {
+      // Construire l'URL CDN
+      const pathParts = subfolder 
+        ? [category, subfolder, filename]
+        : [category, filename];
+      return `${SUPABASE_ASSET_CDN_URL}/${pathParts.join('/')}`;
+    }
+    
+    // Sinon chemin local standard
+    const pathParts = [this.config.basePath, category];
     if (subfolder) {
       pathParts.push(subfolder);
     }
-    
     pathParts.push(filename);
     return pathParts.join('/');
   }

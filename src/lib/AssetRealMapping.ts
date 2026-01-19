@@ -1,8 +1,46 @@
 /**
- * TAM-TAM Asset Real Mapping v4.2
- * Mappage des assets réellement présents avec support cross-dossier
- * Récupère automatiquement les Light Leaks depuis le dossier 3d-models
+ * TAM-TAM Asset Real Mapping v5.0
+ * Mappage des assets avec support CDN cloud storage
+ * Les assets vidéo sont hébergés sur Supabase Storage
  */
+
+// ============================================================================
+// CDN CONFIGURATION - Supabase Storage for video assets
+// ============================================================================
+
+/**
+ * URL de base du bucket Supabase Storage pour les assets Envato
+ */
+export const SUPABASE_ASSET_CDN_URL = 
+  'https://pmrhezgnyffiskbaiudb.supabase.co/storage/v1/object/public/envato-assets';
+
+/**
+ * Catégories qui utilisent le CDN cloud (fichiers vidéo - anciennement LFS)
+ * Ces catégories ne sont plus dans le repository, mais dans Supabase Storage
+ */
+export const CDN_ASSET_CATEGORIES = [
+  'transitions',
+  '3d-models', 
+  'light-leak',
+  'particles',
+  'textures'
+] as const;
+
+/**
+ * Catégories qui restent en local dans le repository (fichiers légers)
+ */
+export const LOCAL_ASSET_CATEGORIES = [
+  'lens-flare',
+  'audio',
+  'fonts'
+] as const;
+
+/**
+ * Vérifie si une catégorie utilise le CDN cloud
+ */
+export function isCdnCategory(category: string): boolean {
+  return CDN_ASSET_CATEGORIES.includes(category as typeof CDN_ASSET_CATEGORIES[number]);
+}
 
 // ============================================================================
 // CROSS-FOLDER MAPPING (Light Leaks dans 3d-models)
@@ -284,15 +322,24 @@ export function resolveAssetPath(assetId: string): string {
 
 /**
  * Construit le chemin complet vers un asset résolu
- * Gère automatiquement les changements de catégorie
+ * Utilise le CDN cloud pour les catégories vidéo, sinon chemin local
  */
 export function buildResolvedAssetUrl(assetId: string, basePath = '/assets/envato'): string {
   const resolvedId = resolveAssetPath(assetId);
   const [categoryPath, filename] = resolvedId.split(':');
   
-  // Gérer les sous-dossiers (ex: audio/modern)
-  const pathParts = categoryPath.split('/');
+  // Extraire la catégorie principale (avant le /)
+  const mainCategory = categoryPath.split('/')[0];
   
+  // Utiliser le CDN pour les catégories vidéo (transitions, particles, textures, etc.)
+  if (isCdnCategory(mainCategory)) {
+    // Construire l'URL CDN: https://...supabase.../envato-assets/category/filename
+    const pathParts = categoryPath.split('/');
+    return `${SUPABASE_ASSET_CDN_URL}/${pathParts.join('/')}/${filename}`;
+  }
+  
+  // Sinon utiliser le chemin local
+  const pathParts = categoryPath.split('/');
   return `${basePath}/${pathParts.join('/')}/${filename}`;
 }
 
