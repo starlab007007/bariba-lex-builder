@@ -231,17 +231,17 @@ export const GriotDigitalTemplate: Template = {
       'model-005.glb', // Props pack
     ],
     particles: [
-      'particle-001.webm', // Golden dust
-      'particle-005.webm', // Fireflies
-      'particle-012.webm', // Magic sparkles
-      'particle-018.webm', // Smoke wisps
-      'particle-025.webm', // Stars
+      'particles:particle-001.webm', // Golden dust → leak-001.webm
+      'particles:particle-005.webm', // Fireflies → leak-005.webm
+      'particles:particle-012.webm', // Magic sparkles → leak-012.webm
+      'particles:particle-018.webm', // Smoke wisps → leak-018.webm
+      'particles:particle-025.webm', // Stars → leak-025.webm
     ],
     lightLeaks: [
-      'leak-001.webm', // Warm sunset
-      'leak-004.webm', // Mystical blue
-      'leak-009.webm', // Golden hour
-      'leak-015.webm', // Fire glow
+      'light-leak:leak-001.webm', // Warm sunset (from 3d-models)
+      'light-leak:leak-004.webm', // Mystical blue (from 3d-models)
+      'light-leak:leak-009.webm', // Golden hour (from 3d-models)
+      'light-leak:leak-015.webm', // Fire glow (from 3d-models)
     ],
     lensFlares: [
       'flare-015.png', // Sun flare
