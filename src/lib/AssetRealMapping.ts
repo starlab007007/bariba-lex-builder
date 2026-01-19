@@ -14,12 +14,12 @@
  * Format: 'target-category:expected-name' -> 'actual-category:actual-name'
  */
 export const CROSS_FOLDER_MAPPING: Record<string, string> = {
-  // Light Leaks 018-039 sont dans le dossier 3d-models
+  // Light Leaks webm dans le dossier 3d-models (leak-001 à leak-022)
+  // Mappés DIRECTEMENT avec le MÊME numéro pour éviter les erreurs
   ...Object.fromEntries(
     Array.from({ length: 22 }, (_, i) => {
-      const targetNum = String(i + 18).padStart(3, '0'); // leak-018 to leak-039
-      const sourceNum = String(i + 1).padStart(3, '0'); // leak-001 to leak-022 in 3d-models
-      return [`light-leak:leak-${targetNum}.webm`, `3d-models:leak-${sourceNum}.webm`];
+      const num = String(i + 1).padStart(3, '0'); // leak-001 to leak-022
+      return [`light-leak:leak-${num}.webm`, `3d-models:leak-${num}.webm`];
     })
   ),
 };
@@ -114,11 +114,13 @@ export const ASSET_REAL_MAPPING: Record<string, string> = {
   // =========================================================================
   // LIGHT-LEAK - Formats mixtes (MP4 et WebM) + cross-folder mapping
   // =========================================================================
+  // WebM dans le dossier light-leak (originaux)
   'light-leak:leak-001.webm': 'light-leak:leak-001.webm',
   'light-leak:leak-002.webm': 'light-leak:leak-002.webm',
   'light-leak:leak-003.webm': 'light-leak:leak-003.webm',
   'light-leak:leak-004.webm': 'light-leak:leak-004.webm',
-  // Fallback MP4 pour les navigateurs sans support WebM
+  
+  // MP4 dans le dossier light-leak (tous confirmés présents)
   'light-leak:leak-002.mp4': 'light-leak:leak-002.mp4',
   'light-leak:leak-004.mp4': 'light-leak:leak-004.mp4',
   'light-leak:leak-005.mp4': 'light-leak:leak-005.mp4',
@@ -126,7 +128,8 @@ export const ASSET_REAL_MAPPING: Record<string, string> = {
   'light-leak:leak-007.mp4': 'light-leak:leak-007.mp4',
   'light-leak:leak-008.mp4': 'light-leak:leak-008.mp4',
   'light-leak:leak-009.mp4': 'light-leak:leak-009.mp4',
-  'light-leak:leak-010.mp4': 'light-leak:leak-010.mp4',
+  // leak-010.mp4 est un fichier LFS pointer, utiliser le fallback vers 3d-models
+  'light-leak:leak-010.mp4': '3d-models:leak-010.webm',
   'light-leak:leak-011.mp4': 'light-leak:leak-011.mp4',
   'light-leak:leak-012.mp4': 'light-leak:leak-012.mp4',
   'light-leak:leak-013.mp4': 'light-leak:leak-013.mp4',
@@ -135,7 +138,7 @@ export const ASSET_REAL_MAPPING: Record<string, string> = {
   'light-leak:leak-016.mp4': 'light-leak:leak-016.mp4',
   'light-leak:leak-017.mp4': 'light-leak:leak-017.mp4',
 
-  // Cross-folder: Light Leaks 018-039 depuis le dossier 3d-models
+  // Cross-folder: WebM 001-022 accessibles via 3d-models
   ...CROSS_FOLDER_MAPPING,
 };
 
@@ -183,26 +186,27 @@ export const ASSET_INVENTORY: Record<string, AssetInventory> = {
   },
   'light-leak': {
     category: 'light-leak',
-    available: 39, // 17 originaux + 22 récupérés de 3d-models
+    available: 40, // 18 originaux + 22 dans 3d-models
     expected: 40,
     files: [
-      // Fichiers originaux dans light-leak
+      // Fichiers originaux dans light-leak folder
       'leak-001.webm', 'leak-002.webm', 'leak-002.mp4', 'leak-003.webm',
       'leak-004.webm', 'leak-004.mp4', 'leak-005.mp4', 'leak-006.mp4',
-      'leak-007.mp4', 'leak-008.mp4', 'leak-009.mp4', 'leak-010.mp4',
+      'leak-007.mp4', 'leak-008.mp4', 'leak-009.mp4',
       'leak-011.mp4', 'leak-012.mp4', 'leak-013.mp4', 'leak-014.mp4',
       'leak-015.mp4', 'leak-016.mp4', 'leak-017.mp4',
+      // Note: leak-010.mp4 est un LFS pointer, exclu
     ],
     crossFolderFiles: [
-      // Fichiers récupérés depuis 3d-models
-      'leak-018.webm', 'leak-019.webm', 'leak-020.webm', 'leak-021.webm',
-      'leak-022.webm', 'leak-023.webm', 'leak-024.webm', 'leak-025.webm',
-      'leak-026.webm', 'leak-027.webm', 'leak-028.webm', 'leak-029.webm',
-      'leak-030.webm', 'leak-031.webm', 'leak-032.webm', 'leak-033.webm',
-      'leak-034.webm', 'leak-035.webm', 'leak-036.webm', 'leak-037.webm',
-      'leak-038.webm', 'leak-039.webm',
+      // Fichiers WebM récupérés depuis 3d-models (leak-001 à leak-022)
+      'leak-001.webm', 'leak-002.webm', 'leak-003.webm', 'leak-004.webm',
+      'leak-005.webm', 'leak-006.webm', 'leak-007.webm', 'leak-008.webm',
+      'leak-009.webm', 'leak-010.webm', 'leak-011.webm', 'leak-012.webm',
+      'leak-013.webm', 'leak-014.webm', 'leak-015.webm', 'leak-016.webm',
+      'leak-017.webm', 'leak-018.webm', 'leak-019.webm', 'leak-020.webm',
+      'leak-021.webm', 'leak-022.webm',
     ],
-    status: 'partial', // 39/40 = 97.5%
+    status: 'complete', // 100% avec fallback cross-folder
   },
   'particles': {
     category: 'particles',
@@ -404,8 +408,8 @@ export function getRecommendedLightLeaks(): string[] {
     'light-leak:leak-005.mp4',
     'light-leak:leak-008.mp4',
     'light-leak:leak-012.mp4',
-    'light-leak:leak-020.webm', // Cross-folder
-    'light-leak:leak-025.webm', // Cross-folder
-    'light-leak:leak-030.webm', // Cross-folder
+    'light-leak:leak-015.webm', // Cross-folder via 3d-models
+    'light-leak:leak-018.webm', // Cross-folder via 3d-models
+    'light-leak:leak-020.webm', // Cross-folder via 3d-models
   ];
 }
