@@ -67,7 +67,7 @@ const CATEGORY_PATHS: Record<string, string> = {
 // ============================================================================
 
 class TemplateAssetLoaderService {
-  private db: IDBPDatabase | null = null;
+  private db: IDBDatabase | null = null;
   private downloadQueue: Map<string, AbortController> = new Map();
   private progressListeners: Map<string, (progress: DownloadProgress) => void> = new Map();
   private templateProgress: Map<string, DownloadProgress> = new Map();
@@ -76,23 +76,29 @@ class TemplateAssetLoaderService {
   async init(): Promise<void> {
     if (this.db) return;
     
-    try {
-      this.db = await openDB(DB_NAME, DB_VERSION, {
-        upgrade(db) {
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-            store.createIndex('templateId', 'templateId');
-            store.createIndex('expiresAt', 'expiresAt');
-          }
-        },
-      });
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
       
-      // Clean expired assets
-      await this.cleanExpiredAssets();
-      console.log('[TemplateAssetLoader] Initialized');
-    } catch (error) {
-      console.error('[TemplateAssetLoader] Failed to initialize:', error);
-    }
+      request.onerror = () => {
+        console.error('[TemplateAssetLoader] Failed to open database');
+        reject(request.error);
+      };
+      
+      request.onsuccess = () => {
+        this.db = request.result;
+        console.log('[TemplateAssetLoader] Initialized');
+        this.cleanExpiredAssets().then(resolve);
+      };
+      
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          store.createIndex('templateId', 'templateId');
+          store.createIndex('expiresAt', 'expiresAt');
+        }
+      };
+    });
   }
 
   // Clean expired assets from cache
@@ -104,13 +110,14 @@ class TemplateAssetLoaderService {
     const index = store.index('expiresAt');
     const now = Date.now();
     
-    let cursor = await index.openCursor(IDBKeyRange.upperBound(now));
-    while (cursor) {
-      await cursor.delete();
-      cursor = await cursor.continue();
-    }
-    
-    await tx.done;
+    const request = index.openCursor(IDBKeyRange.upperBound(now));
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (cursor) {
+        cursor.delete();
+        cursor.continue();
+      }
+    };
   }
 
   // Get asset from cache
@@ -118,14 +125,23 @@ class TemplateAssetLoaderService {
     await this.init();
     if (!this.db) return null;
     
-    const id = `${templateId}:${category}:${filename}`;
-    const asset = await this.db.get(STORE_NAME, id);
-    
-    if (asset && asset.expiresAt > Date.now()) {
-      return asset.blob;
-    }
-    
-    return null;
+    return new Promise((resolve) => {
+      const tx = this.db!.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const id = `${templateId}:${category}:${filename}`;
+      const request = store.get(id);
+      
+      request.onsuccess = () => {
+        const asset = request.result;
+        if (asset && asset.expiresAt > Date.now()) {
+          resolve(asset.blob);
+        } else {
+          resolve(null);
+        }
+      };
+      
+      request.onerror = () => resolve(null);
+    });
   }
 
   // Cache an asset
@@ -151,7 +167,9 @@ class TemplateAssetLoaderService {
       expiresAt: now + CACHE_DURATION_MS,
     };
     
-    await this.db.put(STORE_NAME, asset);
+    const tx = this.db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.put(asset);
   }
 
   // Check if template is fully cached
@@ -313,11 +331,15 @@ class TemplateAssetLoaderService {
     await this.init();
     if (!this.db) return [];
     
-    const tx = this.db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
-    const index = store.index('templateId');
-    
-    return await index.getAll(templateId);
+    return new Promise((resolve) => {
+      const tx = this.db!.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const index = store.index('templateId');
+      const request = index.getAll(templateId);
+      
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => resolve([]);
+    });
   }
 
   // Clear all cached assets for a template
@@ -328,14 +350,16 @@ class TemplateAssetLoaderService {
     const tx = this.db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const index = store.index('templateId');
+    const request = index.openCursor(IDBKeyRange.only(templateId));
     
-    let cursor = await index.openCursor(templateId);
-    while (cursor) {
-      await cursor.delete();
-      cursor = await cursor.continue();
-    }
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (cursor) {
+        cursor.delete();
+        cursor.continue();
+      }
+    };
     
-    await tx.done;
     this.templateProgress.delete(templateId);
   }
 
@@ -348,20 +372,30 @@ class TemplateAssetLoaderService {
     await this.init();
     if (!this.db) return { totalSize: 0, assetCount: 0, templateCount: 0 };
     
-    const allAssets = await this.db.getAll(STORE_NAME);
-    const templates = new Set<string>();
-    let totalSize = 0;
-    
-    for (const asset of allAssets) {
-      totalSize += asset.size;
-      templates.add(asset.templateId);
-    }
-    
-    return {
-      totalSize,
-      assetCount: allAssets.length,
-      templateCount: templates.size,
-    };
+    return new Promise((resolve) => {
+      const tx = this.db!.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.getAll();
+      
+      request.onsuccess = () => {
+        const allAssets = request.result || [];
+        const templates = new Set<string>();
+        let totalSize = 0;
+        
+        for (const asset of allAssets) {
+          totalSize += asset.size;
+          templates.add(asset.templateId);
+        }
+        
+        resolve({
+          totalSize,
+          assetCount: allAssets.length,
+          templateCount: templates.size,
+        });
+      };
+      
+      request.onerror = () => resolve({ totalSize: 0, assetCount: 0, templateCount: 0 });
+    });
   }
 
   // Create object URL for cached asset

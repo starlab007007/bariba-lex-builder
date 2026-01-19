@@ -901,7 +901,7 @@ export const BeatMakerStudio: React.FC = () => {
           <div className="flex-1">
             <p className="text-sm font-medium">{BeatMakerAITemplate.name}</p>
             <div className="flex flex-wrap gap-1 mt-1">
-              {BeatMakerAITemplate.aiFeatures.slice(0, 3).map((f) => (
+              {(BeatMakerAITemplate.tags || ['AI', 'Music', 'DAW']).slice(0, 3).map((f) => (
                 <span key={f} className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
                   {f}
                 </span>
