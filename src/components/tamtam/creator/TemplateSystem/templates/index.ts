@@ -1,11 +1,12 @@
 /**
- * TAM-TAM Template Registry - 35 Revolutionary Templates
+ * TAM-TAM Template Registry - 38 Revolutionary Templates (incl. 3 Premium)
  * Central registry for all video creation templates
+ * ✅ Phase 1: Premium templates integrated with standard interface
  */
 
 import { Template, TemplateCategory } from '../types';
 
-// Import all 35 templates
+// Import all 35 standard templates
 import { griotDigitalTemplate } from './griotDigital';
 import { beatSyncUltraTemplate } from './beatSyncUltra';
 import { styleCinemaLocalTemplate } from './styleCinemaLocal';
@@ -16,6 +17,81 @@ import { smartCaptionsTemplate } from './smartCaptions';
 import { multiFormatTemplate } from './multiFormat';
 import { autoBrollBoosterTemplate } from './autoBrollBooster';
 import { voiceCloneHookTemplate } from './voiceCloneHook';
+
+// Import premium template configs (with type casting for compatibility)
+import { GriotDigitalTemplate } from '@/templates/GriotDigital';
+import { BeatMakerAITemplate } from '@/templates/BeatMakerAI';
+import { VillageChronicleTemplate } from '@/templates/VillageChronicle';
+
+// ============================================================================
+// PREMIUM TEMPLATE ADAPTERS
+// ============================================================================
+
+const griotDigitalPremiumTemplate: Template = {
+  id: 'griot-digital-premium',
+  name: 'Griot Digital 3D',
+  nameBa: 'Kɔ̀gbɛ́ Táárù 3D',
+  category: 'storytelling',
+  description: 'Conte 3D interactif avec village virtuel et lip-sync IA',
+  thumbnail: '/assets/envato/textures/texture-001.jpg',
+  demoVideo: '',
+  duration: 60,
+  isPremium: true,
+  isNew: true,
+  effects: [],
+  audio: { volume: 0.8 },
+  metadata: {
+    author: 'TAM-TAM',
+    version: '2.0',
+    tags: ['3D', 'storytelling', 'AI', 'interactive', 'premium']
+  },
+  tags: ['3D', 'conte', 'griot', 'IA'],
+  usageCount: 0,
+};
+
+const beatMakerAIPremiumTemplate: Template = {
+  id: 'beat-maker-ai',
+  name: 'Beat Maker AI',
+  nameBa: 'Wùúsú Túúrú AI',
+  category: 'music',
+  description: 'Studio DAW complet pour créer des beats Afrobeat, Amapiano, Coupé-Décalé',
+  thumbnail: '/assets/envato/textures/texture-002.jpg',
+  demoVideo: '',
+  duration: 90,
+  isPremium: true,
+  isNew: true,
+  effects: [],
+  audio: { volume: 1.0 },
+  metadata: {
+    author: 'TAM-TAM',
+    version: '1.0',
+    tags: ['music', 'DAW', 'AI', 'beats', 'afrobeat']
+  },
+  tags: ['musique', 'beats', 'afrobeat', 'IA'],
+  usageCount: 0,
+};
+
+const villageChronicleTemplate: Template = {
+  id: 'village-chronicle',
+  name: 'Village Chronicle',
+  nameBa: 'Sɛ̀kà Dúúnìyá',
+  category: 'business',
+  description: 'Journal TV automatisé avec présentateur virtuel et météo locale',
+  thumbnail: '/assets/envato/textures/texture-003.jpg',
+  demoVideo: '',
+  duration: 120,
+  isPremium: true,
+  isNew: true,
+  effects: [],
+  audio: { volume: 0.9 },
+  metadata: {
+    author: 'TAM-TAM',
+    version: '1.0',
+    tags: ['news', 'TV', 'virtual anchor', 'broadcast']
+  },
+  tags: ['actualités', 'TV', 'journal', 'présentateur'],
+  usageCount: 0,
+};
 import { miniDocVillageTemplate } from './miniDocVillage';
 import { metiersTerroirTemplate } from './metiersTerroir';
 import { histoireVraieTemplate } from './histoireVraie';
@@ -52,6 +128,11 @@ import { concertLiveTemplate } from './concertLive';
 // ============================================================================
 
 export const allTemplates: Template[] = [
+  // Premium templates first
+  griotDigitalPremiumTemplate,
+  beatMakerAIPremiumTemplate,
+  villageChronicleTemplate,
+  // Standard templates
   griotDigitalTemplate,
   beatSyncUltraTemplate,
   styleCinemaLocalTemplate,
