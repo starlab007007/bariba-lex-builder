@@ -82,7 +82,7 @@ export class LiveEffectsCompositor {
       this.audioContext = new AudioContext();
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
-      this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>;
+      this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
 
       if (audioSource) {
         const source = this.audioContext.createMediaStreamSource(audioSource);
@@ -99,7 +99,7 @@ export class LiveEffectsCompositor {
       return { isBeat: false, energy: 0, bass: 0, mid: 0, high: 0, bpm: 120 };
     }
 
-    this.analyser.getByteFrequencyData(this.frequencyData);
+    this.analyser.getByteFrequencyData(this.frequencyData as Uint8Array);
 
     // Calculate frequency bands
     const bassEnd = Math.floor(this.frequencyData.length * 0.1);

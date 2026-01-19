@@ -153,6 +153,7 @@ export interface BeatMakerInputs {
   inputType: BeatInputType;
   audioInput?: File;
   tapEvents?: TapEvent[];
+  tapPattern?: TapEvent[]; // Alias for tapEvents
   style: BeatStyle;
   tempo?: number;
   key?: MusicalKey;
@@ -169,17 +170,30 @@ export class BeatMakerEngine {
   private composition: BeatComposition | null = null;
   private isPlaying = false;
   private currentTime = 0;
+  private visualizationCanvas: HTMLCanvasElement | null = null;
+  private visualizationCtx: CanvasRenderingContext2D | null = null;
+  private trackVolumes: Map<string, number> = new Map();
+  private trackMuted: Map<string, boolean> = new Map();
+  private trackSoloed: Map<string, boolean> = new Map();
+  private animationFrame: number | null = null;
 
   constructor() {
-    this.initAudio();
+    // Don't auto-init, wait for explicit call
   }
 
-  private async initAudio(): Promise<void> {
+  async initialize(): Promise<void> {
     try {
       this.audioContext = new AudioContext();
+      console.log('[BeatMaker] Engine initialized');
     } catch (error) {
       console.warn('[BeatMaker] Audio context init failed:', error);
     }
+  }
+
+  setupVisualization(canvas: HTMLCanvasElement): void {
+    this.visualizationCanvas = canvas;
+    this.visualizationCtx = canvas.getContext('2d');
+    console.log('[BeatMaker] Visualization setup complete');
   }
 
   async processHumInput(audioFile: File): Promise<MIDITrack> {
@@ -244,20 +258,31 @@ export class BeatMakerEngine {
     };
   }
 
-  async generateBeat(inputs: BeatMakerInputs): Promise<BeatComposition> {
+  async generateBeat(
+    inputs: BeatMakerInputs, 
+    onProgress?: (progress: number, stage: string) => void
+  ): Promise<BeatComposition> {
     console.log(`[BeatMaker] Generating ${inputs.style} beat...`);
 
     const tempo = inputs.tempo || this.getDefaultTempo(inputs.style);
     const key = inputs.key || 'C';
     const mode = inputs.mode || 'minor';
 
-    // Process input
+    onProgress?.(0.1, 'Analyzing input...');
+
+    // Process input - check both tapEvents and tapPattern for compatibility
     let melodyTrack: MIDITrack | null = null;
+    const tapData = inputs.tapEvents || inputs.tapPattern;
+    
     if (inputs.inputType === 'hum' && inputs.audioInput) {
+      onProgress?.(0.3, 'Processing melody...');
       melodyTrack = await this.processHumInput(inputs.audioInput);
-    } else if (inputs.inputType === 'tap' && inputs.tapEvents) {
-      melodyTrack = await this.processTapInput(inputs.tapEvents);
+    } else if (inputs.inputType === 'tap' && tapData) {
+      onProgress?.(0.3, 'Processing rhythm...');
+      melodyTrack = await this.processTapInput(tapData);
     }
+
+    onProgress?.(0.5, 'Generating tracks...');
 
     // Generate composition
     this.composition = {
@@ -273,6 +298,8 @@ export class BeatMakerEngine {
       masterVolume: 0.8,
       duration: inputs.duration
     };
+
+    onProgress?.(1.0, 'Complete!');
 
     return this.composition;
   }
@@ -458,12 +485,54 @@ export class BeatMakerEngine {
     this.isPlaying = true;
   }
 
+  pause(): void {
+    this.isPlaying = false;
+  }
+
   stop(): void {
     this.isPlaying = false;
+    this.currentTime = 0;
+  }
+
+  setTrackVolume(trackId: string, volume: number): void {
+    this.trackVolumes.set(trackId, volume);
+  }
+
+  toggleMute(trackId: string): void {
+    const current = this.trackMuted.get(trackId) || false;
+    this.trackMuted.set(trackId, !current);
+  }
+
+  toggleSolo(trackId: string): void {
+    const current = this.trackSoloed.get(trackId) || false;
+    this.trackSoloed.set(trackId, !current);
+  }
+
+  async renderToAudio(composition: BeatComposition): Promise<AudioBuffer | null> {
+    console.log('[BeatMaker] Rendering composition to audio...');
+    // In production, this would use Web Audio API to render MIDI to audio
+    return null;
+  }
+
+  async exportStems(composition: BeatComposition): Promise<Record<string, Blob>> {
+    console.log('[BeatMaker] Exporting stems...');
+    // Generate placeholder audio blobs for each track
+    const stems: Record<string, Blob> = {};
+    const tracks = ['drums', 'bass', 'melody', 'chords', 'fx', 'master'];
+    
+    for (const trackName of tracks) {
+      // Create a simple silent WAV blob for placeholder
+      stems[trackName] = new Blob([new ArrayBuffer(1024)], { type: 'audio/wav' });
+    }
+    
+    return stems;
   }
 
   dispose(): void {
     this.stop();
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
     if (this.audioContext) {
       this.audioContext.close();
     }

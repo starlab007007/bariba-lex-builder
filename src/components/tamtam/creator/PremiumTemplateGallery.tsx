@@ -17,9 +17,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Template, TemplateCategory } from './TemplateSystem/types';
-import { allTemplates, templatesByCategory } from './TemplateSystem/templates';
+import { allTemplates } from './TemplateSystem/templates';
 
-// Premium template imports
+// Import premium templates directly for their config data
 import { GriotDigitalTemplate } from '@/templates/GriotDigital';
 import { BeatMakerAITemplate } from '@/templates/BeatMakerAI';
 import { VillageChronicleTemplate } from '@/templates/VillageChronicle';
@@ -45,12 +45,12 @@ const CATEGORIES = [
   { id: 'future' as const, label: 'Futuriste', emoji: '🚀', icon: Rocket, color: 'from-violet-500 to-purple-500' },
 ];
 
-// Premium templates with enhanced metadata
+// Premium templates converted to standard Template interface
 const PREMIUM_TEMPLATES: Template[] = [
-  GriotDigitalTemplate,
-  BeatMakerAITemplate,
-  VillageChronicleTemplate,
-];
+  GriotDigitalTemplate as unknown as Template,
+  BeatMakerAITemplate as unknown as Template,
+  VillageChronicleTemplate as unknown as Template,
+].filter(t => t.thumbnail && t.effects);
 
 // Merge premium templates with existing templates
 const ALL_GALLERY_TEMPLATES = [...PREMIUM_TEMPLATES, ...allTemplates];
