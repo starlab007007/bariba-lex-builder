@@ -92,6 +92,12 @@ import type { AudioTrack } from "@/types/audio";
 // ✅ OneTakePro: Premium template with baked-in visual effects (lens-flare, light-leak, smoke, fire)
 import { OneTakePro } from "./templates/OneTakePro";
 
+// ✅ Premium Templates: Griot Digital, Beat Maker AI, News Studio
+import { GriotDigitalCreator } from "@/components/GriotDigitalCreator";
+import { BeatMakerStudio } from "@/components/BeatMakerStudio";
+import NewsStudio from "@/components/NewsStudio";
+import { PremiumTemplateGallery } from "./creator/PremiumTemplateGallery";
+
 // Legacy AdvancedTemplate data (still used by some UI effects/voice instructions)
 import {
   AdvancedTemplate,
@@ -575,6 +581,12 @@ export default function FullscreenCreator({
   
   // ============= ONE-TAKE PRO MODE (PREMIUM VISUAL EFFECTS) =============
   const [showOneTakeProMode, setShowOneTakeProMode] = useState(false);
+  
+  // ============= PREMIUM TEMPLATES MODE (Griot Digital, Beat Maker, News Studio) =============
+  const [showGriotDigitalMode, setShowGriotDigitalMode] = useState(false);
+  const [showBeatMakerMode, setShowBeatMakerMode] = useState(false);
+  const [showNewsStudioMode, setShowNewsStudioMode] = useState(false);
+  const [showPremiumGallery, setShowPremiumGallery] = useState(false);
 
   // ============= NEW TEMPLATE SYSTEM V3.0 =============
   const [showTemplateSelectorV3, setShowTemplateSelectorV3] = useState(false);
@@ -2418,6 +2430,38 @@ export default function FullscreenCreator({
                   return;
                 }
 
+                // ✅ Premium Templates: Griot Digital, Beat Maker AI, News Studio
+                const premiumTemplateIds = ['griot-digital-premium', 'griot_digital', 'griot-digital'];
+                const beatMakerIds = ['beat-maker-ai', 'beat_maker_ai', 'beatmaker'];
+                const newsStudioIds = ['village-chronicle', 'village_chronicle', 'news-studio'];
+
+                if (premiumTemplateIds.includes(template.id) || premiumTemplateIds.includes(template.templateKey || '')) {
+                  console.log('🎭 Griot Digital Premium activé');
+                  setActiveUnifiedTemplate(template);
+                  setShowGriotDigitalMode(true);
+                  setDrawer('none');
+                  setToast('🎭 Griot Digital activé');
+                  return;
+                }
+
+                if (beatMakerIds.includes(template.id) || beatMakerIds.includes(template.templateKey || '')) {
+                  console.log('🎵 Beat Maker AI activé');
+                  setActiveUnifiedTemplate(template);
+                  setShowBeatMakerMode(true);
+                  setDrawer('none');
+                  setToast('🎵 Beat Maker AI activé');
+                  return;
+                }
+
+                if (newsStudioIds.includes(template.id) || newsStudioIds.includes(template.templateKey || '')) {
+                  console.log('📺 News Studio activé');
+                  setActiveUnifiedTemplate(template);
+                  setShowNewsStudioMode(true);
+                  setDrawer('none');
+                  setToast('📺 Village Chronicle activé');
+                  return;
+                }
+
                 // Vérifier si c'est un template audio-first (Radio Village Pro)
                 const specialSources = ['radio_village'];
                 const specialIds = ['radio_village_pro_01', 'radio_village'];
@@ -3818,6 +3862,66 @@ export default function FullscreenCreator({
             </div>
           </motion.div>
         )}
+
+        {/* ============ PREMIUM TEMPLATES: Griot Digital ============ */}
+        <AnimatePresence>
+          {showGriotDigitalMode && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[200] bg-background"
+            >
+              <button
+                onClick={() => setShowGriotDigitalMode(false)}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <GriotDigitalCreator />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ============ PREMIUM TEMPLATES: Beat Maker AI ============ */}
+        <AnimatePresence>
+          {showBeatMakerMode && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[200] bg-background"
+            >
+              <button
+                onClick={() => setShowBeatMakerMode(false)}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <BeatMakerStudio />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ============ PREMIUM TEMPLATES: News Studio ============ */}
+        <AnimatePresence>
+          {showNewsStudioMode && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[200] bg-background overflow-y-auto"
+            >
+              <button
+                onClick={() => setShowNewsStudioMode(false)}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <NewsStudio />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

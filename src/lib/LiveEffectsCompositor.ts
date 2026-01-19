@@ -56,7 +56,7 @@ export class LiveEffectsCompositor {
   // Audio analysis
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
-  private frequencyData: Uint8Array | null = null;
+  private frequencyData: Uint8Array<ArrayBuffer> | null = null;
 
   constructor(canvas: HTMLCanvasElement, config: Partial<CompositorConfig> = {}) {
     this.canvas = canvas;
@@ -99,7 +99,7 @@ export class LiveEffectsCompositor {
       return { isBeat: false, energy: 0, bass: 0, mid: 0, high: 0, bpm: 120 };
     }
 
-    this.analyser.getByteFrequencyData(this.frequencyData as Uint8Array);
+    this.analyser.getByteFrequencyData(this.frequencyData);
 
     // Calculate frequency bands
     const bassEnd = Math.floor(this.frequencyData.length * 0.1);
