@@ -137,15 +137,25 @@ export function TemplateSelector({
                   {/* Card */}
                   <div className="bg-card rounded-xl overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
                     {/* Thumbnail */}
-                    <div className="aspect-[9/16] relative bg-muted overflow-hidden">
-                      <img
-                        src={template.thumbnail}
-                        alt={template.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='320'%3E%3Crect fill='%23374151' width='180' height='320'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' fill='%239CA3AF' font-size='40'%3E${template.name.charAt(0)}%3C/text%3E%3C/svg%3E`;
-                        }}
-                      />
+                    <div className="aspect-[9/16] relative bg-gradient-to-br from-primary/20 via-muted to-accent/20 overflow-hidden">
+                      {/* Fallback gradient background with emoji */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800">
+                        <span className="text-5xl mb-2">{'emoji' in template ? (template as any).emoji : '🎬'}</span>
+                        <span className="text-xs text-muted-foreground font-medium px-2 text-center line-clamp-2">
+                          {template.name}
+                        </span>
+                      </div>
+                      {/* Actual thumbnail if available */}
+                      {template.thumbnail && (
+                        <img
+                          src={template.thumbnail}
+                          alt={template.name}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
                       
                       {/* Overlay on hover */}
                       <motion.div 
