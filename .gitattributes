@@ -1,3 +1,2 @@
-*.mov filter=lfs diff=lfs merge=lfs -text
-*.mp4 filter=lfs diff=lfs merge=lfs -text
-*.webm filter=lfs diff=lfs merge=lfs -text
+# Git LFS rules removed - video assets now hosted on Supabase Storage CDN
+# Previous rules for *.mov, *.mp4, *.webm have been removed to unblock Lovable publication
