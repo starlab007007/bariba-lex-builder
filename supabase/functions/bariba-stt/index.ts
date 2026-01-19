@@ -265,7 +265,7 @@ function extractTranscription(result: any): { transcription: string | null; erro
   return { transcription: null, error: null };
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
