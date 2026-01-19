@@ -1,9 +1,10 @@
 /**
  * TAM-TAM Template Asset Analyzer
  * Comprehensive visual report of all 35 templates and their asset usage
+ * With corrective action buttons for real-time fixes
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,10 +33,27 @@ import {
   Zap,
   Volume2,
   Film,
-  Palette
+  Palette,
+  Wrench,
+  Play,
+  Trash2,
+  ArrowRight,
+  Search
 } from 'lucide-react';
 import { allTemplates, templatesByCategory } from '@/components/tamtam/creator/TemplateSystem/templates';
 import { Template, Effect } from '@/components/tamtam/creator/TemplateSystem/types';
+import { useAssetStats } from '@/hooks/useAssetStats';
+import { 
+  fixMisplacedFiles, 
+  renameFilesVirtually, 
+  deleteDuplicateAudio, 
+  verifyLFSPointers,
+  runAllCorrections,
+  getTemplatesForEnrichment,
+  getAssetHealthSummary,
+  CorrectionProgress
+} from '@/services/AssetCorrectiveActions';
+import { toast } from 'sonner';
 
 // ============================================================================
 // ASSET INVENTORY - Current state of assets
@@ -171,9 +189,52 @@ interface EffectTypeStats {
 // ============================================================================
 
 export const TemplateAssetAnalyzer: React.FC = () => {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [correctionProgress, setCorrectionProgress] = useState<CorrectionProgress>({
+    isRunning: false,
+    currentAction: '',
+    progress: 0,
+    total: 100,
+  });
+  
+  // Use unified asset stats
+  const { stats: assetStats, refresh: refreshStats } = useAssetStats();
+  
+  // Corrective action handlers
+  const handleFixMisplacedFiles = useCallback(async (source: string, target: string) => {
+    const result = await fixMisplacedFiles(source, target, setCorrectionProgress);
+    if (result.success) {
+      await refreshStats();
+    }
+  }, [refreshStats]);
+  
+  const handleRenameFiles = useCallback(async (category: string) => {
+    const result = await renameFilesVirtually(category, setCorrectionProgress);
+    if (result.success) {
+      await refreshStats();
+    }
+  }, [refreshStats]);
+  
+  const handleDeleteDuplicates = useCallback(async () => {
+    const result = await deleteDuplicateAudio(setCorrectionProgress);
+    if (result.success) {
+      await refreshStats();
+    }
+  }, [refreshStats]);
+  
+  const handleVerifyLFS = useCallback(async (category: string) => {
+    await verifyLFSPointers(category, setCorrectionProgress);
+  }, []);
+  
+  const handleAutoCorrectAll = useCallback(async () => {
+    toast.info('🔧 Lancement des corrections automatiques...');
+    await runAllCorrections(setCorrectionProgress);
+    await refreshStats();
+  }, [refreshStats]);
+  
+  // Get health summary
+  const healthSummary = useMemo(() => getAssetHealthSummary(), []);
   
   // Analyze all templates
   const templateAnalysis = useMemo(() => {
@@ -396,17 +457,18 @@ export const TemplateAssetAnalyzer: React.FC = () => {
         </div>
       </div>
       
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Real-time Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <Layers className="h-8 w-8 text-primary" />
               <div>
-                <p className="text-2xl font-bold">35</p>
-                <p className="text-xs text-muted-foreground">Templates</p>
+                <p className="text-2xl font-bold">{assetStats.totalInstalled}</p>
+                <p className="text-xs text-muted-foreground">/{assetStats.totalExpected} Assets</p>
               </div>
             </div>
+            <Progress value={assetStats.globalCompletionRate} className="h-1 mt-2" />
           </CardContent>
         </Card>
         
@@ -415,8 +477,8 @@ export const TemplateAssetAnalyzer: React.FC = () => {
             <div className="flex items-center gap-2">
               <CheckCircle className="h-8 w-8 text-green-500" />
               <div>
-                <p className="text-2xl font-bold">2</p>
-                <p className="text-xs text-muted-foreground">Assets OK</p>
+                <p className="text-2xl font-bold">{healthSummary.healthy.length}</p>
+                <p className="text-xs text-muted-foreground">Catégories OK</p>
               </div>
             </div>
           </CardContent>
@@ -427,7 +489,7 @@ export const TemplateAssetAnalyzer: React.FC = () => {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-8 w-8 text-yellow-500" />
               <div>
-                <p className="text-2xl font-bold">3</p>
+                <p className="text-2xl font-bold">{healthSummary.needsAttention.length}</p>
                 <p className="text-xs text-muted-foreground">À vérifier</p>
               </div>
             </div>
@@ -439,13 +501,37 @@ export const TemplateAssetAnalyzer: React.FC = () => {
             <div className="flex items-center gap-2">
               <XCircle className="h-8 w-8 text-red-500" />
               <div>
-                <p className="text-2xl font-bold">3</p>
-                <p className="text-xs text-muted-foreground">Problématiques</p>
+                <p className="text-2xl font-bold">{healthSummary.critical.length}</p>
+                <p className="text-xs text-muted-foreground">Critiques</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <RefreshCw className={`h-8 w-8 ${assetStats.isLoading ? 'animate-spin text-blue-500' : 'text-muted-foreground'}`} />
+              <div>
+                <p className="text-2xl font-bold">{assetStats.globalCompletionRate}%</p>
+                <p className="text-xs text-muted-foreground">Complétion</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+      
+      {/* Correction Progress */}
+      {correctionProgress.isRunning && (
+        <Alert>
+          <Wrench className="h-4 w-4 animate-pulse" />
+          <AlertTitle>Correction en cours...</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p className="text-sm">{correctionProgress.currentAction}</p>
+            <Progress value={correctionProgress.progress} className="h-2" />
+          </AlertDescription>
+        </Alert>
+      )}
       
       <Tabs defaultValue="assets" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
@@ -632,17 +718,40 @@ export const TemplateAssetAnalyzer: React.FC = () => {
           </ScrollArea>
         </TabsContent>
         
-        {/* Recommendations Tab */}
+        {/* Recommendations Tab with Action Buttons */}
         <TabsContent value="recommendations" className="space-y-4">
+          {/* Auto-Correct All Button */}
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border">
+            <div>
+              <h3 className="font-semibold">🔧 Auto-Correction Globale</h3>
+              <p className="text-sm text-muted-foreground">
+                Appliquer toutes les corrections non-destructives en un clic
+              </p>
+            </div>
+            <Button 
+              onClick={handleAutoCorrectAll} 
+              disabled={correctionProgress.isRunning}
+              className="gap-2"
+            >
+              {correctionProgress.isRunning ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              Auto-Corriger Tout
+            </Button>
+          </div>
+          
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Actions Prioritaires</AlertTitle>
             <AlertDescription>
-              Les corrections suivantes sont nécessaires pour une expérience optimale.
+              Cliquez sur les boutons pour corriger chaque problème individuellement.
             </AlertDescription>
           </Alert>
           
           <div className="grid gap-4">
+            {/* Critical - Misplaced Files */}
             <Card className="border-red-500/50">
               <CardHeader>
                 <CardTitle className="text-red-500 flex items-center gap-2">
@@ -650,28 +759,64 @@ export const TemplateAssetAnalyzer: React.FC = () => {
                   Critique - Fichiers Mal Placés
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="p-3 bg-red-500/10 rounded-lg">
-                  <p className="font-medium">3d-models/ → 22 fichiers leak-XXX.webm</p>
-                  <p className="text-sm text-muted-foreground">
-                    Action: Déplacer vers light-leak/ et renommer
-                  </p>
+              <CardContent className="space-y-3">
+                <div className="p-3 bg-red-500/10 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">3d-models/ → 22 fichiers leak-XXX.webm</p>
+                    <p className="text-sm text-muted-foreground">
+                      Rediriger vers light-leak/ via mapping virtuel
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="destructive"
+                    onClick={() => handleFixMisplacedFiles('3d-models', 'light-leak')}
+                    disabled={correctionProgress.isRunning}
+                  >
+                    <Wrench className="h-4 w-4 mr-1" />
+                    Corriger
+                  </Button>
                 </div>
-                <div className="p-3 bg-red-500/10 rounded-lg">
-                  <p className="font-medium">particles/ → 37 fichiers leak-XXX.webm</p>
-                  <p className="text-sm text-muted-foreground">
-                    Action: Renommer en particle-XXX.webm
-                  </p>
+                
+                <div className="p-3 bg-red-500/10 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">particles/ → 37 fichiers leak-XXX.webm</p>
+                    <p className="text-sm text-muted-foreground">
+                      Renommer virtuellement en particle-XXX.webm
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="destructive"
+                    onClick={() => handleRenameFiles('particles')}
+                    disabled={correctionProgress.isRunning}
+                  >
+                    <ArrowRight className="h-4 w-4 mr-1" />
+                    Renommer
+                  </Button>
                 </div>
-                <div className="p-3 bg-red-500/10 rounded-lg">
-                  <p className="font-medium">transitions/ → 20 fichiers leak-XXX.webm</p>
-                  <p className="text-sm text-muted-foreground">
-                    Action: Déplacer vers light-leak/
-                  </p>
+                
+                <div className="p-3 bg-red-500/10 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">transitions/ → 20 fichiers leak-XXX.webm</p>
+                    <p className="text-sm text-muted-foreground">
+                      Rediriger vers light-leak/ via mapping
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="destructive"
+                    onClick={() => handleFixMisplacedFiles('transitions', 'light-leak')}
+                    disabled={correctionProgress.isRunning}
+                  >
+                    <Wrench className="h-4 w-4 mr-1" />
+                    Corriger
+                  </Button>
                 </div>
               </CardContent>
             </Card>
             
+            {/* Warning - Verifications Needed */}
             <Card className="border-yellow-500/50">
               <CardHeader>
                 <CardTitle className="text-yellow-500 flex items-center gap-2">
@@ -679,51 +824,92 @@ export const TemplateAssetAnalyzer: React.FC = () => {
                   Attention - Vérifications Nécessaires
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="p-3 bg-yellow-500/10 rounded-lg">
-                  <p className="font-medium">textures/ → 215 fichiers video-XXX.mp4</p>
-                  <p className="text-sm text-muted-foreground">
-                    Action: Vérifier si ce sont des pointeurs LFS
-                  </p>
+              <CardContent className="space-y-3">
+                <div className="p-3 bg-yellow-500/10 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">textures/ → {assetStats.byCategory['textures']?.localAvailable || 215} fichiers</p>
+                    <p className="text-sm text-muted-foreground">
+                      Vérifier si ce sont des pointeurs LFS
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={() => handleVerifyLFS('textures')}
+                    disabled={correctionProgress.isRunning}
+                  >
+                    <Search className="h-4 w-4 mr-1" />
+                    Vérifier LFS
+                  </Button>
                 </div>
-                <div className="p-3 bg-yellow-500/10 rounded-lg">
-                  <p className="font-medium">audio/ → Doublons détectés</p>
-                  <p className="text-sm text-muted-foreground">
-                    Action: Supprimer les doublons (audio-XXX vs audio-0XXX)
-                  </p>
+                
+                <div className="p-3 bg-yellow-500/10 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">audio/ → Doublons détectés</p>
+                    <p className="text-sm text-muted-foreground">
+                      Supprimer audio-0XXX (conserver audio-XXX)
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={handleDeleteDuplicates}
+                    disabled={correctionProgress.isRunning}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Supprimer doublons
+                  </Button>
+                </div>
+                
+                <div className="p-3 bg-yellow-500/10 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">light-leak/ → Vérification des fichiers</p>
+                    <p className="text-sm text-muted-foreground">
+                      Valider les {assetStats.byCategory['light-leak']?.localAvailable || 39} fichiers light-leak
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onClick={() => handleVerifyLFS('light-leak')}
+                    disabled={correctionProgress.isRunning}
+                  >
+                    <Search className="h-4 w-4 mr-1" />
+                    Vérifier
+                  </Button>
                 </div>
               </CardContent>
             </Card>
             
+            {/* Improvements - Template Enrichment */}
             <Card className="border-blue-500/50">
               <CardHeader>
                 <CardTitle className="text-blue-500 flex items-center gap-2">
                   <Sparkles className="h-5 w-5" />
-                  Amélioration - Enrichir les Templates
+                  Amélioration - Templates à Enrichir
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <p className="font-medium">0 templates utilisent light-leak</p>
-                  <p className="text-sm text-muted-foreground">
-                    Suggestion: Ajouter à Afrobeat Pulse, Griot Digital, Concert Live
-                  </p>
-                </div>
-                <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <p className="font-medium">0 templates utilisent particles</p>
-                  <p className="text-sm text-muted-foreground">
-                    Suggestion: Ajouter à Hologram Effect, Matrix Rain, Cyberpunk Vibes
-                  </p>
-                </div>
-                <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <p className="font-medium">0 templates utilisent transitions</p>
-                  <p className="text-sm text-muted-foreground">
-                    Suggestion: Ajouter à Photo Slideshow, Histoire en Images
-                  </p>
-                </div>
+              <CardContent className="space-y-3">
+                {['light-leak', 'particles', 'transitions'].map(effectType => {
+                  const templates = getTemplatesForEnrichment(effectType);
+                  return (
+                    <div key={effectType} className="p-3 bg-blue-500/10 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="font-medium capitalize">{effectType}</p>
+                        <Badge variant="outline">{templates.length} templates suggérés</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {templates.map(t => (
+                          <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
             
+            {/* OK - Functional Assets */}
             <Card className="border-green-500/50">
               <CardHeader>
                 <CardTitle className="text-green-500 flex items-center gap-2">
@@ -732,18 +918,20 @@ export const TemplateAssetAnalyzer: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="p-3 bg-green-500/10 rounded-lg">
-                  <p className="font-medium">lens-flare/ → 455 fichiers PNG</p>
-                  <p className="text-sm text-muted-foreground">
-                    ✅ 100% fonctionnel, utilisé par 35/35 templates
-                  </p>
-                </div>
-                <div className="p-3 bg-green-500/10 rounded-lg">
-                  <p className="font-medium">audio/ → 13 fichiers MP3 uniques</p>
-                  <p className="text-sm text-muted-foreground">
-                    ✅ Fonctionnel, utilisé par 15/35 templates
-                  </p>
-                </div>
+                {healthSummary.healthy.map(category => {
+                  const catStats = assetStats.byCategory[category];
+                  return (
+                    <div key={category} className="p-3 bg-green-500/10 rounded-lg flex items-center justify-between">
+                      <div>
+                        <p className="font-medium capitalize">{category}</p>
+                        <p className="text-sm text-muted-foreground">
+                          ✅ {catStats?.totalInstalled || 0}/{catStats?.localExpected || 0} fichiers
+                        </p>
+                      </div>
+                      <Badge className="bg-green-500">{catStats?.completionRate || 100}%</Badge>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
