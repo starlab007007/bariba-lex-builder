@@ -1015,11 +1015,11 @@ export class AIServicesHub {
     execute: () => Promise<T>,
     priority: number = 5
   ): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const item: QueueItem<T> = {
+    return new Promise<T>((resolve, reject) => {
+      const item: QueueItem<unknown> = {
         id: crypto.randomUUID(),
-        execute: execute as () => Promise<unknown>,
-        resolve: resolve as (value: unknown) => void,
+        execute,
+        resolve: (value: unknown) => resolve(value as T),
         reject,
         priority,
         retries: 0,
@@ -1031,7 +1031,7 @@ export class AIServicesHub {
       }
 
       const queue = this.requestQueue.get(service)!;
-      queue.push(item as QueueItem<unknown>);
+      queue.push(item);
       
       // Sort by priority (lower = higher priority)
       queue.sort((a, b) => a.priority - b.priority);
