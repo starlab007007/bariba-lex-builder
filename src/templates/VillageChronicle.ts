@@ -32,14 +32,38 @@ export const VillageChronicleTemplate: Template = {
 // Extended template config (not part of Template interface)
 export const VillageChronicleConfig = {
   requiredAssets: {
-    models: ['model-006.glb', 'model-007.glb', 'model-008.glb'],
-    particles: ['particle-003.webm', 'particle-011.webm', 'particle-025.webm'],
-    lightLeaks: ['leak-002.webm', 'leak-007.webm', 'leak-013.webm'],
-    lensFlares: ['flare-008.png', 'flare-019.png', 'flare-045.png'],
-    textures: ['texture-008.png', 'texture-067.png', 'texture-134.png'],
-    transitions: ['transition-003.mp4', 'transition-011.mp4', 'transition-022.mp4'],
-    audio: ['audio-003.mp3', 'audio-008.mp3', 'audio-015.mp3'],
-    fonts: ['font-001.ttf', 'font-002.ttf', 'font-008.ttf']
+    models: [], // No real GLB files available
+    particles: [
+      // Particles use leak-XXX.webm files via mapping
+      'particles:particle-003.webm', // → leak-003.webm
+      'particles:particle-011.webm', // → leak-011.webm
+      'particles:particle-025.webm', // → leak-025.webm
+    ],
+    lightLeaks: [
+      // Light leaks from 3d-models cross-folder
+      'light-leak:leak-002.webm', // → 3d-models/leak-002.webm
+      'light-leak:leak-007.webm', // → 3d-models/leak-007.webm
+      'light-leak:leak-013.webm', // → 3d-models/leak-013.webm
+    ],
+    lensFlares: [
+      'lens-flare:flare-008.png',
+      'lens-flare:flare-019.png',
+      'lens-flare:flare-045.png',
+    ],
+    textures: [
+      // Textures use video-XXX.mp4 files via mapping
+      'textures:texture-008.mp4', // → video-008.mp4
+      'textures:texture-067.mp4', // → video-067.mp4
+      'textures:texture-134.mp4', // → video-134.mp4
+    ],
+    transitions: [
+      'transitions:transition-003.mp4',
+    ],
+    audio: [
+      'audio/traditional:traditional-003.mp3', // → audio-003.mp3
+      'audio/percussion:percussion-003.mp3', // → audio-007.mp3
+    ],
+    fonts: []
   },
   renderSettings: {
     resolution: '1080p',

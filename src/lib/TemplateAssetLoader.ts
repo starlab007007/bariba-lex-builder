@@ -3,6 +3,8 @@
  * IndexedDB avec 7 jours de rétention
  */
 
+import { buildResolvedAssetUrl } from '@/lib/AssetRealMapping';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -266,17 +268,28 @@ class TemplateAssetLoaderService {
           continue;
         }
 
-        // Download asset
+        // Download asset using resolved mapping
         updateProgress(filename);
         
-        const categoryPath = CATEGORY_PATHS[category] || category;
-        const url = `${ASSET_BASE_URL}/${categoryPath}/${filename}`;
+        // Build asset ID and resolve via mapping
+        const assetId = `${category}:${filename}`;
+        const url = buildResolvedAssetUrl(assetId, ASSET_BASE_URL);
         
         try {
           const response = await fetch(url, { signal: controller.signal });
           if (response.ok) {
             const blob = await response.blob();
-            await this.cacheAsset(templateId, category, filename, blob);
+            // Detect LFS pointer (text file starting with "version https://git-lfs")
+            if (blob.size < 500 && blob.type.includes('text')) {
+              const text = await blob.text();
+              if (text.startsWith('version https://git-lfs')) {
+                console.warn(`[TemplateAssetLoader] LFS pointer detected for ${filename}, skipping`);
+              } else {
+                await this.cacheAsset(templateId, category, filename, blob);
+              }
+            } else {
+              await this.cacheAsset(templateId, category, filename, blob);
+            }
           }
         } catch (fetchError) {
           // Log but continue - asset may not exist or be optional

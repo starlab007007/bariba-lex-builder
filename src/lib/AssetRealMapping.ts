@@ -22,6 +22,15 @@ export const CROSS_FOLDER_MAPPING: Record<string, string> = {
       return [`light-leak:leak-${num}.webm`, `3d-models:leak-${num}.webm`];
     })
   ),
+  
+  // Particles backup depuis 3d-models (au cas où particles/ échoue)
+  // Utilisé quand les fichiers dans particles/ sont des LFS pointers
+  ...Object.fromEntries(
+    Array.from({ length: 22 }, (_, i) => {
+      const num = String(i + 1).padStart(3, '0');
+      return [`particles-backup:particle-${num}.webm`, `3d-models:leak-${num}.webm`];
+    })
+  ),
 };
 
 // ============================================================================
