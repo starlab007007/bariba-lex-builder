@@ -21,7 +21,16 @@ export const VillageChronicleTemplate: Template = {
   name: 'Village Chronicle - Journal du Village',
   category: 'storytelling' as TemplateCategory,
   description: 'Journal télévisé automatisé avec présentateur virtuel',
-  
+  thumbnail: '/assets/templates/village-chronicle.jpg',
+  effects: [],
+  metadata: {
+    version: '1.0.0',
+    tags: ['news', 'journal', 'tv', 'village', 'anchor']
+  }
+};
+
+// Extended template config (not part of Template interface)
+export const VillageChronicleConfig = {
   requiredAssets: {
     models: ['model-006.glb', 'model-007.glb', 'model-008.glb'],
     particles: ['particle-003.webm', 'particle-011.webm', 'particle-025.webm'],
@@ -32,21 +41,17 @@ export const VillageChronicleTemplate: Template = {
     audio: ['audio-003.mp3', 'audio-008.mp3', 'audio-015.mp3'],
     fonts: ['font-001.ttf', 'font-002.ttf', 'font-008.ttf']
   },
-  
   renderSettings: {
     resolution: '1080p',
     fps: 30,
-    duration: 300, // 5 minutes
+    duration: 300
   },
-  
   aiFeatures: [
     'News Director',
     'Virtual Anchor',
     'Script Generation',
     'Auto-Broadcast'
-  ],
-
-  effects: []
+  ]
 };
 
 // ============================================
@@ -329,7 +334,7 @@ export class VillageChronicleEngine {
         text: `${news.title}. ${news.description}`,
         textBariba: undefined,
         duration: 45,
-        cuePoints: parsed.cuePoints || []
+        cuePoints: []
       };
     } catch (error) {
       console.error('Script generation error:', error);
@@ -901,7 +906,7 @@ export class VillageChronicleEngine {
     if (!this.isPlaying) return;
 
     requestAnimationFrame(this.animate);
-    this.particleManager.update();
+    this.particleManager.update(0.016); // ~60fps delta
     this.renderer.render(this.scene, this.camera);
   };
 
