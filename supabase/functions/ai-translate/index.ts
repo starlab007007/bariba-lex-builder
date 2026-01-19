@@ -6,6 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Escapes SQL LIKE pattern metacharacters
+ */
+function escapeLikePattern(input: string): string {
+  if (!input) return '';
+  return input.replace(/[%_\\]/g, '\\$&');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -54,13 +62,17 @@ serve(async (req) => {
       .limit(200);
 
     // Search for similar phrases in translation memory
+    // Sanitize search text to prevent SQL injection via LIKE metacharacters
     const searchText = text.toLowerCase();
+    const firstWord = searchText.split(' ')[0] || '';
+    const sanitizedFirstWord = escapeLikePattern(firstWord.substring(0, 100));
+    
     const { data: similarPhrases } = await supabaseClient
       .from('translation_memory')
       .select('*')
       .eq('source_language', sourceLang)
       .eq('target_language', targetLang)
-      .ilike('source_text', `%${searchText.split(' ')[0]}%`)
+      .ilike('source_text', `%${sanitizedFirstWord}%`)
       .order('usage_count', { ascending: false })
       .limit(10);
 

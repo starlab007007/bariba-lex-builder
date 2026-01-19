@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +11,42 @@ interface TTSRequest {
   speakingRate?: number;
   noiseScale?: number;
   noiseScaleW?: number;
+}
+
+/**
+ * Authenticates the request and returns user info
+ * @param req - The incoming request
+ * @returns User object if authenticated, null otherwise
+ */
+async function authenticateRequest(req: Request): Promise<{ userId: string | null; isAuthenticated: boolean }> {
+  const authHeader = req.headers.get('Authorization');
+  
+  if (!authHeader) {
+    return { userId: null, isAuthenticated: false };
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
+    const { data: { user }, error } = await supabaseClient.auth.getUser();
+    
+    if (error || !user) {
+      return { userId: null, isAuthenticated: false };
+    }
+
+    return { userId: user.id, isAuthenticated: true };
+  } catch (e) {
+    console.error('Auth error:', e);
+    return { userId: null, isAuthenticated: false };
+  }
 }
 
 const SPACE_URL = 'https://zimesongbian-baatonum-tts-api-v001.hf.space';
@@ -234,6 +271,22 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate the request
+    const { isAuthenticated, userId } = await authenticateRequest(req);
+    
+    if (!isAuthenticated) {
+      console.log('⚠️ Unauthenticated TTS request rejected');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Authentication required', 
+          details: 'Please log in to use the text-to-speech service.' 
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`🔐 Authenticated TTS request from user: ${userId}`);
+
     const { 
       text, 
       speakingRate = 1.0, 

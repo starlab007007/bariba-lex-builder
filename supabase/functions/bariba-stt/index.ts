@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,42 @@ interface STTRequest {
   audio: string;
   robustMode?: boolean;
   speakerType?: 'Auto' | 'Enfant' | 'Femme' | 'Homme' | 'PersonneAgee';
+}
+
+/**
+ * Authenticates the request and returns user info
+ * @param req - The incoming request
+ * @returns User object if authenticated, null otherwise
+ */
+async function authenticateRequest(req: Request): Promise<{ userId: string | null; isAuthenticated: boolean }> {
+  const authHeader = req.headers.get('Authorization');
+  
+  if (!authHeader) {
+    return { userId: null, isAuthenticated: false };
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
+    const { data: { user }, error } = await supabaseClient.auth.getUser();
+    
+    if (error || !user) {
+      return { userId: null, isAuthenticated: false };
+    }
+
+    return { userId: user.id, isAuthenticated: true };
+  } catch (e) {
+    console.error('Auth error:', e);
+    return { userId: null, isAuthenticated: false };
+  }
 }
 
 const SPACE_URL = 'https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space';
@@ -236,14 +273,7 @@ serve(async (req) => {
   try {
     const { audio, robustMode = true, speakerType = 'Auto' }: STTRequest = await req.json();
 
-    if (!audio) {
-      return new Response(
-        JSON.stringify({ error: 'Audio data required', details: 'Aucune donnée audio reçue' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Handle health check requests (short strings like "test")
+    // Allow health check without authentication
     if (audio === 'test' || audio.length < 20) {
       console.log(`🏥 Health check request detected (audio="${audio.substring(0, 10)}")`);
       return new Response(
@@ -254,6 +284,29 @@ serve(async (req) => {
           isHealthCheck: true
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Authenticate for actual STT requests
+    const { isAuthenticated, userId } = await authenticateRequest(req);
+    
+    if (!isAuthenticated) {
+      console.log('⚠️ Unauthenticated STT request rejected');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Authentication required', 
+          details: 'Please log in to use the speech-to-text service.' 
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`🔐 Authenticated STT request from user: ${userId}`);
+    
+    if (!audio) {
+      return new Response(
+        JSON.stringify({ error: 'Audio data required', details: 'Aucune donnée audio reçue' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
