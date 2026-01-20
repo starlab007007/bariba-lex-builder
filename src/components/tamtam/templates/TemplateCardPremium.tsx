@@ -1,14 +1,13 @@
 /**
- * TemplateCardPremium - Immersive 9:16 template card with Envato effects
- * Features: Video preview on hover, light leak overlay, animated badges
+ * TemplateCardPremium - Voice-First Inclusive Template Card
+ * Features: Large touch targets, emoji-based UI, minimal text dependency
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Play, Eye, Download, Sparkles, Crown, Zap, Clock, 
-  Music, Film, Briefcase, GraduationCap, Rocket, Volume2, VolumeX,
-  CheckCircle2, Loader2
+  Play, Eye, Crown, Zap, Clock, 
+  Volume2, VolumeX, CheckCircle2
 } from 'lucide-react';
 import { Template, TemplateCategory } from '@/components/tamtam/creator/TemplateSystem/types';
 import { cn } from '@/lib/utils';
@@ -22,12 +21,13 @@ interface TemplateCardPremiumProps {
   viewMode: 'grid' | 'list';
 }
 
-const CATEGORY_ICONS: Record<TemplateCategory, React.ElementType> = {
-  storytelling: Film,
-  music: Music,
-  business: Briefcase,
-  education: GraduationCap,
-  future: Rocket,
+// Category emojis for voice-first design
+const CATEGORY_EMOJIS: Record<TemplateCategory, string> = {
+  storytelling: '📖',
+  music: '🎵',
+  business: '💼',
+  education: '📚',
+  future: '🚀',
 };
 
 const CATEGORY_COLORS: Record<TemplateCategory, string> = {
@@ -37,12 +37,6 @@ const CATEGORY_COLORS: Record<TemplateCategory, string> = {
   education: 'from-green-400 to-emerald-500',
   future: 'from-violet-400 to-purple-500',
 };
-
-// Generate gradient background based on template
-function getTemplateGradient(template: Template): string {
-  const colors = CATEGORY_COLORS[template.category] || 'from-primary to-accent';
-  return `bg-gradient-to-br ${colors}`;
-}
 
 export function TemplateCardPremium({
   template,
@@ -61,9 +55,10 @@ export function TemplateCardPremium({
   const assetProgress = progressData?.progress || 0;
   const isReady = progressData?.status === 'ready';
 
-  const CategoryIcon = CATEGORY_ICONS[template.category] || Sparkles;
+  const categoryEmoji = CATEGORY_EMOJIS[template.category] || '✨';
+  const categoryColor = CATEGORY_COLORS[template.category] || 'from-primary to-accent';
 
-  // Handle video playback on hover
+  // Handle video playback on hover/touch
   useEffect(() => {
     if (!videoRef.current || !template.demoVideo) return;
     
@@ -75,48 +70,60 @@ export function TemplateCardPremium({
     }
   }, [isHovered, template.demoVideo]);
 
-  // Toggle mute
-  const handleToggleMute = useCallback((e: React.MouseEvent) => {
+  // Toggle mute with haptic feedback
+  const handleToggleMute = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
+    if ('vibrate' in navigator) navigator.vibrate(20);
     setIsMuted(!isMuted);
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
     }
   }, [isMuted]);
 
-  // Grid card view
+  // Handle preview with haptic
+  const handlePreview = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    if ('vibrate' in navigator) navigator.vibrate(30);
+    onPreview();
+  }, [onPreview]);
+
+  // Handle use with haptic
+  const handleUse = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    if ('vibrate' in navigator) navigator.vibrate(50);
+    onUse();
+  }, [onUse]);
+
+  // ===== GRID VIEW =====
   if (viewMode === 'grid') {
     return (
       <motion.div
-        whileHover={{ scale: 1.02, y: -4 }}
+        whileHover={{ scale: 1.02, y: -3 }}
         whileTap={{ scale: 0.98 }}
-        className="relative group cursor-pointer"
-        onClick={onPreview}
+        className="relative group cursor-pointer touch-manipulation"
+        onClick={handlePreview}
       >
         {/* Card Container - 9:16 Aspect Ratio */}
-        <div className="relative aspect-[9/16] rounded-2xl overflow-hidden bg-gradient-to-br from-muted to-muted/50 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+        <div className="relative aspect-[9/16] rounded-2xl overflow-hidden bg-muted shadow-lg group-hover:shadow-xl transition-shadow duration-200">
           
-          {/* Background - Gradient or Thumbnail */}
+          {/* Background Gradient with Emoji */}
           <div className={cn(
-            "absolute inset-0 transition-opacity duration-500",
-            getTemplateGradient(template)
+            "absolute inset-0 bg-gradient-to-br",
+            categoryColor
           )}>
-            {/* Template Emoji as fallback */}
-            <div className="absolute inset-0 flex items-center justify-center text-6xl opacity-30">
-              {template.category === 'music' ? '🎵' : 
-               template.category === 'storytelling' ? '📖' :
-               template.category === 'business' ? '💼' :
-               template.category === 'education' ? '📚' : '🚀'}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-7xl opacity-25">{categoryEmoji}</span>
             </div>
           </div>
 
-          {/* Thumbnail Image */}
+          {/* Thumbnail */}
           {template.thumbnail && !thumbnailError && (
             <img
               src={template.thumbnail}
-              alt={template.name}
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
               onError={() => setThumbnailError(true)}
+              loading="lazy"
             />
           )}
 
@@ -138,63 +145,59 @@ export function TemplateCardPremium({
             )}
           </AnimatePresence>
 
-          {/* Light Leak Overlay - Only on hover */}
+          {/* Light Effect on Hover */}
           <AnimatePresence>
             {isHovered && (
               <motion.div
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 0.4 }}
+                animate={{ opacity: 0.35 }}
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 pointer-events-none"
                 style={{
-                  background: 'radial-gradient(ellipse at 20% 20%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(147,51,234,0.2) 0%, transparent 50%)',
-                  mixBlendMode: 'screen'
+                  background: 'radial-gradient(ellipse at 25% 25%, rgba(255,255,255,0.4) 0%, transparent 45%)',
+                  mixBlendMode: 'overlay'
                 }}
               />
             )}
           </AnimatePresence>
 
           {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
           {/* Top Badges */}
-          <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
-            {/* Premium Badge */}
-            {template.isPremium && (
+          <div className="absolute top-2 left-2 right-2 flex justify-between items-start">
+            {/* Premium/New Badge */}
+            {template.isPremium ? (
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-semibold shadow-lg"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold shadow-lg"
               >
-                <Crown className="w-3 h-3" />
+                <Crown className="w-3.5 h-3.5" />
                 <span>PRO</span>
               </motion.div>
-            )}
-            
-            {/* New Badge */}
-            {template.isNew && !template.isPremium && (
+            ) : template.isNew ? (
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 text-white text-xs font-semibold shadow-lg"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-green-400 to-emerald-500 text-white text-xs font-bold shadow-lg"
               >
-                <Zap className="w-3 h-3" />
+                <Zap className="w-3.5 h-3.5" />
                 <span>NEW</span>
               </motion.div>
+            ) : (
+              <div />
             )}
 
-            {/* Category Badge */}
-            <div className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs font-medium shadow-md bg-gradient-to-r",
-              CATEGORY_COLORS[template.category]
-            )}>
-              <CategoryIcon className="w-3 h-3" />
+            {/* Category Emoji Badge */}
+            <div className="text-2xl bg-black/40 backdrop-blur-sm rounded-xl px-2 py-1">
+              {categoryEmoji}
             </div>
           </div>
 
           {/* Duration Badge */}
           {template.duration && (
-            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs">
+            <div className="absolute top-2 right-14 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/50 backdrop-blur-sm text-white text-xs font-medium">
               <Clock className="w-3 h-3" />
               <span>{template.duration}s</span>
             </div>
@@ -202,8 +205,8 @@ export function TemplateCardPremium({
 
           {/* Bottom Content */}
           <div className="absolute bottom-0 left-0 right-0 p-3">
-            {/* Template Name */}
-            <h3 className="text-white font-semibold text-sm line-clamp-1 mb-0.5">
+            {/* Template Name - Short and Clear */}
+            <h3 className="text-white font-bold text-base line-clamp-1 mb-0.5">
               {template.name}
             </h3>
             {template.nameBa && (
@@ -212,37 +215,38 @@ export function TemplateCardPremium({
               </p>
             )}
 
-            {/* Action Buttons - Show on Hover */}
-            <AnimatePresence>
-              {isHovered && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="flex gap-2"
-                >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onPreview(); }}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/20 backdrop-blur-md text-white text-xs font-medium hover:bg-white/30 transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    Aperçu
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onUse(); }}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors shadow-lg"
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    Utiliser
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Action Buttons - Always Visible on Mobile, Hover on Desktop */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ 
+                opacity: isHovered ? 1 : 0.9, 
+                y: isHovered ? 0 : 0 
+              }}
+              className="flex gap-2"
+            >
+              <button
+                onClick={handlePreview}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/25 backdrop-blur-md text-white text-sm font-medium active:scale-95 transition-transform min-h-[44px]"
+                aria-label="Aperçu du template"
+              >
+                <Eye className="w-4 h-4" />
+                <span className="hidden xs:inline">Voir</span>
+                <span className="text-lg xs:hidden">👁️</span>
+              </button>
+              <button
+                onClick={handleUse}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-lg active:scale-95 transition-transform min-h-[44px]"
+                aria-label="Utiliser ce template"
+              >
+                <Play className="w-4 h-4" />
+                <span>Utiliser</span>
+              </button>
+            </motion.div>
 
-            {/* Asset Download Progress */}
+            {/* Asset Progress */}
             {assetProgress > 0 && assetProgress < 100 && (
               <div className="mt-2">
-                <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-primary"
                     initial={{ width: 0 }}
@@ -250,27 +254,28 @@ export function TemplateCardPremium({
                   />
                 </div>
                 <p className="text-white/60 text-xs mt-1 text-center">
-                  Téléchargement {Math.round(assetProgress)}%
+                  ⏳ {Math.round(assetProgress)}%
                 </p>
-              </div>
-            )}
-
-            {/* Ready Badge */}
-            {isReady && (
-              <div className="absolute bottom-3 right-3">
-                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/90 text-white text-xs">
-                  <CheckCircle2 className="w-3 h-3" />
-                  <span>Prêt</span>
-                </div>
               </div>
             )}
           </div>
 
-          {/* Mute Toggle for Video */}
+          {/* Ready Indicator */}
+          {isReady && (
+            <div className="absolute bottom-[88px] right-2">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/90 text-white text-xs font-medium">
+                <CheckCircle2 className="w-3 h-3" />
+                <span>✓</span>
+              </div>
+            </div>
+          )}
+
+          {/* Mute Toggle */}
           {isHovered && template.demoVideo && videoLoaded && (
             <button
               onClick={handleToggleMute}
-              className="absolute bottom-14 right-3 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors"
+              className="absolute bottom-[88px] left-2 p-2.5 rounded-xl bg-black/50 backdrop-blur-sm text-white active:scale-95 transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label={isMuted ? "Activer le son" : "Couper le son"}
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
@@ -280,99 +285,79 @@ export function TemplateCardPremium({
     );
   }
 
-  // List view
+  // ===== LIST VIEW =====
   return (
     <motion.div
-      whileHover={{ scale: 1.01, x: 4 }}
+      whileHover={{ scale: 1.01, x: 3 }}
       whileTap={{ scale: 0.99 }}
-      className="flex items-center gap-4 p-3 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all cursor-pointer border border-white/50"
-      onClick={onPreview}
+      className="flex items-center gap-3 p-3 rounded-2xl bg-white/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all cursor-pointer border border-white/50 touch-manipulation"
+      onClick={handlePreview}
     >
-      {/* Thumbnail */}
+      {/* Thumbnail with Emoji Fallback */}
       <div className={cn(
-        "relative w-20 h-28 rounded-xl overflow-hidden flex-shrink-0",
-        getTemplateGradient(template)
+        "relative w-16 h-24 sm:w-20 sm:h-28 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br",
+        categoryColor
       )}>
         {template.thumbnail && !thumbnailError ? (
           <img
             src={template.thumbnail}
-            alt={template.name}
+            alt=""
             className="w-full h-full object-cover"
             onError={() => setThumbnailError(true)}
+            loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-3xl opacity-50">
-            {template.category === 'music' ? '🎵' : 
-             template.category === 'storytelling' ? '📖' :
-             template.category === 'business' ? '💼' :
-             template.category === 'education' ? '📚' : '🚀'}
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-4xl opacity-60">{categoryEmoji}</span>
           </div>
         )}
         
-        {/* Badges */}
+        {/* Premium Badge */}
         {template.isPremium && (
-          <div className="absolute top-1 left-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-bold">
-            <Crown className="w-2.5 h-2.5" />
+          <div className="absolute top-1 left-1 p-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500">
+            <Crown className="w-3 h-3 text-white" />
           </div>
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h3 className="font-semibold text-foreground line-clamp-1">{template.name}</h3>
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-foreground text-base truncate">{template.name}</h3>
+              <span className="text-lg flex-shrink-0">{categoryEmoji}</span>
+            </div>
             {template.nameBa && (
-              <p className="text-xs text-muted-foreground line-clamp-1">{template.nameBa}</p>
+              <p className="text-xs text-muted-foreground truncate">{template.nameBa}</p>
             )}
-          </div>
-          <div className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs bg-gradient-to-r",
-            CATEGORY_COLORS[template.category]
-          )}>
-            <CategoryIcon className="w-3 h-3" />
-            <span className="capitalize">{template.category}</span>
           </div>
         </div>
         
-        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-          {template.description}
-        </p>
-
-        {/* Meta */}
-        <div className="flex items-center gap-3 mt-2">
+        {/* Meta with emojis */}
+        <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
           {template.duration && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" />
-              {template.duration}s
+            <span className="flex items-center gap-1">
+              ⏱️ {template.duration}s
             </span>
           )}
           {template.usageCount !== undefined && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Eye className="w-3 h-3" />
-              {template.usageCount} utilisations
+            <span className="flex items-center gap-1">
+              👁️ {template.usageCount}
             </span>
           )}
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col gap-2">
-        <button
-          onClick={(e) => { e.stopPropagation(); onUse(); }}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors shadow-md"
-        >
-          <Play className="w-4 h-4" />
-          Utiliser
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onPreview(); }}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
-        >
-          <Eye className="w-4 h-4" />
-          Aperçu
-        </button>
-      </div>
+      {/* Action Button - Large Touch Target */}
+      <button
+        onClick={handleUse}
+        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold shadow-md active:scale-95 transition-transform min-h-[48px]"
+        aria-label="Utiliser ce template"
+      >
+        <Play className="w-5 h-5" />
+        <span className="hidden sm:inline">Utiliser</span>
+      </button>
     </motion.div>
   );
 }
