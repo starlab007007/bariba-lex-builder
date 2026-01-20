@@ -20,6 +20,7 @@ export class CaptureEngine {
   private isRecording: boolean = false;
   private realtimeEffects: Set<string> = new Set();
   private animationFrame: number = 0;
+  private flashEnabled: boolean = false;
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -42,14 +43,15 @@ export class CaptureEngine {
   // ==========================================
 
   async initializeCamera(facingMode: 'user' | 'environment' = 'user'): Promise<void> {
-    console.log('📷 Initializing camera...');
+    console.log('📷 Initializing HD camera...');
 
     try {
+      // Contraintes HD optimisées pour qualité maximale
       const constraints: MediaStreamConstraints = {
         video: {
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-          frameRate: { ideal: 30 },
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          frameRate: { ideal: 30, min: 24 },
           facingMode,
           aspectRatio: 9 / 16
         },
@@ -57,7 +59,8 @@ export class CaptureEngine {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 44100
+          sampleRate: 48000,
+          channelCount: 2
         }
       };
 
@@ -69,11 +72,50 @@ export class CaptureEngine {
       // Démarrer preview avec effets temps réel
       this.startRealtimePreview();
 
-      console.log('✅ Camera initialized');
+      console.log('✅ HD Camera initialized');
     } catch (error) {
       console.error('❌ Camera initialization failed:', error);
       throw error;
     }
+  }
+
+  // ==========================================
+  // FLASH / TORCH CONTROL
+  // ==========================================
+
+  async toggleFlash(): Promise<boolean> {
+    if (!this.camera) return false;
+
+    try {
+      const track = this.camera.getVideoTracks()[0];
+      const capabilities = track.getCapabilities() as any;
+      
+      if ('torch' in capabilities) {
+        this.flashEnabled = !this.flashEnabled;
+        await track.applyConstraints({
+          advanced: [{ torch: this.flashEnabled } as any]
+        });
+        console.log(`🔦 Flash ${this.flashEnabled ? 'ON' : 'OFF'}`);
+        return this.flashEnabled;
+      } else {
+        console.warn('⚠️ Flash/torch not supported on this device');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Flash toggle failed:', error);
+      return false;
+    }
+  }
+
+  isFlashEnabled(): boolean {
+    return this.flashEnabled;
+  }
+
+  async setFlash(enabled: boolean): Promise<boolean> {
+    if (this.flashEnabled !== enabled) {
+      return this.toggleFlash();
+    }
+    return this.flashEnabled;
   }
 
   // ==========================================
