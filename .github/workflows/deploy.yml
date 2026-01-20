@@ -47,8 +47,9 @@ jobs:
             cd /home/debian/bariba-lex-builder
 
             echo "📥 Mise à jour du code..."
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch --prune origin main
+            git checkout -B main FETCH_HEAD
+            git reset --hard FETCH_HEAD
 
             echo "🛑 Arrêt des anciens conteneurs..."
             docker compose -f docker-composer.yml down
