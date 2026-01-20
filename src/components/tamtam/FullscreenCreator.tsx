@@ -64,6 +64,7 @@ import { GraphicsDrawer, getGraphicsStyles, getGraphicsClasses } from "./creator
 import { MagicDrawer } from "./creator/MagicDrawer";
 import { TemplateOverlay } from "./creator/TemplateOverlay";
 import AdvancedTemplateDrawer from "./creator/AdvancedTemplateDrawer";
+import { TemplateGalleryModal } from "./templates/TemplateGalleryModal";
 import LiveTemplateEffect from "./creator/LiveTemplateEffect";
 import TemplateCaptureOverlay from "./creator/TemplateCaptureOverlay";
 import MiniTimeline, { MiniTimelineSegment } from "./creator/MiniTimeline";
@@ -2404,98 +2405,59 @@ export default function FullscreenCreator({
       {/* ============ INTEGRATED TEMPLATE FLOW SCREENS ============ */}
       
       {/* Template Selector Drawer */}
+      {/* Premium Template Gallery Modal */}
       <AnimatePresence>
         {drawer === 'template' && templateFlowPhase === 'selecting' && (
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="absolute inset-0 z-[150] bg-background"
-          >
-            <UnifiedTemplateSelector
-              onSelect={(template) => {
-                // ✅ One‑Take Pro: utiliser le moteur dédié (assets lens‑flare/light‑leak/smoke/fire)
-                if (template.id === 'one_take_pro' || template.templateKey === 'one_take_pro') {
-                  console.log('🐴 One‑Take Pro sélectionné (mode dédié)');
-                  setActiveUnifiedTemplate(template);
-                  setTemplateFlowPhase('idle');
-                  setTemplateSegments([]);
-                  setDrawer('none');
-                  setMode('video');
-                  setCanvasRatio('9:16');
-                  setLengthSec(15);
-                  setShowOneTakeProMode(true);
-                  setToast('🐴 One‑Take Pro activé');
-                  return;
-                }
+          <TemplateGalleryModal
+            isOpen={true}
+            onClose={() => {
+              setDrawer('none');
+              setTemplateFlowPhase('idle');
+            }}
+            onSelectTemplate={(template) => {
+              // Premium Templates handlers
+              const premiumTemplateIds = ['griot-digital-premium', 'griot_digital', 'griot-digital'];
+              const beatMakerIds = ['beat-maker-ai', 'beat_maker_ai', 'beatmaker'];
+              const newsStudioIds = ['village-chronicle', 'village_chronicle', 'news-studio'];
 
-                // ✅ Premium Templates: Griot Digital, Beat Maker AI, News Studio
-                const premiumTemplateIds = ['griot-digital-premium', 'griot_digital', 'griot-digital'];
-                const beatMakerIds = ['beat-maker-ai', 'beat_maker_ai', 'beatmaker'];
-                const newsStudioIds = ['village-chronicle', 'village_chronicle', 'news-studio'];
-
-                if (premiumTemplateIds.includes(template.id) || premiumTemplateIds.includes(template.templateKey || '')) {
-                  console.log('🎭 Griot Digital Premium activé');
-                  setActiveUnifiedTemplate(template);
-                  setShowGriotDigitalMode(true);
-                  setDrawer('none');
-                  setToast('🎭 Griot Digital activé');
-                  return;
-                }
-
-                if (beatMakerIds.includes(template.id) || beatMakerIds.includes(template.templateKey || '')) {
-                  console.log('🎵 Beat Maker AI activé');
-                  setActiveUnifiedTemplate(template);
-                  setShowBeatMakerMode(true);
-                  setDrawer('none');
-                  setToast('🎵 Beat Maker AI activé');
-                  return;
-                }
-
-                if (newsStudioIds.includes(template.id) || newsStudioIds.includes(template.templateKey || '')) {
-                  console.log('📺 News Studio activé');
-                  setActiveUnifiedTemplate(template);
-                  setShowNewsStudioMode(true);
-                  setDrawer('none');
-                  setToast('📺 Village Chronicle activé');
-                  return;
-                }
-
-                // Vérifier si c'est un template audio-first (Radio Village Pro)
-                const specialSources = ['radio_village'];
-                const specialIds = ['radio_village_pro_01', 'radio_village'];
-
-                if (specialSources.includes(template.source) || specialIds.includes(template.id)) {
-                  // Mode Radio Village intégré - workflow audio-first sans redirection
-                  console.log('🎙️ Template Radio Village activé en mode intégré:', template.name);
-                  setActiveUnifiedTemplate(template);
-                  setIsRadioVillageMode(true);
-                  setDrawer('none');
-                  setToast(`${template.emoji} ${template.name} activé`);
-                  return;
-                }
-
-                // Templates standards: continuer avec le flux intégré overlay
+              if (premiumTemplateIds.includes(template.id)) {
                 setActiveUnifiedTemplate(template);
-                setTemplateFlowPhase('capturing');
+                setShowGriotDigitalMode(true);
                 setDrawer('none');
-                setTemplateSegments([]);
+                setToast('🎭 Griot Digital activé');
+                return;
+              }
 
-                // Also set duration based on template
-                if (template.duration <= 15) setLengthSec(15);
-                else if (template.duration <= 30) setLengthSec(30);
-                else if (template.duration <= 60) setLengthSec(60);
-                else setLengthSec(180);
-
-                setToast(`${template.emoji} ${template.name} activé`);
-              }}
-              onClose={() => {
+              if (beatMakerIds.includes(template.id)) {
+                setActiveUnifiedTemplate(template);
+                setShowBeatMakerMode(true);
                 setDrawer('none');
-                setTemplateFlowPhase('idle');
-              }}
-            />
-          </motion.div>
+                setToast('🎵 Beat Maker AI activé');
+                return;
+              }
+
+              if (newsStudioIds.includes(template.id)) {
+                setActiveUnifiedTemplate(template);
+                setShowNewsStudioMode(true);
+                setDrawer('none');
+                setToast('📺 Village Chronicle activé');
+                return;
+              }
+
+              // Standard templates
+              setActiveUnifiedTemplate(template);
+              setTemplateFlowPhase('capturing');
+              setDrawer('none');
+              setTemplateSegments([]);
+
+              if (template.duration <= 15) setLengthSec(15);
+              else if (template.duration <= 30) setLengthSec(30);
+              else if (template.duration <= 60) setLengthSec(60);
+              else setLengthSec(180);
+
+              setToast(`${template.emoji} ${template.name} activé`);
+            }}
+          />
         )}
       </AnimatePresence>
 
