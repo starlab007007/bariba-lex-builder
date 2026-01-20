@@ -71,13 +71,80 @@ const TamTamCreator: React.FC = () => {
     }
   }, [hasRecentDraft, phase]);
 
-  // Handle pre-selected template from FullscreenCreator navigation
+  // Handle pre-selected template from FullscreenCreator or TamTamTemplates navigation
   useEffect(() => {
-    const state = location.state as { preselectedTemplate?: UnifiedTemplate } | null;
+    const state = location.state as { 
+      preselectedTemplate?: UnifiedTemplate;
+      templateId?: string;
+    } | null;
+    
+    // Handle templateId from TamTamTemplates gallery
+    if (state?.templateId) {
+      console.log('📦 Template ID reçu depuis TamTamTemplates:', state.templateId);
+      
+      // Import and find the template by ID
+      import('@/components/tamtam/creator/TemplateSystem/templates').then(({ getTemplateById }) => {
+        const foundTemplate = getTemplateById(state.templateId!);
+        if (foundTemplate) {
+          // Map category to UnifiedTemplate category
+          const categoryMap: Record<string, 'social' | 'education' | 'storytelling' | 'music' | 'premium'> = {
+            'storytelling': 'storytelling',
+            'music': 'music',
+            'business': 'social',
+            'education': 'education',
+            'future': 'premium',
+          };
+          
+          // Convert to UnifiedTemplate format
+          const unifiedTemplate: UnifiedTemplate = {
+            id: foundTemplate.id,
+            templateKey: foundTemplate.id,
+            name: foundTemplate.name,
+            name_bariba: foundTemplate.nameBa,
+            description: foundTemplate.description,
+            thumbnail: foundTemplate.thumbnail || '',
+            category: categoryMap[foundTemplate.category] || 'social',
+            duration: foundTemplate.duration,
+            format: '9:16',
+            resolution: { width: 1080, height: 1920 },
+            contentType: 'video',
+            difficulty: 'beginner',
+            icon: '🎬',
+            emoji: '🎬',
+            color: '#7C3AED',
+            isPremium: foundTemplate.isPremium || false,
+            isNew: foundTemplate.isNew || false,
+            isFeatured: false,
+            isActive: true,
+            source: 'kuaishou',
+            originalConfig: null,
+            tags: foundTemplate.tags || [],
+            rating: 5,
+            usageCount: foundTemplate.usageCount || 0,
+            downloadCount: 0,
+          };
+          
+          setSelectedTemplate(unifiedTemplate);
+          setCapturedSegments([]);
+          setCurrentSegmentIndex(0);
+          setFinalVideoBlob(null);
+          setPhase('capturing');
+          toast.success(`${unifiedTemplate.emoji} ${unifiedTemplate.name}`);
+        } else {
+          console.warn('Template non trouvé:', state.templateId);
+          toast.error('Template non trouvé');
+        }
+      });
+      
+      // Clear navigation state
+      window.history.replaceState({}, document.title);
+      return;
+    }
+    
+    // Handle pre-selected template object
     if (state?.preselectedTemplate) {
       console.log('📦 Template pré-sélectionné reçu depuis FullscreenCreator:', state.preselectedTemplate.name);
       
-      // Apply the template
       setSelectedTemplate(state.preselectedTemplate);
       setCapturedSegments([]);
       setCurrentSegmentIndex(0);
@@ -85,7 +152,7 @@ const TamTamCreator: React.FC = () => {
       setPhase('capturing');
       toast.success(`${state.preselectedTemplate.emoji} ${state.preselectedTemplate.name}`);
       
-      // Clear navigation state to prevent re-triggers on refresh
+      // Clear navigation state
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
