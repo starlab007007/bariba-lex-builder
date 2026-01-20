@@ -22,8 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
 type BottomTab = 'fil' | 'chat' | 'groupes' | 'direct';
 
-// URL audio par défaut (silence ou placeholder)
-const DEFAULT_AUDIO_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+// Plus de musique par défaut - uniquement les audios enregistrés/sélectionnés par l'utilisateur
 
 // Helper pour formater la date/heure de publication
 const formatPublicationDate = (dateString: string | null): string => {
@@ -343,7 +342,10 @@ const AudioFeedCard: React.FC<{
 
   return (
     <div className="h-screen w-full snap-start snap-always relative overflow-hidden">
-      <audio ref={audioRef} src={post.audio_url || DEFAULT_AUDIO_URL} loop preload="metadata" />
+      {/* Audio uniquement si l'utilisateur a enregistré/sélectionné un audio */}
+      {post.audio_url && (
+        <audio ref={audioRef} src={post.audio_url} loop preload="metadata" />
+      )}
       
       {/* Background */}
       <div className={`absolute inset-0 bg-gradient-to-br ${template.bgGradient}`} />
@@ -647,10 +649,10 @@ export default function TamTamSocial() {
   // IMPORTANT: Fonction de création avec audio_url par défaut
   const handleCreatePost = useCallback(async (data: any) => {
     try {
-      // S'assurer que audio_url n'est jamais null
+      // Ne pas utiliser d'audio par défaut - uniquement l'audio enregistré par l'utilisateur
       const postData = {
         ...data,
-        audio_url: data.audio_url || DEFAULT_AUDIO_URL,
+        audio_url: data.audio_url || null,
         topic: createPostType,
       };
       
@@ -679,7 +681,7 @@ export default function TamTamSocial() {
       const userId = userData?.user?.id || 'anonymous';
       
       let mediaUrl = d.media_url || null;
-      let audioUrl = d.audio_url || DEFAULT_AUDIO_URL;
+      let audioUrl = d.audio_url || null; // Pas d'audio par défaut
       
       // ✅ FIX: Detect Radio Village Pro explicitly and force video type
       const isRadioVillagePro = d.exportJob?.templateId === 'radio_village_pro' 

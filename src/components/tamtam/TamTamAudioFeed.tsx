@@ -218,13 +218,14 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
   const lastTapRef = useRef<number>(0);
 
   useEffect(() => {
-    if (isActive && audioRef.current) {
+    // Ne jouer que si l'audio existe réellement
+    if (isActive && audioRef.current && post.audioUrl) {
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     } else if (!isActive && audioRef.current) {
       audioRef.current.pause();
       setIsPlaying(false);
     }
-  }, [isActive]);
+  }, [isActive, post.audioUrl]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -276,7 +277,8 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
 
   return (
     <div className="h-screen w-full relative overflow-hidden snap-start snap-always" onClick={handleDoubleTap}>
-      <audio ref={audioRef} src={post.audioUrl} preload="auto" muted={isMuted} />
+      {/* Audio uniquement si disponible */}
+      {post.audioUrl && <audio ref={audioRef} src={post.audioUrl} preload="auto" muted={isMuted} />}
       
       {/* Background */}
       <div className={`absolute inset-0 bg-gradient-to-b ${post.gradient}`} />
@@ -388,11 +390,11 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
   );
 };
 
-// Mock data
+// Mock data - sans URLs audio par défaut (les vrais posts auront leurs propres audios)
 const mockPosts: AudioPost[] = [
   {
     id: '1',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    audioUrl: '', // Pas d'audio par défaut - uniquement les vrais enregistrements
     duration: 180,
     templateId: 'conte_animaux',
     category: 'patrimoine',
@@ -409,7 +411,7 @@ const mockPosts: AudioPost[] = [
   },
   {
     id: '2',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    audioUrl: '', // Pas d'audio par défaut
     duration: 210,
     templateId: 'musique_fete',
     category: 'patrimoine',
@@ -425,7 +427,7 @@ const mockPosts: AudioPost[] = [
   },
   {
     id: '3',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    audioUrl: '', // Pas d'audio par défaut
     duration: 120,
     templateId: 'proverbe_sagesse',
     category: 'patrimoine',
