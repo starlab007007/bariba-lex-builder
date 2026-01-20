@@ -394,7 +394,7 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
 const mockPosts: AudioPost[] = [
   {
     id: '1',
-    audioUrl: '', // Pas d'audio par défaut - uniquement les vrais enregistrements
+    audioUrl: undefined, // Pas d'audio par défaut - uniquement les vrais enregistrements
     duration: 180,
     templateId: 'conte_animaux',
     category: 'patrimoine',
@@ -411,7 +411,7 @@ const mockPosts: AudioPost[] = [
   },
   {
     id: '2',
-    audioUrl: '', // Pas d'audio par défaut
+    audioUrl: undefined, // Pas d'audio par défaut
     duration: 210,
     templateId: 'musique_fete',
     category: 'patrimoine',
@@ -427,7 +427,7 @@ const mockPosts: AudioPost[] = [
   },
   {
     id: '3',
-    audioUrl: '', // Pas d'audio par défaut
+    audioUrl: undefined, // Pas d'audio par défaut
     duration: 120,
     templateId: 'proverbe_sagesse',
     category: 'patrimoine',
