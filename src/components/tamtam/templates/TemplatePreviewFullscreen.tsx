@@ -54,9 +54,10 @@ export function TemplatePreviewFullscreen({
   const [thumbnailError, setThumbnailError] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   
-  const { downloadAssets, getProgress, isTemplateReady } = useTemplateAssets();
-  const progress = getProgress(template.id);
-  const isReady = isTemplateReady(template.id);
+  const { downloadAssets, getProgress } = useTemplateAssets();
+  const progressData = getProgress(template.id);
+  const progress = progressData?.progress || 0;
+  const isReady = progressData?.status === 'ready';
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Handle video playback
@@ -105,7 +106,9 @@ export function TemplatePreviewFullscreen({
     if (isDownloading) return;
     setIsDownloading(true);
     try {
-      await downloadAssets(template.id);
+      // Build manifest from template's effects
+      const manifest = {};
+      await downloadAssets(template.id, manifest);
     } finally {
       setIsDownloading(false);
     }
