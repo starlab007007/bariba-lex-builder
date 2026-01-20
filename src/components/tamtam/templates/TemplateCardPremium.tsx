@@ -56,9 +56,10 @@ export function TemplateCardPremium({
   const [isMuted, setIsMuted] = useState(true);
   const [thumbnailError, setThumbnailError] = useState(false);
   
-  const { getProgress, isTemplateReady } = useTemplateAssets();
-  const assetProgress = getProgress(template.id);
-  const isReady = isTemplateReady(template.id);
+  const { getProgress } = useTemplateAssets();
+  const progressData = getProgress(template.id);
+  const assetProgress = progressData?.progress || 0;
+  const isReady = progressData?.status === 'ready';
 
   const CategoryIcon = CATEGORY_ICONS[template.category] || Sparkles;
 

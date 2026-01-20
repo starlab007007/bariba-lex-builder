@@ -29,6 +29,7 @@ import TamTamTranslator from "./pages/tamtam/TamTamTranslator";
 import TamTamHealth from "./pages/tamtam/TamTamHealth";
 import TamTamKuaishouTest from "./pages/tamtam/TamTamKuaishouTest";
 import TamTamCreator from "./pages/tamtam/TamTamCreator";
+import TamTamTemplates from "./pages/tamtam/TamTamTemplates";
 import TemplateTest from "./pages/TemplateTest";
 import SystemValidation from "./pages/SystemValidation";
 import AssetsDashboard from "./pages/AssetsDashboard";
@@ -75,6 +76,7 @@ const App = () => (
               <Route path="translator" element={<TamTamTranslator />} />
               <Route path="kuaishou-test" element={<TamTamKuaishouTest />} />
               <Route path="creator" element={<TamTamCreator />} />
+              <Route path="templates" element={<TamTamTemplates />} />
               <Route path="sos" element={<TamTamSOS />} />
               <Route path="profile" element={<TamTamProfile />} />
               <Route path="dictionary" element={<TamTamDictionary />} />
