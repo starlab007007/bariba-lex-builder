@@ -271,21 +271,14 @@ serve(async (req) => {
   }
 
   try {
-    // Authenticate the request
+    // Optional authentication - TTS is public for dictionary/learning features
     const { isAuthenticated, userId } = await authenticateRequest(req);
     
-    if (!isAuthenticated) {
-      console.log('⚠️ Unauthenticated TTS request rejected');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Authentication required', 
-          details: 'Please log in to use the text-to-speech service.' 
-        }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (isAuthenticated) {
+      console.log(`🔐 Authenticated TTS request from user: ${userId}`);
+    } else {
+      console.log('📢 Public TTS request (unauthenticated)');
     }
-    
-    console.log(`🔐 Authenticated TTS request from user: ${userId}`);
 
     const { 
       text, 
