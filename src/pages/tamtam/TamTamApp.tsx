@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
+import { BuildInfo } from '@/components/BuildInfo';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 TAM-TAM APP V7 - MENU SIMPLIFIÉ
@@ -261,6 +262,9 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                 <Settings className="w-5 h-5 text-white/50" />
                 <span className="text-white/50 text-sm">Paramètres</span>
               </motion.button>
+              <div className="pt-2 border-t border-white/5">
+                <BuildInfo className="text-white/30" />
+              </div>
             </div>
           </motion.div>
         </>
