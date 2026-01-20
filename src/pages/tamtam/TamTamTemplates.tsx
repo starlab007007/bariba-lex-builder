@@ -31,11 +31,14 @@ export default function TamTamTemplates() {
     setViewMode('preview');
   }, []);
 
-  // Handle using template (go to creator)
+  // Handle using template (go to creator with template)
   const handleUseTemplate = useCallback((template: Template) => {
     if ('vibrate' in navigator) navigator.vibrate(50);
-    setSelectedTemplate(template);
-    navigate('/tamtam/creator', { state: { templateId: template.id } });
+    console.log('🎬 Navigating to creator with template:', template.id, template.name);
+    navigate('/tamtam/creator', { 
+      state: { templateId: template.id },
+      replace: false 
+    });
   }, [navigate]);
 
   // Handle preview close
