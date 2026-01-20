@@ -2,20 +2,24 @@
  * TamTamKuaishouTest.tsx
  * Page de test complète pour le système Kuaishou
  * Workflow: Selection → Capture → Preview → Export
+ * Version: 2.0.0 - Responsive avec navigation
  */
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Bug, Sparkles } from 'lucide-react';
+import { ArrowLeft, Bug, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KuaishouTemplateSelector } from '@/components/tamtam/creator/KuaishouTemplateSelector';
 import { KuaishouCaptureMode } from '@/components/tamtam/creator/KuaishouCaptureMode';
 import { KuaishouPreviewMode } from '@/components/tamtam/creator/KuaishouPreviewMode';
 import { KuaishouDebugPanel } from '@/components/tamtam/creator/KuaishouDebugPanel';
+import { TemplateStepNavigator } from '@/components/tamtam/creator/TemplateStepNavigator';
 import { kuaishouTemplates } from '@/data/KuaishouTemplateData';
 import type { KuaishouTemplateConfig, VideoSegment, TemplateSegment, PreviewVideo } from '@/types/KuaishouTypes';
 
 type WorkflowPhase = 'selecting' | 'capturing' | 'previewing' | 'exporting';
+
+const STEP_LABELS = ['Choisir template', 'Capturer', 'Prévisualiser', 'Publier'];
 
 interface CapturedSegment extends VideoSegment {
   templateSegmentId: string;
@@ -107,39 +111,65 @@ const TamTamKuaishouTest: React.FC = () => {
     setCurrentSegmentIndex(0);
   }, []);
 
+  // Get current step index for navigation
+  const getCurrentStepIndex = () => {
+    switch (phase) {
+      case 'selecting': return 0;
+      case 'capturing': return 1;
+      case 'previewing': return 2;
+      case 'exporting': return 3;
+      default: return 0;
+    }
+  };
+
   return (
-    <div className="relative min-h-screen bg-background">
-      {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-background/80 backdrop-blur-lg border-b border-border">
+    <div className="relative min-h-[100dvh] bg-background flex flex-col overflow-hidden">
+      {/* Header - Fixed */}
+      <header className="shrink-0 sticky top-0 z-50 flex items-center justify-between p-4 bg-background/95 backdrop-blur-lg border-b border-border">
         <div className="flex items-center gap-3">
           {phase !== 'selecting' && (
-            <Button variant="ghost" size="icon" onClick={handleBack}>
+            <Button variant="ghost" size="icon" onClick={handleBack} className="rounded-full">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           )}
           <div>
             <h1 className="text-lg font-bold flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
-              Kuaishou Test
+              Créateur Kuaishou
             </h1>
             <p className="text-xs text-muted-foreground">
-              Phase: {phase} {selectedTemplate && `• ${selectedTemplate.name}`}
+              {STEP_LABELS[getCurrentStepIndex()]} {selectedTemplate && `• ${selectedTemplate.name}`}
             </p>
           </div>
         </div>
 
-        <Button
-          variant={showDebug ? "default" : "outline"}
-          size="sm"
-          onClick={() => setShowDebug(!showDebug)}
-        >
-          <Bug className="w-4 h-4 mr-2" />
-          Debug
-        </Button>
-      </div>
+        <div className="flex items-center gap-2">
+          {/* Progress Dots */}
+          <div className="hidden sm:flex items-center gap-1.5 mr-2">
+            {STEP_LABELS.map((_, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  i <= getCurrentStepIndex() ? 'bg-primary' : 'bg-muted-foreground/30'
+                }`}
+              />
+            ))}
+          </div>
 
-      {/* Main Content */}
-      <div className="pt-20 pb-4">
+          <Button
+            variant={showDebug ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowDebug(!showDebug)}
+            className="gap-1"
+          >
+            <Bug className="w-4 h-4" />
+            <span className="hidden sm:inline">Debug</span>
+          </Button>
+        </div>
+      </header>
+
+      {/* Scrollable Main Content */}
+      <main className="flex-1 overflow-y-auto pb-24">
         <AnimatePresence mode="wait">
           {/* Phase 1: Template Selection */}
           {phase === 'selecting' && (
@@ -148,14 +178,24 @@ const TamTamKuaishouTest: React.FC = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
+              className="p-4"
             >
-              <KuaishouTemplateSelector
-                templates={kuaishouTemplates}
-                onSelect={handleTemplateSelect}
-              />
+              <div className="max-w-4xl mx-auto">
+                <div className="mb-6 text-center">
+                  <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
+                    🎬 Choisissez votre template
+                  </h2>
+                  <p className="text-sm sm:text-base text-muted-foreground">
+                    Sélectionnez un style pour votre création vidéo
+                  </p>
+                </div>
+                <KuaishouTemplateSelector
+                  templates={kuaishouTemplates}
+                  onSelect={handleTemplateSelect}
+                />
+              </div>
             </motion.div>
           )}
-
           {/* Phase 2: Capture */}
           {phase === 'capturing' && selectedTemplate && currentSegment && (
             <motion.div
@@ -163,7 +203,7 @@ const TamTamKuaishouTest: React.FC = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="h-[calc(100vh-5rem)]"
+              className="h-[calc(100dvh-4rem)]"
             >
               <KuaishouCaptureMode
                 template={selectedTemplate}
@@ -188,7 +228,7 @@ const TamTamKuaishouTest: React.FC = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="h-[calc(100vh-5rem)]"
+              className="h-[calc(100dvh-4rem)]"
             >
               <KuaishouPreviewMode
                 template={selectedTemplate}
@@ -205,27 +245,27 @@ const TamTamKuaishouTest: React.FC = () => {
               key="exporting"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center h-[calc(100vh-5rem)] gap-6"
+              className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-6"
             >
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: 'spring' }}
-                className="text-8xl"
+                className="text-7xl sm:text-8xl"
               >
                 🎉
               </motion.div>
-              <h2 className="text-2xl font-bold">Vidéo exportée!</h2>
-              <p className="text-muted-foreground text-center max-w-md">
-                Votre création Kuaishou est prête à être partagée avec le monde.
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground">Vidéo publiée!</h2>
+              <p className="text-sm sm:text-base text-muted-foreground text-center max-w-md">
+                Votre création est prête à être partagée.
               </p>
-              <Button onClick={handleReset} size="lg">
+              <Button onClick={handleReset} size="lg" className="mt-4">
                 Créer une autre vidéo
               </Button>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </main>
 
       {/* Debug Panel */}
       <AnimatePresence>
