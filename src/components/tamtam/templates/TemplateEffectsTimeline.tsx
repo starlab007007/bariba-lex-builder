@@ -1,11 +1,11 @@
 /**
- * TemplateEffectsTimeline - Visual timeline for template effects
- * Shows beat-sync, transitions, particles, and other effect markers
+ * TemplateEffectsTimeline - Visual Timeline with Emoji Indicators
+ * Voice-First: Uses colors and emojis instead of text labels
  */
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Sparkles, Volume2, Type, Image, Layers } from 'lucide-react';
+import { Volume2 } from 'lucide-react';
 import { Effect, EffectType } from '@/components/tamtam/creator/TemplateSystem/types';
 import { cn } from '@/lib/utils';
 
@@ -16,16 +16,17 @@ interface TemplateEffectsTimelineProps {
   onSeek: (time: number) => void;
 }
 
-const EFFECT_ICONS: Record<EffectType, React.ElementType> = {
-  'lens-flare': Sparkles,
-  'light-leak': Zap,
-  '3d-object': Layers,
-  'particles': Sparkles,
-  'text': Type,
-  'transition': Image,
-  'texture': Layers,
-  'color-grade': Image,
-  'sticker': Image,
+// Emoji-based effect representation for voice-first design
+const EFFECT_EMOJIS: Record<EffectType, string> = {
+  'lens-flare': '✨',
+  'light-leak': '🌈',
+  '3d-object': '🎲',
+  'particles': '💫',
+  'text': '📝',
+  'transition': '🔀',
+  'texture': '🎨',
+  'color-grade': '🖌️',
+  'sticker': '🏷️',
 };
 
 const EFFECT_COLORS: Record<EffectType, string> = {
@@ -45,7 +46,7 @@ interface TimelineMarker {
   type: EffectType;
   startTime: number;
   endTime: number;
-  label: string;
+  emoji: string;
 }
 
 export function TemplateEffectsTimeline({
@@ -54,6 +55,7 @@ export function TemplateEffectsTimeline({
   currentTime,
   onSeek
 }: TemplateEffectsTimelineProps) {
+  
   // Convert effects to timeline markers
   const markers = useMemo<TimelineMarker[]>(() => {
     return effects.map((effect, index) => {
@@ -63,13 +65,6 @@ export function TemplateEffectsTimeline({
       if (effect.config.timeRange) {
         startTime = effect.config.timeRange[0];
         endTime = effect.config.timeRange[1];
-      } else if (effect.trigger === 'beat') {
-        // For beat-triggered effects, show as periodic markers
-        startTime = 0;
-        endTime = duration;
-      } else if (effect.trigger === 'always') {
-        startTime = 0;
-        endTime = duration;
       }
       
       return {
@@ -77,57 +72,54 @@ export function TemplateEffectsTimeline({
         type: effect.type,
         startTime,
         endTime,
-        label: effect.type.replace('-', ' ')
+        emoji: EFFECT_EMOJIS[effect.type] || '✨'
       };
     });
   }, [effects, duration]);
 
-  // Group markers by type for better visualization
+  // Group by type
   const groupedMarkers = useMemo(() => {
     const groups: Record<string, TimelineMarker[]> = {};
     markers.forEach(marker => {
-      if (!groups[marker.type]) {
-        groups[marker.type] = [];
-      }
+      if (!groups[marker.type]) groups[marker.type] = [];
       groups[marker.type].push(marker);
     });
     return groups;
   }, [markers]);
 
-  // Generate tick marks
+  // Time ticks
   const ticks = useMemo(() => {
-    const tickCount = Math.min(Math.ceil(duration / 5), 10);
-    return Array.from({ length: tickCount + 1 }, (_, i) => {
-      const time = (duration / tickCount) * i;
-      return {
-        time,
-        label: `${Math.floor(time)}s`
-      };
-    });
+    const count = Math.min(Math.ceil(duration / 5), 8);
+    return Array.from({ length: count + 1 }, (_, i) => ({
+      time: (duration / count) * i,
+      label: `${Math.floor((duration / count) * i)}s`
+    }));
   }, [duration]);
 
   const currentPosition = (currentTime / duration) * 100;
+  const hasBeatSync = effects.some(e => e.trigger === 'beat');
 
   return (
     <div className="space-y-3">
-      {/* Timeline Container */}
+      {/* Timeline Container - Large Touch Target */}
       <div 
-        className="relative h-24 bg-muted/30 rounded-xl overflow-hidden cursor-pointer"
+        className="relative h-20 md:h-24 bg-muted/30 rounded-2xl overflow-hidden cursor-pointer touch-manipulation"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const percentage = x / rect.width;
+          if ('vibrate' in navigator) navigator.vibrate(15);
           onSeek(percentage * duration);
         }}
       >
-        {/* Tick Marks */}
-        <div className="absolute inset-x-0 top-0 h-4 flex">
+        {/* Time Ticks */}
+        <div className="absolute inset-x-0 top-0 h-5 flex">
           {ticks.map((tick, index) => (
             <div
               key={index}
               className="flex-1 border-l border-muted-foreground/20 relative"
             >
-              <span className="absolute top-1 left-1 text-[10px] text-muted-foreground">
+              <span className="absolute top-0.5 left-1 text-[10px] text-muted-foreground font-medium">
                 {tick.label}
               </span>
             </div>
@@ -135,21 +127,20 @@ export function TemplateEffectsTimeline({
         </div>
 
         {/* Effect Tracks */}
-        <div className="absolute inset-x-0 top-5 bottom-2 flex flex-col gap-1 px-1">
-          {Object.entries(groupedMarkers).slice(0, 4).map(([type, typeMarkers], trackIndex) => {
-            const Icon = EFFECT_ICONS[type as EffectType] || Sparkles;
+        <div className="absolute inset-x-0 top-6 bottom-2 flex flex-col gap-1 px-2">
+          {Object.entries(groupedMarkers).slice(0, 3).map(([type, typeMarkers], trackIndex) => {
+            const emoji = EFFECT_EMOJIS[type as EffectType] || '✨';
             const color = EFFECT_COLORS[type as EffectType] || 'bg-primary';
             
             return (
-              <div key={type} className="flex-1 relative flex items-center">
-                {/* Track Label */}
-                <div className="w-16 flex items-center gap-1 text-[10px] text-muted-foreground truncate">
-                  <Icon className="w-3 h-3 flex-shrink-0" />
-                  <span className="truncate capitalize">{type.replace('-', ' ')}</span>
+              <div key={type} className="flex-1 relative flex items-center min-h-[18px]">
+                {/* Track Label - Emoji Only */}
+                <div className="w-8 flex items-center justify-center text-base">
+                  {emoji}
                 </div>
                 
                 {/* Track Bar */}
-                <div className="flex-1 relative h-4 bg-muted/50 rounded-sm overflow-hidden">
+                <div className="flex-1 relative h-4 bg-muted/50 rounded-lg overflow-hidden">
                   {typeMarkers.map((marker, i) => {
                     const left = (marker.startTime / duration) * 100;
                     const width = ((marker.endTime - marker.startTime) / duration) * 100;
@@ -159,14 +150,14 @@ export function TemplateEffectsTimeline({
                         key={marker.id}
                         initial={{ scaleX: 0 }}
                         animate={{ scaleX: 1 }}
-                        transition={{ delay: trackIndex * 0.1 + i * 0.05 }}
+                        transition={{ delay: trackIndex * 0.08 + i * 0.03 }}
                         className={cn(
-                          "absolute top-0 bottom-0 rounded-sm opacity-70 hover:opacity-100 transition-opacity",
+                          "absolute top-0 bottom-0 rounded-md opacity-75 hover:opacity-100 transition-opacity",
                           color
                         )}
                         style={{
                           left: `${left}%`,
-                          width: `${Math.max(width, 2)}%`,
+                          width: `${Math.max(width, 3)}%`,
                           transformOrigin: 'left'
                         }}
                       />
@@ -180,40 +171,43 @@ export function TemplateEffectsTimeline({
 
         {/* Playhead */}
         <motion.div
-          className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg z-10"
+          className="absolute top-0 bottom-0 w-1 bg-white shadow-lg z-10 rounded-full"
           style={{ left: `${currentPosition}%` }}
           animate={{ left: `${currentPosition}%` }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
         >
-          {/* Playhead Handle */}
-          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white shadow-md" />
+          <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white shadow-md" />
         </motion.div>
       </div>
 
-      {/* Effect Type Legend */}
+      {/* Effect Legend - Emoji-Based */}
       <div className="flex flex-wrap gap-2">
-        {Object.entries(groupedMarkers).slice(0, 6).map(([type]) => {
-          const Icon = EFFECT_ICONS[type as EffectType] || Sparkles;
+        {Object.entries(groupedMarkers).slice(0, 5).map(([type]) => {
+          const emoji = EFFECT_EMOJIS[type as EffectType] || '✨';
           const color = EFFECT_COLORS[type as EffectType] || 'bg-primary';
           
           return (
             <div
               key={type}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted text-xs"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-muted text-sm"
             >
-              <div className={cn("w-2 h-2 rounded-full", color)} />
-              <span className="capitalize text-muted-foreground">{type.replace('-', ' ')}</span>
+              <div className={cn("w-2.5 h-2.5 rounded-full", color)} />
+              <span>{emoji}</span>
             </div>
           );
         })}
       </div>
 
       {/* Beat Sync Indicator */}
-      {effects.some(e => e.trigger === 'beat') && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm">
+      {hasBeatSync && (
+        <motion.div 
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 text-primary text-sm font-medium"
+        >
           <Volume2 className="w-4 h-4" />
-          <span>Ce template utilise la synchronisation audio (Beat-Sync)</span>
-        </div>
+          <span>🎵 Synchronisation audio (Beat-Sync)</span>
+        </motion.div>
       )}
     </div>
   );
