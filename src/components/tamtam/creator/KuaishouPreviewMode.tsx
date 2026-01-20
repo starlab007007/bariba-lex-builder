@@ -21,7 +21,9 @@ import {
   Music,
   Sticker,
   Wand2,
-  Check
+  Check,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +32,7 @@ import { Progress } from '@/components/ui/progress';
 import { KuaishouTemplateConfig, VideoSegment, PreviewVideo } from '@/types/KuaishouTypes';
 import { HybridRenderingEngine } from '@/engines/HybridRenderingEngine';
 import { KuaishouEffectsOverlay } from './KuaishouEffects';
+import { TemplateStepNavigator } from './TemplateStepNavigator';
 
 interface KuaishouPreviewModeProps {
   template: KuaishouTemplateConfig;
@@ -237,27 +240,32 @@ export const KuaishouPreviewMode: React.FC<KuaishouPreviewModeProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-black/80">
+    <div className="fixed inset-0 bg-black flex flex-col h-[100dvh] overflow-hidden">
+      {/* Header - Fixed */}
+      <div className="shrink-0 flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm border-b border-white/10">
         <Button variant="ghost" size="icon" onClick={onBack} className="text-white">
-          <ChevronLeft className="w-6 h-6" />
+          <ArrowLeft className="w-6 h-6" />
         </Button>
 
-        <h2 className="text-white font-semibold">Prévisualisation</h2>
+        <div className="text-center">
+          <h2 className="text-white font-semibold text-lg">Prévisualisation</h2>
+          <p className="text-white/60 text-xs">Étape 3/4 • Vérification</p>
+        </div>
 
         <Button
           onClick={handlePublish}
           disabled={isRendering || !previewVideo}
-          className="bg-primary text-primary-foreground"
+          className="bg-green-600 hover:bg-green-700 text-white"
         >
           <Check className="w-4 h-4 mr-2" />
           Publier
         </Button>
       </div>
 
-      {/* Video Preview */}
-      <div className="flex-1 relative flex items-center justify-center bg-black">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Video Preview */}
+        <div className="relative flex items-center justify-center bg-black min-h-[50vh]">
         {isRendering ? (
           <div className="text-center">
             <div className="mb-4">
@@ -525,16 +533,27 @@ export const KuaishouPreviewMode: React.FC<KuaishouPreviewModeProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Export Options */}
-      <div className="flex gap-2 p-4 bg-black">
-        <Button variant="outline" className="flex-1" disabled={!previewVideo}>
-          <Download className="w-4 h-4 mr-2" />
-          Télécharger
-        </Button>
-        <Button variant="outline" className="flex-1" disabled={!previewVideo}>
-          <Share2 className="w-4 h-4 mr-2" />
-          Partager
-        </Button>
+      {/* Fixed Bottom Navigation */}
+      <div className="shrink-0 bg-black/95 backdrop-blur-lg border-t border-white/10 p-4 pb-[env(safe-area-inset-bottom)]">
+        <div className="flex gap-3">
+          <Button 
+            variant="outline" 
+            onClick={onBack}
+            className="flex-1 h-12 text-base border-white/20 text-white hover:bg-white/10"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Retour
+          </Button>
+          <Button 
+            onClick={handlePublish}
+            disabled={isRendering || !previewVideo}
+            className="flex-1 h-12 text-base bg-green-600 hover:bg-green-700 text-white"
+          >
+            Publier
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
+        </div>
+      </div>
       </div>
     </div>
   );

@@ -16,7 +16,11 @@ import {
   Play,
   Square,
   Music,
-  Wand2
+  Wand2,
+  Flashlight,
+  FlashlightOff,
+  SwitchCamera,
+  ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +28,7 @@ import { Progress } from '@/components/ui/progress';
 import { KuaishouTemplateConfig, TemplateSegment, VideoSegment } from '@/types/KuaishouTypes';
 import { CaptureEngine } from '@/engines/CaptureEngine';
 import { KuaishouEffectsOverlay } from './KuaishouEffects';
+import { TemplateStepNavigator } from './TemplateStepNavigator';
 
 interface KuaishouCaptureModeProps {
   template: KuaishouTemplateConfig;
@@ -52,6 +57,7 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
   const [activeEffects, setActiveEffects] = useState<string[]>(['beauty', 'stabilization']);
   const [showEffectsPanel, setShowEffectsPanel] = useState(false);
   const [isFrontCamera, setIsFrontCamera] = useState(true);
+  const [flashEnabled, setFlashEnabled] = useState(false);
 
   const captureEngineRef = useRef<CaptureEngine | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -62,17 +68,23 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
   const maxDuration = currentSegment.maxDuration || currentSegment.duration;
   const minDuration = currentSegment.minDuration || 3;
 
-  // Initialize camera directly
+  // Initialize camera with HD quality
   useEffect(() => {
     const initCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: 1080 },
-            height: { ideal: 1920 },
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 },
+            frameRate: { ideal: 30, min: 24 },
             facingMode: isFrontCamera ? 'user' : 'environment'
           },
-          audio: true
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000
+          }
         });
 
         if (videoRef.current) {
@@ -104,11 +116,42 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
     };
   }, [isFrontCamera]);
 
-  // Handle camera flip
+  // Handle camera flip with haptic feedback
   const handleFlipCamera = useCallback(async () => {
+    if (navigator.vibrate) navigator.vibrate(30);
     setIsFrontCamera(prev => !prev);
     await captureEngineRef.current?.switchCamera();
   }, []);
+
+  // Toggle flash/torch
+  const handleToggleFlash = useCallback(async () => {
+    if (navigator.vibrate) navigator.vibrate(20);
+    
+    // Try to toggle flash via CaptureEngine
+    const result = await captureEngineRef.current?.toggleFlash();
+    if (result !== undefined) {
+      setFlashEnabled(result);
+      return;
+    }
+    
+    // Fallback: try to toggle torch on the stream directly
+    const stream = videoRef.current?.srcObject as MediaStream;
+    if (stream) {
+      try {
+        const track = stream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities() as any;
+        if ('torch' in capabilities) {
+          const newFlashState = !flashEnabled;
+          await track.applyConstraints({
+            advanced: [{ torch: newFlashState } as any]
+          });
+          setFlashEnabled(newFlashState);
+        }
+      } catch (err) {
+        console.warn('Flash not supported:', err);
+      }
+    }
+  }, [flashEnabled]);
 
   // Toggle effect
   const toggleEffect = useCallback((effect: string) => {
@@ -414,13 +457,40 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Side Controls */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-4">
+        {/* Side Controls - Camera Controls */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-3">
+          {/* Flash Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggleFlash}
+            className={`text-white rounded-full w-12 h-12 ${flashEnabled ? 'bg-yellow-500' : 'bg-black/50'}`}
+            title={flashEnabled ? 'Flash activé' : 'Flash désactivé'}
+          >
+            {flashEnabled ? (
+              <Flashlight className="w-6 h-6" />
+            ) : (
+              <FlashlightOff className="w-6 h-6" />
+            )}
+          </Button>
+
+          {/* Camera Flip */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleFlipCamera}
+            className="text-white rounded-full bg-black/50 w-12 h-12"
+            title={isFrontCamera ? 'Caméra arrière' : 'Caméra frontale'}
+          >
+            <SwitchCamera className="w-6 h-6" />
+          </Button>
+          
+          {/* Effects */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setShowEffectsPanel(prev => !prev)}
-            className={`text-white rounded-full ${showEffectsPanel ? 'bg-primary' : 'bg-black/50'}`}
+            className={`text-white rounded-full w-12 h-12 ${showEffectsPanel ? 'bg-primary' : 'bg-black/50'}`}
           >
             <Sparkles className="w-6 h-6" />
           </Button>
@@ -429,7 +499,7 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              className="text-white rounded-full bg-black/50"
+              className="text-white rounded-full bg-black/50 w-12 h-12"
             >
               <Music className="w-6 h-6" />
             </Button>
@@ -439,11 +509,23 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
             variant="ghost"
             size="icon"
             onClick={startCountdown}
-            className="text-white rounded-full bg-black/50"
+            className="text-white rounded-full bg-black/50 w-12 h-12"
             disabled={captureState !== 'preview'}
           >
             <Timer className="w-6 h-6" />
           </Button>
+        </div>
+
+        {/* Left Controls - Camera Label */}
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
+          <div className="bg-black/50 backdrop-blur-sm rounded-xl px-3 py-2 text-center">
+            <p className="text-white text-xs font-medium">
+              {isFrontCamera ? '📱 Front' : '📷 Back'}
+            </p>
+            {flashEnabled && (
+              <p className="text-yellow-400 text-[10px] mt-1">⚡ Flash ON</p>
+            )}
+          </div>
         </div>
       </div>
 
