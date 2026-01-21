@@ -251,7 +251,7 @@ interface PhonemeData {
 // ============================================
 
 export class VillageChronicleEngine {
-  private renderer: THREE.WebGLRenderer;
+  private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private assetLoader: AssetLoader3D;
@@ -260,25 +260,101 @@ export class VillageChronicleEngine {
   private newsShow?: NewsShow;
   private currentSegmentIndex: number = 0;
   private isPlaying: boolean = false;
+  private canvas: HTMLCanvasElement;
+  private ctx2D: CanvasRenderingContext2D | null = null;
+  private use2DFallback: boolean = false;
+  private isInitialized: boolean = false;
 
   constructor(canvas: HTMLCanvasElement) {
-    this.renderer = new THREE.WebGLRenderer({ 
-      canvas, 
-      antialias: true,
-      alpha: true 
-    });
-    this.renderer.setSize(1920, 1080);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
+    this.canvas = canvas;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(35, 16/9, 0.1, 1000);
     this.camera.position.set(0, 1.6, 3);
     this.camera.lookAt(0, 1.4, 0);
 
+    // Try WebGL, fallback to 2D canvas
+    try {
+      this.renderer = new THREE.WebGLRenderer({ 
+        canvas, 
+        antialias: true,
+        alpha: true 
+      });
+      this.renderer.setSize(1920, 1080);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      this.use2DFallback = false;
+      console.log('[VillageChronicle] WebGL renderer initialized');
+    } catch (error) {
+      console.warn('[VillageChronicle] WebGL not available, using 2D fallback:', error);
+      this.ctx2D = canvas.getContext('2d');
+      this.use2DFallback = true;
+    }
+
     this.assetLoader = new AssetLoader3D();
     this.particleManager = new ParticleSystemManager();
+    this.isInitialized = true;
+  }
+
+  /**
+   * Check if the engine is properly initialized
+   */
+  isReady(): boolean {
+    return this.isInitialized && (this.renderer !== null || this.ctx2D !== null);
+  }
+
+  /**
+   * Get engine status for debugging
+   */
+  getStatus(): { initialized: boolean; mode: 'webgl' | '2d'; hasAnchor: boolean } {
+    return {
+      initialized: this.isInitialized,
+      mode: this.use2DFallback ? '2d' : 'webgl',
+      hasAnchor: !!this.anchor
+    };
+  }
+
+  /**
+   * Draw 2D fallback studio when WebGL fails
+   */
+  private draw2DFallbackFrame(time: number = 0): void {
+    if (!this.ctx2D) return;
+    
+    const ctx = this.ctx2D;
+    const { width, height } = this.canvas;
+
+    // Studio background
+    const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
+    bgGradient.addColorStop(0, '#1e3a5f');
+    bgGradient.addColorStop(1, '#0a1628');
+    ctx.fillStyle = bgGradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Simple desk
+    ctx.fillStyle = 'rgba(40, 60, 80, 0.9)';
+    ctx.fillRect(width * 0.1, height * 0.7, width * 0.8, height * 0.15);
+
+    // Anchor placeholder
+    const anchorX = width / 2;
+    const anchorY = height * 0.4;
+    
+    ctx.fillStyle = 'rgba(100, 140, 180, 0.7)';
+    ctx.beginPath();
+    ctx.arc(anchorX, anchorY - 40, 40, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.ellipse(anchorX, anchorY + 50, 60, 70, 0, 0, Math.PI);
+    ctx.fill();
+
+    // Lower third
+    ctx.fillStyle = 'rgba(180, 30, 30, 0.9)';
+    ctx.fillRect(0, height * 0.85, width, height * 0.08);
+    
+    ctx.font = 'bold 24px system-ui';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText('Journal du Village', width / 2, height * 0.9);
   }
 
   // ============================================

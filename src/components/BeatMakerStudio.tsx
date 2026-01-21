@@ -135,6 +135,81 @@ export const BeatMakerStudio: React.FC = () => {
     }
   }, [composition]);
 
+  // Dynamic preview animation for idle state
+  useEffect(() => {
+    if (!canvasRef.current || composition) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationId: number;
+    let time = 0;
+
+    const drawPreview = () => {
+      const { width, height } = canvas;
+      
+      // Clear with gradient background
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, '#1a1a2e');
+      gradient.addColorStop(0.5, '#16213e');
+      gradient.addColorStop(1, '#0f0f23');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw animated waveform bars
+      const barCount = 32;
+      const barWidth = width / barCount - 4;
+      const centerY = height / 2;
+
+      for (let i = 0; i < barCount; i++) {
+        const frequency = (i + 1) / barCount;
+        const amplitude = Math.sin(time * 2 + i * 0.3) * 0.5 + 0.5;
+        const barHeight = (20 + amplitude * 80) * (1 - Math.abs(i - barCount / 2) / barCount);
+        
+        // Color based on position
+        const hue = 200 + (i / barCount) * 60;
+        ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${0.6 + amplitude * 0.4})`;
+        
+        const x = i * (barWidth + 4) + 2;
+        ctx.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
+      }
+
+      // Draw beat circles
+      for (let i = 0; i < 4; i++) {
+        const beatTime = (time * 2 + i * Math.PI / 2) % (Math.PI * 2);
+        const scale = Math.sin(beatTime) * 0.3 + 0.7;
+        const opacity = Math.max(0, Math.sin(beatTime));
+        
+        ctx.beginPath();
+        ctx.arc(
+          width * (0.2 + i * 0.2),
+          height * 0.85,
+          10 * scale,
+          0,
+          Math.PI * 2
+        );
+        ctx.fillStyle = `hsla(${280 + i * 30}, 70%, 60%, ${opacity * 0.8})`;
+        ctx.fill();
+      }
+
+      // Draw style indicator
+      ctx.font = 'bold 14px system-ui';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${style.toUpperCase()} • ${tempo} BPM`, width / 2, height - 20);
+
+      time += 0.03;
+      animationId = requestAnimationFrame(drawPreview);
+    };
+
+    drawPreview();
+
+    return () => {
+      if (animationId) cancelAnimationFrame(animationId);
+    };
+  }, [composition, style, tempo]);
+
   // Recording timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
