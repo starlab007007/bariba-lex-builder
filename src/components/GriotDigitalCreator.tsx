@@ -686,6 +686,80 @@ export const GriotDigitalCreator: React.FC = () => {
     </motion.div>
   );
 
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
+
+  // Initialize 3D preview when entering preview step
+  useEffect(() => {
+    if (state.step === 'preview' && canvasRef.current && !previewReady) {
+      setPreviewLoading(true);
+      // Initialize a simple preview scene with canvas fallback
+      const initPreview = async () => {
+        try {
+          // Draw a styled preview directly on canvas
+          const ctx = canvasRef.current?.getContext('2d');
+          if (ctx && canvasRef.current) {
+            const w = canvasRef.current.width;
+            const h = canvasRef.current.height;
+            // Background gradient based on style
+            const colors = {
+              traditional: ['#1a1a2e', '#2d1f0f', '#3d2914'],
+              modern: ['#1E1B4B', '#312e81', '#4338ca'],
+              fantasy: ['#2E1065', '#581c87', '#7c3aed'],
+              historical: ['#2D1F0F', '#451a03', '#78350f']
+            };
+            const styleColors = colors[state.style] || colors.traditional;
+            const gradient = ctx.createLinearGradient(0, 0, 0, h);
+            gradient.addColorStop(0, styleColors[0]);
+            gradient.addColorStop(0.5, styleColors[1]);
+            gradient.addColorStop(1, styleColors[2]);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, w, h);
+            
+            // Draw griot silhouette
+            ctx.fillStyle = '#D4A574';
+            ctx.beginPath();
+            ctx.arc(w / 2, h / 3, 35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(w / 2 - 20, h / 3 + 30, 40, 80);
+            
+            // Add particles effect
+            ctx.fillStyle = 'rgba(212, 165, 116, 0.3)';
+            for (let i = 0; i < 20; i++) {
+              const x = Math.random() * w;
+              const y = Math.random() * h;
+              ctx.beginPath();
+              ctx.arc(x, y, Math.random() * 4 + 1, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          setPreviewReady(true);
+        } catch (error) {
+          console.warn('Preview init failed, using fallback:', error);
+          // Fallback: draw a simple gradient
+          const ctx = canvasRef.current?.getContext('2d');
+          if (ctx && canvasRef.current) {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvasRef.current.height);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(0.5, '#16213e');
+            gradient.addColorStop(1, '#0f0f1a');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+            // Draw decorative elements
+            ctx.fillStyle = '#D4A574';
+            ctx.beginPath();
+            ctx.arc(canvasRef.current.width / 2, canvasRef.current.height / 3, 40, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          setPreviewReady(true);
+        } finally {
+          setPreviewLoading(false);
+        }
+      };
+      initPreview();
+    }
+  }, [state.step, state.style, previewReady]);
+
   const renderPreviewStep = () => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -696,17 +770,29 @@ export const GriotDigitalCreator: React.FC = () => {
       {/* 3D Preview */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="aspect-[9/16] max-h-[60vh] bg-black relative">
+          <div className="aspect-[9/16] max-h-[60vh] bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f1a] relative">
             <canvas
               ref={canvasRef}
-              className="w-full h-full"
+              width={540}
+              height={960}
+              className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-white/50 space-y-2">
-                <Play className="h-12 w-12 mx-auto" />
-                <p>Aperçu 3D</p>
+            {previewLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <div className="text-center text-white space-y-3">
+                  <Loader2 className="h-10 w-10 mx-auto animate-spin text-primary" />
+                  <p className="text-sm">Chargement de la scène 3D...</p>
+                </div>
               </div>
-            </div>
+            )}
+            {!previewLoading && previewReady && (
+              <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30">
+                <span className="text-primary text-xs font-medium flex items-center gap-1.5">
+                  <span>🎭</span>
+                  Aperçu {state.style}
+                </span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
