@@ -218,8 +218,10 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
   const lastTapRef = useRef<number>(0);
 
   useEffect(() => {
-    // Ne jouer que si l'audio existe réellement
-    if (isActive && audioRef.current && post.audioUrl) {
+    // Ne jouer que si l'audio existe réellement et n'est pas vide
+    const hasValidAudio = post.audioUrl && post.audioUrl.trim().length > 0;
+    
+    if (isActive && audioRef.current && hasValidAudio) {
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     } else if (!isActive && audioRef.current) {
       audioRef.current.pause();
@@ -275,10 +277,12 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
   };
   const formatTime = (t: number) => `${Math.floor(t / 60)}:${Math.floor(t % 60).toString().padStart(2, '0')}`;
 
+  const hasValidAudio = post.audioUrl && post.audioUrl.trim().length > 0;
+
   return (
     <div className="h-screen w-full relative overflow-hidden snap-start snap-always" onClick={handleDoubleTap}>
-      {/* Audio uniquement si disponible */}
-      {post.audioUrl && <audio ref={audioRef} src={post.audioUrl} preload="auto" muted={isMuted} />}
+      {/* Audio uniquement si disponible et valide */}
+      {hasValidAudio && <audio ref={audioRef} src={post.audioUrl} preload="auto" muted={isMuted} />}
       
       {/* Background */}
       <div className={`absolute inset-0 bg-gradient-to-b ${post.gradient}`} />
@@ -394,7 +398,7 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
 const mockPosts: AudioPost[] = [
   {
     id: '1',
-    audioUrl: undefined, // Pas d'audio par défaut - uniquement les vrais enregistrements
+    audioUrl: '', // Chaîne vide = pas de musique de fond automatique
     duration: 180,
     templateId: 'conte_animaux',
     category: 'patrimoine',
@@ -411,7 +415,7 @@ const mockPosts: AudioPost[] = [
   },
   {
     id: '2',
-    audioUrl: undefined, // Pas d'audio par défaut
+    audioUrl: '', // Chaîne vide = pas de musique de fond automatique
     duration: 210,
     templateId: 'musique_fete',
     category: 'patrimoine',
@@ -427,7 +431,7 @@ const mockPosts: AudioPost[] = [
   },
   {
     id: '3',
-    audioUrl: undefined, // Pas d'audio par défaut
+    audioUrl: '', // Chaîne vide = pas de musique de fond automatique
     duration: 120,
     templateId: 'proverbe_sagesse',
     category: 'patrimoine',

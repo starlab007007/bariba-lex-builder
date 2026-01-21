@@ -21,7 +21,8 @@ import {
   ChevronRight,
   Download,
   Share2,
-  RotateCcw
+  RotateCcw,
+  ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { TemplateStepNavigator, TemplateStepLayout } from '@/components/tamtam/creator/TemplateStepNavigator';
 import { 
   GriotDigitalTemplate, 
   GriotDigitalEngine, 
@@ -357,12 +359,12 @@ export const GriotDigitalCreator: React.FC = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
     >
       {/* Audio Upload Section */}
       <Card className="border-2 border-dashed border-primary/30 bg-primary/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-foreground">
             <Volume2 className="h-5 w-5 text-primary" />
             Narration Audio
           </CardTitle>
@@ -459,10 +461,10 @@ export const GriotDigitalCreator: React.FC = () => {
 
       {/* Photos Upload Section (Optional) */}
       <Card className="border border-border/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-foreground flex-wrap">
             <Camera className="h-5 w-5 text-primary" />
-            Photos pour Face Mapping
+            <span>Photos Face Mapping</span>
             <span className="text-xs text-muted-foreground font-normal">(optionnel)</span>
           </CardTitle>
         </CardHeader>
@@ -508,17 +510,6 @@ export const GriotDigitalCreator: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Continue Button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={nextStep}
-          disabled={!state.audioFile}
-          className="gap-2"
-        >
-          Continuer
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
     </motion.div>
   );
 
@@ -527,12 +518,12 @@ export const GriotDigitalCreator: React.FC = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
     >
       {/* Language Selection */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-foreground">
             <Languages className="h-5 w-5 text-primary" />
             Langue du conte
           </CardTitle>
@@ -568,8 +559,8 @@ export const GriotDigitalCreator: React.FC = () => {
 
       {/* Style Selection */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-foreground">
             <Sparkles className="h-5 w-5 text-primary" />
             Style visuel
           </CardTitle>
@@ -609,18 +600,18 @@ export const GriotDigitalCreator: React.FC = () => {
 
       {/* Interactive Mode */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-foreground">
             <GitBranch className="h-5 w-5 text-primary" />
             Mode interactif
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label htmlFor="interactive">Activer les choix</Label>
-              <p className="text-xs text-muted-foreground">
-                L'IA créera des moments de décision dans l'histoire
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1 flex-1">
+              <Label htmlFor="interactive" className="text-sm sm:text-base text-foreground">Activer les choix</Label>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                L'IA créera des moments de décision
               </p>
             </div>
             <Switch
@@ -647,12 +638,12 @@ export const GriotDigitalCreator: React.FC = () => {
 
       {/* Subtitles */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Options avancées</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg text-foreground">Options avancées</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="subtitles">Sous-titres automatiques</Label>
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="subtitles" className="text-sm sm:text-base text-foreground">Sous-titres auto</Label>
             <Switch
               id="subtitles"
               checked={state.includeSubtitles}
@@ -682,7 +673,7 @@ export const GriotDigitalCreator: React.FC = () => {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="title">Titre personnalisé</Label>
+            <Label htmlFor="title" className="text-sm sm:text-base text-foreground">Titre personnalisé</Label>
             <Input
               id="title"
               placeholder="Titre du conte (optionnel)"
@@ -692,17 +683,6 @@ export const GriotDigitalCreator: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={prevStep}>
-          Retour
-        </Button>
-        <Button onClick={nextStep} className="gap-2">
-          Aperçu
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
     </motion.div>
   );
 
@@ -711,7 +691,7 @@ export const GriotDigitalCreator: React.FC = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
     >
       {/* 3D Preview */}
       <Card className="overflow-hidden">
@@ -733,36 +713,36 @@ export const GriotDigitalCreator: React.FC = () => {
 
       {/* Summary */}
       <Card>
-        <CardHeader>
-          <CardTitle>Résumé de la configuration</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg text-foreground">Résumé de la configuration</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-muted-foreground">Audio</span>
-            <span className="font-medium">{state.audioFile?.name}</span>
+            <span className="font-medium text-foreground truncate max-w-[60%]">{state.audioFile?.name}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-muted-foreground">Langue</span>
-            <span className="font-medium">
-              {state.language === 'auto' ? 'Détection auto' : state.language === 'french' ? 'Français' : 'Bariba'}
+            <span className="font-medium text-foreground">
+              {state.language === 'auto' ? 'Auto' : state.language === 'french' ? 'FR' : 'BA'}
             </span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-muted-foreground">Style</span>
-            <span className="font-medium capitalize">{state.style}</span>
+            <span className="font-medium text-foreground capitalize">{state.style}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-muted-foreground">Photos</span>
-            <span className="font-medium">{state.photos.length} photo(s)</span>
+            <span className="font-medium text-foreground">{state.photos.length}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Mode interactif</span>
-            <span className="font-medium">{state.interactiveMode ? 'Oui' : 'Non'}</span>
+          <div className="flex justify-between text-xs sm:text-sm">
+            <span className="text-muted-foreground">Interactif</span>
+            <span className="font-medium text-foreground">{state.interactiveMode ? '✓' : '✗'}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-muted-foreground">Sous-titres</span>
-            <span className="font-medium">
-              {state.includeSubtitles ? state.subtitleLanguage : 'Non'}
+            <span className="font-medium text-foreground">
+              {state.includeSubtitles ? state.subtitleLanguage : '✗'}
             </span>
           </div>
         </CardContent>
@@ -795,16 +775,6 @@ export const GriotDigitalCreator: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={prevStep}>
-          Retour
-        </Button>
-        <Button onClick={startRendering} className="gap-2">
-          <Sparkles className="h-4 w-4" />
-          Générer le conte 3D
-        </Button>
-      </div>
     </motion.div>
   );
 
@@ -933,40 +903,68 @@ export const GriotDigitalCreator: React.FC = () => {
   // MAIN RENDER
   // ============================================================================
 
-  return (
-    <div className="max-w-lg mx-auto p-4 pb-24">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <span className="text-3xl">🎭</span>
-          Griot Digital
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Contes 3D interactifs
-        </p>
+  const steps: CreatorStep[] = ['upload', 'configure', 'preview', 'rendering', 'complete'];
+  const currentStepIndex = steps.indexOf(state.step);
+  const isNavigableStep = state.step !== 'rendering' && state.step !== 'complete';
+  const stepLabels = ['Audio', 'Options', 'Aperçu'];
+
+  const canGoNext = () => {
+    if (state.step === 'upload') return !!state.audioFile;
+    if (state.step === 'configure') return true;
+    if (state.step === 'preview') return true;
+    return false;
+  };
+
+  const handleNextAction = () => {
+    if (state.step === 'preview') {
+      startRendering();
+    } else {
+      nextStep();
+    }
+  };
+
+  const header = (
+    <div className="p-4">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={prevStep} disabled={currentStepIndex === 0 || !isNavigableStep}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2 text-foreground">
+            <span className="text-2xl">🎭</span>
+            Griot Digital
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Contes 3D interactifs
+          </p>
+        </div>
       </div>
 
       {/* Progress Steps */}
-      {state.step !== 'rendering' && state.step !== 'complete' && (
-        <div className="flex items-center justify-between mb-8">
+      {isNavigableStep && (
+        <div className="flex items-center justify-center gap-2 mt-4">
           {['upload', 'configure', 'preview'].map((step, index) => (
             <React.Fragment key={step}>
               <div className="flex flex-col items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                   state.step === step 
-                    ? 'bg-primary text-primary-foreground' 
+                    ? 'bg-primary text-primary-foreground ring-4 ring-primary/30' 
                     : ['upload', 'configure', 'preview'].indexOf(state.step) > index
                       ? 'bg-primary/20 text-primary'
                       : 'bg-muted text-muted-foreground'
                 }`}>
-                  {index + 1}
+                  {['upload', 'configure', 'preview'].indexOf(state.step) > index ? (
+                    <Check className="w-5 h-5" />
+                  ) : (
+                    index + 1
+                  )}
                 </div>
-                <span className="text-xs text-muted-foreground capitalize hidden sm:block">
-                  {step === 'upload' ? 'Audio' : step === 'configure' ? 'Options' : 'Aperçu'}
+                <span className="text-xs text-muted-foreground font-medium">
+                  {stepLabels[index]}
                 </span>
               </div>
               {index < 2 && (
-                <div className={`flex-1 h-0.5 mx-2 ${
+                <div className={`w-8 sm:w-12 h-1 rounded-full ${
                   ['upload', 'configure', 'preview'].indexOf(state.step) > index
                     ? 'bg-primary'
                     : 'bg-muted'
@@ -976,16 +974,43 @@ export const GriotDigitalCreator: React.FC = () => {
           ))}
         </div>
       )}
-
-      {/* Step Content */}
-      <AnimatePresence mode="wait">
-        {state.step === 'upload' && renderUploadStep()}
-        {state.step === 'configure' && renderConfigureStep()}
-        {state.step === 'preview' && renderPreviewStep()}
-        {state.step === 'rendering' && renderRenderingStep()}
-        {state.step === 'complete' && renderCompleteStep()}
-      </AnimatePresence>
     </div>
+  );
+
+  const stepNavigator = isNavigableStep ? (
+    <TemplateStepNavigator
+      currentStep={currentStepIndex}
+      totalSteps={3}
+      stepLabels={stepLabels}
+      onPrevious={prevStep}
+      onNext={handleNextAction}
+      canGoBack={currentStepIndex > 0}
+      canGoNext={canGoNext()}
+      previousLabel="Retour"
+      nextLabel={state.step === 'preview' ? 'Générer' : 'Suivant'}
+      showProgress={false}
+      isLastStep={state.step === 'preview'}
+      onComplete={startRendering}
+    />
+  ) : null;
+
+  return (
+    <TemplateStepLayout
+      header={header}
+      navigator={stepNavigator}
+      className="bg-background"
+    >
+      <div className="max-w-lg mx-auto px-4 py-4">
+        {/* Step Content */}
+        <AnimatePresence mode="wait">
+          {state.step === 'upload' && renderUploadStep()}
+          {state.step === 'configure' && renderConfigureStep()}
+          {state.step === 'preview' && renderPreviewStep()}
+          {state.step === 'rendering' && renderRenderingStep()}
+          {state.step === 'complete' && renderCompleteStep()}
+        </AnimatePresence>
+      </div>
+    </TemplateStepLayout>
   );
 };
 
