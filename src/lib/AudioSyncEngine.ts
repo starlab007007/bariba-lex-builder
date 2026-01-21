@@ -292,6 +292,23 @@ export class AudioSyncEngine {
   
   /** Detected beats cache */
   private beatsCache: BeatTimestamp[] = [];
+
+  /**
+   * Get default beats when no audio buffer is available
+   * Creates evenly spaced beats for fallback
+   */
+  public getDefaultBeats(duration: number = 30): BeatTimestamp[] {
+    const beats: BeatTimestamp[] = [];
+    const interval = 0.5; // 120 BPM default
+    for (let time = 0; time < duration; time += interval) {
+      beats.push({
+        time,
+        strength: 0.8,
+        type: Math.floor(time / interval) % 4 === 0 ? 'kick' : 'other'
+      });
+    }
+    return beats;
+  }
   
   /** Tempo analysis cache */
   private tempoCache: TempoAnalysis | null = null;
