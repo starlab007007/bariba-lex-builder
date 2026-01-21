@@ -632,16 +632,140 @@ const NewsStudio: React.FC = () => {
   const [finalVideo, setFinalVideo] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Initialize engine
+  // Initialize engine with fallback
   useEffect(() => {
     if (canvasRef.current && !engineRef.current) {
-      engineRef.current = createVillageChronicleEngine(canvasRef.current);
+      try {
+        engineRef.current = createVillageChronicleEngine(canvasRef.current);
+        console.log('[NewsStudio] Engine initialized successfully');
+      } catch (error) {
+        console.warn('[NewsStudio] WebGL engine init failed, using 2D fallback:', error);
+        // Engine will handle its own fallback
+      }
     }
 
     return () => {
       engineRef.current?.dispose();
     };
   }, []);
+
+  // Dynamic 2D preview when no video is rendering
+  useEffect(() => {
+    if (!canvasRef.current || state.step === 'rendering' || finalVideo) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationId: number;
+    let time = 0;
+
+    const drawStudioPreview = () => {
+      const { width, height } = canvas;
+      
+      // Studio background gradient
+      const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
+      bgGradient.addColorStop(0, '#1e3a5f');
+      bgGradient.addColorStop(0.5, '#0d1f3c');
+      bgGradient.addColorStop(1, '#0a1628');
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // Animated grid lines
+      ctx.strokeStyle = 'rgba(100, 150, 200, 0.1)';
+      ctx.lineWidth = 1;
+      for (let y = 0; y < height; y += 30) {
+        const offset = Math.sin(time + y * 0.01) * 5;
+        ctx.beginPath();
+        ctx.moveTo(offset, y);
+        ctx.lineTo(width + offset, y);
+        ctx.stroke();
+      }
+
+      // News desk silhouette
+      ctx.fillStyle = 'rgba(30, 60, 90, 0.8)';
+      ctx.beginPath();
+      ctx.moveTo(width * 0.1, height * 0.7);
+      ctx.lineTo(width * 0.9, height * 0.7);
+      ctx.lineTo(width * 0.85, height * 0.9);
+      ctx.lineTo(width * 0.15, height * 0.9);
+      ctx.closePath();
+      ctx.fill();
+
+      // Anchor silhouette placeholder
+      const anchorX = width * 0.5;
+      const anchorY = height * 0.45;
+      const bobOffset = Math.sin(time * 1.5) * 3;
+      
+      ctx.fillStyle = 'rgba(80, 120, 160, 0.6)';
+      ctx.beginPath();
+      ctx.ellipse(anchorX, anchorY - 50 + bobOffset, 35, 45, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Body
+      ctx.beginPath();
+      ctx.ellipse(anchorX, anchorY + 40 + bobOffset, 50, 60, 0, 0, Math.PI);
+      ctx.fill();
+
+      // Studio lights
+      for (let i = 0; i < 3; i++) {
+        const lightX = width * (0.25 + i * 0.25);
+        const lightY = height * 0.08;
+        const pulse = Math.sin(time * 2 + i) * 0.3 + 0.7;
+        
+        const lightGradient = ctx.createRadialGradient(lightX, lightY, 0, lightX, lightY, 80);
+        lightGradient.addColorStop(0, `rgba(255, 220, 150, ${pulse * 0.6})`);
+        lightGradient.addColorStop(0.5, `rgba(255, 200, 100, ${pulse * 0.2})`);
+        lightGradient.addColorStop(1, 'rgba(255, 200, 100, 0)');
+        ctx.fillStyle = lightGradient;
+        ctx.fillRect(lightX - 80, lightY - 80, 160, 160);
+      }
+
+      // Lower third bar
+      const lowerThirdY = height * 0.78;
+      ctx.fillStyle = 'rgba(200, 30, 30, 0.9)';
+      ctx.fillRect(0, lowerThirdY, width, 4);
+      
+      ctx.fillStyle = 'rgba(30, 30, 30, 0.85)';
+      ctx.fillRect(0, lowerThirdY + 4, width, 50);
+
+      // Village name display
+      ctx.font = 'bold 16px system-ui';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.fillText(state.village.name || 'Votre Village', 20, lowerThirdY + 32);
+
+      // Time display
+      ctx.font = '12px system-ui';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      const now = new Date();
+      ctx.fillText(now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), width - 20, lowerThirdY + 32);
+
+      // Breaking news ticker (if news items exist)
+      if (state.newsItems.length > 0) {
+        const tickerY = height - 25;
+        ctx.fillStyle = 'rgba(200, 30, 30, 0.95)';
+        ctx.fillRect(0, tickerY - 20, width, 30);
+        
+        ctx.font = 'bold 12px system-ui';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        const newsIndex = Math.floor(time / 3) % state.newsItems.length;
+        const scrollOffset = (time % 3) * 50;
+        ctx.fillText(`📰 ${state.newsItems[newsIndex]?.title || 'Actualités'}`, width / 2 - scrollOffset, tickerY - 5);
+      }
+
+      time += 0.02;
+      animationId = requestAnimationFrame(drawStudioPreview);
+    };
+
+    drawStudioPreview();
+
+    return () => {
+      if (animationId) cancelAnimationFrame(animationId);
+    };
+  }, [state.step, state.village.name, state.newsItems, finalVideo]);
 
   const addNewsItem = (news: NewsItem) => {
     setState(prev => ({

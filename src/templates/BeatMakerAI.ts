@@ -176,6 +176,8 @@ export class BeatMakerEngine {
   private trackMuted: Map<string, boolean> = new Map();
   private trackSoloed: Map<string, boolean> = new Map();
   private animationFrame: number | null = null;
+  private audioBuffer: AudioBuffer | null = null;
+  private isInitialized = false;
 
   constructor() {
     // Don't auto-init, wait for explicit call
@@ -184,9 +186,112 @@ export class BeatMakerEngine {
   async initialize(): Promise<void> {
     try {
       this.audioContext = new AudioContext();
+      this.isInitialized = true;
       console.log('[BeatMaker] Engine initialized');
     } catch (error) {
       console.warn('[BeatMaker] Audio context init failed:', error);
+      this.isInitialized = false;
+    }
+  }
+
+  /**
+   * Check if the engine is properly initialized
+   */
+  isReady(): boolean {
+    return this.isInitialized && this.audioContext !== null;
+  }
+
+  /**
+   * Check if an audio buffer is loaded
+   */
+  hasBuffer(): boolean {
+    return this.audioBuffer !== null;
+  }
+
+  /**
+   * Load audio from a file for analysis
+   */
+  async loadAudioFile(file: File): Promise<boolean> {
+    if (!this.audioContext) {
+      console.warn('[BeatMaker] No audio context available');
+      return false;
+    }
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      console.log('[BeatMaker] Audio buffer loaded:', this.audioBuffer.duration, 'seconds');
+      return true;
+    } catch (error) {
+      console.warn('[BeatMaker] Failed to load audio buffer:', error);
+      this.audioBuffer = null;
+      return false;
+    }
+  }
+
+  /**
+   * Get default beat pattern as fallback when audio analysis fails
+   */
+  getDefaultBeats(duration: number = 120, bpm: number = 120): Array<{ time: number; type: 'kick' | 'snare' | 'hat'; strength: number }> {
+    const beats: Array<{ time: number; type: 'kick' | 'snare' | 'hat'; strength: number }> = [];
+    const interval = 60 / bpm;
+    
+    for (let time = 0; time < duration; time += interval) {
+      const beatIndex = Math.floor(time / interval);
+      const isDownbeat = beatIndex % 4 === 0;
+      const isBackbeat = beatIndex % 2 === 1;
+      
+      beats.push({
+        time,
+        type: isDownbeat ? 'kick' : isBackbeat ? 'snare' : 'hat',
+        strength: isDownbeat ? 1.0 : isBackbeat ? 0.8 : 0.5
+      });
+    }
+    
+    console.log(`[BeatMaker] Generated ${beats.length} default beats at ${bpm} BPM`);
+    return beats;
+  }
+
+  /**
+   * Analyze beats from loaded audio buffer with fallback
+   */
+  analyzeBeats(): Array<{ time: number; type: 'kick' | 'snare' | 'hat'; strength: number }> {
+    if (!this.audioBuffer || !this.audioContext) {
+      console.warn('[BeatMaker] No audio buffer for beat analysis, using defaults');
+      return this.getDefaultBeats();
+    }
+
+    try {
+      // Simplified beat detection based on amplitude peaks
+      const channelData = this.audioBuffer.getChannelData(0);
+      const sampleRate = this.audioBuffer.sampleRate;
+      const beats: Array<{ time: number; type: 'kick' | 'snare' | 'hat'; strength: number }> = [];
+      
+      const windowSize = Math.floor(sampleRate * 0.02); // 20ms windows
+      let lastPeakTime = -0.5;
+      
+      for (let i = 0; i < channelData.length; i += windowSize) {
+        let maxAmplitude = 0;
+        for (let j = i; j < Math.min(i + windowSize, channelData.length); j++) {
+          maxAmplitude = Math.max(maxAmplitude, Math.abs(channelData[j]));
+        }
+        
+        const time = i / sampleRate;
+        if (maxAmplitude > 0.3 && time - lastPeakTime > 0.1) {
+          beats.push({
+            time,
+            type: maxAmplitude > 0.7 ? 'kick' : maxAmplitude > 0.5 ? 'snare' : 'hat',
+            strength: maxAmplitude
+          });
+          lastPeakTime = time;
+        }
+      }
+      
+      console.log(`[BeatMaker] Detected ${beats.length} beats from audio`);
+      return beats.length > 0 ? beats : this.getDefaultBeats(this.audioBuffer.duration);
+    } catch (error) {
+      console.warn('[BeatMaker] Beat analysis failed, using defaults:', error);
+      return this.getDefaultBeats(this.audioBuffer?.duration);
     }
   }
 
