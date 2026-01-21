@@ -518,12 +518,18 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
 
         {/* Left Controls - Camera Label */}
         <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
-          <div className="bg-black/50 backdrop-blur-sm rounded-xl px-3 py-2 text-center">
-            <p className="text-white text-xs font-medium">
-              {isFrontCamera ? '📱 Front' : '📷 Back'}
-            </p>
+          <div className="bg-black/60 backdrop-blur-md rounded-xl px-4 py-3 text-center shadow-lg border border-white/10">
+            <div className="flex items-center gap-2 mb-1">
+              <SwitchCamera className="w-4 h-4 text-white/80" />
+              <p className="text-white text-sm font-semibold">
+                {isFrontCamera ? 'Front' : 'Back'}
+              </p>
+            </div>
             {flashEnabled && (
-              <p className="text-yellow-400 text-[10px] mt-1">⚡ Flash ON</p>
+              <div className="flex items-center gap-1 text-yellow-400 text-xs font-medium mt-1">
+                <Flashlight className="w-3 h-3" />
+                <span>Flash ON</span>
+              </div>
             )}
           </div>
         </div>
