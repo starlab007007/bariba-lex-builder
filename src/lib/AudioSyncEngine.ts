@@ -294,6 +294,13 @@ export class AudioSyncEngine {
   private beatsCache: BeatTimestamp[] = [];
 
   /**
+   * Check if an audio buffer is loaded
+   */
+  public hasBuffer(): boolean {
+    return this.currentBuffer !== null;
+  }
+
+  /**
    * Get default beats when no audio buffer is available
    * Creates evenly spaced beats for fallback
    */
@@ -301,10 +308,13 @@ export class AudioSyncEngine {
     const beats: BeatTimestamp[] = [];
     const interval = 0.5; // 120 BPM default
     for (let time = 0; time < duration; time += interval) {
+      const isDownbeat = Math.floor(time / interval) % 4 === 0;
       beats.push({
         time,
-        strength: 0.8,
-        type: Math.floor(time / interval) % 4 === 0 ? 'kick' : 'other'
+        strength: isDownbeat ? 1.0 : 0.7,
+        type: isDownbeat ? 'kick' : 'other',
+        isDownbeat,
+        confidence: 0.85
       });
     }
     return beats;
