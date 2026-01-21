@@ -431,6 +431,14 @@ export class GriotDigitalEngine {
     // 1. Convert file to AudioFile format
     const audioFile = await this.fileToAudioFile(inputs.audioNarration);
     
+    // 1b. Load audio buffer for beat analysis
+    try {
+      await this.audioEngine.loadAudioBlob(inputs.audioNarration);
+      console.log('[GriotDigital] Audio buffer loaded for beat analysis');
+    } catch (error) {
+      console.warn('[GriotDigital] Audio buffer load failed, will use fallback beats:', error);
+    }
+    
     // 2. Analyze story structure
     const storyAnalysis = await aiServicesHub.analyzeStory(
       audioFile,
@@ -601,7 +609,20 @@ export class GriotDigitalEngine {
     audio: AudioFile
   ): Promise<TimelineSegment[]> {
     const timeline: TimelineSegment[] = [];
-    const beats = this.audioEngine.analyzeBeats();
+    
+    // Safely get beats - use fallback if audio buffer not loaded
+    let beats: BeatTimestamp[];
+    try {
+      if (this.audioEngine.hasBuffer()) {
+        beats = this.audioEngine.analyzeBeats();
+      } else {
+        console.warn('[GriotDigital] No audio buffer, using default beats');
+        beats = this.audioEngine.getDefaultBeats(audio.duration || 30);
+      }
+    } catch (error) {
+      console.warn('[GriotDigital] Beat analysis failed, using defaults:', error);
+      beats = this.audioEngine.getDefaultBeats(audio.duration || 30);
+    }
 
     for (let i = 0; i < story.segments.length; i++) {
       const segment = story.segments[i];
@@ -887,12 +908,18 @@ export class GriotDigitalEngine {
     for (const effect of segment.effects) {
       // Beat-triggered effects
       if (effect.trigger === 'beat') {
-        const beats = this.audioEngine.analyzeBeats();
-        const currentBeat = beats.find(
-          b => Math.abs(b.time - currentTime) < 0.05
-        );
-        if (currentBeat) {
-          this.triggerEffect(effect);
+        try {
+          const beats = this.audioEngine.hasBuffer() 
+            ? this.audioEngine.analyzeBeats() 
+            : this.audioEngine.getDefaultBeats();
+          const currentBeat = beats.find(
+            b => Math.abs(b.time - currentTime) < 0.05
+          );
+          if (currentBeat) {
+            this.triggerEffect(effect);
+          }
+        } catch (error) {
+          // Silently fail - effects are non-critical
         }
       }
     }
