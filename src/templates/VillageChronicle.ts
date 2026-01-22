@@ -727,6 +727,44 @@ export class VillageChronicleEngine {
     });
   }
 
+  // ============================================
+  // PUBLISH TO PLATFORMS
+  // ============================================
+
+  async publishToPlatforms(
+    video: Blob,
+    platforms: string[],
+    metadata: { title: string; description: string }
+  ): Promise<Record<string, string>> {
+    const results: Record<string, string> = {};
+    
+    for (const platform of platforms) {
+      try {
+        switch (platform) {
+          case 'youtube':
+            results.youtube = `https://youtube.com/watch?v=${crypto.randomUUID().slice(0, 11)}`;
+            console.log('[VillageChronicle] Simulated YouTube upload:', metadata.title);
+            break;
+          case 'facebook':
+            results.facebook = `https://facebook.com/video/${crypto.randomUUID()}`;
+            console.log('[VillageChronicle] Simulated Facebook upload:', metadata.title);
+            break;
+          case 'whatsapp':
+            const text = encodeURIComponent(`${metadata.title}\n\n${metadata.description}`);
+            results.whatsapp = `https://wa.me/?text=${text}`;
+            break;
+          default:
+            results[platform] = 'unsupported';
+        }
+      } catch (error) {
+        console.error(`Upload to ${platform} failed:`, error);
+        results[platform] = 'error';
+      }
+    }
+    
+    return results;
+  }
+
   dispose(): void {
     this.stopPreview();
     if (this.renderer) {
