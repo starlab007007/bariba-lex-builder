@@ -54,6 +54,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { useVideoPublish } from '@/hooks/useVideoPublish';
 import { 
   VillageChronicleEngine, 
   createVillageChronicleEngine,
@@ -609,6 +610,7 @@ const AnchorCustomization: React.FC<AnchorCustomizationProps> = ({
 
 const NewsStudio: React.FC = () => {
   const { toast } = useToast();
+  const { publishVideo, isPublishing, publishProgress, publishStage } = useVideoPublish();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<VillageChronicleEngine | null>(null);
 
@@ -632,15 +634,18 @@ const NewsStudio: React.FC = () => {
   const [finalVideo, setFinalVideo] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Initialize engine with fallback
+  // Initialize engine
   useEffect(() => {
     if (canvasRef.current && !engineRef.current) {
       try {
+        // Ensure canvas has proper internal dimensions
+        canvasRef.current.width = 1920;
+        canvasRef.current.height = 1080;
+        
         engineRef.current = createVillageChronicleEngine(canvasRef.current);
         console.log('[NewsStudio] Engine initialized successfully');
       } catch (error) {
-        console.warn('[NewsStudio] WebGL engine init failed, using 2D fallback:', error);
-        // Engine will handle its own fallback
+        console.error('[NewsStudio] Engine init failed:', error);
       }
     }
 
@@ -649,123 +654,30 @@ const NewsStudio: React.FC = () => {
     };
   }, []);
 
-  // Dynamic 2D preview when no video is rendering
+  // Update engine with village data whenever it changes
   useEffect(() => {
-    if (!canvasRef.current || state.step === 'rendering' || finalVideo) return;
-    
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (engineRef.current && state.village.name) {
+      engineRef.current.setVillageInfo(
+        state.village, 
+        state.newsItems,
+        state.anchorPhoto
+      );
+    }
+  }, [state.village, state.newsItems, state.anchorPhoto]);
 
-    let animationId: number;
-    let time = 0;
-
-    const drawStudioPreview = () => {
-      const { width, height } = canvas;
-      
-      // Studio background gradient
-      const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
-      bgGradient.addColorStop(0, '#1e3a5f');
-      bgGradient.addColorStop(0.5, '#0d1f3c');
-      bgGradient.addColorStop(1, '#0a1628');
-      ctx.fillStyle = bgGradient;
-      ctx.fillRect(0, 0, width, height);
-
-      // Animated grid lines
-      ctx.strokeStyle = 'rgba(100, 150, 200, 0.1)';
-      ctx.lineWidth = 1;
-      for (let y = 0; y < height; y += 30) {
-        const offset = Math.sin(time + y * 0.01) * 5;
-        ctx.beginPath();
-        ctx.moveTo(offset, y);
-        ctx.lineTo(width + offset, y);
-        ctx.stroke();
+  // Start/stop preview based on step
+  useEffect(() => {
+    if (engineRef.current) {
+      if (state.step === 'preview' && !finalVideo) {
+        engineRef.current.setVillageInfo(state.village, state.newsItems, state.anchorPhoto);
+        engineRef.current.startPreview();
+        setIsPlaying(true);
+      } else {
+        engineRef.current.stopPreview();
+        setIsPlaying(false);
       }
-
-      // News desk silhouette
-      ctx.fillStyle = 'rgba(30, 60, 90, 0.8)';
-      ctx.beginPath();
-      ctx.moveTo(width * 0.1, height * 0.7);
-      ctx.lineTo(width * 0.9, height * 0.7);
-      ctx.lineTo(width * 0.85, height * 0.9);
-      ctx.lineTo(width * 0.15, height * 0.9);
-      ctx.closePath();
-      ctx.fill();
-
-      // Anchor silhouette placeholder
-      const anchorX = width * 0.5;
-      const anchorY = height * 0.45;
-      const bobOffset = Math.sin(time * 1.5) * 3;
-      
-      ctx.fillStyle = 'rgba(80, 120, 160, 0.6)';
-      ctx.beginPath();
-      ctx.ellipse(anchorX, anchorY - 50 + bobOffset, 35, 45, 0, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Body
-      ctx.beginPath();
-      ctx.ellipse(anchorX, anchorY + 40 + bobOffset, 50, 60, 0, 0, Math.PI);
-      ctx.fill();
-
-      // Studio lights
-      for (let i = 0; i < 3; i++) {
-        const lightX = width * (0.25 + i * 0.25);
-        const lightY = height * 0.08;
-        const pulse = Math.sin(time * 2 + i) * 0.3 + 0.7;
-        
-        const lightGradient = ctx.createRadialGradient(lightX, lightY, 0, lightX, lightY, 80);
-        lightGradient.addColorStop(0, `rgba(255, 220, 150, ${pulse * 0.6})`);
-        lightGradient.addColorStop(0.5, `rgba(255, 200, 100, ${pulse * 0.2})`);
-        lightGradient.addColorStop(1, 'rgba(255, 200, 100, 0)');
-        ctx.fillStyle = lightGradient;
-        ctx.fillRect(lightX - 80, lightY - 80, 160, 160);
-      }
-
-      // Lower third bar
-      const lowerThirdY = height * 0.78;
-      ctx.fillStyle = 'rgba(200, 30, 30, 0.9)';
-      ctx.fillRect(0, lowerThirdY, width, 4);
-      
-      ctx.fillStyle = 'rgba(30, 30, 30, 0.85)';
-      ctx.fillRect(0, lowerThirdY + 4, width, 50);
-
-      // Village name display
-      ctx.font = 'bold 16px system-ui';
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'left';
-      ctx.fillText(state.village.name || 'Votre Village', 20, lowerThirdY + 32);
-
-      // Time display
-      ctx.font = '12px system-ui';
-      ctx.textAlign = 'right';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      const now = new Date();
-      ctx.fillText(now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), width - 20, lowerThirdY + 32);
-
-      // Breaking news ticker (if news items exist)
-      if (state.newsItems.length > 0) {
-        const tickerY = height - 25;
-        ctx.fillStyle = 'rgba(200, 30, 30, 0.95)';
-        ctx.fillRect(0, tickerY - 20, width, 30);
-        
-        ctx.font = 'bold 12px system-ui';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        const newsIndex = Math.floor(time / 3) % state.newsItems.length;
-        const scrollOffset = (time % 3) * 50;
-        ctx.fillText(`📰 ${state.newsItems[newsIndex]?.title || 'Actualités'}`, width / 2 - scrollOffset, tickerY - 5);
-      }
-
-      time += 0.02;
-      animationId = requestAnimationFrame(drawStudioPreview);
-    };
-
-    drawStudioPreview();
-
-    return () => {
-      if (animationId) cancelAnimationFrame(animationId);
-    };
-  }, [state.step, state.village.name, state.newsItems, finalVideo]);
+    }
+  }, [state.step, finalVideo]);
 
   const addNewsItem = (news: NewsItem) => {
     setState(prev => ({
@@ -857,6 +769,58 @@ const NewsStudio: React.FC = () => {
       toast({
         title: 'Publié !',
         description: `Lien: ${results[platform]}`
+      });
+    }
+  };
+
+  // Publish to video feed
+  const publishToVideoFeed = async () => {
+    if (!finalVideo) return;
+    
+    // Generate a thumbnail from the first frame of the canvas
+    let thumbnail: Blob;
+    try {
+      if (canvasRef.current) {
+        const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.8);
+        const res = await fetch(dataUrl);
+        thumbnail = await res.blob();
+      } else {
+        // Create a simple placeholder thumbnail
+        const placeholderCanvas = document.createElement('canvas');
+        placeholderCanvas.width = 1920;
+        placeholderCanvas.height = 1080;
+        const ctx = placeholderCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#1e3a5f';
+          ctx.fillRect(0, 0, 1920, 1080);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 72px system-ui';
+          ctx.textAlign = 'center';
+          ctx.fillText(`📺 ${state.village.name} TV`, 960, 540);
+        }
+        const dataUrl = placeholderCanvas.toDataURL('image/jpeg', 0.8);
+        const res = await fetch(dataUrl);
+        thumbnail = await res.blob();
+      }
+    } catch (e) {
+      console.error('Thumbnail generation failed:', e);
+      thumbnail = new Blob([], { type: 'image/jpeg' });
+    }
+
+    const result = await publishVideo({
+      video: finalVideo,
+      thumbnail,
+      title: `Journal de ${state.village.name} - ${new Date().toLocaleDateString('fr-FR')}`,
+      description: `Les dernières actualités de ${state.village.name}. ${state.newsItems.length} informations présentées.`,
+      templateId: 'village-chronicle',
+      templateName: 'Village Chronicle',
+      duration: 300 // 5 minutes
+    });
+
+    if (result.success) {
+      toast({
+        title: '🎉 Publié dans le feed!',
+        description: 'Votre journal est maintenant visible par tous.'
       });
     }
   };
@@ -1097,7 +1061,9 @@ const NewsStudio: React.FC = () => {
         <div className="aspect-video bg-gradient-to-br from-slate-900 to-slate-800 relative">
           <canvas
             ref={canvasRef}
-            className="w-full h-full"
+            width={1920}
+            height={1080}
+            className="w-full h-full object-contain"
           />
 
           {/* TV Frame overlay */}
@@ -1218,29 +1184,41 @@ const NewsStudio: React.FC = () => {
         </div>
       </Card>
 
-      <div className="flex gap-3">
-        <Button onClick={downloadVideo} className="flex-1">
-          <Download className="w-4 h-4 mr-2" />
-          Télécharger
-        </Button>
+      <div className="flex flex-col gap-3">
         <Button 
-          variant="outline" 
-          onClick={() => publishToplatform('youtube')}
+          onClick={publishToVideoFeed} 
+          className="w-full" 
+          size="lg"
+          disabled={isPublishing}
         >
-          <Youtube className="w-4 h-4" />
+          {isPublishing ? (
+            <>
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              {publishStage} ({publishProgress}%)
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4 mr-2" />
+              Publier dans le Feed Vidéo
+            </>
+          )}
         </Button>
-        <Button 
-          variant="outline"
-          onClick={() => publishToplatform('facebook')}
-        >
-          <Facebook className="w-4 h-4" />
-        </Button>
-        <Button 
-          variant="outline"
-          onClick={() => publishToplatform('whatsapp')}
-        >
-          <MessageCircle className="w-4 h-4" />
-        </Button>
+        
+        <div className="flex gap-3">
+          <Button onClick={downloadVideo} className="flex-1" variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Télécharger
+          </Button>
+          <Button variant="outline" onClick={() => publishToplatform('youtube')}>
+            <Youtube className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" onClick={() => publishToplatform('facebook')}>
+            <Facebook className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" onClick={() => publishToplatform('whatsapp')}>
+            <MessageCircle className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <Button 

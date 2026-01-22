@@ -170,36 +170,57 @@ export class VillageChronicleEngine {
   private currentSegment: ShowSegment | null = null;
   private newsShow: NewsShow | null = null;
 
+  // Store news items for display
+  private newsItems: NewsItem[] = [];
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    
+    // Ensure canvas has proper dimensions for HD rendering
+    canvas.width = 1920;
+    canvas.height = 1080;
+    
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(35, 16/9, 0.1, 1000);
     this.camera.position.set(0, 1.6, 3);
     this.camera.lookAt(0, 1.4, 0);
 
-    // Try WebGL, fallback to 2D canvas
-    try {
-      this.renderer = new THREE.WebGLRenderer({ 
-        canvas, 
-        antialias: true,
-        alpha: true,
-        preserveDrawingBuffer: true // Required for frame capture
-      });
-      this.renderer.setSize(1920, 1080);
-      this.renderer.setPixelRatio(1); // Fixed for consistent capture
-      this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      this.use2DFallback = false;
-      console.log('[VillageChronicle] WebGL renderer initialized');
-    } catch (error) {
-      console.warn('[VillageChronicle] WebGL not available, using 2D fallback:', error);
-      this.ctx2D = canvas.getContext('2d');
-      this.use2DFallback = true;
+    // Force 2D fallback for reliability - WebGL/Three.js requires 3D models we don't have
+    this.use2DFallback = true;
+    this.ctx2D = canvas.getContext('2d');
+    
+    if (!this.ctx2D) {
+      console.error('[VillageChronicle] Failed to get 2D context');
     }
+    
+    console.log('[VillageChronicle] Engine initialized in 2D mode (1920x1080)');
 
     this.assetLoader = new AssetLoader3D();
     this.particleManager = new ParticleSystemManager();
     this.isInitialized = true;
+  }
+
+  // Method to update village info for live preview
+  setVillageInfo(village: VillageInfo, newsItems: NewsItem[], anchorPhoto?: File): void {
+    this.villageName = village.name || 'Mon Village';
+    this.newsItems = newsItems || [];
+    
+    if (anchorPhoto) {
+      this.loadImage(anchorPhoto).then(img => {
+        this.anchorPhoto = img;
+        // Redraw immediately if playing
+        if (this.use2DFallback && this.ctx2D) {
+          this.draw2DFrame(this.currentTime);
+        }
+      });
+    }
+    
+    console.log('[VillageChronicle] Village info updated:', this.villageName, 'News:', newsItems.length);
+    
+    // Redraw immediately
+    if (this.use2DFallback && this.ctx2D) {
+      this.draw2DFrame(this.currentTime);
+    }
   }
 
   isReady(): boolean {
@@ -391,8 +412,19 @@ export class VillageChronicleEngine {
     ctx.font = '20px system-ui';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
-    const tickerText = `📰 ${this.villageName} • Actualités locales • Météo • Annonces communautaires`;
-    const tickerOffset = (time * 80) % (width + 800);
+    
+    // Build ticker from actual news items
+    let tickerText = `📰 ${this.villageName}`;
+    if (this.newsItems && this.newsItems.length > 0) {
+      tickerText += ' • ' + this.newsItems.map(n => {
+        const prefix = n.type === 'breaking' ? '🔴 URGENT: ' : '';
+        return prefix + n.title;
+      }).join(' • ');
+    } else {
+      tickerText += ' • Actualités locales • Météo • Annonces communautaires';
+    }
+    
+    const tickerOffset = (time * 80) % (width + tickerText.length * 10);
     ctx.fillText(tickerText, width - tickerOffset, tickerY + 28);
 
     // === Decorative Corner Elements ===
@@ -412,6 +444,27 @@ export class VillageChronicleEngine {
     ctx.lineTo(width - 20, 20);
     ctx.lineTo(width - 50, 20);
     ctx.stroke();
+    
+    // === Display News Summary on Graphics Screen ===
+    if (this.newsItems && this.newsItems.length > 0) {
+      const screenX = width * 0.6;
+      const screenY = height * 0.15;
+      const screenW = width * 0.35;
+      
+      ctx.font = 'bold 24px system-ui';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.fillText(`📰 ${this.newsItems.length} Actualités`, screenX + 20, screenY + 40);
+      
+      // List top 3 news
+      ctx.font = '18px system-ui';
+      ctx.fillStyle = '#93c5fd';
+      this.newsItems.slice(0, 3).forEach((news, i) => {
+        const typeIcon = news.type === 'breaking' ? '🔴' : news.type === 'weather' ? '🌤️' : '📰';
+        const truncated = news.title.length > 30 ? news.title.slice(0, 27) + '...' : news.title;
+        ctx.fillText(`${typeIcon} ${truncated}`, screenX + 20, screenY + 80 + i * 30);
+      });
+    }
   }
 
   // ============================================
