@@ -26,13 +26,70 @@ serve(async (req) => {
       );
     }
 
-    console.log(`🔊 French TTS: "${text.substring(0, 50)}..." voice=${voice}`);
+    console.log(`🔊 French TTS: "${text.substring(0, 100)}..." voice=${voice}`);
     const startTime = Date.now();
 
-    // French TTS uses browser's Web Speech Synthesis API
-    // We return instructions for client-side synthesis
-    // This is more reliable and free
+    // Try to use Lovable AI for TTS-like generation
+    // Since we don't have a dedicated TTS model, we'll return instructions for client-side synthesis
+    // but also generate a script optimized for speech
     
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    
+    if (lovableApiKey) {
+      try {
+        // Use AI to optimize the text for natural speech
+        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${lovableApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
+              {
+                role: 'system',
+                content: `Tu es un assistant qui optimise les textes pour une lecture à voix haute naturelle en français. 
+Ajoute des pauses naturelles avec "..." et des emphases avec des majuscules pour les mots importants.
+Garde le texte court et percutant pour un journal TV.`
+              },
+              {
+                role: 'user',
+                content: `Optimise ce texte pour une narration de journal TV en français:\n\n${text}`
+              }
+            ],
+            max_tokens: 500,
+            temperature: 0.3,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const optimizedText = data.choices?.[0]?.message?.content || text;
+          
+          console.log(`[TTS] AI optimized text in ${Date.now() - startTime}ms`);
+          
+          return new Response(
+            JSON.stringify({
+              method: 'web-speech-synthesis',
+              text: optimizedText,
+              originalText: text,
+              language: 'fr-FR',
+              voice,
+              speed,
+              duration: Date.now() - startTime,
+              optimized: true,
+              instructions: 'Use browser speechSynthesis API with lang=fr-FR. Text has been optimized for natural speech.'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (aiError) {
+        console.warn('[TTS] AI optimization failed, using original text:', aiError);
+      }
+    }
+
+    // Fallback: return original text for client-side synthesis
     const duration = Date.now() - startTime;
     
     return new Response(
@@ -43,6 +100,7 @@ serve(async (req) => {
         voice,
         speed,
         duration,
+        optimized: false,
         instructions: 'Use browser speechSynthesis API with lang=fr-FR'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

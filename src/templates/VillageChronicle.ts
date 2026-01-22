@@ -879,84 +879,37 @@ export class VillageChronicleEngine {
   // ============================================
 
   /**
-   * Generate French TTS narration using Web Speech API
-   * Returns an audio blob that can be muxed with the video
+   * Generate French TTS narration
+   * First tries edge function for optimized text, then uses Web Speech API
+   * Note: Web Speech API audio cannot be captured by MediaRecorder (system limitation)
+   * Audio is returned as null but the text can be spoken for preview
    */
   async generateNarration(script: string): Promise<Blob | null> {
     console.log('[VillageChronicle] Generating TTS narration for:', script.slice(0, 50) + '...');
     
-    // Check if Web Speech API is available
-    if (!('speechSynthesis' in window)) {
-      console.warn('[VillageChronicle] Web Speech API not available');
-      return null;
-    }
-
-    return new Promise((resolve) => {
-      try {
-        // Use MediaRecorder to capture the audio output
-        const audioContext = new AudioContext();
-        const destination = audioContext.createMediaStreamDestination();
-        const mediaRecorder = new MediaRecorder(destination.stream, {
-          mimeType: 'audio/webm;codecs=opus'
-        });
-        const chunks: Blob[] = [];
-
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunks.push(e.data);
-        };
-
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-          console.log('[VillageChronicle] TTS narration generated:', audioBlob.size, 'bytes');
-          resolve(audioBlob);
-        };
-
-        // Create utterance
-        const utterance = new SpeechSynthesisUtterance(script);
-        utterance.lang = 'fr-FR';
-        utterance.rate = 0.9; // Slightly slower for clarity
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-
-        // Find a French voice
-        const voices = speechSynthesis.getVoices();
-        const frenchVoice = voices.find(v => v.lang.startsWith('fr')) || voices[0];
-        if (frenchVoice) {
-          utterance.voice = frenchVoice;
-          console.log('[VillageChronicle] Using voice:', frenchVoice.name);
-        }
-
-        utterance.onstart = () => {
-          mediaRecorder.start();
-        };
-
-        utterance.onend = () => {
-          mediaRecorder.stop();
-          audioContext.close();
-        };
-
-        utterance.onerror = (e) => {
-          console.error('[VillageChronicle] TTS error:', e);
-          resolve(null);
-        };
-
-        // Speak
-        speechSynthesis.cancel(); // Cancel any ongoing speech
-        speechSynthesis.speak(utterance);
-
-        // Fallback timeout (30 seconds max)
-        setTimeout(() => {
-          if (mediaRecorder.state === 'recording') {
-            speechSynthesis.cancel();
-            mediaRecorder.stop();
-          }
-        }, 30000);
-
-      } catch (error) {
-        console.error('[VillageChronicle] TTS generation failed:', error);
-        resolve(null);
+    // Try edge function for optimized text
+    let optimizedScript = script;
+    try {
+      const { data, error } = await supabase.functions.invoke('french-tts', {
+        body: { text: script, voice: 'announcer', speed: 0.9 }
+      });
+      
+      if (!error && data?.text) {
+        optimizedScript = data.text;
+        console.log('[VillageChronicle] Got optimized script from edge function');
       }
-    });
+    } catch (e) {
+      console.warn('[VillageChronicle] Edge function TTS failed, using original text:', e);
+    }
+    
+    // Web Speech API limitation: cannot capture audio output to MediaRecorder
+    // The audio plays through system speakers, not through AudioContext
+    // For video export with audio, would need a server-side TTS service (ElevenLabs, Google TTS, etc.)
+    console.log('[VillageChronicle] Note: Web Speech API audio cannot be captured for video muxing');
+    console.log('[VillageChronicle] For preview, use startLiveTTS() to hear the narration');
+    
+    // Return null - video will be silent but preview can use startLiveTTS
+    return null;
   }
 
   /**
