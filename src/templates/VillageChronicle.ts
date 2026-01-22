@@ -643,6 +643,18 @@ export class VillageChronicleEngine {
       show.closing
     ];
 
+    // Generate TTS narration
+    onProgress?.(22, 'Génération de la narration vocale...');
+    let audioBlob: Blob | null = null;
+    try {
+      audioBlob = await this.generateShowNarration(show);
+      if (audioBlob && audioBlob.size > 0) {
+        console.log('[VillageChronicle] Narration audio generated:', audioBlob.size, 'bytes');
+      }
+    } catch (e) {
+      console.warn('[VillageChronicle] TTS generation failed:', e);
+    }
+
     try {
       // Try FFmpeg MP4 encoding first
       onProgress?.(25, 'Capture des frames');
@@ -673,11 +685,11 @@ export class VillageChronicleEngine {
         (p) => onProgress?.(25 + p * 30, `Frame ${Math.floor(p * totalDuration * fps)}/${totalDuration * fps}`)
       );
 
-      onProgress?.(60, 'Encodage MP4');
+      onProgress?.(60, 'Encodage MP4 avec audio');
       
       const videoBlob = await encodeVideo(
         frames,
-        null, // No separate audio for now
+        audioBlob, // Include TTS narration audio
         { format: 'mp4', fps, width: 1920, height: 1080 },
         (ep: EncoderProgress) => {
           const p = 60 + ep.progress * 35;
@@ -766,6 +778,150 @@ export class VillageChronicleEngine {
 
     this.animationId = requestAnimationFrame(this.animate);
   };
+
+  // ============================================
+  // TEXT-TO-SPEECH NARRATION
+  // ============================================
+
+  /**
+   * Generate French TTS narration using Web Speech API
+   * Returns an audio blob that can be muxed with the video
+   */
+  async generateNarration(script: string): Promise<Blob | null> {
+    console.log('[VillageChronicle] Generating TTS narration for:', script.slice(0, 50) + '...');
+    
+    // Check if Web Speech API is available
+    if (!('speechSynthesis' in window)) {
+      console.warn('[VillageChronicle] Web Speech API not available');
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      try {
+        // Use MediaRecorder to capture the audio output
+        const audioContext = new AudioContext();
+        const destination = audioContext.createMediaStreamDestination();
+        const mediaRecorder = new MediaRecorder(destination.stream, {
+          mimeType: 'audio/webm;codecs=opus'
+        });
+        const chunks: Blob[] = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+          console.log('[VillageChronicle] TTS narration generated:', audioBlob.size, 'bytes');
+          resolve(audioBlob);
+        };
+
+        // Create utterance
+        const utterance = new SpeechSynthesisUtterance(script);
+        utterance.lang = 'fr-FR';
+        utterance.rate = 0.9; // Slightly slower for clarity
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        // Find a French voice
+        const voices = speechSynthesis.getVoices();
+        const frenchVoice = voices.find(v => v.lang.startsWith('fr')) || voices[0];
+        if (frenchVoice) {
+          utterance.voice = frenchVoice;
+          console.log('[VillageChronicle] Using voice:', frenchVoice.name);
+        }
+
+        utterance.onstart = () => {
+          mediaRecorder.start();
+        };
+
+        utterance.onend = () => {
+          mediaRecorder.stop();
+          audioContext.close();
+        };
+
+        utterance.onerror = (e) => {
+          console.error('[VillageChronicle] TTS error:', e);
+          resolve(null);
+        };
+
+        // Speak
+        speechSynthesis.cancel(); // Cancel any ongoing speech
+        speechSynthesis.speak(utterance);
+
+        // Fallback timeout (30 seconds max)
+        setTimeout(() => {
+          if (mediaRecorder.state === 'recording') {
+            speechSynthesis.cancel();
+            mediaRecorder.stop();
+          }
+        }, 30000);
+
+      } catch (error) {
+        console.error('[VillageChronicle] TTS generation failed:', error);
+        resolve(null);
+      }
+    });
+  }
+
+  /**
+   * Generate full show narration from all segments
+   */
+  async generateShowNarration(show: NewsShow): Promise<Blob | null> {
+    const allScripts: string[] = [];
+    
+    // Opening
+    allScripts.push(show.opening.script.text);
+    
+    // Main news
+    for (const news of show.mainNews) {
+      allScripts.push(news.script.text);
+    }
+    
+    // Secondary news
+    for (const news of show.secondaryNews) {
+      allScripts.push(news.script.text);
+    }
+    
+    // Weather
+    allScripts.push(show.weather.script.text);
+    
+    // Announcements
+    allScripts.push(show.announcements.script.text);
+    
+    // Closing
+    allScripts.push(show.closing.script.text);
+    
+    const fullScript = allScripts.join(' ... ');
+    console.log('[VillageChronicle] Full show script:', fullScript.length, 'characters');
+    
+    return this.generateNarration(fullScript);
+  }
+
+  /**
+   * Start live TTS preview (speaks while showing)
+   */
+  async startLiveTTS(text: string): Promise<void> {
+    if (!('speechSynthesis' in window)) return;
+    
+    speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'fr-FR';
+    utterance.rate = 0.9;
+    
+    const voices = speechSynthesis.getVoices();
+    const frenchVoice = voices.find(v => v.lang.startsWith('fr'));
+    if (frenchVoice) utterance.voice = frenchVoice;
+    
+    speechSynthesis.speak(utterance);
+  }
+
+  stopTTS(): void {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+  }
 
   // ============================================
   // UTILITIES
