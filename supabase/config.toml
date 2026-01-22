@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.analyze-story]
 verify_jwt = false
+
+[functions.analyze-news]
+verify_jwt = false
