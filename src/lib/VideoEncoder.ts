@@ -155,7 +155,17 @@ export async function encodeVideo(
     // Read output file
     const data = await ffmpeg.readFile(outputFile);
     const mimeType = opts.format === 'mp4' ? 'video/mp4' : 'video/webm';
-    const blob = new Blob([data], { type: mimeType });
+    
+    // Handle FileData type - convert to ArrayBuffer for Blob compatibility
+    let arrayBuffer: ArrayBuffer;
+    if (typeof data === 'string') {
+      arrayBuffer = new TextEncoder().encode(data).buffer as ArrayBuffer;
+    } else {
+      // Copy to a fresh ArrayBuffer to avoid SharedArrayBuffer issues
+      arrayBuffer = new ArrayBuffer(data.byteLength);
+      new Uint8Array(arrayBuffer).set(data);
+    }
+    const blob = new Blob([arrayBuffer], { type: mimeType });
     
     // Cleanup
     for (let i = 0; i < frames.length; i++) {
