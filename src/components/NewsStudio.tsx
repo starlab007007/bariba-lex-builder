@@ -1124,6 +1124,44 @@ const NewsStudio: React.FC = () => {
         </div>
       </Card>
 
+      {/* TTS Test Button */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Volume2 className="w-6 h-6 text-primary" />
+            <div>
+              <p className="font-medium">Test de la narration</p>
+              <p className="text-sm text-muted-foreground">Écoutez un aperçu de la voix du présentateur</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (engineRef.current && state.newsItems.length > 0) {
+                const previewText = `Bonsoir et bienvenue au Journal de ${state.village.name}. 
+                  Voici les principales informations du jour. 
+                  ${state.newsItems[0]?.title || 'Actualité locale'}. 
+                  ${state.newsItems[0]?.description?.slice(0, 100) || ''}`;
+                engineRef.current.startLiveTTS(previewText);
+                toast({
+                  title: '🎙️ Narration en cours',
+                  description: 'Le présentateur parle...'
+                });
+              } else {
+                toast({
+                  variant: 'destructive',
+                  title: 'Ajoutez des actualités',
+                  description: 'Ajoutez au moins une information pour tester la narration'
+                });
+              }
+            }}
+          >
+            <Mic className="w-4 h-4 mr-2" />
+            Écouter
+          </Button>
+        </div>
+      </Card>
+
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-4 text-center">
