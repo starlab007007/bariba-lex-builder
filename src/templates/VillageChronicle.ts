@@ -172,6 +172,10 @@ export class VillageChronicleEngine {
 
   // Store news items for display
   private newsItems: NewsItem[] = [];
+  
+  // Visual effects - particles for atmosphere
+  private particles: Array<{ x: number; y: number; vx: number; vy: number; size: number; alpha: number; color: string }> = [];
+  private lightBeams: Array<{ x: number; angle: number; width: number; speed: number }> = [];
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -191,6 +195,10 @@ export class VillageChronicleEngine {
     
     if (!this.ctx2D) {
       console.error('[VillageChronicle] Failed to get 2D context');
+    } else {
+      console.log('[VillageChronicle] 2D context acquired successfully');
+      // Draw initial frame immediately so canvas is never blank
+      this.draw2DFrame(0);
     }
     
     console.log('[VillageChronicle] Engine initialized in 2D mode (1920x1080)');
@@ -198,6 +206,39 @@ export class VillageChronicleEngine {
     this.assetLoader = new AssetLoader3D();
     this.particleManager = new ParticleSystemManager();
     this.isInitialized = true;
+    
+    // Initialize visual effects
+    this.initParticles();
+    this.initLightBeams();
+  }
+  
+  private initParticles(): void {
+    // Create floating particles for atmosphere
+    this.particles = [];
+    for (let i = 0; i < 50; i++) {
+      this.particles.push({
+        x: Math.random() * 1920,
+        y: Math.random() * 1080,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.3 - 0.2,
+        size: Math.random() * 4 + 1,
+        alpha: Math.random() * 0.3 + 0.1,
+        color: Math.random() > 0.5 ? '#3b82f6' : '#60a5fa'
+      });
+    }
+  }
+  
+  private initLightBeams(): void {
+    // Create dynamic light beams
+    this.lightBeams = [];
+    for (let i = 0; i < 3; i++) {
+      this.lightBeams.push({
+        x: 200 + i * 700,
+        angle: -15 + Math.random() * 30,
+        width: 80 + Math.random() * 60,
+        speed: 0.2 + Math.random() * 0.3
+      });
+    }
   }
 
   // Method to update village info for live preview
@@ -269,6 +310,12 @@ export class VillageChronicleEngine {
       ctx.lineTo(width, y);
       ctx.stroke();
     }
+    
+    // === Light Beams Effect ===
+    this.drawLightBeams(ctx, time, width, height);
+    
+    // === Floating Particles ===
+    this.updateAndDrawParticles(ctx, time, width, height);
 
     // === News Desk ===
     const deskGradient = ctx.createLinearGradient(0, height * 0.65, 0, height * 0.85);
@@ -466,10 +513,53 @@ export class VillageChronicleEngine {
       });
     }
   }
+  
+  // === Visual Effects Methods ===
+  private drawLightBeams(ctx: CanvasRenderingContext2D, time: number, width: number, height: number): void {
+    ctx.save();
+    for (const beam of this.lightBeams) {
+      const x = beam.x + Math.sin(time * beam.speed) * 50;
+      const gradient = ctx.createLinearGradient(x, 0, x + beam.width, height * 0.7);
+      gradient.addColorStop(0, 'rgba(59, 130, 246, 0.15)');
+      gradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.05)');
+      gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + beam.width, 0);
+      ctx.lineTo(x + beam.width * 1.5, height * 0.7);
+      ctx.lineTo(x - beam.width * 0.5, height * 0.7);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  
+  private updateAndDrawParticles(ctx: CanvasRenderingContext2D, time: number, width: number, height: number): void {
+    for (const p of this.particles) {
+      // Update position
+      p.x += p.vx;
+      p.y += p.vy;
+      
+      // Wrap around
+      if (p.x < 0) p.x = width;
+      if (p.x > width) p.x = 0;
+      if (p.y < 0) p.y = height;
+      if (p.y > height) p.y = 0;
+      
+      // Draw with glow
+      const glowAlpha = p.alpha * (0.5 + Math.sin(time * 2 + p.x) * 0.5);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color.replace(')', `, ${glowAlpha})`).replace('rgb', 'rgba');
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
 
-  // ============================================
-  // NEWS SHOW GENERATION
-  // ============================================
 
   async createNewsShow(inputs: VillageChronicleInputs): Promise<NewsShow> {
     this.villageName = inputs.village.name;
@@ -751,8 +841,13 @@ export class VillageChronicleEngine {
   // ============================================
 
   startPreview(): void {
+    console.log('[VillageChronicle] startPreview called');
     this.isPlaying = true;
     this.currentTime = 0;
+    // Draw first frame immediately
+    if (this.use2DFallback && this.ctx2D) {
+      this.draw2DFrame(0);
+    }
     this.animate();
   }
 

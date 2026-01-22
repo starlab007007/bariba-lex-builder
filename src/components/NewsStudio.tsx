@@ -634,22 +634,36 @@ const NewsStudio: React.FC = () => {
   const [finalVideo, setFinalVideo] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Initialize engine
+  // Initialize engine - ensure canvas is ready first
   useEffect(() => {
-    if (canvasRef.current && !engineRef.current) {
-      try {
-        // Ensure canvas has proper internal dimensions
-        canvasRef.current.width = 1920;
-        canvasRef.current.height = 1080;
-        
-        engineRef.current = createVillageChronicleEngine(canvasRef.current);
-        console.log('[NewsStudio] Engine initialized successfully');
-      } catch (error) {
-        console.error('[NewsStudio] Engine init failed:', error);
+    // Slight delay to ensure canvas is fully rendered in DOM
+    const initTimer = setTimeout(() => {
+      if (canvasRef.current && !engineRef.current) {
+        try {
+          const canvas = canvasRef.current;
+          // Force internal dimensions
+          canvas.width = 1920;
+          canvas.height = 1080;
+          
+          console.log('[NewsStudio] Canvas dimensions:', canvas.width, 'x', canvas.height);
+          
+          engineRef.current = createVillageChronicleEngine(canvas);
+          console.log('[NewsStudio] Engine initialized successfully');
+          
+          // If we're already on preview step, start immediately
+          if (state.step === 'preview') {
+            engineRef.current.setVillageInfo(state.village, state.newsItems, state.anchorPhoto);
+            engineRef.current.startPreview();
+            setIsPlaying(true);
+          }
+        } catch (error) {
+          console.error('[NewsStudio] Engine init failed:', error);
+        }
       }
-    }
+    }, 100);
 
     return () => {
+      clearTimeout(initTimer);
       engineRef.current?.dispose();
     };
   }, []);
