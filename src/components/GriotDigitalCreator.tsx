@@ -5,6 +5,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Upload, 
   Mic, 
@@ -22,7 +23,8 @@ import {
   Download,
   Share2,
   RotateCcw,
-  ArrowLeft
+  ArrowLeft,
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +35,8 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateStepNavigator, TemplateStepLayout } from '@/components/tamtam/creator/TemplateStepNavigator';
+import { useVideoPublish } from '@/hooks/useVideoPublish';
+import { Griot3DPreview } from '@/components/tamtam/Griot3DPreview';
 import { 
   GriotDigitalTemplate, 
   GriotDigitalEngine, 
@@ -67,9 +71,11 @@ interface CreatorState {
 
 export const GriotDigitalCreator: React.FC = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GriotDigitalEngine | null>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const { publishVideo, isPublishing, publishProgress, publishStage } = useVideoPublish();
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [state, setState] = useState<CreatorState>({
@@ -966,9 +972,42 @@ export const GriotDigitalCreator: React.FC = () => {
         </Card>
       )}
 
+      {/* Publish to Feed Button */}
+      <Button 
+        onClick={async () => {
+          if (!state.result) return;
+          const result = await publishVideo({
+            video: state.result.video,
+            thumbnail: state.result.thumbnail,
+            title: state.result.metadata.title || state.customTitle || 'Conte Griot Digital',
+            description: `Conte créé avec Griot Digital - Style ${state.style}`,
+            templateId: 'griot-digital',
+            templateName: 'Griot Digital',
+            duration: state.result.duration
+          });
+          if (result.success) {
+            navigate('/tamtam/social');
+          }
+        }}
+        disabled={isPublishing}
+        className="w-full gap-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white"
+      >
+        {isPublishing ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {publishStage} ({Math.round(publishProgress)}%)
+          </>
+        ) : (
+          <>
+            <Send className="h-4 w-4" />
+            Publier dans le Feed
+          </>
+        )}
+      </Button>
+
       {/* Actions */}
       <div className="grid grid-cols-2 gap-4">
-        <Button onClick={downloadResult} className="gap-2">
+        <Button onClick={downloadResult} variant="outline" className="gap-2">
           <Download className="h-4 w-4" />
           Télécharger
         </Button>

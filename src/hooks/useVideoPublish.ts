@@ -104,26 +104,31 @@ export function useVideoPublish(): UseVideoPublishReturn {
       // 4. Insert into videos table
       setPublishStage('Publication...');
       
-      // Insert into videos table using raw query since types may not be updated yet
-      const { data: videoRecord, error: insertError } = await supabase
-        .from('videos' as any)
-        .insert({
-          user_id: userId,
-          title: data.title,
-          description: data.description || null,
-          video_url: videoUrl,
-          thumbnail_url: thumbnailUrl,
-          template_id: data.templateId || 'griot-digital',
-          template_name: data.templateName || 'Griot Digital',
-          duration_seconds: data.duration ? Math.floor(data.duration) : null,
-          is_public: true
-        } as any)
-        .select()
+      // Insert into videos table - cast result to avoid type inference issues
+      const insertPayload = {
+        user_id: userId,
+        title: data.title,
+        description: data.description || null,
+        video_url: videoUrl,
+        thumbnail_url: thumbnailUrl,
+        template_id: data.templateId || 'griot-digital',
+        template_name: data.templateName || 'Griot Digital',
+        duration_seconds: data.duration ? Math.floor(data.duration) : null,
+        is_public: true
+      };
+
+      const { data: insertResult, error: insertError } = await supabase
+        .from('videos')
+        .insert(insertPayload as any)
+        .select('id')
         .single();
 
       if (insertError) {
         throw new Error(`Database insert failed: ${insertError.message}`);
       }
+
+      // Extract id safely with type assertion
+      const videoId = (insertResult as { id: string } | null)?.id;
 
       setPublishProgress(100);
       setPublishStage('Publié!');
@@ -135,7 +140,7 @@ export function useVideoPublish(): UseVideoPublishReturn {
 
       return {
         success: true,
-        videoId: videoRecord.id,
+        videoId: videoId || undefined,
         videoUrl: videoUrl
       };
 

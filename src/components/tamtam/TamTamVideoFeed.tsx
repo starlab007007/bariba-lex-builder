@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Heart, Mic, Share2, Bookmark, Play, Pause, Volume2, VolumeX,
   MoreHorizontal, Flag, Download, Users, ChevronDown,
-  MessageCircle, RefreshCw, Sparkles, TrendingUp
+  MessageCircle, RefreshCw, Sparkles, TrendingUp, Loader2
 } from 'lucide-react';
+import { useVideoFeed } from '@/hooks/useVideoFeed';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎬 TAM-TAM VIDEO FEED - TIKTOK-STYLE
@@ -352,7 +353,10 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
   onRemix = () => {},
   onRespond = () => {},
 }) => {
-  // Utiliser videos ou convertir posts
+  // Fetch real videos from Supabase
+  const { videos: dbVideos, isLoading: isFeedLoading } = useVideoFeed();
+
+  // Utiliser videos prop, ou posts convertis, ou videos de la DB, ou mock
   const videoData = videos || posts?.map(p => ({
     id: p.id || String(Math.random()),
     videoUrl: p.media_url || p.videoUrl || p.audio_url || '',
@@ -372,7 +376,20 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
     shares: p.shares || 0,
     isLiked: p.isLiked || false,
     isSaved: p.isSaved || false,
-  })) || mockVideos;
+  })) || (dbVideos.length > 0 ? dbVideos.map(v => ({
+    id: v.id,
+    videoUrl: v.videoUrl,
+    thumbnailUrl: v.thumbnailUrl || undefined,
+    transcriptFr: v.description || undefined,
+    topic: v.templateName || 'conte',
+    duration: v.duration,
+    author: v.author,
+    likes: v.likesCount,
+    comments: 0,
+    shares: v.sharesCount,
+    isLiked: false,
+    isSaved: false,
+  })) : mockVideos);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<FeedTab>('pour_toi');
