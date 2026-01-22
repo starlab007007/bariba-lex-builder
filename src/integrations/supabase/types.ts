@@ -2500,6 +2500,60 @@ export type Database = {
         }
         Relationships: []
       }
+      videos: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          duration_seconds: number | null
+          id: string
+          is_public: boolean | null
+          likes_count: number | null
+          shares_count: number | null
+          template_id: string | null
+          template_name: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string | null
+          video_url: string
+          views_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_public?: boolean | null
+          likes_count?: number | null
+          shares_count?: number | null
+          template_id?: string | null
+          template_name?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          video_url: string
+          views_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_public?: boolean | null
+          likes_count?: number | null
+          shares_count?: number | null
+          template_id?: string | null
+          template_name?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          video_url?: string
+          views_count?: number | null
+        }
+        Relationships: []
+      }
       word_submissions: {
         Row: {
           audio_definition_url: string | null
