@@ -35,6 +35,7 @@ import {
   Eye,
   Send
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -83,6 +84,7 @@ interface StudioState {
   newsItems: NewsItem[];
   anchorVoice?: File;
   anchorPhoto?: File;
+  anchorPhotoUrl?: string;  // Backend URL for anchor photo
   broadcastTime: string;
   language: 'bariba' | 'french' | 'bilingual';
   autoBroadcast: boolean;
@@ -634,39 +636,34 @@ const NewsStudio: React.FC = () => {
   const [finalVideo, setFinalVideo] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Initialize engine - ensure canvas is ready first
+  // Initialize engine ONLY when on preview step (canvas must be in DOM)
   useEffect(() => {
-    // Slight delay to ensure canvas is fully rendered in DOM
-    const initTimer = setTimeout(() => {
-      if (canvasRef.current && !engineRef.current) {
-        try {
-          const canvas = canvasRef.current;
-          // Force internal dimensions
-          canvas.width = 1920;
-          canvas.height = 1080;
-          
-          console.log('[NewsStudio] Canvas dimensions:', canvas.width, 'x', canvas.height);
-          
-          engineRef.current = createVillageChronicleEngine(canvas);
-          console.log('[NewsStudio] Engine initialized successfully');
-          
-          // If we're already on preview step, start immediately
-          if (state.step === 'preview') {
-            engineRef.current.setVillageInfo(state.village, state.newsItems, state.anchorPhoto);
-            engineRef.current.startPreview();
-            setIsPlaying(true);
-          }
-        } catch (error) {
-          console.error('[NewsStudio] Engine init failed:', error);
-        }
+    // Only initialize when we're on preview step and canvas exists
+    if (state.step === 'preview' && canvasRef.current && !engineRef.current) {
+      const canvas = canvasRef.current;
+      // Force internal dimensions
+      canvas.width = 1920;
+      canvas.height = 1080;
+      
+      console.log('[NewsStudio] Initializing engine for preview step. Canvas:', canvas.width, 'x', canvas.height);
+      
+      try {
+        engineRef.current = createVillageChronicleEngine(canvas);
+        engineRef.current.setVillageInfo(state.village, state.newsItems, state.anchorPhoto);
+        engineRef.current.startPreview();
+        setIsPlaying(true);
+        console.log('[NewsStudio] Engine started successfully');
+      } catch (error) {
+        console.error('[NewsStudio] Engine init failed:', error);
       }
-    }, 100);
-
-    return () => {
-      clearTimeout(initTimer);
-      engineRef.current?.dispose();
-    };
-  }, []);
+    }
+    
+    // Stop preview when leaving preview step
+    if (state.step !== 'preview' && engineRef.current) {
+      engineRef.current.stopPreview();
+      setIsPlaying(false);
+    }
+  }, [state.step]);
 
   // Update engine with village data whenever it changes
   useEffect(() => {
@@ -678,30 +675,92 @@ const NewsStudio: React.FC = () => {
       );
     }
   }, [state.village, state.newsItems, state.anchorPhoto]);
-
-  // Start/stop preview based on step
+  
+  // Cleanup on unmount
   useEffect(() => {
-    if (engineRef.current) {
-      if (state.step === 'preview' && !finalVideo) {
-        engineRef.current.setVillageInfo(state.village, state.newsItems, state.anchorPhoto);
-        engineRef.current.startPreview();
-        setIsPlaying(true);
-      } else {
-        engineRef.current.stopPreview();
-        setIsPlaying(false);
+    return () => {
+      engineRef.current?.dispose();
+      engineRef.current = null;
+    };
+  }, []);
+
+  // === BACKEND UPLOAD FUNCTIONS ===
+  const uploadMediaToStorage = async (file: File, newsId: string): Promise<string> => {
+    const fileName = `news-assets/${newsId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    console.log('[NewsStudio] Uploading media:', fileName);
+    
+    const { data, error } = await supabase.storage
+      .from('tamtam-media')
+      .upload(fileName, file, {
+        contentType: file.type,
+        cacheControl: '3600'
+      });
+    
+    if (error) {
+      console.error('[NewsStudio] Media upload failed:', error);
+      throw error;
+    }
+    
+    const { data: urlData } = supabase.storage
+      .from('tamtam-media')
+      .getPublicUrl(fileName);
+    
+    console.log('[NewsStudio] Media uploaded:', urlData.publicUrl);
+    return urlData.publicUrl;
+  };
+
+  const uploadAnchorPhoto = async (file: File): Promise<string> => {
+    const fileName = `anchor-photos/${Date.now()}-anchor.${file.name.split('.').pop()}`;
+    console.log('[NewsStudio] Uploading anchor photo:', fileName);
+    
+    const { data, error } = await supabase.storage
+      .from('tamtam-media')
+      .upload(fileName, file, {
+        contentType: file.type
+      });
+    
+    if (error) {
+      console.error('[NewsStudio] Anchor photo upload failed:', error);
+      throw error;
+    }
+    
+    const { data: urlData } = supabase.storage
+      .from('tamtam-media')
+      .getPublicUrl(fileName);
+    
+    console.log('[NewsStudio] Anchor photo uploaded:', urlData.publicUrl);
+    return urlData.publicUrl;
+  };
+
+  const addNewsItem = async (news: NewsItem) => {
+    // Upload media files to backend
+    const uploadedMediaUrls: string[] = [];
+    
+    for (const file of news.media) {
+      try {
+        const url = await uploadMediaToStorage(file, news.id);
+        uploadedMediaUrls.push(url);
+      } catch (e) {
+        console.error('[NewsStudio] Media upload failed for', file.name, e);
       }
     }
-  }, [state.step, finalVideo]);
-
-  const addNewsItem = (news: NewsItem) => {
+    
+    // Add news with uploaded URLs stored in metadata
+    const newsWithUrls = {
+      ...news,
+      // Store URLs for later use in rendering
+      mediaUrls: uploadedMediaUrls
+    };
+    
     setState(prev => ({
       ...prev,
-      newsItems: [...prev.newsItems, news]
+      newsItems: [...prev.newsItems, newsWithUrls as NewsItem]
     }));
     setShowNewsForm(false);
+    
     toast({
       title: 'Information ajoutée',
-      description: `"${news.title}" a été ajouté au journal.`
+      description: `"${news.title}" a été ajouté au journal.${uploadedMediaUrls.length > 0 ? ` (${uploadedMediaUrls.length} média(s) uploadé(s))` : ''}`
     });
   };
 
@@ -1000,7 +1059,29 @@ const NewsStudio: React.FC = () => {
     <AnchorCustomization
       anchorPhoto={state.anchorPhoto}
       anchorVoice={state.anchorVoice}
-      onPhotoChange={file => setState(prev => ({ ...prev, anchorPhoto: file }))}
+      onPhotoChange={async (file) => {
+        if (file) {
+          // Upload to backend
+          try {
+            const url = await uploadAnchorPhoto(file);
+            setState(prev => ({ 
+              ...prev, 
+              anchorPhoto: file,
+              anchorPhotoUrl: url 
+            }));
+            toast({
+              title: 'Photo uploadée',
+              description: 'La photo du présentateur a été enregistrée.'
+            });
+          } catch (e) {
+            console.error('[NewsStudio] Anchor photo upload failed:', e);
+            // Still set local file for preview
+            setState(prev => ({ ...prev, anchorPhoto: file }));
+          }
+        } else {
+          setState(prev => ({ ...prev, anchorPhoto: undefined, anchorPhotoUrl: undefined }));
+        }
+      }}
       onVoiceChange={file => setState(prev => ({ ...prev, anchorVoice: file }))}
     />
   );
