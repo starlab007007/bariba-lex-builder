@@ -642,41 +642,71 @@ const NewsStudio: React.FC = () => {
 
   // Initialize engine ONLY when on preview step (canvas must be in DOM)
   useEffect(() => {
-    // Only initialize when we're on preview step and canvas exists
-    if (state.step === 'preview' && canvasRef.current && !engineRef.current) {
+    let timeoutId: number | undefined;
+    let rafId: number | undefined;
+
+    const initOrResumePreview = () => {
       const canvas = canvasRef.current;
-      // Force internal dimensions for HD rendering
+      if (!canvas) return;
+
+      // Force internal dimensions for HD rendering (also ensures non-zero size)
       canvas.width = 1920;
       canvas.height = 1080;
-      
-      console.log('[NewsStudio] 🎬 Initializing engine for preview step. Canvas:', canvas.width, 'x', canvas.height);
-      
-      // Use requestAnimationFrame to ensure canvas is fully mounted
-      requestAnimationFrame(() => {
-        try {
-          // Check if 2D context is available
-          const testCtx = canvas.getContext('2d');
-          if (!testCtx) {
-            throw new Error('Le navigateur ne supporte pas le rendu Canvas 2D');
-          }
-          
-          engineRef.current = createVillageChronicleEngine(canvas);
+
+      const fail = (error: unknown) => {
+        console.error('[NewsStudio] ❌ Engine init/resume failed:', error);
+        setEngineError(error instanceof Error ? error.message : 'Erreur d\'initialisation du moteur');
+        setEngineReady(false);
+        toast({
+          variant: 'destructive',
+          title: 'Erreur de rendu',
+          description: 'Impossible d\'initialiser le studio. Essayez de rafraîchir la page.'
+        });
+      };
+
+      try {
+        // Check if 2D context is available
+        const testCtx = canvas.getContext('2d');
+        if (!testCtx) throw new Error('Le navigateur ne supporte pas le rendu Canvas 2D');
+
+        // If engine already exists (e.g., user left preview and came back), resume preview.
+        if (engineRef.current) {
           engineRef.current.setVillageInfo(state.village, state.newsItems, state.anchorPhoto);
           engineRef.current.startPreview();
           setIsPlaying(true);
           setEngineReady(true);
           setEngineError(null);
-          console.log('[NewsStudio] ✅ Engine started successfully');
-        } catch (error) {
-          console.error('[NewsStudio] ❌ Engine init failed:', error);
-          setEngineError(error instanceof Error ? error.message : 'Erreur d\'initialisation du moteur');
-          setEngineReady(false);
-          toast({
-            variant: 'destructive',
-            title: 'Erreur de rendu',
-            description: 'Impossible d\'initialiser le studio. Essayez de rafraîchir la page.'
-          });
+          console.log('[NewsStudio] ▶️ Engine preview resumed');
+          return;
         }
+
+        console.log('[NewsStudio] 🎬 Initializing engine for preview step. Canvas:', canvas.width, 'x', canvas.height);
+        engineRef.current = createVillageChronicleEngine(canvas);
+        engineRef.current.setVillageInfo(state.village, state.newsItems, state.anchorPhoto);
+        engineRef.current.startPreview();
+        setIsPlaying(true);
+        setEngineReady(true);
+        setEngineError(null);
+        console.log('[NewsStudio] ✅ Engine started successfully');
+      } catch (e) {
+        fail(e);
+      }
+    };
+
+    if (state.step === 'preview' && canvasRef.current) {
+      // Safety timeout to avoid infinite “Chargement du studio…”
+      timeoutId = window.setTimeout(() => {
+        if (!engineReady) {
+          setEngineError('Le moteur n\'a pas pu être initialisé (délai dépassé). Rafraîchissez la page puis réessayez.');
+        }
+      }, 10000);
+
+      // Attempt immediate init/resume first (avoids rAF not firing on some mobile situations)
+      initOrResumePreview();
+
+      // Also schedule via rAF as a secondary attempt (helps when DOM/layout isn’t ready yet)
+      rafId = requestAnimationFrame(() => {
+        if (!engineReady) initOrResumePreview();
       });
     }
     
@@ -690,7 +720,12 @@ const NewsStudio: React.FC = () => {
     if (state.step !== 'preview') {
       setEngineReady(false);
     }
-  }, [state.step, state.village, state.newsItems, state.anchorPhoto, toast]);
+
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [state.step, state.village, state.newsItems, state.anchorPhoto, toast, engineReady]);
 
   // Update engine with village data whenever it changes
   useEffect(() => {
