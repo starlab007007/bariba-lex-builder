@@ -180,9 +180,9 @@ export class VillageChronicleEngine {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     
-    // Ensure canvas has proper dimensions for HD rendering
-    canvas.width = 1920;
-    canvas.height = 1080;
+    // Use 720p for faster preview rendering (upgrade to 1080p for HD export)
+    canvas.width = 1280;
+    canvas.height = 720;
     
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(35, 16/9, 0.1, 1000);
@@ -201,7 +201,7 @@ export class VillageChronicleEngine {
       this.draw2DFrame(0);
     }
     
-    console.log('[VillageChronicle] Engine initialized in 2D mode (1920x1080)');
+    console.log('[VillageChronicle] Engine initialized in 2D mode (1280x720 preview)');
 
     this.assetLoader = new AssetLoader3D();
     this.particleManager = new ParticleSystemManager();
@@ -645,44 +645,45 @@ export class VillageChronicleEngine {
       cuePoints: []
     });
 
+    // OPTIMIZED: Shorter durations for faster generation (target: 30-60s total)
     const show: NewsShow = {
       opening: {
         type: 'opening',
         script: createScript(
-          `Bonsoir et bienvenue au Journal de ${inputs.village.name}. Voici les principales informations.`,
-          15
+          `Bonsoir et bienvenue au Journal de ${inputs.village.name}.`,
+          5 // Reduced from 15s
         ),
-        duration: 15
+        duration: 5
       },
-      mainNews: inputs.newsItems.slice(0, 3).map(news => ({
+      mainNews: inputs.newsItems.slice(0, 2).map(news => ({
         type: 'news' as const,
-        script: createScript(`${news.title}. ${news.description}`, 45),
+        script: createScript(`${news.title}. ${news.description.slice(0, 100)}`, 12),
         media: news.media,
-        duration: 45
+        duration: 12 // Reduced from 45s
       })),
-      secondaryNews: inputs.newsItems.slice(3).map(news => ({
+      secondaryNews: inputs.newsItems.slice(2, 3).map(news => ({
         type: 'news' as const,
-        script: createScript(`${news.title}. ${news.description}`, 30),
+        script: createScript(`${news.title}.`, 8),
         media: news.media,
-        duration: 30
+        duration: 8 // Reduced from 30s
       })),
       weather: {
         type: 'weather',
-        script: createScript('La météo prévoit un temps ensoleillé avec 28 degrés.', 30),
-        duration: 30
+        script: createScript('Météo: temps ensoleillé, 28 degrés.', 5),
+        duration: 5 // Reduced from 30s
       },
       announcements: {
         type: 'announcement',
-        script: createScript('Voici les annonces de votre village.', 30),
-        duration: 30
+        script: createScript('', 0), // Skip announcements for speed
+        duration: 0
       },
       closing: {
         type: 'closing',
         script: createScript(
-          `C'était le Journal de ${inputs.village.name}. Merci et à demain.`,
-          15
+          `Merci d'avoir suivi le Journal de ${inputs.village.name}.`,
+          5 // Reduced from 15s
         ),
-        duration: 15
+        duration: 5
       },
       totalDuration: 0
     };
@@ -707,9 +708,10 @@ export class VillageChronicleEngine {
 
   async render(
     inputs: VillageChronicleInputs,
-    onProgress?: (progress: number, stage: string) => void
+    onProgress?: (progress: number, stage: string) => void,
+    quickPreview: boolean = true // Default to quick preview for speed
   ): Promise<Blob> {
-    console.log('[VillageChronicle] Starting render pipeline');
+    console.log('[VillageChronicle] Starting render pipeline (quickPreview:', quickPreview, ')');
     
     onProgress?.(5, 'Configuration du studio');
     
@@ -718,8 +720,12 @@ export class VillageChronicleEngine {
     const show = await this.createNewsShow(inputs);
     this.newsShow = show;
     
-    const totalDuration = Math.min(show.totalDuration, inputs.duration * 60);
-    const fps = 30;
+    // Use actual show duration (already optimized to 30-60s), cap at 60s for speed
+    const totalDuration = Math.min(show.totalDuration, 60);
+    // Lower FPS for quick preview (15fps), full quality uses 30fps
+    const fps = quickPreview ? 15 : 30;
+    
+    console.log(`[VillageChronicle] Rendering ${totalDuration}s @ ${fps}fps = ${totalDuration * fps} frames`);
     
     onProgress?.(20, 'Préparation du rendu');
     
@@ -733,28 +739,64 @@ export class VillageChronicleEngine {
       show.closing
     ];
 
-    // Generate TTS narration
-    onProgress?.(22, 'Génération de la narration vocale...');
+    // Generate TTS narration only for HD export (skip in quick preview)
     let audioBlob: Blob | null = null;
-    try {
-      audioBlob = await this.generateShowNarration(show);
-      if (audioBlob && audioBlob.size > 0) {
-        console.log('[VillageChronicle] Narration audio generated:', audioBlob.size, 'bytes');
+    if (!quickPreview) {
+      onProgress?.(22, 'Génération de la narration vocale...');
+      try {
+        audioBlob = await this.generateShowNarration(show);
+        if (audioBlob && audioBlob.size > 0) {
+          console.log('[VillageChronicle] Narration audio generated:', audioBlob.size, 'bytes');
+        }
+      } catch (e) {
+        console.warn('[VillageChronicle] TTS generation failed:', e);
       }
-    } catch (e) {
-      console.warn('[VillageChronicle] TTS generation failed:', e);
     }
 
+    // Choose encoding path based on quickPreview flag
+    const renderWidth = quickPreview ? 1280 : 1920;
+    const renderHeight = quickPreview ? 720 : 1080;
+
     try {
-      // Try FFmpeg MP4 encoding first
-      onProgress?.(25, 'Capture des frames');
+      if (quickPreview) {
+        // FAST PATH: Use MediaRecorder directly (no FFmpeg overhead)
+        onProgress?.(25, 'Rendu rapide...');
+        
+        const videoBlob = await encodeWithMediaRecorder(
+          this.canvas,
+          null, // Skip TTS for quick preview (faster)
+          totalDuration,
+          fps,
+          (time) => {
+            let elapsed = 0;
+            for (const seg of allSegments) {
+              if (time >= elapsed && time < elapsed + seg.duration) {
+                this.currentSegment = seg;
+                break;
+              }
+              elapsed += seg.duration;
+            }
+            this.currentTime = time;
+            this.draw2DFrame(time);
+          },
+          (ep: EncoderProgress) => {
+            onProgress?.(25 + ep.progress * 70, ep.message);
+          }
+        );
+
+        onProgress?.(100, 'Terminé');
+        console.log(`[VillageChronicle] Quick preview: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+        return videoBlob;
+      }
+
+      // HD PATH: FFmpeg encoding with TTS
+      onProgress?.(25, 'Capture des frames HD');
       
       const frames = await captureCanvasFrames(
         this.canvas,
         totalDuration,
         fps,
         (time) => {
-          // Determine current segment
           let elapsed = 0;
           for (const seg of allSegments) {
             if (time >= elapsed && time < elapsed + seg.duration) {
@@ -763,8 +805,6 @@ export class VillageChronicleEngine {
             }
             elapsed += seg.duration;
           }
-          
-          // Render frame
           this.currentTime = time;
           if (this.use2DFallback) {
             this.draw2DFrame(time);
@@ -775,12 +815,12 @@ export class VillageChronicleEngine {
         (p) => onProgress?.(25 + p * 30, `Frame ${Math.floor(p * totalDuration * fps)}/${totalDuration * fps}`)
       );
 
-      onProgress?.(60, 'Encodage MP4 avec audio');
+      onProgress?.(60, 'Encodage MP4');
       
       const videoBlob = await encodeVideo(
         frames,
-        audioBlob, // Include TTS narration audio
-        { format: 'mp4', fps, width: 1920, height: 1080 },
+        audioBlob,
+        { format: 'mp4', fps, width: renderWidth, height: renderHeight },
         (ep: EncoderProgress) => {
           const p = 60 + ep.progress * 35;
           onProgress?.(p, ep.message);
@@ -788,7 +828,7 @@ export class VillageChronicleEngine {
       );
 
       onProgress?.(100, 'Terminé');
-      console.log(`[VillageChronicle] Rendered MP4: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+      console.log(`[VillageChronicle] HD MP4: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
       
       return videoBlob;
 
