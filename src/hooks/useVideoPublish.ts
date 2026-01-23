@@ -52,11 +52,16 @@ export function useVideoPublish(): UseVideoPublishReturn {
       setPublishStage('Upload de la vidéo...');
       setPublishProgress(10);
 
-      const videoFileName = `${userFolder}/${Date.now()}-video.webm`;
+      // Detect video format from blob type
+      const isMP4 = data.video.type.includes('mp4');
+      const videoExtension = isMP4 ? 'mp4' : 'webm';
+      const videoContentType = isMP4 ? 'video/mp4' : 'video/webm';
+
+      const videoFileName = `${userFolder}/${Date.now()}-video.${videoExtension}`;
       const { data: videoUpload, error: videoError } = await supabase.storage
         .from('videos')
         .upload(videoFileName, data.video, {
-          contentType: 'video/webm',
+          contentType: videoContentType,
           cacheControl: '3600'
         });
 
