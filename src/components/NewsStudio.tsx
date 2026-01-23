@@ -146,26 +146,26 @@ const NewsSubmissionForm: React.FC<NewsFormProps> = ({ onSubmit, onCancel }) => 
 
   return (
     <Card className="border-2 border-primary/20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Plus className="w-5 h-5" />
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
           Nouvelle Information
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Type de news */}
+      <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0 sm:pt-0">
+        {/* Type de news - responsive grid */}
         <div className="space-y-2">
-          <Label>Type d'information</Label>
-          <div className="grid grid-cols-4 gap-2">
+          <Label className="text-sm">Type d'information</Label>
+          <div className="grid grid-cols-4 gap-1 sm:gap-2">
             {(['breaking', 'main', 'announcement', 'weather'] as NewsType[]).map(type => (
               <Button
                 key={type}
                 variant={formData.type === type ? 'default' : 'outline'}
-                className="flex flex-col h-auto py-3"
+                className="flex flex-col h-auto py-2 sm:py-3 px-1 sm:px-2"
                 onClick={() => setFormData(prev => ({ ...prev, type }))}
               >
-                <span className="text-xl mb-1">{newsTypeIcons[type]}</span>
-                <span className="text-xs capitalize">
+                <span className="text-lg sm:text-xl mb-0.5 sm:mb-1">{newsTypeIcons[type]}</span>
+                <span className="text-[10px] sm:text-xs capitalize">
                   {type === 'breaking' ? 'Urgent' : 
                    type === 'main' ? 'Principal' :
                    type === 'announcement' ? 'Annonce' : 'Météo'}
@@ -873,9 +873,10 @@ const NewsStudio: React.FC = () => {
         anchorPhoto: state.anchorPhoto,
         broadcastTime: state.broadcastTime,
         language: state.language,
-        duration: 5
+        duration: 1 // OPTIMIZED: 1 minute max instead of 5
       };
 
+      // Use quick preview mode for speed (15fps, no TTS)
       const video = await engineRef.current.render(inputs, (progress, stage) => {
         console.log(`[NewsStudio] Render progress: ${progress}% - ${stage}`);
         setRenderProgress(progress);
@@ -940,9 +941,20 @@ const NewsStudio: React.FC = () => {
     }
   };
 
-  // Publish to video feed
+  // Publish to video feed (requires authentication)
   const publishToVideoFeed = async () => {
     if (!finalVideo) return;
+    
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: '🔐 Connexion requise',
+        description: 'Connectez-vous pour publier votre journal dans le feed vidéo.'
+      });
+      return;
+    }
     
     // Generate a thumbnail from the first frame of the canvas
     let thumbnail: Blob;
@@ -954,16 +966,16 @@ const NewsStudio: React.FC = () => {
       } else {
         // Create a simple placeholder thumbnail
         const placeholderCanvas = document.createElement('canvas');
-        placeholderCanvas.width = 1920;
-        placeholderCanvas.height = 1080;
+        placeholderCanvas.width = 1280;
+        placeholderCanvas.height = 720;
         const ctx = placeholderCanvas.getContext('2d');
         if (ctx) {
           ctx.fillStyle = '#1e3a5f';
-          ctx.fillRect(0, 0, 1920, 1080);
+          ctx.fillRect(0, 0, 1280, 720);
           ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 72px system-ui';
+          ctx.font = 'bold 48px system-ui';
           ctx.textAlign = 'center';
-          ctx.fillText(`📺 ${state.village.name} TV`, 960, 540);
+          ctx.fillText(`📺 ${state.village.name} TV`, 640, 360);
         }
         const dataUrl = placeholderCanvas.toDataURL('image/jpeg', 0.8);
         const res = await fetch(dataUrl);
@@ -974,6 +986,9 @@ const NewsStudio: React.FC = () => {
       thumbnail = new Blob([], { type: 'image/jpeg' });
     }
 
+    // Calculate real duration (30-60 seconds based on news items)
+    const estimatedDuration = Math.min(60, 5 + (state.newsItems.length * 12) + 10); // opening + news + closing/weather
+
     const result = await publishVideo({
       video: finalVideo,
       thumbnail,
@@ -981,7 +996,7 @@ const NewsStudio: React.FC = () => {
       description: `Les dernières actualités de ${state.village.name}. ${state.newsItems.length} informations présentées.`,
       templateId: 'village-chronicle',
       templateName: 'Village Chronicle',
-      duration: 300 // 5 minutes
+      duration: estimatedDuration // Real duration instead of 300
     });
 
     if (result.success) {
@@ -1245,18 +1260,18 @@ const NewsStudio: React.FC = () => {
   );
 
   const renderPreviewStep = () => (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <Card className="overflow-hidden">
         <div 
           className="aspect-video bg-gradient-to-br from-slate-900 to-slate-800 relative"
-          style={{ minHeight: '300px' }} // Ensure minimum height for mobile
+          style={{ minHeight: '200px' }} // Reduced for mobile
         >
-          {/* Canvas with explicit sizing */}
+          {/* Canvas with responsive sizing */}
           <canvas
             ref={canvasRef}
-            width={1920}
-            height={1080}
-            className="w-full h-full object-contain block" // block prevents inline spacing issues
+            width={1280} // Reduced from 1920 for faster preview
+            height={720}
+            className="w-full h-full object-contain block"
             style={{ 
               display: 'block',
               maxWidth: '100%',
@@ -1364,24 +1379,23 @@ const NewsStudio: React.FC = () => {
         </div>
       </Card>
 
-      {/* TTS Test Button */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Volume2 className="w-6 h-6 text-primary" />
-            <div>
-              <p className="font-medium">Test de la narration</p>
-              <p className="text-sm text-muted-foreground">Écoutez un aperçu de la voix du présentateur</p>
+      {/* TTS Test Button - compact on mobile */}
+      <Card className="p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="font-medium text-sm sm:text-base truncate">Test narration</p>
+              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Écoutez un aperçu de la voix</p>
             </div>
           </div>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => {
               if (engineRef.current && state.newsItems.length > 0) {
                 const previewText = `Bonsoir et bienvenue au Journal de ${state.village.name}. 
-                  Voici les principales informations du jour. 
-                  ${state.newsItems[0]?.title || 'Actualité locale'}. 
-                  ${state.newsItems[0]?.description?.slice(0, 100) || ''}`;
+                  ${state.newsItems[0]?.title || 'Actualité locale'}.`;
                 engineRef.current.startLiveTTS(previewText);
                 toast({
                   title: '🎙️ Narration en cours',
@@ -1396,28 +1410,28 @@ const NewsStudio: React.FC = () => {
               }
             }}
           >
-            <Mic className="w-4 h-4 mr-2" />
-            Écouter
+            <Mic className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Écouter</span>
           </Button>
         </div>
       </Card>
 
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4 text-center">
-          <Newspaper className="w-8 h-8 mx-auto mb-2 text-primary" />
-          <p className="text-2xl font-bold">{state.newsItems.length}</p>
-          <p className="text-sm text-muted-foreground">Informations</p>
+      {/* Summary - show estimated duration */}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <Card className="p-3 sm:p-4 text-center">
+          <Newspaper className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-primary" />
+          <p className="text-xl sm:text-2xl font-bold">{state.newsItems.length}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Infos</p>
         </Card>
-        <Card className="p-4 text-center">
-          <Clock className="w-8 h-8 mx-auto mb-2 text-primary" />
-          <p className="text-2xl font-bold">~5</p>
-          <p className="text-sm text-muted-foreground">Minutes</p>
+        <Card className="p-3 sm:p-4 text-center">
+          <Clock className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-primary" />
+          <p className="text-xl sm:text-2xl font-bold">~{Math.min(60, 5 + (state.newsItems.length * 12) + 10)}s</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Durée</p>
         </Card>
-        <Card className="p-4 text-center">
-          <Eye className="w-8 h-8 mx-auto mb-2 text-primary" />
-          <p className="text-2xl font-bold">{state.language === 'bilingual' ? '2' : '1'}</p>
-          <p className="text-sm text-muted-foreground">Langue{state.language === 'bilingual' ? 's' : ''}</p>
+        <Card className="p-3 sm:p-4 text-center">
+          <Eye className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-primary" />
+          <p className="text-xl sm:text-2xl font-bold">{state.language === 'bilingual' ? '2' : '1'}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Langue{state.language === 'bilingual' ? 's' : ''}</p>
         </Card>
       </div>
     </div>
@@ -1526,32 +1540,32 @@ const NewsStudio: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-red-600 to-red-800 text-white p-6">
+    <div className="min-h-[100dvh] bg-background">
+      {/* Header - responsive */}
+      <header className="bg-gradient-to-r from-red-600 to-red-800 text-white p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-white/20 rounded-xl">
-              <Newspaper className="w-8 h-8" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-2 sm:p-3 bg-white/20 rounded-lg sm:rounded-xl">
+              <Newspaper className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Village Chronicle</h1>
-              <p className="text-white/80">Studio de Journal TV Automatisé</p>
+              <h1 className="text-lg sm:text-2xl font-bold">Village Chronicle</h1>
+              <p className="text-white/80 text-xs sm:text-base">Journal TV Automatisé</p>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Progress bar */}
+      {/* Progress bar - mobile optimized */}
       {state.step !== 'rendering' && state.step !== 'complete' && (
-        <div className="bg-card border-b">
-          <div className="max-w-4xl mx-auto py-4 px-6">
-            <div className="flex items-center justify-between">
+        <div className="bg-card border-b overflow-x-auto">
+          <div className="max-w-4xl mx-auto py-3 sm:py-4 px-4 sm:px-6">
+            <div className="flex items-center justify-between min-w-max gap-1 sm:gap-2">
               {steps.map((step, index) => (
                 <React.Fragment key={step}>
                   <button
                     onClick={() => goToStep(step)}
-                    className={`flex items-center gap-2 ${
+                    className={`flex items-center gap-1 sm:gap-2 ${
                       state.step === step 
                         ? 'text-primary font-semibold' 
                         : steps.indexOf(state.step as typeof steps[number]) > index
@@ -1559,7 +1573,7 @@ const NewsStudio: React.FC = () => {
                           : 'text-muted-foreground'
                     }`}
                   >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${
                       state.step === step 
                         ? 'bg-primary text-primary-foreground' 
                         : steps.indexOf(state.step as typeof steps[number]) > index
@@ -1568,10 +1582,10 @@ const NewsStudio: React.FC = () => {
                     }`}>
                       {index + 1}
                     </div>
-                    <span className="hidden sm:inline">{stepLabels[step]}</span>
+                    <span className="hidden md:inline text-sm">{stepLabels[step]}</span>
                   </button>
                   {index < steps.length - 1 && (
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
                   )}
                 </React.Fragment>
               ))}
@@ -1580,15 +1594,15 @@ const NewsStudio: React.FC = () => {
         </div>
       )}
 
-      {/* Content */}
-      <main className="max-w-4xl mx-auto p-6">
+      {/* Content - responsive padding */}
+      <main className="max-w-4xl mx-auto p-4 sm:p-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={state.step}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15 }}
           >
             {state.step === 'setup' && renderSetupStep()}
             {state.step === 'news' && renderNewsStep()}
@@ -1600,12 +1614,14 @@ const NewsStudio: React.FC = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* Navigation */}
+        {/* Navigation - mobile optimized */}
         {state.step !== 'rendering' && state.step !== 'complete' && (
-          <div className="flex gap-3 mt-6">
+          <div className="flex gap-2 sm:gap-3 mt-4 sm:mt-6 pb-4">
             {state.step !== 'setup' && (
               <Button
                 variant="outline"
+                size="sm"
+                className="sm:size-default"
                 onClick={() => {
                   const currentIndex = steps.indexOf(state.step as typeof steps[number]);
                   if (currentIndex > 0) goToStep(steps[currentIndex - 1]);
@@ -1621,18 +1637,20 @@ const NewsStudio: React.FC = () => {
               <Button 
                 onClick={startRendering}
                 disabled={!engineReady || state.newsItems.length === 0}
-                size="lg"
+                size="default"
+                className="text-sm sm:text-base"
                 title={!engineReady ? 'Attendez le chargement du studio' : state.newsItems.length === 0 ? 'Ajoutez des actualités' : 'Générer le journal'}
               >
                 {!engineReady ? (
                   <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Chargement...
+                    <RefreshCw className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
+                    <span className="hidden sm:inline">Chargement...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4 mr-2" />
-                    Générer le Journal
+                    <Play className="w-4 h-4 mr-1 sm:mr-2" />
+                    Générer
                   </>
                 )}
               </Button>
@@ -1643,9 +1661,10 @@ const NewsStudio: React.FC = () => {
                   if (currentIndex < steps.length - 1) goToStep(steps[currentIndex + 1]);
                 }}
                 disabled={!canProceed()}
+                className="text-sm sm:text-base"
               >
                 Suivant
-                <ChevronRight className="w-4 h-4 ml-2" />
+                <ChevronRight className="w-4 h-4 ml-1 sm:ml-2" />
               </Button>
             )}
           </div>
