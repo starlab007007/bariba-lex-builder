@@ -2415,36 +2415,45 @@ export default function FullscreenCreator({
               setTemplateFlowPhase('idle');
             }}
             onSelectTemplate={(template) => {
+              console.log('🎯 [FullscreenCreator] onSelectTemplate called:', template.id, template.name);
+              
               // Premium Templates handlers
               const premiumTemplateIds = ['griot-digital-premium', 'griot_digital', 'griot-digital'];
               const beatMakerIds = ['beat-maker-ai', 'beat_maker_ai', 'beatmaker'];
               const newsStudioIds = ['village-chronicle', 'village_chronicle', 'news-studio'];
 
               if (premiumTemplateIds.includes(template.id)) {
+                console.log('🎭 [FullscreenCreator] Activating Griot Digital mode');
                 setActiveUnifiedTemplate(template);
                 setShowGriotDigitalMode(true);
                 setDrawer('none');
+                setTemplateFlowPhase('idle');
                 setToast('🎭 Griot Digital activé');
                 return;
               }
 
               if (beatMakerIds.includes(template.id)) {
+                console.log('🎵 [FullscreenCreator] Activating Beat Maker mode');
                 setActiveUnifiedTemplate(template);
                 setShowBeatMakerMode(true);
                 setDrawer('none');
+                setTemplateFlowPhase('idle');
                 setToast('🎵 Beat Maker AI activé');
                 return;
               }
 
               if (newsStudioIds.includes(template.id)) {
+                console.log('📺 [FullscreenCreator] Activating News Studio mode');
                 setActiveUnifiedTemplate(template);
                 setShowNewsStudioMode(true);
                 setDrawer('none');
+                setTemplateFlowPhase('idle');
                 setToast('📺 Village Chronicle activé');
                 return;
               }
 
               // Standard templates
+              console.log('📋 [FullscreenCreator] Activating standard template flow');
               setActiveUnifiedTemplate(template);
               setTemplateFlowPhase('capturing');
               setDrawer('none');

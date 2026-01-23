@@ -33,7 +33,7 @@ const griotDigitalPremiumTemplate: Template = {
   nameBa: 'Kɔ̀gbɛ́ Táárù 3D',
   category: 'storytelling',
   description: 'Conte 3D interactif avec village virtuel et lip-sync IA',
-  thumbnail: '/assets/envato/textures/texture-001.jpg',
+  thumbnail: '', // Fallback: dynamic gradient with emoji will be used
   demoVideo: '',
   duration: 60,
   isPremium: true,
@@ -47,6 +47,7 @@ const griotDigitalPremiumTemplate: Template = {
   },
   tags: ['3D', 'conte', 'griot', 'IA'],
   usageCount: 0,
+  emoji: '🎭',
 };
 
 const beatMakerAIPremiumTemplate: Template = {
@@ -55,7 +56,7 @@ const beatMakerAIPremiumTemplate: Template = {
   nameBa: 'Wùúsú Túúrú AI',
   category: 'music',
   description: 'Studio DAW complet pour créer des beats Afrobeat, Amapiano, Coupé-Décalé',
-  thumbnail: '/assets/envato/textures/texture-002.jpg',
+  thumbnail: '', // Fallback: dynamic gradient with emoji will be used
   demoVideo: '',
   duration: 90,
   isPremium: true,
@@ -69,6 +70,7 @@ const beatMakerAIPremiumTemplate: Template = {
   },
   tags: ['musique', 'beats', 'afrobeat', 'IA'],
   usageCount: 0,
+  emoji: '🎵',
 };
 
 const villageChronicleTemplate: Template = {
@@ -77,7 +79,7 @@ const villageChronicleTemplate: Template = {
   nameBa: 'Sɛ̀kà Dúúnìyá',
   category: 'business',
   description: 'Journal TV automatisé avec présentateur virtuel et météo locale',
-  thumbnail: '/assets/envato/textures/texture-003.jpg',
+  thumbnail: '', // Fallback: dynamic gradient with emoji will be used
   demoVideo: '',
   duration: 120,
   isPremium: true,
@@ -91,6 +93,7 @@ const villageChronicleTemplate: Template = {
   },
   tags: ['actualités', 'TV', 'journal', 'présentateur'],
   usageCount: 0,
+  emoji: '📺',
 };
 import { miniDocVillageTemplate } from './miniDocVillage';
 import { metiersTerroirTemplate } from './metiersTerroir';
