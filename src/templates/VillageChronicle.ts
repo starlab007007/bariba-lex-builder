@@ -173,6 +173,12 @@ export class VillageChronicleEngine {
   // Store news items for display
   private newsItems: NewsItem[] = [];
   
+  // Cache for preloaded media images from news items
+  private mediaCache: Map<string, HTMLImageElement> = new Map();
+  
+  // Track which media URL to display currently
+  private currentMediaUrl: string | null = null;
+  
   // Visual effects - particles for atmosphere
   private particles: Array<{ x: number; y: number; vx: number; vy: number; size: number; alpha: number; color: string }> = [];
   private lightBeams: Array<{ x: number; angle: number; width: number; speed: number }> = [];
@@ -256,12 +262,64 @@ export class VillageChronicleEngine {
       });
     }
     
+    // Preload media from news items (uploaded URLs stored in newsItems)
+    this.preloadNewsMedia(newsItems);
+    
     console.log('[VillageChronicle] Village info updated:', this.villageName, 'News:', newsItems.length);
     
     // Redraw immediately
     if (this.use2DFallback && this.ctx2D) {
       this.draw2DFrame(this.currentTime);
     }
+  }
+  
+  // Preload media images from uploaded news items
+  private async preloadNewsMedia(newsItems: NewsItem[]): Promise<void> {
+    for (const news of newsItems) {
+      // Check for mediaUrls (backend uploaded URLs) or media files
+      const newsAny = news as any;
+      const urls: string[] = newsAny.mediaUrls || [];
+      
+      for (const url of urls) {
+        if (url && !this.mediaCache.has(url)) {
+          try {
+            const img = await this.loadImageFromUrl(url);
+            this.mediaCache.set(url, img);
+            console.log('[VillageChronicle] Preloaded media:', url.slice(-30));
+          } catch (e) {
+            console.warn('[VillageChronicle] Failed to preload media:', url);
+          }
+        }
+      }
+      
+      // Also handle File objects if present
+      if (news.media && news.media.length > 0) {
+        for (const file of news.media) {
+          if (file.type.startsWith('image/')) {
+            const key = `file:${file.name}`;
+            if (!this.mediaCache.has(key)) {
+              try {
+                const img = await this.loadImage(file);
+                this.mediaCache.set(key, img);
+                console.log('[VillageChronicle] Preloaded local media:', file.name);
+              } catch (e) {
+                console.warn('[VillageChronicle] Failed to preload file:', file.name);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  private async loadImageFromUrl(url: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
   }
 
   isReady(): boolean {
@@ -492,16 +550,93 @@ export class VillageChronicleEngine {
     ctx.lineTo(width - 50, 20);
     ctx.stroke();
     
-    // === Display News Summary on Graphics Screen ===
-    if (this.newsItems && this.newsItems.length > 0) {
-      const screenX = width * 0.6;
-      const screenY = height * 0.15;
-      const screenW = width * 0.35;
+    // === Display News Media on Graphics Screen ===
+    const screenContentX = width * 0.6;
+    const screenContentY = height * 0.15;
+    const screenContentW = width * 0.35;
+    const screenContentH = height * 0.4;
+    
+    // Try to display media from current segment or news items
+    let mediaDisplayed = false;
+    
+    // Check current segment for media
+    if (this.currentSegment && this.currentSegment.type === 'news') {
+      const segmentIndex = this.newsShow?.mainNews.indexOf(this.currentSegment) ?? -1;
+      const newsItem = segmentIndex >= 0 ? this.newsItems[segmentIndex] : null;
       
+      if (newsItem) {
+        const newsAny = newsItem as any;
+        const mediaUrls: string[] = newsAny.mediaUrls || [];
+        
+        // Display first available media
+        if (mediaUrls.length > 0) {
+          const mediaUrl = mediaUrls[0];
+          const cachedImg = this.mediaCache.get(mediaUrl);
+          
+          if (cachedImg) {
+            // Draw image on screen with cover fit
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(screenContentX + 5, screenContentY + 5, screenContentW - 10, screenContentH - 10);
+            ctx.clip();
+            
+            const imgAspect = cachedImg.width / cachedImg.height;
+            const screenAspect = (screenContentW - 10) / (screenContentH - 10);
+            
+            let drawW, drawH, drawX, drawY;
+            if (imgAspect > screenAspect) {
+              drawH = screenContentH - 10;
+              drawW = drawH * imgAspect;
+              drawX = screenContentX + 5 - (drawW - (screenContentW - 10)) / 2;
+              drawY = screenContentY + 5;
+            } else {
+              drawW = screenContentW - 10;
+              drawH = drawW / imgAspect;
+              drawX = screenContentX + 5;
+              drawY = screenContentY + 5 - (drawH - (screenContentH - 10)) / 2;
+            }
+            
+            ctx.drawImage(cachedImg, drawX, drawY, drawW, drawH);
+            ctx.restore();
+            
+            // Add media label
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(screenContentX + 5, screenContentY + screenContentH - 35, screenContentW - 10, 30);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 14px system-ui';
+            ctx.textAlign = 'center';
+            ctx.fillText(newsItem.title.slice(0, 40), screenContentX + screenContentW / 2, screenContentY + screenContentH - 15);
+            
+            mediaDisplayed = true;
+          }
+        }
+        
+        // Fallback: try local File media
+        if (!mediaDisplayed && newsItem.media && newsItem.media.length > 0) {
+          const file = newsItem.media[0];
+          if (file.type.startsWith('image/')) {
+            const key = `file:${file.name}`;
+            const cachedImg = this.mediaCache.get(key);
+            if (cachedImg) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(screenContentX + 5, screenContentY + 5, screenContentW - 10, screenContentH - 10);
+              ctx.clip();
+              ctx.drawImage(cachedImg, screenContentX + 5, screenContentY + 5, screenContentW - 10, screenContentH - 10);
+              ctx.restore();
+              mediaDisplayed = true;
+            }
+          }
+        }
+      }
+    }
+    
+    // Fallback: show news summary if no media
+    if (!mediaDisplayed && this.newsItems && this.newsItems.length > 0) {
       ctx.font = 'bold 24px system-ui';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
-      ctx.fillText(`📰 ${this.newsItems.length} Actualités`, screenX + 20, screenY + 40);
+      ctx.fillText(`📰 ${this.newsItems.length} Actualités`, screenContentX + 20, screenContentY + 40);
       
       // List top 3 news
       ctx.font = '18px system-ui';
@@ -509,7 +644,7 @@ export class VillageChronicleEngine {
       this.newsItems.slice(0, 3).forEach((news, i) => {
         const typeIcon = news.type === 'breaking' ? '🔴' : news.type === 'weather' ? '🌤️' : '📰';
         const truncated = news.title.length > 30 ? news.title.slice(0, 27) + '...' : news.title;
-        ctx.fillText(`${typeIcon} ${truncated}`, screenX + 20, screenY + 80 + i * 30);
+        ctx.fillText(`${typeIcon} ${truncated}`, screenContentX + 20, screenContentY + 80 + i * 30);
       });
     }
   }

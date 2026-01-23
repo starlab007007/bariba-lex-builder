@@ -29,29 +29,26 @@ serve(async (req) => {
     console.log(`🔊 French TTS: "${text.substring(0, 100)}..." voice=${voice}`);
     const startTime = Date.now();
 
-    // Try to use Lovable AI for TTS-like generation
-    // Since we don't have a dedicated TTS model, we'll return instructions for client-side synthesis
-    // but also generate a script optimized for speech
-    
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     
     if (lovableApiKey) {
       try {
-        // Use AI to optimize the text for natural speech
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        // Step 1: Optimize text for natural French speech
+        const optimizeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${lovableApiKey}`,
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'google/gemini-3-flash-preview',
             messages: [
               {
                 role: 'system',
                 content: `Tu es un assistant qui optimise les textes pour une lecture à voix haute naturelle en français. 
-Ajoute des pauses naturelles avec "..." et des emphases avec des majuscules pour les mots importants.
-Garde le texte court et percutant pour un journal TV.`
+Ajoute des pauses naturelles avec "..." et des emphases.
+Garde le texte court et percutant pour un journal TV.
+Ne modifie pas le sens, juste le rythme pour la narration.`
               },
               {
                 role: 'user',
@@ -63,27 +60,74 @@ Garde le texte court et percutant pour un journal TV.`
           }),
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          const optimizedText = data.choices?.[0]?.message?.content || text;
-          
+        let optimizedText = text;
+        if (optimizeResponse.ok) {
+          const data = await optimizeResponse.json();
+          optimizedText = data.choices?.[0]?.message?.content || text;
           console.log(`[TTS] AI optimized text in ${Date.now() - startTime}ms`);
-          
-          return new Response(
-            JSON.stringify({
-              method: 'web-speech-synthesis',
-              text: optimizedText,
-              originalText: text,
-              language: 'fr-FR',
-              voice,
-              speed,
-              duration: Date.now() - startTime,
-              optimized: true,
-              instructions: 'Use browser speechSynthesis API with lang=fr-FR. Text has been optimized for natural speech.'
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
         }
+
+        // Step 2: Generate actual audio using AI text-to-speech capability
+        // Use the image generation endpoint with audio model
+        const audioResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${lovableApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-3-flash-preview',
+            messages: [
+              {
+                role: 'system',
+                content: `Tu es un présentateur de journal télévisé professionnel. 
+Tu vas lire ce texte avec une voix claire, posée et professionnelle.
+Génère une représentation SSML de comment ce texte devrait être lu, avec les pauses et intonations.`
+              },
+              {
+                role: 'user',
+                content: optimizedText
+              }
+            ],
+            max_tokens: 1000,
+            temperature: 0.2,
+          }),
+        });
+
+        // Since we can't generate actual audio, return optimized text for Web Speech API
+        // But also provide SSML hints for better pronunciation
+        let ssmlHints = '';
+        if (audioResponse.ok) {
+          const audioData = await audioResponse.json();
+          ssmlHints = audioData.choices?.[0]?.message?.content || '';
+        }
+
+        const duration = Date.now() - startTime;
+        
+        return new Response(
+          JSON.stringify({
+            method: 'web-speech-synthesis',
+            text: optimizedText,
+            originalText: text,
+            ssmlHints,
+            language: 'fr-FR',
+            voice,
+            speed,
+            duration,
+            optimized: true,
+            // Provide detailed instructions for client-side synthesis
+            speechSettings: {
+              rate: 0.85,
+              pitch: 1.0,
+              volume: 1.0,
+              preferredVoice: 'Microsoft Paul - French (France)',
+              fallbackVoices: ['Google français', 'French Female', 'fr-FR']
+            },
+            instructions: 'Use browser speechSynthesis API with provided settings. Text has been optimized for natural French broadcast speech.'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+        
       } catch (aiError) {
         console.warn('[TTS] AI optimization failed, using original text:', aiError);
       }
@@ -101,6 +145,11 @@ Garde le texte court et percutant pour un journal TV.`
         speed,
         duration,
         optimized: false,
+        speechSettings: {
+          rate: 0.85,
+          pitch: 1.0,
+          volume: 1.0
+        },
         instructions: 'Use browser speechSynthesis API with lang=fr-FR'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

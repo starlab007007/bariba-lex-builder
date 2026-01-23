@@ -706,7 +706,7 @@ const NewsStudio: React.FC = () => {
             "Le moteur n'a pas pu être initialisé (délai dépassé). Rafraîchissez la page puis réessayez."
           );
         }
-      }, 10000);
+      }, 20000); // Increased timeout for slower devices
 
       // Attempt immediate init/resume first
       initOrResumePreview();
@@ -876,12 +876,12 @@ const NewsStudio: React.FC = () => {
         duration: 1 // OPTIMIZED: 1 minute max instead of 5
       };
 
-      // Use quick preview mode for speed (15fps, no TTS)
+      // Use HD mode (FFmpeg MP4) for quality - set quickPreview=false
       const video = await engineRef.current.render(inputs, (progress, stage) => {
         console.log(`[NewsStudio] Render progress: ${progress}% - ${stage}`);
         setRenderProgress(progress);
         setRenderStage(stage);
-      });
+      }, false); // false = HD MP4 mode with FFmpeg (not quick WebM preview)
 
       if (!video || video.size === 0) {
         throw new Error('La vidéo générée est vide');
@@ -908,10 +908,14 @@ const NewsStudio: React.FC = () => {
   const downloadVideo = () => {
     if (!finalVideo) return;
     
+    // Detect actual format from blob type
+    const isMP4 = finalVideo.type.includes('mp4');
+    const extension = isMP4 ? 'mp4' : 'webm';
+    
     const url = URL.createObjectURL(finalVideo);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `journal_${state.village.name}_${new Date().toISOString().split('T')[0]}.webm`;
+    a.download = `journal_${state.village.name}_${new Date().toISOString().split('T')[0]}.${extension}`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -1000,10 +1004,13 @@ const NewsStudio: React.FC = () => {
     });
 
     if (result.success) {
+      console.log('[NewsStudio] ✅ Video published successfully, ID:', result.videoId);
       toast({
         title: '🎉 Publié dans le feed!',
-        description: 'Votre journal est maintenant visible par tous.'
+        description: `Votre journal est maintenant visible par tous. ID: ${result.videoId?.slice(0, 8) || 'OK'}`
       });
+    } else {
+      console.error('[NewsStudio] ❌ Video publish failed:', result.error);
     }
   };
 
