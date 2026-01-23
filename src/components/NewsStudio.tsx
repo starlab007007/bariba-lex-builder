@@ -636,26 +636,48 @@ const NewsStudio: React.FC = () => {
   const [finalVideo, setFinalVideo] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // Track engine initialization state for UI feedback
+  const [engineReady, setEngineReady] = useState(false);
+  const [engineError, setEngineError] = useState<string | null>(null);
+
   // Initialize engine ONLY when on preview step (canvas must be in DOM)
   useEffect(() => {
     // Only initialize when we're on preview step and canvas exists
     if (state.step === 'preview' && canvasRef.current && !engineRef.current) {
       const canvas = canvasRef.current;
-      // Force internal dimensions
+      // Force internal dimensions for HD rendering
       canvas.width = 1920;
       canvas.height = 1080;
       
-      console.log('[NewsStudio] Initializing engine for preview step. Canvas:', canvas.width, 'x', canvas.height);
+      console.log('[NewsStudio] 🎬 Initializing engine for preview step. Canvas:', canvas.width, 'x', canvas.height);
       
-      try {
-        engineRef.current = createVillageChronicleEngine(canvas);
-        engineRef.current.setVillageInfo(state.village, state.newsItems, state.anchorPhoto);
-        engineRef.current.startPreview();
-        setIsPlaying(true);
-        console.log('[NewsStudio] Engine started successfully');
-      } catch (error) {
-        console.error('[NewsStudio] Engine init failed:', error);
-      }
+      // Use requestAnimationFrame to ensure canvas is fully mounted
+      requestAnimationFrame(() => {
+        try {
+          // Check if 2D context is available
+          const testCtx = canvas.getContext('2d');
+          if (!testCtx) {
+            throw new Error('Le navigateur ne supporte pas le rendu Canvas 2D');
+          }
+          
+          engineRef.current = createVillageChronicleEngine(canvas);
+          engineRef.current.setVillageInfo(state.village, state.newsItems, state.anchorPhoto);
+          engineRef.current.startPreview();
+          setIsPlaying(true);
+          setEngineReady(true);
+          setEngineError(null);
+          console.log('[NewsStudio] ✅ Engine started successfully');
+        } catch (error) {
+          console.error('[NewsStudio] ❌ Engine init failed:', error);
+          setEngineError(error instanceof Error ? error.message : 'Erreur d\'initialisation du moteur');
+          setEngineReady(false);
+          toast({
+            variant: 'destructive',
+            title: 'Erreur de rendu',
+            description: 'Impossible d\'initialiser le studio. Essayez de rafraîchir la page.'
+          });
+        }
+      });
     }
     
     // Stop preview when leaving preview step
@@ -663,7 +685,12 @@ const NewsStudio: React.FC = () => {
       engineRef.current.stopPreview();
       setIsPlaying(false);
     }
-  }, [state.step]);
+    
+    // Reset engine ready state when leaving preview
+    if (state.step !== 'preview') {
+      setEngineReady(false);
+    }
+  }, [state.step, state.village, state.newsItems, state.anchorPhoto, toast]);
 
   // Update engine with village data whenever it changes
   useEffect(() => {
@@ -772,9 +799,31 @@ const NewsStudio: React.FC = () => {
   };
 
   const startRendering = async () => {
-    if (!engineRef.current) return;
+    // Validate engine is ready
+    if (!engineRef.current) {
+      console.error('[NewsStudio] ❌ Cannot render: engine not initialized');
+      toast({
+        variant: 'destructive',
+        title: 'Moteur non prêt',
+        description: 'Veuillez attendre le chargement de l\'aperçu avant de générer.'
+      });
+      return;
+    }
+    
+    // Validate we have news items
+    if (state.newsItems.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Aucune actualité',
+        description: 'Ajoutez au moins une information avant de générer le journal.'
+      });
+      return;
+    }
 
+    console.log('[NewsStudio] 🎬 Starting render with', state.newsItems.length, 'news items');
     setState(prev => ({ ...prev, step: 'rendering' }));
+    setRenderProgress(0);
+    setRenderStage('Préparation du script...');
 
     try {
       const inputs: VillageChronicleInputs = {
@@ -788,23 +837,28 @@ const NewsStudio: React.FC = () => {
       };
 
       const video = await engineRef.current.render(inputs, (progress, stage) => {
+        console.log(`[NewsStudio] Render progress: ${progress}% - ${stage}`);
         setRenderProgress(progress);
         setRenderStage(stage);
       });
+
+      if (!video || video.size === 0) {
+        throw new Error('La vidéo générée est vide');
+      }
 
       setFinalVideo(video);
       setState(prev => ({ ...prev, step: 'complete' }));
 
       toast({
-        title: 'Journal créé !',
-        description: 'Votre journal télévisé est prêt.'
+        title: '🎉 Journal créé !',
+        description: `Votre journal télévisé de ${state.village.name} est prêt.`
       });
     } catch (error) {
-      console.error('Render error:', error);
+      console.error('[NewsStudio] ❌ Render error:', error);
       toast({
         variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de créer le journal.'
+        title: 'Erreur de génération',
+        description: error instanceof Error ? error.message : 'Impossible de créer le journal. Réessayez.'
       });
       setState(prev => ({ ...prev, step: 'preview' }));
     }
@@ -1153,13 +1207,62 @@ const NewsStudio: React.FC = () => {
   const renderPreviewStep = () => (
     <div className="space-y-4">
       <Card className="overflow-hidden">
-        <div className="aspect-video bg-gradient-to-br from-slate-900 to-slate-800 relative">
+        <div 
+          className="aspect-video bg-gradient-to-br from-slate-900 to-slate-800 relative"
+          style={{ minHeight: '300px' }} // Ensure minimum height for mobile
+        >
+          {/* Canvas with explicit sizing */}
           <canvas
             ref={canvasRef}
             width={1920}
             height={1080}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-contain block" // block prevents inline spacing issues
+            style={{ 
+              display: 'block',
+              maxWidth: '100%',
+              height: 'auto'
+            }}
           />
+
+          {/* Loading overlay when engine not ready */}
+          {!engineReady && !engineError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+              <div className="text-center text-white">
+                <RefreshCw className="w-12 h-12 mx-auto mb-4 animate-spin" />
+                <p className="text-lg font-medium">Chargement du studio...</p>
+                <p className="text-sm text-white/70">Initialisation du moteur de rendu</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error overlay */}
+          {engineError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-red-900/80">
+              <div className="text-center text-white p-4">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/30 flex items-center justify-center">
+                  <Video className="w-8 h-8" />
+                </div>
+                <p className="text-lg font-medium mb-2">Erreur de rendu</p>
+                <p className="text-sm text-white/70 mb-4">{engineError}</p>
+                <Button 
+                  variant="outline" 
+                  className="text-white border-white hover:bg-white/20"
+                  onClick={() => {
+                    // Force re-initialization
+                    engineRef.current?.dispose();
+                    engineRef.current = null;
+                    setEngineError(null);
+                    // Trigger re-init via step change
+                    setState(prev => ({ ...prev, step: 'schedule' }));
+                    setTimeout(() => setState(prev => ({ ...prev, step: 'preview' })), 100);
+                  }}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Réessayer
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* TV Frame overlay */}
           <div className="absolute inset-0 pointer-events-none border-8 border-slate-700 rounded-lg" />
@@ -1196,26 +1299,28 @@ const NewsStudio: React.FC = () => {
             </div>
           </div>
 
-          {/* Play/Pause overlay */}
-          <button
-            className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity"
-            onClick={() => {
-              if (isPlaying) {
-                engineRef.current?.stopPreview();
-              } else {
-                engineRef.current?.startPreview();
-              }
-              setIsPlaying(!isPlaying);
-            }}
-          >
-            <div className="p-4 bg-white/20 backdrop-blur-sm rounded-full">
-              {isPlaying ? (
-                <Pause className="w-12 h-12 text-white" />
-              ) : (
-                <Play className="w-12 h-12 text-white" />
-              )}
-            </div>
-          </button>
+          {/* Play/Pause overlay - only show when engine is ready */}
+          {engineReady && (
+            <button
+              className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity"
+              onClick={() => {
+                if (isPlaying) {
+                  engineRef.current?.stopPreview();
+                } else {
+                  engineRef.current?.startPreview();
+                }
+                setIsPlaying(!isPlaying);
+              }}
+            >
+              <div className="p-4 bg-white/20 backdrop-blur-sm rounded-full">
+                {isPlaying ? (
+                  <Pause className="w-12 h-12 text-white" />
+                ) : (
+                  <Play className="w-12 h-12 text-white" />
+                )}
+              </div>
+            </button>
+          )}
         </div>
       </Card>
 
@@ -1475,11 +1580,21 @@ const NewsStudio: React.FC = () => {
             {state.step === 'preview' ? (
               <Button 
                 onClick={startRendering}
-                disabled={!canProceed()}
+                disabled={!engineReady || state.newsItems.length === 0}
                 size="lg"
+                title={!engineReady ? 'Attendez le chargement du studio' : state.newsItems.length === 0 ? 'Ajoutez des actualités' : 'Générer le journal'}
               >
-                <Play className="w-4 h-4 mr-2" />
-                Générer le Journal
+                {!engineReady ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Chargement...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    Générer le Journal
+                  </>
+                )}
               </Button>
             ) : (
               <Button
