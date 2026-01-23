@@ -640,7 +640,13 @@ const NewsStudio: React.FC = () => {
   const [engineReady, setEngineReady] = useState(false);
   const [engineError, setEngineError] = useState<string | null>(null);
 
-  // Initialize engine ONLY when on preview step (canvas must be in DOM)
+  // Keep latest engineReady value for async callbacks (timeout) without re-running init effect.
+  const engineReadyRef = useRef(false);
+  useEffect(() => {
+    engineReadyRef.current = engineReady;
+  }, [engineReady]);
+
+  // Initialize engine ONLY when entering preview step (avoid re-running init on every state update).
   useEffect(() => {
     let timeoutId: number | undefined;
     let rafId: number | undefined;
@@ -655,17 +661,16 @@ const NewsStudio: React.FC = () => {
 
       const fail = (error: unknown) => {
         console.error('[NewsStudio] ❌ Engine init/resume failed:', error);
-        setEngineError(error instanceof Error ? error.message : 'Erreur d\'initialisation du moteur');
+        setEngineError(error instanceof Error ? error.message : "Erreur d'initialisation du moteur");
         setEngineReady(false);
         toast({
           variant: 'destructive',
           title: 'Erreur de rendu',
-          description: 'Impossible d\'initialiser le studio. Essayez de rafraîchir la page.'
+          description: "Impossible d'initialiser le studio. Essayez de rafraîchir la page."
         });
       };
 
       try {
-        // Check if 2D context is available
         const testCtx = canvas.getContext('2d');
         if (!testCtx) throw new Error('Le navigateur ne supporte pas le rendu Canvas 2D');
 
@@ -693,31 +698,29 @@ const NewsStudio: React.FC = () => {
       }
     };
 
-    if (state.step === 'preview' && canvasRef.current) {
+    if (state.step === 'preview') {
       // Safety timeout to avoid infinite “Chargement du studio…”
       timeoutId = window.setTimeout(() => {
-        if (!engineReady) {
-          setEngineError('Le moteur n\'a pas pu être initialisé (délai dépassé). Rafraîchissez la page puis réessayez.');
+        if (!engineReadyRef.current) {
+          setEngineError(
+            "Le moteur n'a pas pu être initialisé (délai dépassé). Rafraîchissez la page puis réessayez."
+          );
         }
       }, 10000);
 
-      // Attempt immediate init/resume first (avoids rAF not firing on some mobile situations)
+      // Attempt immediate init/resume first
       initOrResumePreview();
 
-      // Also schedule via rAF as a secondary attempt (helps when DOM/layout isn’t ready yet)
+      // Secondary attempt via rAF for late layout readiness
       rafId = requestAnimationFrame(() => {
-        if (!engineReady) initOrResumePreview();
+        if (!engineReadyRef.current) initOrResumePreview();
       });
-    }
-    
-    // Stop preview when leaving preview step
-    if (state.step !== 'preview' && engineRef.current) {
-      engineRef.current.stopPreview();
-      setIsPlaying(false);
-    }
-    
-    // Reset engine ready state when leaving preview
-    if (state.step !== 'preview') {
+    } else {
+      // Stop preview when leaving preview step
+      if (engineRef.current) {
+        engineRef.current.stopPreview();
+        setIsPlaying(false);
+      }
       setEngineReady(false);
     }
 
@@ -725,7 +728,9 @@ const NewsStudio: React.FC = () => {
       if (timeoutId) window.clearTimeout(timeoutId);
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [state.step, state.village, state.newsItems, state.anchorPhoto, toast, engineReady]);
+    // Intentionally only depend on step/toast: we don't want to restart init on data changes.
+    // Data changes are pushed via the separate setVillageInfo effect below.
+  }, [state.step, toast]);
 
   // Update engine with village data whenever it changes
   useEffect(() => {
