@@ -73,26 +73,13 @@ const beatMakerAIPremiumTemplate: Template = {
   emoji: '🎵',
 };
 
+/*
+ * Use the full Village Chronicle template configuration from src/templates/VillageChronicle
+ * instead of a minimal stub, ensuring end-to-end functionality (script generation, rendering, etc.)
+ */
 const villageChronicleTemplate: Template = {
-  id: 'village-chronicle',
-  name: 'Village Chronicle',
-  nameBa: 'Sɛ̀kà Dúúnìyá',
-  category: 'business',
-  description: 'Journal TV automatisé avec présentateur virtuel et météo locale',
-  thumbnail: '', // Fallback: dynamic gradient with emoji will be used
-  demoVideo: '',
-  duration: 120,
-  isPremium: true,
-  isNew: true,
-  effects: [],
-  audio: { volume: 0.9 },
-  metadata: {
-    author: 'TAM-TAM',
-    version: '1.0',
-    tags: ['news', 'TV', 'virtual anchor', 'broadcast']
-  },
-  tags: ['actualités', 'TV', 'journal', 'présentateur'],
-  usageCount: 0,
+  ...VillageChronicleTemplate,
+  thumbnail: '', // Fallback gradient with emoji
   emoji: '📺',
 };
 import { miniDocVillageTemplate } from './miniDocVillage';
