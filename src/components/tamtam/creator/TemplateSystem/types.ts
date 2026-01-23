@@ -131,6 +131,7 @@ export interface Template {
   isPremium?: boolean;
   isNew?: boolean;
   usageCount?: number;
+  emoji?: string; // Icon emoji for fallback display
 }
 
 // ============================================================================

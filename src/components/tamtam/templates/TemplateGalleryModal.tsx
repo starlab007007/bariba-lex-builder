@@ -64,6 +64,7 @@ export function TemplateGalleryModal({
 
   // Handle template preview
   const handleSelectForPreview = useCallback((template: Template) => {
+    console.log('📋 [TemplateGalleryModal] Preview template:', template.id, template.name);
     if ('vibrate' in navigator) navigator.vibrate(30);
     setSelectedTemplate(template);
     setShowPreview(true);
@@ -71,6 +72,7 @@ export function TemplateGalleryModal({
 
   // Convert Template to UnifiedTemplate and select
   const handleUseTemplate = useCallback((template: Template) => {
+    console.log('🎬 [TemplateGalleryModal] Use template:', template.id, template.name, 'isPremium:', template.isPremium);
     if ('vibrate' in navigator) navigator.vibrate(50);
     
     // Map category to UnifiedTemplate category
