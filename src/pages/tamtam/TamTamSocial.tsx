@@ -4,6 +4,7 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, ChevronRight, RefreshCw, UserPlus, Clock } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
+import { useVideoFeed } from '@/hooks/useVideoFeed';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
@@ -510,6 +511,15 @@ const VideoFeedCard: React.FC<{
   const [isLoaded, setIsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // ✅ FIX: Support both tamtam_posts and videos table format
+  const videoUrl = post.media_url || post.video_url;
+  const thumbnailUrl = post.thumbnail_url;
+  const authorName = post.profile?.display_name || post.template_name || 'Créateur';
+  const authorUsername = post.profile?.username || 'creator';
+  const likesCount = post.likes_count || post.reactions_count || 0;
+  const templateEmoji = post.template_name?.includes('Village') ? '📺' : 
+                        post.template_name?.includes('Griot') ? '🎭' : '🎬';
+
   useEffect(() => {
     if (isActive && videoRef.current) {
       videoRef.current.play().catch(() => {});
@@ -520,36 +530,56 @@ const VideoFeedCard: React.FC<{
 
   return (
     <div className="h-screen w-full snap-start snap-always relative bg-black">
-      {post.media_url ? (
-        <video ref={videoRef} src={post.media_url} loop muted playsInline preload={isActive ? 'auto' : 'metadata'} onLoadedData={() => setIsLoaded(true)} className={`absolute inset-0 w-full h-full object-cover transition-opacity ${isLoaded ? 'opacity-100' : 'opacity-0'}`} />
+      {videoUrl ? (
+        <video 
+          ref={videoRef} 
+          src={videoUrl} 
+          poster={thumbnailUrl || undefined}
+          loop 
+          muted 
+          playsInline 
+          preload={isActive ? 'auto' : 'metadata'} 
+          onLoadedData={() => setIsLoaded(true)} 
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+        />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
-          <span className="text-8xl">{post.feeling_emoji || '🎬'}</span>
+          <span className="text-8xl">{post.feeling_emoji || templateEmoji}</span>
         </div>
       )}
       
-      {!isLoaded && post.media_url && (
+      {!isLoaded && videoUrl && (
         <div className="absolute inset-0 bg-gray-900 animate-pulse flex items-center justify-center">
           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-2 border-white border-t-transparent rounded-full" />
+        </div>
+      )}
+      
+      {/* Template badge if from videos table */}
+      {post._sourceTable === 'videos' && post.template_name && (
+        <div className="absolute top-20 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md flex items-center gap-2">
+          <span className="text-lg">{templateEmoji}</span>
+          <span className="text-white text-sm font-semibold">{post.template_name}</span>
         </div>
       )}
       
       {/* Bottom info */}
       <div className="absolute bottom-20 left-0 right-16 px-4 py-4" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }}>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] border-2 border-white flex items-center justify-center"><span className="text-lg">👤</span></div>
-          <span className="text-white font-bold text-sm">@{post.profile?.username || 'creator'}</span>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] border-2 border-white flex items-center justify-center">
+            <span className="text-lg">{templateEmoji}</span>
+          </div>
+          <span className="text-white font-bold text-sm">@{authorUsername}</span>
           <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsFollowing(!isFollowing)} className={`px-3 py-1 rounded-full text-xs font-bold ${isFollowing ? 'bg-white/20 text-white' : 'bg-[#FF7A00] text-white'}`}>
             {isFollowing ? 'Abonné' : 'Suivre'}
           </motion.button>
         </div>
-        <p className="text-white text-sm mb-1">{post.transcript_fr || 'Création vidéo'}</p>
+        <p className="text-white text-sm mb-1">{post.transcript_fr || post.title || 'Création vidéo'}</p>
         {/* Date/heure de publication */}
         <div className="flex items-center gap-1 mb-1">
           <Clock className="w-3 h-3 text-white/50" />
           <span className="text-white/50 text-xs">{formatPublicationDate(post.created_at)}</span>
         </div>
-        <p className="text-white/50 text-xs">#TAMTAM #Création</p>
+        <p className="text-white/50 text-xs">#FITILA #Création {post.template_name ? `#${post.template_name.replace(/\s+/g, '')}` : ''}</p>
       </div>
 
       {/* RIGHT SIDE ACTIONS - TOUS LES BOUTONS */}
@@ -559,7 +589,7 @@ const VideoFeedCard: React.FC<{
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/40'}`}>
             <Heart className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[10px] mt-0.5">{post.reactions_count || 0}</span>
+          <span className="text-white text-[10px] mt-0.5">{likesCount + (isLiked ? 1 : 0)}</span>
         </motion.button>
         
         {/* Répondre */}
@@ -601,6 +631,8 @@ export default function TamTamSocial() {
   const { currentLang } = useTamTamLanguage();
   const { toast } = useToast();
   const { posts, isLoading, createPost, addReaction, fetchComments, fetchPosts } = useTamTamPosts();
+  // ✅ FIX: Also fetch videos from the videos table (Village Chronicle, Griot Digital, etc.)
+  const { videos: videoFeedItems, isLoading: isVideosLoading, refetch: refetchVideos } = useVideoFeed();
   const sideMenu = useSideMenu();
 
   const [activeTab, setActiveTab] = useState<BottomTab>('fil');
@@ -774,47 +806,108 @@ export default function TamTamSocial() {
   }, [createPost, fetchPosts, toast]);
 
   // Filter posts - improved logic to show all posts matching the category
+  // ✅ FIX: Combine tamtam_posts AND videos table for complete feed
   const getCurrentPosts = useMemo(() => {
     const allPosts = posts.length > 0 ? posts : [];
+    
+    // Convert videos from videos table to post-like format for display
+    const videosAsVideoCards = videoFeedItems.map(v => ({
+      id: v.id,
+      audio_url: v.videoUrl, // For VideoFeedCard compatibility
+      media_url: v.videoUrl,
+      media_type: 'video',
+      thumbnail_url: v.thumbnailUrl,
+      transcript_fr: v.description || v.title,
+      transcript_ba: null,
+      topic: 'creation',
+      template_id: v.templateId,
+      template_name: v.templateName,
+      duration_seconds: v.duration,
+      likes_count: v.likesCount,
+      comments_count: 0,
+      shares_count: v.sharesCount,
+      created_at: v.createdAt,
+      is_public: true,
+      profile: {
+        display_name: v.author.name,
+        username: v.author.username,
+        avatar_url: v.author.avatarUrl,
+      },
+      reactions: { like: v.likesCount, love: 0, laugh: 0, wow: 0, pray: 0 },
+      // Flag to identify this is from videos table
+      _sourceTable: 'videos',
+    }));
+    
     switch (feedMode) {
       case 'patrimoine':
         // Patrimoine: audio posts with culture topics OR template-based culture content
-        const patrimoine = allPosts.filter(p => {
+        // ✅ FIX: Include ALL audio posts, not just those with specific topics
+        const patrimoineFromPosts = allPosts.filter(p => {
           const post = p as any;
-          return post.topic === 'patrimoine' || 
-                 post.topic === 'culture' || 
-                 post.template_id?.includes('conte') ||
-                 post.template_id?.includes('chant') ||
-                 post.template_id?.includes('proverbe') ||
-                 (post.culture_score && post.culture_score > 0) ||
-                 (post.media_type === 'audio' && !post.topic);
+          const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
+          return hasAudio && (
+            post.topic === 'patrimoine' || 
+            post.topic === 'culture' || 
+            post.template_id?.includes('conte') ||
+            post.template_id?.includes('chant') ||
+            post.template_id?.includes('proverbe') ||
+            (post.culture_score && post.culture_score > 0) ||
+            post.media_type === 'audio' ||
+            !post.topic // Default audio posts go to patrimoine
+          );
         });
-        return patrimoine.length > 0 ? patrimoine : allPosts.filter(p => (p as any).media_type === 'audio').slice(0, 10);
+        // If no specific patrimoine posts, show all audio posts
+        if (patrimoineFromPosts.length === 0) {
+          return allPosts.filter(p => {
+            const post = p as any;
+            return post.audio_url && post.audio_url.trim().length > 0;
+          });
+        }
+        return patrimoineFromPosts;
+        
       case 'mavoix':
         // Ma Voix: village voice, announcements, questions, polls
-        const mavoix = allPosts.filter(p => {
+        // ✅ FIX: Include ALL audio posts that have specific "mavoix" topics
+        const mavoixFromPosts = allPosts.filter(p => {
           const post = p as any;
-          return post.topic === 'mavoix' || 
-                 post.topic === 'annonce' ||
-                 post.topic === 'village_voice' ||
-                 post.template_id?.includes('annonce') ||
-                 post.template_id?.includes('question') ||
-                 post.template_id?.includes('merci') ||
-                 (post.media_type === 'audio' && post.topic);
+          const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
+          return hasAudio && (
+            post.topic === 'mavoix' || 
+            post.topic === 'annonce' ||
+            post.topic === 'village_voice' ||
+            post.template_id?.includes('annonce') ||
+            post.template_id?.includes('question') ||
+            post.template_id?.includes('merci')
+          );
         });
-        return mavoix.length > 0 ? mavoix : allPosts.filter(p => (p as any).audio_url).slice(0, 10);
+        // If no specific mavoix posts, show all audio posts as fallback
+        if (mavoixFromPosts.length === 0) {
+          return allPosts.filter(p => {
+            const post = p as any;
+            return post.audio_url && post.audio_url.trim().length > 0;
+          });
+        }
+        return mavoixFromPosts;
+        
       case 'creation':
-        // Creation: video, photo, template-based multimedia content
-        const creation = allPosts.filter(p => {
+        // ✅ FIX: Combine videos from BOTH tamtam_posts AND videos table
+        const creationFromPosts = allPosts.filter(p => {
           const post = p as any;
-          return post.media_type === 'video' || 
-                 post.media_type === 'photo' ||
-                 post.template_id ||
-                 post.media_url;
+          return (post.media_type === 'video' || post.media_type === 'photo') && 
+                 post.media_url && post.media_url.trim().length > 0;
         });
-        return creation.length > 0 ? creation : allPosts.slice(0, 10);
+        
+        // Merge both sources, videos table first (newest template videos)
+        const allCreationContent = [...videosAsVideoCards, ...creationFromPosts];
+        
+        // Sort by created_at descending
+        allCreationContent.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        
+        return allCreationContent;
     }
-  }, [feedMode, posts]);
+  }, [feedMode, posts, videoFeedItems]);
 
   return (
     <div className="fixed inset-0" style={{ background: '#0B0B0B' }}>
@@ -834,7 +927,7 @@ export default function TamTamSocial() {
             className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
             onScroll={handleScroll}
           >
-            {isLoading ? (
+            {(isLoading || (feedMode === 'creation' && isVideosLoading)) ? (
               <div className="h-screen flex items-center justify-center">
                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-3 border-[#FF7A00] border-t-transparent rounded-full" />
               </div>
