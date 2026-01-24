@@ -10,8 +10,8 @@ import { Volume2, Loader2 } from 'lucide-react';
 import { useVoiceMenu } from '@/hooks/useVoiceMenu';
 
 const navItems = [
-  { icon: '🏠', path: '/tamtam/social', id: 'home', labelKey: 'home' },
-  { icon: '👤', path: '/tamtam/profile', id: 'profile', labelKey: 'profile' },
+  { icon: '🏠', path: '/fitila/social', id: 'home', labelKey: 'home' },
+  { icon: '👤', path: '/fitila/profile', id: 'profile', labelKey: 'profile' },
 ];
 
 export function TamTamNavigation() {

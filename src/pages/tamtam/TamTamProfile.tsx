@@ -92,7 +92,7 @@ export default function TamTamProfile() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/tamtam/auth');
+      navigate('/fitila/auth');
     }
   }, [user, navigate]);
 
@@ -231,7 +231,7 @@ export default function TamTamProfile() {
   const handleLogout = async () => {
     tamtamFeedback.play('click');
     await signOut();
-    navigate('/tamtam/auth');
+    navigate('/fitila/auth');
   };
 
   const stats = [
@@ -433,7 +433,7 @@ export default function TamTamProfile() {
           <MyCommunities
             communities={myGroups}
             currentUserId={user?.id}
-            onOpenChat={(id) => navigate(`/tamtam/social?community=${id}`)}
+            onOpenChat={(id) => navigate(`/fitila/social?community=${id}`)}
           />
         </TabsContent>
 

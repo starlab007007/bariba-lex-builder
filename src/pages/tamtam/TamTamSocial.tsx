@@ -16,7 +16,7 @@ import { useSideMenu } from './TamTamApp';
 import { supabase } from '@/integrations/supabase/client';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📱 TAM-TAM SOCIAL V8 - AVEC UPLOAD MEDIA + HEURES DE PUBLICATION
+// 📱 FITILA SOCIAL V8 - AVEC UPLOAD MEDIA + HEURES DE PUBLICATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
@@ -190,9 +190,9 @@ const FeedIndicator: React.FC<{ currentFeed: FeedMode; onMenuOpen: () => void }>
           })}
         </div>
 
-        {/* Logo */}
+        {/* Logo FITILA */}
         <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-black/40 backdrop-blur-md">
-          <span className="text-lg">🥁</span>
+          <span className="text-lg">🔥</span>
         </div>
       </div>
       

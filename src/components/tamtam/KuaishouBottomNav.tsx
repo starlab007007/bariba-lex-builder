@@ -16,11 +16,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'home', icon: Home, labelFr: 'Accueil', labelBa: 'Ilé', path: '/tamtam/social' },
-  { id: 'dictionary', icon: BookOpen, labelFr: 'Dico', labelBa: 'Ìwé', path: '/tamtam/dictionary' },
-  { id: 'create', icon: Plus, labelFr: 'Créer', labelBa: 'Ṣẹ̀dá', path: '/tamtam/creator', isCreate: true },
-  { id: 'translator', icon: Languages, labelFr: 'Traduire', labelBa: 'Ìtumọ̀', path: '/tamtam/translator' },
-  { id: 'profile', icon: User, labelFr: 'Profil', labelBa: 'Èmi', path: '/tamtam/profile' },
+  { id: 'home', icon: Home, labelFr: 'Accueil', labelBa: 'Ilé', path: '/fitila/social' },
+  { id: 'dictionary', icon: BookOpen, labelFr: 'Dico', labelBa: 'Ìwé', path: '/fitila/dictionary' },
+  { id: 'create', icon: Plus, labelFr: 'Créer', labelBa: 'Ṣẹ̀dá', path: '/fitila/creator', isCreate: true },
+  { id: 'translator', icon: Languages, labelFr: 'Traduire', labelBa: 'Ìtumọ̀', path: '/fitila/translator' },
+  { id: 'profile', icon: User, labelFr: 'Profil', labelBa: 'Èmi', path: '/fitila/profile' },
 ];
 
 export const KuaishouBottomNav: React.FC = () => {
@@ -60,10 +60,10 @@ export const KuaishouBottomNav: React.FC = () => {
   }, []);
 
   const isActive = (path: string) => {
-    if (path === '/tamtam/social') {
-      return location.pathname === '/tamtam' || 
-             location.pathname === '/tamtam/' || 
-             location.pathname === '/tamtam/social';
+    if (path === '/fitila/social') {
+      return location.pathname === '/fitila' || 
+             location.pathname === '/fitila/' || 
+             location.pathname === '/fitila/social';
     }
     return location.pathname.startsWith(path);
   };
