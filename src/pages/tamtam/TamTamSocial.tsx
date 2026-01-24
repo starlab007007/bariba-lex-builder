@@ -12,7 +12,7 @@ import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
 import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
-import { useSideMenu } from './TamTamApp';
+import { useSideMenu } from '@/pages/fitila/FitilaApp';
 import { supabase } from '@/integrations/supabase/client';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -166,39 +166,39 @@ const FeedIndicator: React.FC<{ currentFeed: FeedMode; onMenuOpen: () => void }>
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onMenuOpen}
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-md"
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-black/20 backdrop-blur-sm"
         >
           <Menu className="w-5 h-5 text-white" />
         </motion.button>
 
-        {/* Feed indicator */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 backdrop-blur-md">
-          {feeds.map((feed) => {
-            const isActive = currentFeed === feed.id;
-            return (
-              <div key={feed.id} className="flex items-center gap-1">
-                {isActive ? (
-                  <motion.div layoutId="feedIndicator" className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20">
-                    <span className="text-base">{feed.emoji}</span>
-                    <span className="text-white text-xs font-semibold">{feed.label}</span>
-                  </motion.div>
-                ) : (
-                  <div className="w-2 h-2 rounded-full bg-white/40" />
-                )}
-              </div>
-            );
-          })}
+        {/* Feed indicator - centré */}
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm">
+            {feeds.map((feed) => {
+              const isActive = currentFeed === feed.id;
+              return (
+                <div key={feed.id} className="flex items-center gap-1">
+                  {isActive ? (
+                    <motion.div layoutId="feedIndicator" className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20">
+                      <span className="text-base">{feed.emoji}</span>
+                      <span className="text-white text-xs font-semibold">{feed.label}</span>
+                    </motion.div>
+                  ) : (
+                    <div className="w-2 h-2 rounded-full bg-white/40" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Logo FITILA */}
-        <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-black/40 backdrop-blur-md">
-          <span className="text-lg">🔥</span>
-        </div>
+        {/* Spacer pour équilibrer le layout */}
+        <div className="w-10 h-10" />
       </div>
       
       {/* Swipe hint */}
-      <div className="flex justify-center pb-2">
-        <span className="text-white/40 text-[10px]">← Glissez pour changer →</span>
+      <div className="flex justify-center pb-1">
+        <span className="text-white/30 text-[10px]">← Glissez →</span>
       </div>
     </div>
   );
@@ -612,17 +612,23 @@ export default function TamTamSocial() {
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; postId: string | null; comments: TamTamComment[]; isLoading: boolean }>({ isOpen: false, postId: null, comments: [], isLoading: false });
 
-  // Handle horizontal swipe
+  // Handle horizontal swipe - optimisé pour réactivité
   const handleDragEnd = useCallback((event: any, info: PanInfo) => {
-    const threshold = 50;
+    // Seuil réduit + détection par vélocité pour swipe plus intuitif
+    const threshold = 30;
+    const velocityThreshold = 200;
     const feeds: FeedMode[] = ['patrimoine', 'mavoix', 'creation'];
     const currentIndex = feeds.indexOf(feedMode);
     
-    if (info.offset.x < -threshold && currentIndex < feeds.length - 1) {
+    // Swipe basé sur offset OU vélocité (plus réactif)
+    const swipeLeft = info.offset.x < -threshold || info.velocity.x < -velocityThreshold;
+    const swipeRight = info.offset.x > threshold || info.velocity.x > velocityThreshold;
+    
+    if (swipeLeft && currentIndex < feeds.length - 1) {
       setFeedMode(feeds[currentIndex + 1]);
       setCurrentPostIndex(0);
       triggerFeedback('notification');
-    } else if (info.offset.x > threshold && currentIndex > 0) {
+    } else if (swipeRight && currentIndex > 0) {
       setFeedMode(feeds[currentIndex - 1]);
       setCurrentPostIndex(0);
       triggerFeedback('notification');
