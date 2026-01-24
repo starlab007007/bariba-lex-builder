@@ -8,7 +8,7 @@ import {
 import { useVideoFeed } from '@/hooks/useVideoFeed';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🎬 TAM-TAM VIDEO FEED - TIKTOK-STYLE
+// 🎬 FITILA VIDEO FEED - TIKTOK-STYLE
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface VideoPost {
@@ -305,39 +305,7 @@ const VideoCard: React.FC<{
   );
 };
 
-// Mock data
-const mockVideos: VideoPost[] = [
-  {
-    id: '1',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    topic: 'culture',
-    topicEmoji: '🎭',
-    duration: 30,
-    author: { name: 'Aïcha Kora', username: 'aicha_kora' },
-    transcriptFr: 'Découvrez la danse traditionnelle Bariba lors du festival annuel de Nikki ! 💃',
-    likes: 1247, comments: 89, shares: 234,
-  },
-  {
-    id: '2',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    topic: 'agriculture',
-    topicEmoji: '🌾',
-    duration: 45,
-    author: { name: 'Kofi Agri', username: 'kofi_agri' },
-    transcriptFr: 'Nouvelle technique de culture du mil en saison sèche - résultats incroyables !',
-    likes: 892, comments: 67, shares: 178,
-  },
-  {
-    id: '3',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    topic: 'musique',
-    topicEmoji: '🎵',
-    duration: 60,
-    author: { name: 'Mamadou Beat', username: 'mamadou_beat' },
-    transcriptFr: 'Remix moderne du chant de mariage Bariba avec des beats afro ! 🔥',
-    likes: 2341, comments: 156, shares: 445,
-  },
-];
+// No mock data - only show real published videos from database
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT - Export nommé ET default
@@ -356,10 +324,11 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
   // Fetch real videos from Supabase
   const { videos: dbVideos, isLoading: isFeedLoading } = useVideoFeed();
 
-  // Utiliser videos prop, ou posts convertis, ou videos de la DB, ou mock
+  // Only use real data - no mock fallback
+  // Priority: props videos > posts converted > DB videos > empty array
   const videoData = videos || posts?.map(p => ({
     id: p.id || String(Math.random()),
-    videoUrl: p.media_url || p.videoUrl || p.audio_url || '',
+    videoUrl: p.media_url || p.videoUrl || '',
     thumbnailUrl: p.thumbnail_url || p.thumbnailUrl,
     transcriptFr: p.transcript_fr || p.transcriptFr,
     transcriptBa: p.transcript_ba || p.transcriptBa,
@@ -367,8 +336,8 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
     topicEmoji: p.feeling_emoji || p.topicEmoji,
     duration: p.duration_seconds || p.duration || 30,
     author: p.user || p.author || {
-      name: p.profile?.display_name || 'Utilisateur',
-      username: p.profile?.username || 'user',
+      name: p.profile?.display_name || 'Utilisateur FITILA',
+      username: p.profile?.username || 'fitila_user',
       avatarUrl: p.profile?.avatar_url,
     },
     likes: p.likes_count || p.likes || 0,
@@ -376,12 +345,12 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
     shares: p.shares || 0,
     isLiked: p.isLiked || false,
     isSaved: p.isSaved || false,
-  })) || (dbVideos.length > 0 ? dbVideos.map(v => ({
+  })).filter((p: VideoPost) => p.videoUrl && p.videoUrl.trim().length > 0) || dbVideos.map(v => ({
     id: v.id,
     videoUrl: v.videoUrl,
     thumbnailUrl: v.thumbnailUrl || undefined,
     transcriptFr: v.description || undefined,
-    topic: v.templateName || 'conte',
+    topic: v.templateName || 'création',
     duration: v.duration,
     author: v.author,
     likes: v.likesCount,
@@ -389,7 +358,7 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
     shares: v.sharesCount,
     isLiked: false,
     isSaved: false,
-  })) : mockVideos);
+  }));
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<FeedTab>('pour_toi');
@@ -440,25 +409,35 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
         </div>
       </div>
 
-      {/* Feed */}
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
-        style={{ scrollSnapType: 'y mandatory' }}
-      >
-        {videoData.map((video, index) => (
-          <VideoCard
-            key={video.id}
-            post={video}
-            isActive={index === currentIndex}
-            onLike={() => onLike(video.id)}
-            onComment={() => onComment(video.id)}
-            onShare={() => onShare(video.id)}
-            onSave={() => onSave(video.id)}
-            onRespond={() => onRespond(video.id)}
-          />
-        ))}
-      </div>
+      {/* Feed - show empty state if no videos */}
+      {videoData.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-white/70 px-8">
+          <div className="text-7xl mb-6">🎬</div>
+          <h3 className="text-xl font-bold text-white mb-2">Aucune vidéo publiée</h3>
+          <p className="text-center text-white/60">
+            Soyez le premier à créer du contenu ! Utilisez les templates pour publier vos vidéos.
+          </p>
+        </div>
+      ) : (
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+          style={{ scrollSnapType: 'y mandatory' }}
+        >
+          {videoData.map((video, index) => (
+            <VideoCard
+              key={video.id}
+              post={video}
+              isActive={index === currentIndex}
+              onLike={() => onLike(video.id)}
+              onComment={() => onComment(video.id)}
+              onShare={() => onShare(video.id)}
+              onSave={() => onSave(video.id)}
+              onRespond={() => onRespond(video.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

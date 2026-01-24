@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🎵 TAM-TAM AUDIO FEED - EXPÉRIENCE TIKTOK + VINYLE
+// 🎵 FITILA AUDIO FEED - EXPÉRIENCE TIKTOK + VINYLE
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface AudioPost {
@@ -218,8 +218,15 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
   const lastTapRef = useRef<number>(0);
 
   useEffect(() => {
-    // Ne jouer que si l'audio existe réellement et n'est pas vide
-    const hasValidAudio = post.audioUrl && post.audioUrl.trim().length > 0;
+    // CLEAN AUDIO POLICY: Only play if audio URL is valid, not empty, and is a real user recording
+    // Block external URLs (soundhelix, samplelib, etc.) and empty strings
+    const isExternalOrFakeAudio = (url: string) => {
+      if (!url || url.trim().length === 0) return true;
+      const blocked = ['soundhelix', 'samplelib', 'sample-videos', 'commondatastorage'];
+      return blocked.some(b => url.toLowerCase().includes(b));
+    };
+    
+    const hasValidAudio = post.audioUrl && !isExternalOrFakeAudio(post.audioUrl);
     
     if (isActive && audioRef.current && hasValidAudio) {
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
@@ -277,7 +284,13 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
   };
   const formatTime = (t: number) => `${Math.floor(t / 60)}:${Math.floor(t % 60).toString().padStart(2, '0')}`;
 
-  const hasValidAudio = post.audioUrl && post.audioUrl.trim().length > 0;
+  // CLEAN AUDIO POLICY: Only show audio controls if URL is valid user recording
+  const isExternalOrFakeAudio = (url: string) => {
+    if (!url || url.trim().length === 0) return true;
+    const blocked = ['soundhelix', 'samplelib', 'sample-videos', 'commondatastorage'];
+    return blocked.some(b => url.toLowerCase().includes(b));
+  };
+  const hasValidAudio = post.audioUrl && !isExternalOrFakeAudio(post.audioUrl);
 
   return (
     <div className="h-screen w-full relative overflow-hidden snap-start snap-always" onClick={handleDoubleTap}>
@@ -394,66 +407,16 @@ const AudioCard: React.FC<AudioCardProps> = ({ post, isActive, onLike, onReply, 
   );
 };
 
-// Mock data - sans URLs audio par défaut (les vrais posts auront leurs propres audios)
-const mockPosts: AudioPost[] = [
-  {
-    id: '1',
-    audioUrl: '', // Chaîne vide = pas de musique de fond automatique
-    duration: 180,
-    templateId: 'conte_animaux',
-    category: 'patrimoine',
-    subcategory: 'conte',
-    emoji: '🦁',
-    visualEmojis: ['🦁', '🐘', '🐢', '🌙', '✨'],
-    gradient: 'from-amber-500 via-orange-500 to-red-500',
-    titleFr: 'Le Lion et la Gazelle',
-    titleBa: 'Gàní kà Sèn',
-    transcript: 'Il était une fois, dans la savane, un lion très fier qui rencontra une gazelle rusée...',
-    authorName: 'Mamadou',
-    authorVillage: 'Nikki',
-    likes: 342, replies: 28, shares: 67,
-  },
-  {
-    id: '2',
-    audioUrl: '', // Chaîne vide = pas de musique de fond automatique
-    duration: 210,
-    templateId: 'musique_fete',
-    category: 'patrimoine',
-    subcategory: 'musique',
-    emoji: '🥁',
-    visualEmojis: ['🥁', '💃', '🕺', '🎉', '🔥'],
-    gradient: 'from-fuchsia-500 via-purple-500 to-violet-600',
-    titleFr: 'Chant de Mariage Traditionnel',
-    titleBa: 'Sùmá Wèn',
-    authorName: 'Aïcha',
-    authorVillage: 'Parakou',
-    likes: 589, replies: 45, shares: 123,
-  },
-  {
-    id: '3',
-    audioUrl: '', // Chaîne vide = pas de musique de fond automatique
-    duration: 120,
-    templateId: 'proverbe_sagesse',
-    category: 'patrimoine',
-    subcategory: 'proverbe',
-    emoji: '🧓',
-    visualEmojis: ['🧓', '💭', '💡', '🙏', '✨'],
-    gradient: 'from-amber-600 via-yellow-600 to-orange-500',
-    titleFr: 'Proverbe du Jour',
-    titleBa: 'Kálá Wèn',
-    transcript: 'Qui veut voyager loin ménage sa monture',
-    authorName: 'Elder Kofi',
-    authorVillage: 'Kandi',
-    likes: 234, replies: 15, shares: 45,
-  },
-];
+// No mock data - only display real user-generated content
+// Empty array placeholder for when no posts are provided
+const emptyPosts: AudioPost[] = [];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT - Export nommé ET default
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const TamTamAudioFeed: React.FC<TamTamAudioFeedProps> = ({
-  posts = mockPosts,
+  posts = emptyPosts,
   mode = 'radio',
   onLike = () => {},
   onReply = () => {},
@@ -511,24 +474,38 @@ export const TamTamAudioFeed: React.FC<TamTamAudioFeedProps> = ({
         </div>
       </div>
 
-      {/* Feed */}
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
-        style={{ scrollSnapType: 'y mandatory' }}
-      >
-        {posts.map((post, index) => (
-          <AudioCard
-            key={post.id}
-            post={post}
-            isActive={index === activeIndex}
-            onLike={() => onLike(post.id)}
-            onReply={() => handleReply(post.id)}
-            onShare={() => onShare(post.id)}
-            onSave={() => onSave(post.id)}
-          />
-        ))}
-      </div>
+      {/* Feed - show empty state if no posts */}
+      {posts.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-white/70 px-8">
+          <div className="text-7xl mb-6">{mode === 'radio' ? '📻' : '🎤'}</div>
+          <h3 className="text-xl font-bold text-white mb-2">
+            {mode === 'radio' ? 'Aucun contenu patrimoine' : 'Aucun message vocal'}
+          </h3>
+          <p className="text-center text-white/60">
+            {mode === 'radio' 
+              ? 'Partagez vos contes, chants et proverbes traditionnels !'
+              : 'Enregistrez votre voix pour partager avec le village !'}
+          </p>
+        </div>
+      ) : (
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+          style={{ scrollSnapType: 'y mandatory' }}
+        >
+          {posts.map((post, index) => (
+            <AudioCard
+              key={post.id}
+              post={post}
+              isActive={index === activeIndex}
+              onLike={() => onLike(post.id)}
+              onReply={() => handleReply(post.id)}
+              onShare={() => onShare(post.id)}
+              onSave={() => onSave(post.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
