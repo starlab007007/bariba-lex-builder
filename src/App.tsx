@@ -11,8 +11,8 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import Gamification from "./pages/Gamification";
 import NotFound from "./pages/NotFound";
 
-// TAM-TAM Platform
-import TamTamApp from "./pages/tamtam/TamTamApp";
+// FITILA Platform (formerly TAM-TAM)
+import FitilaApp from "./pages/fitila/FitilaApp";
 import TamTamHome from "./pages/tamtam/TamTamHome";
 import TamTamSocial from "./pages/tamtam/TamTamSocial";
 import TamTamServices from "./pages/tamtam/TamTamServices";
@@ -33,6 +33,7 @@ import TamTamTemplates from "./pages/tamtam/TamTamTemplates";
 import TemplateTest from "./pages/TemplateTest";
 import SystemValidation from "./pages/SystemValidation";
 import AssetsDashboard from "./pages/AssetsDashboard";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -52,8 +53,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Redirect root to TamTam */}
-            <Route path="/" element={<Navigate to="/tamtam" replace />} />
+            {/* Redirect root to FITILA */}
+            <Route path="/" element={<Navigate to="/fitila" replace />} />
             <Route path="/dictionary" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/gamification" element={<Gamification />} />
@@ -61,8 +62,8 @@ const App = () => (
             <Route path="/system-validation" element={<SystemValidation />} />
             <Route path="/assets" element={<AssetsDashboard />} />
             
-            {/* TAM-TAM Platform Routes - 8 optimized screens */}
-            <Route path="/tamtam" element={<TamTamApp />}>
+            {/* FITILA Platform Routes (new branding) */}
+            <Route path="/fitila" element={<FitilaApp />}>
               <Route index element={<TamTamSocial />} />
               <Route path="auth" element={<TamTamPhoneAuth />} />
               <Route path="home" element={<TamTamHome />} />
@@ -82,6 +83,9 @@ const App = () => (
               <Route path="dictionary" element={<TamTamDictionary />} />
               <Route path="user/:userId" element={<TamTamPublicProfile />} />
             </Route>
+
+            {/* Legacy /tamtam routes redirect to /fitila */}
+            <Route path="/tamtam/*" element={<Navigate to="/fitila" replace />} />
 
             <Route
               path="/admin/*"

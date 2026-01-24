@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSideMenu } from './TamTamApp';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🏠 TAM-TAM HOME V7 - SANS HEADER + FIX AUDIO
+// 🏠 FITILA HOME V7 - SANS HEADER + FIX AUDIO
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type TabId = 'home' | 'social' | 'market' | 'profile';
@@ -199,8 +199,8 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
         </motion.button>
         
         <div className="flex items-center gap-2">
-          <span className="text-2xl">🥁</span>
-          <span className="text-white font-black text-xl">TAM-TAM</span>
+          <span className="text-2xl">🔥</span>
+          <span className="text-white font-black text-xl">FITILA</span>
         </div>
         
         <div className="w-11 h-11" /> {/* Spacer */}
