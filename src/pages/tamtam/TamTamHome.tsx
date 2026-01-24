@@ -9,7 +9,7 @@ import { triggerFeedback } from '@/utils/tamtamFeedback';
 import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { useToast } from '@/hooks/use-toast';
-import { useSideMenu } from './TamTamApp';
+import { useSideMenu } from '@/pages/fitila/FitilaApp';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🏠 FITILA HOME V7 - SANS HEADER + FIX AUDIO
@@ -117,9 +117,9 @@ const BottomTabBar: React.FC<{
   const handleTabPress = (tabId: TabId) => {
     triggerFeedback('click');
     if (tabId === 'home') onTabChange(tabId);
-    else if (tabId === 'social') navigate('/tamtam/social');
-    else if (tabId === 'market') navigate('/tamtam/market');
-    else if (tabId === 'profile') navigate('/tamtam/profile');
+    else if (tabId === 'social') navigate('/fitila/social');
+    else if (tabId === 'market') navigate('/fitila/market');
+    else if (tabId === 'profile') navigate('/fitila/profile');
   };
 
   return (
@@ -225,7 +225,7 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.1 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('/tamtam/social')}
+            onClick={() => navigate('/fitila/social')}
             className={`w-full rounded-2xl p-4 flex items-center gap-4 bg-gradient-to-r ${feed.gradient}`}
           >
             <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center">
@@ -275,7 +275,7 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
         <p className="text-white/80 text-sm mb-3">
           "{currentLang === 'ba' ? 'Sọ̀rọ̀ nípa owó ọjà lónìí!' : 'Parlez des prix du marché aujourd\'hui!'}"
         </p>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/tamtam/social')} className="w-full py-2.5 rounded-xl bg-[#FF7A00] text-white text-sm font-bold">
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/fitila/social')} className="w-full py-2.5 rounded-xl bg-[#FF7A00] text-white text-sm font-bold">
           {currentLang === 'ba' ? 'Bẹ̀rẹ̀' : 'Commencer'}
         </motion.button>
       </motion.div>
@@ -346,7 +346,7 @@ export default function TamTamHome() {
 
   return (
     <div className="fixed inset-0 overflow-y-auto" style={{ background: '#0B0B0B' }}>
-      <WelcomeSection onGoToSocial={() => navigate('/tamtam/social')} onMenuOpen={sideMenu.open} currentLang={currentLang} />
+      <WelcomeSection onGoToSocial={() => navigate('/fitila/social')} onMenuOpen={sideMenu.open} currentLang={currentLang} />
 
       <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} onCreatePress={() => setShowCreateMenu(true)} currentLang={currentLang} />
 
