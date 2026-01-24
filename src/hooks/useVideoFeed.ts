@@ -69,8 +69,8 @@ export function useVideoFeed(): UseVideoFeedReturn {
           createdAt: v.created_at,
           author: {
             id: v.user_id,
-            name: v.template_name ? `Créateur ${v.template_name}` : 'Créateur TAM-TAM',
-            username: '@tamtam_creator',
+            name: v.template_name ? `Créateur ${v.template_name}` : 'Créateur FITILA',
+            username: '@fitila_creator',
             avatarUrl: undefined
           }
         }));
