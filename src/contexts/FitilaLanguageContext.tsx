@@ -234,10 +234,10 @@ interface FitilaLanguageContextType {
 const FitilaLanguageContext = createContext<FitilaLanguageContextType | null>(null);
 
 export const FitilaLanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // BARIBA par défaut
+  // FRANÇAIS par défaut
   const [currentLang, setCurrentLang] = useState<FitilaLang>(() => {
     const saved = localStorage.getItem('fitila-lang');
-    return (saved as FitilaLang) || 'ba'; // Bariba par défaut
+    return (saved as FitilaLang) || 'fr'; // Français par défaut
   });
   
   const { translateFrenchToBariba, translateBaribaToFrench, isTranslating } = useSimpleTranslation();
