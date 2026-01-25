@@ -96,7 +96,7 @@ interface StudioState {
 // ============================================
 
 interface NewsFormProps {
-  onSubmit: (news: NewsItem) => void;
+  onSubmit: (news: NewsItem, onProgress?: (progress: number, message: string) => void) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -109,10 +109,17 @@ const NewsSubmissionForm: React.FC<NewsFormProps> = ({ onSubmit, onCancel }) => 
     priority: 3
   });
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadMessage, setUploadMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.title || !formData.description) return;
+    
+    setIsSubmitting(true);
+    setUploadProgress(0);
+    setUploadMessage('Préparation...');
 
     const newsItem: NewsItem = {
       id: crypto.randomUUID(),
@@ -125,7 +132,16 @@ const NewsSubmissionForm: React.FC<NewsFormProps> = ({ onSubmit, onCancel }) => 
       timestamp: new Date()
     };
 
-    onSubmit(newsItem);
+    try {
+      await onSubmit(newsItem, (progress, message) => {
+        setUploadProgress(progress);
+        setUploadMessage(message);
+      });
+    } finally {
+      setIsSubmitting(false);
+      setUploadProgress(0);
+      setUploadMessage('');
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -295,18 +311,43 @@ const NewsSubmissionForm: React.FC<NewsFormProps> = ({ onSubmit, onCancel }) => 
           </div>
         </div>
 
+        {/* Upload Progress Indicator */}
+        {isSubmitting && (
+          <div className="space-y-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">{uploadMessage || 'Envoi en cours...'}</span>
+              <span className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</span>
+            </div>
+            <Progress value={uploadProgress} className="h-2" />
+            {mediaFiles.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                📸 Upload de {mediaFiles.length} fichier(s)...
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2 pt-4">
-          <Button variant="outline" className="flex-1" onClick={onCancel}>
+          <Button variant="outline" className="flex-1" onClick={onCancel} disabled={isSubmitting}>
             Annuler
           </Button>
           <Button 
             className="flex-1" 
             onClick={handleSubmit}
-            disabled={!formData.title || !formData.description}
+            disabled={!formData.title || !formData.description || isSubmitting}
           >
-            <Send className="w-4 h-4 mr-2" />
-            Soumettre
+            {isSubmitting ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Envoi...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Soumettre
+              </>
+            )}
           </Button>
         </div>
       </CardContent>
@@ -827,18 +868,30 @@ const NewsStudio: React.FC = () => {
     return urlData.publicUrl;
   };
 
-  const addNewsItem = async (news: NewsItem) => {
-    // Upload media files to backend
+  const addNewsItem = async (news: NewsItem, onProgress?: (progress: number, message: string) => void) => {
+    // Upload media files to backend with progress tracking
     const uploadedMediaUrls: string[] = [];
+    const totalFiles = news.media.length;
     
-    for (const file of news.media) {
+    onProgress?.(5, 'Préparation des fichiers...');
+    
+    for (let i = 0; i < news.media.length; i++) {
+      const file = news.media[i];
+      const fileProgress = ((i + 1) / totalFiles) * 80;
+      
+      onProgress?.(10 + fileProgress * 0.5, `Upload ${i + 1}/${totalFiles}: ${file.name.slice(0, 20)}...`);
+      
       try {
         const url = await uploadMediaToStorage(file, news.id);
         uploadedMediaUrls.push(url);
+        onProgress?.(10 + fileProgress, `✅ ${file.name.slice(0, 20)} uploadé`);
       } catch (e) {
         console.error('[NewsStudio] Media upload failed for', file.name, e);
+        onProgress?.(10 + fileProgress, `⚠️ Échec: ${file.name.slice(0, 20)}`);
       }
     }
+    
+    onProgress?.(95, 'Finalisation...');
     
     // Add news with uploaded URLs stored in metadata
     const newsWithUrls = {
@@ -852,6 +905,8 @@ const NewsStudio: React.FC = () => {
       newsItems: [...prev.newsItems, newsWithUrls as NewsItem]
     }));
     setShowNewsForm(false);
+    
+    onProgress?.(100, 'Terminé!');
     
     toast({
       title: 'Information ajoutée',
