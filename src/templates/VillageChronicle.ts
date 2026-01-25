@@ -78,6 +78,8 @@ export interface VillageInfo {
   weatherAPI?: string;
   motto?: string;
   population?: number;
+  temperature?: number;
+  weatherIcon?: 'sunny' | 'cloudy' | 'rainy';
 }
 
 export interface VillageChronicleInputs {
@@ -275,6 +277,10 @@ export class VillageChronicleEngine {
   
   // Preload media images from uploaded news items
   private async preloadNewsMedia(newsItems: NewsItem[]): Promise<void> {
+    console.log('[VillageChronicle] Starting media preload for', newsItems.length, 'news items');
+    
+    const loadPromises: Promise<void>[] = [];
+    
     for (const news of newsItems) {
       // Check for mediaUrls (backend uploaded URLs) or media files
       const newsAny = news as any;
@@ -282,13 +288,19 @@ export class VillageChronicleEngine {
       
       for (const url of urls) {
         if (url && !this.mediaCache.has(url)) {
-          try {
-            const img = await this.loadImageFromUrl(url);
-            this.mediaCache.set(url, img);
-            console.log('[VillageChronicle] Preloaded media:', url.slice(-30));
-          } catch (e) {
-            console.warn('[VillageChronicle] Failed to preload media:', url);
-          }
+          const loadPromise = this.loadImageFromUrl(url)
+            .then(img => {
+              this.mediaCache.set(url, img);
+              console.log('[VillageChronicle] ✅ Preloaded media:', url.slice(-30));
+              // Trigger redraw to show newly loaded media
+              if (this.use2DFallback && this.ctx2D && this.isPlaying) {
+                this.draw2DFrame(this.currentTime);
+              }
+            })
+            .catch(e => {
+              console.warn('[VillageChronicle] ⚠️ Failed to preload media:', url.slice(-30), e);
+            });
+          loadPromises.push(loadPromise);
         }
       }
       
@@ -298,17 +310,33 @@ export class VillageChronicleEngine {
           if (file.type.startsWith('image/')) {
             const key = `file:${file.name}`;
             if (!this.mediaCache.has(key)) {
-              try {
-                const img = await this.loadImage(file);
-                this.mediaCache.set(key, img);
-                console.log('[VillageChronicle] Preloaded local media:', file.name);
-              } catch (e) {
-                console.warn('[VillageChronicle] Failed to preload file:', file.name);
-              }
+              const loadPromise = this.loadImage(file)
+                .then(img => {
+                  this.mediaCache.set(key, img);
+                  console.log('[VillageChronicle] ✅ Preloaded local media:', file.name);
+                  // Trigger redraw to show newly loaded media
+                  if (this.use2DFallback && this.ctx2D && this.isPlaying) {
+                    this.draw2DFrame(this.currentTime);
+                  }
+                })
+                .catch(e => {
+                  console.warn('[VillageChronicle] ⚠️ Failed to preload file:', file.name, e);
+                });
+              loadPromises.push(loadPromise);
             }
           }
         }
       }
+    }
+    
+    // Wait for all media to load (with timeout fallback)
+    if (loadPromises.length > 0) {
+      console.log('[VillageChronicle] Loading', loadPromises.length, 'media items...');
+      await Promise.race([
+        Promise.all(loadPromises),
+        new Promise(resolve => setTimeout(resolve, 5000)) // 5s timeout per batch
+      ]);
+      console.log('[VillageChronicle] Media preload complete. Cache size:', this.mediaCache.size);
     }
   }
   
@@ -316,8 +344,19 @@ export class VillageChronicleEngine {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = reject;
+      
+      const timeout = setTimeout(() => {
+        reject(new Error('Image load timeout'));
+      }, 10000); // 10s timeout per image
+      
+      img.onload = () => {
+        clearTimeout(timeout);
+        resolve(img);
+      };
+      img.onerror = (e) => {
+        clearTimeout(timeout);
+        reject(e);
+      };
       img.src = url;
     });
   }
@@ -343,6 +382,10 @@ export class VillageChronicleEngine {
     
     const ctx = this.ctx2D;
     const { width, height } = this.canvas;
+    
+    // Scale factor for responsive text sizing (base is 1280x720)
+    const scale = Math.min(width / 1280, height / 720);
+    const fontScale = Math.max(0.6, scale); // Minimum 60% of original size
 
     // === Background ===
     const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
@@ -415,38 +458,47 @@ export class VillageChronicleEngine {
     ctx.strokeRect(screenX, screenY, screenW, screenH);
 
     // === Virtual Anchor ===
-    const anchorX = width * 0.3;
-    const anchorY = height * 0.45;
+    const anchorX = width * 0.25;
+    const anchorY = height * 0.50;
+    const photoSize = Math.min(200, width * 0.18); // Responsive photo size
     
     if (this.anchorPhoto) {
-      // Draw uploaded photo
-      const photoSize = 180;
+      // Draw uploaded photo with circular mask
       ctx.save();
       ctx.beginPath();
-      ctx.arc(anchorX, anchorY - 60, photoSize/2, 0, Math.PI * 2);
+      ctx.arc(anchorX, anchorY - 40, photoSize/2, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(this.anchorPhoto, anchorX - photoSize/2, anchorY - 60 - photoSize/2, photoSize, photoSize);
+      ctx.drawImage(this.anchorPhoto, anchorX - photoSize/2, anchorY - 40 - photoSize/2, photoSize, photoSize);
       ctx.restore();
-    } else {
-      // Default anchor avatar
-      // Head
-      ctx.fillStyle = '#c4a574';
+      
+      // Add circular border
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(anchorX, anchorY - 60, 50, 0, Math.PI * 2);
+      ctx.arc(anchorX, anchorY - 40, photoSize/2 + 2, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      // Default anchor avatar - larger and more visible
+      const headSize = Math.min(60, width * 0.05);
+      
+      // Head
+      ctx.fillStyle = '#d4a574';
+      ctx.beginPath();
+      ctx.arc(anchorX, anchorY - 50, headSize, 0, Math.PI * 2);
       ctx.fill();
       
       // Body/shoulders
       ctx.fillStyle = '#1e40af';
       ctx.beginPath();
-      ctx.ellipse(anchorX, anchorY + 40, 70, 60, 0, Math.PI, 0, true);
+      ctx.ellipse(anchorX, anchorY + 30, headSize * 1.4, headSize * 1.2, 0, Math.PI, 0, true);
       ctx.fill();
       
       // Suit collar
       ctx.fillStyle = '#1e3a8a';
       ctx.beginPath();
-      ctx.moveTo(anchorX - 30, anchorY);
-      ctx.lineTo(anchorX, anchorY + 20);
-      ctx.lineTo(anchorX + 30, anchorY);
+      ctx.moveTo(anchorX - headSize * 0.6, anchorY);
+      ctx.lineTo(anchorX, anchorY + 15);
+      ctx.lineTo(anchorX + headSize * 0.6, anchorY);
       ctx.closePath();
       ctx.fill();
     }
@@ -460,61 +512,80 @@ export class VillageChronicleEngine {
 
     // === Lower Third ===
     const lowerThirdY = height * 0.82;
-    const lowerThirdH = height * 0.1;
+    const lowerThirdH = height * 0.12; // Slightly taller for better readability
     
     // Red accent bar
     ctx.fillStyle = '#dc2626';
-    ctx.fillRect(0, lowerThirdY, width * 0.02, lowerThirdH);
+    ctx.fillRect(0, lowerThirdY, width * 0.015, lowerThirdH);
     
-    // Main lower third background
+    // Main lower third background with better contrast
     const ltGradient = ctx.createLinearGradient(0, lowerThirdY, 0, lowerThirdY + lowerThirdH);
-    ltGradient.addColorStop(0, 'rgba(30, 58, 138, 0.95)');
-    ltGradient.addColorStop(1, 'rgba(30, 64, 175, 0.95)');
+    ltGradient.addColorStop(0, 'rgba(15, 23, 42, 0.95)');
+    ltGradient.addColorStop(1, 'rgba(30, 41, 59, 0.95)');
     ctx.fillStyle = ltGradient;
-    ctx.fillRect(width * 0.02, lowerThirdY, width * 0.6, lowerThirdH);
+    ctx.fillRect(width * 0.015, lowerThirdY, width * 0.7, lowerThirdH);
     
-    // Village name
-    ctx.font = 'bold 36px system-ui';
+    // Village name - responsive font size
+    const titleFontSize = Math.max(20, Math.min(36, width * 0.028));
+    ctx.font = `bold ${titleFontSize}px system-ui`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
-    ctx.fillText(`Journal de ${this.villageName}`, width * 0.04, lowerThirdY + 45);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(`📺 Journal de ${this.villageName}`, width * 0.03, lowerThirdY + titleFontSize + 8);
+    ctx.shadowBlur = 0;
     
-    // Current segment info
+    // Current segment info or first news headline
+    const subFontSize = Math.max(14, Math.min(24, width * 0.018));
+    ctx.font = `${subFontSize}px system-ui`;
+    ctx.fillStyle = '#93c5fd';
+    
+    let subText = '';
     if (this.currentSegment) {
-      ctx.font = '24px system-ui';
-      ctx.fillStyle = '#93c5fd';
-      ctx.fillText(this.currentSegment.script.text.slice(0, 60) + '...', width * 0.04, lowerThirdY + 75);
+      subText = this.currentSegment.script.text.slice(0, 50) + '...';
+    } else if (this.newsItems && this.newsItems.length > 0) {
+      subText = `📰 ${this.newsItems.length} actualité${this.newsItems.length > 1 ? 's' : ''} à la une`;
     }
+    ctx.fillText(subText, width * 0.03, lowerThirdY + titleFontSize + subFontSize + 16);
 
-    // === Live Badge ===
-    const liveX = width - 120;
-    const liveY = 50;
+    // === Live Badge - responsive positioning ===
+    const badgeWidth = Math.max(70, width * 0.07);
+    const badgeHeight = Math.max(28, height * 0.04);
+    const liveX = width - badgeWidth - 15;
+    const liveY = 15;
     const livePulse = (Math.sin(time * 4) + 1) / 2;
     
     ctx.fillStyle = `rgba(220, 38, 38, ${0.8 + livePulse * 0.2})`;
     ctx.beginPath();
-    ctx.roundRect(liveX, liveY, 90, 35, 6);
+    ctx.roundRect(liveX, liveY, badgeWidth, badgeHeight, 6);
     ctx.fill();
     
+    const liveFontSize = Math.max(12, Math.min(16, width * 0.012));
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px system-ui';
+    ctx.font = `bold ${liveFontSize}px system-ui`;
     ctx.textAlign = 'center';
-    ctx.fillText('🔴 LIVE', liveX + 45, liveY + 24);
+    ctx.fillText('🔴 EN DIRECT', liveX + badgeWidth / 2, liveY + badgeHeight * 0.7);
 
-    // === Time Display ===
+    // === Time Display - responsive ===
     const now = new Date();
     const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    ctx.font = 'bold 28px system-ui';
+    const timeFontSize = Math.max(16, Math.min(24, width * 0.02));
+    ctx.font = `bold ${timeFontSize}px system-ui`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'right';
-    ctx.fillText(timeStr, width - 40, height * 0.15);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 2;
+    ctx.fillText(timeStr, width - 15, liveY + badgeHeight + timeFontSize + 10);
+    ctx.shadowBlur = 0;
 
-    // === News Ticker ===
-    const tickerY = height - 40;
-    ctx.fillStyle = 'rgba(30, 58, 138, 0.9)';
-    ctx.fillRect(0, tickerY, width, 40);
+    // === News Ticker - responsive ===
+    const tickerH = Math.max(30, height * 0.045);
+    const tickerY = height - tickerH;
+    ctx.fillStyle = 'rgba(220, 38, 38, 0.95)';
+    ctx.fillRect(0, tickerY, width, tickerH);
     
-    ctx.font = '20px system-ui';
+    const tickerFontSize = Math.max(12, Math.min(18, width * 0.014));
+    ctx.font = `bold ${tickerFontSize}px system-ui`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
     
@@ -526,28 +597,30 @@ export class VillageChronicleEngine {
         return prefix + n.title;
       }).join(' • ');
     } else {
-      tickerText += ' • Actualités locales • Météo • Annonces communautaires';
+      tickerText += ' • Actualités locales • Météo • Annonces';
     }
     
-    const tickerOffset = (time * 80) % (width + tickerText.length * 10);
-    ctx.fillText(tickerText, width - tickerOffset, tickerY + 28);
+    const tickerOffset = (time * 60) % (width + tickerText.length * 8);
+    ctx.fillText(tickerText, width - tickerOffset, tickerY + tickerH * 0.7);
 
-    // === Decorative Corner Elements ===
-    ctx.strokeStyle = '#3b82f6';
+    // === Decorative Corner Elements - responsive ===
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
     ctx.lineWidth = 2;
+    const cornerSize = Math.min(30, width * 0.025);
     
     // Top left
     ctx.beginPath();
-    ctx.moveTo(20, 50);
-    ctx.lineTo(20, 20);
-    ctx.lineTo(50, 20);
+    ctx.moveTo(10, cornerSize + 10);
+    ctx.lineTo(10, 10);
+    ctx.lineTo(cornerSize + 10, 10);
     ctx.stroke();
     
-    // Top right
+    // Top right (skip if badge is there)
+    // Bottom left
     ctx.beginPath();
-    ctx.moveTo(width - 20, 50);
-    ctx.lineTo(width - 20, 20);
-    ctx.lineTo(width - 50, 20);
+    ctx.moveTo(10, height - cornerSize - tickerH - 10);
+    ctx.lineTo(10, height - tickerH - 10);
+    ctx.lineTo(cornerSize + 10, height - tickerH - 10);
     ctx.stroke();
     
     // === Display News Media on Graphics Screen ===

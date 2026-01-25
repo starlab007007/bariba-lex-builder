@@ -621,7 +621,9 @@ const NewsStudio: React.FC = () => {
     village: {
       name: '',
       location: { lat: 0, lng: 0 },
-      weatherAPI: ''
+      weatherAPI: '',
+      temperature: 28,
+      weatherIcon: 'sunny'
     },
     newsItems: [],
     broadcastTime: '18:00',
@@ -629,6 +631,14 @@ const NewsStudio: React.FC = () => {
     autoBroadcast: false,
     platforms: []
   });
+
+  // Helper function to calculate estimated duration based on news count
+  const calculateEstimatedDuration = (newsCount: number): number => {
+    const baseTime = 5; // intro/outro
+    const perNewsTime = 12; // average per news item
+    const weatherTime = 10;
+    return Math.min(60, baseTime + (newsCount * perNewsTime) + weatherTime);
+  };
 
   const [showNewsForm, setShowNewsForm] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
@@ -655,9 +665,9 @@ const NewsStudio: React.FC = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      // Force internal dimensions for HD rendering (also ensures non-zero size)
-      canvas.width = 1920;
-      canvas.height = 1080;
+      // Use 720p for faster preview rendering on mobile
+      canvas.width = 1280;
+      canvas.height = 720;
 
       const fail = (error: unknown) => {
         console.error('[NewsStudio] ❌ Engine init/resume failed:', error);
@@ -1270,19 +1280,22 @@ const NewsStudio: React.FC = () => {
     <div className="space-y-3 sm:space-y-4">
       <Card className="overflow-hidden">
         <div 
-          className="aspect-video bg-gradient-to-br from-slate-900 to-slate-800 relative"
-          style={{ minHeight: '200px' }} // Reduced for mobile
+          className="relative w-full bg-gradient-to-br from-slate-900 to-slate-800"
+          style={{ 
+            aspectRatio: '16/9',
+            minHeight: '180px',
+            maxHeight: '50vh' // Limit on mobile for better UX
+          }}
         >
-          {/* Canvas with responsive sizing */}
+          {/* Canvas with fully responsive sizing - fills container */}
           <canvas
             ref={canvasRef}
-            width={1280} // Reduced from 1920 for faster preview
+            width={1280}
             height={720}
-            className="w-full h-full object-contain block"
+            className="absolute inset-0 w-full h-full"
             style={{ 
-              display: 'block',
-              maxWidth: '100%',
-              height: 'auto'
+              objectFit: 'contain',
+              backgroundColor: '#0f172a'
             }}
           />
 
@@ -1353,11 +1366,17 @@ const NewsStudio: React.FC = () => {
             </Badge>
           </div>
 
-          {/* Weather widget */}
-          <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm rounded-lg p-3">
-            <div className="flex items-center gap-2 text-white">
-              <Sun className="w-6 h-6 text-yellow-400" />
-              <span className="text-xl font-bold">28°C</span>
+          {/* Dynamic Weather widget */}
+          <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-black/50 backdrop-blur-sm rounded-lg p-2 sm:p-3">
+            <div className="flex items-center gap-1 sm:gap-2 text-white">
+              {state.village.weatherIcon === 'cloudy' ? (
+                <Cloud className="w-4 h-4 sm:w-6 sm:h-6 text-gray-300" />
+              ) : state.village.weatherIcon === 'rainy' ? (
+                <CloudRain className="w-4 h-4 sm:w-6 sm:h-6 text-blue-400" />
+              ) : (
+                <Sun className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-400" />
+              )}
+              <span className="text-sm sm:text-xl font-bold">{state.village.temperature || 28}°C</span>
             </div>
           </div>
 
@@ -1432,7 +1451,7 @@ const NewsStudio: React.FC = () => {
         </Card>
         <Card className="p-3 sm:p-4 text-center">
           <Clock className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-primary" />
-          <p className="text-xl sm:text-2xl font-bold">~{Math.min(60, 5 + (state.newsItems.length * 12) + 10)}s</p>
+          <p className="text-xl sm:text-2xl font-bold">~{calculateEstimatedDuration(state.newsItems.length)}s</p>
           <p className="text-xs sm:text-sm text-muted-foreground">Durée</p>
         </Card>
         <Card className="p-3 sm:p-4 text-center">
