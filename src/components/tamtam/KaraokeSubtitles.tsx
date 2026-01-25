@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 interface KaraokeSubtitlesProps {
   text: string;
@@ -55,31 +56,63 @@ export const KaraokeSubtitles: React.FC<KaraokeSubtitlesProps> = ({
   }
 
   return (
-    <div className={`text-center px-4 py-3 ${className}`}>
-      <p className="text-lg leading-relaxed">
-        {wordTimings.map((item, index) => {
-          const isPast = index < currentWordIndex;
-          const isCurrent = index === currentWordIndex;
-          const isFuture = index > currentWordIndex;
-          
-          return (
-            <motion.span
-              key={index}
-              className={`inline-block mx-0.5 transition-all duration-150 ${
-                isCurrent
-                  ? 'text-primary font-bold scale-110'
-                  : isPast
-                    ? 'text-gray-600'
-                    : 'text-gray-400'
-              }`}
-              animate={isCurrent ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ duration: 0.3 }}
-            >
-              {item.word}
-            </motion.span>
-          );
-        })}
-      </p>
+    <div 
+      className={cn(
+        "absolute bottom-0 left-0 right-0 px-3 sm:px-4 md:px-6",
+        className
+      )}
+      style={{ 
+        paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 1.5rem))' 
+      }}
+    >
+      {/* Glass container for subtitles */}
+      <div className="karaoke-container">
+        <p className="text-fluid-lg text-center leading-relaxed">
+          {wordTimings.map((item, index) => {
+            const isPast = index < currentWordIndex;
+            const isCurrent = index === currentWordIndex;
+            const isFuture = index > currentWordIndex;
+            
+            return (
+              <motion.span
+                key={index}
+                className={cn(
+                  'karaoke-word text-readable-light',
+                  isPast && 'past',
+                  isCurrent && 'current',
+                  isFuture && 'future'
+                )}
+                animate={isCurrent ? { 
+                  scale: [1, 1.12, 1.08],
+                  textShadow: [
+                    '0 0 10px hsl(var(--primary) / 0.4)',
+                    '0 0 25px hsl(var(--primary) / 0.7)',
+                    '0 0 20px hsl(var(--primary) / 0.6)'
+                  ]
+                } : {}}
+                transition={{ 
+                  duration: 0.3,
+                  ease: 'easeOut'
+                }}
+              >
+                {item.word}
+              </motion.span>
+            );
+          })}
+        </p>
+        
+        {/* Progress indicator */}
+        <div className="mt-3 h-1 rounded-full bg-white/10 overflow-hidden">
+          <motion.div 
+            className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ 
+              width: `${(currentTime / duration) * 100}%` 
+            }}
+            transition={{ duration: 0.1 }}
+          />
+        </div>
+      </div>
     </div>
   );
 };

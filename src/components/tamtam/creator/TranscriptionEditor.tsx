@@ -1,5 +1,6 @@
 // src/components/tamtam/creator/TranscriptionEditor.tsx
 // Dynamic transcription editor with inline editing, STT integration, and AI suggestions
+// RESPONSIVE OPTIMIZED - Touch targets 44px+, fluid typography
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -160,53 +161,58 @@ export default function TranscriptionEditor({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 p-3",
+        "transcription-editor",
         className
       )}
     >
-      {/* Main content */}
-      <div className="flex items-start gap-3">
-        {/* Transcribe button */}
+      {/* Main content - Responsive layout */}
+      <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+        {/* Transcribe button - Touch target 44px+ */}
         <button
           onClick={capturedBlob ? autoTranscribe : startLiveTranscription}
           disabled={isLoading}
           className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
+            "transcription-btn flex-shrink-0 transition-all",
             isLoading
               ? "bg-orange-500/30 text-orange-400"
-              : "bg-white/10 text-white/80 hover:bg-white/20"
+              : "bg-white/10 text-white/80 hover:bg-white/20 active:bg-white/25"
           )}
+          aria-label={isLoading ? "Transcription en cours" : "Transcrire"}
         >
           {isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
           ) : isTranscribing ? (
-            <MicOff className="h-5 w-5" />
+            <MicOff className="h-5 w-5 sm:h-6 sm:w-6" />
           ) : (
-            <Mic className="h-5 w-5" />
+            <Mic className="h-5 w-5 sm:h-6 sm:w-6" />
           )}
         </button>
 
-        {/* Text content */}
-        <div className="flex-1 min-w-0">
+        {/* Text content - Fluid typography */}
+        <div className="flex-1 min-w-0 w-full">
           {isEditing ? (
             <textarea
               ref={inputRef}
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              className="w-full bg-white/5 rounded-xl p-2 text-white text-sm outline-none resize-none min-h-[60px] border border-white/20"
+              className="w-full bg-white/5 rounded-xl p-3 text-white text-fluid-base outline-none resize-none min-h-[80px] sm:min-h-[70px] border border-white/20 focus:border-primary/50 transition-colors"
               placeholder="Saisissez votre transcription..."
             />
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {transcript ? (
                 <>
-                  <p className="text-white text-sm leading-relaxed">{transcript}</p>
+                  <p className="text-white text-fluid-base leading-relaxed text-readable-light">
+                    {transcript}
+                  </p>
                   {transcriptBa && showBa && (
-                    <p className="text-white/60 text-xs italic">🇧🇯 {transcriptBa}</p>
+                    <p className="text-white/60 text-fluid-sm italic">
+                      🇧🇯 {transcriptBa}
+                    </p>
                   )}
                 </>
               ) : (
-                <p className="text-white/40 text-sm italic">
+                <p className="text-white/40 text-fluid-base italic">
                   {isLoading ? "Transcription en cours..." : "Appuyez sur 🎤 pour transcrire"}
                 </p>
               )}
@@ -214,78 +220,84 @@ export default function TranscriptionEditor({
           )}
         </div>
 
-        {/* Action buttons */}
-        <div className="flex flex-col gap-1 flex-shrink-0">
+        {/* Action buttons - Touch targets 44px, stacked on mobile */}
+        <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
           {isEditing ? (
             <>
               <button
                 onClick={confirmEdit}
-                className="w-8 h-8 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center hover:bg-green-500/30"
+                className="transcription-btn bg-green-500/20 text-green-400 hover:bg-green-500/30 active:bg-green-500/40"
+                aria-label="Confirmer"
               >
-                <Check className="h-4 w-4" />
+                <Check className="h-5 w-5" />
               </button>
               <button
                 onClick={cancelEdit}
-                className="w-8 h-8 rounded-full bg-white/10 text-white/60 flex items-center justify-center hover:bg-white/20"
+                className="transcription-btn bg-white/10 text-white/60 hover:bg-white/20 active:bg-white/25"
+                aria-label="Annuler"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </>
           ) : (
             <>
               <button
                 onClick={startEdit}
-                className="w-8 h-8 rounded-full bg-white/10 text-white/80 flex items-center justify-center hover:bg-white/20"
+                className="transcription-btn bg-white/10 text-white/80 hover:bg-white/20 active:bg-white/25"
                 title="Modifier"
+                aria-label="Modifier"
               >
-                <Edit3 className="h-4 w-4" />
+                <Edit3 className="h-5 w-5" />
               </button>
               <button
                 onClick={enhanceWithAI}
                 disabled={!transcript || isEnhancing}
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                  "transcription-btn transition-all",
                   !transcript || isEnhancing
                     ? "opacity-30 cursor-not-allowed bg-white/5"
-                    : "bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 hover:from-purple-500/30 hover:to-pink-500/30"
+                    : "bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 hover:from-purple-500/30 hover:to-pink-500/30 active:from-purple-500/40 active:to-pink-500/40"
                 )}
                 title="Améliorer avec IA"
+                aria-label="Améliorer avec IA"
               >
                 {isEnhancing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Sparkles className="h-4 w-4" />
+                  <Sparkles className="h-5 w-5" />
                 )}
               </button>
               <button
                 onClick={handleDelete}
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                  "transcription-btn transition-all",
                   showDeleteConfirm
                     ? "bg-red-500 text-white"
-                    : "bg-white/10 text-white/60 hover:bg-red-500/20 hover:text-red-400"
+                    : "bg-white/10 text-white/60 hover:bg-red-500/20 hover:text-red-400 active:bg-red-500/30"
                 )}
                 title={showDeleteConfirm ? "Confirmer la suppression" : "Supprimer"}
+                aria-label={showDeleteConfirm ? "Confirmer la suppression" : "Supprimer"}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-5 w-5" />
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Language toggle (if bilingual) */}
+      {/* Language toggle (if bilingual) - Touch friendly */}
       {transcriptBa && !isEditing && (
         <button
           onClick={() => setShowBa(!showBa)}
           className={cn(
-            "mt-2 flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all",
+            "mt-3 flex items-center gap-2 px-3 py-2 rounded-full text-fluid-sm transition-all touch-action-manipulation",
             showBa
               ? "bg-orange-500/20 text-orange-400"
-              : "bg-white/5 text-white/40 hover:text-white/60"
+              : "bg-white/5 text-white/40 hover:text-white/60 active:bg-white/10"
           )}
+          style={{ minHeight: '36px' }}
         >
-          <Globe className="h-3 w-3" />
+          <Globe className="h-4 w-4" />
           {showBa ? "Masquer Bariba" : "Afficher Bariba"}
         </button>
       )}
