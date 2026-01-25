@@ -82,14 +82,14 @@ const CreateMenu: React.FC<{
   currentLang: string;
 }> = ({ isOpen, onClose, currentFeed, onSelectPatrimoine, onSelectMaVoix, onSelectCreateur, currentLang }) => {
   
+  // ✅ FIX: Toujours afficher les 3 options (Patrimoine, Voix du Village, Création)
   const options = useMemo(() => {
-    const allOptions = [
+    return [
       { id: 'patrimoine', emoji: '🏛️', label: 'Patrimoine', labelBa: 'Kpààrà', desc: 'Culture & Traditions', gradient: 'from-[#FF8C42] to-[#FF5722]', icons: '📖🎵💬🌿', action: onSelectPatrimoine },
       { id: 'mavoix', emoji: '📢', label: 'Voix du Village', labelBa: 'Kùú dɔ̀ɔ̀rɔ̀', desc: 'Annonces & Messages', gradient: 'from-[#26D9B0] to-[#00BCD4]', icons: '📢🙏🎉❓', action: onSelectMaVoix },
-      { id: 'creation', emoji: '🎬', label: 'Créateur', labelBa: 'Olùṣẹ̀dá', desc: 'Vidéo, Photo, Texte', gradient: 'from-[#7C4DFF] to-[#536DFE]', icons: '🎥📸✍️🔴', action: onSelectCreateur },
+      { id: 'creation', emoji: '🎬', label: 'Création', labelBa: 'Ìṣẹ̀dá', desc: 'Vidéo, Photo, Journal', gradient: 'from-[#7C4DFF] to-[#536DFE]', icons: '🎥📸📺✨', action: onSelectCreateur },
     ];
-    return allOptions.filter(opt => opt.id !== currentFeed);
-  }, [currentFeed, onSelectPatrimoine, onSelectMaVoix, onSelectCreateur]);
+  }, [onSelectPatrimoine, onSelectMaVoix, onSelectCreateur]);
 
   return (
     <AnimatePresence>
@@ -515,10 +515,12 @@ const VideoFeedCard: React.FC<{
   const videoUrl = post.media_url || post.video_url;
   const thumbnailUrl = post.thumbnail_url;
   const authorName = post.profile?.display_name || post.template_name || 'Créateur';
-  const authorUsername = post.profile?.username || 'creator';
+  const authorUsername = post.profile?.username || 'fitila_creator';
   const likesCount = post.likes_count || post.reactions_count || 0;
+  const commentsCount = post.comments_count || 0;
   const templateEmoji = post.template_name?.includes('Village') ? '📺' : 
                         post.template_name?.includes('Griot') ? '🎭' : '🎬';
+  const description = post.transcript_fr || post.title || post.description || 'Création vidéo';
 
   useEffect(() => {
     if (isActive && videoRef.current) {
@@ -529,7 +531,8 @@ const VideoFeedCard: React.FC<{
   }, [isActive]);
 
   return (
-    <div className="h-screen w-full snap-start snap-always relative bg-black">
+    <div className="h-[100dvh] w-full snap-start snap-always relative bg-black overflow-hidden">
+      {/* Video/Media - fullscreen responsive */}
       {videoUrl ? (
         <video 
           ref={videoRef} 
@@ -540,82 +543,118 @@ const VideoFeedCard: React.FC<{
           playsInline 
           preload={isActive ? 'auto' : 'metadata'} 
           onLoadedData={() => setIsLoaded(true)} 
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+          className={`absolute inset-0 w-full h-full object-contain sm:object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+        />
+      ) : thumbnailUrl ? (
+        <img 
+          src={thumbnailUrl} 
+          alt={description}
+          className="absolute inset-0 w-full h-full object-contain sm:object-cover"
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
-          <span className="text-8xl">{post.feeling_emoji || templateEmoji}</span>
+          <span className="text-6xl sm:text-8xl">{post.feeling_emoji || templateEmoji}</span>
         </div>
       )}
       
+      {/* Loading state */}
       {!isLoaded && videoUrl && (
         <div className="absolute inset-0 bg-gray-900 animate-pulse flex items-center justify-center">
-          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-2 border-white border-t-transparent rounded-full" />
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-white border-t-transparent rounded-full" />
         </div>
       )}
       
-      {/* Template badge if from videos table */}
+      {/* Template badge - responsive position */}
       {post._sourceTable === 'videos' && post.template_name && (
-        <div className="absolute top-20 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md flex items-center gap-2">
-          <span className="text-lg">{templateEmoji}</span>
-          <span className="text-white text-sm font-semibold">{post.template_name}</span>
+        <div className="absolute top-16 sm:top-20 left-2 sm:left-4 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/60 backdrop-blur-md flex items-center gap-1.5 sm:gap-2 max-w-[60%]">
+          <span className="text-sm sm:text-lg flex-shrink-0">{templateEmoji}</span>
+          <span className="text-white text-xs sm:text-sm font-semibold truncate">{post.template_name}</span>
         </div>
       )}
       
-      {/* Bottom info */}
-      <div className="absolute bottom-20 left-0 right-16 px-4 py-4" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }}>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] border-2 border-white flex items-center justify-center">
-            <span className="text-lg">{templateEmoji}</span>
+      {/* Bottom info - responsive with safe area */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 px-3 sm:px-4 pt-8 sm:pt-12 pb-20 sm:pb-24"
+        style={{ 
+          background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
+          paddingBottom: 'max(5rem, calc(env(safe-area-inset-bottom) + 5rem))'
+        }}
+      >
+        {/* Author row */}
+        <div className="flex items-center gap-2 sm:gap-3 mb-2 pr-14 sm:pr-16">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] border-2 border-white flex items-center justify-center flex-shrink-0">
+            <span className="text-sm sm:text-lg">{templateEmoji}</span>
           </div>
-          <span className="text-white font-bold text-sm">@{authorUsername}</span>
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsFollowing(!isFollowing)} className={`px-3 py-1 rounded-full text-xs font-bold ${isFollowing ? 'bg-white/20 text-white' : 'bg-[#FF7A00] text-white'}`}>
+          <span className="text-white font-bold text-xs sm:text-sm truncate">@{authorUsername}</span>
+          <motion.button 
+            whileTap={{ scale: 0.95 }} 
+            onClick={() => setIsFollowing(!isFollowing)} 
+            className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold flex-shrink-0 ${isFollowing ? 'bg-white/20 text-white' : 'bg-[#FF7A00] text-white'}`}
+          >
             {isFollowing ? 'Abonné' : 'Suivre'}
           </motion.button>
         </div>
-        <p className="text-white text-sm mb-1">{post.transcript_fr || post.title || 'Création vidéo'}</p>
-        {/* Date/heure de publication */}
-        <div className="flex items-center gap-1 mb-1">
-          <Clock className="w-3 h-3 text-white/50" />
-          <span className="text-white/50 text-xs">{formatPublicationDate(post.created_at)}</span>
+        
+        {/* Description - responsive text */}
+        <p className="text-white text-xs sm:text-sm mb-1.5 line-clamp-2 pr-14 sm:pr-16 leading-relaxed">{description}</p>
+        
+        {/* Date/heure */}
+        <div className="flex items-center gap-1 mb-1 pr-14 sm:pr-16">
+          <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white/50 flex-shrink-0" />
+          <span className="text-white/50 text-[10px] sm:text-xs">{formatPublicationDate(post.created_at)}</span>
         </div>
-        <p className="text-white/50 text-xs">#FITILA #Création {post.template_name ? `#${post.template_name.replace(/\s+/g, '')}` : ''}</p>
+        
+        {/* Hashtags */}
+        <p className="text-white/50 text-[10px] sm:text-xs truncate pr-14 sm:pr-16">
+          #FITILA #Création {post.template_name ? `#${post.template_name.replace(/\s+/g, '')}` : ''}
+        </p>
       </div>
 
-      {/* RIGHT SIDE ACTIONS - TOUS LES BOUTONS */}
-      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-3">
+      {/* RIGHT SIDE ACTIONS - Responsive sizing with safe area */}
+      <div 
+        className="absolute right-2 sm:right-3 flex flex-col items-center gap-2 sm:gap-3"
+        style={{ 
+          bottom: 'max(6rem, calc(env(safe-area-inset-bottom) + 6rem))'
+        }}
+      >
         {/* Like */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={() => { setIsLiked(!isLiked); onLike(); }} className="flex flex-col items-center">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/40'}`}>
-            <Heart className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
+          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg ${isLiked ? 'bg-red-500' : 'bg-black/50 backdrop-blur-sm'}`}>
+            <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[10px] mt-0.5">{likesCount + (isLiked ? 1 : 0)}</span>
+          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">{likesCount + (isLiked ? 1 : 0)}</span>
         </motion.button>
         
         {/* Répondre */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={onComment} className="flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center"><MessageCircle className="w-6 h-6 text-white" /></div>
-          <span className="text-white text-[10px] mt-0.5">Répondre</span>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center shadow-lg">
+            <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">{commentsCount > 0 ? commentsCount : 'Répondre'}</span>
         </motion.button>
         
         {/* Remix */}
         <motion.button whileTap={{ scale: 0.85 }} className="flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center"><RefreshCw className="w-6 h-6 text-white" /></div>
-          <span className="text-white text-[10px] mt-0.5">Remix</span>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center shadow-lg">
+            <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">Remix</span>
         </motion.button>
         
         {/* Partager */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={onShare} className="flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center"><Share2 className="w-6 h-6 text-white" /></div>
-          <span className="text-white text-[10px] mt-0.5">Partager</span>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center shadow-lg">
+            <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">Partager</span>
         </motion.button>
         
         {/* Sauver */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={() => setIsSaved(!isSaved)} className="flex flex-col items-center">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isSaved ? 'bg-amber-500' : 'bg-black/40'}`}>
-            <Bookmark className={`w-6 h-6 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
+          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg ${isSaved ? 'bg-amber-500' : 'bg-black/50 backdrop-blur-sm'}`}>
+            <Bookmark className={`w-5 h-5 sm:w-6 sm:h-6 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[10px] mt-0.5">{isSaved ? 'Sauvé' : 'Sauver'}</span>
+          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">{isSaved ? 'Sauvé' : 'Sauver'}</span>
         </motion.button>
       </div>
     </div>
