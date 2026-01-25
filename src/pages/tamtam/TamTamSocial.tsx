@@ -532,7 +532,7 @@ const VideoFeedCard: React.FC<{
 
   return (
     <div className="h-[100dvh] w-full snap-start snap-always relative bg-black overflow-hidden">
-      {/* Video/Media - fullscreen responsive */}
+      {/* Video/Media - TRUE FULLSCREEN IMMERSIVE */}
       {videoUrl ? (
         <video 
           ref={videoRef} 
@@ -543,24 +543,26 @@ const VideoFeedCard: React.FC<{
           playsInline 
           preload={isActive ? 'auto' : 'metadata'} 
           onLoadedData={() => setIsLoaded(true)} 
-          className={`absolute inset-0 w-full h-full object-contain sm:object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+          style={{ objectPosition: 'center center' }}
         />
       ) : thumbnailUrl ? (
         <img 
           src={thumbnailUrl} 
           alt={description}
-          className="absolute inset-0 w-full h-full object-contain sm:object-cover"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: 'center center' }}
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
-          <span className="text-6xl sm:text-8xl">{post.feeling_emoji || templateEmoji}</span>
+          <span className="text-7xl">{post.feeling_emoji || templateEmoji}</span>
         </div>
       )}
       
       {/* Loading state */}
       {!isLoaded && videoUrl && (
-        <div className="absolute inset-0 bg-gray-900 animate-pulse flex items-center justify-center">
-          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-white border-t-transparent rounded-full" />
+        <div className="absolute inset-0 bg-black flex items-center justify-center">
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-12 h-12 border-3 border-white border-t-transparent rounded-full" />
         </div>
       )}
       
