@@ -937,10 +937,18 @@ export class GriotDigitalEngine {
         });
         break;
       case 'lightLeak':
-        // Add light leak overlay
+        // Light leak is handled via LiveEffectsCompositor in the render pipeline
+        // The ParticleSystemManager can also render video overlays
+        this.particleManager.play(effect.assetId, {
+          position: new THREE.Vector3(0, 0, 0),
+          loop: false,
+          beatIntensity: 0.8
+        });
         break;
       case 'lensFlare':
-        // Add lens flare
+        // Lens flares are handled as 2D overlays via LiveEffectsCompositor
+        // Can be triggered here for beat-sync effects
+        console.log('[GriotDigital] Triggering lens flare:', effect.assetId);
         break;
     }
   }
