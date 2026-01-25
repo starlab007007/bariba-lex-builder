@@ -1337,37 +1337,54 @@ export class VillageChronicleEngine {
   // ============================================
 
   /**
-   * Generate French TTS narration
-   * First tries edge function for optimized text, then uses Web Speech API
-   * Note: Web Speech API audio cannot be captured by MediaRecorder (system limitation)
-   * Audio is returned as null but the text can be spoken for preview
+   * Generate French TTS narration using ElevenLabs server-side TTS
+   * Returns actual audio Blob for video muxing with FFmpeg
    */
   async generateNarration(script: string): Promise<Blob | null> {
-    console.log('[VillageChronicle] Generating TTS narration for:', script.slice(0, 50) + '...');
+    console.log('[VillageChronicle] Generating TTS narration for:', script.slice(0, 100) + '...');
     
-    // Try edge function for optimized text
-    let optimizedScript = script;
     try {
+      // Request real audio from edge function with returnAudio=true
       const { data, error } = await supabase.functions.invoke('french-tts', {
-        body: { text: script, voice: 'announcer', speed: 0.9 }
+        body: { 
+          text: script, 
+          voice: 'announcer', 
+          speed: 0.9,
+          returnAudio: true // Request actual audio blob
+        }
       });
       
-      if (!error && data?.text) {
-        optimizedScript = data.text;
-        console.log('[VillageChronicle] Got optimized script from edge function');
+      if (error) {
+        console.error('[VillageChronicle] TTS edge function error:', error);
+        return null;
       }
+      
+      // Check if we got real audio (ElevenLabs)
+      if (data?.success && data?.audioBase64) {
+        console.log(`[VillageChronicle] ElevenLabs audio received: ${data.audioSize} bytes`);
+        
+        // Convert base64 to Blob using data URI approach
+        const audioUrl = `data:${data.audioFormat || 'audio/mpeg'};base64,${data.audioBase64}`;
+        const response = await fetch(audioUrl);
+        const audioBlob = await response.blob();
+        
+        console.log(`[VillageChronicle] Audio Blob created: ${audioBlob.size} bytes, type: ${audioBlob.type}`);
+        return audioBlob;
+      }
+      
+      // Fallback: no server-side audio available
+      if (data?.text) {
+        console.log('[VillageChronicle] Got optimized text but no audio - server TTS unavailable');
+        console.log('[VillageChronicle] Optimized script:', data.text.slice(0, 100) + '...');
+      }
+      
+      console.warn('[VillageChronicle] No audio generated - video will be silent');
+      return null;
+      
     } catch (e) {
-      console.warn('[VillageChronicle] Edge function TTS failed, using original text:', e);
+      console.error('[VillageChronicle] TTS generation failed:', e);
+      return null;
     }
-    
-    // Web Speech API limitation: cannot capture audio output to MediaRecorder
-    // The audio plays through system speakers, not through AudioContext
-    // For video export with audio, would need a server-side TTS service (ElevenLabs, Google TTS, etc.)
-    console.log('[VillageChronicle] Note: Web Speech API audio cannot be captured for video muxing');
-    console.log('[VillageChronicle] For preview, use startLiveTTS() to hear the narration');
-    
-    // Return null - video will be silent but preview can use startLiveTTS
-    return null;
   }
 
   /**
