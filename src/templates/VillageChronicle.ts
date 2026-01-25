@@ -184,6 +184,20 @@ export class VillageChronicleEngine {
   // Visual effects - particles for atmosphere
   private particles: Array<{ x: number; y: number; vx: number; vy: number; size: number; alpha: number; color: string }> = [];
   private lightBeams: Array<{ x: number; angle: number; width: number; speed: number }> = [];
+  
+  // Premium VFX - video/image overlays from CDN
+  private premiumEffects: {
+    lightLeaks: HTMLVideoElement[];
+    particles: HTMLVideoElement[];
+    textures: HTMLVideoElement[];
+    lensFlares: HTMLImageElement[];
+  } = {
+    lightLeaks: [],
+    particles: [],
+    textures: [],
+    lensFlares: []
+  };
+  private premiumEffectsLoaded: boolean = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -218,6 +232,137 @@ export class VillageChronicleEngine {
     // Initialize visual effects
     this.initParticles();
     this.initLightBeams();
+    
+    // Load premium VFX assets from CDN (non-blocking)
+    this.loadPremiumEffects();
+  }
+  
+  /**
+   * Load premium visual effects from CDN (particles, light leaks, textures, lens flares)
+   * This runs in the background and effects appear once loaded
+   */
+  private async loadPremiumEffects(): Promise<void> {
+    console.log('[VillageChronicle] Loading premium VFX from CDN...');
+    
+    const config = VillageChronicleConfig.requiredAssets;
+    const cdnBase = 'https://pmrhezgnyffiskbaiudb.supabase.co/storage/v1/object/public/envato-assets';
+    
+    // Helper to load video element
+    const loadVideo = (url: string): Promise<HTMLVideoElement | null> => {
+      return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.crossOrigin = 'anonymous';
+        video.loop = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'auto';
+        
+        const timeout = setTimeout(() => {
+          console.warn('[VillageChronicle] Video timeout:', url);
+          resolve(null);
+        }, 8000);
+        
+        video.onloadeddata = () => {
+          clearTimeout(timeout);
+          video.play().catch(() => {});
+          console.log('[VillageChronicle] ✅ Loaded VFX video:', url.slice(-40));
+          resolve(video);
+        };
+        
+        video.onerror = () => {
+          clearTimeout(timeout);
+          console.warn('[VillageChronicle] ⚠️ Failed to load:', url.slice(-40));
+          resolve(null);
+        };
+        
+        video.src = url;
+      });
+    };
+    
+    // Helper to load image element
+    const loadImage = (url: string): Promise<HTMLImageElement | null> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        const timeout = setTimeout(() => resolve(null), 5000);
+        
+        img.onload = () => {
+          clearTimeout(timeout);
+          console.log('[VillageChronicle] ✅ Loaded lens flare:', url.slice(-40));
+          resolve(img);
+        };
+        
+        img.onerror = () => {
+          clearTimeout(timeout);
+          resolve(null);
+        };
+        
+        img.src = url;
+      });
+    };
+    
+    // Load light leaks (use 3d-models folder which contains leak-XXX.webm files)
+    const lightLeakPromises = config.lightLeaks.map(id => {
+      // light-leak:leak-XXX.webm -> 3d-models/leak-XXX.webm
+      const filename = id.split(':')[1] || id;
+      const url = `${cdnBase}/3d-models/${filename}`;
+      return loadVideo(url);
+    });
+    
+    // Load particle effects (use 3d-models folder with leak-XXX.webm as particles)
+    const particlePromises = config.particles.map(id => {
+      // particles:particle-003.webm -> 3d-models/leak-003.webm
+      const match = id.match(/particle-(\d+)/);
+      const num = match ? match[1] : '001';
+      const url = `${cdnBase}/3d-models/leak-${num}.webm`;
+      return loadVideo(url);
+    });
+    
+    // Load textures (video textures)
+    const texturePromises = config.textures.map(id => {
+      // textures:texture-008.mp4 -> textures/video-008.mp4
+      const match = id.match(/texture-(\d+)/);
+      const num = match ? match[1] : '001';
+      const url = `${cdnBase}/textures/video-${num}.mp4`;
+      return loadVideo(url);
+    });
+    
+    // Load lens flares (PNG images from local)
+    const lensFlarePromises = ['flare-015.png', 'flare-032.png', 'flare-088.png'].map(filename => {
+      const url = `/assets/envato/lens-flare/${filename}`;
+      return loadImage(url);
+    });
+    
+    try {
+      const [lightLeaks, particles, textures, lensFlares] = await Promise.all([
+        Promise.all(lightLeakPromises),
+        Promise.all(particlePromises),
+        Promise.all(texturePromises),
+        Promise.all(lensFlarePromises)
+      ]);
+      
+      this.premiumEffects.lightLeaks = lightLeaks.filter((v): v is HTMLVideoElement => v !== null);
+      this.premiumEffects.particles = particles.filter((v): v is HTMLVideoElement => v !== null);
+      this.premiumEffects.textures = textures.filter((v): v is HTMLVideoElement => v !== null);
+      this.premiumEffects.lensFlares = lensFlares.filter((v): v is HTMLImageElement => v !== null);
+      
+      this.premiumEffectsLoaded = true;
+      
+      console.log('[VillageChronicle] Premium VFX loaded:', {
+        lightLeaks: this.premiumEffects.lightLeaks.length,
+        particles: this.premiumEffects.particles.length,
+        textures: this.premiumEffects.textures.length,
+        lensFlares: this.premiumEffects.lensFlares.length
+      });
+      
+      // Redraw to show effects
+      if (this.use2DFallback && this.ctx2D) {
+        this.draw2DFrame(this.currentTime);
+      }
+    } catch (e) {
+      console.warn('[VillageChronicle] Premium VFX loading failed:', e);
+    }
   }
   
   private initParticles(): void {
@@ -710,9 +855,79 @@ export class VillageChronicleEngine {
         ctx.fillText(`${typeIcon} ${truncated}`, screenContentX + 20, screenContentY + 80 + i * 30);
       });
     }
+    
+    // === PREMIUM VFX OVERLAYS (from CDN) ===
+    this.drawPremiumEffects(ctx, time, width, height);
   }
   
-  // === Visual Effects Methods ===
+  /**
+   * Draw premium visual effects loaded from CDN
+   * (light leaks, particles WebM, textures, lens flares)
+   */
+  private drawPremiumEffects(ctx: CanvasRenderingContext2D, time: number, width: number, height: number): void {
+    if (!this.premiumEffectsLoaded) return;
+    
+    ctx.save();
+    
+    // Draw light leaks (screen blend mode, subtle opacity)
+    if (this.premiumEffects.lightLeaks.length > 0) {
+      const idx = Math.floor(time / 10) % this.premiumEffects.lightLeaks.length;
+      const video = this.premiumEffects.lightLeaks[idx];
+      if (video && video.readyState >= 2) {
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = 0.25 + Math.sin(time * 0.5) * 0.1;
+        ctx.drawImage(video, 0, 0, width, height);
+      }
+    }
+    
+    // Draw particle overlays (additive blend for glow)
+    if (this.premiumEffects.particles.length > 0) {
+      const idx = Math.floor(time / 15) % this.premiumEffects.particles.length;
+      const video = this.premiumEffects.particles[idx];
+      if (video && video.readyState >= 2) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(video, 0, 0, width, height);
+      }
+    }
+    
+    // Draw texture overlays (overlay blend for film grain/texture)
+    if (this.premiumEffects.textures.length > 0) {
+      const video = this.premiumEffects.textures[0];
+      if (video && video.readyState >= 2) {
+        ctx.globalCompositeOperation = 'overlay';
+        ctx.globalAlpha = 0.15;
+        ctx.drawImage(video, 0, 0, width, height);
+      }
+    }
+    
+    // Draw lens flares (screen blend, positioned for light sources)
+    if (this.premiumEffects.lensFlares.length > 0) {
+      const flareIdx = Math.floor(time / 20) % this.premiumEffects.lensFlares.length;
+      const flare = this.premiumEffects.lensFlares[flareIdx];
+      if (flare) {
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = 0.4 + Math.sin(time * 2) * 0.2;
+        
+        // Position flare at top-right (simulating studio light)
+        const flareX = width * 0.75;
+        const flareY = height * 0.15;
+        const flareSize = Math.min(width, height) * 0.4;
+        
+        ctx.drawImage(
+          flare, 
+          flareX - flareSize/2, 
+          flareY - flareSize/2, 
+          flareSize, 
+          flareSize
+        );
+      }
+    }
+    
+    ctx.restore();
+  }
+  
+  // === Visual Effects Methods (procedural fallbacks) ===
   private drawLightBeams(ctx: CanvasRenderingContext2D, time: number, width: number, height: number): void {
     ctx.save();
     for (const beam of this.lightBeams) {
@@ -735,6 +950,9 @@ export class VillageChronicleEngine {
   }
   
   private updateAndDrawParticles(ctx: CanvasRenderingContext2D, time: number, width: number, height: number): void {
+    // Skip procedural particles if premium effects are loaded
+    if (this.premiumEffectsLoaded && this.premiumEffects.particles.length > 0) return;
+    
     for (const p of this.particles) {
       // Update position
       p.x += p.vx;
