@@ -275,69 +275,59 @@ export class VillageChronicleEngine {
     }
   }
   
-  // Preload media images from uploaded news items
-  private async preloadNewsMedia(newsItems: NewsItem[]): Promise<void> {
-    console.log('[VillageChronicle] Starting media preload for', newsItems.length, 'news items');
+  // Preload media images from uploaded news items (non-blocking)
+  private preloadNewsMedia(newsItems: NewsItem[]): void {
+    console.log('[VillageChronicle] Starting non-blocking media preload for', newsItems.length, 'news items');
     
-    const loadPromises: Promise<void>[] = [];
-    
-    for (const news of newsItems) {
-      // Check for mediaUrls (backend uploaded URLs) or media files
-      const newsAny = news as any;
-      const urls: string[] = newsAny.mediaUrls || [];
-      
-      for (const url of urls) {
-        if (url && !this.mediaCache.has(url)) {
-          const loadPromise = this.loadImageFromUrl(url)
-            .then(img => {
+    // Run preloading in background without blocking engine initialization
+    const doPreload = async () => {
+      for (const news of newsItems) {
+        // Check for mediaUrls (backend uploaded URLs) or media files
+        const newsAny = news as any;
+        const urls: string[] = newsAny.mediaUrls || [];
+        
+        for (const url of urls) {
+          if (url && !this.mediaCache.has(url)) {
+            try {
+              const img = await this.loadImageFromUrl(url);
               this.mediaCache.set(url, img);
               console.log('[VillageChronicle] ✅ Preloaded media:', url.slice(-30));
               // Trigger redraw to show newly loaded media
-              if (this.use2DFallback && this.ctx2D && this.isPlaying) {
+              if (this.use2DFallback && this.ctx2D) {
                 this.draw2DFrame(this.currentTime);
               }
-            })
-            .catch(e => {
-              console.warn('[VillageChronicle] ⚠️ Failed to preload media:', url.slice(-30), e);
-            });
-          loadPromises.push(loadPromise);
+            } catch (e) {
+              console.warn('[VillageChronicle] ⚠️ Failed to preload media:', url.slice(-30));
+            }
+          }
         }
-      }
-      
-      // Also handle File objects if present
-      if (news.media && news.media.length > 0) {
-        for (const file of news.media) {
-          if (file.type.startsWith('image/')) {
-            const key = `file:${file.name}`;
-            if (!this.mediaCache.has(key)) {
-              const loadPromise = this.loadImage(file)
-                .then(img => {
+        
+        // Also handle File objects if present
+        if (news.media && news.media.length > 0) {
+          for (const file of news.media) {
+            if (file.type.startsWith('image/')) {
+              const key = `file:${file.name}`;
+              if (!this.mediaCache.has(key)) {
+                try {
+                  const img = await this.loadImage(file);
                   this.mediaCache.set(key, img);
                   console.log('[VillageChronicle] ✅ Preloaded local media:', file.name);
-                  // Trigger redraw to show newly loaded media
-                  if (this.use2DFallback && this.ctx2D && this.isPlaying) {
+                  if (this.use2DFallback && this.ctx2D) {
                     this.draw2DFrame(this.currentTime);
                   }
-                })
-                .catch(e => {
-                  console.warn('[VillageChronicle] ⚠️ Failed to preload file:', file.name, e);
-                });
-              loadPromises.push(loadPromise);
+                } catch (e) {
+                  console.warn('[VillageChronicle] ⚠️ Failed to preload file:', file.name);
+                }
+              }
             }
           }
         }
       }
-    }
-    
-    // Wait for all media to load (with timeout fallback)
-    if (loadPromises.length > 0) {
-      console.log('[VillageChronicle] Loading', loadPromises.length, 'media items...');
-      await Promise.race([
-        Promise.all(loadPromises),
-        new Promise(resolve => setTimeout(resolve, 5000)) // 5s timeout per batch
-      ]);
       console.log('[VillageChronicle] Media preload complete. Cache size:', this.mediaCache.size);
-    }
+    };
+    
+    // Run without awaiting - don't block initialization
+    doPreload().catch(e => console.warn('[VillageChronicle] Background preload error:', e));
   }
   
   private async loadImageFromUrl(url: string): Promise<HTMLImageElement> {
@@ -928,10 +918,10 @@ export class VillageChronicleEngine {
     const show = await this.createNewsShow(inputs);
     this.newsShow = show;
     
-    // Use actual show duration (already optimized to 30-60s), cap at 60s for speed
-    const totalDuration = Math.min(show.totalDuration, 60);
-    // Lower FPS for quick preview (15fps), full quality uses 30fps
-    const fps = quickPreview ? 15 : 30;
+    // Use shorter duration for faster rendering: 30s for quick preview, 45s for HD
+    const totalDuration = quickPreview ? Math.min(show.totalDuration, 30) : Math.min(show.totalDuration, 45);
+    // Lower FPS for quick preview (12fps), full quality uses 24fps (cinematic)
+    const fps = quickPreview ? 12 : 24;
     
     console.log(`[VillageChronicle] Rendering ${totalDuration}s @ ${fps}fps = ${totalDuration * fps} frames`);
     
@@ -988,7 +978,9 @@ export class VillageChronicleEngine {
             this.draw2DFrame(time);
           },
           (ep: EncoderProgress) => {
-            onProgress?.(25 + ep.progress * 70, ep.message);
+            const currentProgress = Math.round(25 + ep.progress * 70);
+            const frameInfo = `${Math.round(ep.progress * totalDuration * fps)}/${totalDuration * fps}`;
+            onProgress?.(currentProgress, `Frame ${frameInfo}`);
           }
         );
 

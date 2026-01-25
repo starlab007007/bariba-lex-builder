@@ -711,12 +711,16 @@ const NewsStudio: React.FC = () => {
     if (state.step === 'preview') {
       // Safety timeout to avoid infinite “Chargement du studio…”
       timeoutId = window.setTimeout(() => {
-        if (!engineReadyRef.current) {
+        if (!engineReadyRef.current && !engineRef.current) {
           setEngineError(
             "Le moteur n'a pas pu être initialisé (délai dépassé). Rafraîchissez la page puis réessayez."
           );
+        } else if (engineRef.current && !engineReadyRef.current) {
+          console.log('[NewsStudio] Force-marking engine ready after timeout');
+          setEngineReady(true);
+          engineReadyRef.current = true;
         }
-      }, 20000); // Increased timeout for slower devices
+      }, 30000); // 30s timeout for slower devices
 
       // Attempt immediate init/resume first
       initOrResumePreview();
@@ -725,6 +729,20 @@ const NewsStudio: React.FC = () => {
       rafId = requestAnimationFrame(() => {
         if (!engineReadyRef.current) initOrResumePreview();
       });
+      
+      // Third attempt after short delay (for slow canvas initialization)
+      const delayedId = setTimeout(() => {
+        if (!engineReadyRef.current && canvasRef.current) {
+          console.log('[NewsStudio] Delayed init attempt...');
+          initOrResumePreview();
+        }
+      }, 500);
+      
+      return () => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        if (rafId) cancelAnimationFrame(rafId);
+        clearTimeout(delayedId);
+      };
     } else {
       // Stop preview when leaving preview step
       if (engineRef.current) {
@@ -886,12 +904,13 @@ const NewsStudio: React.FC = () => {
         duration: 1 // OPTIMIZED: 1 minute max instead of 5
       };
 
-      // Use HD mode (FFmpeg MP4) for quality - set quickPreview=false
+      // Use QUICK PREVIEW mode by default for faster generation (WebM, 15fps)
+      // This is 4-5x faster than HD mode while maintaining good quality
       const video = await engineRef.current.render(inputs, (progress, stage) => {
         console.log(`[NewsStudio] Render progress: ${progress}% - ${stage}`);
-        setRenderProgress(progress);
+        setRenderProgress(Math.round(progress));
         setRenderStage(stage);
-      }, false); // false = HD MP4 mode with FFmpeg (not quick WebM preview)
+      }, true); // true = Quick preview mode (WebM, 15fps, no FFmpeg overhead)
 
       if (!video || video.size === 0) {
         throw new Error('La vidéo générée est vide');
