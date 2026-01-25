@@ -511,7 +511,7 @@ const VideoFeedCard: React.FC<{
   const [isLoaded, setIsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // ✅ FIX: Support both tamtam_posts and videos table format
+  // Support both tamtam_posts and videos table format
   const videoUrl = post.media_url || post.video_url;
   const thumbnailUrl = post.thumbnail_url;
   const authorName = post.profile?.display_name || post.template_name || 'Créateur';
@@ -566,97 +566,117 @@ const VideoFeedCard: React.FC<{
         </div>
       )}
       
-      {/* Template badge - responsive position */}
+      {/* Template badge - responsive position with readable text */}
       {post._sourceTable === 'videos' && post.template_name && (
-        <div className="absolute top-16 sm:top-20 left-2 sm:left-4 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/60 backdrop-blur-md flex items-center gap-1.5 sm:gap-2 max-w-[60%]">
-          <span className="text-sm sm:text-lg flex-shrink-0">{templateEmoji}</span>
-          <span className="text-white text-xs sm:text-sm font-semibold truncate">{post.template_name}</span>
+        <div className="absolute top-16 xs:top-18 sm:top-20 left-2 xs:left-3 sm:left-4 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-black/60 backdrop-blur-md flex items-center gap-2 max-w-[65%] shadow-lg">
+          <span className="text-base sm:text-lg flex-shrink-0">{templateEmoji}</span>
+          <span className="text-white text-fluid-sm font-semibold truncate text-readable-light">{post.template_name}</span>
         </div>
       )}
       
-      {/* Bottom info - responsive with safe area */}
+      {/* Bottom info - responsive with safe area and improved contrast */}
       <div 
-        className="absolute bottom-0 left-0 right-0 px-3 sm:px-4 pt-8 sm:pt-12 pb-20 sm:pb-24"
+        className="absolute bottom-0 left-0 right-0 px-3 xs:px-4 sm:px-5 pt-12 sm:pt-16"
         style={{ 
-          background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
-          paddingBottom: 'max(5rem, calc(env(safe-area-inset-bottom) + 5rem))'
+          background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0.3) 70%, transparent 100%)',
+          paddingBottom: 'max(5.5rem, calc(env(safe-area-inset-bottom) + 5.5rem))'
         }}
       >
-        {/* Author row */}
-        <div className="flex items-center gap-2 sm:gap-3 mb-2 pr-14 sm:pr-16">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] border-2 border-white flex items-center justify-center flex-shrink-0">
-            <span className="text-sm sm:text-lg">{templateEmoji}</span>
+        {/* Author row - touch friendly follow button */}
+        <div className="flex items-center gap-2 xs:gap-2.5 sm:gap-3 mb-2.5 pr-14 sm:pr-16">
+          <div className="w-9 h-9 xs:w-10 xs:h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] border-2 border-white flex items-center justify-center flex-shrink-0 shadow-lg">
+            <span className="text-base sm:text-lg">{templateEmoji}</span>
           </div>
-          <span className="text-white font-bold text-xs sm:text-sm truncate">@{authorUsername}</span>
+          <span className="text-white font-bold text-fluid-sm truncate text-readable-light">@{authorUsername}</span>
           <motion.button 
             whileTap={{ scale: 0.95 }} 
             onClick={() => setIsFollowing(!isFollowing)} 
-            className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold flex-shrink-0 ${isFollowing ? 'bg-white/20 text-white' : 'bg-[#FF7A00] text-white'}`}
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-fluid-xs font-bold flex-shrink-0 touch-target-sm ${isFollowing ? 'bg-white/20 text-white' : 'bg-[#FF7A00] text-white shadow-lg'}`}
+            style={{ minHeight: '32px' }}
           >
             {isFollowing ? 'Abonné' : 'Suivre'}
           </motion.button>
         </div>
         
-        {/* Description - responsive text */}
-        <p className="text-white text-xs sm:text-sm mb-1.5 line-clamp-2 pr-14 sm:pr-16 leading-relaxed">{description}</p>
+        {/* Description - fluid responsive text with high contrast */}
+        <p className="text-white text-fluid-base mb-2 line-clamp-2 pr-14 sm:pr-16 leading-relaxed text-readable-light">{description}</p>
         
-        {/* Date/heure */}
-        <div className="flex items-center gap-1 mb-1 pr-14 sm:pr-16">
-          <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white/50 flex-shrink-0" />
-          <span className="text-white/50 text-[10px] sm:text-xs">{formatPublicationDate(post.created_at)}</span>
+        {/* Date/heure - improved visibility */}
+        <div className="flex items-center gap-1.5 mb-1.5 pr-14 sm:pr-16">
+          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white/60 flex-shrink-0" />
+          <span className="text-white/70 text-fluid-xs font-medium">{formatPublicationDate(post.created_at)}</span>
         </div>
         
-        {/* Hashtags */}
-        <p className="text-white/50 text-[10px] sm:text-xs truncate pr-14 sm:pr-16">
+        {/* Hashtags - better readability */}
+        <p className="text-white/60 text-fluid-xs truncate pr-14 sm:pr-16 font-medium">
           #FITILA #Création {post.template_name ? `#${post.template_name.replace(/\s+/g, '')}` : ''}
         </p>
       </div>
 
-      {/* RIGHT SIDE ACTIONS - Responsive sizing with safe area */}
+      {/* RIGHT SIDE ACTIONS - Touch targets 44px+, proper spacing */}
       <div 
-        className="absolute right-2 sm:right-3 flex flex-col items-center gap-2 sm:gap-3"
+        className="absolute right-2 xs:right-2.5 sm:right-3 flex flex-col items-center gap-3 sm:gap-4"
         style={{ 
-          bottom: 'max(6rem, calc(env(safe-area-inset-bottom) + 6rem))'
+          bottom: 'max(7rem, calc(env(safe-area-inset-bottom) + 7rem))'
         }}
       >
-        {/* Like */}
-        <motion.button whileTap={{ scale: 0.85 }} onClick={() => { setIsLiked(!isLiked); onLike(); }} className="flex flex-col items-center">
-          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg ${isLiked ? 'bg-red-500' : 'bg-black/50 backdrop-blur-sm'}`}>
+        {/* Like - Touch target 44px+ */}
+        <motion.button 
+          whileTap={{ scale: 0.85 }} 
+          onClick={() => { setIsLiked(!isLiked); onLike(); }} 
+          className="flex flex-col items-center touch-target"
+        >
+          <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-xl ${isLiked ? 'bg-red-500' : 'bg-black/60 backdrop-blur-md border border-white/10'}`}>
             <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">{likesCount + (isLiked ? 1 : 0)}</span>
+          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">{likesCount + (isLiked ? 1 : 0)}</span>
         </motion.button>
         
-        {/* Répondre */}
-        <motion.button whileTap={{ scale: 0.85 }} onClick={onComment} className="flex flex-col items-center">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center shadow-lg">
+        {/* Comment - Touch target 44px+ */}
+        <motion.button 
+          whileTap={{ scale: 0.85 }} 
+          onClick={onComment} 
+          className="flex flex-col items-center touch-target"
+        >
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-xl">
             <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
-          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">{commentsCount > 0 ? commentsCount : 'Répondre'}</span>
+          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">{commentsCount > 0 ? commentsCount : 'Répondre'}</span>
         </motion.button>
         
-        {/* Remix */}
-        <motion.button whileTap={{ scale: 0.85 }} className="flex flex-col items-center">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center shadow-lg">
+        {/* Remix - Touch target 44px+ */}
+        <motion.button 
+          whileTap={{ scale: 0.85 }} 
+          className="flex flex-col items-center touch-target"
+        >
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-xl">
             <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
-          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">Remix</span>
+          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">Remix</span>
         </motion.button>
         
-        {/* Partager */}
-        <motion.button whileTap={{ scale: 0.85 }} onClick={onShare} className="flex flex-col items-center">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center shadow-lg">
+        {/* Share - Touch target 44px+ */}
+        <motion.button 
+          whileTap={{ scale: 0.85 }} 
+          onClick={onShare} 
+          className="flex flex-col items-center touch-target"
+        >
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-xl">
             <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
-          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">Partager</span>
+          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">Partager</span>
         </motion.button>
         
-        {/* Sauver */}
-        <motion.button whileTap={{ scale: 0.85 }} onClick={() => setIsSaved(!isSaved)} className="flex flex-col items-center">
-          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg ${isSaved ? 'bg-amber-500' : 'bg-black/50 backdrop-blur-sm'}`}>
+        {/* Save - Touch target 44px+ */}
+        <motion.button 
+          whileTap={{ scale: 0.85 }} 
+          onClick={() => setIsSaved(!isSaved)} 
+          className="flex flex-col items-center touch-target"
+        >
+          <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-xl ${isSaved ? 'bg-amber-500' : 'bg-black/60 backdrop-blur-md border border-white/10'}`}>
             <Bookmark className={`w-5 h-5 sm:w-6 sm:h-6 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[9px] sm:text-[10px] mt-0.5 font-medium">{isSaved ? 'Sauvé' : 'Sauver'}</span>
+          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">{isSaved ? 'Sauvé' : 'Sauver'}</span>
         </motion.button>
       </div>
     </div>
