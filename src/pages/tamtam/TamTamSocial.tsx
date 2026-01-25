@@ -636,7 +636,7 @@ export default function TamTamSocial() {
   const sideMenu = useSideMenu();
 
   const [activeTab, setActiveTab] = useState<BottomTab>('fil');
-  const [feedMode, setFeedMode] = useState<FeedMode>('patrimoine');
+  const [feedMode, setFeedMode] = useState<FeedMode>('creation');
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showCreator, setShowCreator] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
