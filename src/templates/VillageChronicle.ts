@@ -178,8 +178,32 @@ export class VillageChronicleEngine {
   // Cache for preloaded media images from news items
   private mediaCache: Map<string, HTMLImageElement> = new Map();
   
+  // Track media loading state for retry system
+  private mediaLoadingState: Map<string, { attempts: number; loading: boolean; error: boolean }> = new Map();
+  private static readonly MAX_RETRY_ATTEMPTS = 3;
+  private static readonly RETRY_DELAY_MS = 1500;
+  
   // Track which media URL to display currently
   private currentMediaUrl: string | null = null;
+  
+  // Animation state for segment transitions
+  private segmentAnimation: {
+    phase: 'idle' | 'exit' | 'enter';
+    progress: number;
+    startTime: number;
+    duration: number;
+    currentSegmentIndex: number;
+  } = { phase: 'idle', progress: 0, startTime: 0, duration: 0.8, currentSegmentIndex: -1 };
+  
+  // Subtitle synchronization state
+  private subtitleState: {
+    currentText: string;
+    targetText: string;
+    charIndex: number;
+    lastCharTime: number;
+    visible: boolean;
+    fadeAlpha: number;
+  } = { currentText: '', targetText: '', charIndex: 0, lastCharTime: 0, visible: false, fadeAlpha: 0 };
   
   // Visual effects - particles for atmosphere
   private particles: Array<{ x: number; y: number; vx: number; vy: number; size: number; alpha: number; color: string }> = [];
@@ -198,6 +222,9 @@ export class VillageChronicleEngine {
     lensFlares: []
   };
   private premiumEffectsLoaded: boolean = false;
+  
+  // Media loading progress callback
+  private onMediaLoadProgress?: (loaded: number, total: number, currentUrl: string) => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -420,59 +447,161 @@ export class VillageChronicleEngine {
     }
   }
   
-  // Preload media images from uploaded news items (non-blocking)
+  // Preload media images from uploaded news items (non-blocking) with retry system
   private preloadNewsMedia(newsItems: NewsItem[]): void {
     console.log('[VillageChronicle] Starting non-blocking media preload for', newsItems.length, 'news items');
     
-    // Run preloading in background without blocking engine initialization
-    const doPreload = async () => {
-      for (const news of newsItems) {
-        // Check for mediaUrls (backend uploaded URLs) or media files
-        const newsAny = news as any;
-        const urls: string[] = newsAny.mediaUrls || [];
-        
-        for (const url of urls) {
-          if (url && !this.mediaCache.has(url)) {
-            try {
-              const img = await this.loadImageFromUrl(url);
-              this.mediaCache.set(url, img);
-              console.log('[VillageChronicle] ✅ Preloaded media:', url.slice(-30));
-              // Trigger redraw to show newly loaded media
-              if (this.use2DFallback && this.ctx2D) {
-                this.draw2DFrame(this.currentTime);
-              }
-            } catch (e) {
-              console.warn('[VillageChronicle] ⚠️ Failed to preload media:', url.slice(-30));
-            }
-          }
+    // Collect all URLs to load
+    const allUrls: { url: string; newsTitle: string; isFile: boolean; file?: File }[] = [];
+    
+    for (const news of newsItems) {
+      const newsAny = news as any;
+      const urls: string[] = newsAny.mediaUrls || [];
+      
+      for (const url of urls) {
+        if (url) {
+          allUrls.push({ url, newsTitle: news.title, isFile: false });
         }
-        
-        // Also handle File objects if present
-        if (news.media && news.media.length > 0) {
-          for (const file of news.media) {
-            if (file.type.startsWith('image/')) {
-              const key = `file:${file.name}`;
-              if (!this.mediaCache.has(key)) {
-                try {
-                  const img = await this.loadImage(file);
-                  this.mediaCache.set(key, img);
-                  console.log('[VillageChronicle] ✅ Preloaded local media:', file.name);
-                  if (this.use2DFallback && this.ctx2D) {
-                    this.draw2DFrame(this.currentTime);
-                  }
-                } catch (e) {
-                  console.warn('[VillageChronicle] ⚠️ Failed to preload file:', file.name);
-                }
-              }
-            }
+      }
+      
+      // Also handle File objects if present
+      if (news.media && news.media.length > 0) {
+        for (const file of news.media) {
+          if (file.type.startsWith('image/')) {
+            allUrls.push({ url: `file:${file.name}`, newsTitle: news.title, isFile: true, file });
           }
         }
       }
-      console.log('[VillageChronicle] Media preload complete. Cache size:', this.mediaCache.size);
+    }
+    
+    const totalMedia = allUrls.length;
+    let loadedCount = 0;
+    
+    // Run preloading with retry system
+    const loadWithRetry = async (item: typeof allUrls[0]) => {
+      const key = item.url;
+      
+      // Skip if already cached
+      if (this.mediaCache.has(key)) {
+        loadedCount++;
+        return;
+      }
+      
+      // Initialize loading state
+      if (!this.mediaLoadingState.has(key)) {
+        this.mediaLoadingState.set(key, { attempts: 0, loading: false, error: false });
+      }
+      
+      const state = this.mediaLoadingState.get(key)!;
+      
+      // Skip if max retries exceeded
+      if (state.attempts >= VillageChronicleEngine.MAX_RETRY_ATTEMPTS) {
+        console.warn('[VillageChronicle] ⛔ Max retries reached for:', key.slice(-40));
+        return;
+      }
+      
+      state.loading = true;
+      state.attempts++;
+      
+      try {
+        let img: HTMLImageElement;
+        
+        if (item.isFile && item.file) {
+          img = await this.loadImage(item.file);
+        } else {
+          img = await this.loadImageFromUrl(item.url);
+        }
+        
+        this.mediaCache.set(key, img);
+        state.loading = false;
+        state.error = false;
+        loadedCount++;
+        
+        console.log(`[VillageChronicle] ✅ Preloaded media (${loadedCount}/${totalMedia}):`, key.slice(-40));
+        
+        // Notify progress callback
+        this.onMediaLoadProgress?.(loadedCount, totalMedia, key);
+        
+        // Trigger redraw to show newly loaded media
+        if (this.use2DFallback && this.ctx2D) {
+          this.draw2DFrame(this.currentTime);
+        }
+        
+      } catch (e) {
+        state.loading = false;
+        state.error = true;
+        console.warn(`[VillageChronicle] ⚠️ Load attempt ${state.attempts}/${VillageChronicleEngine.MAX_RETRY_ATTEMPTS} failed:`, key.slice(-40));
+        
+        // Schedule retry after delay
+        if (state.attempts < VillageChronicleEngine.MAX_RETRY_ATTEMPTS) {
+          setTimeout(() => {
+            loadWithRetry(item);
+          }, VillageChronicleEngine.RETRY_DELAY_MS * state.attempts);
+        }
+      }
+    };
+    
+    // Start loading all media in parallel (max 4 concurrent)
+    const loadBatch = async () => {
+      const batchSize = 4;
+      for (let i = 0; i < allUrls.length; i += batchSize) {
+        const batch = allUrls.slice(i, i + batchSize);
+        await Promise.all(batch.map(item => loadWithRetry(item)));
+      }
+      console.log(`[VillageChronicle] Media preload complete. Cache: ${this.mediaCache.size}/${totalMedia}`);
     };
     
     // Run without awaiting - don't block initialization
-    doPreload().catch(e => console.warn('[VillageChronicle] Background preload error:', e));
+    loadBatch().catch(e => console.warn('[VillageChronicle] Background preload error:', e));
+  }
+  
+  // Set callback for media loading progress
+  setMediaLoadProgressCallback(callback: (loaded: number, total: number, currentUrl: string) => void): void {
+    this.onMediaLoadProgress = callback;
+  }
+  
+  // Get media loading status for UI
+  getMediaLoadingStatus(): { total: number; loaded: number; loading: number; errors: number } {
+    let loaded = 0, loading = 0, errors = 0;
+    this.mediaLoadingState.forEach(state => {
+      if (this.mediaCache.has([...this.mediaLoadingState.keys()].find(k => this.mediaLoadingState.get(k) === state) || '')) {
+        loaded++;
+      } else if (state.loading) {
+        loading++;
+      } else if (state.error && state.attempts >= VillageChronicleEngine.MAX_RETRY_ATTEMPTS) {
+        errors++;
+      }
+    });
+    return { total: this.mediaLoadingState.size, loaded: this.mediaCache.size, loading, errors };
+  }
+  
+  // Generate placeholder image for failed media
+  private generatePlaceholder(width: number, height: number, text: string): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Gradient background
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, '#1e3a5f');
+    gradient.addColorStop(1, '#0f1f33');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    // Icon
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.font = `${Math.min(width, height) * 0.2}px system-ui`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('📷', width / 2, height / 2 - 20);
+    
+    // Text
+    ctx.font = `bold ${Math.min(width, height) * 0.06}px system-ui`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillText(text.slice(0, 30), width / 2, height / 2 + 30);
+    
+    return canvas;
   }
   
   private async loadImageFromUrl(url: string): Promise<HTMLImageElement> {
@@ -856,8 +985,237 @@ export class VillageChronicleEngine {
       });
     }
     
+    // === ANIMATED SEGMENT TRANSITIONS ===
+    this.drawSegmentTransition(ctx, time, width, height);
+    
+    // === SYNCHRONIZED SUBTITLES ===
+    this.drawSubtitles(ctx, time, width, height, fontScale);
+    
     // === PREMIUM VFX OVERLAYS (from CDN) ===
     this.drawPremiumEffects(ctx, time, width, height);
+  }
+  
+  /**
+   * Draw animated segment transitions (slide-in/out effects)
+   */
+  private drawSegmentTransition(ctx: CanvasRenderingContext2D, time: number, width: number, height: number): void {
+    if (this.segmentAnimation.phase === 'idle') return;
+    
+    const elapsed = time - this.segmentAnimation.startTime;
+    const progress = Math.min(1, elapsed / this.segmentAnimation.duration);
+    this.segmentAnimation.progress = progress;
+    
+    // Easing function (ease-out cubic)
+    const eased = 1 - Math.pow(1 - progress, 3);
+    
+    ctx.save();
+    
+    if (this.segmentAnimation.phase === 'exit') {
+      // Slide out to the left with fade
+      const offsetX = -eased * width * 0.3;
+      const alpha = 1 - eased;
+      
+      // Draw transition overlay
+      ctx.globalAlpha = eased * 0.8;
+      ctx.fillStyle = '#0d2137';
+      ctx.fillRect(0, 0, width, height);
+      
+      // Draw "NEXT" indicator
+      ctx.globalAlpha = eased;
+      ctx.fillStyle = '#3b82f6';
+      ctx.font = 'bold 32px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('⏭️ Prochain segment...', width / 2, height / 2);
+      
+    } else if (this.segmentAnimation.phase === 'enter') {
+      // Slide in from right with scale
+      const offsetX = (1 - eased) * width * 0.2;
+      const scale = 0.9 + eased * 0.1;
+      
+      // Draw transition overlay fading out
+      ctx.globalAlpha = 1 - eased;
+      ctx.fillStyle = '#0d2137';
+      ctx.fillRect(0, 0, width, height);
+      
+      // Draw segment title badge
+      if (this.currentSegment) {
+        const badgeAlpha = eased;
+        const badgeY = height * 0.08 + (1 - eased) * 20;
+        
+        ctx.globalAlpha = badgeAlpha;
+        
+        // Segment type badge
+        const typeEmoji = this.currentSegment.type === 'opening' ? '🎬' :
+                         this.currentSegment.type === 'news' ? '📰' :
+                         this.currentSegment.type === 'weather' ? '🌤️' :
+                         this.currentSegment.type === 'announcement' ? '📢' : '👋';
+        const typeLabel = this.currentSegment.type === 'opening' ? 'OUVERTURE' :
+                         this.currentSegment.type === 'news' ? 'ACTUALITÉ' :
+                         this.currentSegment.type === 'weather' ? 'MÉTÉO' :
+                         this.currentSegment.type === 'announcement' ? 'ANNONCES' : 'CLÔTURE';
+        
+        // Draw badge background
+        ctx.fillStyle = 'rgba(37, 99, 235, 0.9)';
+        const badgeWidth = 200;
+        const badgeHeight = 40;
+        const badgeX = width / 2 - badgeWidth / 2 + offsetX;
+        
+        ctx.beginPath();
+        ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 8);
+        ctx.fill();
+        
+        // Draw badge text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 18px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${typeEmoji} ${typeLabel}`, width / 2 + offsetX, badgeY + 26);
+      }
+    }
+    
+    ctx.restore();
+    
+    // Reset phase when animation completes
+    if (progress >= 1) {
+      if (this.segmentAnimation.phase === 'exit') {
+        // Transition to enter phase
+        this.segmentAnimation.phase = 'enter';
+        this.segmentAnimation.startTime = time;
+        this.segmentAnimation.progress = 0;
+      } else {
+        this.segmentAnimation.phase = 'idle';
+      }
+    }
+  }
+  
+  /**
+   * Trigger segment transition animation
+   */
+  triggerSegmentTransition(segmentIndex: number): void {
+    if (segmentIndex === this.segmentAnimation.currentSegmentIndex) return;
+    
+    this.segmentAnimation.phase = 'exit';
+    this.segmentAnimation.startTime = this.currentTime;
+    this.segmentAnimation.progress = 0;
+    this.segmentAnimation.currentSegmentIndex = segmentIndex;
+  }
+  
+  /**
+   * Draw synchronized subtitles with typewriter effect
+   */
+  private drawSubtitles(ctx: CanvasRenderingContext2D, time: number, width: number, height: number, fontScale: number): void {
+    // Update subtitle text from current segment script
+    if (this.currentSegment?.script?.text && this.subtitleState.targetText !== this.currentSegment.script.text) {
+      this.subtitleState.targetText = this.currentSegment.script.text;
+      this.subtitleState.charIndex = 0;
+      this.subtitleState.currentText = '';
+      this.subtitleState.visible = true;
+      this.subtitleState.fadeAlpha = 0;
+    }
+    
+    // Typewriter effect: reveal characters over time
+    const charsPerSecond = 25;
+    const timeSinceLastChar = time - this.subtitleState.lastCharTime;
+    
+    if (timeSinceLastChar >= (1 / charsPerSecond) && this.subtitleState.charIndex < this.subtitleState.targetText.length) {
+      this.subtitleState.charIndex++;
+      this.subtitleState.currentText = this.subtitleState.targetText.slice(0, this.subtitleState.charIndex);
+      this.subtitleState.lastCharTime = time;
+    }
+    
+    // Fade in/out
+    if (this.subtitleState.visible && this.subtitleState.fadeAlpha < 1) {
+      this.subtitleState.fadeAlpha = Math.min(1, this.subtitleState.fadeAlpha + 0.05);
+    }
+    
+    if (!this.subtitleState.currentText || !this.subtitleState.visible) return;
+    
+    ctx.save();
+    ctx.globalAlpha = this.subtitleState.fadeAlpha;
+    
+    // Subtitle container (bottom of screen, above ticker)
+    const subtitleY = height * 0.78;
+    const subtitleMaxWidth = width * 0.9;
+    const padding = 12;
+    
+    // Word wrap the current text
+    const fontSize = Math.max(16, 22 * fontScale);
+    ctx.font = `${fontSize}px system-ui`;
+    
+    const words = this.subtitleState.currentText.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > subtitleMaxWidth - padding * 2) {
+        if (currentLine) lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    
+    // Take only last 2 lines to keep subtitles compact
+    const displayLines = lines.slice(-2);
+    const lineHeight = fontSize * 1.4;
+    const boxHeight = displayLines.length * lineHeight + padding * 2;
+    const boxWidth = subtitleMaxWidth;
+    const boxX = (width - boxWidth) / 2;
+    const boxY = subtitleY - boxHeight / 2;
+    
+    // Draw semi-transparent background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 8);
+    ctx.fill();
+    
+    // Draw text
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    displayLines.forEach((line, i) => {
+      const y = boxY + padding + (i + 0.5) * lineHeight;
+      ctx.fillText(line, width / 2, y);
+    });
+    
+    // Draw typing cursor at end
+    if (this.subtitleState.charIndex < this.subtitleState.targetText.length) {
+      const cursorBlink = Math.sin(time * 8) > 0;
+      if (cursorBlink) {
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(width / 2 + ctx.measureText(displayLines[displayLines.length - 1] || '').width / 2 + 2, 
+                    boxY + boxHeight - padding - lineHeight / 2 - fontSize / 2,
+                    3, fontSize);
+      }
+    }
+    
+    ctx.restore();
+  }
+  
+  /**
+   * Update subtitle text manually
+   */
+  setSubtitleText(text: string): void {
+    if (text !== this.subtitleState.targetText) {
+      this.subtitleState.targetText = text;
+      this.subtitleState.charIndex = 0;
+      this.subtitleState.currentText = '';
+      this.subtitleState.visible = true;
+      this.subtitleState.fadeAlpha = 0;
+      this.subtitleState.lastCharTime = this.currentTime;
+    }
+  }
+  
+  /**
+   * Hide subtitles
+   */
+  hideSubtitles(): void {
+    this.subtitleState.visible = false;
+    this.subtitleState.fadeAlpha = 0;
   }
   
   /**
