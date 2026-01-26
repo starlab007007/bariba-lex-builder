@@ -49,28 +49,6 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Filter tabs */}
-      <div className="flex gap-2 px-4">
-        {[
-          { key: 'all', label: 'Tous', count: posts.length },
-          { key: 'public', label: 'Publics', count: posts.filter(p => p.is_public).length },
-          { key: 'private', label: 'Privés', count: posts.filter(p => !p.is_public).length },
-        ].map(tab => (
-          <motion.button
-            key={tab.key}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onFilterChange(tab.key as typeof filter)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              filter === tab.key
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            {tab.label} ({tab.count})
-          </motion.button>
-        ))}
-      </div>
-
       {/* Posts grid */}
       <div className="grid grid-cols-3 gap-1 px-1">
         <AnimatePresence mode="popLayout">

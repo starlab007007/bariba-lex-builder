@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Loader2, BadgeCheck, Copy, Award } from 'lucide-react';
+import { Camera, Loader2, BadgeCheck, Copy, Award, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { KuaishouProfileBackground } from './KuaishouProfileBackground';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +17,7 @@ interface KuaishouProfileHeaderProps {
   followersCount?: number;
   followingCount?: number;
   likesCount?: number;
+  showBackButton?: boolean;
 }
 
 // Format number with K notation
@@ -40,17 +42,36 @@ export const KuaishouProfileHeader: React.FC<KuaishouProfileHeaderProps> = ({
   followersCount = 0,
   followingCount = 0,
   likesCount = 0,
+  showBackButton = true,
 }) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(username);
     toast({ title: 'ID copié !', description: `FITILA ID: ${username}` });
   };
 
+  const handleGoBack = () => {
+    navigate(-1);
+  };
+
   return (
     <KuaishouProfileBackground>
-      <div className="px-4 py-6 pb-8">
+      {/* Back Button */}
+      {showBackButton && (
+        <motion.button
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={handleGoBack}
+          className="absolute top-4 left-4 z-10 w-10 h-10 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center"
+        >
+          <ArrowLeft className="w-5 h-5 text-white" />
+        </motion.button>
+      )}
+      
+      <div className="px-4 py-6 pb-8 pt-16">
         {/* Top section: Avatar + Stats horizontal */}
         <div className="flex items-start gap-4">
           {/* Avatar with camera button */}
