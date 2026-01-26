@@ -30,11 +30,35 @@
     --touch-target-sm: 40px;
     
     /* ====== KUAISHOU DESIGN SYSTEM ====== */
-    --kuaishou-primary: 207 90% 54%;
-    --kuaishou-primary-dark: 207 85% 45%;
-    --kuaishou-bg: 207 60% 97%;
-    --kuaishou-border: 207 30% 90%;
+    /* Primary Colors */
+    --kuaishou-orange: 14 100% 57%;          /* #FF5722 */
+    --kuaishou-orange-light: 24 100% 55%;    /* #FF7A00 */
+    --kuaishou-primary: 14 100% 57%;         /* Orange as primary */
+    --kuaishou-primary-dark: 14 90% 48%;     /* Darker orange */
+    
+    /* Blue Sky Gradient (for header) */
+    --kuaishou-blue-dark: 230 70% 30%;       /* #1a237e */
+    --kuaishou-blue-mid: 230 55% 44%;        /* #303f9f */
+    --kuaishou-blue-light: 230 45% 64%;      /* #7986cb */
+    
+    /* Neutral Palette */
+    --kuaishou-white: 0 0% 100%;             /* #FFFFFF */
+    --kuaishou-gray-light: 0 0% 96%;         /* #F5F5F5 */
+    --kuaishou-text: 0 0% 10%;               /* #1A1A1A */
+    --kuaishou-text-muted: 0 0% 40%;         /* #666666 */
+    --kuaishou-border: 0 0% 88%;             /* #E0E0E0 */
     --kuaishou-surface: 0 0% 100%;
+    --kuaishou-bg: 0 0% 96%;
+    
+    /* Action Colors */
+    --kuaishou-accent-red: 345 100% 60%;     /* #FF2D55 */
+    --kuaishou-accent-cyan: 188 100% 50%;    /* #00D4FF */
+    --kuaishou-verified: 24 100% 55%;        /* #FF7A00 */
+    
+    /* Navigation */
+    --kuaishou-nav-bg: 0 0% 100%;
+    --kuaishou-nav-icon: 0 0% 10%;
+    --kuaishou-nav-icon-muted: 0 0% 60%;
     
     /* ====== LIGHT GLASS PALETTE ====== */
     
@@ -1596,5 +1620,117 @@
   .kuaishou-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+  }
+
+  /* ========================================== */
+  /* KUAISHOU PROFILE STYLES                    */
+  /* ========================================== */
+
+  .kuaishou-profile-bg {
+    background: linear-gradient(180deg, hsl(230 70% 20%) 0%, hsl(230 55% 35%) 40%, hsl(230 45% 55%) 100%);
+  }
+
+  .kuaishou-stats-inline {
+    @apply flex justify-around py-4;
+  }
+
+  .kuaishou-stat-item {
+    @apply text-center;
+  }
+
+  .kuaishou-stat-value {
+    @apply text-xl sm:text-2xl font-bold text-white;
+  }
+
+  .kuaishou-stat-label {
+    @apply text-xs text-white/70;
+  }
+
+  /* Video subtitle styles */
+  .kuaishou-video-subtitle {
+    position: absolute;
+    bottom: 35%;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 90%;
+    text-align: center;
+    z-index: 10;
+  }
+
+  .kuaishou-subtitle-text {
+    font-size: clamp(1.25rem, 5vw, 1.75rem);
+    font-weight: 800;
+    color: white;
+    text-shadow: 
+      2px 2px 0 #000,
+      -2px -2px 0 #000,
+      2px -2px 0 #000,
+      -2px 2px 0 #000,
+      0 4px 8px rgba(0,0,0,0.8);
+  }
+
+  .kuaishou-subtitle-accent {
+    background: linear-gradient(90deg, hsl(14 100% 57%), hsl(24 100% 55%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Kuaishou white navigation bar */
+  .kuaishou-nav-white {
+    background: hsl(var(--kuaishou-nav-bg));
+    border-top: 1px solid hsl(var(--kuaishou-border));
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  }
+
+  .kuaishou-nav-item {
+    @apply flex flex-col items-center gap-0.5 py-2 px-3 min-w-[56px];
+  }
+
+  .kuaishou-nav-icon {
+    @apply w-5 h-5 transition-colors;
+    color: hsl(var(--kuaishou-nav-icon-muted));
+    stroke-width: 1.5;
+  }
+
+  .kuaishou-nav-icon.active {
+    color: hsl(var(--kuaishou-nav-icon));
+    stroke-width: 2.5;
+  }
+
+  .kuaishou-nav-label {
+    @apply text-[10px] transition-colors;
+    color: hsl(var(--kuaishou-nav-icon-muted));
+  }
+
+  .kuaishou-nav-label.active {
+    color: hsl(var(--kuaishou-nav-icon));
+    font-weight: 500;
+  }
+
+  /* Create button Kuaishou style */
+  .kuaishou-create-button {
+    @apply relative w-12 h-8 rounded-lg overflow-hidden shadow-lg;
+  }
+
+  .kuaishou-create-cyan {
+    @apply absolute inset-0;
+    background: hsl(var(--kuaishou-accent-cyan));
+  }
+
+  .kuaishou-create-red {
+    @apply absolute inset-0;
+    background: hsl(var(--kuaishou-accent-red));
+    clip-path: polygon(35% 0, 100% 0, 100% 100%, 15% 100%);
+  }
+
+  /* Avatar with follow button */
+  .kuaishou-avatar-follow {
+    @apply absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full flex items-center justify-center shadow-lg;
+    background: hsl(var(--kuaishou-accent-red));
+  }
+
+  .kuaishou-avatar-following {
+    background: hsl(var(--kuaishou-gray-light));
   }
 }

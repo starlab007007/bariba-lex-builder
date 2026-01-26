@@ -149,7 +149,10 @@ export default function TamTamPublicProfile() {
         username={profile.username}
         avatarUrl={profile.avatar_url}
         isOwnProfile={false}
-        language="Français"
+        isVerified={profile.is_verified}
+        followersCount={profile.followers_count || 0}
+        followingCount={profile.following_count || 0}
+        likesCount={posts.reduce((acc, p) => acc + (p.likes_count || 0), 0)}
       />
 
       {/* Stats Grid */}

@@ -1,14 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Video, Users, Headphones, Handshake } from 'lucide-react';
-
-interface StatItem {
-  icon: React.ReactNode;
-  value: number;
-  label: string;
-  color: string;
-  onClick?: () => void;
-}
+import { ShoppingBag, Users } from 'lucide-react';
 
 interface KuaishouStatsGridProps {
   postsCount: number;
@@ -31,66 +23,47 @@ export const KuaishouStatsGrid: React.FC<KuaishouStatsGridProps> = ({
   onFollowingClick,
   onFriendsClick,
 }) => {
-  const stats: StatItem[] = [
-    {
-      icon: <Video className="w-5 h-5" />,
-      value: postsCount,
-      label: 'Publications',
-      color: 'text-[hsl(var(--kuaishou-primary))]',
-      onClick: onPostsClick,
-    },
-    {
-      icon: <Users className="w-5 h-5" />,
-      value: followersCount,
-      label: 'Abonnés',
-      color: 'text-[hsl(var(--kuaishou-primary))]',
-      onClick: onFollowersClick,
-    },
-    {
-      icon: <Headphones className="w-5 h-5" />,
-      value: followingCount,
-      label: 'Abonnements',
-      color: 'text-[hsl(var(--kuaishou-primary))]',
-      onClick: onFollowingClick,
-    },
-    {
-      icon: <Handshake className="w-5 h-5" />,
-      value: friendsCount,
-      label: 'friends',
-      color: 'text-amber-500',
-      onClick: onFriendsClick,
-    },
-  ];
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.25 }}
-      className="grid grid-cols-4 gap-2 px-4"
-    >
-      {stats.map((stat, index) => (
+    <div className="px-4 py-3">
+      {/* Secondary action cards (Kuaishou style) */}
+      <div className="flex gap-2">
+        {/* Shop/Portfolio card */}
         <motion.button
-          key={stat.label}
-          whileTap={{ scale: 0.95 }}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 + index * 0.05 }}
-          onClick={stat.onClick}
-          className="bg-white rounded-xl border border-[hsl(var(--kuaishou-border))] p-3 sm:p-4 text-center hover:border-[hsl(var(--kuaishou-primary)/0.5)] transition-colors focus:outline-none focus:ring-2 focus:ring-[hsl(var(--kuaishou-primary)/0.3)]"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={onPostsClick}
+          className="flex-1 flex items-center gap-3 p-3 bg-[hsl(var(--kuaishou-white))] rounded-xl border border-[hsl(var(--kuaishou-border))] hover:border-[hsl(var(--kuaishou-orange)/0.5)] transition-colors"
         >
-          <div className={`flex justify-center mb-1 ${stat.color}`}>
-            {stat.icon}
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+            <ShoppingBag className="w-5 h-5 text-white" />
           </div>
-          <div className="text-lg sm:text-xl font-bold text-foreground">
-            {stat.value}
-          </div>
-          <div className="text-[10px] sm:text-xs text-muted-foreground truncate">
-            {stat.label}
+          <div className="text-left">
+            <p className="text-sm font-semibold text-[hsl(var(--kuaishou-text))]">Portfolio</p>
+            <p className="text-xs text-[hsl(var(--kuaishou-text-muted))]">{postsCount} publications</p>
           </div>
         </motion.button>
-      ))}
-    </motion.div>
+
+        {/* Fan group card */}
+        <motion.button
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.35 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={onFriendsClick}
+          className="flex-1 flex items-center gap-3 p-3 bg-[hsl(var(--kuaishou-white))] rounded-xl border border-[hsl(var(--kuaishou-border))] hover:border-[hsl(var(--kuaishou-orange)/0.5)] transition-colors"
+        >
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
+            <Users className="w-5 h-5 text-white" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-[hsl(var(--kuaishou-text))]">Fan group</p>
+            <p className="text-xs text-[hsl(var(--kuaishou-text-muted))]">{friendsCount} amis • Rejoindre</p>
+          </div>
+        </motion.button>
+      </div>
+    </div>
   );
 };
 

@@ -363,7 +363,9 @@ export default function TamTamProfile() {
         isOwnProfile={true}
         isUploading={isUploadingAvatar}
         onAvatarClick={handleAvatarClick}
-        language={currentLang === 'ba' ? 'Bàátɔ̀nú' : 'Français'}
+        followersCount={followersCount}
+        followingCount={followingCount}
+        likesCount={myPosts.reduce((acc, p) => acc + p.likes_count, 0)}
       />
 
       {/* Stats Grid */}
