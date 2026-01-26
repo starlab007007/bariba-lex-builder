@@ -94,10 +94,6 @@ export default function TamTamGroups({ onSelectGroup }: TamTamGroupsProps) {
             <Users className="w-6 h-6 text-primary" />
             Groupes
           </h2>
-          <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-2">
-            <Plus className="w-4 h-4" />
-            Créer
-          </Button>
         </div>
 
         {/* Tabs */}

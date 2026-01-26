@@ -106,13 +106,6 @@ export function TamTamCommunities() {
               className="pl-10 rounded-xl border-gray-200"
             />
           </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowCreateModal(true)}
-            className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg"
-          >
-            <Plus className="w-5 h-5" />
-          </motion.button>
         </div>
 
         {/* Categories */}

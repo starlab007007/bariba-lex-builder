@@ -89,14 +89,6 @@ export function TamTamMessagesHub({ isOpen = true, onClose, initialConversationI
               {totalUnread}
             </span>
           )}
-
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowUserSearch(true)}
-            className="p-2 bg-blue-500 text-white rounded-xl"
-          >
-            <Plus className="w-5 h-5" />
-          </motion.button>
         </div>
 
         {/* Search */}
