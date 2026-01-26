@@ -1,16 +1,13 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useState, createContext, useContext } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { TamTamLanguageProvider, useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { TamTamLanguageProvider } from '@/contexts/TamTamLanguageContext';
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package } from 'lucide-react';
-import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { KuaishouSideMenu } from '@/components/tamtam/KuaishouSideMenu';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
-import { BuildInfo } from '@/components/BuildInfo';
+import { useTamTamProfile } from '@/hooks/useTamTamProfile';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📱 TAM-TAM APP V7 - MENU SIMPLIFIÉ
+// 📱 FITILA APP V8 - KUAISHOU DESIGN SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface SideMenuContextType {
@@ -30,255 +27,12 @@ const SideMenuContext = createContext<SideMenuContextType>({
 export const useSideMenu = () => useContext(SideMenuContext);
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SIDE MENU DRAWER - SIMPLIFIÉ
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { currentLang, setLanguage } = useTamTamLanguage();
-  const { isAdmin } = useAuth();
-
-  // Navigation simplifiée : Accueil + Profil uniquement
-  const navItems = [
-    { icon: Home, label: 'Accueil', labelBa: 'Ilé', path: '/tamtam/social', emoji: '🏠' },
-    { icon: User, label: 'Profil', labelBa: 'Èmi', path: '/tamtam/profile', emoji: '👤' },
-  ];
-
-  // Outils : Dictionnaire + Traducteur
-  const toolsItems = [
-    { 
-      emoji: '📖', 
-      label: 'Dictionnaire', 
-      labelBa: 'Ìwé ọ̀rọ̀', 
-      path: '/tamtam/dictionary', 
-      gradient: 'from-emerald-500 to-teal-400',
-      desc: 'FR ↔ Bariba'
-    },
-    { 
-      emoji: '🌍', 
-      label: 'Traducteur', 
-      labelBa: 'Ìtumọ̀', 
-      path: '/tamtam/translator', 
-      gradient: 'from-blue-500 to-cyan-400',
-      desc: 'Voix & Texte'
-    },
-  ];
-
-  const handleNavigate = (path: string) => {
-    triggerFeedback('click');
-    navigate(path);
-    onClose();
-  };
-
-  const isActive = (path: string) => {
-    if (path === '/tamtam/social') {
-      return location.pathname === '/tamtam' || location.pathname === '/tamtam/' || location.pathname === '/tamtam/social';
-    }
-    return location.pathname.startsWith(path);
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 z-[100]"
-            style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)' }}
-          />
-
-          <motion.div
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 w-[300px] z-[101] overflow-y-auto"
-            style={{
-              background: 'linear-gradient(180deg, rgba(20, 20, 28, 0.98) 0%, rgba(10, 10, 15, 0.99) 100%)',
-              backdropFilter: 'blur(20px)',
-              borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-            }}
-          >
-            {/* Header */}
-            <div className="p-5 border-b border-white/10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">🥁</span>
-                  <span className="text-white font-black text-lg">TAM-TAM</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <motion.button whileTap={{ scale: 0.9 }} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
-                    <Bell className="w-4 h-4 text-white" />
-                  </motion.button>
-                  <motion.button whileTap={{ scale: 0.9 }} onClick={onClose} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
-                    <X className="w-5 h-5 text-white" />
-                  </motion.button>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation principale */}
-            <div className="p-4">
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-2 px-2">Navigation</p>
-              <div className="space-y-1">
-                {navItems.map((item, index) => {
-                  const active = isActive(item.path);
-                  return (
-                    <motion.button
-                      key={item.path}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.03 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleNavigate(item.path)}
-                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${
-                        active ? 'bg-[#FF7A00]/20 border border-[#FF7A00]/30' : 'hover:bg-white/5'
-                      }`}
-                    >
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${active ? 'bg-[#FF7A00]' : 'bg-white/10'}`}>
-                        <span className="text-lg">{item.emoji}</span>
-                      </div>
-                      <span className={`font-medium flex-1 text-left text-sm ${active ? 'text-[#FF7A00]' : 'text-white'}`}>
-                        {currentLang === 'ba' ? item.labelBa : item.label}
-                      </span>
-                      {active && <span className="px-2 py-0.5 rounded-full bg-[#FF7A00]/20 text-[#FF7A00] text-[9px] font-bold">ACTIF</span>}
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Outils : Dictionnaire + Traducteur */}
-            <div className="p-4 border-t border-white/10">
-              <div className="flex items-center gap-2 mb-3 px-2">
-                <BookOpen className="w-4 h-4 text-[#FF7A00]" />
-                <p className="text-[#FF7A00] text-[10px] font-bold uppercase tracking-wider">Outils</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {toolsItems.map((tool, index) => (
-                  <motion.button
-                    key={tool.label}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.1 + index * 0.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleNavigate(tool.path)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-all border border-white/5 hover:border-white/10"
-                  >
-                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center shadow-lg`}>
-                      <span className="text-3xl">{tool.emoji}</span>
-                    </div>
-                    <span className="text-white text-sm font-semibold">{currentLang === 'ba' ? tool.labelBa : tool.label}</span>
-                    <span className="text-white/40 text-[10px] text-center">{tool.desc}</span>
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-
-            {/* Langue */}
-            <div className="p-4 border-t border-white/10">
-              <div className="flex items-center gap-2 mb-3 px-2">
-                <Globe className="w-4 h-4 text-white/60" />
-                <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Langue</p>
-              </div>
-              <div className="flex gap-2">
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setLanguage('fr')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    currentLang === 'fr' ? 'bg-[#FF7A00] text-white' : 'bg-white/10 text-white/60'
-                  }`}
-                >
-                  🇫🇷 Français
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setLanguage('ba')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    currentLang === 'ba' ? 'bg-[#FF7A00] text-white' : 'bg-white/10 text-white/60'
-                  }`}
-                >
-                  🇧🇯 Bariba
-                </motion.button>
-              </div>
-            </div>
-
-            {/* Section Admin - Visible uniquement pour les admins */}
-            {isAdmin && (
-              <div className="p-4 border-t border-white/10">
-                <div className="flex items-center gap-2 mb-3 px-2">
-                  <Shield className="w-4 h-4 text-red-400" />
-                  <p className="text-red-400 text-[10px] font-bold uppercase tracking-wider">🔒 Administration</p>
-                </div>
-                <div className="space-y-2">
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleNavigate('/admin')}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 hover:border-purple-500/50 transition-all"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
-                      <LayoutDashboard className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-white text-sm font-medium">Tableau de bord</p>
-                      <p className="text-white/40 text-[10px]">Gestion globale</p>
-                    </div>
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleNavigate('/assets')}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 hover:border-emerald-500/50 transition-all"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
-                      <Package className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-white text-sm font-medium">Gestion Assets</p>
-                      <p className="text-white/40 text-[10px]">Télécharger & Optimiser</p>
-                    </div>
-                  </motion.button>
-                </div>
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="p-4 border-t border-white/10 space-y-2">
-              {/* Admin link in settings section for admins */}
-              {isAdmin && (
-                <motion.button 
-                  whileTap={{ scale: 0.98 }} 
-                  onClick={() => handleNavigate('/assets')} 
-                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 border border-[#FF7A00]/20"
-                >
-                  <Package className="w-5 h-5 text-[#FF7A00]" />
-                  <span className="text-[#FF7A00] text-sm font-medium">Gestion Assets</span>
-                </motion.button>
-              )}
-              <motion.button whileTap={{ scale: 0.98 }} onClick={() => handleNavigate('/tamtam/settings')} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5">
-                <Settings className="w-5 h-5 text-white/50" />
-                <span className="text-white/50 text-sm">Paramètres</span>
-              </motion.button>
-              <div className="pt-2 border-t border-white/5">
-                <BuildInfo className="text-white/30" />
-              </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPOSANT PRINCIPAL
+// COMPOSANT PRINCIPAL AVEC KUAISHOU MENU
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { profile } = useTamTamProfile();
 
   const menuContext: SideMenuContextType = {
     isOpen: isMenuOpen,
@@ -289,9 +43,20 @@ function AppContent() {
 
   return (
     <SideMenuContext.Provider value={menuContext}>
-      <div className="min-h-screen kuaishou-bg">
-        <SideMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-        <main><Outlet /></main>
+      <div className="min-h-screen bg-[hsl(var(--kuaishou-white))]">
+        {/* Kuaishou Side Menu */}
+        <KuaishouSideMenu 
+          isOpen={isMenuOpen} 
+          onClose={() => setIsMenuOpen(false)}
+          profile={profile}
+        />
+        
+        {/* Main Content */}
+        <main>
+          <Outlet />
+        </main>
+        
+        {/* Admin Floating Button */}
         <AdminFloatingButton />
       </div>
     </SideMenuContext.Provider>
