@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, ChevronRight, RefreshCw, UserPlus, Clock } from 'lucide-react';
+import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, ChevronRight, RefreshCw, UserPlus, Clock, Search, Compass, User, Star, Check } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 import { useVideoFeed } from '@/hooks/useVideoFeed';
@@ -150,63 +150,47 @@ const CreateMenu: React.FC<{
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// FEED INDICATOR (DOTS) - En haut de l'écran
+// FEED HEADER KUAISHOU - Ultra minimal transparent
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const FeedIndicator: React.FC<{ currentFeed: FeedMode; onMenuOpen: () => void }> = ({ currentFeed, onMenuOpen }) => {
-  const feeds: { id: FeedMode; emoji: string; label: string }[] = [
-    { id: 'patrimoine', emoji: '🏛️', label: 'Patrimoine' },
-    { id: 'mavoix', emoji: '📢', label: 'Ma Voix' },
-    { id: 'creation', emoji: '🎬', label: 'Création' },
-  ];
+  const navigate = useNavigate();
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 safe-area-top">
-      <div className="px-4 py-3 flex items-center justify-between">
-        {/* Menu hamburger */}
+    <div className="fixed top-0 left-0 right-0 z-40 safe-area-top pointer-events-none">
+      <div className="px-4 py-3 flex items-center justify-between pointer-events-auto">
+        {/* Menu hamburger - GAUCHE */}
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onMenuOpen}
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-black/20 backdrop-blur-sm"
+          className="w-11 h-11 rounded-full flex items-center justify-center"
+          style={{ 
+            textShadow: '0 2px 8px rgba(0,0,0,0.5)'
+          }}
         >
-          <Menu className="w-5 h-5 text-white" />
+          <Menu className="w-6 h-6 text-white drop-shadow-lg" strokeWidth={2} />
         </motion.button>
 
-        {/* Feed indicator - centré */}
-        <div className="flex-1 flex justify-center">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm">
-            {feeds.map((feed) => {
-              const isActive = currentFeed === feed.id;
-              return (
-                <div key={feed.id} className="flex items-center gap-1">
-                  {isActive ? (
-                    <motion.div layoutId="feedIndicator" className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20">
-                      <span className="text-base">{feed.emoji}</span>
-                      <span className="text-white text-xs font-semibold">{feed.label}</span>
-                    </motion.div>
-                  ) : (
-                    <div className="w-2 h-2 rounded-full bg-white/40" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        {/* Centre - Logo FITILA discret */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-lg">🔥</span>
         </div>
 
-        {/* Spacer pour équilibrer le layout */}
-        <div className="w-10 h-10" />
-      </div>
-      
-      {/* Swipe hint */}
-      <div className="flex justify-center pb-1">
-        <span className="text-white/30 text-[10px]">← Glissez →</span>
+        {/* Recherche - DROITE */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => navigate('/fitila/discover')}
+          className="w-11 h-11 rounded-full flex items-center justify-center"
+        >
+          <Search className="w-6 h-6 text-white drop-shadow-lg" strokeWidth={2} />
+        </motion.button>
       </div>
     </div>
   );
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// BOTTOM TAB BAR
+// BOTTOM TAB BAR - KUAISHOU WHITE STYLE
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BottomTabBar: React.FC<{
@@ -216,11 +200,13 @@ const BottomTabBar: React.FC<{
   unreadMessages?: number;
   liveCount?: number;
 }> = ({ activeTab, onTabChange, onCreatePress, unreadMessages = 0, liveCount = 0 }) => {
-  const tabs: { id: BottomTab; icon: typeof Home; label: string; badge?: number }[] = [
-    { id: 'fil', icon: Home, label: 'Accueil' },
-    { id: 'chat', icon: MessageCircle, label: 'Messages', badge: unreadMessages },
-    { id: 'groupes', icon: Users, label: 'Groupes' },
-    { id: 'direct', icon: Zap, label: 'Live', badge: liveCount },
+  const navigate = useNavigate();
+  
+  const tabs: { id: BottomTab | 'featured' | 'me'; icon: typeof Home; label: string; badge?: number; path?: string }[] = [
+    { id: 'fil', icon: Home, label: 'Home' },
+    { id: 'featured', icon: Compass, label: 'Featured', path: '/fitila/discover' },
+    { id: 'chat', icon: MessageCircle, label: 'Message', badge: unreadMessages },
+    { id: 'me', icon: User, label: 'Me', path: '/fitila/profile' },
   ];
 
   return (
@@ -229,9 +215,9 @@ const BottomTabBar: React.FC<{
       animate={{ y: 0 }}
       className="fixed bottom-0 left-0 right-0 z-40"
       style={{
-        background: 'linear-gradient(180deg, rgba(11, 11, 11, 0.95) 0%, rgba(11, 11, 11, 0.99) 100%)',
-        backdropFilter: 'blur(20px)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        background: 'hsl(var(--kuaishou-nav-bg))',
+        borderTop: '1px solid hsl(var(--kuaishou-border))',
+        boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
@@ -240,28 +226,50 @@ const BottomTabBar: React.FC<{
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <motion.button key={tab.id} whileTap={{ scale: 0.9 }} onClick={() => onTabChange(tab.id)} className="relative flex flex-col items-center gap-0.5 py-2 px-4 min-w-[60px]">
-              <div className="relative">
-                <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} strokeWidth={isActive ? 2.5 : 2} />
-                {tab.badge && tab.badge > 0 && (
-                  <span className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                    {tab.badge > 99 ? '99+' : tab.badge}
-                  </span>
-                )}
-              </div>
-              <span className={`text-[10px] font-medium ${isActive ? 'text-white' : 'text-white/50'}`}>{tab.label}</span>
+            <motion.button 
+              key={tab.id} 
+              whileTap={{ scale: 0.9 }} 
+              onClick={() => tab.path ? navigate(tab.path) : onTabChange(tab.id as BottomTab)} 
+              className="relative flex flex-col items-center gap-0.5 py-2 px-3 min-w-[56px]"
+            >
+              <Icon 
+                className={`w-5 h-5 transition-colors ${
+                  isActive 
+                    ? 'text-[hsl(var(--kuaishou-nav-icon))]' 
+                    : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
+                }`}
+                strokeWidth={isActive ? 2.5 : 1.5}
+              />
+              <span className={`text-[10px] transition-colors ${
+                isActive 
+                  ? 'text-[hsl(var(--kuaishou-nav-icon))] font-medium' 
+                  : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
+              }`}>
+                {tab.label}
+              </span>
+              {isActive && (
+                <motion.div
+                  layoutId="kuaishouNavIndicator"
+                  className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-[hsl(var(--kuaishou-nav-icon))]"
+                />
+              )}
             </motion.button>
           );
         })}
 
-        {/* CREATE */}
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onCreatePress} className="relative -mt-4">
-          <div className="relative">
-            <motion.div className="absolute inset-0 rounded-xl blur-lg" style={{ background: 'linear-gradient(45deg, #FF7A00, #FF5500)' }} animate={{ opacity: [0.5, 0.8, 0.5] }} transition={{ repeat: Infinity, duration: 2 }} />
-            <div className="relative w-14 h-10 rounded-xl overflow-hidden shadow-xl">
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-cyan-500" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#FF7A00] to-red-500" style={{ clipPath: 'polygon(30% 0, 100% 0, 100% 100%, 10% 100%)' }} />
-              <div className="absolute inset-0 flex items-center justify-center"><Plus className="w-7 h-7 text-white" strokeWidth={3} /></div>
+        {/* CREATE - Kuaishou Style cyan/red */}
+        <motion.button whileTap={{ scale: 0.9 }} onClick={onCreatePress} className="relative -mt-3">
+          <div className="relative w-12 h-8 rounded-lg overflow-hidden shadow-lg">
+            {/* Cyan left side */}
+            <div className="absolute inset-0 bg-[hsl(var(--kuaishou-accent-cyan))]" />
+            {/* Red right side with diagonal cut */}
+            <div 
+              className="absolute inset-0 bg-[hsl(var(--kuaishou-accent-red))]"
+              style={{ clipPath: 'polygon(35% 0, 100% 0, 100% 100%, 15% 100%)' }}
+            />
+            {/* Plus icon */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Plus className="w-6 h-6 text-white" strokeWidth={3} />
             </div>
           </div>
         </motion.button>
@@ -270,12 +278,40 @@ const BottomTabBar: React.FC<{
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <motion.button key={tab.id} whileTap={{ scale: 0.9 }} onClick={() => onTabChange(tab.id)} className="relative flex flex-col items-center gap-0.5 py-2 px-4 min-w-[60px]">
+            <motion.button 
+              key={tab.id} 
+              whileTap={{ scale: 0.9 }} 
+              onClick={() => tab.path ? navigate(tab.path) : onTabChange(tab.id as BottomTab)} 
+              className="relative flex flex-col items-center gap-0.5 py-2 px-3 min-w-[56px]"
+            >
               <div className="relative">
-                <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} strokeWidth={isActive ? 2.5 : 2} />
-                {tab.badge && tab.badge > 0 && <motion.span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-red-500" animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} />}
+                <Icon 
+                  className={`w-5 h-5 transition-colors ${
+                    isActive 
+                      ? 'text-[hsl(var(--kuaishou-nav-icon))]' 
+                      : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
+                  }`}
+                  strokeWidth={isActive ? 2.5 : 1.5}
+                />
+                {tab.badge && tab.badge > 0 && (
+                  <span className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-[hsl(var(--kuaishou-accent-red))] text-white text-[10px] font-bold flex items-center justify-center">
+                    {tab.badge > 99 ? '99+' : tab.badge}
+                  </span>
+                )}
               </div>
-              <span className={`text-[10px] font-medium ${isActive ? 'text-white' : 'text-white/50'}`}>{tab.label}</span>
+              <span className={`text-[10px] transition-colors ${
+                isActive 
+                  ? 'text-[hsl(var(--kuaishou-nav-icon))] font-medium' 
+                  : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
+              }`}>
+                {tab.label}
+              </span>
+              {isActive && (
+                <motion.div
+                  layoutId="kuaishouNavIndicator"
+                  className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-[hsl(var(--kuaishou-nav-icon))]"
+                />
+              )}
             </motion.button>
           );
         })}
@@ -495,8 +531,15 @@ const AudioFeedCard: React.FC<{
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// VIDEO FEED CARD - AVEC TOUS LES BOUTONS
+// VIDEO FEED CARD - KUAISHOU FULLSCREEN STYLE
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// Helper for K-format numbers (10.8k, 2.5k, etc.)
+const formatKNumber = (num: number): string => {
+  if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
+  if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return num.toString();
+};
 
 const VideoFeedCard: React.FC<{
   post: any;
@@ -509,7 +552,9 @@ const VideoFeedCard: React.FC<{
   const [isSaved, setIsSaved] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showFullDesc, setShowFullDesc] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const navigate = useNavigate();
 
   // Support both tamtam_posts and videos table format
   const videoUrl = post.media_url || post.video_url;
@@ -518,9 +563,12 @@ const VideoFeedCard: React.FC<{
   const authorUsername = post.profile?.username || 'fitila_creator';
   const likesCount = post.likes_count || post.reactions_count || 0;
   const commentsCount = post.comments_count || 0;
+  const sharesCount = post.shares_count || 0;
+  const savesCount = post.saves_count || Math.floor(likesCount * 0.3);
   const templateEmoji = post.template_name?.includes('Village') ? '📺' : 
                         post.template_name?.includes('Griot') ? '🎭' : '🎬';
-  const description = post.transcript_fr || post.title || post.description || 'Création vidéo';
+  const description = post.transcript_fr || post.title || post.description || '';
+  const avatarUrl = post.profile?.avatar_url;
 
   useEffect(() => {
     if (isActive && videoRef.current) {
@@ -529,6 +577,17 @@ const VideoFeedCard: React.FC<{
       videoRef.current.pause();
     }
   }, [isActive]);
+
+  const handleFollow = () => {
+    setIsFollowing(!isFollowing);
+    triggerFeedback('success');
+  };
+
+  const handleProfileClick = () => {
+    if (post.profile?.user_id) {
+      navigate(`/fitila/profile/${post.profile.user_id}`);
+    }
+  };
 
   return (
     <div className="h-[100dvh] w-full snap-start snap-always relative bg-black overflow-hidden">
@@ -566,119 +625,142 @@ const VideoFeedCard: React.FC<{
         </div>
       )}
       
-      {/* Template badge - responsive position with readable text */}
-      {post._sourceTable === 'videos' && post.template_name && (
-        <div className="absolute top-16 xs:top-18 sm:top-20 left-2 xs:left-3 sm:left-4 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-black/60 backdrop-blur-md flex items-center gap-2 max-w-[65%] shadow-lg">
-          <span className="text-base sm:text-lg flex-shrink-0">{templateEmoji}</span>
-          <span className="text-white text-fluid-sm font-semibold truncate text-readable-light">{post.template_name}</span>
-        </div>
-      )}
-      
-      {/* Bottom info - responsive with safe area and improved contrast */}
+      {/* KUAISHOU STYLE - Bottom info with deep gradient */}
       <div 
-        className="absolute bottom-0 left-0 right-0 px-3 xs:px-4 sm:px-5 pt-12 sm:pt-16"
+        className="absolute bottom-0 left-0 right-16 px-4 pt-20"
         style={{ 
-          background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0.3) 70%, transparent 100%)',
-          paddingBottom: 'max(5.5rem, calc(env(safe-area-inset-bottom) + 5.5rem))'
+          background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
+          paddingBottom: 'max(5rem, calc(env(safe-area-inset-bottom) + 5rem))'
         }}
       >
-        {/* Author row - touch friendly follow button */}
-        <div className="flex items-center gap-2 xs:gap-2.5 sm:gap-3 mb-2.5 pr-14 sm:pr-16">
-          <div className="w-9 h-9 xs:w-10 xs:h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] border-2 border-white flex items-center justify-center flex-shrink-0 shadow-lg">
-            <span className="text-base sm:text-lg">{templateEmoji}</span>
+        {/* Username with verified badge */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-white font-bold text-base drop-shadow-lg">@{authorUsername}</span>
+          <div className="w-4 h-4 rounded-full bg-[hsl(var(--kuaishou-verified))] flex items-center justify-center">
+            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
           </div>
-          <span className="text-white font-bold text-fluid-sm truncate text-readable-light">@{authorUsername}</span>
-          <motion.button 
-            whileTap={{ scale: 0.95 }} 
-            onClick={() => setIsFollowing(!isFollowing)} 
-            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-fluid-xs font-bold flex-shrink-0 touch-target-sm ${isFollowing ? 'bg-white/20 text-white' : 'bg-[#FF7A00] text-white shadow-lg'}`}
-            style={{ minHeight: '32px' }}
-          >
-            {isFollowing ? 'Abonné' : 'Suivre'}
-          </motion.button>
+          <span className="text-xl">{post.feeling_emoji || '🔥'}</span>
         </div>
         
-        {/* Description - fluid responsive text with high contrast */}
-        <p className="text-white text-fluid-base mb-2 line-clamp-2 pr-14 sm:pr-16 leading-relaxed text-readable-light">{description}</p>
-        
-        {/* Date/heure - improved visibility */}
-        <div className="flex items-center gap-1.5 mb-1.5 pr-14 sm:pr-16">
-          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white/60 flex-shrink-0" />
-          <span className="text-white/70 text-fluid-xs font-medium">{formatPublicationDate(post.created_at)}</span>
-        </div>
-        
-        {/* Hashtags - better readability */}
-        <p className="text-white/60 text-fluid-xs truncate pr-14 sm:pr-16 font-medium">
-          #FITILA #Création {post.template_name ? `#${post.template_name.replace(/\s+/g, '')}` : ''}
-        </p>
+        {/* Description with Unfold */}
+        {description && (
+          <div className="mb-3">
+            <p className={`text-white text-sm leading-relaxed drop-shadow-lg ${!showFullDesc ? 'line-clamp-2' : ''}`}>
+              {description}
+            </p>
+            {description.length > 80 && (
+              <button 
+                onClick={() => setShowFullDesc(!showFullDesc)} 
+                className="text-white/70 text-xs mt-1 hover:text-white"
+              >
+                {showFullDesc ? 'Réduire' : 'Voir plus...'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* RIGHT SIDE ACTIONS - Touch targets 44px+, proper spacing */}
+      {/* KUAISHOU STYLE - Right sidebar with Avatar on TOP */}
       <div 
-        className="absolute right-2 xs:right-2.5 sm:right-3 flex flex-col items-center gap-3 sm:gap-4"
+        className="absolute right-3 flex flex-col items-center gap-5"
         style={{ 
-          bottom: 'max(7rem, calc(env(safe-area-inset-bottom) + 7rem))'
+          top: '50%',
+          transform: 'translateY(-50%)'
         }}
       >
-        {/* Like - Touch target 44px+ */}
+        {/* Avatar with Follow button overlay */}
+        <div className="relative">
+          <motion.button 
+            whileTap={{ scale: 0.95 }}
+            onClick={handleProfileClick}
+            className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg"
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={authorName} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
+                <span className="text-xl">👤</span>
+              </div>
+            )}
+          </motion.button>
+          {/* Follow button overlapping avatar */}
+          {!isFollowing && (
+            <motion.button 
+              whileTap={{ scale: 0.85 }}
+              onClick={handleFollow}
+              className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[hsl(var(--kuaishou-accent-red))] flex items-center justify-center shadow-lg border-2 border-white"
+            >
+              <Plus className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+            </motion.button>
+          )}
+        </div>
+        
+        {/* Like */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
-          onClick={() => { setIsLiked(!isLiked); onLike(); }} 
-          className="flex flex-col items-center touch-target"
+          onClick={() => { setIsLiked(!isLiked); onLike(); triggerFeedback('notification'); }} 
+          className="flex flex-col items-center"
         >
-          <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-xl ${isLiked ? 'bg-red-500' : 'bg-black/60 backdrop-blur-md border border-white/10'}`}>
-            <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
+          <div className="w-11 h-11 rounded-full flex items-center justify-center">
+            <Heart className={`w-7 h-7 drop-shadow-lg ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'}`} />
           </div>
-          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">{likesCount + (isLiked ? 1 : 0)}</span>
+          <span className="text-white text-xs font-semibold drop-shadow-lg">{formatKNumber(likesCount + (isLiked ? 1 : 0))}</span>
         </motion.button>
         
-        {/* Comment - Touch target 44px+ */}
+        {/* Comment */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={onComment} 
-          className="flex flex-col items-center touch-target"
+          className="flex flex-col items-center"
         >
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-xl">
-            <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          <div className="w-11 h-11 rounded-full flex items-center justify-center">
+            <MessageCircle className="w-7 h-7 text-white drop-shadow-lg" />
           </div>
-          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">{commentsCount > 0 ? commentsCount : 'Répondre'}</span>
+          <span className="text-white text-xs font-semibold drop-shadow-lg">{formatKNumber(commentsCount)}</span>
         </motion.button>
         
-        {/* Remix - Touch target 44px+ */}
+        {/* Favorite/Star */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
-          className="flex flex-col items-center touch-target"
+          onClick={() => { setIsSaved(!isSaved); triggerFeedback('success'); }}
+          className="flex flex-col items-center"
         >
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-xl">
-            <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          <div className="w-11 h-11 rounded-full flex items-center justify-center">
+            <Star className={`w-7 h-7 drop-shadow-lg ${isSaved ? 'text-amber-400 fill-amber-400' : 'text-white'}`} />
           </div>
-          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">Remix</span>
+          <span className="text-white text-xs font-semibold drop-shadow-lg">{formatKNumber(savesCount + (isSaved ? 1 : 0))}</span>
         </motion.button>
         
-        {/* Share - Touch target 44px+ */}
+        {/* Share */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={onShare} 
-          className="flex flex-col items-center touch-target"
+          className="flex flex-col items-center"
         >
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-xl">
-            <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          <div className="w-11 h-11 rounded-full flex items-center justify-center">
+            <Share2 className="w-7 h-7 text-white drop-shadow-lg" />
           </div>
-          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">Partager</span>
-        </motion.button>
-        
-        {/* Save - Touch target 44px+ */}
-        <motion.button 
-          whileTap={{ scale: 0.85 }} 
-          onClick={() => setIsSaved(!isSaved)} 
-          className="flex flex-col items-center touch-target"
-        >
-          <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-xl ${isSaved ? 'bg-amber-500' : 'bg-black/60 backdrop-blur-md border border-white/10'}`}>
-            <Bookmark className={`w-5 h-5 sm:w-6 sm:h-6 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
-          </div>
-          <span className="text-white text-fluid-xs mt-1 font-semibold text-readable-light">{isSaved ? 'Sauvé' : 'Sauver'}</span>
+          <span className="text-white text-xs font-semibold drop-shadow-lg">{formatKNumber(sharesCount)}</span>
         </motion.button>
       </div>
+
+      {/* Mini avatar bottom right - Kuaishou style */}
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={handleProfileClick}
+        className="absolute right-4 w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-lg"
+        style={{
+          bottom: 'max(5.5rem, calc(env(safe-area-inset-bottom) + 5.5rem))'
+        }}
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={authorName} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
+            <span className="text-sm">👤</span>
+          </div>
+        )}
+      </motion.button>
     </div>
   );
 };
