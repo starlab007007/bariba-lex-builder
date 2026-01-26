@@ -527,7 +527,7 @@ const AudioFeedCard: React.FC<{
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// VIDEO FEED CARD - FULLSCREEN CLASSIQUE
+// VIDEO FEED CARD - FULLSCREEN KUAISHOU ULTRA-CLEAN
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const VideoFeedCard: React.FC<{
@@ -546,14 +546,12 @@ const VideoFeedCard: React.FC<{
   // Support both tamtam_posts and videos table format
   const videoUrl = post.media_url || post.video_url;
   const thumbnailUrl = post.thumbnail_url;
-  const authorName = post.profile?.display_name || post.template_name || 'Créateur';
+  const authorName = post.profile?.display_name || 'Créateur';
   const likesCount = post.likes_count || post.reactions_count || 0;
   const commentsCount = post.comments_count || 0;
   const sharesCount = post.shares_count || 0;
-  const templateEmoji = post.template_name?.includes('Village') ? '📺' : 
-                        post.template_name?.includes('Griot') ? '🎭' : '🎬';
-  const description = post.transcript_fr || post.title || post.description || '';
   const avatarUrl = post.profile?.avatar_url;
+  const feelingEmoji = post.feeling_emoji;
 
   useEffect(() => {
     if (isActive && videoRef.current) {
@@ -571,7 +569,7 @@ const VideoFeedCard: React.FC<{
 
   return (
     <div className="h-[100dvh] w-full snap-start snap-always relative bg-black overflow-hidden">
-      {/* Video/Media - FULLSCREEN */}
+      {/* Video/Media - FULLSCREEN ABSOLUTE */}
       {videoUrl ? (
         <video 
           ref={videoRef} 
@@ -587,105 +585,93 @@ const VideoFeedCard: React.FC<{
       ) : thumbnailUrl ? (
         <img 
           src={thumbnailUrl} 
-          alt={description}
+          alt=""
           className="absolute inset-0 w-full h-full object-cover"
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
-          <span className="text-7xl">{post.feeling_emoji || templateEmoji}</span>
+          <span className="text-7xl">{feelingEmoji || '🎬'}</span>
         </div>
       )}
       
       {/* Loading state */}
       {!isLoaded && videoUrl && (
         <div className="absolute inset-0 bg-black flex items-center justify-center">
-          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-12 h-12 border-3 border-white border-t-transparent rounded-full" />
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full" />
         </div>
       )}
       
-      {/* Bottom info with gradient */}
+      {/* Author info - Minimaliste en bas à gauche */}
       <div 
-        className="absolute bottom-0 left-0 right-16 px-4 pt-16"
+        className="absolute bottom-0 left-0 right-16 px-4"
         style={{ 
-          background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
           paddingBottom: 'max(5rem, calc(env(safe-area-inset-bottom) + 5rem))'
         }}
       >
-        {/* Author info */}
-        <div className="flex items-center gap-3 mb-2" onClick={handleProfileClick}>
-          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/50">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2" 
+          onClick={handleProfileClick}
+        >
+          {/* Avatar transparent */}
+          <div className="w-9 h-9 rounded-full overflow-hidden border border-white/20">
             {avatarUrl ? (
-              <img src={avatarUrl} alt={authorName} className="w-full h-full object-cover" />
+              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
-                <span className="text-sm">👤</span>
+              <div className="w-full h-full bg-white/10 flex items-center justify-center">
+                <span className="text-xs">👤</span>
               </div>
             )}
           </div>
-          <div>
-            <p className="text-white font-semibold text-sm">{authorName}</p>
-            <p className="text-white/60 text-xs">{templateEmoji} {post.template_name || 'Vidéo'}</p>
-          </div>
-        </div>
-        
-        {/* Description */}
-        {description && (
-          <p className="text-white/90 text-sm line-clamp-2 mb-2">{description}</p>
-        )}
+          <span className="text-white/80 text-sm font-medium">{authorName}</span>
+        </motion.div>
       </div>
 
-      {/* Right sidebar - Actions classiques */}
+      {/* Right sidebar - Actions 100% transparentes */}
       <div 
-        className="absolute right-3 flex flex-col items-center gap-4"
+        className="absolute right-3 flex flex-col items-center gap-5"
         style={{ 
           bottom: 'max(6rem, calc(env(safe-area-inset-bottom) + 6rem))'
         }}
       >
-        {/* Like */}
+        {/* Like - Transparent */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={() => { setIsLiked(!isLiked); onLike(); triggerFeedback('notification'); }} 
           className="flex flex-col items-center"
         >
-          <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <Heart className={`w-6 h-6 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'}`} />
-          </div>
-          <span className="text-white text-xs font-medium mt-1">{likesCount + (isLiked ? 1 : 0)}</span>
+          <Heart className={`w-7 h-7 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
+          <span className="text-white/80 text-[11px] font-medium mt-1 drop-shadow-md">{likesCount + (isLiked ? 1 : 0)}</span>
         </motion.button>
         
-        {/* Comment */}
+        {/* Comment - Transparent */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={onComment} 
           className="flex flex-col items-center"
         >
-          <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <MessageCircle className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-white text-xs font-medium mt-1">{commentsCount}</span>
+          <MessageCircle className="w-7 h-7 text-white drop-shadow-lg" strokeWidth={1.5} />
+          <span className="text-white/80 text-[11px] font-medium mt-1 drop-shadow-md">{commentsCount}</span>
         </motion.button>
         
-        {/* Bookmark */}
+        {/* Bookmark - Transparent */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={() => { setIsSaved(!isSaved); triggerFeedback('success'); }}
           className="flex flex-col items-center"
         >
-          <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <Bookmark className={`w-6 h-6 ${isSaved ? 'text-amber-400 fill-amber-400' : 'text-white'}`} />
-          </div>
+          <Bookmark className={`w-7 h-7 ${isSaved ? 'text-amber-400 fill-amber-400' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
         </motion.button>
         
-        {/* Share */}
+        {/* Share - Transparent */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={onShare} 
           className="flex flex-col items-center"
         >
-          <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <Share2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-white text-xs font-medium mt-1">{sharesCount}</span>
+          <Share2 className="w-7 h-7 text-white drop-shadow-lg" strokeWidth={1.5} />
+          <span className="text-white/80 text-[11px] font-medium mt-1 drop-shadow-md">{sharesCount}</span>
         </motion.button>
       </div>
     </div>
