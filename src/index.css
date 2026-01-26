@@ -29,6 +29,13 @@
     --touch-target-lg: 48px;
     --touch-target-sm: 40px;
     
+    /* ====== KUAISHOU DESIGN SYSTEM ====== */
+    --kuaishou-primary: 207 90% 54%;
+    --kuaishou-primary-dark: 207 85% 45%;
+    --kuaishou-bg: 207 60% 97%;
+    --kuaishou-border: 207 30% 90%;
+    --kuaishou-surface: 0 0% 100%;
+    
     /* ====== LIGHT GLASS PALETTE ====== */
     
     /* Backgrounds - Soft gradient base */
