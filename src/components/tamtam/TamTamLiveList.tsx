@@ -108,14 +108,6 @@ export function TamTamLiveList({ isOpen = true, onClose }: TamTamLiveListProps) 
       <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">🔴 Directs en cours</h2>
-          
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowCreateModal(true)}
-            className="p-2 bg-white/20 rounded-xl"
-          >
-            <Plus className="w-5 h-5" />
-          </motion.button>
         </div>
 
         <p className="text-white/80 text-sm text-center">

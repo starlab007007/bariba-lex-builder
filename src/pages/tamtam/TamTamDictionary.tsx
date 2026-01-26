@@ -166,7 +166,8 @@ export default function TamTamDictionary() {
       titleBa="Gbɛ́-sɔ́ɔ̀rù"
       emoji="📖"
       showBack={true}
-      showMenu={true}
+      showMenu={false}
+      showNav={false}
     >
       {/* Toggles mode et direction */}
       <div className="px-4 pt-4 pb-2">
