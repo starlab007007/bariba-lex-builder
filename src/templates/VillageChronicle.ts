@@ -1601,10 +1601,10 @@ export class VillageChronicleEngine {
     const show = await this.createNewsShow(inputs);
     this.newsShow = show;
     
-    // Use shorter duration for faster rendering: 30s for quick preview, 45s for HD
-    const totalDuration = quickPreview ? Math.min(show.totalDuration, 30) : Math.min(show.totalDuration, 45);
-    // Lower FPS for quick preview (12fps), full quality uses 24fps (cinematic)
-    const fps = quickPreview ? 12 : 24;
+    // OPTIMIZED: Shorter duration for faster rendering (max 30s for all modes)
+    const totalDuration = Math.min(show.totalDuration, 30);
+    // OPTIMIZED: Lower FPS for faster processing (18fps = ~540 frames for 30s)
+    const fps = quickPreview ? 12 : 18;
     
     console.log(`[VillageChronicle] Rendering ${totalDuration}s @ ${fps}fps = ${totalDuration * fps} frames`);
     
@@ -1632,9 +1632,9 @@ export class VillageChronicleEngine {
       console.warn('[VillageChronicle] Final audio preparation failed:', e);
     }
 
-    // Choose encoding path based on quickPreview flag
-    const renderWidth = quickPreview ? 1280 : 1920;
-    const renderHeight = quickPreview ? 720 : 1080;
+    // OPTIMIZED: Use 720p for all modes (faster encoding, smaller files)
+    const renderWidth = 1280;
+    const renderHeight = 720;
 
     try {
       if (quickPreview) {
