@@ -33,6 +33,20 @@ const DEFAULT_OPTIONS: EncoderOptions = {
 let ffmpegInstance: FFmpeg | null = null;
 let isLoading = false;
 
+function audioExtFromMime(mime: string | undefined): string {
+  const m = (mime || '').toLowerCase();
+  if (m.includes('mpeg') || m.includes('mp3')) return 'mp3';
+  if (m.includes('wav')) return 'wav';
+  if (m.includes('webm')) return 'webm';
+  if (m.includes('ogg')) return 'ogg';
+  if (m.includes('mp4') || m.includes('m4a') || m.includes('aac')) return 'm4a';
+  return 'bin';
+}
+
+function audioInputName(audioBlob: Blob): string {
+  return `audio.${audioExtFromMime(audioBlob.type)}`;
+}
+
 async function getFFmpeg(): Promise<FFmpeg> {
   if (ffmpegInstance) return ffmpegInstance;
   
@@ -99,10 +113,11 @@ export async function encodeVideo(
     }
     
     // Write audio if provided
-    if (audioBlob) {
+    const audioFile = audioBlob ? audioInputName(audioBlob) : null;
+    if (audioBlob && audioFile) {
       onProgress?.({ stage: 'audio', progress: 0.4, message: 'Adding audio...' });
       const audioData = await audioBlob.arrayBuffer();
-      await ffmpeg.writeFile('audio.mp3', new Uint8Array(audioData));
+      await ffmpeg.writeFile(audioFile, new Uint8Array(audioData));
     }
     
     onProgress?.({ stage: 'encoding', progress: 0.5, message: 'Encoding video...' });
@@ -115,8 +130,8 @@ export async function encodeVideo(
       '-i', 'frame_%05d.png',
     ];
     
-    if (audioBlob) {
-      args.push('-i', 'audio.mp3');
+    if (audioBlob && audioFile) {
+      args.push('-i', audioFile);
     }
     
     if (opts.format === 'mp4') {
@@ -175,7 +190,7 @@ export async function encodeVideo(
       } catch { /* ignore */ }
     }
     try {
-      if (audioBlob) await ffmpeg.deleteFile('audio.mp3');
+      if (audioBlob && audioFile) await ffmpeg.deleteFile(audioFile);
       await ffmpeg.deleteFile(outputFile);
     } catch { /* ignore */ }
     
@@ -187,6 +202,97 @@ export async function encodeVideo(
   } catch (error) {
     console.error('[VideoEncoder] Encoding failed:', error);
     throw error;
+  }
+}
+
+/**
+ * Concatenate multiple audio blobs into a single audio blob (prefers MP3 output).
+ * Handles mixed input formats (webm/mp3/wav/m4a...).
+ */
+export async function concatAudioBlobs(
+  blobs: Array<Blob | null | undefined>,
+  onProgress?: (progress: number, message: string) => void
+): Promise<Blob | null> {
+  const inputs = blobs.filter((b): b is Blob => !!b && b.size > 0);
+  if (inputs.length === 0) return null;
+  if (inputs.length === 1) return inputs[0];
+
+  const ffmpeg = await getFFmpeg();
+  const inNames: string[] = [];
+
+  try {
+    onProgress?.(0.05, 'Preparing audio...');
+
+    for (let i = 0; i < inputs.length; i++) {
+      const b = inputs[i];
+      const ext = audioExtFromMime(b.type);
+      const name = `ain_${i}.${ext}`;
+      inNames.push(name);
+      const data = await b.arrayBuffer();
+      await ffmpeg.writeFile(name, new Uint8Array(data));
+    }
+
+    const concatInputs = inNames.map((_, i) => `[${i}:a]`).join('');
+    const filter = `${concatInputs}concat=n=${inNames.length}:v=0:a=1[outa]`;
+
+    // Try MP3 first
+    const outMp3 = 'audio_concat.mp3';
+    onProgress?.(0.5, 'Concatenating audio (mp3)...');
+
+    const argsMp3 = [
+      ...inNames.flatMap((n) => ['-i', n]),
+      '-filter_complex', filter,
+      '-map', '[outa]',
+      '-c:a', 'libmp3lame',
+      '-b:a', '192k',
+      '-y',
+      outMp3
+    ];
+
+    try {
+      await ffmpeg.exec(argsMp3);
+      const data = await ffmpeg.readFile(outMp3);
+      let arrayBuffer: ArrayBuffer;
+      if (typeof data === 'string') {
+        arrayBuffer = new TextEncoder().encode(data).buffer as ArrayBuffer;
+      } else {
+        arrayBuffer = new ArrayBuffer(data.byteLength);
+        new Uint8Array(arrayBuffer).set(data);
+      }
+      return new Blob([arrayBuffer], { type: 'audio/mpeg' });
+    } catch (e) {
+      console.warn('[VideoEncoder] MP3 concat failed, falling back to WAV:', e);
+
+      const outWav = 'audio_concat.wav';
+      const argsWav = [
+        ...inNames.flatMap((n) => ['-i', n]),
+        '-filter_complex', filter,
+        '-map', '[outa]',
+        '-c:a', 'pcm_s16le',
+        '-ar', '44100',
+        '-ac', '2',
+        '-y',
+        outWav
+      ];
+
+      await ffmpeg.exec(argsWav);
+      const data = await ffmpeg.readFile(outWav);
+      let arrayBuffer: ArrayBuffer;
+      if (typeof data === 'string') {
+        arrayBuffer = new TextEncoder().encode(data).buffer as ArrayBuffer;
+      } else {
+        arrayBuffer = new ArrayBuffer(data.byteLength);
+        new Uint8Array(arrayBuffer).set(data);
+      }
+      return new Blob([arrayBuffer], { type: 'audio/wav' });
+    }
+  } finally {
+    // Cleanup inputs + potential outputs
+    for (const n of inNames) {
+      try { await ffmpeg.deleteFile(n); } catch { /* ignore */ }
+    }
+    try { await ffmpeg.deleteFile('audio_concat.mp3'); } catch { /* ignore */ }
+    try { await ffmpeg.deleteFile('audio_concat.wav'); } catch { /* ignore */ }
   }
 }
 
@@ -249,7 +355,10 @@ export async function encodeWithMediaRecorder(
     if (audioBlob) {
       const audioContext = new AudioContext();
       const audioElement = new Audio(URL.createObjectURL(audioBlob));
-      audioElement.muted = true;
+      // Keep it silent for the user but still route audio into the MediaStream
+      audioElement.muted = false;
+      audioElement.volume = 0;
+      // (playsInline exists on HTMLVideoElement; keep TS-safe here)
       
       const source = audioContext.createMediaElementSource(audioElement);
       const destination = audioContext.createMediaStreamDestination();

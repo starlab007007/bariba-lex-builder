@@ -959,13 +959,12 @@ const NewsStudio: React.FC = () => {
         duration: 1 // OPTIMIZED: 1 minute max instead of 5
       };
 
-      // Use QUICK PREVIEW mode by default for faster generation (WebM, 15fps)
-      // This is 4-5x faster than HD mode while maintaining good quality
+      // Use FINAL RENDER mode to ensure ALL media + audio are embedded in the output
       const video = await engineRef.current.render(inputs, (progress, stage) => {
         console.log(`[NewsStudio] Render progress: ${progress}% - ${stage}`);
         setRenderProgress(Math.round(progress));
         setRenderStage(stage);
-      }, true); // true = Quick preview mode (WebM, 15fps, no FFmpeg overhead)
+      }, false); // false = HD pipeline (FFmpeg MP4 + audio mux)
 
       if (!video || video.size === 0) {
         throw new Error('La vidéo générée est vide');

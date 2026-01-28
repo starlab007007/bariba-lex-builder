@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { Template, TemplateCategory } from '@/components/tamtam/creator/TemplateSystem/types';
 import { AssetLoader3D } from '@/lib/AssetLoader3D';
 import { ParticleSystemManager } from '@/lib/ParticleSystemManager';
-import { encodeVideo, captureCanvasFrames, encodeWithMediaRecorder, EncoderProgress } from '@/lib/VideoEncoder';
+import { encodeVideo, captureCanvasFrames, encodeWithMediaRecorder, EncoderProgress, concatAudioBlobs } from '@/lib/VideoEncoder';
 import { supabase } from '@/integrations/supabase/client';
 
 // ============================================
@@ -177,6 +177,12 @@ export class VillageChronicleEngine {
   
   // Cache for preloaded media images from news items
   private mediaCache: Map<string, HTMLImageElement> = new Map();
+
+  // Cache for preloaded media videos from news items
+  private videoCache: Map<string, HTMLVideoElement> = new Map();
+
+  // Track media type per key (URL or file:filename)
+  private mediaTypeCache: Map<string, 'image' | 'video'> = new Map();
   
   // Track media loading state for retry system
   private mediaLoadingState: Map<string, { attempts: number; loading: boolean; error: boolean }> = new Map();
@@ -452,7 +458,7 @@ export class VillageChronicleEngine {
     console.log('[VillageChronicle] Starting non-blocking media preload for', newsItems.length, 'news items');
     
     // Collect all URLs to load
-    const allUrls: { url: string; newsTitle: string; isFile: boolean; file?: File }[] = [];
+    const allUrls: { url: string; newsTitle: string; isFile: boolean; file?: File; kind: 'image' | 'video' | 'unknown' }[] = [];
     
     for (const news of newsItems) {
       const newsAny = news as any;
@@ -460,7 +466,7 @@ export class VillageChronicleEngine {
       
       for (const url of urls) {
         if (url) {
-          allUrls.push({ url, newsTitle: news.title, isFile: false });
+          allUrls.push({ url, newsTitle: news.title, isFile: false, kind: this.isLikelyVideoUrl(url) ? 'video' : 'unknown' });
         }
       }
       
@@ -468,7 +474,9 @@ export class VillageChronicleEngine {
       if (news.media && news.media.length > 0) {
         for (const file of news.media) {
           if (file.type.startsWith('image/')) {
-            allUrls.push({ url: `file:${file.name}`, newsTitle: news.title, isFile: true, file });
+            allUrls.push({ url: `file:${file.name}`, newsTitle: news.title, isFile: true, file, kind: 'image' });
+          } else if (file.type.startsWith('video/')) {
+            allUrls.push({ url: `file:${file.name}`, newsTitle: news.title, isFile: true, file, kind: 'video' });
           }
         }
       }
@@ -482,7 +490,7 @@ export class VillageChronicleEngine {
       const key = item.url;
       
       // Skip if already cached
-      if (this.mediaCache.has(key)) {
+      if (this.mediaCache.has(key) || this.videoCache.has(key)) {
         loadedCount++;
         return;
       }
@@ -504,15 +512,28 @@ export class VillageChronicleEngine {
       state.attempts++;
       
       try {
-        let img: HTMLImageElement;
-        
-        if (item.isFile && item.file) {
-          img = await this.loadImage(item.file);
+        // Decide how to load this media
+        if (item.kind === 'video') {
+          const vid = item.isFile && item.file ? await this.loadVideo(item.file) : await this.loadVideoFromUrl(item.url);
+          this.videoCache.set(key, vid);
+          this.mediaTypeCache.set(key, 'video');
+        } else if (item.kind === 'image') {
+          const img = item.isFile && item.file ? await this.loadImage(item.file) : await this.loadImageFromUrl(item.url);
+          this.mediaCache.set(key, img);
+          this.mediaTypeCache.set(key, 'image');
         } else {
-          img = await this.loadImageFromUrl(item.url);
+          // Unknown (usually public URL): try image first, then video
+          try {
+            const img = await this.loadImageFromUrl(item.url);
+            this.mediaCache.set(key, img);
+            this.mediaTypeCache.set(key, 'image');
+          } catch {
+            const vid = await this.loadVideoFromUrl(item.url);
+            this.videoCache.set(key, vid);
+            this.mediaTypeCache.set(key, 'video');
+          }
         }
-        
-        this.mediaCache.set(key, img);
+
         state.loading = false;
         state.error = false;
         loadedCount++;
@@ -623,6 +644,46 @@ export class VillageChronicleEngine {
       };
       img.src = url;
     });
+  }
+
+  private isLikelyVideoUrl(url: string): boolean {
+    return /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url);
+  }
+
+  private async loadVideoFromUrl(url: string): Promise<HTMLVideoElement> {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.preload = 'auto';
+      video.muted = true;
+      video.playsInline = true;
+      video.loop = true;
+
+      const timeout = setTimeout(() => reject(new Error('Video load timeout')), 15000);
+
+      video.onloadeddata = () => {
+        clearTimeout(timeout);
+        // Autoplay muted videos is usually allowed and helps keep frames available
+        video.play().catch(() => {});
+        resolve(video);
+      };
+      video.onerror = (e) => {
+        clearTimeout(timeout);
+        reject(e);
+      };
+      video.src = url;
+      video.load();
+    });
+  }
+
+  private async loadVideo(file: File): Promise<HTMLVideoElement> {
+    const url = URL.createObjectURL(file);
+    try {
+      return await this.loadVideoFromUrl(url);
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      throw e;
+    }
   }
 
   isReady(): boolean {
@@ -905,64 +966,110 @@ export class VillageChronicleEngine {
         const newsAny = newsItem as any;
         const mediaUrls: string[] = newsAny.mediaUrls || [];
         
-        // Display first available media
-        if (mediaUrls.length > 0) {
-          const mediaUrl = mediaUrls[0];
-          const cachedImg = this.mediaCache.get(mediaUrl);
-          
-          if (cachedImg) {
-            // Draw image on screen with cover fit
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(screenContentX + 5, screenContentY + 5, screenContentW - 10, screenContentH - 10);
-            ctx.clip();
-            
-            const imgAspect = cachedImg.width / cachedImg.height;
+        // Build full media list (URLs + local files) and cycle through them during the segment
+        const mediaKeys: string[] = [];
+        for (const u of mediaUrls) if (u) mediaKeys.push(u);
+        if (newsItem.media && newsItem.media.length > 0) {
+          for (const f of newsItem.media) {
+            if (f) mediaKeys.push(`file:${f.name}`);
+          }
+        }
+
+        const uniqueKeys = Array.from(new Set(mediaKeys));
+
+        if (uniqueKeys.length > 0) {
+          // Compute segment elapsed time (relative) to drive cycling
+          let segmentStart = 0;
+          if (this.newsShow && this.currentSegment) {
+            const orderedSegments = [
+              this.newsShow.opening,
+              ...this.newsShow.mainNews,
+              ...this.newsShow.secondaryNews,
+              this.newsShow.weather,
+              this.newsShow.announcements,
+              this.newsShow.closing
+            ];
+            let t = 0;
+            for (const s of orderedSegments) {
+              if (s === this.currentSegment) {
+                segmentStart = t;
+                break;
+              }
+              t += s.duration;
+            }
+          }
+
+          const segElapsed = Math.max(0, time - segmentStart);
+          const segDuration = this.currentSegment?.duration ?? 1;
+          const cycleDuration = segDuration / Math.max(1, uniqueKeys.length);
+          const idx = Math.floor(segElapsed / Math.max(0.1, cycleDuration)) % uniqueKeys.length;
+          const key = uniqueKeys[idx];
+
+          const kind = this.mediaTypeCache.get(key) || (this.videoCache.has(key) ? 'video' : 'image');
+
+          // Draw on screen with cover fit
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(screenContentX + 5, screenContentY + 5, screenContentW - 10, screenContentH - 10);
+          ctx.clip();
+
+          const drawCover = (sourceW: number, sourceH: number, draw: (x: number, y: number, w: number, h: number) => void) => {
+            const srcAspect = sourceW / sourceH;
             const screenAspect = (screenContentW - 10) / (screenContentH - 10);
-            
-            let drawW, drawH, drawX, drawY;
-            if (imgAspect > screenAspect) {
+            let drawW: number, drawH: number, drawX: number, drawY: number;
+            if (srcAspect > screenAspect) {
               drawH = screenContentH - 10;
-              drawW = drawH * imgAspect;
+              drawW = drawH * srcAspect;
               drawX = screenContentX + 5 - (drawW - (screenContentW - 10)) / 2;
               drawY = screenContentY + 5;
             } else {
               drawW = screenContentW - 10;
-              drawH = drawW / imgAspect;
+              drawH = drawW / srcAspect;
               drawX = screenContentX + 5;
               drawY = screenContentY + 5 - (drawH - (screenContentH - 10)) / 2;
             }
-            
-            ctx.drawImage(cachedImg, drawX, drawY, drawW, drawH);
-            ctx.restore();
-            
+            draw(drawX, drawY, drawW, drawH);
+          };
+
+          if (kind === 'video') {
+            const vid = this.videoCache.get(key);
+            if (vid && vid.readyState >= 2) {
+              // Keep a deterministic frame based on segment time (best-effort; no await in sync draw loop)
+              const vdur = Number.isFinite(vid.duration) && vid.duration > 0 ? vid.duration : 0;
+              if (vdur > 0) {
+                const target = segElapsed % vdur;
+                if (Math.abs(vid.currentTime - target) > 0.25) {
+                  try { vid.currentTime = target; } catch { /* ignore */ }
+                }
+              }
+              drawCover(vid.videoWidth || (screenContentW - 10), vid.videoHeight || (screenContentH - 10), (x, y, w, h) => {
+                ctx.drawImage(vid, x, y, w, h);
+              });
+              mediaDisplayed = true;
+            }
+          }
+
+          if (!mediaDisplayed) {
+            const img = this.mediaCache.get(key);
+            if (img) {
+              drawCover(img.width, img.height, (x, y, w, h) => {
+                ctx.drawImage(img, x, y, w, h);
+              });
+              mediaDisplayed = true;
+            }
+          }
+
+          ctx.restore();
+
+          if (mediaDisplayed) {
             // Add media label
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fillRect(screenContentX + 5, screenContentY + screenContentH - 35, screenContentW - 10, 30);
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 14px system-ui';
             ctx.textAlign = 'center';
-            ctx.fillText(newsItem.title.slice(0, 40), screenContentX + screenContentW / 2, screenContentY + screenContentH - 15);
-            
-            mediaDisplayed = true;
-          }
-        }
-        
-        // Fallback: try local File media
-        if (!mediaDisplayed && newsItem.media && newsItem.media.length > 0) {
-          const file = newsItem.media[0];
-          if (file.type.startsWith('image/')) {
-            const key = `file:${file.name}`;
-            const cachedImg = this.mediaCache.get(key);
-            if (cachedImg) {
-              ctx.save();
-              ctx.beginPath();
-              ctx.rect(screenContentX + 5, screenContentY + 5, screenContentW - 10, screenContentH - 10);
-              ctx.clip();
-              ctx.drawImage(cachedImg, screenContentX + 5, screenContentY + 5, screenContentW - 10, screenContentH - 10);
-              ctx.restore();
-              mediaDisplayed = true;
-            }
+            const counter = uniqueKeys.length > 1 ? ` (${idx + 1}/${uniqueKeys.length})` : '';
+            ctx.fillText((newsItem.title.slice(0, 34) + counter).slice(0, 40), screenContentX + screenContentW / 2, screenContentY + screenContentH - 15);
           }
         }
       }
@@ -1513,18 +1620,16 @@ export class VillageChronicleEngine {
       show.closing
     ];
 
-    // Generate TTS narration only for HD export (skip in quick preview)
+    // Generate FINAL audio: narration (TTS) then presenter recording (if provided)
     let audioBlob: Blob | null = null;
-    if (!quickPreview) {
-      onProgress?.(22, 'Génération de la narration vocale...');
-      try {
-        audioBlob = await this.generateShowNarration(show);
-        if (audioBlob && audioBlob.size > 0) {
-          console.log('[VillageChronicle] Narration audio generated:', audioBlob.size, 'bytes');
-        }
-      } catch (e) {
-        console.warn('[VillageChronicle] TTS generation failed:', e);
+    onProgress?.(22, 'Préparation de l\'audio...');
+    try {
+      audioBlob = await this.generateFinalAudio(show, inputs.anchorVoice);
+      if (audioBlob && audioBlob.size > 0) {
+        console.log('[VillageChronicle] Final audio prepared:', audioBlob.size, 'bytes', audioBlob.type);
       }
+    } catch (e) {
+      console.warn('[VillageChronicle] Final audio preparation failed:', e);
     }
 
     // Choose encoding path based on quickPreview flag
@@ -1538,7 +1643,7 @@ export class VillageChronicleEngine {
         
         const videoBlob = await encodeWithMediaRecorder(
           this.canvas,
-          null, // Skip TTS for quick preview (faster)
+          audioBlob,
           totalDuration,
           fps,
           (time) => {
@@ -1615,7 +1720,7 @@ export class VillageChronicleEngine {
       
       const fallbackBlob = await encodeWithMediaRecorder(
         this.canvas,
-        null,
+        audioBlob,
         totalDuration,
         fps,
         (time) => {
@@ -1777,6 +1882,19 @@ export class VillageChronicleEngine {
     console.log('[VillageChronicle] Full show script:', fullScript.length, 'characters');
     
     return this.generateNarration(fullScript);
+  }
+
+  private async generateFinalAudio(show: NewsShow, anchorVoice?: File): Promise<Blob | null> {
+    const tts = await this.generateShowNarration(show);
+    const presenter = anchorVoice ? new Blob([await anchorVoice.arrayBuffer()], { type: anchorVoice.type || 'application/octet-stream' }) : null;
+
+    if (tts && presenter) {
+      console.log('[VillageChronicle] Combining TTS narration + presenter recording');
+      return await concatAudioBlobs([tts, presenter]);
+    }
+
+    // If no presenter audio, keep TTS. If no TTS, keep presenter.
+    return presenter || tts || null;
   }
 
   /**
