@@ -1,163 +1,163 @@
 
-# Plan de correction du rendu Village Chronicle
+# Plan de correction: Audio dans le Feed + Affichage Responsive
 
 ## Problèmes identifiés
 
-### 1. Photos/Vidéos non affichées dans le rendu final
-**Cause:** Le moteur `VillageChronicleEngine` ne supporte actuellement que les **images statiques** sur l'écran du studio. Les fichiers vidéo joints aux actualités sont ignorés.
+### 1. Pas d'audio dans le feed vidéo publié
+**Cause racine:** Dans `VideoFeedCard` (ligne 584 de TamTamSocial.tsx), la balise vidéo a l'attribut `muted` :
+```jsx
+<video 
+  muted  // ← Problème: vidéo muette!
+  ...
+/>
+```
 
-**Fichier concerné:** `src/templates/VillageChronicle.ts`
-- Ligne 468-474: Le préchargement ne gère que les images (`file.type.startsWith('image/')`)
-- Ligne 890-970: L'affichage sur l'écran graphique n'utilise que `HTMLImageElement`
+L'audio est bien encodé dans les fichiers MP4 (vérifié dans la base de données: des vidéos de 27-51 secondes existent avec URLs valides), mais le lecteur est configuré pour être silencieux.
 
-### 2. Audio enregistré par le présentateur absent
-**Cause:** Le fichier `anchorVoice` est bien capturé dans `VillageChronicleInputs` (ligne 88) mais n'est jamais utilisé dans le pipeline de rendu.
+**Solution:** 
+- Retirer l'attribut `muted` 
+- Ajouter un bouton de contrôle du volume (mute/unmute) car les navigateurs modernes bloquent l'autoplay avec son
+- Implémenter une logique de "tap to unmute"
 
-**Problème actuel:**
-- `generateShowNarration()` (ligne 1751-1780) génère uniquement la voix AI (TTS ElevenLabs)
-- Aucune logique de concaténation ou mixage audio n'existe pour combiner la narration IA avec l'audio du présentateur
+### 2. Affichage non-responsive sur mobile/tablette
+**Cause racine:** Le composant utilise `h-[100dvh]` mais certains éléments enfants ne s'adaptent pas correctement:
+- Pas de gestion explicite des différentes tailles d'écran
+- Les marges/paddings sont fixes au lieu de responsives
+- L'indicateur de feed central peut chevaucher le contenu sur petits écrans
 
-### 3. Tous les médias des news ne sont pas visibles
-**Cause:** Seul le **premier** média de chaque segment est affiché. Les autres photos/vidéos sont ignorées.
+**Solution:**
+- Utiliser des classes responsive Tailwind (sm:, md:, lg:)
+- Ajuster les espacements avec des valeurs adaptatives
+- Vérifier que `100dvh` fonctionne correctement sur tous les appareils
 
 ---
 
-## Solution technique
+## Modifications techniques
 
-### Étape 1: Support des vidéos dans le cache média
-Ajouter un cache vidéo séparé et précharger les fichiers vidéo des actualités.
+### Fichier: `src/pages/tamtam/TamTamSocial.tsx`
 
-```text
-Modifications dans VillageChronicle.ts:
-- Ajouter: private videoCache: Map<string, HTMLVideoElement> = new Map()
-- Modifier preloadNewsMedia() pour gérer les types 'video/*'
-- Créer loadVideoFromUrl() similaire à loadImageFromUrl()
-```
+#### 1. VideoFeedCard - Activer l'audio avec contrôle
 
-### Étape 2: Affichage cyclique de tous les médias
-Modifier `draw2DFrame()` pour:
-- Faire défiler tous les médias d'un segment (pas seulement le premier)
-- Dessiner les frames vidéo via `ctx.drawImage(videoElement, ...)`
-- Calculer l'index du média actif basé sur le temps écoulé
+**Lignes 538-684** - Composant `VideoFeedCard`:
+
+**Changements:**
+- Ajouter un état `isMuted` initialisé à `true` (pour respecter les politiques autoplay des navigateurs)
+- Retirer l'attribut `muted` statique et le remplacer par `muted={isMuted}`
+- Ajouter un bouton de volume (icône speaker) permettant de mute/unmute
+- Au premier tap, activer le son
 
 ```text
-Logique de cycle:
-- mediaDuration = segmentDuration / nombreDeMédias
-- currentMediaIndex = Math.floor((time - segmentStartTime) / mediaDuration) % totalMedia
+Avant (ligne 584):
+muted  ← attribut statique
+
+Après:
+muted={isMuted}  ← contrôlable par l'utilisateur
 ```
 
-### Étape 3: Intégration de l'audio du présentateur
-Créer une nouvelle méthode `mixAudioTracks()` pour:
-1. Convertir `anchorVoice` (File) en Blob audio
-2. Concaténer avec la narration TTS générée
-3. OU utiliser l'audio présentateur en priorité si fourni
-
+**Nouveau bouton volume:**
 ```text
-Pipeline audio modifié:
-1. Si anchorVoice existe → utiliser comme audio principal
-2. Sinon → générer TTS via french-tts edge function
-3. Optionnel: mixer les deux (TTS + voix présentateur)
+Position: en haut à droite (symétrie avec les actions en bas à droite)
+Style: icône Volume2/VolumeX selon l'état
+Comportement: toggle muted/unmuted au tap
 ```
 
-### Étape 4: Render vidéo frame-par-frame
-Modifier la boucle de rendu pour synchroniser la lecture vidéo:
-- `video.currentTime = segmentTime` avant chaque capture de frame
-- Attendre `video.seeked` avant de dessiner
+#### 2. Responsive - Ajustements des espacements
+
+**Modifications sur le conteneur principal (ligne 576):**
+```text
+Avant:
+className="h-[100dvh] w-full ..."
+
+Après:
+className="h-[100dvh] w-full min-h-screen ..."
+```
+
+**Modifications sur la sidebar d'actions (lignes 637-681):**
+```text
+Avant:
+className="absolute right-3 flex flex-col items-center gap-5"
+style={{ bottom: 'max(6rem, calc(env(safe-area-inset-bottom) + 6rem))' }}
+
+Après:
+className="absolute right-2 sm:right-3 md:right-4 flex flex-col items-center gap-3 sm:gap-4 md:gap-5"
+style={{ bottom: 'max(4.5rem, calc(env(safe-area-inset-bottom) + 4.5rem))' }}
+```
+
+**Modifications sur les icônes (tailles adaptatives):**
+```text
+Avant:
+className="w-7 h-7 ..."
+
+Après:
+className="w-6 h-6 sm:w-7 sm:h-7 ..."
+```
+
+**Modifications sur l'info auteur (lignes 609-634):**
+```text
+Avant:
+style={{ paddingBottom: 'max(5rem, calc(env(safe-area-inset-bottom) + 5rem))' }}
+
+Après:
+style={{ paddingBottom: 'max(3.5rem, calc(env(safe-area-inset-bottom) + 3.5rem))' }}
+```
+
+#### 3. FeedIndicator - Responsive
+
+**Modifications sur l'indicateur central (lignes ~200):**
+```text
+Avant:
+className="... px-3 py-1.5 ..."
+
+Après:
+className="... px-2 sm:px-3 py-1 sm:py-1.5 ..."
+```
+
+**Taille du texte adaptative:**
+```text
+Avant:
+className="text-xs ..."
+
+Après:
+className="text-[10px] sm:text-xs ..."
+```
 
 ---
 
-## Fichiers à modifier
+## Schéma de la solution audio
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/templates/VillageChronicle.ts` | Cache vidéo, cycle médias, mixage audio |
-| `src/components/NewsStudio.tsx` | Passer anchorVoice au moteur de rendu |
+```text
+┌─────────────────────────────────────────────┐
+│          🔊 Volume                          │  ← Nouveau bouton (toggle mute)
+│                                             │
+│                                             │
+│           [VIDÉO FULLSCREEN]                │
+│           avec audio actif                  │
+│                                             │
+│                                             │
+│  👤 Nom auteur            ❤️ 💬 🔖 ↗️       │
+└─────────────────────────────────────────────┘
+```
+
+**Comportement du bouton volume:**
+1. Premier affichage: vidéo muette (autoplay policy)
+2. User tape sur 🔇 → son activé (🔊)
+3. État persiste sur les vidéos suivantes
+4. Retour visuel avec animation
 
 ---
 
-## Section technique détaillée
+## Résumé des fichiers à modifier
 
-### 1. Nouveau cache vidéo (VillageChronicle.ts)
-
-```typescript
-// Ajouter après ligne 179
-private videoCache: Map<string, HTMLVideoElement> = new Map();
-
-// Nouvelle méthode de préchargement vidéo
-private async loadVideoFromUrl(url: string): Promise<HTMLVideoElement> {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
-    video.crossOrigin = 'anonymous';
-    video.preload = 'auto';
-    video.muted = true;
-    
-    const timeout = setTimeout(() => reject(new Error('Video load timeout')), 15000);
-    
-    video.onloadeddata = () => {
-      clearTimeout(timeout);
-      resolve(video);
-    };
-    video.onerror = (e) => {
-      clearTimeout(timeout);
-      reject(e);
-    };
-    video.src = url;
-    video.load();
-  });
-}
-```
-
-### 2. Préchargement étendu aux vidéos (ligne ~468)
-
-```typescript
-// Modifier la condition de fichier
-if (file.type.startsWith('image/')) {
-  allUrls.push({ url: `file:${file.name}`, newsTitle: news.title, isFile: true, file, type: 'image' });
-} else if (file.type.startsWith('video/')) {
-  allUrls.push({ url: `file:${file.name}`, newsTitle: news.title, isFile: true, file, type: 'video' });
-}
-```
-
-### 3. Affichage cyclique des médias (ligne ~890)
-
-```typescript
-// Dans draw2DFrame, remplacer la logique d'affichage unique par:
-const allMedia = [...(newsItem.media || []), ...(newsAny.mediaUrls || [])];
-const mediaCycleDuration = segmentDuration / Math.max(1, allMedia.length);
-const currentMediaIndex = Math.floor(segmentElapsedTime / mediaCycleDuration) % allMedia.length;
-const currentMediaItem = allMedia[currentMediaIndex];
-
-// Puis dessiner selon le type (image ou vidéo)
-```
-
-### 4. Intégration audio présentateur (nouvelle méthode)
-
-```typescript
-async generateFinalAudio(show: NewsShow, anchorVoice?: File): Promise<Blob | null> {
-  // Priorité à l'audio du présentateur si fourni
-  if (anchorVoice) {
-    console.log('[VillageChronicle] Using presenter recorded audio');
-    return new Blob([await anchorVoice.arrayBuffer()], { type: anchorVoice.type });
-  }
-  
-  // Sinon, générer TTS
-  return this.generateShowNarration(show);
-}
-```
-
-### 5. Modification de render() (ligne ~1517)
-
-```typescript
-// Remplacer ligne 1521
-audioBlob = await this.generateFinalAudio(show, inputs.anchorVoice);
-```
+| Fichier | Action |
+|---------|--------|
+| `src/pages/tamtam/TamTamSocial.tsx` | Ajouter contrôle audio + responsive |
 
 ---
 
 ## Résultat attendu
 
 Après ces modifications:
-- Toutes les photos ET vidéos jointes aux actualités seront visibles dans le rendu
-- Les médias défileront automatiquement pendant chaque segment d'actualité
-- L'audio enregistré par le présentateur sera intégré à la vidéo finale
-- Si pas d'audio présentateur, la narration IA (TTS) sera utilisée comme fallback
+- L'audio des vidéos Village Chronicle sera audible dans le feed
+- Un bouton de volume permettra de mute/unmute facilement
+- L'affichage sera parfaitement adapté à tous les écrans (mobile, tablette, desktop)
+- Les éléments UI ne chevaucheront plus sur petits écrans
