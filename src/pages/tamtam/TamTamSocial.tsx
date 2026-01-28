@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, ChevronRight, RefreshCw, UserPlus, Clock } from 'lucide-react';
+import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, RefreshCw, UserPlus, Clock } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 import { useVideoFeed } from '@/hooks/useVideoFeed';
@@ -541,7 +541,9 @@ const VideoFeedCard: React.FC<{
   onLike: () => void;
   onComment: () => void;
   onShare: () => void;
-}> = ({ post, isActive, onLike, onComment, onShare }) => {
+  isMuted: boolean;
+  onToggleMute: () => void;
+}> = ({ post, isActive, onLike, onComment, onShare, isMuted, onToggleMute }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -560,11 +562,12 @@ const VideoFeedCard: React.FC<{
 
   useEffect(() => {
     if (isActive && videoRef.current) {
+      videoRef.current.muted = isMuted;
       videoRef.current.play().catch(() => {});
     } else if (videoRef.current) {
       videoRef.current.pause();
     }
-  }, [isActive]);
+  }, [isActive, isMuted]);
 
   const handleProfileClick = () => {
     if (post.profile?.user_id) {
@@ -573,7 +576,7 @@ const VideoFeedCard: React.FC<{
   };
 
   return (
-    <div className="h-[100dvh] w-full snap-start snap-always relative bg-black overflow-hidden">
+    <div className="h-[100dvh] min-h-screen w-full snap-start snap-always relative bg-black overflow-hidden">
       {/* Video/Media - FULLSCREEN ABSOLUTE */}
       {videoUrl ? (
         <video 
@@ -581,7 +584,7 @@ const VideoFeedCard: React.FC<{
           src={videoUrl} 
           poster={thumbnailUrl || undefined}
           loop 
-          muted 
+          muted={isMuted}
           playsInline 
           preload={isActive ? 'auto' : 'metadata'} 
           onLoadedData={() => setIsLoaded(true)} 
@@ -605,12 +608,28 @@ const VideoFeedCard: React.FC<{
           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full" />
         </div>
       )}
+
+      {/* Volume toggle button - Top right */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => { onToggleMute(); triggerFeedback('notification'); }}
+        className="absolute top-4 right-3 sm:right-4 z-20 p-2 sm:p-2.5 rounded-full bg-black/30 backdrop-blur-sm"
+        style={{ top: 'max(1rem, calc(env(safe-area-inset-top) + 1rem))' }}
+      >
+        {isMuted ? (
+          <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />
+        ) : (
+          <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />
+        )}
+      </motion.button>
       
-      {/* Author info - Minimaliste en bas à gauche */}
+      {/* Author info - Minimaliste en bas à gauche - Responsive */}
       <div 
-        className="absolute bottom-0 left-0 right-16 px-4"
+        className="absolute bottom-0 left-0 right-14 sm:right-16 px-3 sm:px-4"
         style={{ 
-          paddingBottom: 'max(5rem, calc(env(safe-area-inset-bottom) + 5rem))'
+          paddingBottom: 'max(3.5rem, calc(env(safe-area-inset-bottom) + 3.5rem))'
         }}
       >
         <motion.div 
@@ -619,8 +638,8 @@ const VideoFeedCard: React.FC<{
           className="flex items-center gap-2" 
           onClick={handleProfileClick}
         >
-          {/* Avatar transparent */}
-          <div className="w-9 h-9 rounded-full overflow-hidden border border-white/20">
+          {/* Avatar transparent - Responsive */}
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border border-white/20">
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -629,15 +648,15 @@ const VideoFeedCard: React.FC<{
               </div>
             )}
           </div>
-          <span className="text-white/80 text-sm font-medium">{authorName}</span>
+          <span className="text-white/80 text-xs sm:text-sm font-medium">{authorName}</span>
         </motion.div>
       </div>
 
-      {/* Right sidebar - Actions 100% transparentes */}
+      {/* Right sidebar - Actions 100% transparentes - Responsive */}
       <div 
-        className="absolute right-3 flex flex-col items-center gap-5"
+        className="absolute right-2 sm:right-3 md:right-4 flex flex-col items-center gap-3 sm:gap-4 md:gap-5"
         style={{ 
-          bottom: 'max(6rem, calc(env(safe-area-inset-bottom) + 6rem))'
+          bottom: 'max(4.5rem, calc(env(safe-area-inset-bottom) + 4.5rem))'
         }}
       >
         {/* Like - Transparent */}
@@ -646,8 +665,8 @@ const VideoFeedCard: React.FC<{
           onClick={() => { setIsLiked(!isLiked); onLike(); triggerFeedback('notification'); }} 
           className="flex flex-col items-center"
         >
-          <Heart className={`w-7 h-7 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
-          <span className="text-white/80 text-[11px] font-medium mt-1 drop-shadow-md">{likesCount + (isLiked ? 1 : 0)}</span>
+          <Heart className={`w-6 h-6 sm:w-7 sm:h-7 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
+          <span className="text-white/80 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 drop-shadow-md">{likesCount + (isLiked ? 1 : 0)}</span>
         </motion.button>
         
         {/* Comment - Transparent */}
@@ -656,8 +675,8 @@ const VideoFeedCard: React.FC<{
           onClick={onComment} 
           className="flex flex-col items-center"
         >
-          <MessageCircle className="w-7 h-7 text-white drop-shadow-lg" strokeWidth={1.5} />
-          <span className="text-white/80 text-[11px] font-medium mt-1 drop-shadow-md">{commentsCount}</span>
+          <MessageCircle className="w-6 h-6 sm:w-7 sm:h-7 text-white drop-shadow-lg" strokeWidth={1.5} />
+          <span className="text-white/80 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 drop-shadow-md">{commentsCount}</span>
         </motion.button>
         
         {/* Bookmark - Transparent */}
@@ -666,7 +685,7 @@ const VideoFeedCard: React.FC<{
           onClick={() => { setIsSaved(!isSaved); triggerFeedback('success'); }}
           className="flex flex-col items-center"
         >
-          <Bookmark className={`w-7 h-7 ${isSaved ? 'text-amber-400 fill-amber-400' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
+          <Bookmark className={`w-6 h-6 sm:w-7 sm:h-7 ${isSaved ? 'text-amber-400 fill-amber-400' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
         </motion.button>
         
         {/* Share - Transparent */}
@@ -675,8 +694,8 @@ const VideoFeedCard: React.FC<{
           onClick={onShare} 
           className="flex flex-col items-center"
         >
-          <Share2 className="w-7 h-7 text-white drop-shadow-lg" strokeWidth={1.5} />
-          <span className="text-white/80 text-[11px] font-medium mt-1 drop-shadow-md">{sharesCount}</span>
+          <Share2 className="w-6 h-6 sm:w-7 sm:h-7 text-white drop-shadow-lg" strokeWidth={1.5} />
+          <span className="text-white/80 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 drop-shadow-md">{sharesCount}</span>
         </motion.button>
       </div>
     </div>
@@ -698,6 +717,7 @@ export default function TamTamSocial() {
 
   const [activeTab, setActiveTab] = useState<BottomTab>('fil');
   const [feedMode, setFeedMode] = useState<FeedMode>('creation');
+  const [isMuted, setIsMuted] = useState(true); // Audio muted by default (browser autoplay policy)
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showCreator, setShowCreator] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
@@ -995,7 +1015,16 @@ export default function TamTamSocial() {
             ) : getCurrentPosts.length > 0 ? (
               feedMode === 'creation' ? (
                 getCurrentPosts.map((post, i) => (
-                  <VideoFeedCard key={post.id} post={post} isActive={i === currentPostIndex} onLike={() => addReaction(post.id, 'like')} onComment={() => handleOpenComments(post.id)} onShare={() => handleShare(post.id)} />
+                  <VideoFeedCard 
+                    key={post.id} 
+                    post={post} 
+                    isActive={i === currentPostIndex} 
+                    onLike={() => addReaction(post.id, 'like')} 
+                    onComment={() => handleOpenComments(post.id)} 
+                    onShare={() => handleShare(post.id)}
+                    isMuted={isMuted}
+                    onToggleMute={() => setIsMuted(prev => !prev)}
+                  />
                 ))
               ) : (
                 getCurrentPosts.map((post, i) => (
