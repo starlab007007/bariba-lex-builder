@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 interface NewsSegment {
@@ -56,7 +56,7 @@ Retourne UNIQUEMENT un JSON valide avec cette structure:
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -101,17 +101,19 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      // IMPORTANT: never block the whole render pipeline on AI gateway billing/quota issues.
+      // We gracefully fall back to a deterministic default show structure.
       if (response.status === 429) {
-        console.warn('[analyze-news] Rate limited');
-        return new Response(JSON.stringify({ error: 'Rate limited', fallback: createDefaultNewsShow(villageName, language) }), {
-          status: 429,
+        console.warn('[analyze-news] Rate limited - returning fallback show');
+        const fallback = createDefaultNewsShow(villageName, language);
+        return new Response(JSON.stringify({ ...fallback, _meta: { fallback: true, reason: 'rate_limited' } }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       if (response.status === 402) {
-        console.warn('[analyze-news] Payment required');
-        return new Response(JSON.stringify({ error: 'Payment required' }), {
-          status: 402,
+        console.warn('[analyze-news] Payment required - returning fallback show');
+        const fallback = createDefaultNewsShow(villageName, language);
+        return new Response(JSON.stringify({ ...fallback, _meta: { fallback: true, reason: 'payment_required' } }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
