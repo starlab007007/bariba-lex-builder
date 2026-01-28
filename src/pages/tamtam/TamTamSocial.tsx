@@ -576,7 +576,7 @@ const VideoFeedCard: React.FC<{
   };
 
   return (
-    <div className="h-[100dvh] min-h-screen w-full snap-start snap-always relative bg-black overflow-hidden">
+    <div className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative bg-black overflow-hidden">
       {/* Video/Media - FULLSCREEN ABSOLUTE */}
       {videoUrl ? (
         <video 

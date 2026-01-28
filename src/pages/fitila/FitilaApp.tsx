@@ -289,9 +289,9 @@ function AppContent() {
 
   return (
     <SideMenuContext.Provider value={menuContext}>
-      <div className="min-h-screen kuaishou-bg">
+      <div className="fixed inset-0 w-full h-full overflow-hidden kuaishou-bg">
         <SideMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-        <main><Outlet /></main>
+        <main className="w-full h-full overflow-hidden"><Outlet /></main>
         <AdminFloatingButton />
       </div>
     </SideMenuContext.Provider>
