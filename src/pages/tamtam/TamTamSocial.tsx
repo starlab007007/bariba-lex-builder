@@ -170,20 +170,31 @@ const FeedIndicator: React.FC<{
 
   return (
     <>
-      {/* Hamburger Menu - Centré en haut avec fond bg-black/5 */}
+      {/* Feed Indicator - Centré en haut avec fond bg-black/5 */}
       <div className="fixed top-0 left-0 right-0 z-40 safe-area-top pointer-events-none">
         <div className="flex justify-center pt-4 pointer-events-auto">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={onMenuOpen}
-            className="flex items-center justify-center w-12 h-12 rounded-full backdrop-blur-sm bg-black/5"
+            className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10 bg-black/5"
           >
-            {/* Hamburger Icon - 3 lignes horizontales */}
-            <div className="flex flex-col items-center justify-center gap-1.5">
-              <div className="w-5 h-0.5 bg-white rounded-full" />
-              <div className="w-5 h-0.5 bg-white rounded-full" />
-              <div className="w-5 h-0.5 bg-white rounded-full" />
+            {/* Dots de navigation */}
+            <div className="flex items-center gap-1.5">
+              {feedOrder.map((mode, index) => (
+                <div
+                  key={mode}
+                  className={`rounded-full transition-all duration-300 ${
+                    index === currentIndex 
+                      ? 'w-2 h-2 bg-white' 
+                      : 'w-1.5 h-1.5 bg-white/30'
+                  }`}
+                />
+              ))}
             </div>
+
+            {/* Icon & Label */}
+            <span className="text-lg">{feedLabels[currentFeed].icon}</span>
+            <span className="text-white/90 text-sm font-medium">{feedLabels[currentFeed].label}</span>
           </motion.button>
         </div>
       </div>
@@ -558,7 +569,7 @@ const VideoFeedCard: React.FC<{
 
   return (
     <div className="h-[100dvh] w-full snap-start snap-always relative bg-black overflow-hidden">
-      {/* Video/Media - FULLSCREEN avec object-cover uniforme */}
+      {/* Video/Media - FULLSCREEN ABSOLUTE */}
       {videoUrl ? (
         <video 
           ref={videoRef} 
@@ -569,15 +580,13 @@ const VideoFeedCard: React.FC<{
           playsInline 
           preload={isActive ? 'auto' : 'metadata'} 
           onLoadedData={() => setIsLoaded(true)} 
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-          style={{ objectFit: 'cover', objectPosition: 'center' }}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
         />
       ) : thumbnailUrl ? (
         <img 
           src={thumbnailUrl} 
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectFit: 'cover', objectPosition: 'center' }}
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
