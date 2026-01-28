@@ -170,14 +170,19 @@ const FeedIndicator: React.FC<{
 
   return (
     <>
-      {/* Feed Indicator - Centré en haut avec fond bg-black/5 */}
-      <div className="fixed top-0 left-0 right-0 z-40 safe-area-top pointer-events-none">
-        <div className="flex justify-center pt-4 pointer-events-auto">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={onMenuOpen}
-            className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10 bg-black/5"
-          >
+      {/* Hamburger Menu Button - En haut à gauche */}
+      <motion.button
+        whileTap={{ scale: 0.9 }}
+        onClick={onMenuOpen}
+        className="fixed top-4 left-4 z-40 w-10 h-10 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center safe-area-top"
+      >
+        <Menu className="w-5 h-5 text-white" />
+      </motion.button>
+
+      {/* Feed Indicator - Centré en haut (indicateur seulement, pas de clic) */}
+      <div className="fixed top-0 left-0 right-0 z-30 safe-area-top pointer-events-none">
+        <div className="flex justify-center pt-4">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10 bg-black/5">
             {/* Dots de navigation */}
             <div className="flex items-center gap-1.5">
               {feedOrder.map((mode, index) => (
@@ -195,7 +200,7 @@ const FeedIndicator: React.FC<{
             {/* Icon & Label */}
             <span className="text-lg">{feedLabels[currentFeed].icon}</span>
             <span className="text-white/90 text-sm font-medium">{feedLabels[currentFeed].label}</span>
-          </motion.button>
+          </div>
         </div>
       </div>
 
