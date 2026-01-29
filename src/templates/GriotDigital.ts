@@ -1,8 +1,8 @@
 /**
- * GriotDigital Template - Contes 3D Interactifs
- * Transforme les contes oraux traditionnels en expériences 3D immersives
+ * GriotDigital Template - Contes Visuels Premium
+ * Transforme les contenus utilisateur en expériences immersives fullscreen
  * 
- * v2.0 - Optimized: 720p@18fps, FFmpeg encoding, 2D fallback
+ * v3.0 - FULLSCREEN 1080x1920 avec VRAIS assets CDN uniquement
  * @module GriotDigital
  */
 
@@ -11,17 +11,7 @@ import { aiServicesHub, StoryStructure, AudioFile, ImageFile } from '@/lib/AISer
 import { AssetLoader3D } from '@/lib/AssetLoader3D';
 import { ParticleSystemManager } from '@/lib/ParticleSystemManager';
 import { AudioSyncEngine, BeatTimestamp } from '@/lib/AudioSyncEngine';
-// VideoEncoder imports kept for potential future FFmpeg upgrade
-import { 
-  createGriotCharacter, 
-  createVillageScene, 
-  createSkyDome, 
-  createParticleSystem,
-  updateParticles
-} from '@/lib/GriotFallbackScene';
-import GriotFallbackScene from '@/lib/GriotFallbackScene';
-
-const { STYLE_PALETTES } = GriotFallbackScene;
+import { buildResolvedAssetUrl, SUPABASE_ASSET_CDN_URL } from '@/lib/AssetRealMapping';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -70,7 +60,7 @@ export interface TemplateAssets {
 export interface RenderSettings {
   resolution: RenderQuality;
   fps: number;
-  duration: number; // 0 = dynamic based on audio
+  duration: number;
   aspectRatio?: '16:9' | '9:16' | '1:1';
 }
 
@@ -80,8 +70,10 @@ export interface GriotDigitalInputs {
   audioNarration: File;
   /** Source language */
   language: 'bariba' | 'french' | 'auto';
-  /** Optional photos for face mapping */
+  /** Optional photos for visual content */
   photos?: File[];
+  /** Optional video file for background */
+  videoFile?: File;
   /** Enable interactive branching stories */
   interactiveMode: boolean;
   /** Story style */
@@ -200,371 +192,406 @@ export interface RenderResult {
 }
 
 // ============================================================================
-// RENDER CONFIGURATION - OPTIMIZED FOR SPEED
+// RENDER CONFIGURATION - FULLSCREEN PORTRAIT 1080x1920
 // ============================================================================
 
 const RENDER_CONFIG = {
-  width: 1280,     // 720p width
-  height: 720,     // 720p height
-  fps: 18,         // Optimized FPS (same as Village Chronicle)
-  maxDuration: 30, // Maximum 30 seconds
-  videoBitrate: '4M',
-  audioBitrate: '128k'
+  width: 1080,     // Full HD portrait width
+  height: 1920,    // Full HD portrait height
+  fps: 24,         // Cinematic FPS
+  maxDuration: 60, // Maximum 60 seconds
+  videoBitrate: '6M',
+  audioBitrate: '192k'
 };
+
+// ============================================================================
+// CDN ASSET URLS - VRAIS FICHIERS UNIQUEMENT
+// ============================================================================
+
+const CDN_BASE = SUPABASE_ASSET_CDN_URL;
+
+// Light Leaks - FICHIERS RÉELS dans light-leak/
+const LIGHT_LEAK_ASSETS = [
+  `${CDN_BASE}/light-leak/leak-001.webm`,
+  `${CDN_BASE}/light-leak/leak-003.webm`,
+  `${CDN_BASE}/light-leak/leak-004.webm`,
+  `${CDN_BASE}/light-leak/leak-006.webm`,
+  `${CDN_BASE}/light-leak/leak-014.webm`,
+];
+
+// Particles (using light leak files as particle effects)
+const PARTICLE_ASSETS = [
+  `${CDN_BASE}/light-leak/leak-001.webm`,
+  `${CDN_BASE}/light-leak/leak-003.webm`,
+  `${CDN_BASE}/light-leak/leak-006.webm`,
+];
+
+// Textures - FICHIERS RÉELS dans textures/
+const TEXTURE_ASSETS = [
+  `${CDN_BASE}/textures/texture-001.mp4`,
+  `${CDN_BASE}/textures/texture-005.mp4`,
+  `${CDN_BASE}/textures/texture-008.mp4`,
+  `${CDN_BASE}/textures/texture-012.mp4`,
+];
+
+// Transitions - FICHIERS RÉELS dans transitions/
+const TRANSITION_ASSETS = [
+  `${CDN_BASE}/transitions/transition-014.mp4`,
+  `${CDN_BASE}/transitions/transition-018.mp4`,
+  `${CDN_BASE}/transitions/transition-022.mp4`,
+];
+
+// Lens Flares (CDN - fichiers réels dans lens-flare/)
+const LENS_FLARE_ASSETS = [
+  `${CDN_BASE}/lens-flare/flare-015.png`,
+  `${CDN_BASE}/lens-flare/flare-032.png`,
+  `${CDN_BASE}/lens-flare/flare-020.png`,
+  `${CDN_BASE}/lens-flare/flare-025.png`,
+  `${CDN_BASE}/lens-flare/flare-030.png`,
+];
 
 // ============================================================================
 // GRIOT DIGITAL TEMPLATE
 // ============================================================================
 
-/**
- * Griot Digital Template Definition
- */
 export const GriotDigitalTemplate: Template = {
   id: 'griot-digital',
-  name: 'Griot Digital - Contes 3D Animés',
+  name: 'Griot Digital - Contes Visuels',
   category: 'storytelling',
-  description: 'Transforme contes oraux en expériences 3D interactives avec avatars animés et effets cinématiques',
+  description: 'Transforme vos contenus en expériences visuelles immersives fullscreen avec effets premium',
   descriptionBa: 'Yí kɔ̀gbè sɔ́ wɛ̀rɛ̀ mɔ̀ 3D dó kpɔ́n',
   
   requiredAssets: {
-    models: [
-      'model-001.glb', // Griot character
-      'model-002.glb', // Village scene
-      'model-003.glb', // Forest scene
-      'model-004.glb', // Night sky dome
-      'model-005.glb', // Props pack
-    ],
-    particles: [
-      'particles:particle-001.webm',
-      'particles:particle-005.webm',
-      'particles:particle-012.webm',
-    ],
-    lightLeaks: [
-      'light-leak:leak-001.webm',
-      'light-leak:leak-004.webm',
-      'light-leak:leak-009.webm',
-    ],
-    lensFlares: [
-      'flare-015.png',
-      'flare-032.png',
-    ],
-    textures: [],
-    transitions: [],
-    audio: [
-      'audio-001.mp3',
-      'audio-005.mp3',
-    ],
+    models: [],
+    particles: PARTICLE_ASSETS,
+    lightLeaks: LIGHT_LEAK_ASSETS,
+    lensFlares: LENS_FLARE_ASSETS,
+    textures: TEXTURE_ASSETS,
+    transitions: TRANSITION_ASSETS,
+    audio: [],
     fonts: []
   },
   
   renderSettings: {
-    resolution: '720p',  // Optimized from 4K
-    fps: 18,             // Optimized from 60
+    resolution: '1080p',
+    fps: 24,
     duration: 0,
-    aspectRatio: '16:9'  // Changed to landscape 720p
+    aspectRatio: '9:16'
   },
   
   aiFeatures: [
     'Story Director',
-    'Face Mapping',
-    'Lip-sync',
-    'Interactive Branching',
-    'Voice Analysis',
+    'Photo Integration',
+    'Video Background',
     'Beat Sync',
-    'Auto-Subtitles'
+    'Auto-Subtitles',
+    'Premium VFX'
   ],
   
-  tags: ['storytelling', 'griot', '3d', 'interactive', 'cultural', 'bariba', 'animation'],
+  tags: ['storytelling', 'griot', 'premium', 'fullscreen', 'cultural', 'bariba'],
   previewUrl: '/templates/griot-digital-preview.jpg',
   demoVideoUrl: '/templates/griot-digital-demo.mp4'
 };
 
 // ============================================================================
-// GRIOT DIGITAL ENGINE - v2.0 with FFmpeg and 2D Fallback
+// GRIOT DIGITAL ENGINE - v3.0 FULLSCREEN avec VRAIS ASSETS
 // ============================================================================
 
-/**
- * GriotDigitalEngine - Core rendering engine for Griot Digital template
- * v2.0: Optimized for 720p@18fps with FFmpeg encoding and 2D fallback
- */
 export class GriotDigitalEngine {
   private assetLoader: AssetLoader3D;
   private particleManager: ParticleSystemManager;
   private audioEngine: AudioSyncEngine;
   
-  // Three.js components
-  private renderer: THREE.WebGLRenderer | null = null;
-  private scene: THREE.Scene | null = null;
-  private camera: THREE.PerspectiveCamera | null = null;
-  private clock: THREE.Clock;
+  // Canvas for rendering
+  private canvas: HTMLCanvasElement | null = null;
+  private ctx: CanvasRenderingContext2D | null = null;
   
-  // 2D Fallback components
-  private use2DFallback: boolean = false;
-  private canvas2D: HTMLCanvasElement | null = null;
-  private ctx2D: CanvasRenderingContext2D | null = null;
-  private fallbackParticles: THREE.Points | null = null;
+  // Premium VFX assets - VRAIS FICHIERS UNIQUEMENT
+  private lightLeakVideos: HTMLVideoElement[] = [];
+  private particleVideos: HTMLVideoElement[] = [];
+  private textureVideos: HTMLVideoElement[] = [];
+  private transitionVideos: HTMLVideoElement[] = [];
+  private lensFlareImages: HTMLImageElement[] = [];
   
-  // Loaded assets
-  private models: Map<string, THREE.Group> = new Map();
-  private animations: Map<string, THREE.AnimationClip[]> = new Map();
-  private mixer: THREE.AnimationMixer | null = null;
-  
-  // Premium VFX assets from CDN
-  private premiumEffects = {
-    lightLeaks: [] as HTMLVideoElement[],
-    particles: [] as HTMLVideoElement[],
-    textures: [] as HTMLVideoElement[],
-    lensFlares: [] as HTMLImageElement[],
-    transitions: [] as HTMLVideoElement[]
-  };
-  private premiumEffectsLoaded: boolean = false;
-  
-  // Timeline
-  private timeline: TimelineSegment[] = [];
-  private currentSegment: number = 0;
-  private isPlaying: boolean = false;
-  
-  // Interactive
-  private branchPoints: BranchPoint[] = [];
-  private onBranchCallback: ((branch: BranchPoint) => Promise<string>) | null = null;
+  // User content
+  private userPhotos: HTMLImageElement[] = [];
+  private userVideo: HTMLVideoElement | null = null;
+  private userAudioBlob: Blob | null = null;
   
   // State
-  private currentStyle: string = 'traditional';
+  private assetsLoaded: boolean = false;
   private storyTitle: string = '';
-  private audioBlob: Blob | null = null;
-
-  // CDN base URL for Supabase Storage
-  private readonly cdnBase = 'https://pmrhezgnyffiskbaiudb.supabase.co/storage/v1/object/public/envato-assets';
+  private currentStyle: string = 'traditional';
+  private timeline: TimelineSegment[] = [];
+  private branchPoints: BranchPoint[] = [];
 
   constructor() {
     this.assetLoader = new AssetLoader3D();
     this.particleManager = new ParticleSystemManager();
     this.audioEngine = new AudioSyncEngine();
-    this.clock = new THREE.Clock();
   }
 
   /**
-   * Initialize the rendering context - ALWAYS use 2D Canvas for reliability
+   * Initialize the rendering canvas - FULLSCREEN 1080x1920
    */
-  public async initialize(canvas?: HTMLCanvasElement): Promise<void> {
-    console.log('[GriotDigital] Initializing engine (2D mode for reliability)...');
+  public async initialize(): Promise<void> {
+    console.log('[GriotDigital v3] Initializing FULLSCREEN engine (1080x1920)...');
     
-    // Create a fresh canvas to avoid context conflicts
-    this.canvas2D = document.createElement('canvas');
-    this.canvas2D.width = RENDER_CONFIG.width;
-    this.canvas2D.height = RENDER_CONFIG.height;
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = RENDER_CONFIG.width;
+    this.canvas.height = RENDER_CONFIG.height;
     
-    // Always use 2D context for maximum reliability
-    this.ctx2D = this.canvas2D.getContext('2d', { willReadFrequently: true });
-    this.use2DFallback = true;
+    this.ctx = this.canvas.getContext('2d', { 
+      willReadFrequently: true,
+      alpha: false 
+    });
     
-    if (!this.ctx2D) {
+    if (!this.ctx) {
       throw new Error('Failed to create 2D canvas context');
     }
     
-    console.log('[GriotDigital] 2D Canvas initialized:', RENDER_CONFIG.width, 'x', RENDER_CONFIG.height);
+    console.log('[GriotDigital v3] Canvas initialized:', RENDER_CONFIG.width, 'x', RENDER_CONFIG.height);
   }
 
   /**
-   * Load all required assets for the template including premium VFX from CDN
+   * Load all REAL premium assets from CDN
    */
   public async loadAssets(
     onProgress?: (progress: number, asset: string) => void
   ): Promise<void> {
-    console.log('[GriotDigital] Loading assets including premium VFX from CDN...');
+    console.log('[GriotDigital v3] Loading REAL premium assets from CDN...');
     
-    onProgress?.(0.1, 'Loading premium VFX...');
+    const totalAssets = LIGHT_LEAK_ASSETS.length + PARTICLE_ASSETS.length + 
+                        TEXTURE_ASSETS.length + LENS_FLARE_ASSETS.length +
+                        TRANSITION_ASSETS.length;
+    let loaded = 0;
     
-    // Load premium VFX assets from CDN (non-blocking)
-    this.loadPremiumEffects().catch(e => {
-      console.warn('[GriotDigital] Premium VFX loading failed:', e);
+    onProgress?.(0, 'Loading premium VFX...');
+
+    // Load Light Leaks (MANDATORY - no fallback)
+    console.log('[GriotDigital v3] Loading Light Leaks...');
+    for (const url of LIGHT_LEAK_ASSETS) {
+      try {
+        const video = await this.loadVideoAsset(url);
+        if (video) {
+          this.lightLeakVideos.push(video);
+        }
+      } catch (e) {
+        console.warn('[GriotDigital v3] Light leak failed:', url);
+      }
+      loaded++;
+      onProgress?.(loaded / totalAssets, `Light Leak ${loaded}/${LIGHT_LEAK_ASSETS.length}`);
+    }
+    console.log(`[GriotDigital v3] ✅ Light Leaks: ${this.lightLeakVideos.length} loaded`);
+
+    // Load Particles
+    console.log('[GriotDigital v3] Loading Particles...');
+    for (const url of PARTICLE_ASSETS) {
+      try {
+        const video = await this.loadVideoAsset(url);
+        if (video) {
+          this.particleVideos.push(video);
+        }
+      } catch (e) {
+        console.warn('[GriotDigital v3] Particle failed:', url);
+      }
+      loaded++;
+      onProgress?.(loaded / totalAssets, `Particles ${this.particleVideos.length}/${PARTICLE_ASSETS.length}`);
+    }
+    console.log(`[GriotDigital v3] ✅ Particles: ${this.particleVideos.length} loaded`);
+
+    // Load Textures
+    console.log('[GriotDigital v3] Loading Textures...');
+    for (const url of TEXTURE_ASSETS) {
+      try {
+        const video = await this.loadVideoAsset(url);
+        if (video) {
+          this.textureVideos.push(video);
+        }
+      } catch (e) {
+        console.warn('[GriotDigital v3] Texture failed:', url);
+      }
+      loaded++;
+      onProgress?.(loaded / totalAssets, `Textures ${this.textureVideos.length}/${TEXTURE_ASSETS.length}`);
+    }
+    console.log(`[GriotDigital v3] ✅ Textures: ${this.textureVideos.length} loaded`);
+
+    // Load Transitions
+    console.log('[GriotDigital v3] Loading Transitions...');
+    for (const url of TRANSITION_ASSETS) {
+      try {
+        const video = await this.loadVideoAsset(url);
+        if (video) {
+          this.transitionVideos.push(video);
+        }
+      } catch (e) {
+        console.warn('[GriotDigital v3] Transition failed:', url);
+      }
+      loaded++;
+      onProgress?.(loaded / totalAssets, `Transitions ${this.transitionVideos.length}`);
+    }
+    console.log(`[GriotDigital v3] ✅ Transitions: ${this.transitionVideos.length} loaded`);
+
+    // Load Lens Flares (local PNG)
+    console.log('[GriotDigital v3] Loading Lens Flares...');
+    for (const url of LENS_FLARE_ASSETS) {
+      try {
+        const img = await this.loadImageAsset(url);
+        if (img) {
+          this.lensFlareImages.push(img);
+        }
+      } catch (e) {
+        console.warn('[GriotDigital v3] Lens flare failed:', url);
+      }
+      loaded++;
+      onProgress?.(loaded / totalAssets, `Lens Flares ${this.lensFlareImages.length}`);
+    }
+    console.log(`[GriotDigital v3] ✅ Lens Flares: ${this.lensFlareImages.length} loaded`);
+
+    this.assetsLoaded = true;
+    
+    console.log('[GriotDigital v3] 🎬 PREMIUM ASSETS LOADED:', {
+      lightLeaks: this.lightLeakVideos.length,
+      particles: this.particleVideos.length,
+      textures: this.textureVideos.length,
+      transitions: this.transitionVideos.length,
+      lensFlares: this.lensFlareImages.length
     });
     
-    onProgress?.(0.5, 'VFX loading started...');
+    onProgress?.(1, 'Assets ready!');
+  }
+
+  /**
+   * Load a video asset from URL
+   */
+  private loadVideoAsset(url: string): Promise<HTMLVideoElement | null> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      
+      const timeout = setTimeout(() => {
+        console.warn('[GriotDigital v3] ⏱️ Video timeout:', url.substring(url.lastIndexOf('/') + 1));
+        resolve(null);
+      }, 15000);
+      
+      video.onloadeddata = () => {
+        clearTimeout(timeout);
+        video.play().catch(() => {});
+        console.log('[GriotDigital v3] ✅ Video loaded:', url.substring(url.lastIndexOf('/') + 1));
+        resolve(video);
+      };
+      
+      video.onerror = (e) => {
+        clearTimeout(timeout);
+        console.error('[GriotDigital v3] ❌ Video failed:', url.substring(url.lastIndexOf('/') + 1), e);
+        resolve(null);
+      };
+      
+      video.src = url;
+    });
+  }
+
+  /**
+   * Load an image asset from URL
+   */
+  private loadImageAsset(url: string): Promise<HTMLImageElement | null> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      const timeout = setTimeout(() => resolve(null), 10000);
+      
+      img.onload = () => {
+        clearTimeout(timeout);
+        console.log('[GriotDigital v3] ✅ Image loaded:', url.substring(url.lastIndexOf('/') + 1));
+        resolve(img);
+      };
+      
+      img.onerror = () => {
+        clearTimeout(timeout);
+        console.warn('[GriotDigital v3] ❌ Image failed:', url);
+        resolve(null);
+      };
+      
+      img.src = url;
+    });
+  }
+
+  /**
+   * Load user content (photos, video, audio)
+   */
+  private async loadUserContent(inputs: GriotDigitalInputs): Promise<void> {
+    console.log('[GriotDigital v3] Loading user content...');
     
-    // For 2D mode, we rely on premium effects only
-    if (this.use2DFallback) {
-      onProgress?.(1, 'Premium VFX assets loading...');
-      return;
-    }
-
-    const assets = GriotDigitalTemplate.requiredAssets;
-    const totalAssets = assets.models.length + assets.particles.length;
-    let loaded = 0;
-
-    // Load 3D models with fallback
-    for (const modelId of assets.models) {
-      try {
-        const model = await this.assetLoader.loadModel(modelId);
-        if (model) {
-          this.models.set(modelId, model);
+    // Store audio blob
+    this.userAudioBlob = inputs.audioNarration;
+    
+    // Load user photos
+    if (inputs.photos && inputs.photos.length > 0) {
+      console.log(`[GriotDigital v3] Loading ${inputs.photos.length} user photos...`);
+      for (const photoFile of inputs.photos) {
+        const img = await this.loadUserPhoto(photoFile);
+        if (img) {
+          this.userPhotos.push(img);
         }
-        loaded++;
-        onProgress?.(0.5 + (loaded / totalAssets) * 0.5, modelId);
-      } catch (error) {
-        console.warn(`[GriotDigital] Failed to load model ${modelId}, will use fallback`);
-        loaded++;
-        onProgress?.(0.5 + (loaded / totalAssets) * 0.5, modelId);
       }
+      console.log(`[GriotDigital v3] ✅ User photos loaded: ${this.userPhotos.length}`);
     }
-
-    // Check if we need to switch to 2D fallback
-    if (this.models.size === 0) {
-      console.log('[GriotDigital] No models loaded, using 2D + premium VFX');
-      this.use2DFallback = true;
-    }
-
-    // Load particle effects for 3D mode
-    for (const particleId of assets.particles) {
-      try {
-        await this.particleManager.loadParticleEffect(particleId);
-        loaded++;
-        onProgress?.(0.5 + (loaded / totalAssets) * 0.5, particleId);
-      } catch (error) {
-        console.warn(`[GriotDigital] Failed to load particle ${particleId}`);
-        loaded++;
+    
+    // Load user video if provided
+    if (inputs.videoFile) {
+      console.log('[GriotDigital v3] Loading user video...');
+      this.userVideo = await this.loadUserVideo(inputs.videoFile);
+      if (this.userVideo) {
+        console.log('[GriotDigital v3] ✅ User video loaded');
       }
-    }
-    
-    console.log(`[GriotDigital] Assets loaded. 2D fallback: ${this.use2DFallback}, Premium VFX: loading...`);
-  }
-
-  /**
-   * Load premium visual effects from Supabase CDN
-   * (light leaks, particles WebM, textures, lens flares, transitions)
-   */
-  private async loadPremiumEffects(): Promise<void> {
-    console.log('[GriotDigital] Loading premium VFX from CDN...');
-    
-    // Helper to load video element with timeout
-    const loadVideo = (url: string): Promise<HTMLVideoElement | null> => {
-      return new Promise((resolve) => {
-        const video = document.createElement('video');
-        video.crossOrigin = 'anonymous';
-        video.loop = true;
-        video.muted = true;
-        video.playsInline = true;
-        video.preload = 'auto';
-        
-        const timeout = setTimeout(() => {
-          console.warn('[GriotDigital] Video timeout:', url.slice(-40));
-          resolve(null);
-        }, 8000);
-        
-        video.onloadeddata = () => {
-          clearTimeout(timeout);
-          video.play().catch(() => {});
-          console.log('[GriotDigital] ✅ Loaded VFX:', url.slice(-40));
-          resolve(video);
-        };
-        
-        video.onerror = () => {
-          clearTimeout(timeout);
-          console.warn('[GriotDigital] ⚠️ Failed:', url.slice(-40));
-          resolve(null);
-        };
-        
-        video.src = url;
-      });
-    };
-    
-    // Helper to load image element
-    const loadImage = (url: string): Promise<HTMLImageElement | null> => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        
-        const timeout = setTimeout(() => resolve(null), 5000);
-        
-        img.onload = () => {
-          clearTimeout(timeout);
-          console.log('[GriotDigital] ✅ Loaded lens flare:', url.slice(-30));
-          resolve(img);
-        };
-        
-        img.onerror = () => {
-          clearTimeout(timeout);
-          resolve(null);
-        };
-        
-        img.src = url;
-      });
-    };
-    
-    // Light leaks from 3d-models folder (leak-001 to leak-022.webm)
-    const lightLeakIds = ['001', '003', '005', '007', '009', '011', '015', '018'];
-    const lightLeakPromises = lightLeakIds.map(num => 
-      loadVideo(`${this.cdnBase}/3d-models/leak-${num}.webm`)
-    );
-    
-    // Particle effects (use leak files as particles)
-    const particleIds = ['002', '004', '008', '012', '016', '020'];
-    const particlePromises = particleIds.map(num =>
-      loadVideo(`${this.cdnBase}/3d-models/leak-${num}.webm`)
-    );
-    
-    // Texture overlays (video textures for grain/film look)
-    const textureIds = ['008', '015', '025', '050'];
-    const texturePromises = textureIds.map(num =>
-      loadVideo(`${this.cdnBase}/textures/video-${num}.mp4`)
-    );
-    
-    // Transitions
-    const transitionPromises = [
-      loadVideo(`${this.cdnBase}/transitions/Transition-001.mp4`),
-      loadVideo(`${this.cdnBase}/transitions/Transition-05.mp4`)
-    ];
-    
-    // Lens flares (PNG from local assets)
-    const lensFlareFiles = ['flare-015.png', 'flare-032.png', 'flare-050.png', 'flare-088.png', 'flare-125.png'];
-    const lensFlarePromises = lensFlareFiles.map(filename =>
-      loadImage(`/assets/envato/lens-flare/${filename}`)
-    );
-    
-    try {
-      const [lightLeaks, particles, textures, transitions, lensFlares] = await Promise.all([
-        Promise.all(lightLeakPromises),
-        Promise.all(particlePromises),
-        Promise.all(texturePromises),
-        Promise.all(transitionPromises),
-        Promise.all(lensFlarePromises)
-      ]);
-      
-      this.premiumEffects.lightLeaks = lightLeaks.filter((v): v is HTMLVideoElement => v !== null);
-      this.premiumEffects.particles = particles.filter((v): v is HTMLVideoElement => v !== null);
-      this.premiumEffects.textures = textures.filter((v): v is HTMLVideoElement => v !== null);
-      this.premiumEffects.transitions = transitions.filter((v): v is HTMLVideoElement => v !== null);
-      this.premiumEffects.lensFlares = lensFlares.filter((v): v is HTMLImageElement => v !== null);
-      
-      this.premiumEffectsLoaded = true;
-      
-      console.log('[GriotDigital] 🎬 Premium VFX loaded:', {
-        lightLeaks: this.premiumEffects.lightLeaks.length,
-        particles: this.premiumEffects.particles.length,
-        textures: this.premiumEffects.textures.length,
-        transitions: this.premiumEffects.transitions.length,
-        lensFlares: this.premiumEffects.lensFlares.length
-      });
-    } catch (e) {
-      console.warn('[GriotDigital] Premium VFX loading failed:', e);
     }
   }
 
   /**
-   * Wait for premium effects to load (with timeout)
+   * Load a user photo file
    */
-  private async waitForPremiumEffects(timeoutMs: number = 5000): Promise<void> {
-    const startTime = Date.now();
-    
-    while (!this.premiumEffectsLoaded && Date.now() - startTime < timeoutMs) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    
-    if (this.premiumEffectsLoaded) {
-      console.log('[GriotDigital] ✅ Premium VFX ready for rendering');
-    } else {
-      console.warn('[GriotDigital] ⚠️ Premium VFX timeout, will use procedural fallback');
-    }
+  private loadUserPhoto(file: File): Promise<HTMLImageElement | null> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(img.src);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        resolve(null);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  /**
+   * Load a user video file
+   */
+  private loadUserVideo(file: File): Promise<HTMLVideoElement | null> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      
+      video.onloadeddata = () => {
+        video.play().catch(() => {});
+        resolve(video);
+      };
+      
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        resolve(null);
+      };
+      
+      video.src = URL.createObjectURL(file);
+    });
   }
 
   /**
@@ -574,77 +601,54 @@ export class GriotDigitalEngine {
     inputs: GriotDigitalInputs,
     onProgress?: RenderProgressCallback
   ): Promise<RenderResult> {
-    console.log('[GriotDigital] Starting render pipeline...');
+    console.log('[GriotDigital v3] Starting FULLSCREEN render pipeline...');
     
-    if (!this.canvas2D) {
+    if (!this.canvas || !this.ctx) {
       throw new Error('Engine not initialized');
     }
 
     this.currentStyle = inputs.style || 'traditional';
-    onProgress?.(0.05, 'Analyzing audio...');
-
-    // 1. Convert file to AudioFile format and store blob
-    const audioFile = await this.fileToAudioFile(inputs.audioNarration);
-    this.audioBlob = inputs.audioNarration;
+    this.storyTitle = inputs.customTitle || 'Griot Digital';
     
-    // 1b. Load audio buffer for beat analysis
+    onProgress?.(0.05, 'Loading user content...');
+    
+    // Load user content (photos, video, audio)
+    await this.loadUserContent(inputs);
+
+    onProgress?.(0.10, 'Analyzing audio...');
+
+    // Analyze audio duration
+    const audioDuration = await this.getAudioDuration(inputs.audioNarration);
+    const totalDuration = Math.min(audioDuration, RENDER_CONFIG.maxDuration);
+    
+    // Load audio for beat analysis
     try {
       await this.audioEngine.loadAudioBlob(inputs.audioNarration);
-      console.log('[GriotDigital] Audio buffer loaded for beat analysis');
+      console.log('[GriotDigital v3] Audio buffer loaded for beat analysis');
     } catch (error) {
-      console.warn('[GriotDigital] Audio buffer load failed, will use fallback beats:', error);
-    }
-    
-    // 1c. Wait for premium VFX to load (max 5 seconds)
-    onProgress?.(0.10, 'Loading premium VFX assets...');
-    await this.waitForPremiumEffects(5000);
-    
-    // 2. Analyze story structure (with fallback)
-    let storyAnalysis: StoryStructure;
-    try {
-      storyAnalysis = await aiServicesHub.analyzeStory(
-        audioFile,
-        inputs.language === 'auto' ? 'french' : inputs.language
-      );
-    } catch (error) {
-      console.warn('[GriotDigital] Story analysis failed, using default structure:', error);
-      storyAnalysis = this.createDefaultStoryStructure(audioFile.duration || 30);
-    }
-    
-    this.storyTitle = inputs.customTitle || storyAnalysis.title || 'Conte Digital';
-
-    onProgress?.(0.15, 'Setting up scene...');
-
-    // 3. Setup scene (3D or 2D fallback)
-    if (!this.use2DFallback && this.scene) {
-      await this.setupScene(inputs.style || 'traditional');
+      console.warn('[GriotDigital v3] Audio analysis failed:', error);
     }
 
-    onProgress?.(0.25, 'Creating timeline...');
+    onProgress?.(0.15, 'Waiting for assets...');
 
-    // 4. Create timeline from story analysis
-    this.timeline = await this.createTimelineFromStory(storyAnalysis, audioFile);
-
-    // 5. Generate branch points if interactive
-    if (inputs.interactiveMode) {
-      onProgress?.(0.30, 'Creating interactive branches...');
-      this.branchPoints = await this.createBranchingPoints(storyAnalysis);
+    // Wait for assets to be ready
+    if (!this.assetsLoaded) {
+      await this.waitForAssets(10000);
     }
 
-    onProgress?.(0.35, 'Rendering video with premium VFX...');
+    onProgress?.(0.20, 'Rendering video with premium VFX...');
 
-    // 6. Render the video using reliable Canvas capture
-    const totalDuration = Math.min(audioFile.duration || 30, RENDER_CONFIG.maxDuration);
-    const video = await this.renderVideoReliable(totalDuration, onProgress);
+    // Render the video
+    const video = await this.renderVideo(totalDuration, onProgress);
 
     onProgress?.(0.95, 'Generating thumbnail...');
 
-    // 7. Generate thumbnail
+    // Generate thumbnail
     const thumbnail = await this.generateThumbnail();
 
     onProgress?.(1.0, 'Complete!');
     
-    console.log('[GriotDigital] Render complete!');
+    console.log('[GriotDigital v3] Render complete!');
 
     return {
       video,
@@ -654,36 +658,42 @@ export class GriotDigitalEngine {
         title: this.storyTitle,
         language: inputs.language,
         interactive: inputs.interactiveMode,
-        branchPoints: this.branchPoints.length > 0 ? this.branchPoints : undefined,
-        segments: this.timeline.length
+        segments: 1
       }
     };
   }
 
   /**
-   * Render video using reliable Canvas-based capture with MediaRecorder
-   * This avoids FFmpeg WASM loading issues that can cause hangs
+   * Wait for assets to load
    */
-  private async renderVideoReliable(
+  private async waitForAssets(timeoutMs: number): Promise<void> {
+    const startTime = Date.now();
+    while (!this.assetsLoaded && Date.now() - startTime < timeoutMs) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+
+  /**
+   * Render video using Canvas capture with MediaRecorder
+   */
+  private async renderVideo(
     durationSeconds: number,
     onProgress?: RenderProgressCallback
   ): Promise<Blob> {
-    console.log(`[GriotDigital] Rendering ${durationSeconds}s @ ${RENDER_CONFIG.fps}fps (2D Canvas)`);
+    console.log(`[GriotDigital v3] Rendering ${durationSeconds}s @ ${RENDER_CONFIG.fps}fps FULLSCREEN`);
     
-    const canvas = this.canvas2D!;
+    const canvas = this.canvas!;
     const fps = RENDER_CONFIG.fps;
     const totalFrames = Math.ceil(durationSeconds * fps);
     
-    onProgress?.(0.40, 'Préparation du rendu...');
-    
-    // Use MediaRecorder for reliable capture
     return new Promise<Blob>((resolve, reject) => {
       try {
+        // Create stream from canvas
         const stream = canvas.captureStream(fps);
         
-        // Add audio if available
-        if (this.audioBlob) {
-          this.addAudioToStream(stream, this.audioBlob);
+        // Add audio track if available
+        if (this.userAudioBlob) {
+          this.addAudioToStream(stream, this.userAudioBlob);
         }
         
         const chunks: Blob[] = [];
@@ -693,7 +703,7 @@ export class GriotDigitalEngine {
         
         const recorder = new MediaRecorder(stream, {
           mimeType,
-          videoBitsPerSecond: 4000000
+          videoBitsPerSecond: 6000000
         });
         
         recorder.ondataavailable = (e) => {
@@ -702,12 +712,12 @@ export class GriotDigitalEngine {
         
         recorder.onstop = () => {
           const blob = new Blob(chunks, { type: 'video/webm' });
-          console.log(`[GriotDigital] Video recorded: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+          console.log(`[GriotDigital v3] Video recorded: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
           resolve(blob);
         };
         
         recorder.onerror = (e) => {
-          console.error('[GriotDigital] MediaRecorder error:', e);
+          console.error('[GriotDigital v3] MediaRecorder error:', e);
           reject(e);
         };
         
@@ -723,12 +733,12 @@ export class GriotDigitalEngine {
           }
           
           const currentTime = currentFrame / fps;
-          this.draw2DFrame(currentTime, durationSeconds);
+          this.drawFrame(currentTime, durationSeconds);
           currentFrame++;
           
           // Update progress
           if (currentFrame % 5 === 0) {
-            const progress = 0.40 + (currentFrame / totalFrames) * 0.50;
+            const progress = 0.20 + (currentFrame / totalFrames) * 0.70;
             onProgress?.(progress, `Frame ${currentFrame}/${totalFrames}`);
           }
           
@@ -739,7 +749,7 @@ export class GriotDigitalEngine {
         renderNextFrame();
         
       } catch (error) {
-        console.error('[GriotDigital] Render failed:', error);
+        console.error('[GriotDigital v3] Render failed:', error);
         reject(error);
       }
     });
@@ -752,444 +762,322 @@ export class GriotDigitalEngine {
     try {
       const audioContext = new AudioContext();
       const audioElement = new Audio(URL.createObjectURL(audioBlob));
-      audioElement.volume = 0; // Silent in browser but captured
+      audioElement.volume = 1.0; // Full volume
       
       const source = audioContext.createMediaElementSource(audioElement);
       const destination = audioContext.createMediaStreamDestination();
       source.connect(destination);
+      source.connect(audioContext.destination); // Also output to speakers (optional)
       
       destination.stream.getAudioTracks().forEach(track => {
         stream.addTrack(track);
       });
       
-      audioElement.play().catch(() => {
-        console.warn('[GriotDigital] Audio autoplay blocked');
+      audioElement.play().catch((e) => {
+        console.warn('[GriotDigital v3] Audio autoplay blocked:', e);
       });
+      
+      console.log('[GriotDigital v3] ✅ Audio track added to stream');
     } catch (error) {
-      console.warn('[GriotDigital] Could not add audio to stream:', error);
+      console.warn('[GriotDigital v3] Could not add audio to stream:', error);
     }
   }
 
   /**
-   * Render a 3D frame at given time
+   * Draw a single frame - FULLSCREEN with REAL assets
    */
-  private render3DFrame(currentTime: number): void {
-    if (!this.renderer || !this.scene || !this.camera) return;
-    
-    // Update timeline
-    this.updateTimeline(currentTime);
-    
-    // Update animations
-    const delta = 1 / RENDER_CONFIG.fps;
-    this.mixer?.update(delta);
-    
-    // Update particles
-    this.particleManager.update(delta);
-    
-    // Render
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  /**
-   * Draw a 2D frame with REAL assets from CDN (premium VFX)
-   */
-  private draw2DFrame(currentTime: number, totalDuration: number): void {
-    const ctx = this.ctx2D;
-    const canvas = this.canvas2D;
-    if (!ctx || !canvas) return;
-    
-    const width = canvas.width;
-    const height = canvas.height;
+  private drawFrame(currentTime: number, totalDuration: number): void {
+    const ctx = this.ctx!;
+    const width = RENDER_CONFIG.width;
+    const height = RENDER_CONFIG.height;
     const progress = currentTime / totalDuration;
     
-    // Get style palette
-    const palette = STYLE_PALETTES[this.currentStyle as keyof typeof STYLE_PALETTES] || STYLE_PALETTES.traditional;
+    // 1. BACKGROUND LAYER - User photo/video or gradient
+    this.drawBackground(ctx, width, height, currentTime);
     
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height);
+    // 2. LIGHT LEAK LAYER - FULLSCREEN from CDN
+    this.drawLightLeaks(ctx, width, height, currentTime);
     
-    // Draw gradient background
-    const gradient = ctx.createRadialGradient(
-      width * 0.5, height * 0.4, 0,
-      width * 0.5, height * 0.5, width * 0.8
-    );
-    gradient.addColorStop(0, this.hexToRgba(palette.background, 1));
-    gradient.addColorStop(1, this.hexToRgba(palette.fog, 1));
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+    // 3. PARTICLE LAYER - FULLSCREEN from CDN
+    this.drawParticles(ctx, width, height, currentTime);
     
-    // Draw village silhouettes
-    this.drawVillageSilhouettes(ctx, width, height, palette);
+    // 4. TEXTURE OVERLAY - FULLSCREEN from CDN
+    this.drawTextures(ctx, width, height, currentTime);
     
-    // Draw animated griot character
-    this.drawGriotCharacter(ctx, width, height, currentTime, palette);
+    // 5. LENS FLARES - From PNG assets
+    this.drawLensFlares(ctx, width, height, currentTime);
     
-    // === PREMIUM VFX FROM CDN ===
-    // Draw real light leak overlays from CDN videos
-    this.drawPremiumLightLeaks(ctx, width, height, currentTime);
+    // 6. TRANSITIONS - At segment boundaries
+    this.drawTransitions(ctx, width, height, currentTime, totalDuration);
     
-    // Draw real particle overlays from CDN videos
-    this.drawPremiumParticles(ctx, width, height, currentTime);
-    
-    // Draw real texture overlays from CDN videos
-    this.drawPremiumTextures(ctx, width, height, currentTime);
-    
-    // Draw real lens flares from PNG assets
-    this.drawPremiumLensFlares(ctx, width, height, currentTime, palette);
-    
-    // Fallback to procedural effects if premium not loaded
-    if (!this.premiumEffectsLoaded) {
-      this.drawParticles(ctx, width, height, currentTime, palette);
-      this.drawLightLeak(ctx, width, height, currentTime, palette);
-    }
-    
-    // Draw beat pulse
-    this.drawBeatPulse(ctx, width, height, currentTime, palette);
-    
-    // Draw title (first 5 seconds)
+    // 7. TITLE OVERLAY (first 5 seconds)
     if (currentTime < 5) {
       this.drawTitle(ctx, width, height, currentTime);
     }
     
-    // Draw segment indicator
-    this.drawSegmentIndicator(ctx, width, height, progress);
+    // 8. PROGRESS INDICATOR
+    this.drawProgressIndicator(ctx, width, height, progress);
   }
 
   /**
-   * Draw premium light leaks from CDN WebM videos
+   * Draw background - user content or gradient
    */
-  private drawPremiumLightLeaks(
+  private drawBackground(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
     currentTime: number
   ): void {
-    if (!this.premiumEffectsLoaded || this.premiumEffects.lightLeaks.length === 0) return;
+    // If user video is available, use it as background
+    if (this.userVideo && this.userVideo.readyState >= 2) {
+      // Draw video cover-fit
+      const vw = this.userVideo.videoWidth;
+      const vh = this.userVideo.videoHeight;
+      const scale = Math.max(width / vw, height / vh);
+      const sw = vw * scale;
+      const sh = vh * scale;
+      const sx = (width - sw) / 2;
+      const sy = (height - sh) / 2;
+      
+      ctx.drawImage(this.userVideo, sx, sy, sw, sh);
+      return;
+    }
+    
+    // If user photos are available, cycle through them
+    if (this.userPhotos.length > 0) {
+      const photoIndex = Math.floor(currentTime / 5) % this.userPhotos.length;
+      const photo = this.userPhotos[photoIndex];
+      
+      // Draw photo cover-fit with Ken Burns effect
+      const pw = photo.width;
+      const ph = photo.height;
+      const scale = Math.max(width / pw, height / ph) * (1 + Math.sin(currentTime * 0.3) * 0.05);
+      const sw = pw * scale;
+      const sh = ph * scale;
+      const offsetX = Math.sin(currentTime * 0.2) * 20;
+      const offsetY = Math.cos(currentTime * 0.15) * 15;
+      const sx = (width - sw) / 2 + offsetX;
+      const sy = (height - sh) / 2 + offsetY;
+      
+      ctx.drawImage(photo, sx, sy, sw, sh);
+      
+      // Apply darkening for text readability
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.fillRect(0, 0, width, height);
+      return;
+    }
+    
+    // Default: Gradient background
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, '#1a1a2e');
+    gradient.addColorStop(0.5, '#16213e');
+    gradient.addColorStop(1, '#0f0f23');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  /**
+   * Draw REAL light leaks FULLSCREEN
+   */
+  private drawLightLeaks(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    currentTime: number
+  ): void {
+    if (this.lightLeakVideos.length === 0) return;
     
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     
     // Cycle through light leaks based on time
-    const idx = Math.floor(currentTime / 8) % this.premiumEffects.lightLeaks.length;
-    const video = this.premiumEffects.lightLeaks[idx];
+    const idx = Math.floor(currentTime / 6) % this.lightLeakVideos.length;
+    const video = this.lightLeakVideos[idx];
     
     if (video && video.readyState >= 2) {
-      ctx.globalAlpha = 0.35 + Math.sin(currentTime * 0.5) * 0.15;
-      ctx.drawImage(video, 0, 0, width, height);
+      ctx.globalAlpha = 0.45 + Math.sin(currentTime * 0.5) * 0.15;
+      
+      // Draw FULLSCREEN cover
+      const vw = video.videoWidth || width;
+      const vh = video.videoHeight || height;
+      const scale = Math.max(width / vw, height / vh);
+      const sw = vw * scale;
+      const sh = vh * scale;
+      const sx = (width - sw) / 2;
+      const sy = (height - sh) / 2;
+      
+      ctx.drawImage(video, sx, sy, sw, sh);
     }
     
     ctx.restore();
   }
 
   /**
-   * Draw premium particle overlays from CDN WebM videos
-   */
-  private drawPremiumParticles(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    currentTime: number
-  ): void {
-    if (!this.premiumEffectsLoaded || this.premiumEffects.particles.length === 0) return;
-    
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter'; // Additive blend for glow
-    
-    // Cycle through particles
-    const idx = Math.floor(currentTime / 12) % this.premiumEffects.particles.length;
-    const video = this.premiumEffects.particles[idx];
-    
-    if (video && video.readyState >= 2) {
-      ctx.globalAlpha = 0.4;
-      ctx.drawImage(video, 0, 0, width, height);
-    }
-    
-    ctx.restore();
-  }
-
-  /**
-   * Draw premium texture overlays from CDN videos (film grain/texture)
-   */
-  private drawPremiumTextures(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    currentTime: number
-  ): void {
-    if (!this.premiumEffectsLoaded || this.premiumEffects.textures.length === 0) return;
-    
-    ctx.save();
-    ctx.globalCompositeOperation = 'overlay';
-    
-    // Use first texture for consistent look
-    const video = this.premiumEffects.textures[0];
-    
-    if (video && video.readyState >= 2) {
-      ctx.globalAlpha = 0.18;
-      ctx.drawImage(video, 0, 0, width, height);
-    }
-    
-    ctx.restore();
-  }
-
-  /**
-   * Draw premium lens flares from PNG assets
-   */
-  private drawPremiumLensFlares(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    currentTime: number,
-    palette: typeof STYLE_PALETTES.traditional
-  ): void {
-    if (!this.premiumEffectsLoaded || this.premiumEffects.lensFlares.length === 0) return;
-    
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    
-    // Cycle through lens flares based on segment time
-    const flareIdx = Math.floor(currentTime / 6) % this.premiumEffects.lensFlares.length;
-    const flare = this.premiumEffects.lensFlares[flareIdx];
-    
-    if (flare) {
-      ctx.globalAlpha = 0.5 + Math.sin(currentTime * 2) * 0.25;
-      
-      // Position based on style - storytelling style has flare at top-right
-      const flareX = width * 0.8;
-      const flareY = height * 0.18;
-      const flareSize = Math.min(width, height) * 0.35;
-      
-      // Subtle animation
-      const offsetX = Math.sin(currentTime * 0.3) * 20;
-      const offsetY = Math.cos(currentTime * 0.2) * 15;
-      
-      ctx.drawImage(
-        flare,
-        flareX - flareSize/2 + offsetX,
-        flareY - flareSize/2 + offsetY,
-        flareSize,
-        flareSize
-      );
-      
-      // Second smaller flare on opposite side
-      if (this.premiumEffects.lensFlares.length > 1) {
-        const flare2 = this.premiumEffects.lensFlares[(flareIdx + 1) % this.premiumEffects.lensFlares.length];
-        ctx.globalAlpha = 0.3 + Math.sin(currentTime * 1.5) * 0.15;
-        const flare2Size = flareSize * 0.6;
-        ctx.drawImage(
-          flare2,
-          width * 0.15 - flare2Size/2 - offsetX,
-          height * 0.7 - flare2Size/2 - offsetY,
-          flare2Size,
-          flare2Size
-        );
-      }
-    }
-    
-    ctx.restore();
-  }
-
-  /**
-   * Draw village silhouettes in background
-   */
-  private drawVillageSilhouettes(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    palette: typeof STYLE_PALETTES.traditional
-  ): void {
-    ctx.save();
-    ctx.fillStyle = this.hexToRgba(palette.secondary, 0.3);
-    
-    // Draw huts
-    const hutPositions = [0.15, 0.35, 0.65, 0.85];
-    hutPositions.forEach((xPos, i) => {
-      const x = width * xPos;
-      const y = height * 0.75;
-      const size = 40 + i * 10;
-      
-      // Hut body
-      ctx.beginPath();
-      ctx.arc(x, y, size * 0.6, Math.PI, 0);
-      ctx.lineTo(x + size * 0.6, y + size * 0.4);
-      ctx.lineTo(x - size * 0.6, y + size * 0.4);
-      ctx.closePath();
-      ctx.fill();
-      
-      // Roof
-      ctx.beginPath();
-      ctx.moveTo(x, y - size * 0.3);
-      ctx.lineTo(x + size * 0.8, y);
-      ctx.lineTo(x - size * 0.8, y);
-      ctx.closePath();
-      ctx.fill();
-    });
-    
-    ctx.restore();
-  }
-
-  /**
-   * Draw animated griot character
-   */
-  private drawGriotCharacter(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    currentTime: number,
-    palette: typeof STYLE_PALETTES.traditional
-  ): void {
-    ctx.save();
-    
-    const centerX = width * 0.5;
-    const baseY = height * 0.55;
-    
-    // Subtle breathing animation
-    const breathe = Math.sin(currentTime * 2) * 3;
-    const sway = Math.sin(currentTime * 1.5) * 5;
-    
-    // Body (robe)
-    const robeGradient = ctx.createLinearGradient(
-      centerX - 60, baseY,
-      centerX + 60, baseY + 120
-    );
-    robeGradient.addColorStop(0, this.hexToRgba(palette.secondary, 0.9));
-    robeGradient.addColorStop(1, this.hexToRgba(palette.secondary, 0.6));
-    
-    ctx.fillStyle = robeGradient;
-    ctx.beginPath();
-    ctx.moveTo(centerX + sway, baseY - 40 + breathe);
-    ctx.quadraticCurveTo(centerX - 80, baseY + 60, centerX - 70, baseY + 140);
-    ctx.lineTo(centerX + 70, baseY + 140);
-    ctx.quadraticCurveTo(centerX + 80, baseY + 60, centerX + sway, baseY - 40 + breathe);
-    ctx.fill();
-    
-    // Head
-    ctx.fillStyle = this.hexToRgba(palette.primary, 0.9);
-    ctx.beginPath();
-    ctx.arc(centerX + sway, baseY - 60 + breathe, 35, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Hat/Headdress
-    ctx.fillStyle = this.hexToRgba(palette.accent, 0.9);
-    ctx.beginPath();
-    ctx.ellipse(centerX + sway, baseY - 95 + breathe, 25, 15, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Staff
-    ctx.strokeStyle = this.hexToRgba(0x4a3728, 0.9);
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(centerX + 50 + sway, baseY + 130);
-    ctx.lineTo(centerX + 60 + sway, baseY - 80 + breathe);
-    ctx.stroke();
-    
-    // Staff orb (pulsing)
-    const orbPulse = 1 + Math.sin(currentTime * 4) * 0.2;
-    ctx.fillStyle = this.hexToRgba(palette.accent, 0.8);
-    ctx.shadowColor = this.hexToRgba(palette.accent, 0.8);
-    ctx.shadowBlur = 20 * orbPulse;
-    ctx.beginPath();
-    ctx.arc(centerX + 60 + sway, baseY - 90 + breathe, 12 * orbPulse, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    
-    ctx.restore();
-  }
-
-  /**
-   * Draw floating particles
+   * Draw REAL particles FULLSCREEN
    */
   private drawParticles(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
-    currentTime: number,
-    palette: typeof STYLE_PALETTES.traditional
+    currentTime: number
   ): void {
-    ctx.save();
+    if (this.particleVideos.length === 0) return;
     
-    const particleCount = 50;
-    for (let i = 0; i < particleCount; i++) {
-      const seed = i * 137.5; // Golden angle
-      const x = ((seed + currentTime * 20) % width);
-      const y = ((seed * 2.3 + currentTime * 30) % height);
-      const size = 2 + Math.sin(seed + currentTime * 3) * 1.5;
-      const alpha = 0.3 + Math.sin(seed + currentTime * 2) * 0.3;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    
+    // Cycle through particles
+    const idx = Math.floor(currentTime / 8) % this.particleVideos.length;
+    const video = this.particleVideos[idx];
+    
+    if (video && video.readyState >= 2) {
+      ctx.globalAlpha = 0.5;
       
-      ctx.fillStyle = this.hexToRgba(palette.accent, alpha);
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
+      // Draw FULLSCREEN
+      const vw = video.videoWidth || width;
+      const vh = video.videoHeight || height;
+      const scale = Math.max(width / vw, height / vh);
+      const sw = vw * scale;
+      const sh = vh * scale;
+      const sx = (width - sw) / 2;
+      const sy = (height - sh) / 2;
+      
+      ctx.drawImage(video, sx, sy, sw, sh);
     }
     
     ctx.restore();
   }
 
   /**
-   * Draw light leak overlay
+   * Draw REAL textures FULLSCREEN
    */
-  private drawLightLeak(
+  private drawTextures(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
-    currentTime: number,
-    palette: typeof STYLE_PALETTES.traditional
+    currentTime: number
   ): void {
+    if (this.textureVideos.length === 0) return;
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    
+    const video = this.textureVideos[0]; // Use first texture consistently
+    
+    if (video && video.readyState >= 2) {
+      ctx.globalAlpha = 0.2;
+      
+      // Draw FULLSCREEN
+      const vw = video.videoWidth || width;
+      const vh = video.videoHeight || height;
+      const scale = Math.max(width / vw, height / vh);
+      const sw = vw * scale;
+      const sh = vh * scale;
+      const sx = (width - sw) / 2;
+      const sy = (height - sh) / 2;
+      
+      ctx.drawImage(video, sx, sy, sw, sh);
+    }
+    
+    ctx.restore();
+  }
+
+  /**
+   * Draw REAL lens flares
+   */
+  private drawLensFlares(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    currentTime: number
+  ): void {
+    if (this.lensFlareImages.length === 0) return;
+    
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     
-    // Animated light leak from corner
-    const leakX = width * 0.85 + Math.sin(currentTime * 0.5) * 50;
-    const leakY = height * 0.15 + Math.cos(currentTime * 0.3) * 30;
-    const leakRadius = 200 + Math.sin(currentTime) * 50;
+    // Main flare at top right
+    const flareIdx = Math.floor(currentTime / 5) % this.lensFlareImages.length;
+    const flare = this.lensFlareImages[flareIdx];
     
-    const leakGradient = ctx.createRadialGradient(
-      leakX, leakY, 0,
-      leakX, leakY, leakRadius
+    const pulseScale = 1 + Math.sin(currentTime * 2) * 0.15;
+    ctx.globalAlpha = 0.6 + Math.sin(currentTime * 1.5) * 0.2;
+    
+    const flareSize = height * 0.25 * pulseScale;
+    const offsetX = Math.sin(currentTime * 0.3) * 30;
+    const offsetY = Math.cos(currentTime * 0.2) * 20;
+    
+    // Top-right flare
+    ctx.drawImage(
+      flare,
+      width * 0.7 - flareSize / 2 + offsetX,
+      height * 0.1 - flareSize / 2 + offsetY,
+      flareSize,
+      flareSize
     );
-    leakGradient.addColorStop(0, this.hexToRgba(palette.accent, 0.4));
-    leakGradient.addColorStop(0.5, this.hexToRgba(palette.accent, 0.1));
-    leakGradient.addColorStop(1, 'transparent');
     
-    ctx.fillStyle = leakGradient;
-    ctx.fillRect(0, 0, width, height);
+    // Secondary smaller flare at bottom-left
+    if (this.lensFlareImages.length > 1) {
+      const flare2 = this.lensFlareImages[(flareIdx + 1) % this.lensFlareImages.length];
+      ctx.globalAlpha = 0.4;
+      const flare2Size = flareSize * 0.6;
+      ctx.drawImage(
+        flare2,
+        width * 0.2 - flare2Size / 2 - offsetX,
+        height * 0.75 - flare2Size / 2 - offsetY,
+        flare2Size,
+        flare2Size
+      );
+    }
     
     ctx.restore();
   }
 
   /**
-   * Draw beat pulse effect
+   * Draw transitions at segment boundaries
    */
-  private drawBeatPulse(
+  private drawTransitions(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
     currentTime: number,
-    palette: typeof STYLE_PALETTES.traditional
+    totalDuration: number
   ): void {
-    // Simulate beat detection with sine wave
-    const beatIntensity = Math.pow(Math.sin(currentTime * 4) * 0.5 + 0.5, 4);
+    if (this.transitionVideos.length === 0) return;
     
-    if (beatIntensity > 0.5) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
+    // Transitions at every 10 seconds
+    const segmentDuration = 10;
+    const timeInSegment = currentTime % segmentDuration;
+    
+    // Show transition in last 1.5 seconds of each segment
+    if (timeInSegment > segmentDuration - 1.5) {
+      const transitionIdx = Math.floor(currentTime / segmentDuration) % this.transitionVideos.length;
+      const video = this.transitionVideos[transitionIdx];
       
-      const pulseGradient = ctx.createRadialGradient(
-        width * 0.5, height * 0.5, 0,
-        width * 0.5, height * 0.5, width * 0.6
-      );
-      pulseGradient.addColorStop(0, this.hexToRgba(palette.accent, beatIntensity * 0.2));
-      pulseGradient.addColorStop(1, 'transparent');
-      
-      ctx.fillStyle = pulseGradient;
-      ctx.fillRect(0, 0, width, height);
-      
-      ctx.restore();
+      if (video && video.readyState >= 2) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        
+        const transitionProgress = (timeInSegment - (segmentDuration - 1.5)) / 1.5;
+        ctx.globalAlpha = transitionProgress * 0.9;
+        
+        // Draw FULLSCREEN
+        const vw = video.videoWidth || width;
+        const vh = video.videoHeight || height;
+        const scale = Math.max(width / vw, height / vh);
+        const sw = vw * scale;
+        const sh = vh * scale;
+        const sx = (width - sw) / 2;
+        const sy = (height - sh) / 2;
+        
+        ctx.drawImage(video, sx, sy, sw, sh);
+        ctx.restore();
+      }
     }
   }
 
   /**
-   * Draw title text
+   * Draw title overlay
    */
   private drawTitle(
     ctx: CanvasRenderingContext2D,
@@ -1208,28 +1096,27 @@ export class GriotDigitalEngine {
     ctx.textAlign = 'center';
     
     // Main title
-    ctx.font = 'bold 48px system-ui, -apple-system, sans-serif';
+    ctx.font = 'bold 72px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = '#FFD700';
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 4;
-    ctx.strokeText(this.storyTitle, width / 2, height * 0.15);
-    ctx.fillText(this.storyTitle, width / 2, height * 0.15);
+    ctx.strokeText(this.storyTitle, width / 2, height * 0.12);
+    ctx.fillText(this.storyTitle, width / 2, height * 0.12);
     
     // Subtitle
-    ctx.font = '28px system-ui, -apple-system, sans-serif';
+    ctx.font = '36px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.strokeStyle = '#000000';
     ctx.lineWidth = 2;
-    ctx.strokeText('Griot Digital', width / 2, height * 0.22);
-    ctx.fillText('Griot Digital', width / 2, height * 0.22);
+    ctx.strokeText('Griot Digital', width / 2, height * 0.17);
+    ctx.fillText('Griot Digital', width / 2, height * 0.17);
     
     ctx.restore();
   }
 
   /**
-   * Draw segment indicator
+   * Draw progress indicator
    */
-  private drawSegmentIndicator(
+  private drawProgressIndicator(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
@@ -1237,11 +1124,10 @@ export class GriotDigitalEngine {
   ): void {
     ctx.save();
     
-    // Progress bar at bottom
     const barWidth = width * 0.8;
     const barHeight = 4;
     const barX = (width - barWidth) / 2;
-    const barY = height - 30;
+    const barY = height - 50;
     
     // Background
     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
@@ -1255,453 +1141,24 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Convert hex color to rgba string
-   */
-  private hexToRgba(hex: number | string, alpha: number): string {
-    const hexNum = typeof hex === 'string' ? parseInt(hex.replace('#', ''), 16) : hex;
-    const r = (hexNum >> 16) & 255;
-    const g = (hexNum >> 8) & 255;
-    const b = hexNum & 255;
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-
-  /**
-   * Setup the 3D scene based on style
-   */
-  private async setupScene(style: string): Promise<void> {
-    if (!this.scene) return;
-
-    // Clear existing objects
-    while (this.scene.children.length > 0) {
-      this.scene.remove(this.scene.children[0]);
-    }
-
-    const palette = STYLE_PALETTES[style as keyof typeof STYLE_PALETTES] || STYLE_PALETTES.traditional;
-
-    // Try to add loaded models, or use fallbacks
-    const griotModel = this.models.get('model-001.glb');
-    if (griotModel) {
-      griotModel.position.set(0, 0, 0);
-      griotModel.scale.setScalar(1);
-      this.scene.add(griotModel);
-      this.mixer = new THREE.AnimationMixer(griotModel);
-    } else {
-      // Add fallback griot character
-      const fallbackGriot = createGriotCharacter(style);
-      this.scene.add(fallbackGriot);
-    }
-
-    // Add environment
-    const envModel = this.models.get('model-002.glb');
-    if (envModel) {
-      envModel.position.set(0, -0.5, -3);
-      envModel.scale.setScalar(2);
-      this.scene.add(envModel);
-    } else {
-      // Add fallback village scene
-      const fallbackVillage = createVillageScene(style);
-      this.scene.add(fallbackVillage);
-    }
-
-    // Add sky
-    const skyModel = this.models.get('model-004.glb');
-    if (skyModel) {
-      skyModel.scale.setScalar(50);
-      this.scene.add(skyModel);
-    } else {
-      // Add fallback sky dome
-      const fallbackSky = createSkyDome(style);
-      this.scene.add(fallbackSky);
-    }
-
-    // Add particles
-    this.fallbackParticles = createParticleSystem(style);
-    this.scene.add(this.fallbackParticles);
-
-    // Apply cinematic lighting
-    this.assetLoader.applyLighting(this.scene, 'cinematic');
-
-    // Style-specific fog
-    this.scene.fog = new THREE.FogExp2(palette.fog, 0.015);
-  }
-
-  /**
-   * Update timeline based on current time
-   */
-  private updateTimeline(currentTime: number): void {
-    const segmentIndex = this.timeline.findIndex(
-      s => currentTime >= s.startTime && currentTime < s.endTime
-    );
-
-    if (segmentIndex !== this.currentSegment && segmentIndex >= 0) {
-      this.currentSegment = segmentIndex;
-    }
-
-    const segment = this.timeline[segmentIndex];
-    if (!segment || !this.camera) return;
-
-    // Update camera animation
-    const anim = segment.cameraAnimation;
-    const progress = (currentTime - segment.startTime) / (segment.endTime - segment.startTime);
-    const easedProgress = this.applyEasing(Math.min(1, Math.max(0, progress)), anim.easing);
-    
-    this.camera.position.lerpVectors(anim.startPosition, anim.endPosition, easedProgress);
-    const target = new THREE.Vector3().lerpVectors(anim.startTarget, anim.endTarget, easedProgress);
-    this.camera.lookAt(target);
-
-    // Update fallback particles
-    if (this.fallbackParticles) {
-      updateParticles(this.fallbackParticles, 1 / RENDER_CONFIG.fps);
-    }
-  }
-
-  /**
-   * Create timeline from story analysis
-   */
-  private async createTimelineFromStory(
-    story: StoryStructure,
-    audio: AudioFile
-  ): Promise<TimelineSegment[]> {
-    const timeline: TimelineSegment[] = [];
-    
-    let beats: BeatTimestamp[];
-    try {
-      if (this.audioEngine.hasBuffer()) {
-        beats = this.audioEngine.analyzeBeats();
-      } else {
-        beats = this.audioEngine.getDefaultBeats(audio.duration || 30);
-      }
-    } catch (error) {
-      beats = this.audioEngine.getDefaultBeats(audio.duration || 30);
-    }
-
-    for (let i = 0; i < story.segments.length; i++) {
-      const segment = story.segments[i];
-      const segmentBeats = beats.filter(
-        b => b.time >= segment.startTime && b.time <= segment.endTime
-      );
-
-      const cameraAnimation = this.getCameraAnimationForSegmentType(
-        segment.type,
-        i,
-        story.segments.length
-      );
-
-      const effects = this.getEffectsForSegment(segment, segmentBeats);
-
-      const textOverlays: TextOverlay[] = [];
-      if (i === 0) {
-        textOverlays.push({
-          text: story.title,
-          fontId: 'font-001.ttf',
-          position: { x: 0.5, y: 0.2 },
-          size: 48,
-          color: '#ffffff',
-          animation: 'fadeIn',
-          duration: 3,
-          delay: 0.5
-        });
-      }
-
-      timeline.push({
-        index: i,
-        startTime: segment.startTime,
-        endTime: segment.endTime,
-        type: segment.type,
-        sceneIndex: this.getSceneIndexForSegmentType(segment.type),
-        cameraAnimation,
-        effects,
-        characterAnimations: [{
-          characterId: 'griot',
-          animationName: this.getAnimationForEmotion(segment.emotion),
-          startTime: segment.startTime,
-          duration: segment.endTime - segment.startTime,
-          blendWeight: 1,
-          lipSync: true
-        }],
-        textOverlays,
-        audioCues: this.getAudioCuesForSegment(segment, i),
-        emotion: segment.emotion
-      });
-    }
-
-    return timeline;
-  }
-
-  /**
-   * Create default story structure when AI analysis fails
-   */
-  private createDefaultStoryStructure(duration: number): StoryStructure {
-    const segmentDuration = duration / 4;
-    return {
-      title: 'Conte Digital',
-      summary: 'Conte généré automatiquement',
-      estimatedDuration: duration,
-      confidence: 70,
-      suggestedStyle: 'traditional',
-      emotionalArc: [],
-      segments: [
-        { index: 0, type: 'intro', startTime: 0, endTime: segmentDuration, emotion: 'neutral', text: '', visualSuggestions: [] },
-        { index: 1, type: 'development', startTime: segmentDuration, endTime: segmentDuration * 2, emotion: 'contemplative', text: '', visualSuggestions: [] },
-        { index: 2, type: 'climax', startTime: segmentDuration * 2, endTime: segmentDuration * 3, emotion: 'intense', text: '', visualSuggestions: [] },
-        { index: 3, type: 'resolution', startTime: segmentDuration * 3, endTime: duration, emotion: 'happy', text: '', visualSuggestions: [] }
-      ],
-      keyMoments: [],
-      language: 'french',
-      themes: ['storytelling']
-    };
-  }
-
-  /**
-   * Create branching points for interactive stories
-   */
-  private async createBranchingPoints(story: StoryStructure): Promise<BranchPoint[]> {
-    const branches: BranchPoint[] = [];
-    
-    const keyMoments = story.keyMoments.filter(
-      m => m.type === 'transition' || m.type === 'reveal'
-    ).slice(0, 3);
-
-    for (let i = 0; i < keyMoments.length; i++) {
-      const moment = keyMoments[i];
-      
-      branches.push({
-        id: `branch-${i}`,
-        timestamp: moment.time,
-        prompt: `Que va-t-il se passer ensuite?`,
-        choices: [
-          {
-            id: 'choice-a',
-            label: 'Continuer',
-            labelBa: 'Tɔ́n kpɔ́',
-            icon: '➡️',
-            targetSegment: i + 1
-          },
-          {
-            id: 'choice-b',
-            label: 'Chemin alternatif',
-            labelBa: 'Sìrà gòdò',
-            icon: '🔄',
-            targetSegment: Math.min(i + 2, story.segments.length - 1)
-          }
-        ],
-        defaultChoice: 'choice-a',
-        timeout: 5
-      });
-    }
-
-    return branches;
-  }
-
-  /**
    * Generate thumbnail from current scene
    */
   private async generateThumbnail(): Promise<Blob> {
-    const canvas = this.canvas2D;
-    if (!canvas) {
-      return new Blob();
-    }
-
-    // Render a frame at 1 second
-    if (this.use2DFallback) {
-      this.draw2DFrame(1, 30);
-    } else if (this.renderer && this.scene && this.camera) {
-      this.render3DFrame(1);
-    }
+    if (!this.canvas) return new Blob();
+    
+    // Render a frame at 1 second for thumbnail
+    this.drawFrame(1, 30);
     
     return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
+      this.canvas!.toBlob((blob) => {
         resolve(blob || new Blob());
       }, 'image/jpeg', 0.9);
     });
   }
 
-  // ============================================================================
-  // UTILITY METHODS
-  // ============================================================================
-
-  private getCameraAnimationForSegmentType(
-    type: string,
-    index: number,
-    totalSegments: number
-  ): CameraAnimation {
-    const basePosition = new THREE.Vector3(0, 1.6, 5);
-    const targetPosition = new THREE.Vector3(0, 1.2, 3);
-    
-    switch (type) {
-      case 'intro':
-        return {
-          type: 'dolly',
-          startPosition: new THREE.Vector3(0, 2, 8),
-          endPosition: basePosition,
-          startTarget: new THREE.Vector3(0, 1, 0),
-          endTarget: new THREE.Vector3(0, 1, 0),
-          easing: 'easeOut'
-        };
-      case 'climax':
-        return {
-          type: 'orbit',
-          startPosition: basePosition,
-          endPosition: new THREE.Vector3(-2, 1.6, 4),
-          startTarget: new THREE.Vector3(0, 1, 0),
-          endTarget: new THREE.Vector3(0, 1.2, 0),
-          easing: 'easeInOut'
-        };
-      case 'resolution':
-        return {
-          type: 'crane',
-          startPosition: targetPosition,
-          endPosition: new THREE.Vector3(0, 3, 6),
-          startTarget: new THREE.Vector3(0, 1, 0),
-          endTarget: new THREE.Vector3(0, 0, 0),
-          easing: 'easeIn'
-        };
-      default:
-        return {
-          type: 'static',
-          startPosition: basePosition,
-          endPosition: basePosition.clone().add(new THREE.Vector3(0.5, 0, -0.5)),
-          startTarget: new THREE.Vector3(0, 1, 0),
-          endTarget: new THREE.Vector3(0, 1, 0),
-          easing: 'linear'
-        };
-    }
-  }
-
-  private getEffectsForSegment(
-    segment: { type: string; emotion: string },
-    beats: BeatTimestamp[]
-  ): SegmentEffect[] {
-    const effects: SegmentEffect[] = [];
-
-    effects.push({
-      type: 'particles',
-      assetId: 'particle-001.webm',
-      trigger: 'start',
-      intensity: 0.5,
-      position: new THREE.Vector3(0, 2, -1)
-    });
-
-    if (beats.length > 0) {
-      effects.push({
-        type: 'lensFlare',
-        assetId: 'flare-015.png',
-        trigger: 'beat',
-        intensity: 0.7
-      });
-    }
-
-    switch (segment.emotion) {
-      case 'intense':
-      case 'dramatic':
-        effects.push({
-          type: 'lightLeak',
-          assetId: 'leak-015.webm',
-          trigger: 'start',
-          intensity: 0.8
-        });
-        break;
-      case 'mystical':
-      case 'magical':
-        effects.push({
-          type: 'particles',
-          assetId: 'particle-012.webm',
-          trigger: 'start',
-          intensity: 0.9
-        });
-        break;
-    }
-
-    return effects;
-  }
-
-  private getSceneIndexForSegmentType(type: string): number {
-    switch (type) {
-      case 'intro': return 0;
-      case 'development': return 1;
-      case 'climax': return 2;
-      case 'resolution': return 3;
-      default: return 0;
-    }
-  }
-
-  private getAnimationForEmotion(emotion: string): string {
-    const emotionToAnimation: Record<string, string> = {
-      'neutral': 'idle',
-      'happy': 'gesture_happy',
-      'sad': 'gesture_sad',
-      'intense': 'gesture_dramatic',
-      'excited': 'gesture_excited',
-      'contemplative': 'gesture_thinking',
-      'mystical': 'gesture_mystical'
-    };
-    return emotionToAnimation[emotion] || 'idle';
-  }
-
-  private getAudioCuesForSegment(
-    segment: { type: string },
-    index: number
-  ): AudioCue[] {
-    const cues: AudioCue[] = [];
-
-    if (index === 0) {
-      cues.push({
-        type: 'music',
-        assetId: 'audio-001.mp3',
-        volume: 0.3,
-        fadeIn: 2
-      });
-    }
-
-    if (segment.type === 'climax') {
-      cues.push({
-        type: 'music',
-        assetId: 'audio-012.mp3',
-        volume: 0.5,
-        fadeIn: 1
-      });
-    }
-
-    return cues;
-  }
-
-  private applyEasing(t: number, easing: string): number {
-    switch (easing) {
-      case 'easeIn':
-        return t * t;
-      case 'easeOut':
-        return 1 - (1 - t) * (1 - t);
-      case 'easeInOut':
-        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      default:
-        return t;
-    }
-  }
-
-  private async fileToAudioFile(file: File): Promise<AudioFile> {
-    const data = await this.fileToBase64(file);
-    const duration = await this.getAudioDuration(file);
-    
-    return {
-      data,
-      mimeType: file.type,
-      duration,
-      name: file.name
-    };
-  }
-
-  private async fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result.split(',')[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
+  /**
+   * Get audio duration from file
+   */
   private async getAudioDuration(file: File): Promise<number> {
     return new Promise((resolve) => {
       const audio = new Audio();
@@ -1715,67 +1172,32 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Set callback for interactive branch decisions
-   */
-  public setBranchCallback(
-    callback: (branch: BranchPoint) => Promise<string>
-  ): void {
-    this.onBranchCallback = callback;
-  }
-
-  /**
-   * Get current playback state
-   */
-  public getPlaybackState(): {
-    isPlaying: boolean;
-    currentTime: number;
-    currentSegment: number;
-    totalSegments: number;
-  } {
-    return {
-      isPlaying: this.isPlaying,
-      currentTime: this.clock.getElapsedTime(),
-      currentSegment: this.currentSegment,
-      totalSegments: this.timeline.length
-    };
-  }
-
-  /**
    * Cleanup resources
    */
   public dispose(): void {
-    this.isPlaying = false;
+    // Cleanup videos
+    this.lightLeakVideos.forEach(v => { v.pause(); v.src = ''; });
+    this.particleVideos.forEach(v => { v.pause(); v.src = ''; });
+    this.textureVideos.forEach(v => { v.pause(); v.src = ''; });
+    this.transitionVideos.forEach(v => { v.pause(); v.src = ''; });
     
-    // Dispose Three.js resources
-    this.models.forEach((model) => {
-      model.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          child.geometry.dispose();
-          if (Array.isArray(child.material)) {
-            child.material.forEach(m => m.dispose());
-          } else {
-            child.material.dispose();
-          }
-        }
-      });
-    });
+    if (this.userVideo) {
+      this.userVideo.pause();
+      URL.revokeObjectURL(this.userVideo.src);
+    }
     
-    this.models.clear();
-    this.animations.clear();
+    this.lightLeakVideos = [];
+    this.particleVideos = [];
+    this.textureVideos = [];
+    this.transitionVideos = [];
+    this.lensFlareImages = [];
+    this.userPhotos = [];
+    this.userVideo = null;
+    this.userAudioBlob = null;
     
-    // Dispose particle manager
-    this.particleManager.dispose();
-    
-    // Dispose asset loader
-    this.assetLoader.dispose();
-    
-    // Dispose renderer
-    this.renderer?.dispose();
-    this.renderer = null;
-    this.scene = null;
-    this.camera = null;
-    this.canvas2D = null;
-    this.ctx2D = null;
+    this.canvas = null;
+    this.ctx = null;
+    this.assetsLoaded = false;
   }
 }
 
