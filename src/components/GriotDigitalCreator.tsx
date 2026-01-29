@@ -240,8 +240,8 @@ export const GriotDigitalCreator: React.FC = () => {
     setState(prev => ({ ...prev, step: 'rendering', renderProgress: 0 }));
 
     try {
-      // Initialize engine
-      await engineRef.current.initialize(canvasRef.current);
+      // Initialize engine (creates its own internal canvas)
+      await engineRef.current.initialize();
       
       // Load assets
       await engineRef.current.loadAssets((progress, asset) => {
