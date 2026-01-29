@@ -303,7 +303,7 @@ export const GriotDigitalCreator: React.FC = () => {
     const url = URL.createObjectURL(state.result.video);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `griot-digital-${Date.now()}.webm`;
+    a.download = `griot-digital-${Date.now()}.mp4`;
     a.click();
     URL.revokeObjectURL(url);
   }, [state.result]);
@@ -317,7 +317,7 @@ export const GriotDigitalCreator: React.FC = () => {
         await navigator.share({
           title: state.result.metadata.title,
           text: 'Découvrez mon conte 3D créé avec Griot Digital!',
-          files: [new File([state.result.video], 'griot-story.webm', { type: 'video/webm' })]
+          files: [new File([state.result.video], 'griot-story.mp4', { type: 'video/mp4' })]
         });
       } catch (error) {
         console.log('Share cancelled');
@@ -908,7 +908,7 @@ export const GriotDigitalCreator: React.FC = () => {
       </div>
 
       {/* Hidden canvas for rendering */}
-      <canvas ref={canvasRef} className="hidden" width={1080} height={1920} />
+      <canvas ref={canvasRef} className="hidden" width={1280} height={720} />
     </motion.div>
   );
 
