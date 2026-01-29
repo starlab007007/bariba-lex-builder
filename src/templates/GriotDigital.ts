@@ -309,6 +309,16 @@ export class GriotDigitalEngine {
   private animations: Map<string, THREE.AnimationClip[]> = new Map();
   private mixer: THREE.AnimationMixer | null = null;
   
+  // Premium VFX assets from CDN
+  private premiumEffects = {
+    lightLeaks: [] as HTMLVideoElement[],
+    particles: [] as HTMLVideoElement[],
+    textures: [] as HTMLVideoElement[],
+    lensFlares: [] as HTMLImageElement[],
+    transitions: [] as HTMLVideoElement[]
+  };
+  private premiumEffectsLoaded: boolean = false;
+  
   // Timeline
   private timeline: TimelineSegment[] = [];
   private currentSegment: number = 0;
@@ -322,6 +332,9 @@ export class GriotDigitalEngine {
   private currentStyle: string = 'traditional';
   private storyTitle: string = '';
   private audioBlob: Blob | null = null;
+
+  // CDN base URL for Supabase Storage
+  private readonly cdnBase = 'https://pmrhezgnyffiskbaiudb.supabase.co/storage/v1/object/public/envato-assets';
 
   constructor() {
     this.assetLoader = new AssetLoader3D();
@@ -353,16 +366,25 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Load all required assets for the template
+   * Load all required assets for the template including premium VFX from CDN
    */
   public async loadAssets(
     onProgress?: (progress: number, asset: string) => void
   ): Promise<void> {
-    console.log('[GriotDigital] Loading assets...');
+    console.log('[GriotDigital] Loading assets including premium VFX from CDN...');
     
+    onProgress?.(0.1, 'Loading premium VFX...');
+    
+    // Load premium VFX assets from CDN (non-blocking)
+    this.loadPremiumEffects().catch(e => {
+      console.warn('[GriotDigital] Premium VFX loading failed:', e);
+    });
+    
+    onProgress?.(0.5, 'VFX loading started...');
+    
+    // For 2D mode, we rely on premium effects only
     if (this.use2DFallback) {
-      // For 2D fallback, we don't need to load 3D models
-      onProgress?.(1, '2D fallback mode - no models needed');
+      onProgress?.(1, 'Premium VFX assets loading...');
       return;
     }
 
@@ -378,33 +400,171 @@ export class GriotDigitalEngine {
           this.models.set(modelId, model);
         }
         loaded++;
-        onProgress?.(loaded / totalAssets, modelId);
+        onProgress?.(0.5 + (loaded / totalAssets) * 0.5, modelId);
       } catch (error) {
         console.warn(`[GriotDigital] Failed to load model ${modelId}, will use fallback`);
         loaded++;
-        onProgress?.(loaded / totalAssets, modelId);
+        onProgress?.(0.5 + (loaded / totalAssets) * 0.5, modelId);
       }
     }
 
     // Check if we need to switch to 2D fallback
     if (this.models.size === 0) {
-      console.log('[GriotDigital] No models loaded, switching to 2D fallback');
+      console.log('[GriotDigital] No models loaded, using 2D + premium VFX');
       this.use2DFallback = true;
     }
 
-    // Load particle effects
+    // Load particle effects for 3D mode
     for (const particleId of assets.particles) {
       try {
         await this.particleManager.loadParticleEffect(particleId);
         loaded++;
-        onProgress?.(loaded / totalAssets, particleId);
+        onProgress?.(0.5 + (loaded / totalAssets) * 0.5, particleId);
       } catch (error) {
         console.warn(`[GriotDigital] Failed to load particle ${particleId}`);
         loaded++;
       }
     }
     
-    console.log(`[GriotDigital] Assets loaded. 2D fallback: ${this.use2DFallback}`);
+    console.log(`[GriotDigital] Assets loaded. 2D fallback: ${this.use2DFallback}, Premium VFX: loading...`);
+  }
+
+  /**
+   * Load premium visual effects from Supabase CDN
+   * (light leaks, particles WebM, textures, lens flares, transitions)
+   */
+  private async loadPremiumEffects(): Promise<void> {
+    console.log('[GriotDigital] Loading premium VFX from CDN...');
+    
+    // Helper to load video element with timeout
+    const loadVideo = (url: string): Promise<HTMLVideoElement | null> => {
+      return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.crossOrigin = 'anonymous';
+        video.loop = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'auto';
+        
+        const timeout = setTimeout(() => {
+          console.warn('[GriotDigital] Video timeout:', url.slice(-40));
+          resolve(null);
+        }, 8000);
+        
+        video.onloadeddata = () => {
+          clearTimeout(timeout);
+          video.play().catch(() => {});
+          console.log('[GriotDigital] ✅ Loaded VFX:', url.slice(-40));
+          resolve(video);
+        };
+        
+        video.onerror = () => {
+          clearTimeout(timeout);
+          console.warn('[GriotDigital] ⚠️ Failed:', url.slice(-40));
+          resolve(null);
+        };
+        
+        video.src = url;
+      });
+    };
+    
+    // Helper to load image element
+    const loadImage = (url: string): Promise<HTMLImageElement | null> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        const timeout = setTimeout(() => resolve(null), 5000);
+        
+        img.onload = () => {
+          clearTimeout(timeout);
+          console.log('[GriotDigital] ✅ Loaded lens flare:', url.slice(-30));
+          resolve(img);
+        };
+        
+        img.onerror = () => {
+          clearTimeout(timeout);
+          resolve(null);
+        };
+        
+        img.src = url;
+      });
+    };
+    
+    // Light leaks from 3d-models folder (leak-001 to leak-022.webm)
+    const lightLeakIds = ['001', '003', '005', '007', '009', '011', '015', '018'];
+    const lightLeakPromises = lightLeakIds.map(num => 
+      loadVideo(`${this.cdnBase}/3d-models/leak-${num}.webm`)
+    );
+    
+    // Particle effects (use leak files as particles)
+    const particleIds = ['002', '004', '008', '012', '016', '020'];
+    const particlePromises = particleIds.map(num =>
+      loadVideo(`${this.cdnBase}/3d-models/leak-${num}.webm`)
+    );
+    
+    // Texture overlays (video textures for grain/film look)
+    const textureIds = ['008', '015', '025', '050'];
+    const texturePromises = textureIds.map(num =>
+      loadVideo(`${this.cdnBase}/textures/video-${num}.mp4`)
+    );
+    
+    // Transitions
+    const transitionPromises = [
+      loadVideo(`${this.cdnBase}/transitions/Transition-001.mp4`),
+      loadVideo(`${this.cdnBase}/transitions/Transition-05.mp4`)
+    ];
+    
+    // Lens flares (PNG from local assets)
+    const lensFlareFiles = ['flare-015.png', 'flare-032.png', 'flare-050.png', 'flare-088.png', 'flare-125.png'];
+    const lensFlarePromises = lensFlareFiles.map(filename =>
+      loadImage(`/assets/envato/lens-flare/${filename}`)
+    );
+    
+    try {
+      const [lightLeaks, particles, textures, transitions, lensFlares] = await Promise.all([
+        Promise.all(lightLeakPromises),
+        Promise.all(particlePromises),
+        Promise.all(texturePromises),
+        Promise.all(transitionPromises),
+        Promise.all(lensFlarePromises)
+      ]);
+      
+      this.premiumEffects.lightLeaks = lightLeaks.filter((v): v is HTMLVideoElement => v !== null);
+      this.premiumEffects.particles = particles.filter((v): v is HTMLVideoElement => v !== null);
+      this.premiumEffects.textures = textures.filter((v): v is HTMLVideoElement => v !== null);
+      this.premiumEffects.transitions = transitions.filter((v): v is HTMLVideoElement => v !== null);
+      this.premiumEffects.lensFlares = lensFlares.filter((v): v is HTMLImageElement => v !== null);
+      
+      this.premiumEffectsLoaded = true;
+      
+      console.log('[GriotDigital] 🎬 Premium VFX loaded:', {
+        lightLeaks: this.premiumEffects.lightLeaks.length,
+        particles: this.premiumEffects.particles.length,
+        textures: this.premiumEffects.textures.length,
+        transitions: this.premiumEffects.transitions.length,
+        lensFlares: this.premiumEffects.lensFlares.length
+      });
+    } catch (e) {
+      console.warn('[GriotDigital] Premium VFX loading failed:', e);
+    }
+  }
+
+  /**
+   * Wait for premium effects to load (with timeout)
+   */
+  private async waitForPremiumEffects(timeoutMs: number = 5000): Promise<void> {
+    const startTime = Date.now();
+    
+    while (!this.premiumEffectsLoaded && Date.now() - startTime < timeoutMs) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    
+    if (this.premiumEffectsLoaded) {
+      console.log('[GriotDigital] ✅ Premium VFX ready for rendering');
+    } else {
+      console.warn('[GriotDigital] ⚠️ Premium VFX timeout, will use procedural fallback');
+    }
   }
 
   /**
@@ -434,6 +594,10 @@ export class GriotDigitalEngine {
     } catch (error) {
       console.warn('[GriotDigital] Audio buffer load failed, will use fallback beats:', error);
     }
+    
+    // 1c. Wait for premium VFX to load (max 5 seconds)
+    onProgress?.(0.10, 'Loading premium VFX assets...');
+    await this.waitForPremiumEffects(5000);
     
     // 2. Analyze story structure (with fallback)
     let storyAnalysis: StoryStructure;
@@ -467,7 +631,7 @@ export class GriotDigitalEngine {
       this.branchPoints = await this.createBranchingPoints(storyAnalysis);
     }
 
-    onProgress?.(0.35, 'Rendering video...');
+    onProgress?.(0.35, 'Rendering video with premium VFX...');
 
     // 6. Render the video using reliable Canvas capture
     const totalDuration = Math.min(audioFile.duration || 30, RENDER_CONFIG.maxDuration);
@@ -627,7 +791,7 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Draw a 2D fallback frame (procedural animation)
+   * Draw a 2D frame with REAL assets from CDN (premium VFX)
    */
   private draw2DFrame(currentTime: number, totalDuration: number): void {
     const ctx = this.ctx2D;
@@ -660,11 +824,24 @@ export class GriotDigitalEngine {
     // Draw animated griot character
     this.drawGriotCharacter(ctx, width, height, currentTime, palette);
     
-    // Draw floating particles
-    this.drawParticles(ctx, width, height, currentTime, palette);
+    // === PREMIUM VFX FROM CDN ===
+    // Draw real light leak overlays from CDN videos
+    this.drawPremiumLightLeaks(ctx, width, height, currentTime);
     
-    // Draw light leak overlay
-    this.drawLightLeak(ctx, width, height, currentTime, palette);
+    // Draw real particle overlays from CDN videos
+    this.drawPremiumParticles(ctx, width, height, currentTime);
+    
+    // Draw real texture overlays from CDN videos
+    this.drawPremiumTextures(ctx, width, height, currentTime);
+    
+    // Draw real lens flares from PNG assets
+    this.drawPremiumLensFlares(ctx, width, height, currentTime, palette);
+    
+    // Fallback to procedural effects if premium not loaded
+    if (!this.premiumEffectsLoaded) {
+      this.drawParticles(ctx, width, height, currentTime, palette);
+      this.drawLightLeak(ctx, width, height, currentTime, palette);
+    }
     
     // Draw beat pulse
     this.drawBeatPulse(ctx, width, height, currentTime, palette);
@@ -676,6 +853,140 @@ export class GriotDigitalEngine {
     
     // Draw segment indicator
     this.drawSegmentIndicator(ctx, width, height, progress);
+  }
+
+  /**
+   * Draw premium light leaks from CDN WebM videos
+   */
+  private drawPremiumLightLeaks(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    currentTime: number
+  ): void {
+    if (!this.premiumEffectsLoaded || this.premiumEffects.lightLeaks.length === 0) return;
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    
+    // Cycle through light leaks based on time
+    const idx = Math.floor(currentTime / 8) % this.premiumEffects.lightLeaks.length;
+    const video = this.premiumEffects.lightLeaks[idx];
+    
+    if (video && video.readyState >= 2) {
+      ctx.globalAlpha = 0.35 + Math.sin(currentTime * 0.5) * 0.15;
+      ctx.drawImage(video, 0, 0, width, height);
+    }
+    
+    ctx.restore();
+  }
+
+  /**
+   * Draw premium particle overlays from CDN WebM videos
+   */
+  private drawPremiumParticles(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    currentTime: number
+  ): void {
+    if (!this.premiumEffectsLoaded || this.premiumEffects.particles.length === 0) return;
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter'; // Additive blend for glow
+    
+    // Cycle through particles
+    const idx = Math.floor(currentTime / 12) % this.premiumEffects.particles.length;
+    const video = this.premiumEffects.particles[idx];
+    
+    if (video && video.readyState >= 2) {
+      ctx.globalAlpha = 0.4;
+      ctx.drawImage(video, 0, 0, width, height);
+    }
+    
+    ctx.restore();
+  }
+
+  /**
+   * Draw premium texture overlays from CDN videos (film grain/texture)
+   */
+  private drawPremiumTextures(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    currentTime: number
+  ): void {
+    if (!this.premiumEffectsLoaded || this.premiumEffects.textures.length === 0) return;
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    
+    // Use first texture for consistent look
+    const video = this.premiumEffects.textures[0];
+    
+    if (video && video.readyState >= 2) {
+      ctx.globalAlpha = 0.18;
+      ctx.drawImage(video, 0, 0, width, height);
+    }
+    
+    ctx.restore();
+  }
+
+  /**
+   * Draw premium lens flares from PNG assets
+   */
+  private drawPremiumLensFlares(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    currentTime: number,
+    palette: typeof STYLE_PALETTES.traditional
+  ): void {
+    if (!this.premiumEffectsLoaded || this.premiumEffects.lensFlares.length === 0) return;
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    
+    // Cycle through lens flares based on segment time
+    const flareIdx = Math.floor(currentTime / 6) % this.premiumEffects.lensFlares.length;
+    const flare = this.premiumEffects.lensFlares[flareIdx];
+    
+    if (flare) {
+      ctx.globalAlpha = 0.5 + Math.sin(currentTime * 2) * 0.25;
+      
+      // Position based on style - storytelling style has flare at top-right
+      const flareX = width * 0.8;
+      const flareY = height * 0.18;
+      const flareSize = Math.min(width, height) * 0.35;
+      
+      // Subtle animation
+      const offsetX = Math.sin(currentTime * 0.3) * 20;
+      const offsetY = Math.cos(currentTime * 0.2) * 15;
+      
+      ctx.drawImage(
+        flare,
+        flareX - flareSize/2 + offsetX,
+        flareY - flareSize/2 + offsetY,
+        flareSize,
+        flareSize
+      );
+      
+      // Second smaller flare on opposite side
+      if (this.premiumEffects.lensFlares.length > 1) {
+        const flare2 = this.premiumEffects.lensFlares[(flareIdx + 1) % this.premiumEffects.lensFlares.length];
+        ctx.globalAlpha = 0.3 + Math.sin(currentTime * 1.5) * 0.15;
+        const flare2Size = flareSize * 0.6;
+        ctx.drawImage(
+          flare2,
+          width * 0.15 - flare2Size/2 - offsetX,
+          height * 0.7 - flare2Size/2 - offsetY,
+          flare2Size,
+          flare2Size
+        );
+      }
+    }
+    
+    ctx.restore();
   }
 
   /**
