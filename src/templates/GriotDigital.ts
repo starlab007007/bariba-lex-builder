@@ -11,7 +11,7 @@ import { aiServicesHub, StoryStructure, AudioFile, ImageFile } from '@/lib/AISer
 import { AssetLoader3D } from '@/lib/AssetLoader3D';
 import { ParticleSystemManager } from '@/lib/ParticleSystemManager';
 import { AudioSyncEngine, BeatTimestamp } from '@/lib/AudioSyncEngine';
-import { encodeVideo, captureCanvasFrames, encodeWithMediaRecorder, EncoderProgress } from '@/lib/VideoEncoder';
+// VideoEncoder imports kept for potential future FFmpeg upgrade
 import { 
   createGriotCharacter, 
   createVillageScene, 
@@ -331,57 +331,25 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Initialize the rendering context (3D or 2D fallback)
+   * Initialize the rendering context - ALWAYS use 2D Canvas for reliability
    */
-  public async initialize(canvas: HTMLCanvasElement): Promise<void> {
-    console.log('[GriotDigital] Initializing engine...');
+  public async initialize(canvas?: HTMLCanvasElement): Promise<void> {
+    console.log('[GriotDigital] Initializing engine (2D mode for reliability)...');
     
-    // Store canvas for 2D fallback
-    this.canvas2D = canvas;
+    // Create a fresh canvas to avoid context conflicts
+    this.canvas2D = document.createElement('canvas');
+    this.canvas2D.width = RENDER_CONFIG.width;
+    this.canvas2D.height = RENDER_CONFIG.height;
     
-    // Set canvas size to optimized 720p
-    canvas.width = RENDER_CONFIG.width;
-    canvas.height = RENDER_CONFIG.height;
+    // Always use 2D context for maximum reliability
+    this.ctx2D = this.canvas2D.getContext('2d', { willReadFrequently: true });
+    this.use2DFallback = true;
     
-    try {
-      // Try to initialize WebGL renderer
-      this.renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: true,
-        alpha: true,
-        preserveDrawingBuffer: true
-      });
-      this.renderer.setPixelRatio(1); // Fixed pixel ratio for consistent rendering
-      this.renderer.setSize(RENDER_CONFIG.width, RENDER_CONFIG.height);
-      this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1.2;
-
-      // Create scene
-      this.scene = new THREE.Scene();
-      this.scene.background = new THREE.Color(0x1a1a2e);
-      this.scene.fog = new THREE.FogExp2(0x1a1a2e, 0.02);
-
-      // Create camera for 16:9 aspect ratio
-      this.camera = new THREE.PerspectiveCamera(
-        45, 
-        RENDER_CONFIG.width / RENDER_CONFIG.height, 
-        0.1, 
-        1000
-      );
-      this.camera.position.set(0, 1.6, 5);
-      this.camera.lookAt(0, 1, 0);
-      
-      this.use2DFallback = false;
-      console.log('[GriotDigital] WebGL renderer initialized successfully');
-      
-    } catch (error) {
-      console.warn('[GriotDigital] WebGL init failed, using 2D fallback:', error);
-      this.use2DFallback = true;
-      this.ctx2D = canvas.getContext('2d');
+    if (!this.ctx2D) {
+      throw new Error('Failed to create 2D canvas context');
     }
+    
+    console.log('[GriotDigital] 2D Canvas initialized:', RENDER_CONFIG.width, 'x', RENDER_CONFIG.height);
   }
 
   /**
@@ -501,9 +469,9 @@ export class GriotDigitalEngine {
 
     onProgress?.(0.35, 'Rendering video...');
 
-    // 6. Render the video using FFmpeg pipeline
+    // 6. Render the video using reliable Canvas capture
     const totalDuration = Math.min(audioFile.duration || 30, RENDER_CONFIG.maxDuration);
-    const video = await this.renderVideoWithFFmpeg(totalDuration, onProgress);
+    const video = await this.renderVideoReliable(totalDuration, onProgress);
 
     onProgress?.(0.95, 'Generating thumbnail...');
 
@@ -529,93 +497,112 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Render video using FFmpeg pipeline (like Village Chronicle)
+   * Render video using reliable Canvas-based capture with MediaRecorder
+   * This avoids FFmpeg WASM loading issues that can cause hangs
    */
-  private async renderVideoWithFFmpeg(
+  private async renderVideoReliable(
     durationSeconds: number,
     onProgress?: RenderProgressCallback
   ): Promise<Blob> {
-    console.log(`[GriotDigital] Rendering ${durationSeconds}s @ ${RENDER_CONFIG.fps}fps (${this.use2DFallback ? '2D' : '3D'})`);
+    console.log(`[GriotDigital] Rendering ${durationSeconds}s @ ${RENDER_CONFIG.fps}fps (2D Canvas)`);
     
     const canvas = this.canvas2D!;
     const fps = RENDER_CONFIG.fps;
     const totalFrames = Math.ceil(durationSeconds * fps);
     
-    // Capture frames
-    const frames: Blob[] = [];
+    onProgress?.(0.40, 'Préparation du rendu...');
     
-    for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
-      const currentTime = frameIndex / fps;
-      
-      // Render frame (3D or 2D)
-      if (this.use2DFallback) {
-        this.draw2DFrame(currentTime, durationSeconds);
-      } else {
-        this.render3DFrame(currentTime);
-      }
-      
-      // Capture frame as PNG
-      const frameBlob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          (b) => b ? resolve(b) : reject(new Error('Frame capture failed')),
-          'image/png'
-        );
-      });
-      frames.push(frameBlob);
-      
-      // Progress update
-      if (frameIndex % 10 === 0) {
-        const progress = 0.35 + (frameIndex / totalFrames) * 0.5;
-        onProgress?.(progress, `Frame ${frameIndex + 1}/${totalFrames}`);
-      }
-    }
-    
-    console.log(`[GriotDigital] Captured ${frames.length} frames`);
-    
-    // Encode with FFmpeg
-    onProgress?.(0.85, 'Encoding MP4...');
-    
-    try {
-      const video = await encodeVideo(
-        frames,
-        this.audioBlob,
-        {
-          width: RENDER_CONFIG.width,
-          height: RENDER_CONFIG.height,
-          fps: RENDER_CONFIG.fps,
-          videoBitrate: RENDER_CONFIG.videoBitrate,
-          audioBitrate: RENDER_CONFIG.audioBitrate,
-          format: 'mp4'
-        },
-        (encoderProgress: EncoderProgress) => {
-          const p = 0.85 + encoderProgress.progress * 0.1;
-          onProgress?.(p, encoderProgress.message);
+    // Use MediaRecorder for reliable capture
+    return new Promise<Blob>((resolve, reject) => {
+      try {
+        const stream = canvas.captureStream(fps);
+        
+        // Add audio if available
+        if (this.audioBlob) {
+          this.addAudioToStream(stream, this.audioBlob);
         }
-      );
-      
-      console.log(`[GriotDigital] MP4 encoded: ${(video.size / 1024 / 1024).toFixed(2)} MB`);
-      return video;
-      
-    } catch (error) {
-      console.warn('[GriotDigital] FFmpeg failed, falling back to MediaRecorder:', error);
-      
-      // Fallback to MediaRecorder
-      return encodeWithMediaRecorder(
-        canvas,
-        this.audioBlob,
-        durationSeconds,
-        fps,
-        (time) => {
-          if (this.use2DFallback) {
-            this.draw2DFrame(time, durationSeconds);
-          } else {
-            this.render3DFrame(time);
+        
+        const chunks: Blob[] = [];
+        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
+          ? 'video/webm;codecs=vp9'
+          : 'video/webm';
+        
+        const recorder = new MediaRecorder(stream, {
+          mimeType,
+          videoBitsPerSecond: 4000000
+        });
+        
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+        
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          console.log(`[GriotDigital] Video recorded: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+          resolve(blob);
+        };
+        
+        recorder.onerror = (e) => {
+          console.error('[GriotDigital] MediaRecorder error:', e);
+          reject(e);
+        };
+        
+        recorder.start(100);
+        
+        let currentFrame = 0;
+        const frameInterval = 1000 / fps;
+        
+        const renderNextFrame = () => {
+          if (currentFrame >= totalFrames) {
+            recorder.stop();
+            return;
           }
-        },
-        (progress: EncoderProgress) => {
-          onProgress?.(0.85 + progress.progress * 0.1, progress.message);
-        }
-      );
+          
+          const currentTime = currentFrame / fps;
+          this.draw2DFrame(currentTime, durationSeconds);
+          currentFrame++;
+          
+          // Update progress
+          if (currentFrame % 5 === 0) {
+            const progress = 0.40 + (currentFrame / totalFrames) * 0.50;
+            onProgress?.(progress, `Frame ${currentFrame}/${totalFrames}`);
+          }
+          
+          setTimeout(renderNextFrame, frameInterval);
+        };
+        
+        // Start rendering
+        renderNextFrame();
+        
+      } catch (error) {
+        console.error('[GriotDigital] Render failed:', error);
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Add audio track to MediaStream
+   */
+  private addAudioToStream(stream: MediaStream, audioBlob: Blob): void {
+    try {
+      const audioContext = new AudioContext();
+      const audioElement = new Audio(URL.createObjectURL(audioBlob));
+      audioElement.volume = 0; // Silent in browser but captured
+      
+      const source = audioContext.createMediaElementSource(audioElement);
+      const destination = audioContext.createMediaStreamDestination();
+      source.connect(destination);
+      
+      destination.stream.getAudioTracks().forEach(track => {
+        stream.addTrack(track);
+      });
+      
+      audioElement.play().catch(() => {
+        console.warn('[GriotDigital] Audio autoplay blocked');
+      });
+    } catch (error) {
+      console.warn('[GriotDigital] Could not add audio to stream:', error);
     }
   }
 
