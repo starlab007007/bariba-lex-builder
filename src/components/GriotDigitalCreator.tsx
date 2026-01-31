@@ -163,10 +163,28 @@ export const GriotDigitalCreator: React.FC = () => {
   // Start audio recording
   const startRecording = useCallback(async () => {
     try {
+      if (typeof MediaRecorder === 'undefined') {
+        toast({
+          title: 'Enregistrement non supporté',
+          description: 'Votre navigateur ne supporte pas l\'enregistrement audio. Utilisez l\'import de fichier.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       recordedChunksRef.current = [];
+
+      const getAudioFileExtension = (mimeType: string): string => {
+        const t = (mimeType || '').toLowerCase();
+        if (t.includes('mp4')) return 'm4a';
+        if (t.includes('mpeg')) return 'mp3';
+        if (t.includes('ogg')) return 'ogg';
+        if (t.includes('wav')) return 'wav';
+        return 'webm';
+      };
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -175,8 +193,35 @@ export const GriotDigitalCreator: React.FC = () => {
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
-        const file = new File([blob], 'recorded-story.webm', { type: 'audio/webm' });
+        // IMPORTANT (Safari iOS): do NOT force audio/webm.
+        // Safari records as audio/mp4 by default; forcing webm breaks preview + downstream handling.
+        const ua = navigator.userAgent;
+        const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+
+        let detectedMimeType = mediaRecorder.mimeType || recordedChunksRef.current[0]?.type || '';
+        if (!detectedMimeType && isIOS && isSafari) {
+          // Safari iOS sometimes leaves mimeType empty even though it records AAC in MP4.
+          detectedMimeType = 'audio/mp4';
+        }
+        if (!detectedMimeType) detectedMimeType = 'audio/webm';
+
+        const blob = new Blob(recordedChunksRef.current, { type: detectedMimeType });
+        const ext = getAudioFileExtension(detectedMimeType);
+        const fileName = `recorded-story.${ext}`;
+        const file = new File([blob], fileName, { type: detectedMimeType });
+
+        if (blob.size < 1000) {
+          toast({
+            title: 'Enregistrement trop court',
+            description: 'Réessayez en parlant un peu plus longtemps.',
+            variant: 'destructive'
+          });
+          setIsRecording(false);
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
         setState(prev => ({ ...prev, audioFile: file }));
         setPreviewUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach(track => track.stop());
@@ -186,9 +231,10 @@ export const GriotDigitalCreator: React.FC = () => {
       setIsRecording(true);
       setRecordingTime(0);
     } catch (error) {
+      console.error('[GriotDigitalCreator] startRecording failed:', error);
       toast({
         title: 'Erreur microphone',
-        description: 'Impossible d\'accéder au microphone',
+        description: error instanceof Error ? error.message : 'Impossible d\'accéder au microphone',
         variant: 'destructive'
       });
     }
