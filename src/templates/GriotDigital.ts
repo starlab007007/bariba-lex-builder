@@ -1,180 +1,47 @@
 /**
- * GriotDigital Template - Contes Visuels Premium
- * Transforme les contenus utilisateur en expériences immersives fullscreen
- * 
- * v3.0 - FULLSCREEN 1080x1920 avec VRAIS assets CDN uniquement
- * @module GriotDigital
+ * Griot Digital Template - v3.1 FIXED
+ * Cross-browser fullscreen rendering with REAL premium assets
+ * Fixes: Safari audio, MOV→WebM, lens-flare local paths, user media
  */
 
-import * as THREE from 'three';
-import { aiServicesHub, StoryStructure, AudioFile, ImageFile } from '@/lib/AIServicesHub';
 import { AssetLoader3D } from '@/lib/AssetLoader3D';
 import { ParticleSystemManager } from '@/lib/ParticleSystemManager';
-import { AudioSyncEngine, BeatTimestamp } from '@/lib/AudioSyncEngine';
-import { buildResolvedAssetUrl, SUPABASE_ASSET_CDN_URL } from '@/lib/AssetRealMapping';
+import { AudioSyncEngine } from '@/lib/AudioSyncEngine';
+import { SUPABASE_ASSET_CDN_URL } from '@/lib/AssetRealMapping';
 
 // ============================================================================
-// TYPE DEFINITIONS
+// TYPES
 // ============================================================================
 
-/** Template category */
-export type TemplateCategory = 
-  | 'storytelling'
-  | 'music'
-  | 'business'
-  | 'education'
-  | 'future'
-  | 'social';
-
-/** Render quality preset */
-export type RenderQuality = '720p' | '1080p' | '4K';
-
-/** Template interface */
-export interface Template {
-  id: string;
-  name: string;
-  category: TemplateCategory;
-  description: string;
-  descriptionBa?: string;
-  requiredAssets: TemplateAssets;
-  renderSettings: RenderSettings;
-  aiFeatures: string[];
-  tags?: string[];
-  previewUrl?: string;
-  demoVideoUrl?: string;
-}
-
-/** Template asset requirements */
-export interface TemplateAssets {
-  models: string[];
-  particles: string[];
-  lightLeaks: string[];
-  lensFlares: string[];
-  textures: string[];
-  transitions: string[];
-  audio: string[];
-  fonts: string[];
-}
-
-/** Render settings */
-export interface RenderSettings {
-  resolution: RenderQuality;
-  fps: number;
-  duration: number;
-  aspectRatio?: '16:9' | '9:16' | '1:1';
-}
-
-/** User inputs for Griot Digital */
 export interface GriotDigitalInputs {
-  /** Recorded story narration audio */
   audioNarration: File;
-  /** Source language */
-  language: 'bariba' | 'french' | 'auto';
-  /** Optional photos for visual content */
+  language?: 'bariba' | 'french' | 'auto';
   photos?: File[];
-  /** Optional video file for background */
   videoFile?: File;
-  /** Enable interactive branching stories */
-  interactiveMode: boolean;
-  /** Story style */
+  interactiveMode?: boolean;
   style?: 'traditional' | 'modern' | 'fantasy' | 'historical';
-  /** Custom title */
   customTitle?: string;
-  /** Include subtitles */
   includeSubtitles?: boolean;
-  /** Subtitle language */
   subtitleLanguage?: 'bariba' | 'french' | 'both';
 }
 
-/** Branch point for interactive stories */
-export interface BranchPoint {
-  id: string;
-  timestamp: number;
-  prompt: string;
-  choices: BranchChoice[];
-  defaultChoice: string;
-  timeout: number;
-}
-
-/** Branch choice */
-export interface BranchChoice {
-  id: string;
-  label: string;
-  labelBa?: string;
-  icon?: string;
-  targetSegment: number;
-  preview?: string;
-}
-
-/** Story timeline segment */
 export interface TimelineSegment {
-  index: number;
+  id: string;
   startTime: number;
   endTime: number;
-  type: 'intro' | 'development' | 'climax' | 'resolution' | 'outro' | 'branch';
-  sceneIndex: number;
-  cameraAnimation: CameraAnimation;
-  effects: SegmentEffect[];
-  characterAnimations: CharacterAnimation[];
-  textOverlays: TextOverlay[];
-  audioCues: AudioCue[];
-  emotion?: string;
+  type: 'intro' | 'content' | 'climax' | 'outro';
+  effects: string[];
 }
 
-/** Camera animation definition */
-export interface CameraAnimation {
-  type: 'static' | 'pan' | 'orbit' | 'dolly' | 'crane' | 'handheld';
-  startPosition: THREE.Vector3;
-  endPosition: THREE.Vector3;
-  startTarget: THREE.Vector3;
-  endTarget: THREE.Vector3;
-  easing: 'linear' | 'easeIn' | 'easeOut' | 'easeInOut';
-  fov?: number;
+export interface BranchPoint {
+  id: string;
+  time: number;
+  options: {
+    label: string;
+    nextSegment: string;
+  }[];
 }
 
-/** Segment effect */
-export interface SegmentEffect {
-  type: 'particles' | 'lightLeak' | 'lensFlare' | 'transition' | 'colorGrade';
-  assetId: string;
-  trigger: 'start' | 'end' | 'beat' | 'keyword';
-  intensity: number;
-  duration?: number;
-  position?: THREE.Vector3;
-}
-
-/** Character animation */
-export interface CharacterAnimation {
-  characterId: string;
-  animationName: string;
-  startTime: number;
-  duration: number;
-  blendWeight: number;
-  lipSync?: boolean;
-}
-
-/** Text overlay */
-export interface TextOverlay {
-  text: string;
-  textBa?: string;
-  fontId: string;
-  position: { x: number; y: number };
-  size: number;
-  color: string;
-  animation: 'fadeIn' | 'typewriter' | 'slide' | 'scale';
-  duration: number;
-  delay: number;
-}
-
-/** Audio cue */
-export interface AudioCue {
-  type: 'sfx' | 'music' | 'ambient';
-  assetId: string;
-  volume: number;
-  fadeIn?: number;
-  fadeOut?: number;
-}
-
-/** Render progress callback */
 export type RenderProgressCallback = (progress: number, stage: string) => void;
 
 /** Render result */
@@ -196,106 +63,76 @@ export interface RenderResult {
 // ============================================================================
 
 const RENDER_CONFIG = {
-  width: 1080,     // Full HD portrait width
-  height: 1920,    // Full HD portrait height
-  fps: 24,         // Cinematic FPS
-  maxDuration: 60, // Maximum 60 seconds
+  width: 1080,
+  height: 1920,
+  fps: 24,
+  maxDuration: 60,
   videoBitrate: '6M',
   audioBitrate: '192k'
 };
 
 // ============================================================================
-// CDN ASSET URLS - BASÉS SUR INVENTAIRE RÉEL DU STORAGE SUPABASE
+// CDN ASSET URLS - FICHIERS RÉELS VÉRIFIÉS
 // ============================================================================
 
 const CDN_BASE = SUPABASE_ASSET_CDN_URL;
 
-// Light Leaks - FICHIERS CONFIRMÉS dans storage.objects (WebM et MOV)
+// Light Leaks - WebM files in 3d-models folder (cross-folder mapping)
 const LIGHT_LEAK_ASSETS = [
-  `${CDN_BASE}/light-leak/leak-001.webm`,  // Confirmé
-  `${CDN_BASE}/light-leak/leak-003.webm`,  // Confirmé
-  `${CDN_BASE}/light-leak/leak-004.webm`,  // Confirmé
-  `${CDN_BASE}/light-leak/leak-006.webm`,  // Confirmé
-  `${CDN_BASE}/light-leak/leak-014.webm`,  // Confirmé
+  `${CDN_BASE}/3d-models/leak-001.webm`,
+  `${CDN_BASE}/3d-models/leak-003.webm`,
+  `${CDN_BASE}/3d-models/leak-006.webm`,
+  `${CDN_BASE}/3d-models/leak-010.webm`,
+  `${CDN_BASE}/3d-models/leak-014.webm`,
 ];
 
-// Particles - FICHIERS MOV confirmés dans particles/
+// Particles - WebM files (NOT MOV - MOV not supported on Chrome Android)
 const PARTICLE_ASSETS = [
-  `${CDN_BASE}/particles/particle-001.mov`,  // Confirmé dans storage
-  `${CDN_BASE}/particles/particle-002.mov`,  // Confirmé
-  `${CDN_BASE}/particles/particle-003.mov`,  // Confirmé
+  `${CDN_BASE}/3d-models/leak-015.webm`,
+  `${CDN_BASE}/3d-models/leak-018.webm`,
+  `${CDN_BASE}/3d-models/leak-020.webm`,
 ];
 
-// Textures - FICHIERS MP4 confirmés (texture-001 à texture-009)
+// Textures - MP4 files (video-XXX renamed to texture-XXX in mapping)
 const TEXTURE_ASSETS = [
-  `${CDN_BASE}/textures/texture-001.mp4`,  // Confirmé
-  `${CDN_BASE}/textures/texture-002.mp4`,  // Confirmé
-  `${CDN_BASE}/textures/texture-005.mp4`,  // Confirmé
-  `${CDN_BASE}/textures/texture-008.mp4`,  // Confirmé
+  `${CDN_BASE}/textures/video-001.mp4`,
+  `${CDN_BASE}/textures/video-003.mp4`,
+  `${CDN_BASE}/textures/video-005.mp4`,
 ];
 
-// Transitions - FICHIERS MP4 confirmés (transition-014 à transition-031)
+// Transitions - MP4 files
 const TRANSITION_ASSETS = [
-  `${CDN_BASE}/transitions/transition-014.mp4`,  // Confirmé
-  `${CDN_BASE}/transitions/transition-018.mp4`,  // Confirmé
-  `${CDN_BASE}/transitions/transition-022.mp4`,  // Confirmé
-  `${CDN_BASE}/transitions/transition-025.mp4`,  // Confirmé
+  `${CDN_BASE}/transitions/transition-014.mp4`,
+  `${CDN_BASE}/transitions/transition-018.mp4`,
+  `${CDN_BASE}/transitions/transition-022.mp4`,
 ];
 
-// Lens Flares - FICHIERS PNG confirmés (flare-009 à flare-062)
+// Lens Flares - LOCAL PNG files (NOT CDN!)
 const LENS_FLARE_ASSETS = [
-  `${CDN_BASE}/lens-flare/flare-015.png`,  // Confirmé
-  `${CDN_BASE}/lens-flare/flare-020.png`,  // Confirmé
-  `${CDN_BASE}/lens-flare/flare-025.png`,  // Confirmé
-  `${CDN_BASE}/lens-flare/flare-030.png`,  // Confirmé
-  `${CDN_BASE}/lens-flare/flare-032.png`,  // Confirmé
+  '/assets/envato/lens-flare/flare-015.png',
+  '/assets/envato/lens-flare/flare-020.png',
+  '/assets/envato/lens-flare/flare-025.png',
+  '/assets/envato/lens-flare/flare-030.png',
 ];
 
 // ============================================================================
-// GRIOT DIGITAL TEMPLATE
+// GRIOT DIGITAL TEMPLATE DEFINITION (simplified - no Template interface)
 // ============================================================================
 
-export const GriotDigitalTemplate: Template = {
+export const GriotDigitalTemplate = {
   id: 'griot-digital',
   name: 'Griot Digital - Contes Visuels',
   category: 'storytelling',
   description: 'Transforme vos contenus en expériences visuelles immersives fullscreen avec effets premium',
   descriptionBa: 'Yí kɔ̀gbè sɔ́ wɛ̀rɛ̀ mɔ̀ 3D dó kpɔ́n',
-  
-  requiredAssets: {
-    models: [],
-    particles: PARTICLE_ASSETS,
-    lightLeaks: LIGHT_LEAK_ASSETS,
-    lensFlares: LENS_FLARE_ASSETS,
-    textures: TEXTURE_ASSETS,
-    transitions: TRANSITION_ASSETS,
-    audio: [],
-    fonts: []
-  },
-  
-  renderSettings: {
-    resolution: '1080p',
-    fps: 24,
-    duration: 0,
-    aspectRatio: '9:16'
-  },
-  
-  aiFeatures: [
-    'Story Director',
-    'Photo Integration',
-    'Video Background',
-    'Beat Sync',
-    'Auto-Subtitles',
-    'Premium VFX'
-  ],
-  
+  thumbnail: '/templates/griot-digital-preview.jpg',
+  demoVideo: '/templates/griot-digital-demo.mp4',
+  effects: [],
   tags: ['storytelling', 'griot', 'premium', 'fullscreen', 'cultural', 'bariba'],
-  previewUrl: '/templates/griot-digital-preview.jpg',
-  demoVideoUrl: '/templates/griot-digital-demo.mp4'
 };
 
 // ============================================================================
-// GRIOT DIGITAL ENGINE - v3.0 FULLSCREEN avec VRAIS ASSETS
+// GRIOT DIGITAL ENGINE - v3.1 CROSS-BROWSER FIXED
 // ============================================================================
 
 export class GriotDigitalEngine {
@@ -303,11 +140,10 @@ export class GriotDigitalEngine {
   private particleManager: ParticleSystemManager;
   private audioEngine: AudioSyncEngine;
   
-  // Canvas for rendering
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
   
-  // Premium VFX assets - VRAIS FICHIERS UNIQUEMENT
+  // Premium VFX assets
   private lightLeakVideos: HTMLVideoElement[] = [];
   private particleVideos: HTMLVideoElement[] = [];
   private textureVideos: HTMLVideoElement[] = [];
@@ -318,13 +154,16 @@ export class GriotDigitalEngine {
   private userPhotos: HTMLImageElement[] = [];
   private userVideo: HTMLVideoElement | null = null;
   private userAudioBlob: Blob | null = null;
+  private userAudioBuffer: AudioBuffer | null = null;
   
   // State
   private assetsLoaded: boolean = false;
   private storyTitle: string = '';
   private currentStyle: string = 'traditional';
-  private timeline: TimelineSegment[] = [];
-  private branchPoints: BranchPoint[] = [];
+  
+  // Audio context for cross-browser support
+  private audioContext: AudioContext | null = null;
+  private audioElement: HTMLAudioElement | null = null;
 
   constructor() {
     this.assetLoader = new AssetLoader3D();
@@ -333,10 +172,10 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Initialize the rendering canvas - FULLSCREEN 1080x1920
+   * Initialize the rendering canvas
    */
   public async initialize(): Promise<void> {
-    console.log('[GriotDigital v3] Initializing FULLSCREEN engine (1080x1920)...');
+    console.log('[GriotDigital v3.1] Initializing FULLSCREEN engine (1080x1920)...');
     
     this.canvas = document.createElement('canvas');
     this.canvas.width = RENDER_CONFIG.width;
@@ -351,107 +190,77 @@ export class GriotDigitalEngine {
       throw new Error('Failed to create 2D canvas context');
     }
     
-    console.log('[GriotDigital v3] Canvas initialized:', RENDER_CONFIG.width, 'x', RENDER_CONFIG.height);
+    console.log('[GriotDigital v3.1] Canvas initialized:', RENDER_CONFIG.width, 'x', RENDER_CONFIG.height);
   }
 
   /**
-   * Load all REAL premium assets from CDN
+   * Load all premium assets from CDN with validation
    */
   public async loadAssets(
     onProgress?: (progress: number, asset: string) => void
   ): Promise<void> {
-    console.log('[GriotDigital v3] Loading REAL premium assets from CDN...');
+    console.log('[GriotDigital v3.1] Loading premium assets...');
     
     const totalAssets = LIGHT_LEAK_ASSETS.length + PARTICLE_ASSETS.length + 
                         TEXTURE_ASSETS.length + LENS_FLARE_ASSETS.length +
                         TRANSITION_ASSETS.length;
     let loaded = 0;
     
-    onProgress?.(0, 'Loading premium VFX...');
+    onProgress?.(0, 'Chargement des effets visuels...');
 
-    // Load Light Leaks (MANDATORY - no fallback)
-    console.log('[GriotDigital v3] Loading Light Leaks...');
+    // Load Light Leaks (CDN WebM)
+    console.log('[GriotDigital v3.1] Loading Light Leaks...');
     for (const url of LIGHT_LEAK_ASSETS) {
-      try {
-        const video = await this.loadVideoAsset(url);
-        if (video) {
-          this.lightLeakVideos.push(video);
-        }
-      } catch (e) {
-        console.warn('[GriotDigital v3] Light leak failed:', url);
-      }
+      const video = await this.loadVideoAssetWithValidation(url);
+      if (video) this.lightLeakVideos.push(video);
       loaded++;
-      onProgress?.(loaded / totalAssets, `Light Leak ${loaded}/${LIGHT_LEAK_ASSETS.length}`);
+      onProgress?.(loaded / totalAssets, `Light Leak ${this.lightLeakVideos.length}`);
     }
-    console.log(`[GriotDigital v3] ✅ Light Leaks: ${this.lightLeakVideos.length} loaded`);
+    console.log(`[GriotDigital v3.1] ✅ Light Leaks: ${this.lightLeakVideos.length}`);
 
-    // Load Particles
-    console.log('[GriotDigital v3] Loading Particles...');
+    // Load Particles (CDN WebM)
+    console.log('[GriotDigital v3.1] Loading Particles...');
     for (const url of PARTICLE_ASSETS) {
-      try {
-        const video = await this.loadVideoAsset(url);
-        if (video) {
-          this.particleVideos.push(video);
-        }
-      } catch (e) {
-        console.warn('[GriotDigital v3] Particle failed:', url);
-      }
+      const video = await this.loadVideoAssetWithValidation(url);
+      if (video) this.particleVideos.push(video);
       loaded++;
-      onProgress?.(loaded / totalAssets, `Particles ${this.particleVideos.length}/${PARTICLE_ASSETS.length}`);
+      onProgress?.(loaded / totalAssets, `Particles ${this.particleVideos.length}`);
     }
-    console.log(`[GriotDigital v3] ✅ Particles: ${this.particleVideos.length} loaded`);
+    console.log(`[GriotDigital v3.1] ✅ Particles: ${this.particleVideos.length}`);
 
-    // Load Textures
-    console.log('[GriotDigital v3] Loading Textures...');
+    // Load Textures (CDN MP4)
+    console.log('[GriotDigital v3.1] Loading Textures...');
     for (const url of TEXTURE_ASSETS) {
-      try {
-        const video = await this.loadVideoAsset(url);
-        if (video) {
-          this.textureVideos.push(video);
-        }
-      } catch (e) {
-        console.warn('[GriotDigital v3] Texture failed:', url);
-      }
+      const video = await this.loadVideoAssetWithValidation(url);
+      if (video) this.textureVideos.push(video);
       loaded++;
-      onProgress?.(loaded / totalAssets, `Textures ${this.textureVideos.length}/${TEXTURE_ASSETS.length}`);
+      onProgress?.(loaded / totalAssets, `Textures ${this.textureVideos.length}`);
     }
-    console.log(`[GriotDigital v3] ✅ Textures: ${this.textureVideos.length} loaded`);
+    console.log(`[GriotDigital v3.1] ✅ Textures: ${this.textureVideos.length}`);
 
-    // Load Transitions
-    console.log('[GriotDigital v3] Loading Transitions...');
+    // Load Transitions (CDN MP4)
+    console.log('[GriotDigital v3.1] Loading Transitions...');
     for (const url of TRANSITION_ASSETS) {
-      try {
-        const video = await this.loadVideoAsset(url);
-        if (video) {
-          this.transitionVideos.push(video);
-        }
-      } catch (e) {
-        console.warn('[GriotDigital v3] Transition failed:', url);
-      }
+      const video = await this.loadVideoAssetWithValidation(url);
+      if (video) this.transitionVideos.push(video);
       loaded++;
       onProgress?.(loaded / totalAssets, `Transitions ${this.transitionVideos.length}`);
     }
-    console.log(`[GriotDigital v3] ✅ Transitions: ${this.transitionVideos.length} loaded`);
+    console.log(`[GriotDigital v3.1] ✅ Transitions: ${this.transitionVideos.length}`);
 
-    // Load Lens Flares (local PNG)
-    console.log('[GriotDigital v3] Loading Lens Flares...');
+    // Load Lens Flares (LOCAL PNG)
+    console.log('[GriotDigital v3.1] Loading Lens Flares (local)...');
     for (const url of LENS_FLARE_ASSETS) {
-      try {
-        const img = await this.loadImageAsset(url);
-        if (img) {
-          this.lensFlareImages.push(img);
-        }
-      } catch (e) {
-        console.warn('[GriotDigital v3] Lens flare failed:', url);
-      }
+      const img = await this.loadImageAsset(url);
+      if (img) this.lensFlareImages.push(img);
       loaded++;
       onProgress?.(loaded / totalAssets, `Lens Flares ${this.lensFlareImages.length}`);
     }
-    console.log(`[GriotDigital v3] ✅ Lens Flares: ${this.lensFlareImages.length} loaded`);
+    console.log(`[GriotDigital v3.1] ✅ Lens Flares: ${this.lensFlareImages.length}`);
 
     this.assetsLoaded = true;
     
-    console.log('[GriotDigital v3] 🎬 PREMIUM ASSETS LOADED:', {
+    console.log('[GriotDigital v3.1] 🎬 ASSETS LOADED:', {
       lightLeaks: this.lightLeakVideos.length,
       particles: this.particleVideos.length,
       textures: this.textureVideos.length,
@@ -459,13 +268,13 @@ export class GriotDigitalEngine {
       lensFlares: this.lensFlareImages.length
     });
     
-    onProgress?.(1, 'Assets ready!');
+    onProgress?.(1, 'Assets prêts!');
   }
 
   /**
-   * Load a video asset from URL with format fallback
+   * Load video with validation (readyState >= 2)
    */
-  private loadVideoAsset(url: string): Promise<HTMLVideoElement | null> {
+  private loadVideoAssetWithValidation(url: string): Promise<HTMLVideoElement | null> {
     return new Promise((resolve) => {
       const video = document.createElement('video');
       video.crossOrigin = 'anonymous';
@@ -475,50 +284,34 @@ export class GriotDigitalEngine {
       video.preload = 'auto';
       
       const filename = url.substring(url.lastIndexOf('/') + 1);
-      console.log(`[GriotDigital v3] Loading video: ${filename}`);
+      console.log(`[GriotDigital v3.1] Loading: ${filename}`);
       
       const timeout = setTimeout(() => {
-        console.warn(`[GriotDigital v3] ⏱️ Video timeout: ${filename}`);
-        // Try alternative format on timeout
-        if (url.endsWith('.mov')) {
-          const webmUrl = url.replace('.mov', '.webm');
-          console.log(`[GriotDigital v3] Trying WebM fallback: ${webmUrl}`);
-          this.loadVideoAsset(webmUrl).then(resolve);
-        } else {
-          resolve(null);
-        }
-      }, 10000);
+        console.warn(`[GriotDigital v3.1] ⏱️ Timeout: ${filename}`);
+        resolve(null);
+      }, 15000);
       
-      video.onloadeddata = () => {
+      video.oncanplaythrough = () => {
         clearTimeout(timeout);
+        // Start playback immediately for smooth rendering
         video.play().catch(() => {});
-        console.log(`[GriotDigital v3] ✅ Video ready: ${filename} (${video.videoWidth}x${video.videoHeight})`);
+        console.log(`[GriotDigital v3.1] ✅ Ready: ${filename} (${video.videoWidth}x${video.videoHeight})`);
         resolve(video);
       };
       
-      video.onerror = (e) => {
+      video.onerror = () => {
         clearTimeout(timeout);
-        console.error(`[GriotDigital v3] ❌ Video failed: ${filename}`, e);
-        // Try alternative formats
-        if (url.endsWith('.mov')) {
-          const webmUrl = url.replace('.mov', '.webm');
-          console.log(`[GriotDigital v3] Fallback to WebM: ${webmUrl}`);
-          this.loadVideoAsset(webmUrl).then(resolve);
-        } else if (url.endsWith('.webm')) {
-          const mp4Url = url.replace('.webm', '.mp4');
-          console.log(`[GriotDigital v3] Fallback to MP4: ${mp4Url}`);
-          this.loadVideoAsset(mp4Url).then(resolve);
-        } else {
-          resolve(null);
-        }
+        console.error(`[GriotDigital v3.1] ❌ Failed: ${filename}`);
+        resolve(null);
       };
       
       video.src = url;
+      video.load();
     });
   }
 
   /**
-   * Load an image asset from URL
+   * Load image asset
    */
   private loadImageAsset(url: string): Promise<HTMLImageElement | null> {
     return new Promise((resolve) => {
@@ -526,22 +319,21 @@ export class GriotDigitalEngine {
       img.crossOrigin = 'anonymous';
       
       const filename = url.substring(url.lastIndexOf('/') + 1);
-      console.log(`[GriotDigital v3] Loading image: ${filename}`);
       
       const timeout = setTimeout(() => {
-        console.warn(`[GriotDigital v3] ⏱️ Image timeout: ${filename}`);
+        console.warn(`[GriotDigital v3.1] ⏱️ Image timeout: ${filename}`);
         resolve(null);
       }, 8000);
       
       img.onload = () => {
         clearTimeout(timeout);
-        console.log(`[GriotDigital v3] ✅ Image loaded: ${filename} (${img.width}x${img.height})`);
+        console.log(`[GriotDigital v3.1] ✅ Image: ${filename}`);
         resolve(img);
       };
       
       img.onerror = () => {
         clearTimeout(timeout);
-        console.warn(`[GriotDigital v3] ❌ Image failed: ${filename}`);
+        console.warn(`[GriotDigital v3.1] ❌ Image failed: ${filename}`);
         resolve(null);
       };
       
@@ -550,57 +342,59 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Load user content (photos, video, audio) - ENHANCED VERSION
+   * Load user content (photos, video, audio)
    */
   private async loadUserContent(inputs: GriotDigitalInputs): Promise<void> {
-    console.log('[GriotDigital v3] 🎬 Loading user content...');
+    console.log('[GriotDigital v3.1] 🎬 Loading user content...');
     
-    // Store audio blob for later muxing
+    // Store audio blob
     this.userAudioBlob = inputs.audioNarration;
-    console.log(`[GriotDigital v3] ✅ Audio narration stored: ${(inputs.audioNarration.size / 1024).toFixed(1)} KB`);
+    console.log(`[GriotDigital v3.1] ✅ Audio: ${(inputs.audioNarration.size / 1024).toFixed(1)} KB, type: ${inputs.audioNarration.type}`);
     
-    // Load user photos with parallel processing
-    if (inputs.photos && inputs.photos.length > 0) {
-      console.log(`[GriotDigital v3] 📷 Loading ${inputs.photos.length} user photos...`);
-      
-      const photoPromises = inputs.photos.map((file, index) => 
-        this.loadUserPhoto(file).then(img => {
-          if (img) {
-            console.log(`[GriotDigital v3] ✅ Photo ${index + 1} loaded: ${img.width}x${img.height}`);
-          }
-          return img;
-        })
-      );
-      
-      const loadedPhotos = await Promise.all(photoPromises);
-      this.userPhotos = loadedPhotos.filter((img): img is HTMLImageElement => img !== null);
-      
-      console.log(`[GriotDigital v3] 📷 User photos ready: ${this.userPhotos.length}/${inputs.photos.length}`);
+    // Decode audio to AudioBuffer for cross-browser support (Safari!)
+    try {
+      this.audioContext = new AudioContext();
+      const arrayBuffer = await inputs.audioNarration.arrayBuffer();
+      this.userAudioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      console.log(`[GriotDigital v3.1] ✅ AudioBuffer decoded: ${this.userAudioBuffer.duration.toFixed(1)}s`);
+    } catch (e) {
+      console.warn('[GriotDigital v3.1] ⚠️ AudioBuffer decode failed, will use MediaElement fallback');
     }
     
-    // Load user video if provided
+    // Load user photos
+    if (inputs.photos && inputs.photos.length > 0) {
+      console.log(`[GriotDigital v3.1] 📷 Loading ${inputs.photos.length} photos...`);
+      
+      for (const file of inputs.photos) {
+        const img = await this.loadUserPhoto(file);
+        if (img) {
+          this.userPhotos.push(img);
+          console.log(`[GriotDigital v3.1] ✅ Photo: ${file.name} (${img.width}x${img.height})`);
+        }
+      }
+      console.log(`[GriotDigital v3.1] 📷 Photos loaded: ${this.userPhotos.length}`);
+    }
+    
+    // Load user video
     if (inputs.videoFile) {
-      console.log('[GriotDigital v3] 🎥 Loading user video...');
+      console.log('[GriotDigital v3.1] 🎥 Loading user video...');
       this.userVideo = await this.loadUserVideo(inputs.videoFile);
       if (this.userVideo) {
-        console.log(`[GriotDigital v3] ✅ User video loaded: ${this.userVideo.videoWidth}x${this.userVideo.videoHeight}`);
+        console.log(`[GriotDigital v3.1] ✅ Video: ${this.userVideo.videoWidth}x${this.userVideo.videoHeight}`);
       }
     }
     
-    console.log('[GriotDigital v3] 🎬 User content loading complete:', {
+    console.log('[GriotDigital v3.1] 🎬 User content ready:', {
       photos: this.userPhotos.length,
       hasVideo: !!this.userVideo,
-      hasAudio: !!this.userAudioBlob
+      hasAudio: !!this.userAudioBlob,
+      hasAudioBuffer: !!this.userAudioBuffer
     });
   }
 
-  /**
-   * Load a user photo file with validation
-   */
   private loadUserPhoto(file: File): Promise<HTMLImageElement | null> {
     return new Promise((resolve) => {
       if (!file.type.startsWith('image/')) {
-        console.warn('[GriotDigital v3] Invalid photo type:', file.type);
         resolve(null);
         return;
       }
@@ -608,15 +402,9 @@ export class GriotDigitalEngine {
       const img = new Image();
       const objectUrl = URL.createObjectURL(file);
       
-      img.onload = () => {
-        // Keep the URL for canvas drawing (don't revoke yet)
-        console.log(`[GriotDigital v3] Photo loaded: ${file.name} (${img.width}x${img.height})`);
-        resolve(img);
-      };
-      
+      img.onload = () => resolve(img);
       img.onerror = () => {
         URL.revokeObjectURL(objectUrl);
-        console.warn('[GriotDigital v3] Photo load failed:', file.name);
         resolve(null);
       };
       
@@ -624,13 +412,9 @@ export class GriotDigitalEngine {
     });
   }
 
-  /**
-   * Load a user video file with validation
-   */
   private loadUserVideo(file: File): Promise<HTMLVideoElement | null> {
     return new Promise((resolve) => {
       if (!file.type.startsWith('video/')) {
-        console.warn('[GriotDigital v3] Invalid video type:', file.type);
         resolve(null);
         return;
       }
@@ -644,14 +428,12 @@ export class GriotDigitalEngine {
       const objectUrl = URL.createObjectURL(file);
       
       video.onloadeddata = () => {
-        video.play().catch(e => console.warn('[GriotDigital v3] Video autoplay blocked:', e));
-        console.log(`[GriotDigital v3] Video loaded: ${file.name} (${video.videoWidth}x${video.videoHeight})`);
+        video.play().catch(() => {});
         resolve(video);
       };
       
       video.onerror = () => {
         URL.revokeObjectURL(objectUrl);
-        console.warn('[GriotDigital v3] Video load failed:', file.name);
         resolve(null);
       };
       
@@ -660,13 +442,13 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Process and render the Griot Digital story
+   * Main render method
    */
   public async render(
     inputs: GriotDigitalInputs,
     onProgress?: RenderProgressCallback
   ): Promise<RenderResult> {
-    console.log('[GriotDigital v3] Starting FULLSCREEN render pipeline...');
+    console.log('[GriotDigital v3.1] Starting render pipeline...');
     
     if (!this.canvas || !this.ctx) {
       throw new Error('Engine not initialized');
@@ -675,45 +457,41 @@ export class GriotDigitalEngine {
     this.currentStyle = inputs.style || 'traditional';
     this.storyTitle = inputs.customTitle || 'Griot Digital';
     
-    onProgress?.(0.05, 'Loading user content...');
+    onProgress?.(0.05, 'Chargement du contenu...');
     
-    // Load user content (photos, video, audio)
+    // Load user content
     await this.loadUserContent(inputs);
 
-    onProgress?.(0.10, 'Analyzing audio...');
+    onProgress?.(0.10, 'Analyse audio...');
 
-    // Analyze audio duration
-    const audioDuration = await this.getAudioDuration(inputs.audioNarration);
+    // Get audio duration
+    const audioDuration = this.userAudioBuffer 
+      ? this.userAudioBuffer.duration
+      : await this.getAudioDuration(inputs.audioNarration);
     const totalDuration = Math.min(audioDuration, RENDER_CONFIG.maxDuration);
     
-    // Load audio for beat analysis
-    try {
-      await this.audioEngine.loadAudioBlob(inputs.audioNarration);
-      console.log('[GriotDigital v3] Audio buffer loaded for beat analysis');
-    } catch (error) {
-      console.warn('[GriotDigital v3] Audio analysis failed:', error);
-    }
+    console.log(`[GriotDigital v3.1] Duration: ${totalDuration.toFixed(1)}s`);
 
-    onProgress?.(0.15, 'Waiting for assets...');
+    onProgress?.(0.15, 'Préparation des assets...');
 
-    // Wait for assets to be ready
+    // Wait for assets
     if (!this.assetsLoaded) {
-      await this.waitForAssets(10000);
+      await this.waitForAssets(12000);
     }
 
-    onProgress?.(0.20, 'Rendering video with premium VFX...');
+    onProgress?.(0.20, 'Rendu vidéo avec effets premium...');
 
-    // Render the video
+    // Render video
     const video = await this.renderVideo(totalDuration, onProgress);
 
-    onProgress?.(0.95, 'Generating thumbnail...');
+    onProgress?.(0.95, 'Génération miniature...');
 
     // Generate thumbnail
     const thumbnail = await this.generateThumbnail();
 
-    onProgress?.(1.0, 'Complete!');
+    onProgress?.(1.0, 'Terminé!');
     
-    console.log('[GriotDigital v3] Render complete!');
+    console.log('[GriotDigital v3.1] ✅ Render complete!');
 
     return {
       video,
@@ -721,16 +499,13 @@ export class GriotDigitalEngine {
       duration: totalDuration,
       metadata: {
         title: this.storyTitle,
-        language: inputs.language,
-        interactive: inputs.interactiveMode,
-        segments: 1
+        language: inputs.language || 'auto',
+        interactive: inputs.interactiveMode || false,
+        segments: Math.ceil(totalDuration / 10)
       }
     };
   }
 
-  /**
-   * Wait for assets to load
-   */
   private async waitForAssets(timeoutMs: number): Promise<void> {
     const startTime = Date.now();
     while (!this.assetsLoaded && Date.now() - startTime < timeoutMs) {
@@ -739,15 +514,15 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Render video using Canvas capture with MediaRecorder - IMPROVED VERSION
+   * Render video with MediaRecorder - CROSS-BROWSER AUDIO FIX
    */
   private async renderVideo(
     durationSeconds: number,
     onProgress?: RenderProgressCallback
   ): Promise<Blob> {
-    console.log(`[GriotDigital v3] 🎬 Starting render: ${durationSeconds.toFixed(1)}s @ ${RENDER_CONFIG.fps}fps`);
-    console.log(`[GriotDigital v3] 📊 Status: ${this.userPhotos.length} photos, video=${!!this.userVideo}, audio=${!!this.userAudioBlob}`);
-    console.log(`[GriotDigital v3] 📊 VFX: ${this.lightLeakVideos.length} leaks, ${this.lensFlareImages.length} flares`);
+    console.log(`[GriotDigital v3.1] 🎬 Rendering: ${durationSeconds.toFixed(1)}s @ ${RENDER_CONFIG.fps}fps`);
+    console.log(`[GriotDigital v3.1] 📊 Content: ${this.userPhotos.length} photos, video=${!!this.userVideo}, audioBuffer=${!!this.userAudioBuffer}`);
+    console.log(`[GriotDigital v3.1] 📊 VFX: ${this.lightLeakVideos.length} leaks, ${this.particleVideos.length} particles, ${this.lensFlareImages.length} flares`);
     
     const canvas = this.canvas!;
     const fps = RENDER_CONFIG.fps;
@@ -755,25 +530,24 @@ export class GriotDigitalEngine {
     
     return new Promise<Blob>((resolve, reject) => {
       try {
-        // Create video stream from canvas
+        // Create video stream
         const stream = canvas.captureStream(fps);
-        console.log(`[GriotDigital v3] Canvas stream created: ${stream.getVideoTracks().length} video tracks`);
+        console.log(`[GriotDigital v3.1] Canvas stream: ${stream.getVideoTracks().length} video tracks`);
         
-        // Add audio track if available
-        let audioEl: HTMLAudioElement | null = null;
-        if (this.userAudioBlob) {
-          audioEl = this.addAudioToStream(stream, this.userAudioBlob);
-          console.log(`[GriotDigital v3] Stream tracks: ${stream.getTracks().length} total`);
+        // Add audio - USE AUDIOBUFFER for Safari support!
+        if (this.userAudioBuffer && this.audioContext) {
+          this.addAudioBufferToStream(stream, durationSeconds);
+        } else if (this.userAudioBlob) {
+          this.addAudioElementToStream(stream);
         }
         
-        const chunks: Blob[] = [];
-        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
-          ? 'video/webm;codecs=vp9,opus'
-          : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-            ? 'video/webm;codecs=vp9'
-            : 'video/webm';
+        console.log(`[GriotDigital v3.1] Stream tracks: ${stream.getTracks().length}`);
         
-        console.log(`[GriotDigital v3] Using codec: ${mimeType}`);
+        const chunks: Blob[] = [];
+        
+        // Use most compatible codec
+        const mimeType = this.getBestMimeType();
+        console.log(`[GriotDigital v3.1] Using codec: ${mimeType}`);
         
         const recorder = new MediaRecorder(stream, {
           mimeType,
@@ -782,42 +556,30 @@ export class GriotDigitalEngine {
         });
         
         recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            chunks.push(e.data);
-          }
+          if (e.data.size > 0) chunks.push(e.data);
         };
         
         recorder.onstop = () => {
-          // Cleanup audio
-          if (audioEl) {
-            audioEl.pause();
-            URL.revokeObjectURL(audioEl.src);
-          }
-          if (this.audioContext) {
-            this.audioContext.close();
-            this.audioContext = null;
-          }
-          
-          const blob = new Blob(chunks, { type: 'video/webm' });
-          console.log(`[GriotDigital v3] ✅ Render complete: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+          this.cleanupAudio();
+          const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+          console.log(`[GriotDigital v3.1] ✅ Video: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
           resolve(blob);
         };
         
         recorder.onerror = (e) => {
-          console.error('[GriotDigital v3] ❌ MediaRecorder error:', e);
+          console.error('[GriotDigital v3.1] ❌ MediaRecorder error:', e);
           reject(e);
         };
         
-        // Start recording
         recorder.start(100);
-        console.log('[GriotDigital v3] 🎬 Recording started...');
+        console.log('[GriotDigital v3.1] 🎬 Recording started...');
         
         let currentFrame = 0;
         const frameInterval = 1000 / fps;
         
         const renderNextFrame = () => {
           if (currentFrame >= totalFrames) {
-            console.log('[GriotDigital v3] 🎬 All frames rendered, stopping...');
+            console.log('[GriotDigital v3.1] 🎬 All frames done, stopping...');
             recorder.stop();
             return;
           }
@@ -826,8 +588,7 @@ export class GriotDigitalEngine {
           this.drawFrame(currentTime, durationSeconds);
           currentFrame++;
           
-          // Update progress every 10 frames
-          if (currentFrame % 10 === 0) {
+          if (currentFrame % 12 === 0) {
             const progress = 0.20 + (currentFrame / totalFrames) * 0.70;
             onProgress?.(progress, `Rendu ${Math.round((currentFrame / totalFrames) * 100)}%`);
           }
@@ -835,67 +596,131 @@ export class GriotDigitalEngine {
           setTimeout(renderNextFrame, frameInterval);
         };
         
-        // Start render loop
         renderNextFrame();
         
       } catch (error) {
-        console.error('[GriotDigital v3] ❌ Render failed:', error);
+        console.error('[GriotDigital v3.1] ❌ Render failed:', error);
         reject(error);
       }
     });
   }
 
   /**
-   * Add audio track to MediaStream - IMPROVED VERSION
-   * Returns the audio element so it can be controlled during rendering
+   * Get best supported MIME type
    */
-  private audioElement: HTMLAudioElement | null = null;
-  private audioContext: AudioContext | null = null;
-  
-  private addAudioToStream(stream: MediaStream, audioBlob: Blob): HTMLAudioElement | null {
+  private getBestMimeType(): string {
+    const types = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm',
+      'video/mp4'
+    ];
+    
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    return 'video/webm';
+  }
+
+  /**
+   * Add audio via AudioBuffer (SAFARI COMPATIBLE!)
+   */
+  private audioBufferSource: AudioBufferSourceNode | null = null;
+  private audioDestination: MediaStreamAudioDestinationNode | null = null;
+
+  private addAudioBufferToStream(stream: MediaStream, duration: number): void {
+    if (!this.audioContext || !this.userAudioBuffer) return;
+    
     try {
-      console.log(`[GriotDigital v3] 🔊 Setting up audio stream (${(audioBlob.size / 1024).toFixed(1)} KB)`);
+      console.log('[GriotDigital v3.1] 🔊 Using AudioBuffer (Safari compatible)');
       
-      this.audioContext = new AudioContext();
-      this.audioElement = new Audio();
-      this.audioElement.src = URL.createObjectURL(audioBlob);
-      this.audioElement.volume = 1.0;
-      this.audioElement.muted = false;
+      // Resume context if suspended
+      if (this.audioContext.state === 'suspended') {
+        this.audioContext.resume();
+      }
       
-      // Create audio pipeline
-      const source = this.audioContext.createMediaElementSource(this.audioElement);
-      const gainNode = this.audioContext.createGain();
-      gainNode.gain.value = 1.0;
+      // Create source from buffer
+      this.audioBufferSource = this.audioContext.createBufferSource();
+      this.audioBufferSource.buffer = this.userAudioBuffer;
       
-      const destination = this.audioContext.createMediaStreamDestination();
+      // Create destination for stream
+      this.audioDestination = this.audioContext.createMediaStreamDestination();
       
-      source.connect(gainNode);
-      gainNode.connect(destination);
+      // Connect
+      this.audioBufferSource.connect(this.audioDestination);
       
       // Add audio track to video stream
-      destination.stream.getAudioTracks().forEach(track => {
-        console.log(`[GriotDigital v3] 🔊 Adding audio track: ${track.label}`);
+      this.audioDestination.stream.getAudioTracks().forEach(track => {
+        console.log(`[GriotDigital v3.1] 🔊 Adding audio track: ${track.label}`);
         stream.addTrack(track);
       });
       
-      // Start playing audio
-      this.audioElement.play().then(() => {
-        console.log('[GriotDigital v3] ✅ Audio playback started');
-      }).catch((e) => {
-        console.warn('[GriotDigital v3] ⚠️ Audio autoplay blocked:', e);
-      });
-      
-      console.log('[GriotDigital v3] ✅ Audio track connected to stream');
-      return this.audioElement;
+      // Start playback
+      this.audioBufferSource.start(0);
+      console.log('[GriotDigital v3.1] ✅ AudioBuffer playback started');
       
     } catch (error) {
-      console.error('[GriotDigital v3] ❌ Audio stream setup failed:', error);
-      return null;
+      console.error('[GriotDigital v3.1] ❌ AudioBuffer setup failed:', error);
     }
   }
 
   /**
-   * Draw a single frame - FULLSCREEN with REAL assets
+   * Fallback: Add audio via MediaElement
+   */
+  private addAudioElementToStream(stream: MediaStream): void {
+    if (!this.userAudioBlob) return;
+    
+    try {
+      console.log('[GriotDigital v3.1] 🔊 Using MediaElement fallback');
+      
+      this.audioContext = new AudioContext();
+      this.audioElement = new Audio();
+      this.audioElement.src = URL.createObjectURL(this.userAudioBlob);
+      this.audioElement.volume = 1.0;
+      
+      const source = this.audioContext.createMediaElementSource(this.audioElement);
+      const destination = this.audioContext.createMediaStreamDestination();
+      
+      source.connect(destination);
+      
+      destination.stream.getAudioTracks().forEach(track => {
+        stream.addTrack(track);
+      });
+      
+      this.audioElement.play().catch(e => {
+        console.warn('[GriotDigital v3.1] ⚠️ Audio autoplay blocked:', e);
+      });
+      
+      console.log('[GriotDigital v3.1] ✅ MediaElement audio connected');
+      
+    } catch (error) {
+      console.error('[GriotDigital v3.1] ❌ MediaElement audio failed:', error);
+    }
+  }
+
+  private cleanupAudio(): void {
+    if (this.audioBufferSource) {
+      try { this.audioBufferSource.stop(); } catch {}
+      this.audioBufferSource = null;
+    }
+    if (this.audioElement) {
+      this.audioElement.pause();
+      URL.revokeObjectURL(this.audioElement.src);
+      this.audioElement = null;
+    }
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
+    this.audioDestination = null;
+  }
+
+  /**
+   * Draw a single frame - FULLSCREEN with ALL layers
    */
   private drawFrame(currentTime: number, totalDuration: number): void {
     const ctx = this.ctx!;
@@ -903,35 +728,35 @@ export class GriotDigitalEngine {
     const height = RENDER_CONFIG.height;
     const progress = currentTime / totalDuration;
     
-    // 1. BACKGROUND LAYER - User photo/video or gradient
+    // 1. BACKGROUND - User content or gradient
     this.drawBackground(ctx, width, height, currentTime);
     
-    // 2. LIGHT LEAK LAYER - FULLSCREEN from CDN
+    // 2. LIGHT LEAKS - Fullscreen from CDN
     this.drawLightLeaks(ctx, width, height, currentTime);
     
-    // 3. PARTICLE LAYER - FULLSCREEN from CDN
+    // 3. PARTICLES - Fullscreen from CDN
     this.drawParticles(ctx, width, height, currentTime);
     
-    // 4. TEXTURE OVERLAY - FULLSCREEN from CDN
+    // 4. TEXTURES - Fullscreen overlay
     this.drawTextures(ctx, width, height, currentTime);
     
-    // 5. LENS FLARES - From PNG assets
+    // 5. LENS FLARES - From local PNG
     this.drawLensFlares(ctx, width, height, currentTime);
     
     // 6. TRANSITIONS - At segment boundaries
     this.drawTransitions(ctx, width, height, currentTime, totalDuration);
     
-    // 7. TITLE OVERLAY (first 5 seconds)
+    // 7. TITLE (first 5 seconds)
     if (currentTime < 5) {
       this.drawTitle(ctx, width, height, currentTime);
     }
     
-    // 8. PROGRESS INDICATOR
+    // 8. PROGRESS BAR
     this.drawProgressIndicator(ctx, width, height, progress);
   }
 
   /**
-   * Draw background - user content or gradient - ENHANCED with debug overlay
+   * Draw background - user photos/video with Ken Burns
    */
   private drawBackground(
     ctx: CanvasRenderingContext2D,
@@ -939,88 +764,55 @@ export class GriotDigitalEngine {
     height: number,
     currentTime: number
   ): void {
-    // Clear canvas first
     ctx.clearRect(0, 0, width, height);
     
-    // PRIORITY 1: User video as background
+    // Priority 1: User video
     if (this.userVideo && this.userVideo.readyState >= 2) {
-      const vw = this.userVideo.videoWidth || width;
-      const vh = this.userVideo.videoHeight || height;
-      const scale = Math.max(width / vw, height / vh);
-      const sw = vw * scale;
-      const sh = vh * scale;
-      const sx = (width - sw) / 2;
-      const sy = (height - sh) / 2;
-      
-      ctx.drawImage(this.userVideo, sx, sy, sw, sh);
-      
-      // Subtle overlay for VFX visibility
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      this.drawCoverFit(ctx, this.userVideo, width, height);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
       ctx.fillRect(0, 0, width, height);
       return;
     }
     
-    // PRIORITY 2: User photos with Ken Burns effect
+    // Priority 2: User photos with Ken Burns
     if (this.userPhotos.length > 0) {
-      // Calculate which photo to show (5 seconds per photo)
-      const photoDisplayDuration = 5;
-      const photoIndex = Math.floor(currentTime / photoDisplayDuration) % this.userPhotos.length;
+      const photoIndex = Math.floor(currentTime / 5) % this.userPhotos.length;
       const photo = this.userPhotos[photoIndex];
       
-      if (photo && photo.complete) {
-        const pw = photo.naturalWidth || photo.width;
-        const ph = photo.naturalHeight || photo.height;
+      if (photo && photo.complete && photo.naturalWidth > 0) {
+        const pw = photo.naturalWidth;
+        const ph = photo.naturalHeight;
         
-        // Ken Burns: zoom + pan animation
-        const zoomAmount = 0.08;
-        const panAmount = 30;
-        const zoom = 1 + Math.sin(currentTime * 0.25) * zoomAmount;
+        // Ken Burns effect
+        const zoom = 1 + Math.sin(currentTime * 0.25) * 0.06;
         const scale = Math.max(width / pw, height / ph) * zoom;
         const sw = pw * scale;
         const sh = ph * scale;
         
-        const panX = Math.sin(currentTime * 0.15) * panAmount;
-        const panY = Math.cos(currentTime * 0.12) * panAmount;
+        const panX = Math.sin(currentTime * 0.15) * 25;
+        const panY = Math.cos(currentTime * 0.12) * 20;
         const sx = (width - sw) / 2 + panX;
         const sy = (height - sh) / 2 + panY;
         
         ctx.drawImage(photo, sx, sy, sw, sh);
-        
-        // Overlay for VFX visibility and text readability
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(0, 0, width, height);
         return;
       }
     }
     
-    // FALLBACK: Animated gradient background (African-inspired colors)
-    const hueShift = Math.sin(currentTime * 0.1) * 10;
+    // Fallback: Animated gradient
+    const hue = 25 + Math.sin(currentTime * 0.1) * 10;
     const gradient = ctx.createLinearGradient(0, 0, width * 0.3, height);
-    gradient.addColorStop(0, `hsl(${25 + hueShift}, 60%, 15%)`);     // Deep brown
-    gradient.addColorStop(0.4, `hsl(${35 + hueShift}, 70%, 12%)`);   // Warm brown
-    gradient.addColorStop(0.7, `hsl(${15 + hueShift}, 50%, 10%)`);   // Dark rust
-    gradient.addColorStop(1, `hsl(${20 + hueShift}, 40%, 8%)`);      // Near black
+    gradient.addColorStop(0, `hsl(${hue}, 60%, 15%)`);
+    gradient.addColorStop(0.5, `hsl(${hue + 10}, 70%, 10%)`);
+    gradient.addColorStop(1, `hsl(${hue - 5}, 40%, 8%)`);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
-    
-    // Add subtle animated pattern
-    ctx.save();
-    ctx.globalAlpha = 0.1;
-    const patternSize = 100;
-    for (let x = 0; x < width; x += patternSize) {
-      for (let y = 0; y < height; y += patternSize) {
-        const pulse = Math.sin((x + y) * 0.01 + currentTime * 0.5) * 0.5 + 0.5;
-        ctx.fillStyle = `rgba(255, 200, 100, ${pulse * 0.1})`;
-        ctx.beginPath();
-        ctx.arc(x + patternSize/2, y + patternSize/2, 20 * pulse, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    ctx.restore();
   }
 
   /**
-   * Draw light leaks FULLSCREEN - with procedural fallback
+   * Draw light leaks fullscreen
    */
   private drawLightLeaks(
     ctx: CanvasRenderingContext2D,
@@ -1028,46 +820,24 @@ export class GriotDigitalEngine {
     height: number,
     currentTime: number
   ): void {
+    if (this.lightLeakVideos.length === 0) return;
+    
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     
-    // Try CDN videos first
-    if (this.lightLeakVideos.length > 0) {
-      const idx = Math.floor(currentTime / 6) % this.lightLeakVideos.length;
-      const video = this.lightLeakVideos[idx];
-      
-      if (video && video.readyState >= 2) {
-        ctx.globalAlpha = 0.5 + Math.sin(currentTime * 0.5) * 0.2;
-        this.drawCoverFit(ctx, video, width, height);
-        ctx.restore();
-        return;
-      }
+    const idx = Math.floor(currentTime / 6) % this.lightLeakVideos.length;
+    const video = this.lightLeakVideos[idx];
+    
+    if (video && video.readyState >= 2) {
+      ctx.globalAlpha = 0.5 + Math.sin(currentTime * 0.5) * 0.15;
+      this.drawCoverFit(ctx, video, width, height);
     }
-    
-    // PROCEDURAL FALLBACK: Animated light leak effect
-    const leakAlpha = 0.3 + Math.sin(currentTime * 0.7) * 0.15;
-    ctx.globalAlpha = leakAlpha;
-    
-    // Create radial gradient from corner
-    const angle = currentTime * 0.2;
-    const cx = width * (0.8 + Math.sin(angle) * 0.2);
-    const cy = height * (0.2 + Math.cos(angle * 0.7) * 0.15);
-    const radius = Math.max(width, height) * 0.8;
-    
-    const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-    gradient.addColorStop(0, `hsla(${40 + Math.sin(currentTime) * 20}, 100%, 70%, 0.8)`);
-    gradient.addColorStop(0.3, `hsla(${30 + Math.cos(currentTime * 0.5) * 15}, 90%, 50%, 0.4)`);
-    gradient.addColorStop(0.6, `hsla(${20}, 80%, 40%, 0.1)`);
-    gradient.addColorStop(1, 'transparent');
-    
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
     
     ctx.restore();
   }
 
   /**
-   * Draw particles FULLSCREEN - with procedural fallback
+   * Draw particles fullscreen
    */
   private drawParticles(
     ctx: CanvasRenderingContext2D,
@@ -1075,44 +845,24 @@ export class GriotDigitalEngine {
     height: number,
     currentTime: number
   ): void {
+    if (this.particleVideos.length === 0) return;
+    
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     
-    // Try CDN videos first
-    if (this.particleVideos.length > 0) {
-      const idx = Math.floor(currentTime / 8) % this.particleVideos.length;
-      const video = this.particleVideos[idx];
-      
-      if (video && video.readyState >= 2) {
-        ctx.globalAlpha = 0.5;
-        this.drawCoverFit(ctx, video, width, height);
-        ctx.restore();
-        return;
-      }
-    }
+    const idx = Math.floor(currentTime / 8) % this.particleVideos.length;
+    const video = this.particleVideos[idx];
     
-    // PROCEDURAL FALLBACK: Floating particles
-    ctx.globalAlpha = 0.6;
-    const particleCount = 25;
-    
-    for (let i = 0; i < particleCount; i++) {
-      const seed = i * 137.5;
-      const x = ((seed * 1.1 + currentTime * 20) % width);
-      const y = ((seed * 0.9 - currentTime * 30 + height * 2) % height);
-      const size = 2 + Math.sin(seed + currentTime) * 1.5;
-      const alpha = 0.3 + Math.sin(seed * 0.5 + currentTime * 2) * 0.3;
-      
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 220, 150, ${alpha})`;
-      ctx.fill();
+    if (video && video.readyState >= 2) {
+      ctx.globalAlpha = 0.45;
+      this.drawCoverFit(ctx, video, width, height);
     }
     
     ctx.restore();
   }
 
   /**
-   * Draw textures FULLSCREEN - with procedural fallback
+   * Draw textures fullscreen
    */
   private drawTextures(
     ctx: CanvasRenderingContext2D,
@@ -1120,58 +870,23 @@ export class GriotDigitalEngine {
     height: number,
     currentTime: number
   ): void {
+    if (this.textureVideos.length === 0) return;
+    
     ctx.save();
     ctx.globalCompositeOperation = 'overlay';
     
-    // Try CDN videos first
-    if (this.textureVideos.length > 0) {
-      const video = this.textureVideos[0];
-      
-      if (video && video.readyState >= 2) {
-        ctx.globalAlpha = 0.25;
-        this.drawCoverFit(ctx, video, width, height);
-        ctx.restore();
-        return;
-      }
-    }
+    const video = this.textureVideos[0];
     
-    // PROCEDURAL FALLBACK: Film grain texture
-    ctx.globalAlpha = 0.08;
-    const grainSize = 3;
-    for (let x = 0; x < width; x += grainSize * 2) {
-      for (let y = 0; y < height; y += grainSize * 2) {
-        const noise = Math.random();
-        if (noise > 0.7) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${noise * 0.3})`;
-          ctx.fillRect(x, y, grainSize, grainSize);
-        }
-      }
+    if (video && video.readyState >= 2) {
+      ctx.globalAlpha = 0.2;
+      this.drawCoverFit(ctx, video, width, height);
     }
     
     ctx.restore();
   }
-  
-  /**
-   * Helper: Draw image/video with cover-fit scaling
-   */
-  private drawCoverFit(
-    ctx: CanvasRenderingContext2D,
-    source: HTMLVideoElement | HTMLImageElement,
-    width: number,
-    height: number
-  ): void {
-    const sw = 'videoWidth' in source ? (source.videoWidth || width) : source.width;
-    const sh = 'videoHeight' in source ? (source.videoHeight || height) : source.height;
-    const scale = Math.max(width / sw, height / sh);
-    const dw = sw * scale;
-    const dh = sh * scale;
-    const dx = (width - dw) / 2;
-    const dy = (height - dh) / 2;
-    ctx.drawImage(source, dx, dy, dw, dh);
-  }
 
   /**
-   * Draw lens flares - with procedural fallback
+   * Draw lens flares
    */
   private drawLensFlares(
     ctx: CanvasRenderingContext2D,
@@ -1179,85 +894,45 @@ export class GriotDigitalEngine {
     height: number,
     currentTime: number
   ): void {
+    if (this.lensFlareImages.length === 0) return;
+    
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     
-    // Try CDN images first
-    if (this.lensFlareImages.length > 0) {
-      const flareIdx = Math.floor(currentTime / 5) % this.lensFlareImages.length;
-      const flare = this.lensFlareImages[flareIdx];
+    const idx = Math.floor(currentTime / 5) % this.lensFlareImages.length;
+    const flare = this.lensFlareImages[idx];
+    
+    if (flare && flare.complete) {
+      const pulse = 1 + Math.sin(currentTime * 2) * 0.12;
+      ctx.globalAlpha = 0.55 + Math.sin(currentTime * 1.5) * 0.15;
       
-      if (flare && flare.complete) {
-        const pulseScale = 1 + Math.sin(currentTime * 2) * 0.15;
-        ctx.globalAlpha = 0.6 + Math.sin(currentTime * 1.5) * 0.2;
-        
-        const flareSize = height * 0.25 * pulseScale;
-        const offsetX = Math.sin(currentTime * 0.3) * 30;
-        const offsetY = Math.cos(currentTime * 0.2) * 20;
-        
-        // Main flare at top-right
+      const size = height * 0.22 * pulse;
+      const offsetX = Math.sin(currentTime * 0.3) * 25;
+      const offsetY = Math.cos(currentTime * 0.2) * 18;
+      
+      // Main flare top-right
+      ctx.drawImage(
+        flare,
+        width * 0.72 - size / 2 + offsetX,
+        height * 0.1 - size / 2 + offsetY,
+        size,
+        size
+      );
+      
+      // Secondary flare bottom-left
+      if (this.lensFlareImages.length > 1) {
+        const flare2 = this.lensFlareImages[(idx + 1) % this.lensFlareImages.length];
+        ctx.globalAlpha = 0.35;
+        const size2 = size * 0.55;
         ctx.drawImage(
-          flare,
-          width * 0.7 - flareSize / 2 + offsetX,
-          height * 0.1 - flareSize / 2 + offsetY,
-          flareSize,
-          flareSize
+          flare2,
+          width * 0.2 - size2 / 2 - offsetX,
+          height * 0.78 - size2 / 2 - offsetY,
+          size2,
+          size2
         );
-        
-        // Secondary flare at bottom-left
-        if (this.lensFlareImages.length > 1) {
-          const flare2 = this.lensFlareImages[(flareIdx + 1) % this.lensFlareImages.length];
-          ctx.globalAlpha = 0.4;
-          const flare2Size = flareSize * 0.6;
-          ctx.drawImage(
-            flare2,
-            width * 0.2 - flare2Size / 2 - offsetX,
-            height * 0.75 - flare2Size / 2 - offsetY,
-            flare2Size,
-            flare2Size
-          );
-        }
-        
-        ctx.restore();
-        return;
       }
     }
-    
-    // PROCEDURAL FALLBACK: Animated lens flare
-    const flareAlpha = 0.4 + Math.sin(currentTime * 1.5) * 0.2;
-    const offsetX = Math.sin(currentTime * 0.3) * 30;
-    const offsetY = Math.cos(currentTime * 0.2) * 20;
-    
-    // Main flare
-    const flareX = width * 0.7 + offsetX;
-    const flareY = height * 0.12 + offsetY;
-    const flareRadius = height * 0.12 * (1 + Math.sin(currentTime * 2) * 0.15);
-    
-    const gradient = ctx.createRadialGradient(flareX, flareY, 0, flareX, flareY, flareRadius);
-    gradient.addColorStop(0, `rgba(255, 255, 255, ${flareAlpha})`);
-    gradient.addColorStop(0.2, `rgba(255, 230, 180, ${flareAlpha * 0.7})`);
-    gradient.addColorStop(0.5, `rgba(255, 200, 100, ${flareAlpha * 0.3})`);
-    gradient.addColorStop(1, 'transparent');
-    
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(flareX, flareY, flareRadius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Secondary smaller flare
-    const flare2X = width * 0.25 - offsetX;
-    const flare2Y = height * 0.75 - offsetY;
-    const flare2Radius = flareRadius * 0.5;
-    
-    const gradient2 = ctx.createRadialGradient(flare2X, flare2Y, 0, flare2X, flare2Y, flare2Radius);
-    gradient2.addColorStop(0, `rgba(255, 220, 150, ${flareAlpha * 0.6})`);
-    gradient2.addColorStop(0.5, `rgba(255, 180, 100, ${flareAlpha * 0.2})`);
-    gradient2.addColorStop(1, 'transparent');
-    
-    ctx.fillStyle = gradient2;
-    ctx.beginPath();
-    ctx.arc(flare2X, flare2Y, flare2Radius, 0, Math.PI * 2);
-    ctx.fill();
     
     ctx.restore();
   }
@@ -1274,35 +949,48 @@ export class GriotDigitalEngine {
   ): void {
     if (this.transitionVideos.length === 0) return;
     
-    // Transitions at every 10 seconds
     const segmentDuration = 10;
     const timeInSegment = currentTime % segmentDuration;
     
-    // Show transition in last 1.5 seconds of each segment
-    if (timeInSegment > segmentDuration - 1.5) {
-      const transitionIdx = Math.floor(currentTime / segmentDuration) % this.transitionVideos.length;
-      const video = this.transitionVideos[transitionIdx];
+    // Show transition in last 1.2 seconds
+    if (timeInSegment > segmentDuration - 1.2) {
+      const transIdx = Math.floor(currentTime / segmentDuration) % this.transitionVideos.length;
+      const video = this.transitionVideos[transIdx];
       
       if (video && video.readyState >= 2) {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         
-        const transitionProgress = (timeInSegment - (segmentDuration - 1.5)) / 1.5;
-        ctx.globalAlpha = transitionProgress * 0.9;
+        const transProgress = (timeInSegment - (segmentDuration - 1.2)) / 1.2;
+        ctx.globalAlpha = transProgress * 0.85;
         
-        // Draw FULLSCREEN
-        const vw = video.videoWidth || width;
-        const vh = video.videoHeight || height;
-        const scale = Math.max(width / vw, height / vh);
-        const sw = vw * scale;
-        const sh = vh * scale;
-        const sx = (width - sw) / 2;
-        const sy = (height - sh) / 2;
-        
-        ctx.drawImage(video, sx, sy, sw, sh);
+        this.drawCoverFit(ctx, video, width, height);
         ctx.restore();
       }
     }
+  }
+
+  /**
+   * Draw cover-fit helper
+   */
+  private drawCoverFit(
+    ctx: CanvasRenderingContext2D,
+    source: HTMLVideoElement | HTMLImageElement,
+    width: number,
+    height: number
+  ): void {
+    const sw = 'videoWidth' in source ? (source.videoWidth || width) : source.naturalWidth || source.width;
+    const sh = 'videoHeight' in source ? (source.videoHeight || height) : source.naturalHeight || source.height;
+    
+    if (sw === 0 || sh === 0) return;
+    
+    const scale = Math.max(width / sw, height / sh);
+    const dw = sw * scale;
+    const dh = sh * scale;
+    const dx = (width - dw) / 2;
+    const dy = (height - dh) / 2;
+    
+    ctx.drawImage(source, dx, dy, dw, dh);
   }
 
   /**
@@ -1324,7 +1012,6 @@ export class GriotDigitalEngine {
     ctx.globalAlpha = alpha;
     ctx.textAlign = 'center';
     
-    // Main title
     ctx.font = 'bold 72px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = '#FFD700';
     ctx.strokeStyle = '#000000';
@@ -1332,7 +1019,6 @@ export class GriotDigitalEngine {
     ctx.strokeText(this.storyTitle, width / 2, height * 0.12);
     ctx.fillText(this.storyTitle, width / 2, height * 0.12);
     
-    // Subtitle
     ctx.font = '36px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.lineWidth = 2;
@@ -1358,11 +1044,9 @@ export class GriotDigitalEngine {
     const barX = (width - barWidth) / 2;
     const barY = height - 50;
     
-    // Background
     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.fillRect(barX, barY, barWidth, barHeight);
     
-    // Progress
     ctx.fillStyle = '#FFD700';
     ctx.fillRect(barX, barY, barWidth * progress, barHeight);
     
@@ -1370,12 +1054,11 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Generate thumbnail from current scene
+   * Generate thumbnail
    */
   private async generateThumbnail(): Promise<Blob> {
     if (!this.canvas) return new Blob();
     
-    // Render a frame at 1 second for thumbnail
     this.drawFrame(1, 30);
     
     return new Promise((resolve) => {
@@ -1386,7 +1069,7 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Get audio duration from file
+   * Get audio duration
    */
   private async getAudioDuration(file: File): Promise<number> {
     return new Promise((resolve) => {
@@ -1396,7 +1079,7 @@ export class GriotDigitalEngine {
         URL.revokeObjectURL(audio.src);
         resolve(audio.duration);
       };
-      audio.onerror = () => resolve(30); // Default duration
+      audio.onerror = () => resolve(30);
     });
   }
 
@@ -1404,7 +1087,6 @@ export class GriotDigitalEngine {
    * Cleanup resources
    */
   public dispose(): void {
-    // Cleanup videos
     this.lightLeakVideos.forEach(v => { v.pause(); v.src = ''; });
     this.particleVideos.forEach(v => { v.pause(); v.src = ''; });
     this.textureVideos.forEach(v => { v.pause(); v.src = ''; });
@@ -1415,6 +1097,8 @@ export class GriotDigitalEngine {
       URL.revokeObjectURL(this.userVideo.src);
     }
     
+    this.cleanupAudio();
+    
     this.lightLeakVideos = [];
     this.particleVideos = [];
     this.textureVideos = [];
@@ -1423,6 +1107,7 @@ export class GriotDigitalEngine {
     this.userPhotos = [];
     this.userVideo = null;
     this.userAudioBlob = null;
+    this.userAudioBuffer = null;
     
     this.canvas = null;
     this.ctx = null;
@@ -1430,5 +1115,4 @@ export class GriotDigitalEngine {
   }
 }
 
-// Export singleton engine instance
 export const griotDigitalEngine = new GriotDigitalEngine();

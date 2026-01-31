@@ -853,12 +853,12 @@ export const GriotDigitalCreator: React.FC = () => {
                 {GriotDigitalTemplate.description}
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
-                {GriotDigitalTemplate.aiFeatures.slice(0, 4).map((feature) => (
+                {GriotDigitalTemplate.tags.slice(0, 4).map((tag) => (
                   <span
-                    key={feature}
+                    key={tag}
                     className="px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary"
                   >
-                    {feature}
+                    {tag}
                   </span>
                 ))}
               </div>
