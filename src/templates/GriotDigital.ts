@@ -1,13 +1,15 @@
 /**
- * Griot Digital Template - v3.1 FIXED
- * Cross-browser fullscreen rendering with REAL premium assets
- * Fixes: Safari audio, MOV→WebM, lens-flare local paths, user media
+ * Griot Digital Template - v4.0 AI-SYNCED MONTAGE
+ * Intelligent asset selection based on story emotion analysis
+ * Audio-synchronized rendering with semantic VFX mapping
  */
 
 import { AssetLoader3D } from '@/lib/AssetLoader3D';
 import { ParticleSystemManager } from '@/lib/ParticleSystemManager';
 import { AudioSyncEngine } from '@/lib/AudioSyncEngine';
 import { SUPABASE_ASSET_CDN_URL } from '@/lib/AssetRealMapping';
+import { StoryAnalyzer, StoryStructure, StorySegment } from '@/lib/StoryAnalyzer';
+import { AssetEmotionMapper, EMOTION_PALETTES } from '@/lib/AssetEmotionMapper';
 
 // ============================================================================
 // TYPES
@@ -55,6 +57,7 @@ export interface RenderResult {
     interactive: boolean;
     branchPoints?: BranchPoint[];
     segments: number;
+    storyStructure?: StoryStructure;
   };
 }
 
@@ -132,13 +135,17 @@ export const GriotDigitalTemplate = {
 };
 
 // ============================================================================
-// GRIOT DIGITAL ENGINE - v3.1 CROSS-BROWSER FIXED
+// GRIOT DIGITAL ENGINE - v4.0 AI-SYNCED MONTAGE
 // ============================================================================
 
 export class GriotDigitalEngine {
   private assetLoader: AssetLoader3D;
   private particleManager: ParticleSystemManager;
   private audioEngine: AudioSyncEngine;
+  
+  // NEW: AI Analysis Services
+  private storyAnalyzer: StoryAnalyzer;
+  private assetMapper: AssetEmotionMapper;
   
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
@@ -149,6 +156,9 @@ export class GriotDigitalEngine {
   private textureVideos: HTMLVideoElement[] = [];
   private transitionVideos: HTMLVideoElement[] = [];
   private lensFlareImages: HTMLImageElement[] = [];
+  
+  // Dynamic lens flares based on emotion
+  private emotionFlareCache: Map<string, HTMLImageElement> = new Map();
   
   // User content
   private userPhotos: HTMLImageElement[] = [];
@@ -161,6 +171,9 @@ export class GriotDigitalEngine {
   private storyTitle: string = '';
   private currentStyle: string = 'traditional';
   
+  // NEW: Story structure from AI analysis
+  private storyStructure: StoryStructure | null = null;
+  
   // Audio context for cross-browser support
   private audioContext: AudioContext | null = null;
   private audioElement: HTMLAudioElement | null = null;
@@ -169,6 +182,8 @@ export class GriotDigitalEngine {
     this.assetLoader = new AssetLoader3D();
     this.particleManager = new ParticleSystemManager();
     this.audioEngine = new AudioSyncEngine();
+    this.storyAnalyzer = new StoryAnalyzer();
+    this.assetMapper = new AssetEmotionMapper();
   }
 
   /**
@@ -442,13 +457,13 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Main render method
+   * Main render method - v4.0 with AI Analysis
    */
   public async render(
     inputs: GriotDigitalInputs,
     onProgress?: RenderProgressCallback
   ): Promise<RenderResult> {
-    console.log('[GriotDigital v3.1] Starting render pipeline...');
+    console.log('[GriotDigital v4.0] 🎬 Starting AI-synced render pipeline...');
     
     if (!this.canvas || !this.ctx) {
       throw new Error('Engine not initialized');
@@ -462,26 +477,56 @@ export class GriotDigitalEngine {
     // Load user content
     await this.loadUserContent(inputs);
 
-    onProgress?.(0.10, 'Analyse audio...');
+    onProgress?.(0.08, 'Analyse audio...');
 
-    // Get audio duration
+    // Get audio duration - EXACT match with narration
     const audioDuration = this.userAudioBuffer 
       ? this.userAudioBuffer.duration
       : await this.getAudioDuration(inputs.audioNarration);
     const totalDuration = Math.min(audioDuration, RENDER_CONFIG.maxDuration);
     
-    console.log(`[GriotDigital v3.1] Duration: ${totalDuration.toFixed(1)}s`);
+    console.log(`[GriotDigital v4.0] 📊 Audio duration: ${totalDuration.toFixed(1)}s (video will match EXACTLY)`);
 
-    onProgress?.(0.15, 'Préparation des assets...');
+    // NEW: AI Story Analysis
+    onProgress?.(0.10, '🧠 Analyse sémantique IA...');
+    
+    try {
+      this.storyStructure = await this.storyAnalyzer.analyze(
+        inputs.audioNarration,
+        (progress) => {
+          const stage = progress.stage === 'transcribing' ? 'Transcription...' :
+                       progress.stage === 'analyzing' ? 'Analyse émotionnelle...' :
+                       progress.stage === 'mapping' ? 'Mapping des effets...' : 
+                       progress.message;
+          onProgress?.(0.10 + progress.progress * 0.08, `🧠 ${stage}`);
+        }
+      );
+      
+      // Override duration to match audio exactly
+      this.storyStructure.totalDuration = totalDuration;
+      
+      console.log(`[GriotDigital v4.0] ✅ AI Analysis: ${this.storyStructure.segments.length} segments, ${this.storyStructure.keyMoments.length} key moments`);
+      console.log('[GriotDigital v4.0] Emotions:', this.storyStructure.segments.map(s => s.emotion).join(', '));
+      
+    } catch (error) {
+      console.warn('[GriotDigital v4.0] ⚠️ AI analysis failed, using default structure');
+      this.storyStructure = this.storyAnalyzer.createDefaultStructure(totalDuration);
+    }
+
+    onProgress?.(0.18, 'Préparation des assets...');
 
     // Wait for assets
     if (!this.assetsLoaded) {
       await this.waitForAssets(12000);
     }
+    
+    // NEW: Preload emotion-specific lens flares
+    onProgress?.(0.20, 'Chargement des effets émotionnels...');
+    await this.preloadEmotionFlares(this.storyStructure);
 
-    onProgress?.(0.20, 'Rendu vidéo avec effets premium...');
+    onProgress?.(0.22, 'Rendu vidéo IA synchronisé...');
 
-    // Render video
+    // Render video with AI-driven effects
     const video = await this.renderVideo(totalDuration, onProgress);
 
     onProgress?.(0.95, 'Génération miniature...');
@@ -491,7 +536,7 @@ export class GriotDigitalEngine {
 
     onProgress?.(1.0, 'Terminé!');
     
-    console.log('[GriotDigital v3.1] ✅ Render complete!');
+    console.log('[GriotDigital v4.0] ✅ AI-synced render complete!');
 
     return {
       video,
@@ -501,7 +546,8 @@ export class GriotDigitalEngine {
         title: this.storyTitle,
         language: inputs.language || 'auto',
         interactive: inputs.interactiveMode || false,
-        segments: Math.ceil(totalDuration / 10)
+        segments: this.storyStructure.segments.length,
+        storyStructure: this.storyStructure
       }
     };
   }
@@ -511,6 +557,37 @@ export class GriotDigitalEngine {
     while (!this.assetsLoaded && Date.now() - startTime < timeoutMs) {
       await new Promise(resolve => setTimeout(resolve, 200));
     }
+  }
+
+  /**
+   * NEW: Preload emotion-specific lens flares based on story structure
+   */
+  private async preloadEmotionFlares(structure: StoryStructure): Promise<void> {
+    console.log('[GriotDigital v4.0] 🌟 Preloading emotion-specific lens flares...');
+    
+    const uniqueEmotions = new Set(structure.segments.map(s => s.emotion));
+    
+    for (const emotion of uniqueEmotions) {
+      const hints = structure.segments.find(s => s.emotion === emotion)?.assetHints;
+      if (!hints?.flareRange) continue;
+      
+      const [minFlare, maxFlare] = hints.flareRange;
+      // Pick 3 random flares from the range for this emotion
+      for (let i = 0; i < 3; i++) {
+        const flareNum = minFlare + Math.floor(Math.random() * (maxFlare - minFlare));
+        const flareKey = `${emotion}-${i}`;
+        
+        if (!this.emotionFlareCache.has(flareKey)) {
+          const url = `/assets/envato/lens-flare/flare-${String(flareNum).padStart(3, '0')}.png`;
+          const img = await this.loadImageAsset(url);
+          if (img) {
+            this.emotionFlareCache.set(flareKey, img);
+          }
+        }
+      }
+    }
+    
+    console.log(`[GriotDigital v4.0] ✅ Emotion flares cached: ${this.emotionFlareCache.size}`);
   }
 
   /**
@@ -720,7 +797,7 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Draw a single frame - FULLSCREEN with ALL layers
+   * Draw a single frame - v4.0 AI-SYNCED with emotion-based effects
    */
   private drawFrame(currentTime: number, totalDuration: number): void {
     const ctx = this.ctx!;
@@ -728,41 +805,121 @@ export class GriotDigitalEngine {
     const height = RENDER_CONFIG.height;
     const progress = currentTime / totalDuration;
     
-    // 1. BACKGROUND - User content or gradient
-    this.drawBackground(ctx, width, height, currentTime);
+    // Get current segment from AI analysis
+    const currentSegment = this.getCurrentSegment(currentTime);
+    const emotion = currentSegment?.emotion || 'neutral';
+    const intensity = currentSegment?.intensity || 0.5;
+    const cameraMove = currentSegment?.cameraMove || 'static';
     
-    // 2. LIGHT LEAKS - Fullscreen from CDN
-    this.drawLightLeaks(ctx, width, height, currentTime);
+    // 1. BACKGROUND - User content with AI-driven Ken Burns
+    this.drawBackground(ctx, width, height, currentTime, cameraMove, intensity);
     
-    // 3. PARTICLES - Fullscreen from CDN
-    this.drawParticles(ctx, width, height, currentTime);
+    // 2. Apply emotion color tint
+    this.applyEmotionTint(ctx, width, height, emotion, intensity);
     
-    // 4. TEXTURES - Fullscreen overlay
+    // 3. LIGHT LEAKS - Intensity based on segment
+    this.drawLightLeaks(ctx, width, height, currentTime, intensity);
+    
+    // 4. PARTICLES - Intensity based on segment
+    this.drawParticles(ctx, width, height, currentTime, intensity);
+    
+    // 5. TEXTURES - Fullscreen overlay
     this.drawTextures(ctx, width, height, currentTime);
     
-    // 5. LENS FLARES - From local PNG
-    this.drawLensFlares(ctx, width, height, currentTime);
+    // 6. LENS FLARES - Emotion-specific from cache
+    this.drawEmotionLensFlares(ctx, width, height, currentTime, emotion, intensity);
     
-    // 6. TRANSITIONS - At segment boundaries
+    // 7. TRANSITIONS - At key moments
     this.drawTransitions(ctx, width, height, currentTime, totalDuration);
     
-    // 7. TITLE (first 5 seconds)
+    // 8. TITLE (first 5 seconds)
     if (currentTime < 5) {
       this.drawTitle(ctx, width, height, currentTime);
     }
     
-    // 8. PROGRESS BAR
+    // 9. PROGRESS BAR
     this.drawProgressIndicator(ctx, width, height, progress);
   }
 
   /**
-   * Draw background - user photos/video with Ken Burns
+   * Get current segment from story structure
+   */
+  private getCurrentSegment(currentTime: number): StorySegment | null {
+    if (!this.storyStructure) return null;
+    
+    return this.storyStructure.segments.find(
+      s => currentTime >= s.startTime && currentTime < s.endTime
+    ) || this.storyStructure.segments[0] || null;
+  }
+
+  /**
+   * Apply emotion-based color tint
+   */
+  private applyEmotionTint(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    emotion: StorySegment['emotion'],
+    intensity: number
+  ): void {
+    const palette = EMOTION_PALETTES[emotion];
+    if (!palette?.colorTint) return;
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = intensity * 0.5;
+    ctx.fillStyle = palette.colorTint;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  }
+
+  /**
+   * Draw emotion-specific lens flares from cache
+   */
+  private drawEmotionLensFlares(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    currentTime: number,
+    emotion: StorySegment['emotion'],
+    intensity: number
+  ): void {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    
+    // Use emotion-specific flares from cache
+    const flareIndex = Math.floor(currentTime / 4) % 3;
+    const flareKey = `${emotion}-${flareIndex}`;
+    const emotionFlare = this.emotionFlareCache.get(flareKey);
+    
+    if (emotionFlare && emotionFlare.complete) {
+      const flareOpacity = 0.4 + (intensity * 0.4);
+      ctx.globalAlpha = flareOpacity;
+      
+      // Dynamic position based on emotion
+      const x = width * (0.6 + Math.sin(currentTime * 0.3) * 0.2);
+      const y = height * (0.2 + Math.cos(currentTime * 0.2) * 0.1);
+      const size = Math.min(width, height) * (0.4 + intensity * 0.3);
+      
+      ctx.drawImage(emotionFlare, x - size/2, y - size/2, size, size);
+    }
+    
+    // Also draw base flares from preloaded array
+    this.drawLensFlares(ctx, width, height, currentTime);
+    
+    ctx.restore();
+  }
+
+  /**
+   * Draw background - user photos/video with AI-driven Ken Burns
    */
   private drawBackground(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
-    currentTime: number
+    currentTime: number,
+    cameraMove: StorySegment['cameraMove'] = 'static',
+    intensity: number = 0.5
   ): void {
     ctx.clearRect(0, 0, width, height);
     
@@ -774,23 +931,61 @@ export class GriotDigitalEngine {
       return;
     }
     
-    // Priority 2: User photos with Ken Burns
+    // Priority 2: User photos with AI-driven Ken Burns based on cameraMove
     if (this.userPhotos.length > 0) {
-      const photoIndex = Math.floor(currentTime / 5) % this.userPhotos.length;
+      // Distribute photos evenly across audio duration
+      const photoDuration = this.storyStructure 
+        ? this.storyStructure.totalDuration / this.userPhotos.length
+        : 5;
+      const photoIndex = Math.floor(currentTime / photoDuration) % this.userPhotos.length;
       const photo = this.userPhotos[photoIndex];
       
       if (photo && photo.complete && photo.naturalWidth > 0) {
         const pw = photo.naturalWidth;
         const ph = photo.naturalHeight;
         
-        // Ken Burns effect
-        const zoom = 1 + Math.sin(currentTime * 0.25) * 0.06;
+        // AI-driven Ken Burns based on cameraMove
+        const segmentTime = currentTime % photoDuration;
+        const segmentProgress = segmentTime / photoDuration;
+        
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        
+        const speed = 1 + (intensity * 0.5);
+        
+        switch (cameraMove) {
+          case 'zoom-in':
+            zoom = 1 + (segmentProgress * 0.15 * speed);
+            break;
+          case 'zoom-out':
+            zoom = 1.15 - (segmentProgress * 0.15 * speed);
+            break;
+          case 'pan-left':
+            zoom = 1.05;
+            panX = -segmentProgress * 50 * speed;
+            break;
+          case 'pan-right':
+            zoom = 1.05;
+            panX = segmentProgress * 50 * speed;
+            break;
+          case 'orbit':
+            zoom = 1.05 + Math.sin(segmentProgress * Math.PI) * 0.05 * speed;
+            panX = Math.cos(segmentProgress * Math.PI * 2) * 30 * speed;
+            panY = Math.sin(segmentProgress * Math.PI * 2) * 20 * speed;
+            break;
+          case 'static':
+          default:
+            // Subtle Ken Burns even for "static"
+            zoom = 1 + Math.sin(currentTime * 0.25) * 0.04;
+            panX = Math.sin(currentTime * 0.15) * 15;
+            panY = Math.cos(currentTime * 0.12) * 10;
+            break;
+        }
+        
         const scale = Math.max(width / pw, height / ph) * zoom;
         const sw = pw * scale;
         const sh = ph * scale;
-        
-        const panX = Math.sin(currentTime * 0.15) * 25;
-        const panY = Math.cos(currentTime * 0.12) * 20;
         const sx = (width - sw) / 2 + panX;
         const sy = (height - sh) / 2 + panY;
         
@@ -812,13 +1007,14 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Draw light leaks fullscreen
+   * Draw light leaks fullscreen - intensity driven by AI
    */
   private drawLightLeaks(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
-    currentTime: number
+    currentTime: number,
+    intensity: number = 0.5
   ): void {
     if (this.lightLeakVideos.length === 0) return;
     
@@ -829,7 +1025,9 @@ export class GriotDigitalEngine {
     const video = this.lightLeakVideos[idx];
     
     if (video && video.readyState >= 2) {
-      ctx.globalAlpha = 0.5 + Math.sin(currentTime * 0.5) * 0.15;
+      // Opacity driven by segment intensity
+      const baseOpacity = 0.3 + (intensity * 0.4);
+      ctx.globalAlpha = baseOpacity + Math.sin(currentTime * 0.5) * 0.1;
       this.drawCoverFit(ctx, video, width, height);
     }
     
@@ -837,13 +1035,14 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Draw particles fullscreen
+   * Draw particles fullscreen - intensity driven by AI
    */
   private drawParticles(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
-    currentTime: number
+    currentTime: number,
+    intensity: number = 0.5
   ): void {
     if (this.particleVideos.length === 0) return;
     
@@ -854,7 +1053,8 @@ export class GriotDigitalEngine {
     const video = this.particleVideos[idx];
     
     if (video && video.readyState >= 2) {
-      ctx.globalAlpha = 0.45;
+      // Opacity driven by segment intensity
+      ctx.globalAlpha = 0.25 + (intensity * 0.35);
       this.drawCoverFit(ctx, video, width, height);
     }
     
