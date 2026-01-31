@@ -1,250 +1,215 @@
 
-# Plan d'Intégration Complète: Griot Digital Template (de bout en bout)
+# Plan: Montage IA Intelligent Synchronisé avec l'Audio Vocal
 
-## Contexte & Analyse
-
-### Village Chronicle (Modèle Fonctionnel)
-J'ai analysé le workflow complet qui fonctionne pour Village Chronicle:
-1. **NewsStudio.tsx** → Interface utilisateur avec gestion des étapes (setup/news/anchor/preview/rendering/complete)
-2. **VillageChronicle.ts** → Engine avec fallback 2D, génération audio TTS, et rendu 720p@18fps
-3. **VideoEncoder.ts** → Encodage MP4 via FFmpeg.wasm avec mixage audio
-4. **useVideoPublish.ts** → Publication vers le feed avec upload Storage + insertion DB
-5. **analyze-news (Edge Function)** → Analyse IA avec fallback robuste
-
-### Griot Digital (État Actuel)
-Le template existe mais présente plusieurs lacunes:
-1. **GriotDigitalCreator.tsx** → UI fonctionnelle mais rendu basé sur MediaRecorder (WebM uniquement, pas d'audio muxé)
-2. **GriotDigital.ts** → Engine 3D complexe mais sans fallback 2D robuste, résolution 1080@60fps trop lourde
-3. **Pas de TTS intégré** → L'audio est uniquement l'enregistrement utilisateur
-4. **analyze-story (Edge Function)** → Existe avec fallback mais non utilisé de façon optimale
+## Résumé Exécutif
+Transformer le moteur Griot Digital pour créer un montage vidéo "intelligent" où:
+1. **L'IA analyse le contenu vocal** pour comprendre le sens et les émotions
+2. **Les assets visuels sont sélectionnés dynamiquement** selon le contexte narratif
+3. **La durée du montage = durée exacte de l'audio** (synchronisation automatique)
+4. **Le rendu commence et finit avec la narration vocale**
 
 ---
 
-## Plan de Modifications
-
-### 1. Optimiser le GriotDigital Engine (src/templates/GriotDigital.ts)
-
-**Objectif**: Aligner sur le pattern VillageChronicle pour fiabilité et performance
-
-**Modifications:**
-- Réduire résolution: 1080x1920 → **720p (1280x720)** portrait
-- Réduire FPS: 60fps → **18fps** (même que Village Chronicle)
-- Ajouter un mode **fallback 2D Canvas** si Three.js échoue
-- Implémenter `draw2DFrame()` pour rendu procédural sans modèles GLB
-- Utiliser **FFmpeg.wasm** au lieu de MediaRecorder pour muxer l'audio
-- Ajouter la méthode `generateFinalAudio()` pour combiner narration + musique
+## Architecture Technique
 
 ```text
-Avant:
-├── renderSettings: { resolution: '4K', fps: 60 }
-├── MediaRecorder (video/webm sans audio muxé)
-└── Dépendance forte aux modèles GLB
-
-Après:
-├── renderSettings: { resolution: '720p', fps: 18 }
-├── FFmpeg.wasm (video/mp4 avec audio muxé)
-└── Fallback 2D Canvas avec GriotFallbackScene
+┌──────────────────────────────────────────────────────────────────────┐
+│                      PIPELINE DE MONTAGE IA                          │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────┐  │
+│  │ 1. AUDIO    │───►│ 2. TRANSCR. │───►│ 3. ANALYSE SÉMANTIQUE   │  │
+│  │ (Micro/File)│    │ (Web Speech)│    │ (Gemini 3 Flash)        │  │
+│  └─────────────┘    └─────────────┘    └───────────┬─────────────┘  │
+│                                                     │                │
+│                                                     ▼                │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │                    StoryStructure                                ││
+│  │  ├─ segments[] (timing, emotion, cameraMove, visualEffect)      ││
+│  │  ├─ keyMoments[] (climax, transition, emphasis)                 ││
+│  │  └─ totalDuration = audioDuration                               ││
+│  └─────────────────────────────────────────────────────────────────┘│
+│                                                     │                │
+│                                                     ▼                │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │              4. ASSET MAPPING INTELLIGENT                        ││
+│  │  ├─ Emotion → Lens Flare (joy→doré, tension→rouge)              ││
+│  │  ├─ CameraMove → Photo Animation (zoom-in, orbit, pan)          ││
+│  │  ├─ VisualEffect → VFX Layer (particles, glow, shake)           ││
+│  │  └─ KeyMoment → Transition Video                                ││
+│  └─────────────────────────────────────────────────────────────────┘│
+│                                                     │                │
+│                                                     ▼                │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │              5. RENDU SYNCHRONISÉ                                ││
+│  │  ├─ Frame 0 → currentTime = 0 → Audio.start()                   ││
+│  │  ├─ Frame N → currentTime = audioDuration → Audio.end()         ││
+│  │  └─ MediaRecorder capture = exactement audioDuration            ││
+│  └─────────────────────────────────────────────────────────────────┘│
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
-
-### 2. Refactorer le Pipeline de Rendu
-
-**Dans GriotDigital.ts - Méthode render():**
-
-```text
-Nouveau flux de rendu:
-1. Analyser l'audio (durée, beats)
-2. Appeler analyze-story Edge Function
-3. Créer timeline avec segments émotionnels
-4. Initialiser fallback 2D si Three.js indisponible
-5. Capturer frames via captureCanvasFrames()
-6. Encoder avec encodeVideo() (FFmpeg MP4)
-7. Retourner Blob MP4 avec audio intégré
-```
-
-**Paramètres optimisés:**
-- `totalDuration`: max 30 secondes
-- `fps`: 18 (quick) ou 12 (preview)
-- `renderWidth`: 1280
-- `renderHeight`: 720
-
-### 3. Ajouter le Fallback 2D au GriotDigital Engine
-
-**Nouvelle méthode `draw2DFrame(time: number)`:**
-- Dessiner fond dégradé selon le style (traditional/modern/fantasy/historical)
-- Animer silhouette du griot (GriotFallbackScene)
-- Afficher particules dorées (canvas natif)
-- Afficher sous-titres karaoké synchronisés
-- Afficher indicateurs de beat (pulsation visuelle)
-
-### 4. Intégrer TTS (Text-to-Speech) Optionnel
-
-**Nouvelle Edge Function ou réutilisation de `french-tts`:**
-- Si l'utilisateur fournit du texte en plus de l'audio → synthétiser intro/outro
-- Sinon, utiliser uniquement l'audio enregistré
-- Concaténer avec `concatAudioBlobs()` de VideoEncoder.ts
-
-### 5. Mettre à Jour GriotDigitalCreator.tsx
-
-**Modifications UI/UX:**
-- Utiliser `encodeVideo()` au lieu de MediaRecorder direct
-- Afficher progression détaillée (frames/total)
-- Gérer les erreurs avec fallback gracieux
-- S'assurer que la publication utilise le bon format MP4
-
-**Modifications dans startRendering():**
-```text
-Avant:
-└── engine.render() → Blob WebM sans audio
-
-Après:
-└── engine.render() → Blob MP4 avec audio muxé
-    ├── captureCanvasFrames() 
-    ├── encodeVideo() avec FFmpeg
-    └── Fallback: encodeWithMediaRecorder() si FFmpeg échoue
-```
-
-### 6. Synchroniser avec la Publication (useVideoPublish.ts)
-
-**Vérifications:**
-- Le hook détecte déjà MP4 vs WebM (`isMP4 = data.video.type.includes('mp4')`)
-- S'assurer que le thumbnail est généré à la frame 1s
-- Template ID = 'griot-digital' (déjà configuré)
 
 ---
 
 ## Fichiers à Modifier
 
-| Fichier | Action | Priorité |
-|---------|--------|----------|
-| `src/templates/GriotDigital.ts` | Refactoring majeur: 720p, 18fps, FFmpeg, fallback 2D | 🔴 Haute |
-| `src/components/GriotDigitalCreator.tsx` | Adaptation au nouveau pipeline render | 🔴 Haute |
-| `src/lib/GriotFallbackScene.ts` | Améliorer animations et effets 2D | 🟡 Moyenne |
-| `supabase/functions/analyze-story/index.ts` | Déjà fonctionnel, vérifier robustesse | 🟢 Basse |
+### 1. Edge Function: `supabase/functions/analyze-story/index.ts`
+**Améliorer le prompt d'analyse pour inclure:**
+- Mapping émotion → catégorie de lens flare (50 assets disponibles)
+- Mapping thème → style de particules/light leaks
+- Détection de mots-clés culturels (sagesse, ancêtres, unité) → symboles spécifiques
+- Calcul précis des timings basé sur la durée audio fournie
 
----
+### 2. Moteur de Rendu: `src/templates/GriotDigital.ts`
+**Modifications majeures:**
 
-## Détail Technique: Modifications GriotDigital.ts
-
-### A. Imports Additionnels
+a) **Ajouter l'analyse sémantique avant le rendu:**
 ```typescript
-import { encodeVideo, captureCanvasFrames, encodeWithMediaRecorder, EncoderProgress } from '@/lib/VideoEncoder';
+// Nouveau: Transcription + Analyse IA
+private storyStructure: StoryStructure | null = null;
+
+async analyzeContent(audioFile: File): Promise<StoryStructure> {
+  // 1. Transcription via Web Speech API
+  // 2. Appel analyze-story avec transcript + duration
+  // 3. Retourne segments avec timing précis
+}
 ```
 
-### B. Nouvelles Propriétés
+b) **Asset Selection Intelligent:**
 ```typescript
-private use2DFallback: boolean = false;
-private ctx2D: CanvasRenderingContext2D | null = null;
-private canvas: HTMLCanvasElement | null = null;
+// Mapping Emotion → Asset
+const EMOTION_ASSET_MAP = {
+  joy: { flares: [50-100], particles: 'light', blend: 'screen' },
+  tension: { flares: [150-200], particles: 'fire', blend: 'overlay' },
+  wisdom: { flares: [1-50], particles: 'gold', blend: 'multiply' },
+  // ...
+};
 ```
 
-### C. Méthode render() Refactorisée
-```text
-Étapes:
-1. Créer canvas dédié (1280x720)
-2. Tenter initialisation Three.js
-3. Si échec → activer use2DFallback = true
-4. Analyser audio et créer timeline
-5. Pour chaque frame:
-   - Si 3D: renderer.render(scene, camera)
-   - Si 2D: draw2DFrame(time)
-6. Capturer frames PNG
-7. Encoder MP4 via FFmpeg avec audio original
-8. Générer thumbnail (frame à 1s)
+c) **Synchronisation Frame-par-Frame:**
+```typescript
+private drawFrame(currentTime: number, structure: StoryStructure) {
+  // Trouver le segment actif basé sur currentTime
+  const segment = structure.segments.find(
+    s => currentTime >= s.startTime && currentTime < s.endTime
+  );
+  
+  // Appliquer les effets du segment
+  this.applySegmentEffects(segment);
+  
+  // Appliquer l'animation de caméra
+  this.applyCameraMove(segment.cameraMove, currentTime - segment.startTime);
+}
 ```
 
-### D. Méthode draw2DFrame() (Nouveau)
-```text
-1. Effacer canvas
-2. Dessiner fond dégradé (palette selon style)
-3. Dessiner silhouette griot (primitives 2D)
-4. Animer particules dorées
-5. Afficher texte/sous-titres si activé
-6. Pulsation sur beats audio
+d) **Photo Distribution Intelligente:**
+```typescript
+// Distribuer les photos sur toute la durée audio
+const photoSegmentDuration = audioDuration / userPhotos.length;
+const currentPhotoIndex = Math.floor(currentTime / photoSegmentDuration);
+```
+
+### 3. UI Creator: `src/components/GriotDigitalCreator.tsx`
+**Ajouter l'étape d'analyse:**
+- Afficher un loader "Analyse de votre histoire..."
+- Prévisualiser les segments détectés avant le rendu
+- Permettre l'édition manuelle des émotions/effets (optionnel)
+
+---
+
+## Détail Technique: Mapping Assets
+
+### Lens Flares (455 fichiers disponibles)
+| Émotion | Range | Caractéristiques |
+|---------|-------|------------------|
+| joy | 50-100 | Doré, lumineux |
+| wisdom | 1-49 | Subtil, ambré |
+| tension | 150-200 | Rouge, intense |
+| sadness | 250-300 | Bleu, froid |
+| excitement | 100-150 | Multicolore, dynamique |
+| neutral | 300-350 | Blanc, doux |
+
+### Transitions (CDN)
+| Moment Clé | Asset |
+|------------|-------|
+| climax | transition-022.mp4 |
+| transition | transition-014.mp4 |
+| reveal | transition-018.mp4 |
+
+### Light Leaks (CDN)
+| Intensité | Asset |
+|-----------|-------|
+| 0.0-0.3 | leak-001.webm |
+| 0.3-0.6 | leak-006.webm |
+| 0.6-0.9 | leak-010.webm |
+| 0.9-1.0 | leak-014.webm |
+
+---
+
+## Synchronisation Audio Précise
+
+### Garanties de Synchronisation:
+1. **Durée = audioDuration exacte** (déjà implémenté)
+2. **Début simultané:** Audio démarre à frame 0
+3. **Fin synchrone:** MediaRecorder.stop() après le dernier frame
+
+### Améliorations:
+```typescript
+// Nouveau: Utiliser AudioBuffer.duration comme source de vérité
+const audioDuration = this.userAudioBuffer.duration;
+const totalFrames = Math.ceil(audioDuration * fps);
+
+// Le rendu s'arrête exactement quand l'audio finit
+renderNextFrame() {
+  if (currentTime >= audioDuration) {
+    recorder.stop();
+    return;
+  }
+}
 ```
 
 ---
 
-## Schéma du Flux Final
+## Workflow Utilisateur Final
 
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│                    GRIOT DIGITAL - FLUX COMPLET                   │
-└──────────────────────────────────────────────────────────────────┘
-         │
-         ▼
-┌──────────────────┐
-│  1. UPLOAD       │  Utilisateur enregistre/importe audio
-│     AUDIO        │  + Photos optionnelles (face mapping)
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  2. CONFIGURE    │  Style: traditional/modern/fantasy/historical
-│     OPTIONS      │  Langue, sous-titres, mode interactif
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  3. PREVIEW      │  Aperçu canvas 2D statique ou animé
-│                  │  Résumé des paramètres
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  4. RENDERING (dans GriotDigitalEngine)                          │
-├──────────────────────────────────────────────────────────────────┤
-│  a) Analyse audio → durée, beats                                  │
-│  b) Appel Edge Function analyze-story → structure narrative       │
-│  c) Création timeline (segments + émotions + caméra)              │
-│  d) Init Three.js ou Fallback 2D Canvas                          │
-│  e) Boucle de rendu: 720p @ 18fps (max 30s = 540 frames)         │
-│  f) Capture PNG frames                                           │
-│  g) FFmpeg.wasm: muxage MP4 + audio original                     │
-│  h) Génération thumbnail (frame @1s)                             │
-└────────┬─────────────────────────────────────────────────────────┘
-         │
-         ▼
-┌──────────────────┐
-│  5. COMPLETE     │  Aperçu vidéo finale
-│                  │  Boutons: Publier / Télécharger / Partager
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  6. PUBLICATION (useVideoPublish)                                 │
-├──────────────────────────────────────────────────────────────────┤
-│  a) Upload video.mp4 vers Storage (bucket: videos)               │
-│  b) Upload thumbnail.jpg vers Storage                            │
-│  c) Insert dans table videos:                                     │
-│     - template_id: 'griot-digital'                                │
-│     - template_name: 'Griot Digital'                              │
-│     - duration_seconds: durée                                     │
-│  d) Redirection vers /tamtam/social (feed vidéo)                 │
-└──────────────────────────────────────────────────────────────────┘
-         │
-         ▼
-┌──────────────────┐
-│  7. FEED VIDEO   │  Vidéo visible avec audio
-│     (TamTamSocial) │  Toggle mute/unmute
-└──────────────────┘
-```
+1. **Enregistre ton histoire** (micro) ou importe un fichier audio
+2. **Ajoute des photos** (optionnel, pour illustrer)
+3. **L'IA analyse automatiquement:**
+   - Transcrit le contenu
+   - Identifie les émotions et moments clés
+   - Calcule les timings précis
+4. **Prévisualisation** avec les effets mappés
+5. **Rendu final** = durée exacte de l'audio, effets synchronisés
 
 ---
 
-## Résultat Attendu
+## Risques et Mitigations
 
-Après ces modifications:
-1. **Fiabilité**: Le template ne bloquera jamais (fallback 2D garantit un rendu)
-2. **Performance**: Rendu 720p@18fps (~540 frames pour 30s) au lieu de 4K@60fps
-3. **Audio**: MP4 avec audio muxé via FFmpeg (audible dans le feed)
-4. **UX**: Progression détaillée, temps de génération réduit (~30-60 secondes)
-5. **Publication**: Intégration complète avec le feed vidéo existant
+| Risque | Mitigation |
+|--------|------------|
+| Transcription échoue | Fallback: structure par défaut avec segments réguliers |
+| Analyse IA rate limitée | Fallback: createDefaultStructure() avec audioDuration |
+| Web Speech API non supporté | Fallback: import fichier texte ou skip analyse |
+| Photos manquantes | Utiliser gradient animé + VFX uniquement |
 
 ---
 
-## Priorité d'Implémentation
+## Section Technique: Fichiers Créés/Modifiés
 
-1. **Phase 1**: Modifier GriotDigital.ts (render pipeline)
-2. **Phase 2**: Ajouter draw2DFrame() pour fallback
-3. **Phase 3**: Adapter GriotDigitalCreator.tsx
-4. **Phase 4**: Tests et validation end-to-end
+### Nouveaux Fichiers:
+- `src/lib/StoryAnalyzer.ts` - Service d'analyse sémantique côté client
+- `src/lib/AssetEmotionMapper.ts` - Mapping émotion → assets
+
+### Fichiers Modifiés:
+- `supabase/functions/analyze-story/index.ts` - Prompt amélioré + asset hints
+- `src/templates/GriotDigital.ts` - Pipeline de rendu intelligent
+- `src/components/GriotDigitalCreator.tsx` - UI d'analyse + prévisualisation
+
+---
+
+## Bénéfices Attendus
+- Montage **automatiquement adapté au contenu** narratif
+- **Synchronisation parfaite** audio/vidéo (début = début, fin = fin)
+- **Effets visuels contextuels** (joie → lumière dorée, tension → rouge)
+- **Expérience utilisateur fluide** sans intervention technique
