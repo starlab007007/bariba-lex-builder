@@ -45,6 +45,48 @@ import {
 } from '@/templates/GriotDigital';
 
 // ============================================================================
+// iOS Safari audio capture helpers
+// ============================================================================
+
+const isIOSDevice = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  // iPadOS reports as MacIntel + touch points
+  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
+
+const isSafariBrowser = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /^((?!chrome|android).)*safari/i.test(ua);
+};
+
+// Prefer MP4/AAC on iOS Safari; otherwise allow best-effort fallback.
+const getSupportedAudioMimeType = (preferMp4: boolean): string | undefined => {
+  const candidates = preferMp4
+    ? ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg']
+    : ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg', 'audio/mp4'];
+
+  if (typeof MediaRecorder === 'undefined') return undefined;
+  return candidates.find((t) => {
+    try {
+      return MediaRecorder.isTypeSupported(t);
+    } catch {
+      return false;
+    }
+  });
+};
+
+const getAudioFileExtension = (mimeType: string): string => {
+  const t = (mimeType || '').toLowerCase();
+  if (t.includes('mp4')) return 'm4a';
+  if (t.includes('mpeg')) return 'mp3';
+  if (t.includes('ogg')) return 'ogg';
+  if (t.includes('wav')) return 'wav';
+  return 'webm';
+};
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -173,17 +215,36 @@ export const GriotDigitalCreator: React.FC = () => {
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+
+      const preferMp4 = isIOSDevice() && isSafariBrowser();
+      const mimeType = getSupportedAudioMimeType(preferMp4);
+      const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (err) {
+        // Some Safari builds can throw if options are passed; retry with defaults.
+        mediaRecorder = new MediaRecorder(stream);
+      }
+
       mediaRecorderRef.current = mediaRecorder;
       recordedChunksRef.current = [];
 
-      const getAudioFileExtension = (mimeType: string): string => {
-        const t = (mimeType || '').toLowerCase();
-        if (t.includes('mp4')) return 'm4a';
-        if (t.includes('mpeg')) return 'mp3';
-        if (t.includes('ogg')) return 'ogg';
-        if (t.includes('wav')) return 'wav';
-        return 'webm';
+      mediaRecorder.onerror = (event: any) => {
+        // Safari iOS sometimes errors with NotSupportedError when mimeType isn't valid.
+        console.error('[GriotDigitalCreator] MediaRecorder error:', event);
+        toast({
+          title: 'Erreur enregistrement iPhone',
+          description: 'Safari a interrompu l\'enregistrement. Réessaie, ou utilise Importer un fichier audio.',
+          variant: 'destructive'
+        });
+        try {
+          stream.getTracks().forEach((track) => track.stop());
+        } catch {
+          // ignore
+        }
+        setIsRecording(false);
       };
 
       mediaRecorder.ondataavailable = (e) => {
@@ -194,17 +255,13 @@ export const GriotDigitalCreator: React.FC = () => {
 
       mediaRecorder.onstop = () => {
         // IMPORTANT (Safari iOS): do NOT force audio/webm.
-        // Safari records as audio/mp4 by default; forcing webm breaks preview + downstream handling.
-        const ua = navigator.userAgent;
-        const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+        // Safari records as audio/mp4 (AAC) most of the time; forcing webm breaks downstream.
+        const isIOS = isIOSDevice();
+        const isSafari = isSafariBrowser();
 
         let detectedMimeType = mediaRecorder.mimeType || recordedChunksRef.current[0]?.type || '';
-        if (!detectedMimeType && isIOS && isSafari) {
-          // Safari iOS sometimes leaves mimeType empty even though it records AAC in MP4.
-          detectedMimeType = 'audio/mp4';
-        }
-        if (!detectedMimeType) detectedMimeType = 'audio/webm';
+        if (!detectedMimeType && isIOS && isSafari) detectedMimeType = 'audio/mp4';
+        if (!detectedMimeType) detectedMimeType = mimeType || 'audio/webm';
 
         const blob = new Blob(recordedChunksRef.current, { type: detectedMimeType });
         const ext = getAudioFileExtension(detectedMimeType);
@@ -227,7 +284,8 @@ export const GriotDigitalCreator: React.FC = () => {
         stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorder.start();
+      // Use a timeslice so iOS reliably emits data chunks.
+      mediaRecorder.start(1000);
       setIsRecording(true);
       setRecordingTime(0);
     } catch (error) {
@@ -242,7 +300,25 @@ export const GriotDigitalCreator: React.FC = () => {
 
   // Stop audio recording
   const stopRecording = useCallback(() => {
-    mediaRecorderRef.current?.stop();
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) {
+      setIsRecording(false);
+      return;
+    }
+
+    try {
+      if (recorder.state === 'recording') {
+        // Flush remaining audio before stopping (helps on iOS)
+        try {
+          recorder.requestData();
+        } catch {
+          // ignore
+        }
+        recorder.stop();
+      }
+    } catch (err) {
+      console.error('[GriotDigitalCreator] stopRecording failed:', err);
+    }
     setIsRecording(false);
   }, []);
 
