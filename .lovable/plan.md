@@ -1,215 +1,178 @@
 
-# Plan: Montage IA Intelligent Synchronisé avec l'Audio Vocal
+# Plan: Griot Digital v5.0 - Montage 3D Animé IA Immersif
 
-## Résumé Exécutif
-Transformer le moteur Griot Digital pour créer un montage vidéo "intelligent" où:
-1. **L'IA analyse le contenu vocal** pour comprendre le sens et les émotions
-2. **Les assets visuels sont sélectionnés dynamiquement** selon le contexte narratif
-3. **La durée du montage = durée exacte de l'audio** (synchronisation automatique)
-4. **Le rendu commence et finit avec la narration vocale**
+## Diagnostic du Problème Actuel
 
----
+Le moteur `GriotDigital.ts` v4.0 présente ces limitations majeures :
 
-## Architecture Technique
+1. **Rendu purement 2D** : Le canvas utilise uniquement `ctx.drawImage()` - aucune intégration Three.js dans le pipeline final
+2. **Assets sous-utilisés** : Les 455 lens flares, 22 light leaks et modèles 3D ne sont pas exploités au maximum
+3. **Animations statiques** : Ken Burns basique sur photos, pas d'animation 3D dynamique
+4. **Pas de profondeur visuelle** : Pas de parallaxe, pas de scènes 3D immersives
+
+## Solution: Architecture Hybride 3D/2D
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                      PIPELINE DE MONTAGE IA                          │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────┐  │
-│  │ 1. AUDIO    │───►│ 2. TRANSCR. │───►│ 3. ANALYSE SÉMANTIQUE   │  │
-│  │ (Micro/File)│    │ (Web Speech)│    │ (Gemini 3 Flash)        │  │
-│  └─────────────┘    └─────────────┘    └───────────┬─────────────┘  │
-│                                                     │                │
-│                                                     ▼                │
-│  ┌─────────────────────────────────────────────────────────────────┐│
-│  │                    StoryStructure                                ││
-│  │  ├─ segments[] (timing, emotion, cameraMove, visualEffect)      ││
-│  │  ├─ keyMoments[] (climax, transition, emphasis)                 ││
-│  │  └─ totalDuration = audioDuration                               ││
-│  └─────────────────────────────────────────────────────────────────┘│
-│                                                     │                │
-│                                                     ▼                │
-│  ┌─────────────────────────────────────────────────────────────────┐│
-│  │              4. ASSET MAPPING INTELLIGENT                        ││
-│  │  ├─ Emotion → Lens Flare (joy→doré, tension→rouge)              ││
-│  │  ├─ CameraMove → Photo Animation (zoom-in, orbit, pan)          ││
-│  │  ├─ VisualEffect → VFX Layer (particles, glow, shake)           ││
-│  │  └─ KeyMoment → Transition Video                                ││
-│  └─────────────────────────────────────────────────────────────────┘│
-│                                                     │                │
-│                                                     ▼                │
-│  ┌─────────────────────────────────────────────────────────────────┐│
-│  │              5. RENDU SYNCHRONISÉ                                ││
-│  │  ├─ Frame 0 → currentTime = 0 → Audio.start()                   ││
-│  │  ├─ Frame N → currentTime = audioDuration → Audio.end()         ││
-│  │  └─ MediaRecorder capture = exactement audioDuration            ││
-│  └─────────────────────────────────────────────────────────────────┘│
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    GRIOT DIGITAL v5.0 - MOTEUR 3D IMMERSIF              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  COUCHE 1: THREE.JS SCENE (Background)                                  │
+│  ├─ Griot Character Animé (idle, speaking, gesturing)                   │
+│  ├─ Village Africain Procédural (huttes, baobabs, feu de camp)          │
+│  ├─ Particules GPU (poussière, lucioles, étincelles magiques)           │
+│  └─ Éclairage Cinématique Dynamique (lumière chaude → froide)           │
+│                                                                         │
+│  COUCHE 2: USER CONTENT (Middle Layer)                                  │
+│  ├─ Photos avec Ken Burns IA (zoom, orbit, pan selon émotion)           │
+│  └─ Vidéo utilisateur intégrée                                          │
+│                                                                         │
+│  COUCHE 3: VFX PREMIUM (Foreground)                                     │
+│  ├─ Light Leaks CDN (WebM alpha channel)                                │
+│  ├─ Lens Flares Émotionnels (455 PNG par palette)                       │
+│  ├─ Particules Vidéo (WebM overlay)                                     │
+│  └─ Transitions Cinématiques (à chaque moment clé)                      │
+│                                                                         │
+│  COUCHE 4: UI/TEXTE (Top Layer)                                         │
+│  ├─ Titre Animé avec Glow                                               │
+│  ├─ Sous-titres Synchronisés                                            │
+│  └─ Indicateur de Progression                                           │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+## Nouvelles Fonctionnalités
+
+### 1. Scène 3D Animée Intégrée au Rendu
+- Le personnage Griot bouge les lèvres synchronisé avec l'audio (lip-sync basique)
+- Animation idle avec respiration, clignement des yeux
+- Gestes automatiques aux moments clés détectés par l'IA
+
+### 2. Environnement 3D Dynamique
+- Village qui s'illumine selon l'heure narrative (aube → jour → crépuscule)
+- Feu de camp central avec particules de fumée
+- Parallaxe multi-couches pour profondeur
+
+### 3. Système de Caméra Cinématique
+- Travelling avant/arrière synchronisé avec l'intensité émotionnelle
+- Orbite autour du personnage pendant les moments épiques
+- Gros plans automatiques sur les climax
+
+### 4. VFX Émotionnels Amplifiés
+- Chaque émotion déclenche une palette visuelle complète
+- Transitions fluides entre les segments narratifs
+- Effets de particules dynamiques (lumineux pour joie, sombres pour tension)
 
 ## Fichiers à Modifier
 
-### 1. Edge Function: `supabase/functions/analyze-story/index.ts`
-**Améliorer le prompt d'analyse pour inclure:**
-- Mapping émotion → catégorie de lens flare (50 assets disponibles)
-- Mapping thème → style de particules/light leaks
-- Détection de mots-clés culturels (sagesse, ancêtres, unité) → symboles spécifiques
-- Calcul précis des timings basé sur la durée audio fournie
+### 1. `src/templates/GriotDigital.ts` (Refonte Majeure)
+- Intégrer `THREE.WebGLRenderer` dans le pipeline de rendu
+- Combiner le rendu 3D avec le canvas 2D via `preserveDrawingBuffer`
+- Ajouter système d'animation de personnage
 
-### 2. Moteur de Rendu: `src/templates/GriotDigital.ts`
-**Modifications majeures:**
+### 2. `src/lib/GriotFallbackScene.ts` (Améliorer les Animations)
+- Ajouter système de morph targets pour expressions faciales
+- Créer animations de gestes (bras, mains)
+- Implémenter feu de camp animé avec particules
 
-a) **Ajouter l'analyse sémantique avant le rendu:**
+### 3. Nouveau: `src/lib/Griot3DRenderPipeline.ts`
+- Pipeline hybride Three.js + Canvas 2D
+- Gestion de la composition multi-couches
+- Synchronisation audio → animation 3D
+
+### 4. `src/lib/AssetEmotionMapper.ts` (Enrichir)
+- Mapper émotions → animations 3D (gestures, expressions)
+- Mapper émotions → configurations d'éclairage
+- Mapper moments clés → mouvements de caméra épiques
+
+## Pipeline de Rendu Hybride
+
 ```typescript
-// Nouveau: Transcription + Analyse IA
-private storyStructure: StoryStructure | null = null;
-
-async analyzeContent(audioFile: File): Promise<StoryStructure> {
-  // 1. Transcription via Web Speech API
-  // 2. Appel analyze-story avec transcript + duration
-  // 3. Retourne segments avec timing précis
-}
-```
-
-b) **Asset Selection Intelligent:**
-```typescript
-// Mapping Emotion → Asset
-const EMOTION_ASSET_MAP = {
-  joy: { flares: [50-100], particles: 'light', blend: 'screen' },
-  tension: { flares: [150-200], particles: 'fire', blend: 'overlay' },
-  wisdom: { flares: [1-50], particles: 'gold', blend: 'multiply' },
-  // ...
-};
-```
-
-c) **Synchronisation Frame-par-Frame:**
-```typescript
-private drawFrame(currentTime: number, structure: StoryStructure) {
-  // Trouver le segment actif basé sur currentTime
-  const segment = structure.segments.find(
-    s => currentTime >= s.startTime && currentTime < s.endTime
-  );
+// Pseudo-code du nouveau pipeline
+class Griot3DRenderPipeline {
+  // Layer 1: 3D Scene
+  render3DScene(currentTime: number, segment: StorySegment) {
+    this.updateCharacterAnimation(segment.emotion, currentTime);
+    this.updateEnvironmentLighting(segment.intensity);
+    this.updateCameraPosition(segment.cameraMove, currentTime);
+    this.renderer.render(this.scene, this.camera);
+  }
   
-  // Appliquer les effets du segment
-  this.applySegmentEffects(segment);
+  // Layer 2: Composite to main canvas
+  compositeToMainCanvas() {
+    ctx.drawImage(this.renderer.domElement, 0, 0);
+  }
   
-  // Appliquer l'animation de caméra
-  this.applyCameraMove(segment.cameraMove, currentTime - segment.startTime);
-}
-```
-
-d) **Photo Distribution Intelligente:**
-```typescript
-// Distribuer les photos sur toute la durée audio
-const photoSegmentDuration = audioDuration / userPhotos.length;
-const currentPhotoIndex = Math.floor(currentTime / photoSegmentDuration);
-```
-
-### 3. UI Creator: `src/components/GriotDigitalCreator.tsx`
-**Ajouter l'étape d'analyse:**
-- Afficher un loader "Analyse de votre histoire..."
-- Prévisualiser les segments détectés avant le rendu
-- Permettre l'édition manuelle des émotions/effets (optionnel)
-
----
-
-## Détail Technique: Mapping Assets
-
-### Lens Flares (455 fichiers disponibles)
-| Émotion | Range | Caractéristiques |
-|---------|-------|------------------|
-| joy | 50-100 | Doré, lumineux |
-| wisdom | 1-49 | Subtil, ambré |
-| tension | 150-200 | Rouge, intense |
-| sadness | 250-300 | Bleu, froid |
-| excitement | 100-150 | Multicolore, dynamique |
-| neutral | 300-350 | Blanc, doux |
-
-### Transitions (CDN)
-| Moment Clé | Asset |
-|------------|-------|
-| climax | transition-022.mp4 |
-| transition | transition-014.mp4 |
-| reveal | transition-018.mp4 |
-
-### Light Leaks (CDN)
-| Intensité | Asset |
-|-----------|-------|
-| 0.0-0.3 | leak-001.webm |
-| 0.3-0.6 | leak-006.webm |
-| 0.6-0.9 | leak-010.webm |
-| 0.9-1.0 | leak-014.webm |
-
----
-
-## Synchronisation Audio Précise
-
-### Garanties de Synchronisation:
-1. **Durée = audioDuration exacte** (déjà implémenté)
-2. **Début simultané:** Audio démarre à frame 0
-3. **Fin synchrone:** MediaRecorder.stop() après le dernier frame
-
-### Améliorations:
-```typescript
-// Nouveau: Utiliser AudioBuffer.duration comme source de vérité
-const audioDuration = this.userAudioBuffer.duration;
-const totalFrames = Math.ceil(audioDuration * fps);
-
-// Le rendu s'arrête exactement quand l'audio finit
-renderNextFrame() {
-  if (currentTime >= audioDuration) {
-    recorder.stop();
-    return;
+  // Layer 3: VFX Overlays
+  renderVFXLayer(emotion: Emotion, intensity: number) {
+    ctx.globalCompositeOperation = 'screen';
+    this.drawLightLeaks(intensity);
+    this.drawEmotionFlares(emotion);
+  }
+  
+  // Final frame
+  renderFrame(currentTime: number) {
+    this.render3DScene(currentTime, segment);
+    this.compositeToMainCanvas();
+    this.renderUserContent();
+    this.renderVFXLayer();
+    this.renderUI();
   }
 }
 ```
 
----
+## Animations du Personnage Griot
 
-## Workflow Utilisateur Final
+| Émotion | Animation | Éclairage | Particules |
+|---------|-----------|-----------|------------|
+| Joy | Bras levés, sourire | Doré chaud | Étincelles dorées |
+| Wisdom | Mains jointes, tête inclinée | Ambré doux | Poussière lumineuse |
+| Tension | Bras croisés, corps rigide | Rouge sombre | Fumée, braises |
+| Sadness | Épaules basses, tête penchée | Bleu froid | Pluie légère |
+| Excitement | Gestes dynamiques | Multicolore | Confettis |
+| Neutral | Idle basique | Lumière neutre | Particules douces |
 
-1. **Enregistre ton histoire** (micro) ou importe un fichier audio
-2. **Ajoute des photos** (optionnel, pour illustrer)
-3. **L'IA analyse automatiquement:**
-   - Transcrit le contenu
-   - Identifie les émotions et moments clés
-   - Calcule les timings précis
-4. **Prévisualisation** avec les effets mappés
-5. **Rendu final** = durée exacte de l'audio, effets synchronisés
+## Optimisations Performance
 
----
+1. **Rendu Offscreen** : Three.js rend dans un canvas séparé, composite vers le principal
+2. **LOD Dynamique** : Réduire la complexité 3D sur mobile
+3. **Frame Skipping** : 24 FPS pour le rendu final, animations internes à 30 FPS
+4. **Asset Preloading** : Charger les assets du prochain segment pendant le rendu
 
-## Risques et Mitigations
+## Résumé des Améliorations
 
-| Risque | Mitigation |
-|--------|------------|
-| Transcription échoue | Fallback: structure par défaut avec segments réguliers |
-| Analyse IA rate limitée | Fallback: createDefaultStructure() avec audioDuration |
-| Web Speech API non supporté | Fallback: import fichier texte ou skip analyse |
-| Photos manquantes | Utiliser gradient animé + VFX uniquement |
+| Aspect | v4.0 Actuel | v5.0 Proposé |
+|--------|-------------|--------------|
+| Rendu 3D | Aucun | Scène Three.js complète |
+| Personnage | Statique | Animé avec lip-sync |
+| Environnement | Gradient 2D | Village 3D avec parallaxe |
+| Éclairage | Fixe | Dynamique selon émotion |
+| Caméra | Ken Burns basique | Cinématique 3D |
+| VFX | Overlays simples | Multi-couches composées |
+| Synchronisation | Audio → durée | Audio → animations 3D |
 
----
+## Section Technique Détaillée
 
-## Section Technique: Fichiers Créés/Modifiés
+### Intégration Three.js dans le Pipeline MediaRecorder
 
-### Nouveaux Fichiers:
-- `src/lib/StoryAnalyzer.ts` - Service d'analyse sémantique côté client
-- `src/lib/AssetEmotionMapper.ts` - Mapping émotion → assets
+Le défi principal est que `MediaRecorder` capture depuis `canvas.captureStream()`. Pour intégrer Three.js :
 
-### Fichiers Modifiés:
-- `supabase/functions/analyze-story/index.ts` - Prompt amélioré + asset hints
-- `src/templates/GriotDigital.ts` - Pipeline de rendu intelligent
-- `src/components/GriotDigitalCreator.tsx` - UI d'analyse + prévisualisation
+1. Créer un `WebGLRenderer` avec `preserveDrawingBuffer: true`
+2. Rendre la scène 3D dans son canvas dédié
+3. Dessiner ce canvas sur le canvas principal avec `ctx.drawImage()`
+4. Les VFX 2D sont ensuite composités par-dessus
+5. `captureStream()` capture le résultat final composite
 
----
+### Gestion de la Mémoire GPU
 
-## Bénéfices Attendus
-- Montage **automatiquement adapté au contenu** narratif
-- **Synchronisation parfaite** audio/vidéo (début = début, fin = fin)
-- **Effets visuels contextuels** (joie → lumière dorée, tension → rouge)
-- **Expérience utilisateur fluide** sans intervention technique
+- Limiter la scène 3D à 50k triangles max
+- Utiliser des textures compressées (ASTC/ETC2)
+- Disposer les ressources Three.js à la fin du rendu
+- Partager les géométries entre instances similaires
+
+### Fallback Graceful
+
+Si WebGL n'est pas disponible ou échoue :
+1. Détecter via `canvas.getContext('webgl')`
+2. Basculer automatiquement vers le rendu 2D enrichi actuel
+3. Utiliser les fonctions `draw2DFallback` existantes dans `Griot3DPreview.tsx`
