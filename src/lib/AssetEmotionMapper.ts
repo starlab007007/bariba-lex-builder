@@ -19,6 +19,20 @@ export interface EmotionAssetPalette {
   blendMode: GlobalCompositeOperation;
   colorTint?: string;         // Teinte CSS optionnelle
   cameraSpeed?: number;       // Vitesse d'animation caméra
+  
+  // NEW v5.0: 3D Lighting configuration
+  lighting3D: {
+    mainColor: number;        // Hex color for main light
+    intensity: number;        // Light intensity multiplier
+    ambientColor: number;     // Ambient light color
+  };
+  
+  // NEW v5.0: Character animation settings
+  characterAnim: {
+    headTilt: number;         // Head tilt angle
+    bodyPulse: number;        // Body scale pulse
+    gestureSpeed: number;     // Animation speed multiplier
+  };
 }
 
 export interface SelectedAssets {
@@ -59,7 +73,17 @@ export const EMOTION_PALETTES: Record<StorySegment['emotion'], EmotionAssetPalet
     particleIntensity: 0.7,
     blendMode: 'screen',
     colorTint: 'rgba(255, 215, 0, 0.1)',                   // Or léger
-    cameraSpeed: 1.2
+    cameraSpeed: 1.2,
+    lighting3D: {
+      mainColor: 0xFFD700,
+      intensity: 1.5,
+      ambientColor: 0xFFF8DC
+    },
+    characterAnim: {
+      headTilt: 0.1,
+      bodyPulse: 1.08,
+      gestureSpeed: 1.5
+    }
   },
   wisdom: {
     flares: Array.from({ length: 49 }, (_, i) => 1 + i),   // 1-49: subtils, ambrés
@@ -67,7 +91,17 @@ export const EMOTION_PALETTES: Record<StorySegment['emotion'], EmotionAssetPalet
     particleIntensity: 0.4,
     blendMode: 'multiply',
     colorTint: 'rgba(139, 69, 19, 0.08)',                  // Sépia léger
-    cameraSpeed: 0.7
+    cameraSpeed: 0.7,
+    lighting3D: {
+      mainColor: 0xD4A574,
+      intensity: 1.2,
+      ambientColor: 0xE8DCC8
+    },
+    characterAnim: {
+      headTilt: -0.15,
+      bodyPulse: 1.02,
+      gestureSpeed: 0.6
+    }
   },
   tension: {
     flares: Array.from({ length: 50 }, (_, i) => 150 + i), // 150-199: rouges, intenses
@@ -75,7 +109,17 @@ export const EMOTION_PALETTES: Record<StorySegment['emotion'], EmotionAssetPalet
     particleIntensity: 0.9,
     blendMode: 'overlay',
     colorTint: 'rgba(255, 50, 50, 0.12)',                  // Rouge tension
-    cameraSpeed: 1.5
+    cameraSpeed: 1.5,
+    lighting3D: {
+      mainColor: 0xFF4444,
+      intensity: 1.8,
+      ambientColor: 0x331111
+    },
+    characterAnim: {
+      headTilt: 0,
+      bodyPulse: 1.04,
+      gestureSpeed: 0.3
+    }
   },
   sadness: {
     flares: Array.from({ length: 50 }, (_, i) => 250 + i), // 250-299: bleus, froids
@@ -83,7 +127,17 @@ export const EMOTION_PALETTES: Record<StorySegment['emotion'], EmotionAssetPalet
     particleIntensity: 0.3,
     blendMode: 'screen',
     colorTint: 'rgba(100, 149, 237, 0.1)',                 // Bleu cornflower
-    cameraSpeed: 0.5
+    cameraSpeed: 0.5,
+    lighting3D: {
+      mainColor: 0x6495ED,
+      intensity: 0.9,
+      ambientColor: 0xB0C4DE
+    },
+    characterAnim: {
+      headTilt: -0.2,
+      bodyPulse: 0.98,
+      gestureSpeed: 0.4
+    }
   },
   excitement: {
     flares: Array.from({ length: 50 }, (_, i) => 100 + i), // 100-149: multicolores
@@ -91,14 +145,34 @@ export const EMOTION_PALETTES: Record<StorySegment['emotion'], EmotionAssetPalet
     particleIntensity: 1.0,
     blendMode: 'screen',
     colorTint: 'rgba(255, 165, 0, 0.15)',                  // Orange vif
-    cameraSpeed: 1.8
+    cameraSpeed: 1.8,
+    lighting3D: {
+      mainColor: 0xFF8C00,
+      intensity: 2.0,
+      ambientColor: 0xFFE4B5
+    },
+    characterAnim: {
+      headTilt: 0.15,
+      bodyPulse: 1.12,
+      gestureSpeed: 2.0
+    }
   },
   neutral: {
     flares: Array.from({ length: 50 }, (_, i) => 300 + i), // 300-349: blancs, doux
     leaks: [1, 6, 11, 16],                                 // Variété équilibrée
     particleIntensity: 0.5,
     blendMode: 'screen',
-    cameraSpeed: 1.0
+    cameraSpeed: 1.0,
+    lighting3D: {
+      mainColor: 0xE8D4B8,
+      intensity: 1.0,
+      ambientColor: 0xF5F5DC
+    },
+    characterAnim: {
+      headTilt: 0,
+      bodyPulse: 1.0,
+      gestureSpeed: 1.0
+    }
   }
 };
 
