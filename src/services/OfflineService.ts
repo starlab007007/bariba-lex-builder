@@ -51,10 +51,34 @@ class OfflineService {
       });
       
       clearTimeout(timeoutId);
-      this._isOnline = response.ok;
+      
+      // CORRECTION: Une réponse du serveur (même 404) signifie qu'on est EN LIGNE
+      // Seule une exception réseau indique une vraie déconnexion
+      this._isOnline = true;
+      
     } catch {
-      // Si le fetch échoue, on vérifie navigator.onLine
-      this._isOnline = navigator.onLine;
+      // Exception fetch = problème réseau réel, vérifier navigator.onLine
+      // Fallback: tenter un ping vers Supabase
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (supabaseUrl) {
+          const supabaseController = new AbortController();
+          const supabaseTimeout = setTimeout(() => supabaseController.abort(), 3000);
+          
+          await fetch(`${supabaseUrl}/rest/v1/`, {
+            method: 'HEAD',
+            cache: 'no-store',
+            signal: supabaseController.signal
+          });
+          
+          clearTimeout(supabaseTimeout);
+          this._isOnline = true;
+        } else {
+          this._isOnline = navigator.onLine;
+        }
+      } catch {
+        this._isOnline = navigator.onLine;
+      }
     }
     
     return this._isOnline;

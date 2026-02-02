@@ -1,7 +1,8 @@
 /**
- * Griot Digital Template - v4.0 AI-SYNCED MONTAGE
+ * Griot Digital Template - v5.0 HYBRID 3D/2D IMMERSIVE ENGINE
  * Intelligent asset selection based on story emotion analysis
  * Audio-synchronized rendering with semantic VFX mapping
+ * NEW: Three.js 3D scene integrated into MediaRecorder pipeline
  */
 
 import { AssetLoader3D } from '@/lib/AssetLoader3D';
@@ -10,6 +11,7 @@ import { AudioSyncEngine } from '@/lib/AudioSyncEngine';
 import { SUPABASE_ASSET_CDN_URL } from '@/lib/AssetRealMapping';
 import { StoryAnalyzer, StoryStructure, StorySegment } from '@/lib/StoryAnalyzer';
 import { AssetEmotionMapper, EMOTION_PALETTES } from '@/lib/AssetEmotionMapper';
+import { Griot3DRenderLayer, create3DRenderLayer } from '@/lib/Griot3DRenderLayer';
 
 // ============================================================================
 // TYPES
@@ -135,7 +137,7 @@ export const GriotDigitalTemplate = {
 };
 
 // ============================================================================
-// GRIOT DIGITAL ENGINE - v4.0 AI-SYNCED MONTAGE
+// GRIOT DIGITAL ENGINE - v5.0 HYBRID 3D/2D IMMERSIVE
 // ============================================================================
 
 export class GriotDigitalEngine {
@@ -143,12 +145,16 @@ export class GriotDigitalEngine {
   private particleManager: ParticleSystemManager;
   private audioEngine: AudioSyncEngine;
   
-  // NEW: AI Analysis Services
+  // AI Analysis Services
   private storyAnalyzer: StoryAnalyzer;
   private assetMapper: AssetEmotionMapper;
   
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
+  
+  // NEW v5.0: 3D Render Layer
+  private render3DLayer: Griot3DRenderLayer | null = null;
+  private use3DRendering: boolean = false;
   
   // Premium VFX assets
   private lightLeakVideos: HTMLVideoElement[] = [];
@@ -169,9 +175,9 @@ export class GriotDigitalEngine {
   // State
   private assetsLoaded: boolean = false;
   private storyTitle: string = '';
-  private currentStyle: string = 'traditional';
+  private currentStyle: 'traditional' | 'modern' | 'fantasy' | 'historical' = 'traditional';
   
-  // NEW: Story structure from AI analysis
+  // Story structure from AI analysis
   private storyStructure: StoryStructure | null = null;
   
   // Audio context for cross-browser support
@@ -187,10 +193,10 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Initialize the rendering canvas
+   * Initialize the rendering canvas with optional 3D layer
    */
   public async initialize(): Promise<void> {
-    console.log('[GriotDigital v3.1] Initializing FULLSCREEN engine (1080x1920)...');
+    console.log('[GriotDigital v5.0] Initializing HYBRID 3D/2D engine (1080x1920)...');
     
     this.canvas = document.createElement('canvas');
     this.canvas.width = RENDER_CONFIG.width;
@@ -205,7 +211,26 @@ export class GriotDigitalEngine {
       throw new Error('Failed to create 2D canvas context');
     }
     
-    console.log('[GriotDigital v3.1] Canvas initialized:', RENDER_CONFIG.width, 'x', RENDER_CONFIG.height);
+    // NEW v5.0: Initialize 3D render layer if WebGL is available
+    if (Griot3DRenderLayer.isWebGLAvailable()) {
+      console.log('[GriotDigital v5.0] WebGL available, initializing 3D layer...');
+      this.render3DLayer = create3DRenderLayer(
+        RENDER_CONFIG.width,
+        RENDER_CONFIG.height,
+        this.currentStyle
+      );
+      this.use3DRendering = await this.render3DLayer.initialize();
+      
+      if (this.use3DRendering) {
+        console.log('[GriotDigital v5.0] ✅ 3D rendering enabled');
+      } else {
+        console.log('[GriotDigital v5.0] ⚠️ 3D init failed, using 2D fallback');
+      }
+    } else {
+      console.log('[GriotDigital v5.0] ⚠️ WebGL not available, using 2D only');
+    }
+    
+    console.log('[GriotDigital v5.0] Canvas initialized:', RENDER_CONFIG.width, 'x', RENDER_CONFIG.height);
   }
 
   /**
@@ -797,7 +822,7 @@ export class GriotDigitalEngine {
   }
 
   /**
-   * Draw a single frame - v4.0 AI-SYNCED with emotion-based effects
+   * Draw a single frame - v5.0 HYBRID 3D/2D with emotion-based effects
    */
   private drawFrame(currentTime: number, totalDuration: number): void {
     const ctx = this.ctx!;
@@ -811,33 +836,48 @@ export class GriotDigitalEngine {
     const intensity = currentSegment?.intensity || 0.5;
     const cameraMove = currentSegment?.cameraMove || 'static';
     
-    // 1. BACKGROUND - User content with AI-driven Ken Burns
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // ========== LAYER 1: 3D SCENE (if available) ==========
+    if (this.use3DRendering && this.render3DLayer) {
+      const threeCanvas = this.render3DLayer.renderFrame(currentTime, currentSegment);
+      if (threeCanvas) {
+        // Composite 3D scene as background with reduced opacity
+        ctx.globalAlpha = 0.4;
+        ctx.drawImage(threeCanvas, 0, 0, width, height);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+    
+    // ========== LAYER 2: USER CONTENT (with Ken Burns) ==========
     this.drawBackground(ctx, width, height, currentTime, cameraMove, intensity);
     
-    // 2. Apply emotion color tint
+    // ========== LAYER 3: EMOTION COLOR TINT ==========
     this.applyEmotionTint(ctx, width, height, emotion, intensity);
     
-    // 3. LIGHT LEAKS - Intensity based on segment
+    // ========== LAYER 4: VFX PREMIUM ==========
+    // Light leaks - intensity based on segment
     this.drawLightLeaks(ctx, width, height, currentTime, intensity);
     
-    // 4. PARTICLES - Intensity based on segment
+    // Particles - intensity based on segment
     this.drawParticles(ctx, width, height, currentTime, intensity);
     
-    // 5. TEXTURES - Fullscreen overlay
+    // Textures - fullscreen overlay
     this.drawTextures(ctx, width, height, currentTime);
     
-    // 6. LENS FLARES - Emotion-specific from cache
+    // Lens flares - emotion-specific from cache
     this.drawEmotionLensFlares(ctx, width, height, currentTime, emotion, intensity);
     
-    // 7. TRANSITIONS - At key moments
+    // ========== LAYER 5: TRANSITIONS ==========
     this.drawTransitions(ctx, width, height, currentTime, totalDuration);
     
-    // 8. TITLE (first 5 seconds)
+    // ========== LAYER 6: UI/TITLE ==========
     if (currentTime < 5) {
       this.drawTitle(ctx, width, height, currentTime);
     }
     
-    // 9. PROGRESS BAR
+    // Progress bar
     this.drawProgressIndicator(ctx, width, height, progress);
   }
 
@@ -1287,6 +1327,13 @@ export class GriotDigitalEngine {
    * Cleanup resources
    */
   public dispose(): void {
+    // Dispose 3D layer
+    if (this.render3DLayer) {
+      this.render3DLayer.dispose();
+      this.render3DLayer = null;
+      this.use3DRendering = false;
+    }
+    
     this.lightLeakVideos.forEach(v => { v.pause(); v.src = ''; });
     this.particleVideos.forEach(v => { v.pause(); v.src = ''; });
     this.textureVideos.forEach(v => { v.pause(); v.src = ''; });
@@ -1308,10 +1355,13 @@ export class GriotDigitalEngine {
     this.userVideo = null;
     this.userAudioBlob = null;
     this.userAudioBuffer = null;
+    this.emotionFlareCache.clear();
     
     this.canvas = null;
     this.ctx = null;
     this.assetsLoaded = false;
+    
+    console.log('[GriotDigital v5.0] Engine disposed');
   }
 }
 

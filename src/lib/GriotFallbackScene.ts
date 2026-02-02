@@ -12,7 +12,7 @@ export interface FallbackSceneOptions {
 /**
  * Style color palettes
  */
-const STYLE_PALETTES = {
+export const STYLE_PALETTES = {
   traditional: {
     primary: 0xD4A574,
     secondary: 0x8B4513,
@@ -45,6 +45,7 @@ const STYLE_PALETTES = {
 
 /**
  * Create a stylized griot character using primitives
+ * v5.0 - Enhanced with emotion-driven animations
  */
 export function createGriotCharacter(style: string = 'traditional'): THREE.Group {
   const group = new THREE.Group();
@@ -52,7 +53,7 @@ export function createGriotCharacter(style: string = 'traditional'): THREE.Group
   
   const palette = STYLE_PALETTES[style as keyof typeof STYLE_PALETTES] || STYLE_PALETTES.traditional;
   
-  // Head
+  // Head - main mesh with name for animation targeting
   const headGeometry = new THREE.SphereGeometry(0.25, 32, 32);
   const headMaterial = new THREE.MeshStandardMaterial({
     color: palette.primary,
@@ -65,19 +66,43 @@ export function createGriotCharacter(style: string = 'traditional'): THREE.Group
   head.name = 'head';
   group.add(head);
   
-  // Eyes
+  // Eyes with blink support (scale.y animated)
   const eyeGeometry = new THREE.SphereGeometry(0.03, 16, 16);
   const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
   
   const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
   leftEye.position.set(-0.08, 1.78, 0.2);
+  leftEye.name = 'left-eye';
   group.add(leftEye);
   
   const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
   rightEye.position.set(0.08, 1.78, 0.2);
+  rightEye.name = 'right-eye';
   group.add(rightEye);
   
-  // Body (robe)
+  // Eyebrows for expression
+  const browGeometry = new THREE.BoxGeometry(0.06, 0.01, 0.01);
+  const browMaterial = new THREE.MeshStandardMaterial({ color: 0x2a2a2a });
+  
+  const leftBrow = new THREE.Mesh(browGeometry, browMaterial);
+  leftBrow.position.set(-0.08, 1.83, 0.22);
+  leftBrow.name = 'left-brow';
+  group.add(leftBrow);
+  
+  const rightBrow = new THREE.Mesh(browGeometry, browMaterial);
+  rightBrow.position.set(0.08, 1.83, 0.22);
+  rightBrow.name = 'right-brow';
+  group.add(rightBrow);
+  
+  // Mouth for basic lip-sync (scale.x for open/close)
+  const mouthGeometry = new THREE.BoxGeometry(0.08, 0.02, 0.01);
+  const mouthMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+  const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+  mouth.position.set(0, 1.68, 0.22);
+  mouth.name = 'mouth';
+  group.add(mouth);
+  
+  // Body (robe) - named for body animations
   const robeGeometry = new THREE.ConeGeometry(0.4, 1.2, 32);
   const robeMaterial = new THREE.MeshStandardMaterial({
     color: palette.secondary,
@@ -87,7 +112,27 @@ export function createGriotCharacter(style: string = 'traditional'): THREE.Group
   const robe = new THREE.Mesh(robeGeometry, robeMaterial);
   robe.position.set(0, 0.9, 0);
   robe.castShadow = true;
+  robe.name = 'body';
   group.add(robe);
+  
+  // Arms (for gestures) - Left arm
+  const armGeometry = new THREE.CylinderGeometry(0.04, 0.03, 0.6, 16);
+  const armMaterial = new THREE.MeshStandardMaterial({
+    color: palette.primary,
+    roughness: 0.6
+  });
+  
+  const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+  leftArm.position.set(-0.35, 1.3, 0);
+  leftArm.rotation.z = 0.5;
+  leftArm.name = 'left-arm';
+  group.add(leftArm);
+  
+  const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+  rightArm.position.set(0.35, 1.3, 0);
+  rightArm.rotation.z = -0.5;
+  rightArm.name = 'right-arm';
+  group.add(rightArm);
   
   // Hat/Headdress
   const hatGeometry = new THREE.CylinderGeometry(0.15, 0.28, 0.2, 32);
@@ -99,6 +144,7 @@ export function createGriotCharacter(style: string = 'traditional'): THREE.Group
   const hat = new THREE.Mesh(hatGeometry, hatMaterial);
   hat.position.set(0, 2.05, 0);
   hat.castShadow = true;
+  hat.name = 'hat';
   group.add(hat);
   
   // Staff
@@ -111,9 +157,10 @@ export function createGriotCharacter(style: string = 'traditional'): THREE.Group
   staff.position.set(0.4, 0.8, 0);
   staff.rotation.z = -0.2;
   staff.castShadow = true;
+  staff.name = 'staff';
   group.add(staff);
   
-  // Staff orb
+  // Staff orb - emissive for glow animation
   const orbGeometry = new THREE.SphereGeometry(0.08, 16, 16);
   const orbMaterial = new THREE.MeshStandardMaterial({
     color: palette.accent,
@@ -124,7 +171,16 @@ export function createGriotCharacter(style: string = 'traditional'): THREE.Group
   });
   const orb = new THREE.Mesh(orbGeometry, orbMaterial);
   orb.position.set(0.55, 1.45, 0);
+  orb.name = 'orb';
   group.add(orb);
+  
+  // Store animation state in userData
+  group.userData = {
+    blinkTimer: 0,
+    nextBlink: Math.random() * 3 + 2,
+    isBlinking: false,
+    mouthOpenAmount: 0
+  };
   
   return group;
 }
@@ -352,6 +408,112 @@ export function updateParticles(particles: THREE.Points, delta: number): void {
 }
 
 /**
+ * Animate character - v5.0 emotion-driven
+ */
+export function animateCharacter(
+  character: THREE.Group,
+  currentTime: number,
+  emotion: string,
+  intensity: number = 0.5
+): void {
+  if (!character) return;
+  
+  const userData = character.userData;
+  
+  // Eye blinking
+  userData.blinkTimer += 0.016; // ~60fps
+  if (userData.blinkTimer >= userData.nextBlink) {
+    userData.isBlinking = true;
+    userData.blinkTimer = 0;
+    userData.nextBlink = Math.random() * 3 + 2;
+    
+    // Blink animation
+    setTimeout(() => {
+      userData.isBlinking = false;
+    }, 150);
+  }
+  
+  const leftEye = character.getObjectByName('left-eye');
+  const rightEye = character.getObjectByName('right-eye');
+  if (leftEye && rightEye) {
+    const eyeScale = userData.isBlinking ? 0.1 : 1;
+    leftEye.scale.y = eyeScale;
+    rightEye.scale.y = eyeScale;
+  }
+  
+  // Eyebrow animation based on emotion
+  const leftBrow = character.getObjectByName('left-brow');
+  const rightBrow = character.getObjectByName('right-brow');
+  if (leftBrow && rightBrow) {
+    let browY = 1.83;
+    let browRotation = 0;
+    
+    switch (emotion) {
+      case 'joy':
+        browY = 1.85;
+        browRotation = -0.1;
+        break;
+      case 'sadness':
+        browY = 1.81;
+        browRotation = 0.2;
+        break;
+      case 'tension':
+        browY = 1.82;
+        browRotation = -0.15;
+        break;
+      case 'wisdom':
+        browY = 1.84;
+        browRotation = 0.05;
+        break;
+    }
+    
+    leftBrow.position.y = browY;
+    rightBrow.position.y = browY;
+    leftBrow.rotation.z = browRotation;
+    rightBrow.rotation.z = -browRotation;
+  }
+  
+  // Mouth animation (basic lip-sync simulation)
+  const mouth = character.getObjectByName('mouth');
+  if (mouth) {
+    // Simulate speech with random mouth movements
+    const speechIntensity = intensity * 0.5;
+    const mouthOpen = Math.abs(Math.sin(currentTime * 12)) * speechIntensity;
+    mouth.scale.y = 1 + mouthOpen * 2;
+  }
+  
+  // Arm gestures based on emotion
+  const leftArm = character.getObjectByName('left-arm');
+  const rightArm = character.getObjectByName('right-arm');
+  if (leftArm && rightArm) {
+    let baseRotation = 0.5;
+    let armMovement = 0;
+    
+    switch (emotion) {
+      case 'joy':
+        baseRotation = 0.8;
+        armMovement = Math.sin(currentTime * 2) * 0.2;
+        break;
+      case 'excitement':
+        baseRotation = 1.0;
+        armMovement = Math.sin(currentTime * 4) * 0.3;
+        break;
+      case 'sadness':
+        baseRotation = 0.3;
+        armMovement = 0;
+        break;
+      case 'wisdom':
+        baseRotation = 0.4;
+        armMovement = Math.sin(currentTime * 0.5) * 0.1;
+        break;
+    }
+    
+    leftArm.rotation.z = baseRotation + armMovement;
+    rightArm.rotation.z = -(baseRotation + armMovement);
+  }
+}
+
+/**
  * Create complete fallback scene
  */
 export function createFallbackScene(style: string = 'traditional'): {
@@ -368,12 +530,103 @@ export function createFallbackScene(style: string = 'traditional'): {
   };
 }
 
+/**
+ * Create campfire with animated flames
+ */
+export function createCampfire(): THREE.Group {
+  const campfire = new THREE.Group();
+  campfire.name = 'campfire';
+  
+  // Fire pit base
+  const pitGeometry = new THREE.CylinderGeometry(0.3, 0.35, 0.1, 16);
+  const pitMaterial = new THREE.MeshStandardMaterial({
+    color: 0x3d2b1f,
+    roughness: 0.9
+  });
+  const pit = new THREE.Mesh(pitGeometry, pitMaterial);
+  pit.position.y = 0.05;
+  campfire.add(pit);
+  
+  // Logs
+  const logGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.4, 8);
+  const logMaterial = new THREE.MeshStandardMaterial({
+    color: 0x4a3728,
+    roughness: 0.9
+  });
+  
+  for (let i = 0; i < 4; i++) {
+    const log = new THREE.Mesh(logGeometry, logMaterial);
+    const angle = (i / 4) * Math.PI * 2;
+    log.position.set(
+      Math.cos(angle) * 0.15,
+      0.15,
+      Math.sin(angle) * 0.15
+    );
+    log.rotation.x = Math.PI / 2;
+    log.rotation.z = angle;
+    campfire.add(log);
+  }
+  
+  // Fire core (emissive sphere)
+  const fireGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+  const fireMaterial = new THREE.MeshStandardMaterial({
+    color: 0xFF4500,
+    emissive: 0xFF6600,
+    emissiveIntensity: 2.0,
+    transparent: true,
+    opacity: 0.9
+  });
+  const fire = new THREE.Mesh(fireGeometry, fireMaterial);
+  fire.position.y = 0.25;
+  fire.name = 'fire-core';
+  campfire.add(fire);
+  
+  // Fire point light
+  const fireLight = new THREE.PointLight(0xFF6600, 1.5, 4);
+  fireLight.position.y = 0.3;
+  fireLight.name = 'fire-light';
+  campfire.add(fireLight);
+  
+  // Store animation data
+  campfire.userData = {
+    flickerPhase: 0
+  };
+  
+  return campfire;
+}
+
+/**
+ * Animate campfire
+ */
+export function updateCampfire(campfire: THREE.Group, currentTime: number): void {
+  const fireCore = campfire.getObjectByName('fire-core') as THREE.Mesh;
+  const fireLight = campfire.getObjectByName('fire-light') as THREE.PointLight;
+  
+  if (fireCore) {
+    // Flickering scale
+    const flicker = 1 + Math.sin(currentTime * 10) * 0.1 + Math.sin(currentTime * 15) * 0.05;
+    fireCore.scale.set(flicker, flicker * 1.2, flicker);
+    
+    // Flickering emissive
+    const mat = fireCore.material as THREE.MeshStandardMaterial;
+    mat.emissiveIntensity = 1.5 + Math.sin(currentTime * 8) * 0.5;
+  }
+  
+  if (fireLight) {
+    // Flickering light intensity
+    fireLight.intensity = 1.2 + Math.sin(currentTime * 12) * 0.3;
+  }
+}
+
 export default {
   createGriotCharacter,
   createVillageScene,
   createSkyDome,
   createParticleSystem,
   updateParticles,
+  animateCharacter,
+  createCampfire,
+  updateCampfire,
   createFallbackScene,
   STYLE_PALETTES
 };
