@@ -1,357 +1,333 @@
 
-# Griot Digital v6.0 - Studio d'Animation IA Style Pika/Kaiber
+# Plan: Griot Digital v6.1 - Griot Animé IA (Style NovelAI/Pika)
 
 ## Vision
 
-Créer un studio de création de contes animés qui transforme une simple image + texte en vidéo animée fluide, exactement comme Pika Labs et Kaiber. L'utilisateur importe une image ou prend une photo, écrit/dicte son histoire, et l'IA génère une animation stylisée avec effets visuels premium.
+Transformer le Griot Studio en un créateur de **contes animés avec images générées par IA** dans un style anime/illustration (comme NovelAI), avec narration vocale professionnelle et signature du narrateur.
 
-## Problèmes du Système Actuel
+L'utilisateur:
+1. **Écrit ou dicte** son histoire
+2. **Choisit un style anime** (manga, chibi, fantasy, conte africain stylisé)
+3. **L'IA génère automatiquement** une série d'images anime pour illustrer le conte
+4. **Narration vocale** via ElevenLabs synchronisée aux images
+5. **Photo du narrateur** en cercle (signature) dans le coin supérieur
 
-1. **Complexité excessive** : 1368 lignes de code pour le moteur, workflow confus
-2. **Pas de vrai Image-to-Animation** : Utilise des overlays statiques, pas d'animation de l'image
-3. **Interface non intuitive** : Trop d'options, pas de magic moment
-4. **Assets sous-utilisés** : 455 lens flares mais rendu basique
-5. **Pas d'IA générative** : Pas de transformation d'image en animation
+---
 
-## Nouvelle Architecture - Pipeline Simplifié
+## Architecture du Nouveau Pipeline
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     GRIOT ANIMATION STUDIO v6.0                             │
-│                     "Your Story, Animated by AI"                            │
+│                     GRIOT ANIMÉ STUDIO v6.1                                 │
+│                     "Ton conte, illustré par l'IA"                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ÉTAPE 1: CAPTURE CREATIVE (1 écran)                                        │
+│  ÉTAPE 1: CRÉATION DU CONTE                                                 │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  📸 Prends une photo / Importe une image                            │   │
-│  │  🎤 Raconte ton histoire (voix ou texte)                            │   │
-│  │  🎨 Choisis un style: [Traditionnel] [Aquarelle] [Papier découpé]   │   │
+│  │  📷 Photo optionnelle du narrateur (avatar rond en signature)       │   │
+│  │  🎤 Raconte ton histoire (voix → transcription ou texte)            │   │
+│  │  🎨 Style visuel: [Manga] [Chibi] [Fantasy] [Conte Africain]        │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                   ▼                                         │
-│  ÉTAPE 2: MAGIE IA (automatique)                                            │
+│  ÉTAPE 2: GÉNÉRATION IA (Automatic)                                         │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  1. Gemini Image Generation: Génère variations animables            │   │
-│  │  2. Motion Vectors: Calcule mouvement naturel (Ken Burns IA)        │   │
-│  │  3. VFX Mapping: Lens flares + light leaks selon émotion            │   │
-│  │  4. Audio Sync: Synchronise animation avec narration                │   │
+│  │  1. Gemini analyse le conte → découpe en 3-6 scènes                 │   │
+│  │  2. Gemini Image génère 1 illustration anime par scène             │   │
+│  │  3. ElevenLabs génère la narration vocale française                │   │
+│  │  4. Synchronisation audio-images avec Ken Burns                     │   │
+│  │  5. Overlay VFX (lens flares, particules) selon l'émotion          │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                   ▼                                         │
-│  ÉTAPE 3: PREVIEW & EXPORT (1 écran)                                        │
+│  ÉTAPE 3: PREVIEW & EXPORT                                                  │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  ▶️ Preview 15s animé                                                │   │
-│  │  📤 Partager / Télécharger                                          │   │
+│  │  ▶️ Preview vidéo avec:                                              │   │
+│  │     - Défilement fluide des illustrations anime                     │   │
+│  │     - Narration vocale synchronisée                                 │   │
+│  │     - Avatar du narrateur en cercle (coin supérieur droit)          │   │
+│  │     - VFX contextuels (sparkles, lumière, particules)               │   │
+│  │  📤 Partager / Télécharger MP4                                      │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Fonctionnalités Clés Inspirées de Pika/Kaiber
+---
 
-### 1. Image-to-Animation IA (comme Pika)
-- Upload ou capture d'une image unique
-- L'IA génère un mouvement naturel dans l'image
-- Effet "photo qui prend vie" avec parallaxe 2.5D
+## Fonctionnalités Clés
 
-### 2. Style Transfer Musical (comme Kaiber)
-- Styles artistiques: Traditionnel Africain, Aquarelle, Papier Découpé, Conte de Fées
-- Audio-réactif: les effets visuels pulsent avec la voix/musique
+### 1. Génération d'Images Anime IA (Style NovelAI)
+- Utilise `google/gemini-3-pro-image-preview` pour générer des illustrations
+- Prompts optimisés pour styles anime/manga
+- 3-6 images générées par conte (1 par segment narratif)
+- Cohérence visuelle entre les images (même personnage, même ambiance)
 
-### 3. Motion Synthesis
-- Ken Burns IA: zoom/pan intelligent basé sur les points d'intérêt
-- Parallax 2.5D: séparation avant-plan/arrière-plan pour profondeur
-- Particle Overlay: particules contextuelles (lucioles, poussière, magie)
+### 2. Styles Visuels Disponibles
+| Style | Description | Prompt Keywords |
+|-------|-------------|-----------------|
+| **Manga** | Style manga japonais classique | manga, detailed, anime eyes, dynamic pose |
+| **Chibi** | Personnages mignons déformés | chibi, cute, big head, simple background |
+| **Fantasy** | Épique, magique | fantasy, magical, ethereal, detailed scenery |
+| **Conte Africain** | Fusion africaine + anime | african patterns, warm colors, anime style, tribal motifs |
 
-### 4. VFX Premium Automatique
-- 455 lens flares mappés aux émotions détectées
-- Light leaks synchronisés avec les moments clés
-- Transitions cinématiques aux changements de segment
+### 3. Narration Vocale Intégrée
+- ElevenLabs TTS avec voix française professionnelle
+- Synchronisation automatique: durée audio = durée vidéo
+- Chaque segment narratif correspond à une illustration
+
+### 4. Avatar du Narrateur (Signature)
+- Photo circulaire dans le coin supérieur droit
+- Bordure dorée/ambrée animée
+- Reste visible pendant toute la vidéo
+- Optionnel: si pas de photo, affiche emoji 🌙
+
+### 5. VFX Automatiques selon l'Émotion
+- Particules dorées pour la joie
+- Lucioles pour la sagesse
+- Étincelles pour la magie
+- Flocons/pluie pour la tristesse
+
+---
 
 ## Structure des Fichiers
 
-### Fichiers à SUPPRIMER (trop complexes)
-```
-src/templates/GriotDigital.ts (1368 lignes → remplacer)
-src/components/GriotDigitalCreator.tsx (1264 lignes → remplacer)
-src/lib/Griot3DRenderLayer.ts (optionnel, pas utilisé efficacement)
-```
-
-### Nouveaux Fichiers à CRÉER
+### Nouveaux Fichiers à Créer
 
 ```
+supabase/functions/generate-anime-story/index.ts      # Edge function principale
+  - Découpe le conte en segments
+  - Génère les prompts d'images anime
+  - Appelle Gemini Image pour chaque segment
+  - Génère la narration ElevenLabs
+
 src/components/griot-studio/
-├── GriotStudio.tsx              # Composant principal (300 lignes max)
-├── ImageCapture.tsx             # Capture/upload image
-├── StoryInput.tsx               # Input voix/texte  
-├── StyleSelector.tsx            # Choix du style artistique
-├── AnimationPreview.tsx         # Preview temps réel
+├── GriotStudio.tsx                    # Refonte pour le nouveau flux
+├── NarratorCapture.tsx                # Capture photo du narrateur (cercle)
+├── StoryInput.tsx                     # Inchangé (voix ou texte)
+├── AnimeStyleSelector.tsx             # Nouveau: sélection style anime
+├── StoryPreview.tsx                   # Preview avec illustrations anime
 └── hooks/
-    ├── useImageAnimation.ts     # Hook animation image
-    └── useVFXEngine.ts          # Hook effets visuels
+    ├── useAnimeStoryGenerator.ts      # Nouveau hook principal
+    └── useVFXEngine.ts                # Existant, enrichi
 
-src/engines/
-├── GriotAnimationEngine.ts      # Moteur simplifié (500 lignes max)
-└── ImageMotionSynthesizer.ts    # Génération de mouvement IA
-
-supabase/functions/
-├── generate-image-animation/    # Gemini Image Generation pour variations
-└── analyze-emotion/             # Analyse émotion simplifiée
+src/engines/GriotAnimationEngine.ts    # Modifier pour supporter slideshow anime
 ```
+
+### Fichiers à Modifier
+
+1. **`supabase/functions/generate-image-animation/index.ts`**
+   - Ajouter action `generate_anime_scenes` 
+   - Générer images anime via Gemini Image
+
+2. **`src/components/griot-studio/GriotStudio.tsx`**
+   - Remplacer ImageCapture par NarratorCapture (optionnel)
+   - Ajouter AnimeStyleSelector
+   - Nouveau flux de génération
+
+3. **`src/engines/GriotAnimationEngine.ts`**
+   - Ajouter mode slideshow (plusieurs images)
+   - Ajouter rendu avatar circulaire en overlay
+   - Transitions entre images (fade, slide)
+
+---
 
 ## Pipeline Technique Détaillé
 
-### Phase 1: Capture & Input
+### Phase 1: Découpage du Conte en Scènes
+
 ```typescript
-interface GriotStudioInput {
-  image: File | Blob;           // Image source unique
-  story: string;                // Texte de l'histoire (transcrit ou saisi)
-  audioNarration?: File;        // Narration audio optionnelle
-  style: 'traditional' | 'watercolor' | 'cutout' | 'fairytale';
-  duration: 15 | 30 | 60;       // Durée en secondes
+// Edge function: generate-anime-story
+interface StoryScene {
+  sceneNumber: number;
+  text: string;           // Segment de narration
+  emotion: string;        // joy, wonder, tension, peace...
+  visualDescription: string; // Description pour l'image
+  durationSeconds: number;
 }
+
+// Gemini analyse le conte et retourne les scènes
+const scenePrompt = `Analyse ce conte et découpe-le en 3-6 scènes visuelles.
+Pour chaque scène, donne:
+- Le texte à narrer
+- L'émotion dominante
+- Une description visuelle pour une illustration anime
+- La durée suggérée (5-15 secondes)
+
+Conte: "${storyText}"
+
+Réponds en JSON...`;
 ```
 
-### Phase 2: Traitement IA
+### Phase 2: Génération des Images Anime
+
 ```typescript
-// 1. Analyse de l'image avec Gemini Vision
-const imageAnalysis = await analyzeImageContent(input.image);
-// Retourne: { subjects: [], depth_map: [], focus_points: [], mood: string }
+// Pour chaque scène, générer une image avec Gemini Image
+const imagePrompt = `Create an anime illustration in ${style} style.
 
-// 2. Génération de motion vectors
-const motionPlan = generateMotionPlan(imageAnalysis, input.duration);
-// Retourne: { keyframes: [], camera_path: [], parallax_layers: [] }
+Scene: ${scene.visualDescription}
+Mood: ${scene.emotion}
+Style requirements:
+- High quality anime art
+- ${STYLE_KEYWORDS[style]}
+- 9:16 vertical format for mobile
+- Vibrant colors, detailed background
+- Characters with expressive anime eyes
 
-// 3. Analyse émotionnelle du texte
-const emotions = await analyzeStoryEmotions(input.story);
-// Retourne: { segments: [{ time, emotion, intensity }] }
+Important: This is scene ${i + 1} of a story. Maintain visual consistency.`;
 
-// 4. Mapping VFX automatique
-const vfxPlan = mapEmotionsToVFX(emotions, motionPlan);
-// Retourne: { flares: [], leaks: [], particles: [] }
+const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  body: JSON.stringify({
+    model: 'google/gemini-3-pro-image-preview',
+    messages: [{ role: 'user', content: imagePrompt }],
+    modalities: ['image', 'text']
+  })
+});
 ```
 
-### Phase 3: Rendu Animation
+### Phase 3: Narration Audio
+
 ```typescript
+// Combiner tous les textes de scènes et générer l'audio
+const fullNarration = scenes.map(s => s.text).join(' ... ');
+
+const { data } = await supabase.functions.invoke('french-tts', {
+  body: { 
+    text: fullNarration, 
+    voice: 'narrator',
+    returnAudio: true 
+  }
+});
+
+// audioBase64 contient l'audio MP3
+```
+
+### Phase 4: Rendu Vidéo avec Avatar
+
+```typescript
+// GriotAnimationEngine: nouveau mode slideshow
 class GriotAnimationEngine {
-  private canvas: OffscreenCanvas;
-  private ctx: OffscreenCanvasRenderingContext2D;
-  
-  async render(input: GriotStudioInput, vfxPlan: VFXPlan): Promise<Blob> {
-    const frames = [];
-    const fps = 24;
-    const totalFrames = input.duration * fps;
+  private scenes: AnimatedScene[] = [];
+  private narratorAvatar: HTMLImageElement | null = null;
+
+  // Dessiner l'avatar circulaire du narrateur
+  drawNarratorAvatar(ctx: CanvasRenderingContext2D, time: number): void {
+    if (!this.narratorAvatar) return;
     
-    for (let frame = 0; frame < totalFrames; frame++) {
-      const time = frame / fps;
-      
-      // 1. Draw animated image with Ken Burns + Parallax
-      this.drawAnimatedImage(time, vfxPlan.motionPlan);
-      
-      // 2. Apply style filter
-      this.applyStyleFilter(input.style);
-      
-      // 3. Overlay VFX (flares, leaks, particles)
-      this.drawVFXLayer(time, vfxPlan);
-      
-      // 4. Add audio-reactive pulse
-      if (input.audioNarration) {
-        this.applyAudioPulse(time, vfxPlan.audioAnalysis);
-      }
-      
-      frames.push(this.canvas.toDataURL());
-    }
+    const size = 80;
+    const margin = 20;
+    const x = this.width - size - margin;
+    const y = margin;
     
-    return this.encodeVideo(frames, input.audioNarration);
+    // Dessiner cercle avec bordure dorée animée
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x + size/2, y + size/2, size/2 + 3, 0, Math.PI * 2);
+    const gradient = ctx.createConicGradient(time * 0.5, x + size/2, y + size/2);
+    gradient.addColorStop(0, '#FFD700');
+    gradient.addColorStop(0.5, '#FFA500');
+    gradient.addColorStop(1, '#FFD700');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    // Clip et dessiner l'avatar
+    ctx.beginPath();
+    ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(this.narratorAvatar, x, y, size, size);
+    ctx.restore();
   }
-}
-```
 
-## Styles Artistiques
-
-| Style | Description | Filtres CSS/Canvas | Assets Envato |
-|-------|-------------|-------------------|---------------|
-| **Traditionnel** | Couleurs chaudes, grain film | sepia(0.3) contrast(1.1) | flares 001-100 |
-| **Aquarelle** | Bords doux, bleeding colors | blur(0.5px) saturate(1.2) | flares 100-200 |
-| **Papier Découpé** | Ombres portées, textures | contrast(1.3) + shadow | flares 200-300 |
-| **Conte de Fées** | Sparkles, dreamlike | brightness(1.1) hue-rotate | flares 300-455 |
-
-## Animation de l'Image (Image-to-Animation)
-
-### Technique Ken Burns IA
-```typescript
-function animateImage(
-  ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement,
-  time: number,
-  focusPoints: Point[],
-  duration: number
-): void {
-  const progress = time / duration;
-  
-  // Calculer le point focal basé sur l'analyse IA
-  const currentFocus = interpolateFocusPoints(focusPoints, progress);
-  
-  // Ken Burns: zoom progressif vers le point focal
-  const scale = 1 + (progress * 0.2); // Zoom de 20%
-  const offsetX = (currentFocus.x - 0.5) * 100 * progress;
-  const offsetY = (currentFocus.y - 0.5) * 100 * progress;
-  
-  ctx.save();
-  ctx.translate(canvas.width / 2 + offsetX, canvas.height / 2 + offsetY);
-  ctx.scale(scale, scale);
-  ctx.drawImage(image, -image.width / 2, -image.height / 2);
-  ctx.restore();
-}
-```
-
-### Parallax 2.5D (Depth Separation)
-```typescript
-// Séparer l'image en couches de profondeur
-interface DepthLayer {
-  canvas: HTMLCanvasElement;  // Couche isolée
-  depth: number;              // 0 = arrière-plan, 1 = premier plan
-  parallaxSpeed: number;      // Vitesse de mouvement relatif
-}
-
-function renderParallax(layers: DepthLayer[], mouseOffset: Point): void {
-  layers.forEach(layer => {
-    const offsetX = mouseOffset.x * layer.parallaxSpeed;
-    const offsetY = mouseOffset.y * layer.parallaxSpeed;
-    ctx.drawImage(layer.canvas, offsetX, offsetY);
-  });
-}
-```
-
-## VFX Engine Simplifié
-
-```typescript
-class VFXEngine {
-  private flareCache: Map<string, HTMLImageElement> = new Map();
-  private leakVideos: HTMLVideoElement[] = [];
-  
-  // Précharger les assets par style
-  async preloadForStyle(style: string): Promise<void> {
-    const ranges = STYLE_FLARE_RANGES[style];
-    for (let i = ranges[0]; i <= Math.min(ranges[1], ranges[0] + 20); i++) {
-      const img = await loadImage(`/assets/envato/lens-flare/flare-${i.toString().padStart(3, '0')}.png`);
-      this.flareCache.set(`flare-${i}`, img);
-    }
-  }
-  
-  // Appliquer VFX basé sur l'émotion
-  applyEmotionalVFX(ctx: CanvasRenderingContext2D, emotion: string, intensity: number): void {
-    const flareRange = EMOTION_FLARE_RANGES[emotion];
-    const flareIndex = Math.floor(flareRange[0] + Math.random() * (flareRange[1] - flareRange[0]));
-    const flare = this.flareCache.get(`flare-${flareIndex}`);
+  // Dessiner la scène courante avec transition
+  drawCurrentScene(time: number): void {
+    const currentSceneIndex = this.getSceneIndex(time);
+    const scene = this.scenes[currentSceneIndex];
     
-    if (flare) {
-      ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = intensity * 0.7;
-      ctx.drawImage(flare, 
-        Math.random() * ctx.canvas.width * 0.8,
-        Math.random() * ctx.canvas.height * 0.3,
-        ctx.canvas.width * 0.4,
-        ctx.canvas.height * 0.4
-      );
-      ctx.globalCompositeOperation = 'source-over';
+    // Ken Burns sur l'image anime
+    this.drawAnimatedImage(scene.image, time, scene.duration, scene.motionPlan);
+    
+    // Transition fade si changement de scène
+    const transitionProgress = this.getTransitionProgress(time);
+    if (transitionProgress > 0) {
+      const nextScene = this.scenes[currentSceneIndex + 1];
+      ctx.globalAlpha = transitionProgress;
+      this.drawAnimatedImage(nextScene.image, time, nextScene.duration, nextScene.motionPlan);
       ctx.globalAlpha = 1;
     }
   }
 }
 ```
 
-## Edge Function: Génération IA
+---
 
-```typescript
-// supabase/functions/generate-image-animation/index.ts
-serve(async (req) => {
-  const { imageBase64, prompt, style } = await req.json();
-  
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: `Analyze this image for animation. Identify: 1) Main subjects 2) Depth layers 3) Focus points 4) Suggested motion path. Style: ${style}. Story context: ${prompt}` },
-            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
-          ]
-        }
-      ]
-    })
-  });
-  
-  const data = await response.json();
-  return new Response(JSON.stringify({
-    analysis: parseAnalysis(data.choices[0].message.content)
-  }));
-});
-```
-
-## Interface Utilisateur - 3 Écrans Maximum
+## Interface Utilisateur
 
 ### Écran 1: Création
+
 ```text
 ┌────────────────────────────────────────────┐
-│  🌙 GRIOT STUDIO                           │
+│  🌙 GRIOT ANIMÉ STUDIO                     │
 ├────────────────────────────────────────────┤
 │                                            │
-│  ┌────────────────────────────────────┐   │
-│  │                                    │   │
-│  │     📷 Touche pour capturer       │   │
-│  │        ou importer une image       │   │
-│  │                                    │   │
-│  └────────────────────────────────────┘   │
+│  ┌─────────┐                              │
+│  │  📷    │ Ta photo (optionnel)         │
+│  │ Avatar  │ Apparaîtra en signature      │
+│  └─────────┘                              │
 │                                            │
 │  🎤 Raconte ton histoire...                │
 │  ┌────────────────────────────────────┐   │
-│  │ [Enregistrer] ou [Écrire]         │   │
+│  │ Il était une fois dans un village  │   │
+│  │ au cœur de l'Afrique, un jeune    │   │
+│  │ garçon nommé Kofi...               │   │
 │  └────────────────────────────────────┘   │
+│  [🎙️ Dicter] ou écrire                    │
 │                                            │
-│  🎨 Style:                                 │
-│  [Traditionnel] [Aquarelle] [Papier] [✨]  │
+│  🎨 Style des illustrations:              │
+│  [🎌 Manga] [😊 Chibi] [✨ Fantasy] [🌍 Africain] │
 │                                            │
-│            [  ✨ ANIMER  ✨  ]             │
+│            [ ✨ CRÉER MON CONTE ✨ ]       │
 │                                            │
 └────────────────────────────────────────────┘
 ```
 
-### Écran 2: Génération (loading magique)
+### Écran 2: Génération
+
 ```text
 ┌────────────────────────────────────────────┐
 │                                            │
-│          🌟 Magie en cours...             │
+│          🎨 L'IA illustre ton conte...    │
 │                                            │
 │  ┌────────────────────────────────────┐   │
-│  │    ╭──────────────────────────╮    │   │
-│  │    │   [Image + particules    │    │   │
-│  │    │    animées pendant       │    │   │
-│  │    │    le chargement]        │    │   │
-│  │    ╰──────────────────────────╯    │   │
+│  │                                    │   │
+│  │   [Preview de la première image   │   │
+│  │    anime générée avec sparkles]   │   │
+│  │                                    │   │
 │  └────────────────────────────────────┘   │
 │                                            │
-│      ████████████░░░░░ 65%                │
-│      "Ajout des effets lumineux..."       │
+│      ████████░░░░░░░░░ 40%                │
+│      "Création de la scène 2/4..."        │
+│                                            │
+│  ✅ Scène 1: Le village au matin          │
+│  🔄 Scène 2: La rencontre magique         │
+│  ⏳ Scène 3: L'aventure commence          │
+│  ⏳ Scène 4: La fin heureuse              │
 │                                            │
 └────────────────────────────────────────────┘
 ```
 
 ### Écran 3: Résultat
+
 ```text
 ┌────────────────────────────────────────────┐
 │  🎬 Ton conte animé est prêt!             │
 ├────────────────────────────────────────────┤
 │                                            │
 │  ┌────────────────────────────────────┐   │
+│  │                   ┌────┐           │   │
+│  │  [IMAGE ANIME    │ 📷 │           │   │
+│  │   EN MOUVEMENT]  │Avatar│          │   │
+│  │                   └────┘           │   │
+│  │         ▶️                         │   │
 │  │                                    │   │
-│  │      [LECTEUR VIDÉO]               │   │
-│  │         ▶️ 0:15                    │   │
-│  │                                    │   │
+│  │  ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ 0:45        │   │
 │  └────────────────────────────────────┘   │
 │                                            │
 │  ┌──────────┐  ┌──────────┐              │
@@ -363,44 +339,60 @@ serve(async (req) => {
 └────────────────────────────────────────────┘
 ```
 
-## Comparaison Avant/Après
+---
 
-| Aspect | v5.0 Actuel | v6.0 Nouveau |
-|--------|-------------|--------------|
-| Lignes de code | 2600+ | ~800 |
-| Écrans UI | 5+ étapes | 3 étapes |
-| Temps création | 5-10 min | 30 sec - 2 min |
-| Input requis | Audio + Photos + Config | Image + Texte/Voix |
-| Animation | Overlays statiques | Ken Burns IA + Parallax |
-| IA utilisée | Analyse texte seule | Vision + Texte + Génération |
-| Experience | Technique | Magique |
+## Utilisation des Assets Envato
 
-## Résumé de l'Implémentation
+### Lens Flares par Émotion
+| Émotion | Range Flares | Effet |
+|---------|--------------|-------|
+| Joy | 001-050 | Doré, chaleureux |
+| Wonder | 051-100 | Violet, magique |
+| Tension | 101-150 | Rouge, dramatique |
+| Peace | 151-200 | Bleu, serein |
+| Excitement | 201-300 | Multicolore, dynamique |
+| Magic | 301-400 | Arc-en-ciel, sparkles |
 
-1. **Supprimer** les anciens fichiers complexes
-2. **Créer** le nouveau GriotStudio minimaliste
-3. **Créer** le GriotAnimationEngine simplifié
-4. **Créer** l'edge function pour analyse image IA
-5. **Tester** le flux complet end-to-end
-6. **Optimiser** les performances mobile
+### Light Leaks
+- `leak-001.webm` à `leak-022.webm`
+- Appliqués en overlay `screen` pendant les transitions
+- Intensité basée sur l'émotion du segment
 
-## Fichiers à Modifier/Créer
+### Particules (à ajouter)
+- Dust particles pour ambiance
+- Sparkles pour magie
+- Fireflies pour nuit/mystère
+
+---
+
+## Résumé des Fichiers à Modifier/Créer
 
 ### Nouveaux Fichiers
-- `src/components/griot-studio/GriotStudio.tsx`
-- `src/components/griot-studio/ImageCapture.tsx`
-- `src/components/griot-studio/StoryInput.tsx`
-- `src/components/griot-studio/StyleSelector.tsx`
-- `src/components/griot-studio/AnimationPreview.tsx`
-- `src/components/griot-studio/hooks/useImageAnimation.ts`
-- `src/components/griot-studio/hooks/useVFXEngine.ts`
-- `src/engines/GriotAnimationEngine.ts`
-- `supabase/functions/generate-image-animation/index.ts`
+1. `supabase/functions/generate-anime-story/index.ts` - Edge function génération complète
+2. `src/components/griot-studio/NarratorCapture.tsx` - Capture avatar circulaire
+3. `src/components/griot-studio/AnimeStyleSelector.tsx` - Sélection style anime
+4. `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` - Hook principal
 
 ### Fichiers à Modifier
-- `src/pages/TamTamCreator.tsx` - Ajouter route vers GriotStudio
-- `src/App.tsx` - Ajouter route `/griot-studio`
+1. `src/components/griot-studio/GriotStudio.tsx` - Nouveau flux UI
+2. `src/engines/GriotAnimationEngine.ts` - Mode slideshow + avatar overlay
+3. `supabase/config.toml` - Ajouter nouvelle edge function
 
-### Fichiers à Conserver (pour migration)
-- `src/templates/GriotDigital.ts` - Garder temporairement comme fallback
-- `src/lib/AssetEmotionMapper.ts` - Réutiliser le mapping
+### Fichiers à Supprimer/Remplacer
+1. `src/components/griot-studio/ImageCapture.tsx` - Remplacé par NarratorCapture
+2. `supabase/functions/generate-image-animation/index.ts` - Remplacé par generate-anime-story
+
+---
+
+## Comparaison Avant/Après
+
+| Aspect | v6.0 Actuel | v6.1 Griot Animé |
+|--------|-------------|------------------|
+| Source image | Photo utilisateur | Générées par IA |
+| Style visuel | Photo animée | Illustrations anime |
+| Nombre d'images | 1 | 3-6 (par scène) |
+| Avatar narrateur | Non | Oui, cercle signature |
+| Génération IA | Analyse seulement | Génération complète |
+| Narration | Optionnelle | Intégrée (ElevenLabs) |
+| Workflow | 3 étapes manuelles | 2 étapes (écrire + générer) |
+| Inspiration | Pika Labs | NovelAI + Kaiber |
