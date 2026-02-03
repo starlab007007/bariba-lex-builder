@@ -1,21 +1,21 @@
 /**
- * Griot Studio v6.0
- * AI-powered Image-to-Animation Studio
- * Inspired by Pika Labs and Kaiber
+ * Griot Animé Studio v6.1
+ * AI-powered Anime Story Creator
+ * Generates illustrated stories with AI images and voice narration
  */
 
-import React, { useState, useRef, useCallback } from 'react';
-import { ArrowLeft, Sparkles, Wand2 } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { ArrowLeft, Sparkles, Wand2, Play, Pause, Download, Share2, RotateCcw, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-import { ImageCapture } from './ImageCapture';
+import { NarratorCapture } from './NarratorCapture';
 import { StoryInput } from './StoryInput';
-import { StyleSelector, AnimationStyleName } from './StyleSelector';
-import { AnimationPreview } from './AnimationPreview';
-import { useImageAnimation } from './hooks/useImageAnimation';
+import { AnimeStyleSelector, AnimeStyleName } from './AnimeStyleSelector';
+import { useAnimeStoryGenerator, StoryScene } from './hooks/useAnimeStoryGenerator';
 import { useVFXEngine } from './hooks/useVFXEngine';
+import { GriotAnimationEngine, ANIMATION_STYLES } from '@/engines/GriotAnimationEngine';
 
 type StudioStep = 'create' | 'generating' | 'preview';
 
@@ -28,49 +28,57 @@ const DURATION_OPTIONS = [
 export function GriotStudio() {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const engineRef = useRef<GriotAnimationEngine | null>(null);
   
   // State
   const [step, setStep] = useState<StudioStep>('create');
-  const [imageFile, setImageFile] = useState<File | Blob | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [narratorFile, setNarratorFile] = useState<File | Blob | null>(null);
+  const [narratorPreviewUrl, setNarratorPreviewUrl] = useState<string | null>(null);
   const [story, setStory] = useState('');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [style, setStyle] = useState<AnimationStyleName>('traditional');
-  const [duration, setDuration] = useState(15);
+  const [style, setStyle] = useState<AnimeStyleName>('african');
+  const [duration, setDuration] = useState(30);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Hooks
   const {
-    state: animationState,
-    analysisResult,
-    analyzeContent,
-    startPreview,
-    stopPreview,
-    renderVideo,
-    reset: resetAnimation
-  } = useImageAnimation(canvasRef);
+    state: generationState,
+    result: generationResult,
+    generateStory,
+    reset: resetGeneration
+  } = useAnimeStoryGenerator();
 
   const { preloadStyleFlares } = useVFXEngine();
 
-  // Handlers
-  const handleImageCaptured = useCallback((file: File | Blob) => {
-    setImageFile(file);
-    const url = URL.createObjectURL(file);
-    setImagePreviewUrl(url);
+  // Initialize engine when canvas is ready
+  useEffect(() => {
+    if (canvasRef.current && !engineRef.current) {
+      engineRef.current = new GriotAnimationEngine(canvasRef.current);
+    }
+    return () => {
+      engineRef.current?.dispose();
+      engineRef.current = null;
+    };
   }, []);
 
-  const clearImage = useCallback(() => {
-    if (imagePreviewUrl) {
-      URL.revokeObjectURL(imagePreviewUrl);
+  // Handlers
+  const handleNarratorCaptured = useCallback((file: File | Blob) => {
+    setNarratorFile(file);
+    const url = URL.createObjectURL(file);
+    setNarratorPreviewUrl(url);
+  }, []);
+
+  const clearNarrator = useCallback(() => {
+    if (narratorPreviewUrl) {
+      URL.revokeObjectURL(narratorPreviewUrl);
     }
-    setImageFile(null);
-    setImagePreviewUrl(null);
-  }, [imagePreviewUrl]);
+    setNarratorFile(null);
+    setNarratorPreviewUrl(null);
+  }, [narratorPreviewUrl]);
 
   const handleAudioRecorded = useCallback((blob: Blob) => {
     setAudioBlob(blob);
-    // For now, we'll use a placeholder transcription
-    // In production, this would call a speech-to-text service
-    setStory('[Audio enregistré - transcription en cours...]');
+    setStory('[🎤 Audio enregistré - En attente de transcription...]');
     toast({
       title: "🎤 Audio enregistré!",
       description: "Ton histoire vocale a été capturée."
@@ -78,19 +86,10 @@ export function GriotStudio() {
   }, [toast]);
 
   const handleGenerate = useCallback(async () => {
-    if (!imageFile) {
-      toast({
-        title: "Image requise",
-        description: "Ajoute une image pour créer ton animation.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!story.trim()) {
+    if (!story.trim() || story.startsWith('[')) {
       toast({
         title: "Histoire requise",
-        description: "Raconte ton histoire pour donner vie à l'animation.",
+        description: "Écris ou dicte ton conte pour créer l'animation.",
         variant: "destructive"
       });
       return;
@@ -102,62 +101,107 @@ export function GriotStudio() {
       // Preload VFX assets
       await preloadStyleFlares(style);
 
-      // Analyze image and story with AI
-      await analyzeContent(imageFile, story, style, duration);
+      // Generate anime story with AI
+      const result = await generateStory(story, style, duration);
+
+      if (!result || !result.scenes.length) {
+        throw new Error('Aucune scène générée');
+      }
+
+      // Load scenes into engine
+      if (engineRef.current && result.scenes.length > 0) {
+        // Calculate timing for each scene
+        let currentTime = 0;
+        const scenesWithTiming = result.scenes.map((scene: StoryScene) => {
+          const sceneData = {
+            imageUrl: scene.imageUrl || '',
+            startTime: currentTime,
+            endTime: currentTime + scene.durationSeconds,
+            emotion: scene.emotion
+          };
+          currentTime += scene.durationSeconds;
+          return sceneData;
+        }).filter(s => s.imageUrl);
+
+        await engineRef.current.loadScenes(scenesWithTiming);
+
+        // Load narrator avatar if provided
+        if (narratorPreviewUrl) {
+          await engineRef.current.loadNarratorAvatar(narratorPreviewUrl);
+        }
+
+        // Set audio if available
+        if (result.audioUrl) {
+          engineRef.current.setAudio(result.audioUrl);
+        }
+      }
 
       // Transition to preview
       setStep('preview');
 
       // Start preview automatically
       setTimeout(() => {
-        startPreview(style, duration);
+        handlePlay();
       }, 500);
 
     } catch (error) {
       console.error('[GriotStudio] Generation error:', error);
       toast({
         title: "Erreur de génération",
-        description: "Réessaie dans quelques instants.",
+        description: error instanceof Error ? error.message : "Réessaie dans quelques instants.",
         variant: "destructive"
       });
       setStep('create');
     }
-  }, [imageFile, story, style, duration, preloadStyleFlares, analyzeContent, startPreview, toast]);
+  }, [story, style, duration, preloadStyleFlares, generateStory, narratorPreviewUrl, toast]);
 
   const handlePlay = useCallback(() => {
-    startPreview(style, duration);
-  }, [startPreview, style, duration]);
+    if (engineRef.current && generationResult) {
+      const animStyle = ANIMATION_STYLES[style] || ANIMATION_STYLES.fantasy;
+      engineRef.current.startSlideshowPreview(duration, animStyle, (progress) => {
+        // Could update progress UI here
+      });
+      setIsPlaying(true);
+    }
+  }, [style, duration, generationResult]);
 
   const handlePause = useCallback(() => {
-    stopPreview();
-  }, [stopPreview]);
+    engineRef.current?.stopPreview();
+    setIsPlaying(false);
+  }, []);
 
   const handleExport = useCallback(async () => {
     try {
-      stopPreview();
+      handlePause();
       
       toast({
         title: "🎬 Export en cours...",
         description: "Patiente pendant la création de ta vidéo."
       });
 
-      const frames = await renderVideo(style, duration, 24);
-      
-      // For now, download as animated sequence
-      // In production, this would use FFmpeg to create MP4
-      const lastFrame = frames[frames.length - 1];
-      const url = URL.createObjectURL(lastFrame);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `griot-animation-${Date.now()}.png`;
-      link.click();
-      
-      URL.revokeObjectURL(url);
+      if (engineRef.current) {
+        const animStyle = ANIMATION_STYLES[style] || ANIMATION_STYLES.fantasy;
+        const frames = await engineRef.current.renderSlideshowFrames(duration, animStyle, 24, (progress, msg) => {
+          // Update progress
+        });
+        
+        // Download last frame as preview
+        if (frames.length > 0) {
+          const lastFrame = frames[frames.length - 1];
+          const url = URL.createObjectURL(lastFrame);
+          
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `griot-anime-${Date.now()}.png`;
+          link.click();
+          
+          URL.revokeObjectURL(url);
+        }
+      }
 
       toast({
         title: "✅ Export terminé!",
-        description: "Ton animation a été sauvegardée."
+        description: "Ton conte animé a été sauvegardé."
       });
 
     } catch (error) {
@@ -168,7 +212,7 @@ export function GriotStudio() {
         variant: "destructive"
       });
     }
-  }, [stopPreview, renderVideo, style, duration, toast]);
+  }, [handlePause, style, duration, toast]);
 
   const handleShare = useCallback(async () => {
     try {
@@ -179,7 +223,6 @@ export function GriotStudio() {
           url: window.location.href
         });
       } else {
-        // Fallback: copy link
         await navigator.clipboard.writeText(window.location.href);
         toast({
           title: "📋 Lien copié!",
@@ -192,24 +235,24 @@ export function GriotStudio() {
   }, [story, toast]);
 
   const handleReset = useCallback(() => {
-    stopPreview();
-    resetAnimation();
-    clearImage();
+    handlePause();
+    resetGeneration();
+    clearNarrator();
     setStory('');
     setAudioBlob(null);
     setStep('create');
-  }, [stopPreview, resetAnimation, clearImage]);
+  }, [handlePause, resetGeneration, clearNarrator]);
 
   const handleBack = useCallback(() => {
     if (step === 'preview') {
-      stopPreview();
+      handlePause();
       setStep('create');
     } else if (step === 'generating') {
       setStep('create');
     }
-  }, [step, stopPreview]);
+  }, [step, handlePause]);
 
-  const canGenerate = imageFile && story.trim();
+  const canGenerate = story.trim() && !story.startsWith('[');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-950 via-black to-black text-white">
@@ -232,7 +275,7 @@ export function GriotStudio() {
           
           <h1 className="text-lg font-bold text-amber-100 flex items-center gap-2">
             <span className="text-2xl">🌙</span>
-            Griot Studio
+            Griot Animé
           </h1>
           
           <div className="w-20" />
@@ -240,18 +283,18 @@ export function GriotStudio() {
       </header>
 
       {/* Main content */}
-      <main className="px-4 py-6 max-w-lg mx-auto space-y-6">
+      <main className="px-4 py-6 max-w-lg mx-auto space-y-6 pb-20">
         
         {/* Step: Create */}
         {step === 'create' && (
           <>
-            {/* Image Capture */}
-            <section>
-              <ImageCapture
-                onImageCaptured={handleImageCaptured}
-                previewUrl={imagePreviewUrl}
-                onClear={clearImage}
-                disabled={animationState.isAnalyzing}
+            {/* Narrator Avatar (optional) */}
+            <section className="flex justify-center">
+              <NarratorCapture
+                onImageCaptured={handleNarratorCaptured}
+                previewUrl={narratorPreviewUrl}
+                onClear={clearNarrator}
+                disabled={generationState.isGenerating}
               />
             </section>
 
@@ -261,30 +304,30 @@ export function GriotStudio() {
                 value={story}
                 onChange={setStory}
                 onAudioRecorded={handleAudioRecorded}
-                disabled={animationState.isAnalyzing}
+                disabled={generationState.isGenerating}
               />
             </section>
 
-            {/* Style Selector */}
+            {/* Anime Style Selector */}
             <section>
-              <StyleSelector
+              <AnimeStyleSelector
                 selected={style}
                 onSelect={setStyle}
-                disabled={animationState.isAnalyzing}
+                disabled={generationState.isGenerating}
               />
             </section>
 
             {/* Duration Selector */}
             <section>
               <h3 className="text-sm font-medium text-amber-200/60 mb-3 text-center">
-                ⏱️ Durée
+                ⏱️ Durée du conte
               </h3>
               <div className="flex justify-center gap-3">
                 {DURATION_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => setDuration(opt.value)}
-                    disabled={animationState.isAnalyzing}
+                    disabled={generationState.isGenerating}
                     className={cn(
                       "px-4 py-2 rounded-lg border transition-all",
                       duration === opt.value
@@ -304,7 +347,7 @@ export function GriotStudio() {
               <Button
                 size="lg"
                 onClick={handleGenerate}
-                disabled={!canGenerate || animationState.isAnalyzing}
+                disabled={!canGenerate || generationState.isGenerating}
                 className={cn(
                   "w-full py-6 text-lg font-semibold rounded-2xl transition-all",
                   "bg-gradient-to-r from-amber-500 to-orange-500",
@@ -312,22 +355,13 @@ export function GriotStudio() {
                   "disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
               >
-                {animationState.isAnalyzing ? (
-                  <>
-                    <Wand2 className="w-5 h-5 mr-2 animate-spin" />
-                    Analyse en cours...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5 mr-2" />
-                    ✨ Animer mon histoire
-                  </>
-                )}
+                <Sparkles className="w-5 h-5 mr-2" />
+                ✨ Créer mon conte animé
               </Button>
               
               {!canGenerate && (
                 <p className="text-xs text-amber-200/40 text-center mt-2">
-                  Ajoute une image et raconte ton histoire
+                  Écris ton histoire pour commencer
                 </p>
               )}
             </section>
@@ -336,57 +370,145 @@ export function GriotStudio() {
 
         {/* Step: Generating */}
         {step === 'generating' && (
-          <section className="py-12">
-            <AnimationPreview
-              canvasRef={canvasRef}
-              isPlaying={false}
-              isRendering={true}
-              progress={animationState.progress}
-              message={animationState.message}
-              onPlay={() => {}}
-              onPause={() => {}}
-              onExport={() => {}}
-              onShare={() => {}}
-              onReset={handleReset}
-            />
+          <section className="py-8 space-y-6">
+            <div className="text-center">
+              <Wand2 className="w-16 h-16 mx-auto text-amber-400 animate-pulse mb-4" />
+              <h2 className="text-xl font-semibold text-amber-100 mb-2">
+                🎨 L'IA illustre ton conte...
+              </h2>
+              <p className="text-amber-200/60">
+                {generationState.message || 'Création en cours...'}
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full bg-amber-900/30 rounded-full h-3 overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
+                style={{ width: `${generationState.progress}%` }}
+              />
+            </div>
+
+            {/* Scene progress */}
+            {generationState.totalScenes > 0 && (
+              <div className="space-y-2">
+                {Array.from({ length: generationState.totalScenes }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    {i < generationState.currentScene ? (
+                      <Check className="w-4 h-4 text-green-400" />
+                    ) : i === generationState.currentScene ? (
+                      <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border border-amber-500/30" />
+                    )}
+                    <span className={cn(
+                      i < generationState.currentScene ? "text-green-400" :
+                      i === generationState.currentScene ? "text-amber-200" :
+                      "text-amber-200/40"
+                    )}>
+                      Scène {i + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
         {/* Step: Preview */}
         {step === 'preview' && (
-          <section>
-            <AnimationPreview
-              canvasRef={canvasRef}
-              isPlaying={animationState.isPlaying}
-              isRendering={animationState.isRendering}
-              progress={animationState.progress}
-              message={animationState.message}
-              onPlay={handlePlay}
-              onPause={handlePause}
-              onExport={handleExport}
-              onShare={handleShare}
-              onReset={handleReset}
-            />
+          <section className="space-y-4">
+            <div className="text-center mb-4">
+              <h2 className="text-lg font-semibold text-amber-100">
+                🎬 Ton conte animé est prêt!
+              </h2>
+            </div>
 
-            {/* Analysis info */}
-            {analysisResult && (
-              <div className="mt-4 p-4 rounded-xl bg-amber-950/30 border border-amber-500/20">
-                <h4 className="text-sm font-medium text-amber-200 mb-2">
-                  🎭 Analyse IA
-                </h4>
-                <div className="grid grid-cols-2 gap-2 text-xs text-amber-200/60">
-                  <div>
-                    <span className="text-amber-200/40">Ambiance:</span>{' '}
-                    {analysisResult.mood}
-                  </div>
-                  <div>
-                    <span className="text-amber-200/40">Mouvement:</span>{' '}
-                    {analysisResult.motionPlan.direction}
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-amber-200/40">Émotions:</span>{' '}
-                    {analysisResult.emotionSegments.map(s => s.emotion).join(' → ')}
-                  </div>
+            {/* Canvas Preview */}
+            <div className="relative aspect-[9/16] w-full max-w-sm mx-auto rounded-2xl overflow-hidden bg-black shadow-2xl shadow-amber-500/20">
+              <canvas
+                ref={canvasRef}
+                width={540}
+                height={960}
+                className="w-full h-full object-cover"
+              />
+              
+              {/* Play/Pause overlay */}
+              <button
+                onClick={isPlaying ? handlePause : handlePlay}
+                className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors group"
+              >
+                <div className={cn(
+                  "w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center",
+                  "group-hover:bg-white/30 transition-colors",
+                  isPlaying && "opacity-0 group-hover:opacity-100"
+                )}>
+                  {isPlaying ? (
+                    <Pause className="w-8 h-8 text-white" />
+                  ) : (
+                    <Play className="w-8 h-8 text-white ml-1" />
+                  )}
+                </div>
+              </button>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex justify-center gap-3">
+              <Button
+                variant="outline"
+                onClick={handleShare}
+                className="bg-amber-500/10 border-amber-500/30 text-amber-200 hover:bg-amber-500/20"
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Partager
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleExport}
+                className="bg-amber-500/10 border-amber-500/30 text-amber-200 hover:bg-amber-500/20"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Télécharger
+              </Button>
+            </div>
+
+            {/* Reset button */}
+            <div className="text-center pt-4">
+              <Button
+                variant="ghost"
+                onClick={handleReset}
+                className="text-amber-200/60 hover:text-amber-200"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Créer un autre conte
+              </Button>
+            </div>
+
+            {/* Scene thumbnails */}
+            {generationResult?.scenes && generationResult.scenes.length > 0 && (
+              <div className="pt-4">
+                <h3 className="text-sm text-amber-200/60 mb-2 text-center">
+                  📖 {generationResult.scenes.length} scènes générées
+                </h3>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {generationResult.scenes.map((scene, i) => (
+                    <div 
+                      key={i}
+                      className="flex-shrink-0 w-16 h-24 rounded-lg overflow-hidden border border-amber-500/30 bg-amber-950/30"
+                    >
+                      {scene.imageUrl ? (
+                        <img 
+                          src={scene.imageUrl} 
+                          alt={`Scène ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-amber-200/40 text-xs">
+                          {i + 1}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -397,7 +519,7 @@ export function GriotStudio() {
       {/* Footer branding */}
       <footer className="fixed bottom-0 left-0 right-0 py-2 bg-black/60 backdrop-blur-sm">
         <p className="text-center text-xs text-amber-200/30">
-          Griot Studio v6.0 • Powered by FITILA AI
+          Griot Animé v6.1 • Powered by FITILA AI
         </p>
       </footer>
     </div>
