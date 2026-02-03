@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.analyze-news]
 verify_jwt = false
+
+[functions.generate-image-animation]
+verify_jwt = false
