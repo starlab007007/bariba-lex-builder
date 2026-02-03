@@ -33,6 +33,7 @@ import TamTamTemplates from "./pages/tamtam/TamTamTemplates";
 import TemplateTest from "./pages/TemplateTest";
 import SystemValidation from "./pages/SystemValidation";
 import AssetsDashboard from "./pages/AssetsDashboard";
+import GriotStudioPage from "./pages/GriotStudioPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/template-test" element={<TemplateTest />} />
             <Route path="/system-validation" element={<SystemValidation />} />
             <Route path="/assets" element={<AssetsDashboard />} />
+            <Route path="/griot-studio" element={<GriotStudioPage />} />
             
             {/* FITILA Platform Routes (new branding) */}
             <Route path="/fitila" element={<FitilaApp />}>
@@ -78,6 +80,7 @@ const App = () => (
               <Route path="kuaishou-test" element={<TamTamKuaishouTest />} />
               <Route path="creator" element={<TamTamCreator />} />
               <Route path="templates" element={<TamTamTemplates />} />
+              <Route path="griot-studio" element={<GriotStudioPage />} />
               <Route path="sos" element={<TamTamSOS />} />
               <Route path="profile" element={<TamTamProfile />} />
               <Route path="dictionary" element={<TamTamDictionary />} />
