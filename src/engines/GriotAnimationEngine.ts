@@ -1,7 +1,7 @@
 /**
- * Griot Animation Engine v6.0
- * Simplified Ken Burns + VFX engine for image-to-animation
- * Inspired by Pika Labs and Kaiber
+ * Griot Animation Engine v6.1
+ * Enhanced for anime slideshow with narrator avatar overlay
+ * Supports multiple scene images with Ken Burns + transitions
  */
 
 export interface FocusPoint {
@@ -33,11 +33,12 @@ export interface VFXConfig {
 }
 
 export interface AnimationStyle {
-  name: 'traditional' | 'watercolor' | 'cutout' | 'fairytale';
+  name: 'traditional' | 'watercolor' | 'cutout' | 'fairytale' | 'manga' | 'chibi' | 'fantasy' | 'african';
   filter: string;
   vfxConfig: VFXConfig;
 }
 
+// Extended styles for anime
 export const ANIMATION_STYLES: Record<string, AnimationStyle> = {
   traditional: {
     name: 'traditional',
@@ -78,6 +79,47 @@ export const ANIMATION_STYLES: Record<string, AnimationStyle> = {
       particleCount: 30,
       glowColor: '#FF69B4'
     }
+  },
+  // Anime styles
+  manga: {
+    name: 'manga',
+    filter: 'contrast(1.3) grayscale(0.1)',
+    vfxConfig: {
+      flareRange: [1, 50],
+      leakOpacity: 0.2,
+      particleCount: 10,
+      glowColor: '#FFFFFF'
+    }
+  },
+  chibi: {
+    name: 'chibi',
+    filter: 'brightness(1.1) saturate(1.3)',
+    vfxConfig: {
+      flareRange: [300, 400],
+      leakOpacity: 0.4,
+      particleCount: 25,
+      glowColor: '#FFB6C1'
+    }
+  },
+  fantasy: {
+    name: 'fantasy',
+    filter: 'brightness(1.05) saturate(1.2) hue-rotate(5deg)',
+    vfxConfig: {
+      flareRange: [200, 350],
+      leakOpacity: 0.45,
+      particleCount: 35,
+      glowColor: '#9370DB'
+    }
+  },
+  african: {
+    name: 'african',
+    filter: 'sepia(0.2) saturate(1.3) contrast(1.1)',
+    vfxConfig: {
+      flareRange: [1, 100],
+      leakOpacity: 0.35,
+      particleCount: 20,
+      glowColor: '#FF8C00'
+    }
   }
 };
 
@@ -88,7 +130,8 @@ export const EMOTION_VFX_MAP: Record<string, { flareIntensity: number; glowColor
   fear: { flareIntensity: 0.5, glowColor: '#2F4F4F', pulseSpeed: 2.0 },
   anger: { flareIntensity: 0.7, glowColor: '#DC143C', pulseSpeed: 2.5 },
   peace: { flareIntensity: 0.4, glowColor: '#98FB98', pulseSpeed: 0.3 },
-  excitement: { flareIntensity: 1.0, glowColor: '#FF4500', pulseSpeed: 2.0 }
+  excitement: { flareIntensity: 1.0, glowColor: '#FF4500', pulseSpeed: 2.0 },
+  tension: { flareIntensity: 0.6, glowColor: '#8B0000', pulseSpeed: 1.8 }
 };
 
 interface Particle {
@@ -98,6 +141,15 @@ interface Particle {
   speed: number;
   opacity: number;
   angle: number;
+}
+
+// Scene for slideshow mode
+export interface AnimatedScene {
+  image: HTMLImageElement;
+  startTime: number;
+  endTime: number;
+  emotion: string;
+  motionPlan: MotionPlan;
 }
 
 export class GriotAnimationEngine {
@@ -110,6 +162,11 @@ export class GriotAnimationEngine {
   private animationId: number | null = null;
   private startTime: number = 0;
 
+  // Slideshow mode
+  private scenes: AnimatedScene[] = [];
+  private narratorAvatar: HTMLImageElement | null = null;
+  private audioElement: HTMLAudioElement | null = null;
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const ctx = canvas.getContext('2d');
@@ -117,6 +174,123 @@ export class GriotAnimationEngine {
     this.ctx = ctx;
     this.width = canvas.width;
     this.height = canvas.height;
+  }
+
+  /**
+   * Set narrator avatar image
+   */
+  setNarratorAvatar(image: HTMLImageElement | null): void {
+    this.narratorAvatar = image;
+  }
+
+  /**
+   * Load narrator avatar from URL
+   */
+  async loadNarratorAvatar(url: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        this.narratorAvatar = img;
+        resolve();
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  /**
+   * Set audio for playback sync
+   */
+  setAudio(audioUrl: string): void {
+    this.audioElement = new Audio(audioUrl);
+    this.audioElement.preload = 'auto';
+  }
+
+  /**
+   * Load scenes for slideshow mode
+   */
+  async loadScenes(sceneData: Array<{
+    imageUrl: string;
+    startTime: number;
+    endTime: number;
+    emotion: string;
+  }>): Promise<void> {
+    this.scenes = [];
+    
+    for (const scene of sceneData) {
+      const image = await this.loadImage(scene.imageUrl);
+      const motionPlan = this.generateMotionPlan(scene.emotion);
+      
+      this.scenes.push({
+        image,
+        startTime: scene.startTime,
+        endTime: scene.endTime,
+        emotion: scene.emotion,
+        motionPlan
+      });
+    }
+    
+    console.log(`[GriotEngine] Loaded ${this.scenes.length} scenes for slideshow`);
+  }
+
+  private async loadImage(url: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.crossOrigin = 'anonymous';
+      img.src = url;
+    });
+  }
+
+  /**
+   * Generate motion plan based on emotion
+   */
+  private generateMotionPlan(emotion: string): MotionPlan {
+    const directions: MotionPlan['direction'][] = ['zoom-in', 'zoom-out', 'pan-left', 'pan-right', 'pan-up', 'pan-down'];
+    
+    // Emotion-based motion selection
+    let direction: MotionPlan['direction'];
+    let intensity: number;
+    
+    switch (emotion) {
+      case 'joy':
+      case 'excitement':
+        direction = 'zoom-in';
+        intensity = 0.6;
+        break;
+      case 'sadness':
+        direction = 'zoom-out';
+        intensity = 0.3;
+        break;
+      case 'wonder':
+        direction = 'pan-up';
+        intensity = 0.4;
+        break;
+      case 'fear':
+      case 'tension':
+        direction = directions[Math.floor(Math.random() * 2) + 2]; // pan-left or pan-right
+        intensity = 0.7;
+        break;
+      case 'peace':
+        direction = 'pan-down';
+        intensity = 0.2;
+        break;
+      default:
+        direction = directions[Math.floor(Math.random() * directions.length)];
+        intensity = 0.4;
+    }
+    
+    return {
+      direction,
+      intensity,
+      startPoint: { x: 0.5, y: 0.5 },
+      endPoint: { x: 0.5, y: 0.4 },
+      focusPoints: [
+        { x: 0.5, y: 0.5, weight: 1 },
+        { x: 0.5, y: 0.4, weight: 1 }
+      ]
+    };
   }
 
   /**
@@ -143,7 +317,7 @@ export class GriotAnimationEngine {
         this.flareImages.set(index, img);
         resolve();
       };
-      img.onerror = () => resolve(); // Silently fail
+      img.onerror = () => resolve();
       img.src = `/assets/envato/lens-flare/flare-${index.toString().padStart(3, '0')}.png`;
     });
   }
@@ -172,7 +346,6 @@ export class GriotAnimationEngine {
     if (focusPoints.length === 0) return { x: 0.5, y: 0.5 };
     if (focusPoints.length === 1) return { x: focusPoints[0].x, y: focusPoints[0].y };
 
-    // Weight-based interpolation with progress
     const index = Math.min(
       Math.floor(progress * (focusPoints.length - 1)),
       focusPoints.length - 2
@@ -198,11 +371,8 @@ export class GriotAnimationEngine {
     motionPlan: MotionPlan
   ): void {
     const progress = Math.min(time / duration, 1);
-    
-    // Calculate focus point
     const focus = this.interpolateFocusPoint(motionPlan.focusPoints, progress);
     
-    // Ken Burns parameters
     const zoomIntensity = motionPlan.intensity;
     let scale = 1;
     let offsetX = 0;
@@ -237,12 +407,10 @@ export class GriotAnimationEngine {
         break;
     }
 
-    // Draw with transformation
     this.ctx.save();
     this.ctx.translate(this.width / 2 + offsetX, this.height / 2 + offsetY);
     this.ctx.scale(scale, scale);
     
-    // Calculate image dimensions to cover canvas
     const imgAspect = image.width / image.height;
     const canvasAspect = this.width / this.height;
     let drawWidth, drawHeight;
@@ -260,10 +428,126 @@ export class GriotAnimationEngine {
   }
 
   /**
-   * Apply style filter to the canvas
+   * Draw narrator avatar in top right corner
    */
-  applyStyleFilter(style: AnimationStyle): void {
-    this.ctx.filter = style.filter;
+  drawNarratorAvatar(time: number): void {
+    if (!this.narratorAvatar) return;
+    
+    const size = Math.min(80, this.width * 0.15);
+    const margin = 16;
+    const x = this.width - size - margin;
+    const y = margin;
+    
+    this.ctx.save();
+    
+    // Animated golden border
+    this.ctx.beginPath();
+    this.ctx.arc(x + size / 2, y + size / 2, size / 2 + 4, 0, Math.PI * 2);
+    
+    // Rotating gradient
+    const gradient = this.ctx.createConicGradient(time * 0.5, x + size / 2, y + size / 2);
+    gradient.addColorStop(0, '#FFD700');
+    gradient.addColorStop(0.25, '#FFA500');
+    gradient.addColorStop(0.5, '#FFD700');
+    gradient.addColorStop(0.75, '#FFCC00');
+    gradient.addColorStop(1, '#FFD700');
+    
+    this.ctx.fillStyle = gradient;
+    this.ctx.fill();
+    
+    // Inner shadow
+    this.ctx.beginPath();
+    this.ctx.arc(x + size / 2, y + size / 2, size / 2 + 1, 0, Math.PI * 2);
+    this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    this.ctx.fill();
+    
+    // Clip to circle and draw avatar
+    this.ctx.beginPath();
+    this.ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+    this.ctx.clip();
+    
+    // Draw avatar image (center crop)
+    const imgSize = Math.min(this.narratorAvatar.width, this.narratorAvatar.height);
+    const imgOffsetX = (this.narratorAvatar.width - imgSize) / 2;
+    const imgOffsetY = (this.narratorAvatar.height - imgSize) / 2;
+    
+    this.ctx.drawImage(
+      this.narratorAvatar,
+      imgOffsetX, imgOffsetY, imgSize, imgSize,
+      x, y, size, size
+    );
+    
+    this.ctx.restore();
+    
+    // Label
+    this.ctx.save();
+    this.ctx.font = `${Math.max(10, size * 0.12)}px system-ui, sans-serif`;
+    this.ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('Griot', x + size / 2, y + size + 14);
+    this.ctx.restore();
+  }
+
+  /**
+   * Get current scene index based on time
+   */
+  private getCurrentSceneIndex(time: number): number {
+    for (let i = 0; i < this.scenes.length; i++) {
+      if (time >= this.scenes[i].startTime && time < this.scenes[i].endTime) {
+        return i;
+      }
+    }
+    return this.scenes.length - 1;
+  }
+
+  /**
+   * Get transition progress between scenes
+   */
+  private getTransitionProgress(time: number, transitionDuration: number = 0.5): { from: number; to: number; progress: number } {
+    const currentIndex = this.getCurrentSceneIndex(time);
+    
+    if (currentIndex >= this.scenes.length - 1) {
+      return { from: currentIndex, to: currentIndex, progress: 0 };
+    }
+    
+    const currentScene = this.scenes[currentIndex];
+    const timeInScene = time - currentScene.startTime;
+    const sceneDuration = currentScene.endTime - currentScene.startTime;
+    const transitionStart = sceneDuration - transitionDuration;
+    
+    if (timeInScene >= transitionStart) {
+      const progress = (timeInScene - transitionStart) / transitionDuration;
+      return { from: currentIndex, to: currentIndex + 1, progress: Math.min(1, progress) };
+    }
+    
+    return { from: currentIndex, to: currentIndex, progress: 0 };
+  }
+
+  /**
+   * Draw current scene with transition
+   */
+  private drawCurrentScene(time: number, duration: number): void {
+    if (this.scenes.length === 0) return;
+    
+    const { from, to, progress } = this.getTransitionProgress(time);
+    const scene = this.scenes[from];
+    
+    if (!scene) return;
+    
+    const sceneLocalTime = time - scene.startTime;
+    const sceneDuration = scene.endTime - scene.startTime;
+    
+    // Draw current scene
+    this.drawAnimatedImage(scene.image, sceneLocalTime, sceneDuration, scene.motionPlan);
+    
+    // Draw transition to next scene
+    if (progress > 0 && this.scenes[to]) {
+      const nextScene = this.scenes[to];
+      this.ctx.save();
+      this.ctx.globalAlpha = progress;
+      this.drawAnimatedImage(nextScene.image, 0, nextScene.endTime - nextScene.startTime, nextScene.motionPlan);
+      this.ctx.restore();
+    }
   }
 
   /**
@@ -271,20 +555,16 @@ export class GriotAnimationEngine {
    */
   drawParticles(time: number, glowColor: string): void {
     this.particles.forEach((p, i) => {
-      // Update position
       p.y -= p.speed;
       p.x += Math.sin(p.angle + time * 0.5) * 0.3;
       
-      // Wrap around
       if (p.y < -10) {
         p.y = this.height + 10;
         p.x = Math.random() * this.width;
       }
       
-      // Pulsing opacity
       const pulse = Math.sin(time * 2 + i) * 0.2 + 0.8;
       
-      // Draw particle
       this.ctx.beginPath();
       this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       this.ctx.fillStyle = glowColor;
@@ -303,13 +583,11 @@ export class GriotAnimationEngine {
     
     if (flareKeys.length === 0) return;
     
-    // Select flare based on time
     const flareIndex = flareKeys[Math.floor(time) % flareKeys.length];
     const flare = this.flareImages.get(flareIndex);
     
     if (!flare) return;
     
-    // Calculate position with subtle movement
     const x = this.width * (0.6 + Math.sin(time * 0.3) * 0.2);
     const y = this.height * (0.2 + Math.cos(time * 0.2) * 0.1);
     const size = this.width * (0.3 + Math.sin(time * emotionVFX.pulseSpeed) * 0.1);
@@ -349,7 +627,68 @@ export class GriotAnimationEngine {
   }
 
   /**
-   * Start real-time animation preview
+   * Start slideshow preview with multiple scenes
+   */
+  startSlideshowPreview(
+    duration: number,
+    style: AnimationStyle,
+    onProgress?: (progress: number) => void
+  ): void {
+    this.stopPreview();
+    this.startTime = performance.now();
+    
+    if (this.scenes.length === 0) {
+      console.warn('[GriotEngine] No scenes loaded for slideshow');
+      return;
+    }
+
+    // Build emotion segments from scenes
+    const emotionSegments: EmotionSegment[] = this.scenes.map(scene => ({
+      startTime: scene.startTime,
+      endTime: scene.endTime,
+      emotion: scene.emotion,
+      intensity: 0.7
+    }));
+
+    this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
+
+    // Start audio if available
+    if (this.audioElement) {
+      this.audioElement.currentTime = 0;
+      this.audioElement.play().catch(e => console.warn('Audio playback failed:', e));
+    }
+
+    const animate = () => {
+      const elapsed = (performance.now() - this.startTime) / 1000;
+      const time = elapsed % duration;
+      const progress = time / duration;
+      
+      this.ctx.clearRect(0, 0, this.width, this.height);
+      this.ctx.filter = 'none';
+      
+      const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
+      
+      // Draw current scene with transitions
+      this.drawCurrentScene(time, duration);
+      
+      // Draw VFX
+      this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
+      this.drawLensFlare(time, emotion, intensity);
+      this.drawVignette(0.3);
+      
+      // Draw narrator avatar overlay
+      this.drawNarratorAvatar(time);
+      
+      onProgress?.(progress);
+      
+      this.animationId = requestAnimationFrame(animate);
+    };
+    
+    animate();
+  }
+
+  /**
+   * Start real-time animation preview (single image mode)
    */
   startPreview(
     image: HTMLImageElement,
@@ -366,31 +705,19 @@ export class GriotAnimationEngine {
 
     const animate = () => {
       const elapsed = (performance.now() - this.startTime) / 1000;
-      const time = elapsed % duration; // Loop
+      const time = elapsed % duration;
       const progress = time / duration;
       
-      // Clear canvas
       this.ctx.clearRect(0, 0, this.width, this.height);
       this.ctx.filter = 'none';
       
-      // Get current emotion
       const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
       
-      // Draw layers
       this.drawAnimatedImage(image, time, duration, motionPlan);
-      
-      // Apply style filter overlay
-      this.ctx.save();
-      this.ctx.filter = style.filter;
-      this.ctx.globalCompositeOperation = 'source-atop';
-      this.ctx.fillStyle = 'transparent';
-      this.ctx.fillRect(0, 0, this.width, this.height);
-      this.ctx.restore();
-      
-      // Draw VFX
       this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
       this.drawLensFlare(time, emotion, intensity);
       this.drawVignette(0.3);
+      this.drawNarratorAvatar(time);
       
       onProgress?.(progress);
       
@@ -407,6 +734,9 @@ export class GriotAnimationEngine {
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
+    }
+    if (this.audioElement) {
+      this.audioElement.pause();
     }
   }
 
@@ -431,20 +761,64 @@ export class GriotAnimationEngine {
       const time = frame / fps;
       const progress = frame / totalFrames;
       
-      // Clear
       this.ctx.clearRect(0, 0, this.width, this.height);
       this.ctx.filter = 'none';
       
-      // Get emotion
       const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
       
-      // Render frame
       this.drawAnimatedImage(image, time, duration, motionPlan);
       this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
       this.drawLensFlare(time, emotion, intensity);
       this.drawVignette(0.3);
+      this.drawNarratorAvatar(time);
       
-      // Capture frame
+      const blob = await new Promise<Blob>((resolve) => {
+        this.canvas.toBlob((b) => resolve(b!), 'image/png');
+      });
+      frames.push(blob);
+      
+      onProgress?.(progress, `Rendu frame ${frame + 1}/${totalFrames}`);
+    }
+    
+    return frames;
+  }
+
+  /**
+   * Render slideshow frames for export
+   */
+  async renderSlideshowFrames(
+    duration: number,
+    style: AnimationStyle,
+    fps: number = 24,
+    onProgress?: (progress: number, message: string) => void
+  ): Promise<Blob[]> {
+    const frames: Blob[] = [];
+    const totalFrames = Math.floor(duration * fps);
+    
+    const emotionSegments: EmotionSegment[] = this.scenes.map(scene => ({
+      startTime: scene.startTime,
+      endTime: scene.endTime,
+      emotion: scene.emotion,
+      intensity: 0.7
+    }));
+    
+    this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
+
+    for (let frame = 0; frame < totalFrames; frame++) {
+      const time = frame / fps;
+      const progress = frame / totalFrames;
+      
+      this.ctx.clearRect(0, 0, this.width, this.height);
+      this.ctx.filter = 'none';
+      
+      const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
+      
+      this.drawCurrentScene(time, duration);
+      this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
+      this.drawLensFlare(time, emotion, intensity);
+      this.drawVignette(0.3);
+      this.drawNarratorAvatar(time);
+      
       const blob = await new Promise<Blob>((resolve) => {
         this.canvas.toBlob((b) => resolve(b!), 'image/png');
       });
@@ -463,6 +837,9 @@ export class GriotAnimationEngine {
     this.stopPreview();
     this.flareImages.clear();
     this.particles = [];
+    this.scenes = [];
+    this.narratorAvatar = null;
+    this.audioElement = null;
   }
 }
 
