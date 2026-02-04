@@ -489,6 +489,48 @@ export type Database = {
           },
         ]
       }
+      griot_drafts: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          duration: number | null
+          id: string
+          narrator_avatar_url: string | null
+          scenes: Json | null
+          step: string | null
+          style: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          duration?: number | null
+          id?: string
+          narrator_avatar_url?: string | null
+          scenes?: Json | null
+          step?: string | null
+          style?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          duration?: number | null
+          id?: string
+          narrator_avatar_url?: string | null
+          scenes?: Json | null
+          step?: string | null
+          style?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       idiomatic_expressions: {
         Row: {
           bariba_expression: string

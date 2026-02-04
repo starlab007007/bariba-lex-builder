@@ -1,12 +1,20 @@
 /**
- * Griot Animé Studio v6.2
+ * Griot Animé Studio v6.3
  * AI-powered Anime Story Creator
  * Complete workflow: Record → Generate → Preview → Publish
  * Voice-first design with minimal text
+ * 
+ * v6.3 additions:
+ * - Cloud draft save/restore
+ * - Cancel/Modify buttons with confirmation
+ * - Fullscreen preview
+ * - Navigate to feed after publish with focus on published video
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { ArrowLeft, Sparkles, Wand2, Check, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Sparkles, Wand2, Check, Loader2, X, Maximize, Minimize, Save, RotateCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -18,6 +26,7 @@ import { PublishStep } from './PublishStep';
 import { AnimeStyleSelector, AnimeStyleName } from './AnimeStyleSelector';
 import { useAnimeStoryGenerator, StoryScene } from './hooks/useAnimeStoryGenerator';
 import { useVFXEngine } from './hooks/useVFXEngine';
+import { useGriotDraft } from './hooks/useGriotDraft';
 import { GriotAnimationEngine, ANIMATION_STYLES } from '@/engines/GriotAnimationEngine';
 
 type StudioStep = 'create' | 'generating' | 'preview' | 'finalize' | 'success';
@@ -28,11 +37,55 @@ const DURATION_OPTIONS = [
   { value: 60, label: '60s', emoji: '🎥', labelBa: 'Gbángbá' }
 ];
 
+// Confirmation modal component
+function ConfirmModal({
+  isOpen,
+  title,
+  message,
+  confirmLabel = 'Confirmer',
+  cancelLabel = 'Annuler',
+  onConfirm,
+  onCancel,
+}: {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-amber-950 border border-amber-500/30 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+      >
+        <h3 className="text-lg font-bold text-amber-100 mb-2">{title}</h3>
+        <p className="text-amber-200/70 text-sm mb-6">{message}</p>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={onCancel} className="flex-1 border-amber-500/30 text-amber-200">
+            {cancelLabel}
+          </Button>
+          <Button onClick={onConfirm} className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+            {confirmLabel}
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export function GriotStudio() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GriotAnimationEngine | null>(null);
-  
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+
   // State
   const [step, setStep] = useState<StudioStep>('create');
   const [narratorFile, setNarratorFile] = useState<File | Blob | null>(null);
@@ -43,6 +96,9 @@ export function GriotStudio() {
   const [style, setStyle] = useState<AnimeStyleName>('african');
   const [duration, setDuration] = useState(30);
   const [showNarratorCapture, setShowNarratorCapture] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [publishedVideoId, setPublishedVideoId] = useState<string | null>(null);
 
   // Hooks
   const {
@@ -53,6 +109,24 @@ export function GriotStudio() {
   } = useAnimeStoryGenerator();
 
   const { preloadStyleFlares } = useVFXEngine();
+  const { draft, saveDraft, clearDraft, isSaving } = useGriotDraft();
+
+  // Auto-save draft when step or data changes
+  useEffect(() => {
+    if (step === 'create' || step === 'preview' || step === 'finalize') {
+      const timeout = setTimeout(() => {
+        saveDraft({
+          style,
+          duration,
+          audioUrl: null, // TODO: upload audio blob to storage
+          narratorAvatarUrl: narratorPreviewUrl,
+          step,
+          scenes: generationResult?.scenes || null,
+        });
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [step, style, duration, narratorPreviewUrl, generationResult, saveDraft]);
 
   // Initialize engine when canvas is ready and step is preview
   useEffect(() => {
@@ -62,23 +136,23 @@ export function GriotStudio() {
           console.log('[GriotStudio] Initializing animation engine');
           engineRef.current = new GriotAnimationEngine(canvasRef.current);
         }
-        
+
         // Load pending scenes if any
         const pending = (window as any).__griotPendingScenes;
         if (pending && engineRef.current) {
           console.log('[GriotStudio] Loading', pending.scenes.length, 'scenes into engine');
-          
+
           try {
             await engineRef.current.loadScenes(pending.scenes);
-            
+
             if (pending.narratorUrl) {
               await engineRef.current.loadNarratorAvatar(pending.narratorUrl);
             }
-            
+
             if (pending.audioUrl) {
               engineRef.current.setAudio(pending.audioUrl);
             }
-            
+
             // Clear pending data
             delete (window as any).__griotPendingScenes;
           } catch (err) {
@@ -87,9 +161,9 @@ export function GriotStudio() {
         }
       }
     };
-    
+
     initEngine();
-    
+
     return () => {
       if (step !== 'preview' && step !== 'finalize' && engineRef.current) {
         engineRef.current.dispose();
@@ -97,6 +171,23 @@ export function GriotStudio() {
       }
     };
   }, [step]);
+
+  // Fullscreen API toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!previewContainerRef.current) return;
+    if (!document.fullscreenElement) {
+      previewContainerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   // Handlers
   const handleNarratorCaptured = useCallback((file: File | Blob) => {
@@ -117,21 +208,20 @@ export function GriotStudio() {
   const handleRecordingComplete = useCallback(async (blob: Blob, recordedDuration: number) => {
     setAudioBlob(blob);
     setAudioDuration(recordedDuration);
-    
+
     // Haptic feedback
     if ('vibrate' in navigator) {
       navigator.vibrate([50, 30, 50]);
     }
-    
+
     toast({
-      title: "🎤 Enregistré!",
+      title: '🎤 Enregistré!',
       description: `${Math.floor(recordedDuration)}s de ton conte.`
     });
-    
-    // TODO: Transcribe audio using Whisper or similar
-    // For now, use a placeholder
+
+    // Placeholder for transcription
     setTranscribedStory('[Audio enregistré - Génération en cours...]');
-    
+
     // Auto-trigger generation after short delay
     setTimeout(() => {
       handleGenerate(blob);
@@ -145,10 +235,9 @@ export function GriotStudio() {
       // Preload VFX assets
       await preloadStyleFlares(style);
 
-      // For now, use a demo story if transcription is not ready
-      // In production, this would call a transcription API
-      const storyText = transcribedStory.startsWith('[') 
-        ? "Il était une fois dans un village africain, un jeune garçon nommé Kofi qui rêvait de devenir un grand griot. Un jour, il rencontra un vieux sage qui lui apprit les secrets des contes ancestraux."
+      // Demo story fallback
+      const storyText = transcribedStory.startsWith('[')
+        ? 'Il était une fois dans un village africain, un jeune garçon nommé Kofi qui rêvait de devenir un grand griot. Un jour, il rencontra un vieux sage qui lui apprit les secrets des contes ancestraux.'
         : transcribedStory;
 
       // Generate anime story with AI
@@ -159,7 +248,7 @@ export function GriotStudio() {
       }
 
       console.log('[GriotStudio] Generation complete, got', result.scenes.length, 'scenes');
-      
+
       // Calculate timing for each scene
       let currentTime = 0;
       const scenesWithTiming = result.scenes.map((scene: StoryScene) => {
@@ -189,13 +278,12 @@ export function GriotStudio() {
 
       // Transition to preview
       setStep('preview');
-
     } catch (error) {
       console.error('[GriotStudio] Generation error:', error);
       toast({
-        title: "Erreur de génération",
-        description: error instanceof Error ? error.message : "Réessaie dans quelques instants.",
-        variant: "destructive"
+        title: 'Erreur de génération',
+        description: error instanceof Error ? error.message : 'Réessaie dans quelques instants.',
+        variant: 'destructive'
       });
       setStep('create');
     }
@@ -206,9 +294,20 @@ export function GriotStudio() {
   }, []);
 
   const handlePublishSuccess = useCallback((videoId: string) => {
+    setPublishedVideoId(videoId);
+    clearDraft();
     setStep('success');
     console.log('[GriotStudio] Published video:', videoId);
-  }, []);
+  }, [clearDraft]);
+
+  const handleViewInFeed = useCallback(() => {
+    // Navigate to feed and scroll to the published video
+    if (publishedVideoId) {
+      navigate(`/fitila?video=${publishedVideoId}`);
+    } else {
+      navigate('/fitila');
+    }
+  }, [navigate, publishedVideoId]);
 
   const handleReset = useCallback(() => {
     engineRef.current?.stopPreview();
@@ -217,8 +316,10 @@ export function GriotStudio() {
     setAudioBlob(null);
     setAudioDuration(0);
     setTranscribedStory('');
+    setPublishedVideoId(null);
+    clearDraft();
     setStep('create');
-  }, [resetGeneration, clearNarrator]);
+  }, [resetGeneration, clearNarrator, clearDraft]);
 
   const handleBack = useCallback(() => {
     if (step === 'finalize') {
@@ -231,39 +332,85 @@ export function GriotStudio() {
     }
   }, [step]);
 
+  // Cancel with confirmation
+  const handleCancelClick = useCallback(() => {
+    if (audioBlob || generationResult) {
+      setShowCancelConfirm(true);
+    } else {
+      navigate(-1);
+    }
+  }, [audioBlob, generationResult, navigate]);
+
+  const confirmCancel = useCallback(() => {
+    setShowCancelConfirm(false);
+    handleReset();
+    navigate(-1);
+  }, [handleReset, navigate]);
+
+  // Modify: go back to create step
+  const handleModify = useCallback(() => {
+    engineRef.current?.stopPreview();
+    setStep('create');
+  }, []);
+
   const canGenerate = audioBlob !== null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-950 via-black to-black text-white">
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        <ConfirmModal
+          isOpen={showCancelConfirm}
+          title="Annuler la création ?"
+          message="Ton enregistrement et tes illustrations seront perdus."
+          confirmLabel="Oui, annuler"
+          cancelLabel="Non, continuer"
+          onConfirm={confirmCancel}
+          onCancel={() => setShowCancelConfirm(false)}
+        />
+      </AnimatePresence>
+
       {/* Header */}
-      <header className="sticky top-0 z-50 px-4 py-3 bg-black/80 backdrop-blur-lg border-b border-amber-500/20">
+      <header className="sticky top-0 z-50 px-4 py-3 bg-black/80 backdrop-blur-lg border-b border-amber-500/20 safe-area-inset-top">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          {step !== 'create' && step !== 'success' ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              className="text-amber-200 hover:text-amber-100"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              <span className="sr-only md:not-sr-only">Retour</span>
+          {/* Left: Back / Cancel */}
+          <div className="flex items-center gap-1">
+            {step !== 'create' && step !== 'success' ? (
+              <Button variant="ghost" size="icon" onClick={handleBack} className="text-amber-200 hover:text-amber-100">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            ) : null}
+            <Button variant="ghost" size="icon" onClick={handleCancelClick} className="text-red-400 hover:text-red-300">
+              <X className="w-5 h-5" />
             </Button>
-          ) : (
-            <div className="w-16" />
-          )}
-          
+          </div>
+
           <h1 className="text-lg font-bold text-amber-100 flex items-center gap-2">
             <span className="text-2xl">🌙</span>
             <span className="hidden sm:inline">Griot Animé</span>
           </h1>
-          
-          <div className="w-16" />
+
+          {/* Right: Save / Modify */}
+          <div className="flex items-center gap-1">
+            {(step === 'preview' || step === 'finalize') && (
+              <Button variant="ghost" size="icon" onClick={handleModify} className="text-amber-200 hover:text-amber-100" title="Modifier">
+                <RotateCcw className="w-5 h-5" />
+              </Button>
+            )}
+            {isSaving ? (
+              <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+            ) : (
+              <Button variant="ghost" size="icon" onClick={() => saveDraft({ step })} className="text-amber-200 hover:text-amber-100" title="Sauvegarder">
+                <Save className="w-5 h-5" />
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Main content */}
       <main className="px-4 py-6 max-w-lg mx-auto space-y-6 pb-24">
-        
+
         {/* Step: Create */}
         {step === 'create' && (
           <>
@@ -277,11 +424,7 @@ export function GriotStudio() {
                     onClear={clearNarrator}
                     disabled={false}
                   />
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowNarratorCapture(false)}
-                    className="w-full mt-4 text-amber-200/60"
-                  >
+                  <Button variant="ghost" onClick={() => setShowNarratorCapture(false)} className="w-full mt-4 text-amber-200/60">
                     Annuler
                   </Button>
                 </div>
@@ -311,9 +454,7 @@ export function GriotStudio() {
 
             {/* Duration Selector */}
             <section>
-              <h3 className="text-sm font-medium text-amber-200/60 mb-3 text-center">
-                ⏱️ Durée
-              </h3>
+              <h3 className="text-sm font-medium text-amber-200/60 mb-3 text-center">⏱️ Durée</h3>
               <div className="flex justify-center gap-3">
                 {DURATION_OPTIONS.map((opt) => (
                   <button
@@ -321,11 +462,11 @@ export function GriotStudio() {
                     onClick={() => setDuration(opt.value)}
                     disabled={generationState.isGenerating}
                     className={cn(
-                      "px-5 py-3 rounded-xl border transition-all min-w-[80px]",
-                      "active:scale-95",
+                      'px-5 py-3 rounded-xl border transition-all min-w-[80px]',
+                      'active:scale-95',
                       duration === opt.value
-                        ? "border-amber-400 bg-amber-500/20 text-amber-100"
-                        : "border-amber-500/20 bg-amber-950/20 text-amber-200/60 hover:border-amber-500/40"
+                        ? 'border-amber-400 bg-amber-500/20 text-amber-100'
+                        : 'border-amber-500/20 bg-amber-950/20 text-amber-200/60 hover:border-amber-500/40'
                     )}
                   >
                     <span className="text-lg mr-1">{opt.emoji}</span>
@@ -336,9 +477,7 @@ export function GriotStudio() {
             </section>
 
             {/* Info text */}
-            <p className="text-xs text-center text-amber-200/40 pt-4">
-              🎙️ Maintiens pour enregistrer ton conte
-            </p>
+            <p className="text-xs text-center text-amber-200/40 pt-4">🎙️ Maintiens pour enregistrer ton conte</p>
           </>
         )}
 
@@ -347,40 +486,34 @@ export function GriotStudio() {
           <section className="py-8 space-y-6">
             <div className="text-center">
               <Wand2 className="w-16 h-16 mx-auto text-amber-400 animate-pulse mb-4" />
-              <h2 className="text-xl font-semibold text-amber-100 mb-2">
-                🎨 L'IA illustre...
-              </h2>
-              <p className="text-amber-200/60 text-sm">
-                {generationState.message || 'Création en cours...'}
-              </p>
+              <h2 className="text-xl font-semibold text-amber-100 mb-2">🎨 L'IA illustre...</h2>
+              <p className="text-amber-200/60 text-sm">{generationState.message || 'Création en cours...'}</p>
             </div>
 
             {/* Progress bar */}
             <div className="w-full bg-amber-900/30 rounded-full h-4 overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500 relative"
                 style={{ width: `${generationState.progress}%` }}
               >
                 <div className="absolute inset-0 bg-white/20 animate-pulse" />
               </div>
             </div>
-            <p className="text-center text-amber-200/60 text-sm">
-              {Math.round(generationState.progress)}%
-            </p>
+            <p className="text-center text-amber-200/60 text-sm">{Math.round(generationState.progress)}%</p>
 
             {/* Scene progress */}
             {generationState.totalScenes > 0 && (
               <div className="flex justify-center gap-2">
                 {Array.from({ length: generationState.totalScenes }).map((_, i) => (
-                  <div 
-                    key={i} 
+                  <div
+                    key={i}
                     className={cn(
-                      "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
-                      i < generationState.currentScene 
-                        ? "bg-green-500/20 border-2 border-green-400" 
-                        : i === generationState.currentScene 
-                          ? "bg-amber-500/20 border-2 border-amber-400 animate-pulse"
-                          : "bg-amber-900/20 border border-amber-500/20"
+                      'w-10 h-10 rounded-lg flex items-center justify-center transition-all',
+                      i < generationState.currentScene
+                        ? 'bg-green-500/20 border-2 border-green-400'
+                        : i === generationState.currentScene
+                          ? 'bg-amber-500/20 border-2 border-amber-400 animate-pulse'
+                          : 'bg-amber-900/20 border border-amber-500/20'
                     )}
                   >
                     {i < generationState.currentScene ? (
@@ -399,11 +532,12 @@ export function GriotStudio() {
 
         {/* Step: Preview */}
         {step === 'preview' && generationResult && (
-          <section className="space-y-6">
-            <div className="text-center mb-4">
-              <h2 className="text-lg font-semibold text-amber-100">
-                🎬 Preview / Gbíyà
-              </h2>
+          <section className="space-y-6" ref={previewContainerRef}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-amber-100">🎬 Preview / Gbíyà</h2>
+              <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="text-amber-200 hover:text-amber-100">
+                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+              </Button>
             </div>
 
             <StoryPreviewPlayer
@@ -420,9 +554,9 @@ export function GriotStudio() {
                 size="lg"
                 onClick={handleContinueToFinalize}
                 className={cn(
-                  "w-full py-6 text-lg font-semibold rounded-2xl",
-                  "bg-gradient-to-r from-amber-500 to-orange-500",
-                  "hover:from-amber-400 hover:to-orange-400"
+                  'w-full py-6 text-lg font-semibold rounded-2xl',
+                  'bg-gradient-to-r from-amber-500 to-orange-500',
+                  'hover:from-amber-400 hover:to-orange-400'
                 )}
               >
                 <Sparkles className="w-5 h-5 mr-2" />
@@ -431,11 +565,7 @@ export function GriotStudio() {
             </div>
 
             {/* Reset button */}
-            <Button
-              variant="ghost"
-              onClick={handleReset}
-              className="w-full text-amber-200/60 hover:text-amber-200"
-            >
+            <Button variant="ghost" onClick={handleReset} className="w-full text-amber-200/60 hover:text-amber-200">
               🔄 Recommencer
             </Button>
           </section>
@@ -445,18 +575,11 @@ export function GriotStudio() {
         {step === 'finalize' && generationResult && (
           <section className="space-y-4">
             <div className="text-center mb-4">
-              <h2 className="text-lg font-semibold text-amber-100">
-                📤 Finaliser / Sɔ̀ɔ́rɔ́
-              </h2>
+              <h2 className="text-lg font-semibold text-amber-100">📤 Finaliser / Sɔ̀ɔ́rɔ́</h2>
             </div>
 
             {/* Hidden canvas for export */}
-            <canvas
-              ref={canvasRef}
-              width={540}
-              height={960}
-              className="hidden"
-            />
+            <canvas ref={canvasRef} width={540} height={960} className="hidden" />
 
             <PublishStep
               scenes={generationResult.scenes}
@@ -476,28 +599,18 @@ export function GriotStudio() {
         {/* Step: Success */}
         {step === 'success' && (
           <section className="py-12 text-center space-y-6">
-            <div className="text-6xl animate-bounce">🎉</div>
-            <h2 className="text-2xl font-bold text-amber-100">
-              Publié sur FITILA!
-            </h2>
-            <p className="text-amber-200/60">
-              Ton conte est maintenant visible par tous
-            </p>
-            
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }} className="text-6xl">
+              🎉
+            </motion.div>
+            <h2 className="text-2xl font-bold text-amber-100">Publié sur FITILA!</h2>
+            <p className="text-amber-200/60">Ton conte est maintenant visible par tous</p>
+
             <div className="flex flex-col gap-3 max-w-xs mx-auto pt-4">
-              <Button
-                size="lg"
-                onClick={() => window.location.href = '/fitila'}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500"
-              >
-                📺 Voir le Feed
+              <Button size="lg" onClick={handleViewInFeed} className="w-full bg-gradient-to-r from-amber-500 to-orange-500">
+                📺 Voir dans le Feed
               </Button>
-              
-              <Button
-                variant="outline"
-                onClick={handleReset}
-                className="w-full border-amber-500/30 text-amber-200"
-              >
+
+              <Button variant="outline" onClick={handleReset} className="w-full border-amber-500/30 text-amber-200">
                 🔄 Créer un autre conte
               </Button>
             </div>
@@ -506,10 +619,8 @@ export function GriotStudio() {
       </main>
 
       {/* Footer branding */}
-      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-black/60 backdrop-blur-sm">
-        <p className="text-center text-xs text-amber-200/30">
-          Griot Animé v6.2 • FITILA AI
-        </p>
+      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-black/60 backdrop-blur-sm safe-area-inset-bottom">
+        <p className="text-center text-xs text-amber-200/30">Griot Animé v6.3 • FITILA AI</p>
       </footer>
     </div>
   );

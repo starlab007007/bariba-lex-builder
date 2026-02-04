@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, RefreshCw, UserPlus, Clock } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
@@ -708,6 +708,7 @@ const VideoFeedCard: React.FC<{
 
 export default function TamTamSocial() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentLang } = useTamTamLanguage();
   const { toast } = useToast();
   const { posts, isLoading, createPost, addReaction, fetchComments, fetchPosts } = useTamTamPosts();
@@ -724,6 +725,35 @@ export default function TamTamSocial() {
   const [createPostType, setCreatePostType] = useState<'patrimoine' | 'mavoix'>('patrimoine');
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; postId: string | null; comments: TamTamComment[]; isLoading: boolean }>({ isOpen: false, postId: null, comments: [], isLoading: false });
+  const [focusVideoId, setFocusVideoId] = useState<string | null>(null);
+
+  // Read ?video= param to scroll to published video
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const videoParam = params.get('video');
+    if (videoParam) {
+      setFeedMode('creation');
+      setFocusVideoId(videoParam);
+    }
+  }, [location.search]);
+
+  // Scroll to focused video after feed loads
+  useEffect(() => {
+    if (focusVideoId && !isVideosLoading && videoFeedItems.length > 0) {
+      const idx = videoFeedItems.findIndex(v => v.id === focusVideoId);
+      if (idx >= 0) {
+        setCurrentPostIndex(idx);
+        // Scroll after a short delay for DOM to be ready
+        setTimeout(() => {
+          const container = document.querySelector('.snap-y.snap-mandatory');
+          if (container) {
+            container.scrollTo({ top: idx * window.innerHeight, behavior: 'smooth' });
+          }
+        }, 300);
+      }
+      setFocusVideoId(null);
+    }
+  }, [focusVideoId, isVideosLoading, videoFeedItems]);
 
   // Handle horizontal swipe - optimisé pour réactivité
   const handleDragEnd = useCallback((event: any, info: PanInfo) => {
