@@ -40,7 +40,7 @@ const Index = () => {
   } = useSmartDictionarySearch();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-[100dvh] bg-background overflow-y-auto">
       {/* Hero Header - Responsive */}
       <header className="bg-gradient-to-br from-primary/10 via-background to-accent/5 border-b border-border/50">
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-12">

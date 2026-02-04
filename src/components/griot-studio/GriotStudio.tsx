@@ -359,7 +359,7 @@ export function GriotStudio() {
   const canGenerate = audioBlob !== null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-950 via-black to-black text-white">
+    <div className="min-h-[100dvh] h-[100dvh] flex flex-col bg-gradient-to-b from-amber-950 via-black to-black text-white overflow-hidden">
       {/* Confirmation Modal */}
       <AnimatePresence>
         <ConfirmModal
@@ -412,7 +412,7 @@ export function GriotStudio() {
       </header>
 
       {/* Main content */}
-      <main className="px-4 py-6 max-w-lg mx-auto space-y-6 pb-24">
+      <main className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 max-w-lg mx-auto space-y-6 pb-24">
 
         {/* Step: Create */}
         {step === 'create' && (

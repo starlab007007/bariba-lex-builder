@@ -83,32 +83,24 @@ serve(async (req) => {
 
     console.log(`[generate-anime-story] Segmented into ${safeScenes.length} scenes`);
 
-    // PHASE 2: Generate anime image for each scene
-    const generatedScenes: GeneratedScene[] = [];
+    // PHASE 2: Generate anime images for all scenes IN PARALLEL for speed
+    console.log(`[generate-anime-story] Generating ${safeScenes.length} images in parallel...`);
     
-    for (let i = 0; i < safeScenes.length; i++) {
-      const scene = safeScenes[i];
-      console.log(`[generate-anime-story] Generating image for scene ${i + 1}/${safeScenes.length}`);
-      
-      try {
-        const imageBase64 = LOVABLE_API_KEY
-          ? await generateSceneImage(scene, style, i, safeScenes.length, LOVABLE_API_KEY)
-          : '';
-        generatedScenes.push({
-          ...scene,
-          imageBase64
-        });
-      } catch (imgError) {
-        console.error(`[generate-anime-story] Failed to generate image for scene ${i + 1}:`, imgError);
-        // Use placeholder for failed generations
-        generatedScenes.push({
-          ...scene,
-          imageBase64: '' // Empty means use fallback
-        });
+    const imagePromises = safeScenes.map((scene, i) => {
+      if (!LOVABLE_API_KEY) {
+        return Promise.resolve({ ...scene, imageBase64: '' });
       }
-    }
+      return generateSceneImage(scene, style, i, safeScenes.length, LOVABLE_API_KEY)
+        .then((imageBase64) => ({ ...scene, imageBase64 }))
+        .catch((imgError) => {
+          console.error(`[generate-anime-story] Failed to generate image for scene ${i + 1}:`, imgError);
+          return { ...scene, imageBase64: '' };
+        });
+    });
 
-    console.log('[generate-anime-story] Generation complete');
+    const generatedScenes: GeneratedScene[] = await Promise.all(imagePromises);
+
+    console.log('[generate-anime-story] All images generated');
 
     return new Response(
       JSON.stringify({
