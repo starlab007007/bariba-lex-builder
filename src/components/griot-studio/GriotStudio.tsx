@@ -235,10 +235,13 @@ export function GriotStudio() {
       // Preload VFX assets
       await preloadStyleFlares(style);
 
-      // Demo story fallback
-      const storyText = transcribedStory.startsWith('[')
-        ? 'Il était une fois dans un village africain, un jeune garçon nommé Kofi qui rêvait de devenir un grand griot. Un jour, il rencontra un vieux sage qui lui apprit les secrets des contes ancestraux.'
+      // Demo story fallback - use demo if transcribed text is empty, placeholder, or too short
+      const isPlaceholder = !transcribedStory || transcribedStory.trim().length < 10 || transcribedStory.startsWith('[');
+      const storyText = isPlaceholder
+        ? 'Il était une fois dans un village africain, un jeune garçon nommé Kofi qui rêvait de devenir un grand griot. Un jour, il rencontra un vieux sage qui lui apprit les secrets des contes ancestraux. Le sage lui dit: "Pour devenir griot, tu dois écouter les histoires du vent et chanter avec les étoiles."'
         : transcribedStory;
+
+      console.log('[GriotStudio] Generating with story:', storyText.substring(0, 50) + '...');
 
       // Generate anime story with AI
       const result = await generateStory(storyText, style, duration);
