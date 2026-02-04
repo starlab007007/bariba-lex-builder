@@ -104,8 +104,10 @@ serve(async (req) => {
     switch (apiAction) {
       case 'generate_batch':
         // Remove 'action' from params since it's used for the API action
+        // Use image_action explicitly, with 'standing' as default
         const { action: _, ...genParams } = params;
-        return await handleGenerateBatch({ ...genParams, action: body.image_action || body.action }, supabase, LOVABLE_API_KEY);
+        const imageAction = body.image_action || 'standing';
+        return await handleGenerateBatch({ ...genParams, action: imageAction }, supabase, LOVABLE_API_KEY);
       
       case 'generate_full_library':
         return await handleGenerateFullLibrary(params, supabase, LOVABLE_API_KEY);
