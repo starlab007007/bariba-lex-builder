@@ -12,7 +12,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // Style keywords for anime generation
@@ -63,25 +64,36 @@ serve(async (req) => {
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
-    }
 
-    console.log('[generate-anime-story] Starting generation for style:', style);
+    console.log('[generate-anime-story] Request:', {
+      storyLength: story?.length || 0,
+      style,
+      duration,
+      hasApiKey: !!LOVABLE_API_KEY,
+    });
 
-    // PHASE 1: Analyze story and segment into scenes
-    const scenes = await segmentStory(story, duration, LOVABLE_API_KEY);
-    console.log(`[generate-anime-story] Segmented into ${scenes.length} scenes`);
+    // PHASE 1: Analyze story and segment into scenes (with strong fallback)
+    const scenes = LOVABLE_API_KEY
+      ? await segmentStory(story, duration, LOVABLE_API_KEY)
+      : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
+
+    const safeScenes = scenes.length
+      ? scenes
+      : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
+
+    console.log(`[generate-anime-story] Segmented into ${safeScenes.length} scenes`);
 
     // PHASE 2: Generate anime image for each scene
     const generatedScenes: GeneratedScene[] = [];
     
-    for (let i = 0; i < scenes.length; i++) {
-      const scene = scenes[i];
-      console.log(`[generate-anime-story] Generating image for scene ${i + 1}/${scenes.length}`);
+    for (let i = 0; i < safeScenes.length; i++) {
+      const scene = safeScenes[i];
+      console.log(`[generate-anime-story] Generating image for scene ${i + 1}/${safeScenes.length}`);
       
       try {
-        const imageBase64 = await generateSceneImage(scene, style, i, scenes.length, LOVABLE_API_KEY);
+        const imageBase64 = LOVABLE_API_KEY
+          ? await generateSceneImage(scene, style, i, safeScenes.length, LOVABLE_API_KEY)
+          : '';
         generatedScenes.push({
           ...scene,
           imageBase64
@@ -154,38 +166,50 @@ Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
   ]
 }`;
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' }
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[segmentStory] API error:', errorText);
-    throw new Error('Failed to segment story');
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  
-  if (!content) {
-    throw new Error('No content in response');
-  }
-
   try {
-    const parsed = JSON.parse(content);
-    return parsed.scenes || [];
-  } catch (parseError) {
-    console.error('[segmentStory] Parse error:', parseError);
-    // Create default scenes as fallback
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[segmentStory] API error:', errorText);
+      return createDefaultScenes(story, totalDuration, targetScenes);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      console.warn('[segmentStory] Empty model content, using fallback scenes');
+      return createDefaultScenes(story, totalDuration, targetScenes);
+    }
+
+    try {
+      const parsed = JSON.parse(content);
+      const scenes = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
+
+      // Guardrail: some model responses may return an empty list.
+      if (!scenes.length) {
+        console.warn('[segmentStory] Model returned 0 scenes, using fallback scenes');
+        return createDefaultScenes(story, totalDuration, targetScenes);
+      }
+
+      return scenes;
+    } catch (parseError) {
+      console.error('[segmentStory] Parse error:', parseError);
+      return createDefaultScenes(story, totalDuration, targetScenes);
+    }
+  } catch (e) {
+    console.error('[segmentStory] Fatal error, using fallback scenes:', e);
     return createDefaultScenes(story, totalDuration, targetScenes);
   }
 }
