@@ -67,7 +67,7 @@ export function PublishStep({
     });
   }, [canvasRef]);
 
-  // Export video using MediaRecorder
+  // Export video using MediaRecorder with proper audio muxing
   const exportVideo = useCallback(async (): Promise<Blob | null> => {
     if (!canvasRef.current || !engineRef.current) return null;
     
@@ -75,44 +75,62 @@ export function PublishStep({
     const engine = engineRef.current;
     const animStyle = ANIMATION_STYLES[style] || ANIMATION_STYLES.fantasy;
     
-    // Get canvas stream
-    const stream = canvas.captureStream(24);
+    // Get canvas stream at 24 FPS
+    const videoStream = canvas.captureStream(24);
     
-    // Add audio track if available
+    // Create combined stream with audio
+    let combinedStream = videoStream;
+    let audioElement: HTMLAudioElement | null = null;
+    let audioContext: AudioContext | null = null;
+    
+    // Add audio track if available (from TTS generation)
     if (audioUrl) {
       try {
-        const audioContext = new AudioContext();
-        const audioElement = new Audio(audioUrl);
+        console.log('[PublishStep] Adding audio track from:', audioUrl.substring(0, 50));
+        audioContext = new AudioContext();
+        audioElement = new Audio(audioUrl);
         audioElement.crossOrigin = 'anonymous';
-        await audioElement.play();
-        audioElement.pause();
-        audioElement.currentTime = 0;
+        audioElement.volume = 1;
+        
+        // Wait for audio to be ready
+        await new Promise<void>((res, rej) => {
+          audioElement!.oncanplaythrough = () => res();
+          audioElement!.onerror = () => rej(new Error('Audio load failed'));
+          audioElement!.load();
+        });
         
         const source = audioContext.createMediaElementSource(audioElement);
         const destination = audioContext.createMediaStreamDestination();
         source.connect(destination);
-        source.connect(audioContext.destination);
+        source.connect(audioContext.destination); // Also play locally
         
-        const audioTrack = destination.stream.getAudioTracks()[0];
-        if (audioTrack) {
-          stream.addTrack(audioTrack);
-        }
+        // Create new stream with both video and audio tracks
+        combinedStream = new MediaStream([
+          ...videoStream.getVideoTracks(),
+          ...destination.stream.getAudioTracks()
+        ]);
+        
+        console.log('[PublishStep] Audio track added successfully');
       } catch (e) {
         console.warn('[PublishStep] Could not add audio track:', e);
+        // Continue without audio
       }
     }
     
-    // Determine best supported format
-    const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')
-      ? 'video/mp4;codecs=avc1,mp4a.40.2'
-      : MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-        ? 'video/webm;codecs=vp9,opus'
+    // Determine best supported format with audio codecs
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
+        ? 'video/webm;codecs=vp8,opus'
         : 'video/webm';
     
+    console.log('[PublishStep] Using format:', mimeType);
+    
     const chunks: Blob[] = [];
-    const recorder = new MediaRecorder(stream, { 
+    const recorder = new MediaRecorder(combinedStream, { 
       mimeType,
-      videoBitsPerSecond: 5000000 // 5 Mbps
+      videoBitsPerSecond: 5000000, // 5 Mbps
+      audioBitsPerSecond: 128000   // 128 kbps audio
     });
     
     recorder.ondataavailable = (e) => {
@@ -123,12 +141,28 @@ export function PublishStep({
     
     return new Promise((resolve) => {
       recorder.onstop = () => {
+        // Cleanup audio resources
+        if (audioElement) {
+          audioElement.pause();
+          audioElement.src = '';
+        }
+        if (audioContext) {
+          audioContext.close().catch(() => {});
+        }
+        
         const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+        console.log('[PublishStep] Video export complete, size:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
         resolve(blob);
       };
       
       // Start recording
       recorder.start(100);
+      
+      // Start audio playback in sync with animation
+      if (audioElement) {
+        audioElement.currentTime = 0;
+        audioElement.play().catch(e => console.warn('Audio play error:', e));
+      }
       
       // Start animation playback
       engine.startSlideshowPreview(duration, animStyle, (progress) => {
@@ -139,6 +173,9 @@ export function PublishStep({
       setTimeout(() => {
         recorder.stop();
         engine.stopPreview();
+        if (audioElement) {
+          audioElement.pause();
+        }
       }, duration * 1000 + 500);
     });
   }, [canvasRef, engineRef, style, duration, audioUrl]);
