@@ -486,50 +486,89 @@ export function GriotStudio() {
 
         {/* Step: Generating */}
         {step === 'generating' && (
-          <section className="py-8 space-y-6">
-            <div className="text-center">
-              <Wand2 className="w-16 h-16 mx-auto text-amber-400 animate-pulse mb-4" />
-              <h2 className="text-xl font-semibold text-amber-100 mb-2">🎨 L'IA illustre...</h2>
-              <p className="text-amber-200/60 text-sm">{generationState.message || 'Création en cours...'}</p>
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-full bg-amber-900/30 rounded-full h-4 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500 relative"
-                style={{ width: `${generationState.progress}%` }}
+          <section className="flex-1 flex flex-col items-center justify-center py-8 space-y-8">
+            {/* Animated Icon */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="relative"
+            >
+              <div className="absolute inset-0 bg-amber-400/20 rounded-full blur-2xl animate-pulse" />
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               >
-                <div className="absolute inset-0 bg-white/20 animate-pulse" />
-              </div>
-            </div>
-            <p className="text-center text-amber-200/60 text-sm">{Math.round(generationState.progress)}%</p>
+                <Wand2 className="w-20 h-20 text-amber-400 relative z-10" />
+              </motion.div>
+            </motion.div>
 
-            {/* Scene progress */}
+            {/* Title and message */}
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-amber-100">📚 Bibliothèque Griot</h2>
+              <motion.p 
+                key={generationState.message}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-amber-200/80 text-base"
+              >
+                {generationState.message || 'Sélection des illustrations...'}
+              </motion.p>
+            </div>
+
+            {/* Progress bar - enhanced */}
+            <div className="w-full max-w-xs space-y-2">
+              <div className="w-full bg-amber-900/40 rounded-full h-3 overflow-hidden shadow-inner">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 rounded-full relative overflow-hidden"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${generationState.progress}%` }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+                </motion.div>
+              </div>
+              <p className="text-center text-amber-300 text-lg font-semibold">
+                {Math.round(generationState.progress)}%
+              </p>
+            </div>
+
+            {/* Scene dots - compact and elegant */}
             {generationState.totalScenes > 0 && (
-              <div className="flex justify-center gap-2">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex justify-center gap-3"
+              >
                 {Array.from({ length: generationState.totalScenes }).map((_, i) => (
-                  <div
+                  <motion.div
                     key={i}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: i * 0.1 }}
                     className={cn(
-                      'w-10 h-10 rounded-lg flex items-center justify-center transition-all',
+                      'w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300',
                       i < generationState.currentScene
-                        ? 'bg-green-500/20 border-2 border-green-400'
+                        ? 'bg-green-500 shadow-lg shadow-green-500/30'
                         : i === generationState.currentScene
-                          ? 'bg-amber-500/20 border-2 border-amber-400 animate-pulse'
-                          : 'bg-amber-900/20 border border-amber-500/20'
+                          ? 'bg-amber-500 animate-pulse shadow-lg shadow-amber-500/30'
+                          : 'bg-amber-900/40 border border-amber-500/20'
                     )}
                   >
                     {i < generationState.currentScene ? (
-                      <Check className="w-5 h-5 text-green-400" />
-                    ) : i === generationState.currentScene ? (
-                      <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+                      <Check className="w-4 h-4 text-white" />
                     ) : (
-                      <span className="text-amber-200/40 text-sm">{i + 1}</span>
+                      <span className="text-white/80 text-xs font-medium">{i + 1}</span>
                     )}
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
+
+            {/* Info message */}
+            <p className="text-amber-200/50 text-xs text-center max-w-xs">
+              ⚡ Images pré-générées pour une création ultra-rapide
+            </p>
           </section>
         )}
 

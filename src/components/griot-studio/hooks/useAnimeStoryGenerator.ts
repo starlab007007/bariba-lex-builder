@@ -55,23 +55,36 @@ export function useAnimeStoryGenerator() {
     style: AnimeStyleName,
     duration: number
   ): Promise<GenerationResult | null> => {
+    const startTime = Date.now();
+    
     setState({
       isGenerating: true,
       currentPhase: 'segmenting',
-      progress: 0,
-      message: 'Analyse de ton conte...',
+      progress: 5,
+      message: '📖 Lecture de ton conte...',
       currentScene: 0,
       totalScenes: 0,
       error: null
     });
 
     try {
-      // PHASE 1: Generate scenes with anime images
+      // Quick progress animation for responsiveness
+      await new Promise(r => setTimeout(r, 300));
+      
+      setState(prev => ({
+        ...prev,
+        progress: 15,
+        message: '🎭 Découpage en scènes...'
+      }));
+
+      await new Promise(r => setTimeout(r, 200));
+
+      // PHASE 1: Generate scenes - uses library matching first!
       setState(prev => ({
         ...prev,
         currentPhase: 'generating_images',
-        progress: 10,
-        message: 'L\'IA découpe ton conte en scènes...'
+        progress: 25,
+        message: '🖼️ Sélection des illustrations...'
       }));
 
       const { data: sceneData, error: sceneError } = await supabase.functions.invoke('generate-anime-story', {
@@ -96,13 +109,19 @@ export function useAnimeStoryGenerator() {
 
       const scenes: StoryScene[] = sceneData.scenes;
       const totalScenes = scenes.length;
-
-      // Update progress as images were generated on server
+      const libraryCount = sceneData.stats?.libraryMatches || 0;
+      
+      // Update progress - show library usage for transparency
+      const libraryMsg = libraryCount > 0 
+        ? `📚 ${libraryCount}/${totalScenes} depuis la bibliothèque!`
+        : `✨ ${totalScenes} illustrations créées!`;
+      
       setState(prev => ({
         ...prev,
         progress: 70,
         totalScenes,
-        message: `${totalScenes} illustrations créées!`
+        currentScene: totalScenes,
+        message: libraryMsg
       }));
 
       // Convert base64 images to object URLs for preview
@@ -168,11 +187,14 @@ export function useAnimeStoryGenerator() {
         totalDuration: duration
       };
 
+      const totalTime = Date.now() - startTime;
+      console.log(`[useAnimeStoryGenerator] Complete in ${totalTime}ms`);
+
       setState({
         isGenerating: false,
         currentPhase: 'complete',
         progress: 100,
-        message: 'Ton conte animé est prêt!',
+        message: `✅ Prêt en ${(totalTime / 1000).toFixed(1)}s!`,
         currentScene: totalScenes,
         totalScenes,
         error: null
