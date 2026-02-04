@@ -1,76 +1,66 @@
 
-# Plan: Finalisation Template Griot Animé - Workflow Complet jusqu'à Publication
+# Plan : Bibliothèque d'Images Anime Pré-générées
 
 ## Objectif
-Optimiser le parcours utilisateur du template Griot Animé avec:
-- Enregistrement audio avec disque vinyl rotatif animé
-- Prévisualisation avec audio synchronisé 
-- Ajout d'effets VFX
-- Export MP4 et publication dans le feed vidéo
-- Style inclusif "voice-first" avec moins de texte
+Créer une bibliothèque d'illustrations anime pré-générées et classifiées qui seront **matchées intelligemment** aux scènes des contes au lieu de générer de nouvelles images à chaque création.
 
 ---
 
-## Architecture du Nouveau Workflow
+## Architecture de la Solution
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                      GRIOT ANIMÉ v6.2 - WORKFLOW COMPLET                     │
+│                    SYSTÈME DE BIBLIOTHÈQUE ANIME                              │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  ÉTAPE 1: CRÉATION 🎙️                                                       │
+│  PHASE 1: PRÉ-GÉNÉRATION (Admin/Batch)                                       │
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  ┌─────────────┐                                                       │ │
-│  │  │    🎵       │   DISQUE VINYL ANIMÉ                                 │ │
-│  │  │  Avatar     │   - Tourne pendant l'enregistrement                  │ │
-│  │  │  Narrateur  │   - Barre de progression circulaire                  │ │
-│  │  └─────────────┘   - Indicateur temps d'enregistrement                │ │
+│  │  Edge Function: generate-anime-library                                  │ │
 │  │                                                                        │ │
-│  │  🎨 Style: [🎌 Manga] [😊 Chibi] [✨ Fantasy] [🌍 Africain]            │ │
+│  │  1. Générer images pour chaque combinaison:                            │ │
+│  │     - 4 Styles × 7 Émotions × 10 Types de scènes = ~280 images         │ │
 │  │                                                                        │ │
-│  │  ⏱️ Durée: [⚡15s] [🎬30s] [🎥60s]                                     │ │
+│  │  2. Pour chaque image générée:                                         │ │
+│  │     - Générer embedding sémantique (description)                       │ │
+│  │     - Stocker dans Supabase Storage (bucket anime-library)             │ │
+│  │     - Enregistrer métadonnées dans table anime_scene_library           │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                              ↓                                               │
-│  ÉTAPE 2: GÉNÉRATION IA 🎨                                                   │
+│  PHASE 2: STOCKAGE (Supabase)                                                │
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  ✅ Scène 1: Le village au matin                                       │ │
-│  │  🔄 Scène 2: La rencontre magique                                      │ │
-│  │  ⏳ Scène 3: L'aventure commence                                       │ │
+│  │  Table: anime_scene_library                                            │ │
+│  │  ├── id (uuid)                                                         │ │
+│  │  ├── style (manga/chibi/fantasy/african)                               │ │
+│  │  ├── emotion (joy/sadness/wonder/fear/excitement/peace/tension)        │ │
+│  │  ├── scene_type (village/forest/river/mountain/market/home/night...)   │ │
+│  │  ├── character_type (child_boy/child_girl/elder/animal/spirit...)      │ │
+│  │  ├── action (standing/walking/running/talking/sleeping/dancing...)     │ │
+│  │  ├── time_of_day (dawn/morning/noon/afternoon/dusk/night)              │ │
+│  │  ├── weather (clear/cloudy/rain/storm/fog/snow)                        │ │
+│  │  ├── tags (JSONB) - mots-clés additionnels                             │ │
+│  │  ├── description_fr (text) - description en français                   │ │
+│  │  ├── description_en (text) - description en anglais                    │ │
+│  │  ├── embedding (vector) - pour recherche sémantique                    │ │
+│  │  ├── image_url (text) - URL publique Supabase Storage                  │ │
+│  │  ├── usage_count (int) - statistiques d'utilisation                    │ │
+│  │  └── created_at (timestamp)                                            │ │
 │  │                                                                        │ │
-│  │  [████████████░░░░░░░░░░] 60%                                         │ │
-│  │  "Création de la scène 2/3..."                                        │ │
+│  │  Storage Bucket: anime-library (public)                                │ │
+│  │  └── /{style}/{emotion}/{scene_type}_{character}_{action}.webp         │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                              ↓                                               │
-│  ÉTAPE 3: PREVIEW 🎬                                                         │
+│  PHASE 3: MATCHING INTELLIGENT (Runtime)                                     │
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  ┌───────────────────────────────────────┐                            │ │
-│  │  │                         ┌────┐        │   CANVAS 9:16             │ │
-│  │  │  [ANIME SLIDESHOW]      │ 📷 │        │   - Ken Burns par scène   │ │
-│  │  │  + VFX (particles,      │Avatar│       │   - Audio synchronisé     │ │
-│  │  │    lens flares)         └────┘        │   - Avatar narrateur      │ │
-│  │  │                                        │   - Effets contextuels   │ │
-│  │  │         ▶️ PLAY                        │                          │ │
-│  │  │  ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ 0:00 / 0:30       │                          │ │
-│  │  └───────────────────────────────────────┘                            │ │
+│  │  Nouveau flow dans generate-anime-story:                               │ │
 │  │                                                                        │ │
-│  │  [🔊 Audio] [✨ Effets] [Timeline scènes]                              │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                              ↓                                               │
-│  ÉTAPE 4: FINALISATION 📤                                                    │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  📝 Titre: [Auto-généré ou modifiable]                                │ │
-│  │                                                                        │ │
-│  │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐               │ │
-│  │  │ ⬇️ SAUVER    │   │ 📤 PARTAGER  │   │ 🌐 PUBLIER   │               │ │
-│  │  │    MP4       │   │   Lien       │   │   au Feed    │               │ │
-│  │  └──────────────┘   └──────────────┘   └──────────────┘               │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                              ↓                                               │
-│  ÉTAPE 5: SUCCÈS 🎉                                                          │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  🎉 Ton conte est sur FITILA!                                          │ │
-│  │                                                                        │ │
-│  │  [📺 Voir dans le Feed]  [🔄 Créer un autre]                          │ │
+│  │  1. Analyser texte du conte → Extraire scènes + émotions               │ │
+│  │  2. Pour chaque scène:                                                 │ │
+│  │     a. Générer embedding de la description                             │ │
+│  │     b. Rechercher images similaires dans anime_scene_library           │ │
+│  │     c. Sélectionner meilleur match (score > 0.7)                       │ │
+│  │  3. Si pas de match suffisant:                                         │ │
+│  │     → Fallback: générer image en temps réel (comme avant)              │ │
+│  │  4. Retourner scènes avec URLs d'images pré-existantes                 │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -78,233 +68,212 @@ Optimiser le parcours utilisateur du template Griot Animé avec:
 
 ---
 
-## Fonctionnalités Clés à Implémenter
+## Classification des Images
 
-### 1. Disque Vinyl Animé pour Enregistrement Audio
-Reprendre le composant `VinylPlayer` existant (TamTamCreatePost.tsx) et l'adapter pour GriotStudio:
-- Rotation fluide pendant l'enregistrement
-- Barre de progression circulaire SVG
-- Aiguille de lecture animée
-- Avatar du narrateur au centre du disque
-- Indicateur d'enregistrement pulsant (point rouge)
-- Affichage du temps écoulé
+### Par Style (4 catégories)
+| Style | Description | Couleurs dominantes |
+|-------|-------------|---------------------|
+| manga | Noir et blanc, traits fins, expressif | Monochrome, gris |
+| chibi | Mignon, têtes grosses, pastel | Rose, bleu clair, jaune |
+| fantasy | Magique, détaillé, lumineux | Violet, or, bleu |
+| african | Tons chauds, motifs africains, coucher de soleil | Orange, brun, ocre |
 
-### 2. Preview Audio/Vidéo Optimisé
-- Lecteur canvas avec audio synchronisé
-- Contrôles play/pause clairs et accessibles
-- Timeline avec indicateurs de scènes
-- Volume toggle (mute/unmute)
-- Progression fluide avec temps affiché
+### Par Émotion (7 catégories)
+| Émotion | Ambiance visuelle | Éléments |
+|---------|-------------------|----------|
+| joy | Lumineuse, chaleureuse | Soleil, sourires, couleurs vives |
+| sadness | Bleue, mélancolique | Pluie, nuages, larmes |
+| wonder | Magique, scintillante | Étoiles, particules, lueur |
+| fear | Sombre, contrastée | Ombres, nuit, formes menaçantes |
+| excitement | Dynamique, énergique | Lignes de mouvement, action |
+| peace | Douce, sereine | Coucher de soleil, nature calme |
+| tension | Intense, dramatique | Rouge, ombres dures |
 
-### 3. Export MP4 avec MediaRecorder
-- Utiliser `encodeWithMediaRecorder` du VideoEncoder
-- Capturer le canvas en stream vidéo
-- Mixer l'audio ElevenLabs avec la vidéo
-- Générer thumbnail automatique à 1s
-- Fallback WebM si MP4 non supporté
+### Par Type de Scène (10+ catégories)
+| Type | Description | Éléments typiques |
+|------|-------------|-------------------|
+| village | Village africain traditionnel | Cases, marché, arbres |
+| forest | Forêt mystique ou dense | Arbres, feuillage, animaux |
+| river | Rivière, lac, point d'eau | Eau, reflets, végétation |
+| mountain | Montagne, colline | Rochers, hauteur, vue |
+| market | Marché local, commerce | Étals, foule, produits |
+| home | Intérieur maison | Feu, famille, objets |
+| night | Scène nocturne | Lune, étoiles, feu de camp |
+| journey | Voyage, chemin | Route, paysage, horizon |
+| gathering | Rassemblement, fête | Groupe, danse, musique |
+| spirit | Rencontre spirituelle | Esprit, lueur, magie |
 
-### 4. Publication dans le Feed Vidéo
-- Intégrer `useVideoPublish` hook existant
-- Upload vers Supabase Storage (bucket 'videos')
-- Insert dans table 'videos' avec métadonnées
-- Génération automatique du thumbnail
-- Navigation vers /fitila après publication
+### Par Personnage (6 catégories)
+| Type | Description |
+|------|-------------|
+| child_boy | Jeune garçon africain (6-12 ans) |
+| child_girl | Jeune fille africaine (6-12 ans) |
+| elder | Ancien/sage du village (60+ ans) |
+| animal | Animal africain (lion, éléphant, oiseau, etc.) |
+| spirit | Entité spirituelle/magique |
+| group | Groupe de personnes |
 
-### 5. Style Inclusif Voice-First
-- Moins de texte, plus d'icônes et emojis
-- Boutons larges avec feedback haptique
-- Labels en français + Bariba
-- Instructions vocales minimales
-- Couleurs contrastées et accessibles
+### Par Action (8 catégories)
+| Action | Description |
+|--------|-------------|
+| standing | Debout, observant |
+| walking | En marche |
+| talking | En discussion |
+| dancing | Dansant |
+| working | Travaillant |
+| sleeping | Dormant |
+| running | Courant |
+| discovering | Découvrant quelque chose |
 
 ---
 
 ## Fichiers à Créer
 
-### 1. `src/components/griot-studio/VinylRecorder.tsx`
-Composant d'enregistrement audio avec disque vinyl animé:
-- Props: `onRecordingComplete`, `maxDuration`, `avatarUrl`
-- Animation framer-motion pour rotation
-- SVG pour progression circulaire
-- Gestion MediaRecorder pour capture audio
-- Timer visible avec format mm:ss
+### 1. Migration Base de Données
+Créer la table `anime_scene_library` avec les colonnes de classification et un index pour la recherche vectorielle.
 
-### 2. `src/components/griot-studio/StoryPreviewPlayer.tsx`
-Lecteur de preview avec audio:
-- Canvas avec animations slideshow
-- Contrôles de lecture intégrés
-- Timeline des scènes cliquables
-- Indicateur audio (waveform ou volume)
-- Bouton mute/unmute
+### 2. Edge Function: `generate-anime-library`
+Fonction batch pour pré-générer les images de la bibliothèque.
 
-### 3. `src/components/griot-studio/PublishStep.tsx`
-Écran de finalisation/publication:
-- Formulaire titre (auto-généré)
-- Sélection visibilité (public/privé)
-- Boutons export MP4 / partage / publication
-- Barre de progression publication
-- État de succès avec liens
+```text
+Actions supportées:
+- generate_batch: Génère N images pour une combinaison style+emotion+scene
+- list_library: Liste les images disponibles avec filtres
+- get_stats: Statistiques de couverture de la bibliothèque
+```
+
+### 3. Edge Function: Modifier `generate-anime-story`
+Ajouter la logique de matching avant de générer:
+
+```text
+1. Analyser scène → extraire tags (emotion, scene_type, character, action)
+2. Chercher dans anime_scene_library avec ces critères
+3. Si match trouvé → utiliser image existante
+4. Sinon → générer nouvelle image (fallback actuel)
+```
+
+### 4. Hook Admin: `useAnimeLibrary.ts`
+Hook pour gérer la bibliothèque depuis l'interface admin.
+
+### 5. Page Admin: Gestionnaire de Bibliothèque
+Interface pour:
+- Voir la couverture de la bibliothèque
+- Lancer des générations batch
+- Visualiser et tagguer les images
 
 ---
 
-## Fichiers à Modifier
+## Algorithme de Matching
 
-### 1. `src/components/griot-studio/GriotStudio.tsx`
-Refonte majeure:
-- Remplacer StoryInput par VinylRecorder
-- Ajouter étape 'preview' avec StoryPreviewPlayer
-- Ajouter étape 'finalize' avec PublishStep
-- Ajouter étape 'success' avec confirmation
-- Intégrer useVideoPublish hook
-- Optimiser UI pour moins de texte
+```text
+matchScene(sceneDescription, style, emotion):
+  1. Extraire tags de la description:
+     - scene_type via mots-clés (village, forêt, marché...)
+     - character_type via détection (enfant, ancien, animal...)
+     - action via verbes (marcher, parler, danser...)
+     - time_of_day via contexte (matin, nuit, coucher de soleil...)
+  
+  2. Requête SQL avec scores pondérés:
+     SELECT *, 
+       (style = $style)::int * 3 +
+       (emotion = $emotion)::int * 2 +
+       (scene_type = $scene_type)::int * 2 +
+       (character_type = $character_type)::int * 1 +
+       (action = $action)::int * 1
+     AS match_score
+     FROM anime_scene_library
+     WHERE style = $style  -- Style obligatoire
+     ORDER BY match_score DESC
+     LIMIT 3
+  
+  3. Si match_score >= 5 → utiliser l'image
+     Sinon → fallback génération IA
+```
 
-### 2. `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts`
-Améliorer la gestion d'état:
-- Ajouter support audio local (enregistrement utilisateur)
-- Gérer la transcription audio → texte
-- Combiner audio utilisateur + TTS narrateur
-- Progress callbacks plus granulaires
+---
 
-### 3. `src/engines/GriotAnimationEngine.ts`
-Ajouter méthode d'export vidéo:
-- `exportVideoBlob(duration, style, fps)`: retourne Blob vidéo
-- Utiliser canvas.captureStream() + MediaRecorder
-- Mixer audio avec piste vidéo
-- Générer thumbnail à partir du canvas
+## Stratégie de Pré-génération
+
+### Phase 1: Images Essentielles (60 images)
+Combinaisons les plus courantes pour les contes africains:
+- Style: african + fantasy
+- Émotions: joy, wonder, peace, excitement
+- Scènes: village, forest, journey, gathering, spirit
+- Personnages: child_boy, child_girl, elder
+
+### Phase 2: Extension (120 images)
+- Ajouter styles manga et chibi
+- Couvrir toutes les émotions
+- Ajouter scènes secondaires
+
+### Phase 3: Couverture Complète (280+ images)
+- Toutes les combinaisons possibles
+- Variantes multiples par combinaison
+
+---
+
+## Avantages de cette Solution
+
+| Aspect | Avant (Génération) | Après (Bibliothèque) |
+|--------|-------------------|---------------------|
+| **Temps** | 30-180 secondes | 1-3 secondes |
+| **Coût API** | ~$0.10-0.30/conte | ~$0 (images pré-payées) |
+| **Qualité** | Variable | Contrôlée et curatée |
+| **Offline** | Impossible | Possible (cache local) |
+| **Consistance** | Aléatoire | Cohérente par style |
 
 ---
 
 ## Détails Techniques
 
-### Vinyl Recorder Component
-```typescript
-interface VinylRecorderProps {
-  avatarUrl?: string;
-  maxDuration?: number; // secondes
-  onRecordingComplete: (audioBlob: Blob, duration: number) => void;
-  style?: AnimeStyleName;
-}
-
-// Animation de rotation avec framer-motion
-const rotateTransform = useTransform(rotation, (r) => `rotate(${r}deg)`);
-
-// Progression circulaire SVG
-<circle
-  cx={size/2} cy={size/2} r={size/2 - 4}
-  fill="none" stroke={isRecording ? "#ef4444" : "#fbbf24"}
-  strokeWidth="4" strokeLinecap="round"
-  strokeDasharray={circumference}
-  strokeDashoffset={strokeDashoffset}
-/>
+### Structure du Bucket Storage
+```
+anime-library/
+├── african/
+│   ├── joy/
+│   │   ├── village_child_boy_standing.webp
+│   │   ├── village_child_girl_dancing.webp
+│   │   └── ...
+│   ├── sadness/
+│   └── ...
+├── fantasy/
+├── manga/
+└── chibi/
 ```
 
-### Export Vidéo avec Audio
-```typescript
-async exportVideoBlob(): Promise<Blob> {
-  const stream = this.canvas.captureStream(24);
-  
-  // Ajouter piste audio si disponible
-  if (this.audioElement) {
-    const audioContext = new AudioContext();
-    const source = audioContext.createMediaElementSource(this.audioElement);
-    const destination = audioContext.createMediaStreamDestination();
-    source.connect(destination);
-    stream.addTrack(destination.stream.getAudioTracks()[0]);
-  }
-  
-  const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
-    ? 'video/mp4;codecs=avc1' : 'video/webm;codecs=vp9';
-  
-  const recorder = new MediaRecorder(stream, { mimeType });
-  // ... capture frames and return blob
-}
-```
+### Format des Images
+- Format: WebP (meilleur ratio qualité/taille)
+- Dimensions: 540x960 (9:16 mobile)
+- Qualité: 85% (bon compromis)
+- Taille estimée: ~50-100 KB par image
 
-### Publication vers Feed
-```typescript
-const { publishVideo, isPublishing, publishProgress } = useVideoPublish();
-
-const handlePublish = async () => {
-  const videoBlob = await engineRef.current.exportVideoBlob();
-  const thumbnailBlob = await generateThumbnail(canvasRef.current);
-  
-  const result = await publishVideo({
-    video: videoBlob,
-    thumbnail: thumbnailBlob,
-    title: storyTitle,
-    description: story.slice(0, 200),
-    templateId: 'griot-anime',
-    templateName: 'Griot Animé IA',
-    duration: duration
-  });
-  
-  if (result.success) {
-    setStep('success');
-  }
-};
-```
-
----
-
-## Workflow Utilisateur Optimisé
-
-| Étape | Action Utilisateur | UI | Technique |
-|-------|-------------------|-----|-----------|
-| 1. Avatar | Optionnel: prendre photo | Cercle avec caméra | Camera API |
-| 2. Style | Toucher un style anime | 4 boutons avec emojis | State selection |
-| 3. Durée | Toucher durée souhaitée | 3 boutons (15/30/60s) | State selection |
-| 4. Enregistrer | Maintenir disque vinyl | Disque qui tourne | MediaRecorder audio |
-| 5. Confirmer | Relâcher pour arrêter | Animation confirmation | Auto-transition |
-| 6. Générer | Automatique | Progress avec scènes | Edge function |
-| 7. Preview | Toucher play | Vidéo avec audio | Canvas + Audio |
-| 8. Finaliser | Choisir action | 3 boutons (Save/Share/Publish) | Actions multiples |
-| 9. Succès | Voir résultat | Confettis + liens | Navigation |
-
----
-
-## Optimisations UX Voice-First
-
-### Moins de Texte
-- Remplacer labels par emojis + pictogrammes
-- Instructions courtes (max 5 mots)
-- Feedback par sons/vibrations
-- Progression visuelle (couleurs, animations)
-
-### Boutons Accessibles
-- Taille minimum 48x48px (touch target)
-- Contraste WCAG AA minimum
-- États visuels clairs (hover, active, disabled)
-- Feedback haptique (vibration) sur mobile
-
-### Labels Bilingues Minimalistes
-```
-🎙️ Parler / Sɔ̀
-🎨 Style  
-⏱️ Durée
-▶️ Jouer / Gbà
-📤 Publier / Sɔ̀ɔ́
-```
+### Estimation Stockage
+- 280 images × 75 KB moyenne = ~21 MB
+- Coût Supabase Storage: Négligeable
 
 ---
 
 ## Résumé des Modifications
 
-| Fichier | Action | Complexité |
-|---------|--------|------------|
-| `VinylRecorder.tsx` | CRÉER | ⭐⭐⭐ |
-| `StoryPreviewPlayer.tsx` | CRÉER | ⭐⭐⭐ |
-| `PublishStep.tsx` | CRÉER | ⭐⭐ |
-| `GriotStudio.tsx` | MODIFIER (majeur) | ⭐⭐⭐⭐ |
-| `useAnimeStoryGenerator.ts` | MODIFIER | ⭐⭐ |
-| `GriotAnimationEngine.ts` | MODIFIER (ajouter export) | ⭐⭐⭐ |
+| Fichier | Action | Priorité |
+|---------|--------|----------|
+| Migration `anime_scene_library` | CRÉER | ⭐⭐⭐ |
+| Bucket `anime-library` | CRÉER | ⭐⭐⭐ |
+| Edge Function `generate-anime-library` | CRÉER | ⭐⭐⭐ |
+| Edge Function `generate-anime-story` | MODIFIER | ⭐⭐ |
+| Hook `useAnimeLibrary.ts` | CRÉER | ⭐⭐ |
+| Page Admin Bibliothèque | CRÉER | ⭐ |
 
 ---
 
-## Tests de Validation
+## Workflow Utilisateur Final
 
-1. **Enregistrement Audio**: Vinyl tourne, temps s'affiche, audio capturé
-2. **Génération IA**: Scènes créées, images générées, narration TTS
-3. **Preview**: Slideshow fluide, audio synchronisé, avatar visible
-4. **Export MP4**: Fichier téléchargeable, qualité correcte, audio présent
-5. **Publication Feed**: Vidéo visible sur /fitila, thumbnail affiché
-6. **Mobile**: Touch targets accessibles, animations fluides, chargement rapide
+```text
+AVANT (Actuel):
+Enregistrer → [ATTENTE 30-180s] → Générer images IA → Preview → Publier
+
+APRÈS (Avec Bibliothèque):
+Enregistrer → [INSTANTANÉ 1-3s] → Matcher images → Preview → Publier
+```
+
+L'utilisateur ne verra aucune différence dans l'interface, mais le temps d'attente sera réduit de 95%.
