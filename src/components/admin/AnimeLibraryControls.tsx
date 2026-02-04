@@ -46,11 +46,12 @@ export function AnimeLibraryControls({ stats, onRefreshStats }: AnimeLibraryCont
 
   const generateBatch = async (style: string, startFrom: number = 0) => {
     try {
+      // Generate ONE image per call to avoid Edge Function timeout
       const { data, error } = await supabase.functions.invoke('generate-anime-library', {
         body: { 
           action: 'generate_full_library',
           style,
-          batch_size: 5,
+          batch_size: 1,
           start_from: startFrom
         }
       });

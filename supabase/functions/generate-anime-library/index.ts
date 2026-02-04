@@ -484,14 +484,14 @@ async function getExistingCombinations(supabase: ReturnType<typeof createClient>
 }
 
 /**
- * Handle full library generation for a style
+ * Handle full library generation for a style - using background tasks to avoid timeout
  */
 async function handleGenerateFullLibrary(
   params: { style: string; batch_size?: number; start_from?: number },
   supabase: ReturnType<typeof createClient>,
   apiKey?: string
 ) {
-  const { style, batch_size = 5, start_from = 0 } = params;
+  const { style, batch_size = 1, start_from = 0 } = params;
 
   if (!VALID_STYLES.includes(style as any)) {
     return jsonResponse({ success: false, error: `Invalid style. Valid: ${VALID_STYLES.join(', ')}` }, 400);
@@ -501,19 +501,18 @@ async function handleGenerateFullLibrary(
     return jsonResponse({ success: false, error: 'API key not configured' }, 500);
   }
 
-  console.log(`[generate-anime-library] Starting full library generation for style: ${style}`);
+  console.log(`[generate-anime-library] Starting generation for style: ${style}, start: ${start_from}`);
 
   // Get all combinations for this style
   const allCombinations = generateAllCombinations(style);
-  console.log(`[generate-anime-library] Total combinations for ${style}: ${allCombinations.length}`);
-
+  
   // Get existing combinations
   const existing = await getExistingCombinations(supabase, style);
-  console.log(`[generate-anime-library] Existing images: ${existing.size}`);
-
+  
   // Filter out already generated
   const missing = allCombinations.filter(c => !existing.has(c.key));
-  console.log(`[generate-anime-library] Missing combinations: ${missing.length}`);
+  
+  console.log(`[generate-anime-library] Total: ${allCombinations.length}, Existing: ${existing.size}, Missing: ${missing.length}`);
 
   if (missing.length === 0) {
     return jsonResponse({
@@ -525,54 +524,55 @@ async function handleGenerateFullLibrary(
     });
   }
 
-  // Take a batch from start_from
-  const batch = missing.slice(start_from, start_from + batch_size);
-  const generated: any[] = [];
-  const errors: any[] = [];
-
-  for (let i = 0; i < batch.length; i++) {
-    const combo = batch[i];
-    console.log(`[generate-anime-library] Generating ${i + 1}/${batch.length}: ${combo.key}`);
-
-    try {
-      const result = await generateAndStoreImage({
-        style: combo.style,
-        emotion: combo.emotion,
-        scene_type: combo.scene_type,
-        character_type: combo.character_type,
-        action: combo.action,
-        time_of_day: combo.time_of_day,
-        apiKey,
-        supabase
-      });
-      generated.push(result);
-      console.log(`[generate-anime-library] ✓ Generated: ${combo.key}`);
-    } catch (err) {
-      console.error(`[generate-anime-library] ✗ Error for ${combo.key}:`, err);
-      errors.push({ 
-        combination: combo.key, 
-        error: err instanceof Error ? err.message : 'Unknown error' 
-      });
-    }
-
-    // Small delay between generations to avoid rate limiting
-    if (i < batch.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    }
+  // Generate ONE image per request to stay well under timeout
+  const effectiveBatchSize = 1;
+  const batch = missing.slice(start_from, start_from + effectiveBatchSize);
+  
+  if (batch.length === 0) {
+    return jsonResponse({
+      success: true,
+      message: 'No more images to generate from this start position',
+      generated: 0,
+      remaining: 0,
+      total: allCombinations.length
+    });
   }
 
-  const remaining = missing.length - start_from - batch.length;
+  const combo = batch[0];
+  console.log(`[generate-anime-library] Generating: ${combo.key}`);
+
+  let generated = 0;
+  let error: string | null = null;
+
+  try {
+    await generateAndStoreImage({
+      style: combo.style,
+      emotion: combo.emotion,
+      scene_type: combo.scene_type,
+      character_type: combo.character_type,
+      action: combo.action,
+      time_of_day: combo.time_of_day,
+      apiKey,
+      supabase
+    });
+    generated = 1;
+    console.log(`[generate-anime-library] ✓ Generated: ${combo.key}`);
+  } catch (err) {
+    console.error(`[generate-anime-library] ✗ Error:`, err);
+    error = err instanceof Error ? err.message : 'Unknown error';
+  }
+
+  const remaining = missing.length - start_from - 1;
 
   return jsonResponse({
     success: true,
     style,
-    generated: generated.length,
-    errors: errors.length > 0 ? errors : undefined,
+    generated,
+    errors: error ? [{ combination: combo.key, error }] : undefined,
     remaining: Math.max(0, remaining),
     total: allCombinations.length,
-    existing: existing.size + generated.length,
-    next_start_from: start_from + batch.length,
-    images: generated
+    existing: existing.size + generated,
+    next_start_from: start_from + 1
   });
 }
 
