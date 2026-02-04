@@ -93,8 +93,8 @@ import type { AudioTrack } from "@/types/audio";
 // ✅ OneTakePro: Premium template with baked-in visual effects (lens-flare, light-leak, smoke, fire)
 import { OneTakePro } from "./templates/OneTakePro";
 
-// ✅ Premium Templates: Griot Digital, Beat Maker AI, News Studio
-import { GriotDigitalCreator } from "@/components/GriotDigitalCreator";
+// ✅ Premium Templates: Griot Animé, Beat Maker AI, News Studio
+import { GriotStudio } from "@/components/griot-studio/GriotStudio";
 import { BeatMakerStudio } from "@/components/BeatMakerStudio";
 import NewsStudio from "@/components/NewsStudio";
 import { PremiumTemplateGallery } from "./creator/PremiumTemplateGallery";
@@ -2418,17 +2418,17 @@ export default function FullscreenCreator({
               console.log('🎯 [FullscreenCreator] onSelectTemplate called:', template.id, template.name);
               
               // Premium Templates handlers
-              const premiumTemplateIds = ['griot-digital-premium', 'griot_digital', 'griot-digital'];
+              const premiumTemplateIds = ['griot-anime', 'griot-digital-premium', 'griot_digital', 'griot-digital'];
               const beatMakerIds = ['beat-maker-ai', 'beat_maker_ai', 'beatmaker'];
               const newsStudioIds = ['village-chronicle', 'village_chronicle', 'news-studio'];
 
               if (premiumTemplateIds.includes(template.id)) {
-                console.log('🎭 [FullscreenCreator] Activating Griot Digital mode');
+                console.log('🎭 [FullscreenCreator] Activating Griot Animé mode');
                 setActiveUnifiedTemplate(template);
                 setShowGriotDigitalMode(true);
                 setDrawer('none');
                 setTemplateFlowPhase('idle');
-                setToast('🎭 Griot Digital activé');
+                setToast('🎭 Griot Animé activé');
                 return;
               }
 
@@ -3834,7 +3834,7 @@ export default function FullscreenCreator({
           </motion.div>
         )}
 
-        {/* ============ PREMIUM TEMPLATES: Griot Digital ============ */}
+        {/* ============ PREMIUM TEMPLATES: Griot Animé ============ */}
         <AnimatePresence>
           {showGriotDigitalMode && (
             <motion.div
@@ -3849,7 +3849,7 @@ export default function FullscreenCreator({
               >
                 <X className="w-5 h-5" />
               </button>
-              <GriotDigitalCreator />
+              <GriotStudio />
             </motion.div>
           )}
         </AnimatePresence>

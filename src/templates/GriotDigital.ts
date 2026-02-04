@@ -125,15 +125,19 @@ const LENS_FLARE_ASSETS = [
 // ============================================================================
 
 export const GriotDigitalTemplate = {
-  id: 'griot-digital',
-  name: 'Griot Digital - Contes Visuels',
+  id: 'griot-anime',
+  name: 'Griot Animé IA',
+  nameBa: 'Kɔ̀gbɛ́ Táárù Animé',
   category: 'storytelling',
-  description: 'Transforme vos contenus en expériences visuelles immersives fullscreen avec effets premium',
-  descriptionBa: 'Yí kɔ̀gbè sɔ́ wɛ̀rɛ̀ mɔ̀ 3D dó kpɔ́n',
-  thumbnail: '/templates/griot-digital-preview.jpg',
-  demoVideo: '/templates/griot-digital-demo.mp4',
+  description: 'Crée des contes animés avec illustrations IA style anime. Dicte ton histoire et laisse l\'IA illustrer chaque scène.',
+  descriptionBa: 'Dà kɔ̀gbè mɔ̀ anime. AI gà yí wɛ̀rɛ̀.',
+  thumbnail: '/assets/templates/griot-digital/thumbnail.svg',
+  demoVideo: '/templates/griot-anime-demo.mp4',
   effects: [],
-  tags: ['storytelling', 'griot', 'premium', 'fullscreen', 'cultural', 'bariba'],
+  tags: ['storytelling', 'griot', 'anime', 'ai', 'premium', 'cultural', 'bariba'],
+  isPremium: true,
+  isNew: true,
+  duration: 60,
 };
 
 // ============================================================================
