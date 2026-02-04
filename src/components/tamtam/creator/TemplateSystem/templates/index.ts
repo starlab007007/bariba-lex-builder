@@ -27,13 +27,13 @@ import { VillageChronicleTemplate } from '@/templates/VillageChronicle';
 // PREMIUM TEMPLATE ADAPTERS
 // ============================================================================
 
-const griotDigitalPremiumTemplate: Template = {
-  id: 'griot-digital-premium',
-  name: 'Griot Digital 3D',
-  nameBa: 'Kɔ̀gbɛ́ Táárù 3D',
+const griotAnimePremiumTemplate: Template = {
+  id: 'griot-anime',
+  name: 'Griot Animé IA',
+  nameBa: 'Kɔ̀gbɛ́ Táárù Animé',
   category: 'storytelling',
-  description: 'Conte 3D interactif avec village virtuel et lip-sync IA',
-  thumbnail: '', // Fallback: dynamic gradient with emoji will be used
+  description: 'Crée des contes animés avec illustrations IA style anime. Dicte ton histoire et laisse l\'IA illustrer chaque scène.',
+  thumbnail: '/assets/templates/griot-digital/thumbnail.svg',
   demoVideo: '',
   duration: 60,
   isPremium: true,
@@ -42,10 +42,10 @@ const griotDigitalPremiumTemplate: Template = {
   audio: { volume: 0.8 },
   metadata: {
     author: 'TAM-TAM',
-    version: '2.0',
-    tags: ['3D', 'storytelling', 'AI', 'interactive', 'premium']
+    version: '6.1',
+    tags: ['anime', 'storytelling', 'AI', 'illustrations', 'premium']
   },
-  tags: ['3D', 'conte', 'griot', 'IA'],
+  tags: ['anime', 'conte', 'griot', 'IA', 'illustrations'],
   usageCount: 0,
   emoji: '🎭',
 };
@@ -119,7 +119,7 @@ import { concertLiveTemplate } from './concertLive';
 
 export const allTemplates: Template[] = [
   // Premium templates first
-  griotDigitalPremiumTemplate,
+  griotAnimePremiumTemplate,
   beatMakerAIPremiumTemplate,
   villageChronicleTemplate,
   // Standard templates
