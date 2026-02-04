@@ -237,7 +237,7 @@ export default function TamTamPhoneAuth() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500 via-orange-600 to-amber-700 flex flex-col items-center justify-center p-6">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-orange-500 via-orange-600 to-amber-700 flex flex-col items-center py-8 px-6 overflow-y-auto">
       {/* Logo */}
       <motion.div
         initial={{ scale: 0 }}
