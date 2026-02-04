@@ -16,12 +16,13 @@ import { ModelHealthDashboard } from '@/components/admin/ModelHealthDashboard';
 import { ByT5SpaceConfig } from '@/components/admin/ByT5SpaceConfig';
 import { AudioServicesMonitor } from '@/components/admin/AudioServicesMonitor';
 import { TemplateGenerationAdmin } from '@/components/admin/TemplateGenerationAdmin';
+import { AnimeLibraryManager } from '@/components/admin/AnimeLibraryManager';
 import { 
   Settings, Users, BarChart3, 
   FileText, Globe, 
   BookOpen, 
   Sparkles, Shield, 
-  Activity, Download, Edit3, Volume2, Film
+  Activity, Download, Edit3, Volume2, Film, BookImage
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -116,6 +117,10 @@ export default function AdminDashboard() {
                 <Film className="h-4 w-4 text-[hsl(var(--section-creation))]" />
                 Templates IA
               </TabsTrigger>
+              <TabsTrigger value="anime-library" className="flex items-center gap-2">
+                <BookImage className="h-4 w-4 text-[hsl(var(--section-creation))]" />
+                Bibliothèque Anime
+              </TabsTrigger>
 
               {/* 🛠️ SECTION OUTILS */}
               <div className="flex items-center gap-1 w-full mt-2">
@@ -176,6 +181,7 @@ export default function AdminDashboard() {
           <TabsContent value="analytics"><AnalyticsDashboard /></TabsContent>
           
           <TabsContent value="templates-ia"><TemplateGenerationAdmin /></TabsContent>
+          <TabsContent value="anime-library"><AnimeLibraryManager /></TabsContent>
           
           <TabsContent value="grammar-stats"><GrammaticalStatsDashboard /></TabsContent>
           <TabsContent value="bulk-edit"><BulkEditPanel /></TabsContent>
