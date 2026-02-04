@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { LibraryStats } from '@/hooks/useAnimeLibrary';
-import { Loader2, Play, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Play, CheckCircle, AlertCircle, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -25,6 +25,11 @@ const STYLES = [
   { id: 'chibi', label: 'Chibi', color: 'bg-pink-400', emoji: '🎀', priority: 4 },
 ];
 
+const EMOTIONS = ['joy', 'sadness', 'wonder', 'fear', 'excitement', 'peace', 'tension'];
+const SCENES = ['village', 'forest', 'river', 'mountain', 'market', 'home', 'night', 'journey', 'gathering', 'spirit'];
+const CHARACTERS = ['child_boy', 'child_girl', 'elder'];
+const ACTIONS = ['standing', 'walking', 'talking'];
+
 const TARGET_PER_STYLE = 700;
 
 interface GenerationState {
@@ -33,6 +38,7 @@ interface GenerationState {
   generated: number;
   remaining: number;
   errors: string[];
+  currentCombo: string;
 }
 
 export function AnimeLibraryControls({ stats, onRefreshStats }: AnimeLibraryControlsProps) {
@@ -41,7 +47,8 @@ export function AnimeLibraryControls({ stats, onRefreshStats }: AnimeLibraryCont
     style: null,
     generated: 0,
     remaining: 0,
-    errors: []
+    errors: [],
+    currentCombo: ''
   });
 
   const generateBatch = async (style: string, startFrom: number = 0) => {
@@ -69,7 +76,8 @@ export function AnimeLibraryControls({ stats, onRefreshStats }: AnimeLibraryCont
       style,
       generated: 0,
       remaining: TARGET_PER_STYLE,
-      errors: []
+      errors: [],
+      currentCombo: ''
     });
 
     let startFrom = 0;
@@ -123,10 +131,107 @@ export function AnimeLibraryControls({ stats, onRefreshStats }: AnimeLibraryCont
         style: null,
         generated: totalGenerated,
         remaining: 0,
-        errors: allErrors
+        errors: allErrors,
+        currentCombo: ''
       });
       await onRefreshStats();
     }
+  };
+
+  // Generate 3 images for each missing emotion × scene combination
+  const handleGenerateMissing = async (style: string) => {
+    const missingEmotions = EMOTIONS.filter(e => (stats?.by_emotion[e] || 0) < 3);
+    const missingScenes = SCENES.filter(s => (stats?.by_scene_type[s] || 0) < 3);
+    
+    // Build list of all combinations to generate (3 images each)
+    const combos: Array<{emotion: string; scene: string; charIdx: number}> = [];
+    
+    for (const emotion of missingEmotions) {
+      for (const scene of missingScenes) {
+        for (let i = 0; i < 3; i++) {
+          combos.push({ emotion, scene, charIdx: i });
+        }
+      }
+    }
+    
+    if (combos.length === 0) {
+      toast.info('Toutes les combinaisons ont déjà au moins 3 images');
+      return;
+    }
+
+    setGenState({
+      isGenerating: true,
+      style,
+      generated: 0,
+      remaining: combos.length,
+      errors: [],
+      currentCombo: ''
+    });
+
+    let totalGenerated = 0;
+    const allErrors: string[] = [];
+
+    toast.info(`🎨 Génération de ${combos.length} images pour ${style}...`);
+
+    for (let i = 0; i < combos.length; i++) {
+      const combo = combos[i];
+      const character = CHARACTERS[combo.charIdx % CHARACTERS.length];
+      const action = ACTIONS[combo.charIdx % ACTIONS.length];
+      
+      try {
+        setGenState(prev => ({
+          ...prev,
+          currentCombo: `${combo.emotion} × ${combo.scene} (${i + 1}/${combos.length})`
+        }));
+
+        const { data, error } = await supabase.functions.invoke('generate-anime-library', {
+          body: { 
+            action: 'generate_batch',
+            style,
+            emotion: combo.emotion,
+            scene_type: combo.scene,
+            character_type: character,
+            image_action: action,
+            count: 1
+          }
+        });
+
+        if (error) throw new Error(error.message);
+        if (data?.generated) {
+          totalGenerated += data.generated;
+        }
+
+        setGenState(prev => ({
+          ...prev,
+          generated: prev.generated + 1,
+          remaining: prev.remaining - 1
+        }));
+
+        // Refresh stats every 5 images
+        if (i % 5 === 0) {
+          await onRefreshStats();
+        }
+
+        // Small delay between calls
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (err) {
+        console.error('Generation error:', err);
+        allErrors.push(`${combo.emotion}/${combo.scene}: ${err instanceof Error ? err.message : 'Unknown'}`);
+      }
+    }
+
+    toast.success(`✅ ${totalGenerated} images générées pour ${style}!`);
+    
+    setGenState({
+      isGenerating: false,
+      style: null,
+      generated: totalGenerated,
+      remaining: 0,
+      errors: allErrors,
+      currentCombo: ''
+    });
+    
+    await onRefreshStats();
   };
 
   const getStyleProgress = (styleId: string) => {
@@ -151,12 +256,17 @@ export function AnimeLibraryControls({ stats, onRefreshStats }: AnimeLibraryCont
               <span>Générées: {genState.generated}</span>
               <span>Restantes: {genState.remaining}</span>
             </div>
+            {genState.currentCombo && (
+              <div className="text-xs text-muted-foreground truncate">
+                📍 {genState.currentCombo}
+              </div>
+            )}
             <Progress 
               value={(genState.generated / (genState.generated + genState.remaining)) * 100} 
               className="h-3"
             />
             {genState.errors.length > 0 && (
-              <div className="flex items-center gap-2 text-amber-600 text-sm">
+              <div className="flex items-center gap-2 text-destructive text-sm">
                 <AlertCircle className="h-4 w-4" />
                 {genState.errors.length} erreur(s)
               </div>
@@ -196,29 +306,47 @@ export function AnimeLibraryControls({ stats, onRefreshStats }: AnimeLibraryCont
                   <span className="text-sm font-medium">{progress}%</span>
                 </div>
                 
-                <Button
-                  onClick={() => handleGenerateStyle(style.id)}
-                  disabled={genState.isGenerating || isComplete}
-                  className="w-full"
-                  variant={isComplete ? 'outline' : 'default'}
-                >
-                  {isCurrentlyGenerating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Génération...
-                    </>
-                  ) : isComplete ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                      Complet
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Générer
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleGenerateMissing(style.id)}
+                    disabled={genState.isGenerating}
+                    className="flex-1"
+                    variant="secondary"
+                    size="sm"
+                  >
+                    {isCurrentlyGenerating ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        En cours...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-3 w-3 mr-1" />
+                        Manquants
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={() => handleGenerateStyle(style.id)}
+                    disabled={genState.isGenerating || isComplete}
+                    className="flex-1"
+                    variant={isComplete ? 'outline' : 'default'}
+                    size="sm"
+                  >
+                    {isComplete ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 mr-1 text-emerald-600" />
+                        OK
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3 w-3 mr-1" />
+                        Tout
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           );
