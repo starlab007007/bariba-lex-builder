@@ -1,398 +1,310 @@
 
-# Plan: Griot Digital v6.1 - Griot Animé IA (Style NovelAI/Pika)
+# Plan: Finalisation Template Griot Animé - Workflow Complet jusqu'à Publication
 
-## Vision
-
-Transformer le Griot Studio en un créateur de **contes animés avec images générées par IA** dans un style anime/illustration (comme NovelAI), avec narration vocale professionnelle et signature du narrateur.
-
-L'utilisateur:
-1. **Écrit ou dicte** son histoire
-2. **Choisit un style anime** (manga, chibi, fantasy, conte africain stylisé)
-3. **L'IA génère automatiquement** une série d'images anime pour illustrer le conte
-4. **Narration vocale** via ElevenLabs synchronisée aux images
-5. **Photo du narrateur** en cercle (signature) dans le coin supérieur
+## Objectif
+Optimiser le parcours utilisateur du template Griot Animé avec:
+- Enregistrement audio avec disque vinyl rotatif animé
+- Prévisualisation avec audio synchronisé 
+- Ajout d'effets VFX
+- Export MP4 et publication dans le feed vidéo
+- Style inclusif "voice-first" avec moins de texte
 
 ---
 
-## Architecture du Nouveau Pipeline
+## Architecture du Nouveau Workflow
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     GRIOT ANIMÉ STUDIO v6.1                                 │
-│                     "Ton conte, illustré par l'IA"                          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ÉTAPE 1: CRÉATION DU CONTE                                                 │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  📷 Photo optionnelle du narrateur (avatar rond en signature)       │   │
-│  │  🎤 Raconte ton histoire (voix → transcription ou texte)            │   │
-│  │  🎨 Style visuel: [Manga] [Chibi] [Fantasy] [Conte Africain]        │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                   ▼                                         │
-│  ÉTAPE 2: GÉNÉRATION IA (Automatic)                                         │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  1. Gemini analyse le conte → découpe en 3-6 scènes                 │   │
-│  │  2. Gemini Image génère 1 illustration anime par scène             │   │
-│  │  3. ElevenLabs génère la narration vocale française                │   │
-│  │  4. Synchronisation audio-images avec Ken Burns                     │   │
-│  │  5. Overlay VFX (lens flares, particules) selon l'émotion          │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                   ▼                                         │
-│  ÉTAPE 3: PREVIEW & EXPORT                                                  │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  ▶️ Preview vidéo avec:                                              │   │
-│  │     - Défilement fluide des illustrations anime                     │   │
-│  │     - Narration vocale synchronisée                                 │   │
-│  │     - Avatar du narrateur en cercle (coin supérieur droit)          │   │
-│  │     - VFX contextuels (sparkles, lumière, particules)               │   │
-│  │  📤 Partager / Télécharger MP4                                      │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                      GRIOT ANIMÉ v6.2 - WORKFLOW COMPLET                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ÉTAPE 1: CRÉATION 🎙️                                                       │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  ┌─────────────┐                                                       │ │
+│  │  │    🎵       │   DISQUE VINYL ANIMÉ                                 │ │
+│  │  │  Avatar     │   - Tourne pendant l'enregistrement                  │ │
+│  │  │  Narrateur  │   - Barre de progression circulaire                  │ │
+│  │  └─────────────┘   - Indicateur temps d'enregistrement                │ │
+│  │                                                                        │ │
+│  │  🎨 Style: [🎌 Manga] [😊 Chibi] [✨ Fantasy] [🌍 Africain]            │ │
+│  │                                                                        │ │
+│  │  ⏱️ Durée: [⚡15s] [🎬30s] [🎥60s]                                     │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                              ↓                                               │
+│  ÉTAPE 2: GÉNÉRATION IA 🎨                                                   │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  ✅ Scène 1: Le village au matin                                       │ │
+│  │  🔄 Scène 2: La rencontre magique                                      │ │
+│  │  ⏳ Scène 3: L'aventure commence                                       │ │
+│  │                                                                        │ │
+│  │  [████████████░░░░░░░░░░] 60%                                         │ │
+│  │  "Création de la scène 2/3..."                                        │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                              ↓                                               │
+│  ÉTAPE 3: PREVIEW 🎬                                                         │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  ┌───────────────────────────────────────┐                            │ │
+│  │  │                         ┌────┐        │   CANVAS 9:16             │ │
+│  │  │  [ANIME SLIDESHOW]      │ 📷 │        │   - Ken Burns par scène   │ │
+│  │  │  + VFX (particles,      │Avatar│       │   - Audio synchronisé     │ │
+│  │  │    lens flares)         └────┘        │   - Avatar narrateur      │ │
+│  │  │                                        │   - Effets contextuels   │ │
+│  │  │         ▶️ PLAY                        │                          │ │
+│  │  │  ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ 0:00 / 0:30       │                          │ │
+│  │  └───────────────────────────────────────┘                            │ │
+│  │                                                                        │ │
+│  │  [🔊 Audio] [✨ Effets] [Timeline scènes]                              │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                              ↓                                               │
+│  ÉTAPE 4: FINALISATION 📤                                                    │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  📝 Titre: [Auto-généré ou modifiable]                                │ │
+│  │                                                                        │ │
+│  │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐               │ │
+│  │  │ ⬇️ SAUVER    │   │ 📤 PARTAGER  │   │ 🌐 PUBLIER   │               │ │
+│  │  │    MP4       │   │   Lien       │   │   au Feed    │               │ │
+│  │  └──────────────┘   └──────────────┘   └──────────────┘               │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                              ↓                                               │
+│  ÉTAPE 5: SUCCÈS 🎉                                                          │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  🎉 Ton conte est sur FITILA!                                          │ │
+│  │                                                                        │ │
+│  │  [📺 Voir dans le Feed]  [🔄 Créer un autre]                          │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Fonctionnalités Clés
+## Fonctionnalités Clés à Implémenter
 
-### 1. Génération d'Images Anime IA (Style NovelAI)
-- Utilise `google/gemini-3-pro-image-preview` pour générer des illustrations
-- Prompts optimisés pour styles anime/manga
-- 3-6 images générées par conte (1 par segment narratif)
-- Cohérence visuelle entre les images (même personnage, même ambiance)
+### 1. Disque Vinyl Animé pour Enregistrement Audio
+Reprendre le composant `VinylPlayer` existant (TamTamCreatePost.tsx) et l'adapter pour GriotStudio:
+- Rotation fluide pendant l'enregistrement
+- Barre de progression circulaire SVG
+- Aiguille de lecture animée
+- Avatar du narrateur au centre du disque
+- Indicateur d'enregistrement pulsant (point rouge)
+- Affichage du temps écoulé
 
-### 2. Styles Visuels Disponibles
-| Style | Description | Prompt Keywords |
-|-------|-------------|-----------------|
-| **Manga** | Style manga japonais classique | manga, detailed, anime eyes, dynamic pose |
-| **Chibi** | Personnages mignons déformés | chibi, cute, big head, simple background |
-| **Fantasy** | Épique, magique | fantasy, magical, ethereal, detailed scenery |
-| **Conte Africain** | Fusion africaine + anime | african patterns, warm colors, anime style, tribal motifs |
+### 2. Preview Audio/Vidéo Optimisé
+- Lecteur canvas avec audio synchronisé
+- Contrôles play/pause clairs et accessibles
+- Timeline avec indicateurs de scènes
+- Volume toggle (mute/unmute)
+- Progression fluide avec temps affiché
 
-### 3. Narration Vocale Intégrée
-- ElevenLabs TTS avec voix française professionnelle
-- Synchronisation automatique: durée audio = durée vidéo
-- Chaque segment narratif correspond à une illustration
+### 3. Export MP4 avec MediaRecorder
+- Utiliser `encodeWithMediaRecorder` du VideoEncoder
+- Capturer le canvas en stream vidéo
+- Mixer l'audio ElevenLabs avec la vidéo
+- Générer thumbnail automatique à 1s
+- Fallback WebM si MP4 non supporté
 
-### 4. Avatar du Narrateur (Signature)
-- Photo circulaire dans le coin supérieur droit
-- Bordure dorée/ambrée animée
-- Reste visible pendant toute la vidéo
-- Optionnel: si pas de photo, affiche emoji 🌙
+### 4. Publication dans le Feed Vidéo
+- Intégrer `useVideoPublish` hook existant
+- Upload vers Supabase Storage (bucket 'videos')
+- Insert dans table 'videos' avec métadonnées
+- Génération automatique du thumbnail
+- Navigation vers /fitila après publication
 
-### 5. VFX Automatiques selon l'Émotion
-- Particules dorées pour la joie
-- Lucioles pour la sagesse
-- Étincelles pour la magie
-- Flocons/pluie pour la tristesse
-
----
-
-## Structure des Fichiers
-
-### Nouveaux Fichiers à Créer
-
-```
-supabase/functions/generate-anime-story/index.ts      # Edge function principale
-  - Découpe le conte en segments
-  - Génère les prompts d'images anime
-  - Appelle Gemini Image pour chaque segment
-  - Génère la narration ElevenLabs
-
-src/components/griot-studio/
-├── GriotStudio.tsx                    # Refonte pour le nouveau flux
-├── NarratorCapture.tsx                # Capture photo du narrateur (cercle)
-├── StoryInput.tsx                     # Inchangé (voix ou texte)
-├── AnimeStyleSelector.tsx             # Nouveau: sélection style anime
-├── StoryPreview.tsx                   # Preview avec illustrations anime
-└── hooks/
-    ├── useAnimeStoryGenerator.ts      # Nouveau hook principal
-    └── useVFXEngine.ts                # Existant, enrichi
-
-src/engines/GriotAnimationEngine.ts    # Modifier pour supporter slideshow anime
-```
-
-### Fichiers à Modifier
-
-1. **`supabase/functions/generate-image-animation/index.ts`**
-   - Ajouter action `generate_anime_scenes` 
-   - Générer images anime via Gemini Image
-
-2. **`src/components/griot-studio/GriotStudio.tsx`**
-   - Remplacer ImageCapture par NarratorCapture (optionnel)
-   - Ajouter AnimeStyleSelector
-   - Nouveau flux de génération
-
-3. **`src/engines/GriotAnimationEngine.ts`**
-   - Ajouter mode slideshow (plusieurs images)
-   - Ajouter rendu avatar circulaire en overlay
-   - Transitions entre images (fade, slide)
+### 5. Style Inclusif Voice-First
+- Moins de texte, plus d'icônes et emojis
+- Boutons larges avec feedback haptique
+- Labels en français + Bariba
+- Instructions vocales minimales
+- Couleurs contrastées et accessibles
 
 ---
 
-## Pipeline Technique Détaillé
+## Fichiers à Créer
 
-### Phase 1: Découpage du Conte en Scènes
+### 1. `src/components/griot-studio/VinylRecorder.tsx`
+Composant d'enregistrement audio avec disque vinyl animé:
+- Props: `onRecordingComplete`, `maxDuration`, `avatarUrl`
+- Animation framer-motion pour rotation
+- SVG pour progression circulaire
+- Gestion MediaRecorder pour capture audio
+- Timer visible avec format mm:ss
 
+### 2. `src/components/griot-studio/StoryPreviewPlayer.tsx`
+Lecteur de preview avec audio:
+- Canvas avec animations slideshow
+- Contrôles de lecture intégrés
+- Timeline des scènes cliquables
+- Indicateur audio (waveform ou volume)
+- Bouton mute/unmute
+
+### 3. `src/components/griot-studio/PublishStep.tsx`
+Écran de finalisation/publication:
+- Formulaire titre (auto-généré)
+- Sélection visibilité (public/privé)
+- Boutons export MP4 / partage / publication
+- Barre de progression publication
+- État de succès avec liens
+
+---
+
+## Fichiers à Modifier
+
+### 1. `src/components/griot-studio/GriotStudio.tsx`
+Refonte majeure:
+- Remplacer StoryInput par VinylRecorder
+- Ajouter étape 'preview' avec StoryPreviewPlayer
+- Ajouter étape 'finalize' avec PublishStep
+- Ajouter étape 'success' avec confirmation
+- Intégrer useVideoPublish hook
+- Optimiser UI pour moins de texte
+
+### 2. `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts`
+Améliorer la gestion d'état:
+- Ajouter support audio local (enregistrement utilisateur)
+- Gérer la transcription audio → texte
+- Combiner audio utilisateur + TTS narrateur
+- Progress callbacks plus granulaires
+
+### 3. `src/engines/GriotAnimationEngine.ts`
+Ajouter méthode d'export vidéo:
+- `exportVideoBlob(duration, style, fps)`: retourne Blob vidéo
+- Utiliser canvas.captureStream() + MediaRecorder
+- Mixer audio avec piste vidéo
+- Générer thumbnail à partir du canvas
+
+---
+
+## Détails Techniques
+
+### Vinyl Recorder Component
 ```typescript
-// Edge function: generate-anime-story
-interface StoryScene {
-  sceneNumber: number;
-  text: string;           // Segment de narration
-  emotion: string;        // joy, wonder, tension, peace...
-  visualDescription: string; // Description pour l'image
-  durationSeconds: number;
+interface VinylRecorderProps {
+  avatarUrl?: string;
+  maxDuration?: number; // secondes
+  onRecordingComplete: (audioBlob: Blob, duration: number) => void;
+  style?: AnimeStyleName;
 }
 
-// Gemini analyse le conte et retourne les scènes
-const scenePrompt = `Analyse ce conte et découpe-le en 3-6 scènes visuelles.
-Pour chaque scène, donne:
-- Le texte à narrer
-- L'émotion dominante
-- Une description visuelle pour une illustration anime
-- La durée suggérée (5-15 secondes)
+// Animation de rotation avec framer-motion
+const rotateTransform = useTransform(rotation, (r) => `rotate(${r}deg)`);
 
-Conte: "${storyText}"
-
-Réponds en JSON...`;
+// Progression circulaire SVG
+<circle
+  cx={size/2} cy={size/2} r={size/2 - 4}
+  fill="none" stroke={isRecording ? "#ef4444" : "#fbbf24"}
+  strokeWidth="4" strokeLinecap="round"
+  strokeDasharray={circumference}
+  strokeDashoffset={strokeDashoffset}
+/>
 ```
 
-### Phase 2: Génération des Images Anime
-
+### Export Vidéo avec Audio
 ```typescript
-// Pour chaque scène, générer une image avec Gemini Image
-const imagePrompt = `Create an anime illustration in ${style} style.
-
-Scene: ${scene.visualDescription}
-Mood: ${scene.emotion}
-Style requirements:
-- High quality anime art
-- ${STYLE_KEYWORDS[style]}
-- 9:16 vertical format for mobile
-- Vibrant colors, detailed background
-- Characters with expressive anime eyes
-
-Important: This is scene ${i + 1} of a story. Maintain visual consistency.`;
-
-const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-  body: JSON.stringify({
-    model: 'google/gemini-3-pro-image-preview',
-    messages: [{ role: 'user', content: imagePrompt }],
-    modalities: ['image', 'text']
-  })
-});
-```
-
-### Phase 3: Narration Audio
-
-```typescript
-// Combiner tous les textes de scènes et générer l'audio
-const fullNarration = scenes.map(s => s.text).join(' ... ');
-
-const { data } = await supabase.functions.invoke('french-tts', {
-  body: { 
-    text: fullNarration, 
-    voice: 'narrator',
-    returnAudio: true 
+async exportVideoBlob(): Promise<Blob> {
+  const stream = this.canvas.captureStream(24);
+  
+  // Ajouter piste audio si disponible
+  if (this.audioElement) {
+    const audioContext = new AudioContext();
+    const source = audioContext.createMediaElementSource(this.audioElement);
+    const destination = audioContext.createMediaStreamDestination();
+    source.connect(destination);
+    stream.addTrack(destination.stream.getAudioTracks()[0]);
   }
-});
-
-// audioBase64 contient l'audio MP3
-```
-
-### Phase 4: Rendu Vidéo avec Avatar
-
-```typescript
-// GriotAnimationEngine: nouveau mode slideshow
-class GriotAnimationEngine {
-  private scenes: AnimatedScene[] = [];
-  private narratorAvatar: HTMLImageElement | null = null;
-
-  // Dessiner l'avatar circulaire du narrateur
-  drawNarratorAvatar(ctx: CanvasRenderingContext2D, time: number): void {
-    if (!this.narratorAvatar) return;
-    
-    const size = 80;
-    const margin = 20;
-    const x = this.width - size - margin;
-    const y = margin;
-    
-    // Dessiner cercle avec bordure dorée animée
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x + size/2, y + size/2, size/2 + 3, 0, Math.PI * 2);
-    const gradient = ctx.createConicGradient(time * 0.5, x + size/2, y + size/2);
-    gradient.addColorStop(0, '#FFD700');
-    gradient.addColorStop(0.5, '#FFA500');
-    gradient.addColorStop(1, '#FFD700');
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    
-    // Clip et dessiner l'avatar
-    ctx.beginPath();
-    ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(this.narratorAvatar, x, y, size, size);
-    ctx.restore();
-  }
-
-  // Dessiner la scène courante avec transition
-  drawCurrentScene(time: number): void {
-    const currentSceneIndex = this.getSceneIndex(time);
-    const scene = this.scenes[currentSceneIndex];
-    
-    // Ken Burns sur l'image anime
-    this.drawAnimatedImage(scene.image, time, scene.duration, scene.motionPlan);
-    
-    // Transition fade si changement de scène
-    const transitionProgress = this.getTransitionProgress(time);
-    if (transitionProgress > 0) {
-      const nextScene = this.scenes[currentSceneIndex + 1];
-      ctx.globalAlpha = transitionProgress;
-      this.drawAnimatedImage(nextScene.image, time, nextScene.duration, nextScene.motionPlan);
-      ctx.globalAlpha = 1;
-    }
-  }
+  
+  const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
+    ? 'video/mp4;codecs=avc1' : 'video/webm;codecs=vp9';
+  
+  const recorder = new MediaRecorder(stream, { mimeType });
+  // ... capture frames and return blob
 }
 ```
 
----
+### Publication vers Feed
+```typescript
+const { publishVideo, isPublishing, publishProgress } = useVideoPublish();
 
-## Interface Utilisateur
-
-### Écran 1: Création
-
-```text
-┌────────────────────────────────────────────┐
-│  🌙 GRIOT ANIMÉ STUDIO                     │
-├────────────────────────────────────────────┤
-│                                            │
-│  ┌─────────┐                              │
-│  │  📷    │ Ta photo (optionnel)         │
-│  │ Avatar  │ Apparaîtra en signature      │
-│  └─────────┘                              │
-│                                            │
-│  🎤 Raconte ton histoire...                │
-│  ┌────────────────────────────────────┐   │
-│  │ Il était une fois dans un village  │   │
-│  │ au cœur de l'Afrique, un jeune    │   │
-│  │ garçon nommé Kofi...               │   │
-│  └────────────────────────────────────┘   │
-│  [🎙️ Dicter] ou écrire                    │
-│                                            │
-│  🎨 Style des illustrations:              │
-│  [🎌 Manga] [😊 Chibi] [✨ Fantasy] [🌍 Africain] │
-│                                            │
-│            [ ✨ CRÉER MON CONTE ✨ ]       │
-│                                            │
-└────────────────────────────────────────────┘
-```
-
-### Écran 2: Génération
-
-```text
-┌────────────────────────────────────────────┐
-│                                            │
-│          🎨 L'IA illustre ton conte...    │
-│                                            │
-│  ┌────────────────────────────────────┐   │
-│  │                                    │   │
-│  │   [Preview de la première image   │   │
-│  │    anime générée avec sparkles]   │   │
-│  │                                    │   │
-│  └────────────────────────────────────┘   │
-│                                            │
-│      ████████░░░░░░░░░ 40%                │
-│      "Création de la scène 2/4..."        │
-│                                            │
-│  ✅ Scène 1: Le village au matin          │
-│  🔄 Scène 2: La rencontre magique         │
-│  ⏳ Scène 3: L'aventure commence          │
-│  ⏳ Scène 4: La fin heureuse              │
-│                                            │
-└────────────────────────────────────────────┘
-```
-
-### Écran 3: Résultat
-
-```text
-┌────────────────────────────────────────────┐
-│  🎬 Ton conte animé est prêt!             │
-├────────────────────────────────────────────┤
-│                                            │
-│  ┌────────────────────────────────────┐   │
-│  │                   ┌────┐           │   │
-│  │  [IMAGE ANIME    │ 📷 │           │   │
-│  │   EN MOUVEMENT]  │Avatar│          │   │
-│  │                   └────┘           │   │
-│  │         ▶️                         │   │
-│  │                                    │   │
-│  │  ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ 0:45        │   │
-│  └────────────────────────────────────┘   │
-│                                            │
-│  ┌──────────┐  ┌──────────┐              │
-│  │ 📤 Share │  │ ⬇️ Save  │              │
-│  └──────────┘  └──────────┘              │
-│                                            │
-│          [🔄 Créer un autre]              │
-│                                            │
-└────────────────────────────────────────────┘
+const handlePublish = async () => {
+  const videoBlob = await engineRef.current.exportVideoBlob();
+  const thumbnailBlob = await generateThumbnail(canvasRef.current);
+  
+  const result = await publishVideo({
+    video: videoBlob,
+    thumbnail: thumbnailBlob,
+    title: storyTitle,
+    description: story.slice(0, 200),
+    templateId: 'griot-anime',
+    templateName: 'Griot Animé IA',
+    duration: duration
+  });
+  
+  if (result.success) {
+    setStep('success');
+  }
+};
 ```
 
 ---
 
-## Utilisation des Assets Envato
+## Workflow Utilisateur Optimisé
 
-### Lens Flares par Émotion
-| Émotion | Range Flares | Effet |
-|---------|--------------|-------|
-| Joy | 001-050 | Doré, chaleureux |
-| Wonder | 051-100 | Violet, magique |
-| Tension | 101-150 | Rouge, dramatique |
-| Peace | 151-200 | Bleu, serein |
-| Excitement | 201-300 | Multicolore, dynamique |
-| Magic | 301-400 | Arc-en-ciel, sparkles |
-
-### Light Leaks
-- `leak-001.webm` à `leak-022.webm`
-- Appliqués en overlay `screen` pendant les transitions
-- Intensité basée sur l'émotion du segment
-
-### Particules (à ajouter)
-- Dust particles pour ambiance
-- Sparkles pour magie
-- Fireflies pour nuit/mystère
+| Étape | Action Utilisateur | UI | Technique |
+|-------|-------------------|-----|-----------|
+| 1. Avatar | Optionnel: prendre photo | Cercle avec caméra | Camera API |
+| 2. Style | Toucher un style anime | 4 boutons avec emojis | State selection |
+| 3. Durée | Toucher durée souhaitée | 3 boutons (15/30/60s) | State selection |
+| 4. Enregistrer | Maintenir disque vinyl | Disque qui tourne | MediaRecorder audio |
+| 5. Confirmer | Relâcher pour arrêter | Animation confirmation | Auto-transition |
+| 6. Générer | Automatique | Progress avec scènes | Edge function |
+| 7. Preview | Toucher play | Vidéo avec audio | Canvas + Audio |
+| 8. Finaliser | Choisir action | 3 boutons (Save/Share/Publish) | Actions multiples |
+| 9. Succès | Voir résultat | Confettis + liens | Navigation |
 
 ---
 
-## Résumé des Fichiers à Modifier/Créer
+## Optimisations UX Voice-First
 
-### Nouveaux Fichiers
-1. `supabase/functions/generate-anime-story/index.ts` - Edge function génération complète
-2. `src/components/griot-studio/NarratorCapture.tsx` - Capture avatar circulaire
-3. `src/components/griot-studio/AnimeStyleSelector.tsx` - Sélection style anime
-4. `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` - Hook principal
+### Moins de Texte
+- Remplacer labels par emojis + pictogrammes
+- Instructions courtes (max 5 mots)
+- Feedback par sons/vibrations
+- Progression visuelle (couleurs, animations)
 
-### Fichiers à Modifier
-1. `src/components/griot-studio/GriotStudio.tsx` - Nouveau flux UI
-2. `src/engines/GriotAnimationEngine.ts` - Mode slideshow + avatar overlay
-3. `supabase/config.toml` - Ajouter nouvelle edge function
+### Boutons Accessibles
+- Taille minimum 48x48px (touch target)
+- Contraste WCAG AA minimum
+- États visuels clairs (hover, active, disabled)
+- Feedback haptique (vibration) sur mobile
 
-### Fichiers à Supprimer/Remplacer
-1. `src/components/griot-studio/ImageCapture.tsx` - Remplacé par NarratorCapture
-2. `supabase/functions/generate-image-animation/index.ts` - Remplacé par generate-anime-story
+### Labels Bilingues Minimalistes
+```
+🎙️ Parler / Sɔ̀
+🎨 Style  
+⏱️ Durée
+▶️ Jouer / Gbà
+📤 Publier / Sɔ̀ɔ́
+```
 
 ---
 
-## Comparaison Avant/Après
+## Résumé des Modifications
 
-| Aspect | v6.0 Actuel | v6.1 Griot Animé |
-|--------|-------------|------------------|
-| Source image | Photo utilisateur | Générées par IA |
-| Style visuel | Photo animée | Illustrations anime |
-| Nombre d'images | 1 | 3-6 (par scène) |
-| Avatar narrateur | Non | Oui, cercle signature |
-| Génération IA | Analyse seulement | Génération complète |
-| Narration | Optionnelle | Intégrée (ElevenLabs) |
-| Workflow | 3 étapes manuelles | 2 étapes (écrire + générer) |
-| Inspiration | Pika Labs | NovelAI + Kaiber |
+| Fichier | Action | Complexité |
+|---------|--------|------------|
+| `VinylRecorder.tsx` | CRÉER | ⭐⭐⭐ |
+| `StoryPreviewPlayer.tsx` | CRÉER | ⭐⭐⭐ |
+| `PublishStep.tsx` | CRÉER | ⭐⭐ |
+| `GriotStudio.tsx` | MODIFIER (majeur) | ⭐⭐⭐⭐ |
+| `useAnimeStoryGenerator.ts` | MODIFIER | ⭐⭐ |
+| `GriotAnimationEngine.ts` | MODIFIER (ajouter export) | ⭐⭐⭐ |
+
+---
+
+## Tests de Validation
+
+1. **Enregistrement Audio**: Vinyl tourne, temps s'affiche, audio capturé
+2. **Génération IA**: Scènes créées, images générées, narration TTS
+3. **Preview**: Slideshow fluide, audio synchronisé, avatar visible
+4. **Export MP4**: Fichier téléchargeable, qualité correcte, audio présent
+5. **Publication Feed**: Vidéo visible sur /fitila, thumbnail affiché
+6. **Mobile**: Touch targets accessibles, animations fluides, chargement rapide
