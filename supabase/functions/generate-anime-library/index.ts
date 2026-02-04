@@ -107,6 +107,9 @@ serve(async (req) => {
         const { action: _, ...genParams } = params;
         return await handleGenerateBatch({ ...genParams, action: body.image_action || body.action }, supabase, LOVABLE_API_KEY);
       
+      case 'generate_full_library':
+        return await handleGenerateFullLibrary(params, supabase, LOVABLE_API_KEY);
+      
       case 'list_library':
         return await handleListLibrary(params, supabase);
       
@@ -115,7 +118,7 @@ serve(async (req) => {
       
       default:
         return new Response(
-          JSON.stringify({ success: false, error: `Invalid action '${apiAction}'. Use: generate_batch, list_library, get_stats` }),
+          JSON.stringify({ success: false, error: `Invalid action '${apiAction}'. Use: generate_batch, generate_full_library, list_library, get_stats` }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
     }
@@ -410,6 +413,166 @@ async function handleGetStats(supabase: ReturnType<typeof createClient>) {
       by_emotion: emotionStats,
       by_scene_type: sceneStats
     }
+  });
+}
+
+// 10 variations for each style×emotion×scene combination
+const VARIATIONS = [
+  { character_type: 'child_boy', action: 'standing', time_of_day: 'afternoon' },
+  { character_type: 'child_girl', action: 'walking', time_of_day: 'morning' },
+  { character_type: 'elder', action: 'talking', time_of_day: 'dusk' },
+  { character_type: 'child_boy', action: 'discovering', time_of_day: 'night' },
+  { character_type: 'child_girl', action: 'dancing', time_of_day: 'afternoon' },
+  { character_type: 'animal', action: 'standing', time_of_day: 'dawn' },
+  { character_type: 'group', action: 'talking', time_of_day: 'noon' },
+  { character_type: 'spirit', action: 'standing', time_of_day: 'night' },
+  { character_type: 'elder', action: 'walking', time_of_day: 'afternoon' },
+  { character_type: 'child_boy', action: 'running', time_of_day: 'morning' },
+];
+
+/**
+ * Generate all combinations for a style
+ */
+function generateAllCombinations(style: string) {
+  const combinations: Array<{
+    style: string;
+    emotion: string;
+    scene_type: string;
+    character_type: string;
+    action: string;
+    time_of_day: string;
+    key: string;
+  }> = [];
+
+  for (const emotion of VALID_EMOTIONS) {
+    for (const scene of VALID_SCENE_TYPES) {
+      for (const variation of VARIATIONS) {
+        const key = `${style}_${emotion}_${scene}_${variation.character_type}_${variation.action}`;
+        combinations.push({
+          style,
+          emotion,
+          scene_type: scene,
+          character_type: variation.character_type,
+          action: variation.action,
+          time_of_day: variation.time_of_day,
+          key
+        });
+      }
+    }
+  }
+
+  return combinations;
+}
+
+/**
+ * Get existing combinations from database
+ */
+async function getExistingCombinations(supabase: ReturnType<typeof createClient>, style: string) {
+  const { data } = await supabase
+    .from('anime_scene_library')
+    .select('style, emotion, scene_type, character_type, action')
+    .eq('style', style);
+
+  const existing = new Set<string>();
+  if (data) {
+    for (const row of data) {
+      const key = `${row.style}_${row.emotion}_${row.scene_type}_${row.character_type}_${row.action}`;
+      existing.add(key);
+    }
+  }
+  return existing;
+}
+
+/**
+ * Handle full library generation for a style
+ */
+async function handleGenerateFullLibrary(
+  params: { style: string; batch_size?: number; start_from?: number },
+  supabase: ReturnType<typeof createClient>,
+  apiKey?: string
+) {
+  const { style, batch_size = 5, start_from = 0 } = params;
+
+  if (!VALID_STYLES.includes(style as any)) {
+    return jsonResponse({ success: false, error: `Invalid style. Valid: ${VALID_STYLES.join(', ')}` }, 400);
+  }
+
+  if (!apiKey) {
+    return jsonResponse({ success: false, error: 'API key not configured' }, 500);
+  }
+
+  console.log(`[generate-anime-library] Starting full library generation for style: ${style}`);
+
+  // Get all combinations for this style
+  const allCombinations = generateAllCombinations(style);
+  console.log(`[generate-anime-library] Total combinations for ${style}: ${allCombinations.length}`);
+
+  // Get existing combinations
+  const existing = await getExistingCombinations(supabase, style);
+  console.log(`[generate-anime-library] Existing images: ${existing.size}`);
+
+  // Filter out already generated
+  const missing = allCombinations.filter(c => !existing.has(c.key));
+  console.log(`[generate-anime-library] Missing combinations: ${missing.length}`);
+
+  if (missing.length === 0) {
+    return jsonResponse({
+      success: true,
+      message: `All ${allCombinations.length} images for style '${style}' already generated`,
+      generated: 0,
+      remaining: 0,
+      total: allCombinations.length
+    });
+  }
+
+  // Take a batch from start_from
+  const batch = missing.slice(start_from, start_from + batch_size);
+  const generated: any[] = [];
+  const errors: any[] = [];
+
+  for (let i = 0; i < batch.length; i++) {
+    const combo = batch[i];
+    console.log(`[generate-anime-library] Generating ${i + 1}/${batch.length}: ${combo.key}`);
+
+    try {
+      const result = await generateAndStoreImage({
+        style: combo.style,
+        emotion: combo.emotion,
+        scene_type: combo.scene_type,
+        character_type: combo.character_type,
+        action: combo.action,
+        time_of_day: combo.time_of_day,
+        apiKey,
+        supabase
+      });
+      generated.push(result);
+      console.log(`[generate-anime-library] ✓ Generated: ${combo.key}`);
+    } catch (err) {
+      console.error(`[generate-anime-library] ✗ Error for ${combo.key}:`, err);
+      errors.push({ 
+        combination: combo.key, 
+        error: err instanceof Error ? err.message : 'Unknown error' 
+      });
+    }
+
+    // Small delay between generations to avoid rate limiting
+    if (i < batch.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+  }
+
+  const remaining = missing.length - start_from - batch.length;
+
+  return jsonResponse({
+    success: true,
+    style,
+    generated: generated.length,
+    errors: errors.length > 0 ? errors : undefined,
+    remaining: Math.max(0, remaining),
+    total: allCombinations.length,
+    existing: existing.size + generated.length,
+    next_start_from: start_from + batch.length,
+    images: generated
   });
 }
 
