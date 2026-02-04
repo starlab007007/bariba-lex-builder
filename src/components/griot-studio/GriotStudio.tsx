@@ -50,16 +50,57 @@ export function GriotStudio() {
 
   const { preloadStyleFlares } = useVFXEngine();
 
-  // Initialize engine when canvas is ready
+  // Initialize engine when canvas is ready and step is preview
   useEffect(() => {
-    if (canvasRef.current && !engineRef.current) {
-      engineRef.current = new GriotAnimationEngine(canvasRef.current);
-    }
-    return () => {
-      engineRef.current?.dispose();
-      engineRef.current = null;
+    const initEngine = async () => {
+      if (step === 'preview' && canvasRef.current) {
+        // Create or reinitialize engine for the preview canvas
+        if (!engineRef.current) {
+          console.log('[GriotStudio] Initializing animation engine');
+          engineRef.current = new GriotAnimationEngine(canvasRef.current);
+        }
+        
+        // Load pending scenes if any
+        const pending = (window as any).__griotPendingScenes;
+        if (pending && engineRef.current) {
+          console.log('[GriotStudio] Loading', pending.scenes.length, 'scenes into engine');
+          
+          try {
+            await engineRef.current.loadScenes(pending.scenes);
+            
+            if (pending.narratorUrl) {
+              await engineRef.current.loadNarratorAvatar(pending.narratorUrl);
+            }
+            
+            if (pending.audioUrl) {
+              engineRef.current.setAudio(pending.audioUrl);
+            }
+            
+            // Auto-start preview
+            const animStyle = ANIMATION_STYLES[pending.style] || ANIMATION_STYLES.fantasy;
+            engineRef.current.startSlideshowPreview(pending.duration, animStyle, (progress) => {
+              // Could update progress UI here
+            });
+            setIsPlaying(true);
+            
+            // Clear pending data
+            delete (window as any).__griotPendingScenes;
+          } catch (err) {
+            console.error('[GriotStudio] Failed to load scenes:', err);
+          }
+        }
+      }
     };
-  }, []);
+    
+    initEngine();
+    
+    return () => {
+      if (step !== 'preview' && engineRef.current) {
+        engineRef.current.dispose();
+        engineRef.current = null;
+      }
+    };
+  }, [step]);
 
   // Handlers
   const handleNarratorCaptured = useCallback((file: File | Blob) => {
@@ -108,41 +149,34 @@ export function GriotStudio() {
         throw new Error('Aucune scène générée');
       }
 
-      // Load scenes into engine
-      if (engineRef.current && result.scenes.length > 0) {
-        // Calculate timing for each scene
-        let currentTime = 0;
-        const scenesWithTiming = result.scenes.map((scene: StoryScene) => {
-          const sceneData = {
-            imageUrl: scene.imageUrl || '',
-            startTime: currentTime,
-            endTime: currentTime + scene.durationSeconds,
-            emotion: scene.emotion
-          };
-          currentTime += scene.durationSeconds;
-          return sceneData;
-        }).filter(s => s.imageUrl);
+      console.log('[GriotStudio] Generation complete, got', result.scenes.length, 'scenes');
+      
+      // Calculate timing for each scene
+      let currentTime = 0;
+      const scenesWithTiming = result.scenes.map((scene: StoryScene) => {
+        const sceneData = {
+          imageUrl: scene.imageUrl || '',
+          startTime: currentTime,
+          endTime: currentTime + scene.durationSeconds,
+          emotion: scene.emotion
+        };
+        currentTime += scene.durationSeconds;
+        return sceneData;
+      }).filter(s => s.imageUrl);
 
-        await engineRef.current.loadScenes(scenesWithTiming);
+      console.log('[GriotStudio] Scenes with timing:', scenesWithTiming.length);
 
-        // Load narrator avatar if provided
-        if (narratorPreviewUrl) {
-          await engineRef.current.loadNarratorAvatar(narratorPreviewUrl);
-        }
+      // Store scenes data for loading after canvas mount
+      (window as any).__griotPendingScenes = {
+        scenes: scenesWithTiming,
+        narratorUrl: narratorPreviewUrl,
+        audioUrl: result.audioUrl,
+        style: style,
+        duration: duration
+      };
 
-        // Set audio if available
-        if (result.audioUrl) {
-          engineRef.current.setAudio(result.audioUrl);
-        }
-      }
-
-      // Transition to preview
+      // Transition to preview - engine will be initialized by useEffect
       setStep('preview');
-
-      // Start preview automatically
-      setTimeout(() => {
-        handlePlay();
-      }, 500);
 
     } catch (error) {
       console.error('[GriotStudio] Generation error:', error);
