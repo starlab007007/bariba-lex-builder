@@ -3,12 +3,14 @@
  * 
  * This function:
  * 1. Analyzes the story text to segment it into 3-6 scenes
- * 2. Generates anime-style illustrations for each scene using Gemini Image
- * 3. Returns scenes with images for the animation engine
+ * 2. FIRST tries to match scenes with pre-generated library images
+ * 3. Falls back to AI generation only if no suitable match is found
+ * 4. Returns scenes with images for the animation engine
  */
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,6 +37,42 @@ const EMOTION_VISUALS: Record<string, string> = {
   tension: 'dramatic shadows, red accents, intense expressions'
 };
 
+// Keywords for scene type detection
+const SCENE_KEYWORDS: Record<string, string[]> = {
+  village: ['village', 'villageois', 'case', 'hutte', 'maison', 'communauté', 'marché'],
+  forest: ['forêt', 'arbre', 'bois', 'jungle', 'brousse', 'feuillage'],
+  river: ['rivière', 'fleuve', 'eau', 'lac', 'source', 'cascade'],
+  mountain: ['montagne', 'colline', 'rocher', 'sommet', 'hauteur'],
+  market: ['marché', 'commerce', 'vendeur', 'achat', 'étal'],
+  home: ['maison', 'intérieur', 'famille', 'foyer', 'case'],
+  night: ['nuit', 'lune', 'étoile', 'soir', 'obscurité', 'feu de camp'],
+  journey: ['voyage', 'chemin', 'route', 'marche', 'aventure', 'partir'],
+  gathering: ['fête', 'danse', 'célébration', 'rassemblement', 'cérémonie'],
+  spirit: ['esprit', 'magie', 'mystique', 'ancêtre', 'fantôme', 'surnaturel']
+};
+
+// Keywords for character type detection
+const CHARACTER_KEYWORDS: Record<string, string[]> = {
+  child_boy: ['garçon', 'fils', 'jeune homme', 'enfant', 'petit'],
+  child_girl: ['fille', 'jeune fille', 'enfant', 'petite'],
+  elder: ['ancien', 'sage', 'vieux', 'grand-père', 'grand-mère', 'aîné'],
+  animal: ['lion', 'éléphant', 'oiseau', 'animal', 'serpent', 'singe', 'gazelle'],
+  spirit: ['esprit', 'fantôme', 'ancêtre', 'divinité', 'génie'],
+  group: ['villageois', 'famille', 'groupe', 'tous', 'ensemble', 'communauté']
+};
+
+// Keywords for action detection
+const ACTION_KEYWORDS: Record<string, string[]> = {
+  standing: ['regarde', 'observe', 'debout', 'attend'],
+  walking: ['marche', 'avance', 'va', 'parcourt'],
+  talking: ['parle', 'dit', 'raconte', 'explique', 'demande'],
+  dancing: ['danse', 'bouge', 'célèbre'],
+  working: ['travaille', 'cultive', 'prépare', 'construit'],
+  sleeping: ['dort', 'repose', 'rêve'],
+  running: ['court', 'fuit', 'poursuit', 'précipite'],
+  discovering: ['découvre', 'trouve', 'voit', 'aperçoit', 'rencontre']
+};
+
 interface StoryScene {
   sceneNumber: number;
   text: string;
@@ -45,6 +83,18 @@ interface StoryScene {
 
 interface GeneratedScene extends StoryScene {
   imageBase64: string;
+  imageUrl?: string;
+  fromLibrary?: boolean;
+}
+
+interface LibraryImage {
+  id: string;
+  style: string;
+  emotion: string;
+  scene_type: string;
+  character_type: string;
+  action: string;
+  image_url: string;
 }
 
 serve(async (req) => {
@@ -64,6 +114,10 @@ serve(async (req) => {
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     console.log('[generate-anime-story] Request:', {
       storyLength: story?.length || 0,
@@ -72,7 +126,7 @@ serve(async (req) => {
       hasApiKey: !!LOVABLE_API_KEY,
     });
 
-    // PHASE 1: Analyze story and segment into scenes (with strong fallback)
+    // PHASE 1: Analyze story and segment into scenes
     const scenes = LOVABLE_API_KEY
       ? await segmentStory(story, duration, LOVABLE_API_KEY)
       : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
@@ -83,31 +137,27 @@ serve(async (req) => {
 
     console.log(`[generate-anime-story] Segmented into ${safeScenes.length} scenes`);
 
-    // PHASE 2: Generate anime images for all scenes IN PARALLEL for speed
-    console.log(`[generate-anime-story] Generating ${safeScenes.length} images in parallel...`);
+    // PHASE 2: Try to match with library, fallback to generation
+    console.log(`[generate-anime-story] Matching ${safeScenes.length} scenes with library...`);
     
-    const imagePromises = safeScenes.map((scene, i) => {
-      if (!LOVABLE_API_KEY) {
-        return Promise.resolve({ ...scene, imageBase64: '' });
-      }
-      return generateSceneImage(scene, style, i, safeScenes.length, LOVABLE_API_KEY)
-        .then((imageBase64) => ({ ...scene, imageBase64 }))
-        .catch((imgError) => {
-          console.error(`[generate-anime-story] Failed to generate image for scene ${i + 1}:`, imgError);
-          return { ...scene, imageBase64: '' };
-        });
-    });
+    const imagePromises = safeScenes.map((scene, i) => 
+      getSceneImage(scene, style, i, safeScenes.length, supabase, LOVABLE_API_KEY)
+    );
 
     const generatedScenes: GeneratedScene[] = await Promise.all(imagePromises);
 
-    console.log('[generate-anime-story] All images generated');
+    const libraryMatches = generatedScenes.filter(s => s.fromLibrary).length;
+    const aiGenerated = generatedScenes.filter(s => !s.fromLibrary).length;
+    
+    console.log(`[generate-anime-story] Complete: ${libraryMatches} from library, ${aiGenerated} AI-generated`);
 
     return new Response(
       JSON.stringify({
         success: true,
         scenes: generatedScenes,
         totalDuration: duration,
-        style
+        style,
+        stats: { libraryMatches, aiGenerated }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -123,6 +173,152 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * Get image for a scene - tries library first, then AI generation
+ */
+async function getSceneImage(
+  scene: StoryScene,
+  style: string,
+  sceneIndex: number,
+  totalScenes: number,
+  supabase: ReturnType<typeof createClient>,
+  apiKey?: string
+): Promise<GeneratedScene> {
+  // Extract scene metadata from text
+  const sceneType = detectSceneType(scene.text, scene.visualDescription);
+  const characterType = detectCharacterType(scene.text, scene.visualDescription);
+  const action = detectAction(scene.text, scene.visualDescription);
+
+  console.log(`[getSceneImage] Scene ${sceneIndex + 1}: type=${sceneType}, char=${characterType}, action=${action}, emotion=${scene.emotion}`);
+
+  // Try to find a matching library image
+  const libraryMatch = await findLibraryMatch(supabase, style, scene.emotion, sceneType, characterType, action);
+
+  if (libraryMatch) {
+    console.log(`[getSceneImage] Found library match for scene ${sceneIndex + 1}: ${libraryMatch.id}`);
+    
+    // Update usage count (fire and forget)
+    supabase
+      .from('anime_scene_library')
+      .update({ usage_count: (libraryMatch as any).usage_count + 1 })
+      .eq('id', libraryMatch.id)
+      .then(() => {});
+
+    return {
+      ...scene,
+      imageBase64: '', // No base64 needed when using URL
+      imageUrl: libraryMatch.image_url,
+      fromLibrary: true
+    };
+  }
+
+  // No library match - generate with AI
+  if (!apiKey) {
+    console.warn(`[getSceneImage] No library match and no API key for scene ${sceneIndex + 1}`);
+    return { ...scene, imageBase64: '', fromLibrary: false };
+  }
+
+  try {
+    const imageBase64 = await generateSceneImage(scene, style, sceneIndex, totalScenes, apiKey);
+    return { ...scene, imageBase64, fromLibrary: false };
+  } catch (error) {
+    console.error(`[getSceneImage] Failed to generate image for scene ${sceneIndex + 1}:`, error);
+    return { ...scene, imageBase64: '', fromLibrary: false };
+  }
+}
+
+/**
+ * Find a matching image from the library
+ */
+async function findLibraryMatch(
+  supabase: ReturnType<typeof createClient>,
+  style: string,
+  emotion: string,
+  sceneType: string,
+  characterType: string,
+  action: string
+): Promise<LibraryImage | null> {
+  // Query with weighted scoring - style is required, others are preferred
+  const { data, error } = await supabase
+    .from('anime_scene_library')
+    .select('*')
+    .eq('style', style)
+    .order('usage_count', { ascending: true }) // Prefer less-used images for variety
+    .limit(10);
+
+  if (error || !data || data.length === 0) {
+    return null;
+  }
+
+  // Score each candidate
+  const scored = data.map((img: any) => {
+    let score = 3; // Base score for style match (required)
+    
+    if (img.emotion === emotion) score += 2;
+    if (img.scene_type === sceneType) score += 2;
+    if (img.character_type === characterType) score += 1;
+    if (img.action === action) score += 1;
+
+    return { ...img, matchScore: score };
+  });
+
+  // Sort by score descending
+  scored.sort((a, b) => b.matchScore - a.matchScore);
+
+  // Return best match if score >= 5 (style + at least one major match)
+  const best = scored[0];
+  if (best && best.matchScore >= 5) {
+    return best as LibraryImage;
+  }
+
+  return null;
+}
+
+/**
+ * Detect scene type from text
+ */
+function detectSceneType(text: string, visualDesc: string): string {
+  const combined = `${text} ${visualDesc}`.toLowerCase();
+  
+  for (const [type, keywords] of Object.entries(SCENE_KEYWORDS)) {
+    if (keywords.some(kw => combined.includes(kw))) {
+      return type;
+    }
+  }
+  
+  return 'village'; // Default
+}
+
+/**
+ * Detect character type from text
+ */
+function detectCharacterType(text: string, visualDesc: string): string {
+  const combined = `${text} ${visualDesc}`.toLowerCase();
+  
+  for (const [type, keywords] of Object.entries(CHARACTER_KEYWORDS)) {
+    if (keywords.some(kw => combined.includes(kw))) {
+      return type;
+    }
+  }
+  
+  return 'child_boy'; // Default
+}
+
+/**
+ * Detect action from text
+ */
+function detectAction(text: string, visualDesc: string): string {
+  const combined = `${text} ${visualDesc}`.toLowerCase();
+  
+  for (const [action, keywords] of Object.entries(ACTION_KEYWORDS)) {
+    if (keywords.some(kw => combined.includes(kw))) {
+      return action;
+    }
+  }
+  
+  return 'standing'; // Default
+}
 
 /**
  * Segment the story into visual scenes using Gemini
@@ -189,7 +385,6 @@ Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
       const parsed = JSON.parse(content);
       const scenes = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
 
-      // Guardrail: some model responses may return an empty list.
       if (!scenes.length) {
         console.warn('[segmentStory] Model returned 0 scenes, using fallback scenes');
         return createDefaultScenes(story, totalDuration, targetScenes);

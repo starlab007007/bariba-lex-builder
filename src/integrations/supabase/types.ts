@@ -170,6 +170,63 @@ export type Database = {
         }
         Relationships: []
       }
+      anime_scene_library: {
+        Row: {
+          action: string | null
+          character_type: string | null
+          created_at: string
+          description_en: string
+          description_fr: string | null
+          emotion: string
+          id: string
+          image_url: string
+          scene_type: string
+          storage_path: string
+          style: string
+          tags: Json | null
+          time_of_day: string | null
+          updated_at: string
+          usage_count: number | null
+          weather: string | null
+        }
+        Insert: {
+          action?: string | null
+          character_type?: string | null
+          created_at?: string
+          description_en: string
+          description_fr?: string | null
+          emotion: string
+          id?: string
+          image_url: string
+          scene_type: string
+          storage_path: string
+          style: string
+          tags?: Json | null
+          time_of_day?: string | null
+          updated_at?: string
+          usage_count?: number | null
+          weather?: string | null
+        }
+        Update: {
+          action?: string | null
+          character_type?: string | null
+          created_at?: string
+          description_en?: string
+          description_fr?: string | null
+          emotion?: string
+          id?: string
+          image_url?: string
+          scene_type?: string
+          storage_path?: string
+          style?: string
+          tags?: Json | null
+          time_of_day?: string | null
+          updated_at?: string
+          usage_count?: number | null
+          weather?: string | null
+        }
+        Relationships: []
+      }
       asset_imports: {
         Row: {
           category: string

@@ -107,7 +107,14 @@ export function useAnimeStoryGenerator() {
 
       // Convert base64 images to object URLs for preview
       // + ensure we always have an imageUrl (placeholder) to avoid blank previews.
-      const scenesWithUrls = scenes.map((scene: StoryScene) => {
+      // Library images already have imageUrl, AI-generated have imageBase64
+      const scenesWithUrls = scenes.map((scene: StoryScene & { fromLibrary?: boolean }) => {
+        // If scene has imageUrl from library, use it directly
+        if (scene.imageUrl && scene.imageUrl.startsWith('http')) {
+          return scene;
+        }
+
+        // If scene has base64 from AI generation, convert to blob URL
         if (scene.imageBase64) {
           const blob = base64ToBlob(scene.imageBase64, 'image/png');
           return {
@@ -116,9 +123,10 @@ export function useAnimeStoryGenerator() {
           };
         }
 
+        // Fallback to placeholder
         return {
           ...scene,
-          imageUrl: scene.imageUrl || makeScenePlaceholderDataUrl(scene)
+          imageUrl: makeScenePlaceholderDataUrl(scene)
         };
       });
 
