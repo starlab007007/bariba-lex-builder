@@ -831,6 +831,157 @@ export class GriotAnimationEngine {
   }
 
   /**
+   * Export video blob using MediaRecorder
+   * Captures canvas stream and mixes with audio
+   */
+  async exportVideoBlob(
+    duration: number,
+    style: AnimationStyle,
+    fps: number = 24,
+    onProgress?: (progress: number) => void
+  ): Promise<Blob> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Stop any current preview
+        this.stopPreview();
+        
+        // Get canvas stream
+        const stream = this.canvas.captureStream(fps);
+        
+        // Try to add audio track
+        if (this.audioElement) {
+          try {
+            const audioContext = new AudioContext();
+            // Clone audio element for capture
+            const audioClone = this.audioElement.cloneNode() as HTMLAudioElement;
+            audioClone.currentTime = 0;
+            
+            const source = audioContext.createMediaElementSource(audioClone);
+            const destination = audioContext.createMediaStreamDestination();
+            source.connect(destination);
+            
+            const audioTrack = destination.stream.getAudioTracks()[0];
+            if (audioTrack) {
+              stream.addTrack(audioTrack);
+            }
+            
+            // Start audio playback
+            await audioClone.play().catch(() => {});
+          } catch (audioError) {
+            console.warn('[GriotEngine] Could not add audio to export:', audioError);
+          }
+        }
+        
+        // Determine best supported format
+        const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')
+          ? 'video/mp4;codecs=avc1,mp4a.40.2'
+          : MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+            ? 'video/webm;codecs=vp9,opus'
+            : 'video/webm';
+        
+        const chunks: Blob[] = [];
+        const recorder = new MediaRecorder(stream, { 
+          mimeType,
+          videoBitsPerSecond: 5000000 // 5 Mbps
+        });
+        
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunks.push(e.data);
+          }
+        };
+        
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+          resolve(blob);
+        };
+        
+        recorder.onerror = (e) => {
+          reject(new Error('MediaRecorder error'));
+        };
+        
+        // Start recording
+        recorder.start(100);
+        
+        // Build emotion segments
+        const emotionSegments: EmotionSegment[] = this.scenes.map(scene => ({
+          startTime: scene.startTime,
+          endTime: scene.endTime,
+          emotion: scene.emotion,
+          intensity: 0.7
+        }));
+        
+        this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
+        
+        // Animate for duration
+        const startTime = performance.now();
+        const durationMs = duration * 1000;
+        
+        const animate = () => {
+          const elapsed = performance.now() - startTime;
+          const time = (elapsed / 1000) % duration;
+          const progress = Math.min(elapsed / durationMs, 1);
+          
+          this.ctx.clearRect(0, 0, this.width, this.height);
+          this.ctx.filter = 'none';
+          
+          const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
+          
+          this.drawCurrentScene(time, duration);
+          this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
+          this.drawLensFlare(time, emotion, intensity);
+          this.drawVignette(0.3);
+          this.drawNarratorAvatar(time);
+          
+          onProgress?.(progress);
+          
+          if (elapsed < durationMs) {
+            requestAnimationFrame(animate);
+          } else {
+            // Stop recording after a small delay to ensure final frame is captured
+            setTimeout(() => {
+              recorder.stop();
+            }, 200);
+          }
+        };
+        
+        animate();
+        
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Generate thumbnail at specific time
+   */
+  async generateThumbnail(atTime: number = 1): Promise<Blob | null> {
+    if (this.scenes.length === 0) return null;
+    
+    // Draw frame at specified time
+    this.ctx.clearRect(0, 0, this.width, this.height);
+    
+    const emotionSegments: EmotionSegment[] = this.scenes.map(scene => ({
+      startTime: scene.startTime,
+      endTime: scene.endTime,
+      emotion: scene.emotion,
+      intensity: 0.7
+    }));
+    
+    const { emotion, intensity } = this.getCurrentEmotion(atTime, emotionSegments);
+    
+    this.drawCurrentScene(atTime, atTime + 1);
+    this.drawNarratorAvatar(atTime);
+    
+    return new Promise((resolve) => {
+      this.canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/jpeg', 0.85);
+    });
+  }
+
+  /**
    * Dispose resources
    */
   dispose(): void {
