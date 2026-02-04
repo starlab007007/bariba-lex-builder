@@ -82,8 +82,16 @@ export function useAnimeStoryGenerator() {
         throw new Error(sceneError.message || 'Échec de la génération des scènes');
       }
 
-      if (!sceneData?.success || !sceneData?.scenes) {
-        throw new Error('Aucune scène générée');
+      if (!sceneData?.success) {
+        throw new Error(sceneData?.error || 'Échec de la génération des scènes');
+      }
+
+      if (!sceneData?.scenes || !Array.isArray(sceneData.scenes)) {
+        throw new Error(sceneData?.error || 'Réponse invalide: scènes manquantes');
+      }
+
+      if (sceneData.scenes.length === 0) {
+        throw new Error(sceneData?.error || 'Aucune scène générée');
       }
 
       const scenes: StoryScene[] = sceneData.scenes;
@@ -98,6 +106,7 @@ export function useAnimeStoryGenerator() {
       }));
 
       // Convert base64 images to object URLs for preview
+      // + ensure we always have an imageUrl (placeholder) to avoid blank previews.
       const scenesWithUrls = scenes.map((scene: StoryScene) => {
         if (scene.imageBase64) {
           const blob = base64ToBlob(scene.imageBase64, 'image/png');
@@ -106,7 +115,11 @@ export function useAnimeStoryGenerator() {
             imageUrl: URL.createObjectURL(blob)
           };
         }
-        return scene;
+
+        return {
+          ...scene,
+          imageUrl: scene.imageUrl || makeScenePlaceholderDataUrl(scene)
+        };
       });
 
       // PHASE 2: Generate audio narration
@@ -226,4 +239,36 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
   
   const byteArray = new Uint8Array(byteNumbers);
   return new Blob([byteArray], { type: mimeType });
+}
+
+function makeScenePlaceholderDataUrl(scene: Pick<StoryScene, 'sceneNumber' | 'emotion'>): string {
+  // Small inline SVG placeholder (data URL) – works with <img> and canvas Image()
+  // Keep it simple and light (no external assets).
+  const label = `SCÈNE ${scene.sceneNumber}`;
+  const emotion = (scene.emotion || '').toUpperCase();
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="960" viewBox="0 0 540 960">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="1" stop-color="#0b0b0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="540" height="960" fill="url(#g)"/>
+  <circle cx="270" cy="290" r="110" fill="#000" opacity="0.35"/>
+  <text x="270" y="300" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-size="42" fill="#fbbf24" font-weight="800">${escapeXml(label)}</text>
+  <text x="270" y="360" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-size="18" fill="#fde68a" opacity="0.85">${escapeXml(emotion)}</text>
+  <text x="270" y="860" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-size="16" fill="#e5e7eb" opacity="0.6">Illustration en cours…</text>
+</svg>`;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function escapeXml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
