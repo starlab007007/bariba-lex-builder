@@ -1,8 +1,9 @@
 /**
  * Hook for fetching videos from the feed with realtime updates
+ * OPTIMIZED: Pagination, caching, and memory-efficient loading
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface FeedVideo {
@@ -31,23 +32,37 @@ export interface UseVideoFeedReturn {
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  loadMore: () => Promise<void>;
+  hasMore: boolean;
 }
+
+const PAGE_SIZE = 15; // Reduced from 50 for faster initial load
 
 export function useVideoFeed(): UseVideoFeedReturn {
   const [videos, setVideos] = useState<FeedVideo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const offsetRef = useRef(0);
+  const isFetchingRef = useRef(false);
 
-  const fetchVideos = useCallback(async () => {
+  const fetchVideos = useCallback(async (reset = true) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    
     try {
       setError(null);
+      if (reset) {
+        setIsLoading(true);
+        offsetRef.current = 0;
+      }
       
       const { data, error: fetchError } = await supabase
         .from('videos')
         .select('*')
         .eq('is_public', true)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .range(offsetRef.current, offsetRef.current + PAGE_SIZE - 1);
 
       if (fetchError) {
         throw fetchError;
@@ -74,15 +89,29 @@ export function useVideoFeed(): UseVideoFeedReturn {
             avatarUrl: undefined
           }
         }));
-        setVideos(mappedVideos);
+        
+        if (reset) {
+          setVideos(mappedVideos);
+        } else {
+          setVideos(prev => [...prev, ...mappedVideos]);
+        }
+        
+        setHasMore(data.length === PAGE_SIZE);
+        offsetRef.current += data.length;
       }
     } catch (err) {
       console.error('Error fetching videos:', err);
       setError(err instanceof Error ? err.message : 'Failed to load videos');
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore || isFetchingRef.current) return;
+    await fetchVideos(false);
+  }, [hasMore, fetchVideos]);
 
   useEffect(() => {
     fetchVideos();
@@ -99,20 +128,31 @@ export function useVideoFeed(): UseVideoFeedReturn {
         },
         (payload) => {
           console.log('New video added:', payload);
-          // Refetch to get the complete data
-          fetchVideos();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'videos'
-        },
-        () => {
-          // Refetch on updates (likes, views, etc.)
-          fetchVideos();
+          // Add new video to top of list instead of full refetch
+          const v = payload.new as any;
+          if (v.is_public) {
+            const newVideo: FeedVideo = {
+              id: v.id,
+              videoUrl: v.video_url,
+              thumbnailUrl: v.thumbnail_url,
+              title: v.title,
+              description: v.description,
+              templateId: v.template_id,
+              templateName: v.template_name,
+              duration: v.duration_seconds || 30,
+              viewsCount: v.views_count || 0,
+              likesCount: v.likes_count || 0,
+              sharesCount: v.shares_count || 0,
+              createdAt: v.created_at,
+              author: {
+                id: v.user_id,
+                name: v.template_name ? `Créateur ${v.template_name}` : 'Créateur FITILA',
+                username: '@fitila_creator',
+                avatarUrl: undefined
+              }
+            };
+            setVideos(prev => [newVideo, ...prev]);
+          }
         }
       )
       .subscribe();
@@ -126,7 +166,9 @@ export function useVideoFeed(): UseVideoFeedReturn {
     videos,
     isLoading,
     error,
-    refetch: fetchVideos
+    refetch: () => fetchVideos(true),
+    loadMore,
+    hasMore
   };
 }
 
