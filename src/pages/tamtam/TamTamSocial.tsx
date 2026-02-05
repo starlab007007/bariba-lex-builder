@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, RefreshCw, UserPlus, Clock } from 'lucide-react';
@@ -1044,22 +1044,47 @@ export default function TamTamSocial() {
               </div>
             ) : getCurrentPosts.length > 0 ? (
               feedMode === 'creation' ? (
-                getCurrentPosts.map((post, i) => (
-                  <VideoFeedCard 
-                    key={post.id} 
-                    post={post} 
-                    isActive={i === currentPostIndex} 
-                    onLike={() => addReaction(post.id, 'like')} 
-                    onComment={() => handleOpenComments(post.id)} 
-                    onShare={() => handleShare(post.id)}
-                    isMuted={isMuted}
-                    onToggleMute={() => setIsMuted(prev => !prev)}
-                  />
-                ))
+                // VIRTUALIZED: Only render posts near the current index
+                getCurrentPosts.map((post, i) => {
+                  // Only render posts within 2 of current index for memory efficiency
+                  const shouldRender = Math.abs(i - currentPostIndex) <= 2;
+                  if (!shouldRender) {
+                    // Placeholder to maintain scroll position
+                    return <div key={post.id} className="h-[100dvh] snap-start snap-always" />;
+                  }
+                  return (
+                    <VideoFeedCard 
+                      key={post.id} 
+                      post={post} 
+                      isActive={i === currentPostIndex} 
+                      onLike={() => addReaction(post.id, 'like')} 
+                      onComment={() => handleOpenComments(post.id)} 
+                      onShare={() => handleShare(post.id)}
+                      isMuted={isMuted}
+                      onToggleMute={() => setIsMuted(prev => !prev)}
+                    />
+                  );
+                })
               ) : (
-                getCurrentPosts.map((post, i) => (
-                  <AudioFeedCard key={post.id} post={post} isActive={i === currentPostIndex} category={feedMode === 'patrimoine' ? 'patrimoine' : 'mavoix'} onLike={() => addReaction(post.id, 'like')} onComment={() => handleOpenComments(post.id)} onShare={() => handleShare(post.id)} onFollow={() => triggerFeedback('success')} />
-                ))
+                // VIRTUALIZED: Only render audio posts near the current index
+                getCurrentPosts.map((post, i) => {
+                  const shouldRender = Math.abs(i - currentPostIndex) <= 2;
+                  if (!shouldRender) {
+                    return <div key={post.id} className="h-[100dvh] snap-start snap-always" />;
+                  }
+                  return (
+                    <AudioFeedCard 
+                      key={post.id} 
+                      post={post} 
+                      isActive={i === currentPostIndex} 
+                      category={feedMode === 'patrimoine' ? 'patrimoine' : 'mavoix'} 
+                      onLike={() => addReaction(post.id, 'like')} 
+                      onComment={() => handleOpenComments(post.id)} 
+                      onShare={() => handleShare(post.id)}
+                      onFollow={() => triggerFeedback('success')}
+                    />
+                  );
+                })
               )
             ) : (
               <div className="h-screen flex flex-col items-center justify-center px-8">
