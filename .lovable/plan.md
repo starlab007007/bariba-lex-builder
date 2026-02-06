@@ -1,211 +1,150 @@
 
-# Plan d'Optimisation Complète de la Plateforme FITILA
 
-## Vue d'Ensemble
+# Griot Digital v7 — Pipeline MovieFlow-Inspired
 
-Après analyse approfondie du code, j'ai identifié **15 optimisations critiques** réparties en 4 domaines pour rendre la plateforme rapide, fluide et sans bugs.
+## Vue d'ensemble
 
----
+Transformer le Griot Studio en un pipeline professionnel inspiré de MovieFlow, avec un parcours en 5 etapes claires :
 
-## 1. OPTIMISATION DU CHARGEMENT INITIAL (Performance au démarrage)
+**Enregistrer la voix → Transcrire en texte → Editer le script en scenes → Matcher les illustrations → Previsualiser et publier**
 
-### 1.1 Lazy Loading des Routes
-**Problème** : Toutes les pages sont importées au démarrage dans `App.tsx`, même celles rarement visitées.
-
-**Solution** : Implémenter React.lazy() pour les routes secondaires.
-
-```text
-Routes à charger immédiatement:
-- FitilaApp, TamTamSocial (page principale)
-
-Routes à charger en différé (lazy):
-- AdminDashboard, TamTamDictionary, TamTamTranslator
-- GriotStudioPage, TamTamCreator, TamTamProfile
-- Toutes les pages de services (Agriculture, Finance, Education, Health)
-```
-
-**Impact** : Réduction de 40-60% du bundle initial.
-
-### 1.2 Preload des Assets Critiques
-**Problème** : Les fontes et styles critiques sont chargés après le rendu initial.
-
-**Solution** : Ajouter des liens preload dans `index.html`.
+Le changement majeur : l'audio est d'abord **transcrit en texte**, l'utilisateur peut **editer le script scene par scene**, puis chaque scene est **matchee intelligemment** avec les images/videos de la bibliotheque existante.
 
 ---
 
-## 2. OPTIMISATION DU FEED SOCIAL (TamTamSocial.tsx)
-
-### 2.1 Virtualisation du Feed
-**Problème** : Le feed charge toutes les vidéos/posts en mémoire (jusqu'à 50+).
-
-**Solution** : Implémenter un système de virtualisation pour ne rendre que les éléments visibles.
+## Architecture du nouveau pipeline
 
 ```text
-Comportement actuel:
-- 50 vidéos × ~10MB chacune = charge mémoire importante
-- Tous les composants sont montés
-
-Comportement optimisé:
-- Rendre uniquement : [post-1] [post actif] [post+1]
-- Précharger : thumbnails des 3 posts suivants
-- Nettoyer : les vidéos hors écran (URL.revokeObjectURL)
-```
-
-### 2.2 Optimisation du Swipe Horizontal
-**Problème** : Transitions lentes entre les feeds (patrimoine/mavoix/creation).
-
-**Solution** : Réduire le seuil de détection et améliorer l'animation.
-
-### 2.3 Cache des Posts
-**Problème** : `useTamTamPosts` refetch à chaque changement de route.
-
-**Solution** : Utiliser le staleTime de React Query (déjà configuré à 5min) + persistance locale.
-
----
-
-## 3. OPTIMISATION DU GRIOT STUDIO (Création de contenu)
-
-### 3.1 Préchargement des Assets VFX
-**Problème** : Les effets visuels sont chargés pendant la génération.
-
-**Solution** : Précharger les flares et particles dès l'ouverture du studio.
-
-### 3.2 Optimisation de la Génération
-**Problème** : L'Edge Function génère les images une par une.
-
-**Solution** : 
-- Prioriser les images de la bibliothèque (score >= 5)
-- Afficher un placeholder animé pendant le chargement
-- Générer les images en parallèle (déjà optimisé)
-
-### 3.3 Canvas Rendering Performance
-**Problème** : Le `GriotAnimationEngine` peut être lent sur appareils bas de gamme.
-
-**Solution** : Utiliser les paramètres de `useDevicePerformance` déjà implémentés.
-
-```text
-Tier Low:
-- Resolution: 480x854, FPS: 15
-- Effects: Minimal sparkles, no film grain
-
-Tier Medium:
-- Resolution: 720x1280, FPS: 24
-- Effects: 8 sparkles, shadows
-
-Tier High:
-- Resolution: 1080x1920, FPS: 30
-- Effects: Full VFX
+ETAPE 1: ENREGISTREMENT          ETAPE 2: TRANSCRIPTION
++-------------------+           +---------------------+
+| VinylRecorder     |  -------> | ElevenLabs STT      |
+| (audio capture)   |           | (batch transcribe)  |
++-------------------+           +---------------------+
+                                         |
+                                         v
+ETAPE 3: EDITEUR DE SCRIPT      ETAPE 4: GENERATION
++-------------------+           +---------------------+
+| SceneEditor       |  -------> | Smart Scene Matcher  |
+| (phrase = scene)  |           | (library + fallback) |
+| + emotion picker  |           | + transitions        |
++-------------------+           +---------------------+
+                                         |
+                                         v
+                                ETAPE 5: PREVIEW + PUBLISH
+                                +---------------------+
+                                | StoryPreviewPlayer   |
+                                | + PublishStep         |
+                                +---------------------+
 ```
 
 ---
 
-## 4. OPTIMISATIONS GLOBALES
+## Changements detailles
 
-### 4.1 Mémoire et Object URLs
-**Problème** : Les `URL.createObjectURL()` ne sont pas toujours révoqués.
+### 1. Nouvelle Edge Function : `transcribe-audio`
 
-**Solution** : Audit et cleanup systématique dans les useEffect cleanups.
+**Fichier** : `supabase/functions/transcribe-audio/index.ts`
 
-**Fichiers concernés** :
-- `useAnimeStoryGenerator.ts` (partiellement fait dans reset())
-- `VinylRecorder.tsx`
-- `TamTamSocial.tsx` (audio players)
+- Recoit l'audio blob enregistre par le VinylRecorder
+- Utilise l'API ElevenLabs STT (batch, modele `scribe_v2`) avec la cle `ELEVENLABS_API_KEY` deja configuree
+- Retourne le texte transcrit + timestamps par mot
+- Langue : francais (`fra`) avec auto-detection en fallback
+- Fallback : si ElevenLabs echoue, utiliser Lovable AI (Gemini Flash) pour une transcription approximative depuis une description
 
-### 4.2 Re-renders Inutiles
-**Problème** : Certains composants re-render trop souvent.
+### 2. Nouveau composant : `SceneEditor`
 
-**Solution** : 
-- Utiliser `React.memo()` sur les composants de liste (AudioFeedCard, VideoFeedCard)
-- Extraire les états locaux dans des sous-composants
-- Utiliser `useCallback` pour les handlers (déjà fait en partie)
+**Fichier** : `src/components/griot-studio/SceneEditor.tsx`
 
-### 4.3 Animation Performance
-**Problème** : Framer Motion peut être coûteux avec beaucoup d'éléments.
+Un editeur de script interactif ou chaque phrase devient une scene :
 
-**Solution** :
-- Utiliser `layout="position"` au lieu de `layout` complet
-- Désactiver les animations sur appareils bas de gamme
-- Utiliser `transform` au lieu de `left/top` pour les animations
+- Affiche le texte transcrit, decoupee automatiquement en scenes (1 phrase = 1 scene)
+- Chaque scene est une carte editable avec :
+  - Le texte de la scene (modifiable)
+  - Un selecteur d'emotion (joie, tristesse, mystere, action, sagesse, etc.)
+  - Un apercu miniature de l'image matchee
+  - Drag-and-drop pour reorganiser les scenes
+- Boutons : ajouter une scene, supprimer une scene, fusionner deux scenes
+- Interface tactile optimisee (gros boutons, swipe)
 
-### 4.4 IndexedDB Initialization
-**Problème** : `IndexedDBService` s'initialise de façon synchrone.
+### 3. Modification du `useAnimeStoryGenerator`
 
-**Solution** : Préinitialiser au démarrage de l'app (déjà lazy avec initPromise).
+**Fichier** : `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts`
 
-### 4.5 Edge Functions Timeout Protection
-**Problème** : Les appels aux Edge Functions peuvent timeout silencieusement.
+Ajouter une nouvelle methode `generateFromScenes` qui :
 
-**Solution** : 
-- Ajouter des timeouts côté client avec AbortController
-- Afficher des messages d'erreur clairs
-- Implémenter un retry automatique avec backoff
+- Recoit un tableau de scenes editees (texte + emotion + type)
+- Pour chaque scene, appelle le matching intelligent de la bibliotheque `anime_scene_library` :
+  - Score >= 5 : utilise l'image de la bibliotheque
+  - Score < 5 : genere via IA en temps reel (fallback)
+- Calcule automatiquement la duree par scene en fonction du nombre de mots
+- Genere les transitions entre scenes (fondu, glissement, etc.)
 
----
+### 4. Mise a jour du workflow principal `GriotStudio.tsx`
 
-## 5. CORRECTIFS DE BUGS IDENTIFIÉS
+**Fichier** : `src/components/griot-studio/GriotStudio.tsx`
 
-### 5.1 Tailwind CDN Warning
-**Problème** : Console affiche un warning sur cdn.tailwindcss.com
+Nouveau flux d'etapes :
 
-**Solution** : S'assurer que le CDN n'est pas utilisé en production (vérifier index.html).
+```text
+'create' → 'transcribing' → 'editing' → 'generating' → 'preview' → 'finalize' → 'success'
+```
 
-### 5.2 Realtime Subscriptions Cleanup
-**Problème** : Potentielles fuites de subscriptions realtime.
+- **create** : Enregistrement audio (VinylRecorder) + style + duree (inchange)
+- **transcribing** (NOUVEAU) : Animation d'ecoute avec message "Ecoute de ton conte..." + appel a `transcribe-audio`
+- **editing** (NOUVEAU) : Affichage du `SceneEditor` avec le script decoupage. L'utilisateur peut modifier, reorganiser, changer les emotions
+- **generating** : Matching des illustrations (optimise, plus rapide car les scenes sont deja definies)
+- **preview** : Previsualisation (inchange)
+- **finalize** : Publication (inchange)
 
-**Solution** : Vérifier que tous les channels sont correctement supprimés.
+### 5. Smart Scene Matcher (amelioration)
 
-### 5.3 Safe Area Handling
-**Problème** : Certains éléments peuvent être masqués sur iPhone avec encoche.
+**Fichier** : `supabase/functions/generate-anime-story/index.ts`
 
-**Solution** : Vérifier l'utilisation cohérente de `env(safe-area-inset-*)`.
+Modifier pour accepter un nouveau mode `pre_segmented: true` :
 
----
+- Quand les scenes sont pre-decoupees par l'editeur, skip la segmentation IA
+- Utiliser directement les emotions et types de scene fournis pour le matching
+- Resultat : matching plus precis (les emotions sont choisies par l'utilisateur) et plus rapide (pas de segmentation)
 
-## FICHIERS À MODIFIER
+### 6. Mise a jour du `handleRecordingComplete`
 
-| Fichier | Optimisation | Priorité |
-|---------|--------------|----------|
-| `src/App.tsx` | Lazy loading routes | HAUTE |
-| `src/pages/tamtam/TamTamSocial.tsx` | Virtualisation feed, memo components | HAUTE |
-| `src/components/griot-studio/GriotStudio.tsx` | Préchargement VFX | MOYENNE |
-| `src/hooks/useVideoFeed.ts` | Pagination + cache | MOYENNE |
-| `src/hooks/useTamTamPosts.ts` | Optimisation queries | MOYENNE |
-| `src/engines/GriotAnimationEngine.ts` | Performance tier adaptive | MOYENNE |
-| `src/index.css` | Réduire les animations coûteuses | BASSE |
-| `index.html` | Preload fonts critiques | BASSE |
+**Fichier** : `src/components/griot-studio/GriotStudio.tsx`
 
----
+Au lieu de lancer directement la generation apres l'enregistrement :
 
-## MÉTRIQUES CIBLES
-
-| Métrique | Actuel (estimé) | Cible |
-|----------|-----------------|-------|
-| First Contentful Paint | ~2-3s | < 1.5s |
-| Time to Interactive | ~4-5s | < 2.5s |
-| Bundle Size (initial) | ~800KB | < 400KB |
-| Memory Usage (feed) | ~200MB | < 100MB |
-| FPS (animations) | Variable | 30 stable |
+1. Uploader l'audio vers le bucket `tamtam-audio`
+2. Appeler `transcribe-audio` pour obtenir le texte
+3. Decouper le texte en phrases (scenes)
+4. Passer a l'etape `editing` avec le script pre-rempli
+5. L'utilisateur valide/edite puis lance la generation
 
 ---
 
-## ORDRE D'IMPLÉMENTATION
+## Fichiers a creer
 
-1. **Phase 1 - Quick Wins** (Impact immédiat)
-   - Lazy loading des routes
-   - Memo sur les composants de feed
-   - Cleanup des Object URLs
+| Fichier | Description |
+|---------|-------------|
+| `supabase/functions/transcribe-audio/index.ts` | Edge Function de transcription via ElevenLabs STT |
+| `src/components/griot-studio/SceneEditor.tsx` | Editeur de script scene par scene |
 
-2. **Phase 2 - Feed Optimization**
-   - Virtualisation du feed
-   - Pagination intelligente
-   - Préchargement des thumbnails
+## Fichiers a modifier
 
-3. **Phase 3 - Studio Performance**
-   - Adaptive quality basé sur device tier
-   - Préchargement VFX
-   - Canvas optimizations
+| Fichier | Modification |
+|---------|-------------|
+| `src/components/griot-studio/GriotStudio.tsx` | Nouveaux steps transcribing + editing, nouveau flux |
+| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Methode `generateFromScenes` pour scenes pre-editees |
+| `supabase/functions/generate-anime-story/index.ts` | Mode `pre_segmented` pour skip la segmentation IA |
 
-4. **Phase 4 - Polish**
-   - Animation optimizations
-   - Edge function resilience
-   - Error boundaries
+---
+
+## Experience utilisateur finale
+
+1. **Parler** : L'utilisateur enregistre son conte via le disque vinyle anime
+2. **Transcrire** : Animation d'ecoute, le texte apparait progressivement
+3. **Editer** : Le script est presente scene par scene, l'utilisateur peut modifier le texte, choisir les emotions, reorganiser
+4. **Illustrer** : Les images sont matchees intelligemment depuis la bibliotheque (ultra-rapide)
+5. **Previsualiser** : Diaporama anime avec effets Ken Burns synchronise sur l'audio
+6. **Publier** : Export et publication dans le feed
+
+Ce pipeline garantit un controle creatif total tout en restant simple et rapide, exactement comme MovieFlow.
+
