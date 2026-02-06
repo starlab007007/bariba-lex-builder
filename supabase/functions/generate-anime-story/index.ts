@@ -6,6 +6,9 @@
  * 2. FIRST tries to match scenes with pre-generated library images
  * 3. Falls back to AI generation only if no suitable match is found
  * 4. Returns scenes with images for the animation engine
+ * 
+ * v7: Supports pre_segmented mode — skips AI segmentation when scenes
+ *     are provided directly from the SceneEditor
  */
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -34,7 +37,8 @@ const EMOTION_VISUALS: Record<string, string> = {
   fear: 'dark shadows, ominous lighting, dramatic contrast',
   excitement: 'dynamic angles, action lines, vibrant energy, motion blur',
   peace: 'soft pastoral colors, gentle sunlight, serene atmosphere',
-  tension: 'dramatic shadows, red accents, intense expressions'
+  tension: 'dramatic shadows, red accents, intense expressions',
+  love: 'warm pink tones, soft glow, heart motifs, gentle atmosphere'
 };
 
 // Keywords for scene type detection
@@ -56,7 +60,7 @@ const CHARACTER_KEYWORDS: Record<string, string[]> = {
   child_boy: ['garçon', 'fils', 'jeune homme', 'enfant', 'petit'],
   child_girl: ['fille', 'jeune fille', 'enfant', 'petite'],
   elder: ['ancien', 'sage', 'vieux', 'grand-père', 'grand-mère', 'aîné'],
-  animal: ['lion', 'éléphant', 'oiseau', 'animal', 'serpent', 'singe', 'gazelle'],
+  animal: ['lion', 'éléphant', 'oiseau', 'animal', 'serpent', 'singe', 'gazelle', 'renard', 'chouette'],
   spirit: ['esprit', 'fantôme', 'ancêtre', 'divinité', 'génie'],
   group: ['villageois', 'famille', 'groupe', 'tous', 'ensemble', 'communauté']
 };
@@ -65,12 +69,12 @@ const CHARACTER_KEYWORDS: Record<string, string[]> = {
 const ACTION_KEYWORDS: Record<string, string[]> = {
   standing: ['regarde', 'observe', 'debout', 'attend'],
   walking: ['marche', 'avance', 'va', 'parcourt'],
-  talking: ['parle', 'dit', 'raconte', 'explique', 'demande'],
+  talking: ['parle', 'dit', 'raconte', 'explique', 'demande', 'répondit', 'posa'],
   dancing: ['danse', 'bouge', 'célèbre'],
   working: ['travaille', 'cultive', 'prépare', 'construit'],
   sleeping: ['dort', 'repose', 'rêve'],
   running: ['court', 'fuit', 'poursuit', 'précipite'],
-  discovering: ['découvre', 'trouve', 'voit', 'aperçoit', 'rencontre']
+  discovering: ['découvre', 'trouve', 'voit', 'aperçoit', 'rencontre', 'vint', 'comprenait']
 };
 
 interface StoryScene {
@@ -98,13 +102,13 @@ interface LibraryImage {
 }
 
 serve(async (req) => {
-  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { story, style = 'fantasy', duration = 30 } = await req.json();
+    const body = await req.json();
+    const { story, style = 'fantasy', duration = 30, pre_segmented = false, scenes: preEditedScenes } = body;
 
     if (!story || story.trim().length < 10) {
       return new Response(
@@ -123,23 +127,38 @@ serve(async (req) => {
       storyLength: story?.length || 0,
       style,
       duration,
+      pre_segmented,
+      preEditedScenesCount: preEditedScenes?.length || 0,
       hasApiKey: !!LOVABLE_API_KEY,
     });
 
-    // PHASE 1: Analyze story and segment into scenes
-    const scenes = LOVABLE_API_KEY
-      ? await segmentStory(story, duration, LOVABLE_API_KEY)
-      : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
+    // PHASE 1: Get scenes — either pre-segmented or AI-analyzed
+    let safeScenes: StoryScene[];
 
-    const safeScenes = scenes.length
-      ? scenes
-      : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
+    if (pre_segmented && Array.isArray(preEditedScenes) && preEditedScenes.length > 0) {
+      // Use pre-edited scenes directly (from SceneEditor)
+      console.log(`[generate-anime-story] Using ${preEditedScenes.length} pre-segmented scenes`);
+      safeScenes = preEditedScenes.map((s: any, i: number) => ({
+        sceneNumber: s.sceneNumber || i + 1,
+        text: s.text || '',
+        emotion: s.emotion || 'wonder',
+        visualDescription: s.visualDescription || s.text || '',
+        durationSeconds: s.durationSeconds || Math.floor(duration / preEditedScenes.length),
+      }));
+    } else {
+      // AI segmentation (original flow)
+      const scenes = LOVABLE_API_KEY
+        ? await segmentStory(story, duration, LOVABLE_API_KEY)
+        : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
 
-    console.log(`[generate-anime-story] Segmented into ${safeScenes.length} scenes`);
+      safeScenes = scenes.length
+        ? scenes
+        : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
+    }
 
-    // PHASE 2: Try to match with library, fallback to generation
-    console.log(`[generate-anime-story] Matching ${safeScenes.length} scenes with library...`);
-    
+    console.log(`[generate-anime-story] Processing ${safeScenes.length} scenes`);
+
+    // PHASE 2: Match with library + fallback generation
     const imagePromises = safeScenes.map((scene, i) => 
       getSceneImage(scene, style, i, safeScenes.length, supabase, LOVABLE_API_KEY)
     );
@@ -149,7 +168,7 @@ serve(async (req) => {
     const libraryMatches = generatedScenes.filter(s => s.fromLibrary).length;
     const aiGenerated = generatedScenes.filter(s => !s.fromLibrary).length;
     
-    console.log(`[generate-anime-story] Complete: ${libraryMatches} from library, ${aiGenerated} AI-generated`);
+    console.log(`[generate-anime-story] Complete: ${libraryMatches} library, ${aiGenerated} AI-generated`);
 
     return new Response(
       JSON.stringify({
@@ -185,20 +204,17 @@ async function getSceneImage(
   supabase: ReturnType<typeof createClient>,
   apiKey?: string
 ): Promise<GeneratedScene> {
-  // Extract scene metadata from text
   const sceneType = detectSceneType(scene.text, scene.visualDescription);
   const characterType = detectCharacterType(scene.text, scene.visualDescription);
   const action = detectAction(scene.text, scene.visualDescription);
 
   console.log(`[getSceneImage] Scene ${sceneIndex + 1}: type=${sceneType}, char=${characterType}, action=${action}, emotion=${scene.emotion}`);
 
-  // Try to find a matching library image
   const libraryMatch = await findLibraryMatch(supabase, style, scene.emotion, sceneType, characterType, action);
 
   if (libraryMatch) {
-    console.log(`[getSceneImage] Found library match for scene ${sceneIndex + 1}: ${libraryMatch.id}`);
+    console.log(`[getSceneImage] Library match for scene ${sceneIndex + 1}: ${libraryMatch.id}`);
     
-    // Update usage count (fire and forget)
     supabase
       .from('anime_scene_library')
       .update({ usage_count: (libraryMatch as any).usage_count + 1 })
@@ -207,13 +223,12 @@ async function getSceneImage(
 
     return {
       ...scene,
-      imageBase64: '', // No base64 needed when using URL
+      imageBase64: '',
       imageUrl: libraryMatch.image_url,
       fromLibrary: true
     };
   }
 
-  // No library match - generate with AI
   if (!apiKey) {
     console.warn(`[getSceneImage] No library match and no API key for scene ${sceneIndex + 1}`);
     return { ...scene, imageBase64: '', fromLibrary: false };
@@ -239,90 +254,55 @@ async function findLibraryMatch(
   characterType: string,
   action: string
 ): Promise<LibraryImage | null> {
-  // Query with weighted scoring - style is required, others are preferred
   const { data, error } = await supabase
     .from('anime_scene_library')
     .select('*')
     .eq('style', style)
-    .order('usage_count', { ascending: true }) // Prefer less-used images for variety
+    .order('usage_count', { ascending: true })
     .limit(10);
 
-  if (error || !data || data.length === 0) {
-    return null;
-  }
+  if (error || !data || data.length === 0) return null;
 
-  // Score each candidate
   const scored = data.map((img: any) => {
-    let score = 3; // Base score for style match (required)
-    
+    let score = 3; // Base for style match
     if (img.emotion === emotion) score += 2;
     if (img.scene_type === sceneType) score += 2;
     if (img.character_type === characterType) score += 1;
     if (img.action === action) score += 1;
-
     return { ...img, matchScore: score };
   });
 
-  // Sort by score descending
   scored.sort((a, b) => b.matchScore - a.matchScore);
 
-  // Return best match if score >= 5 (style + at least one major match)
   const best = scored[0];
-  if (best && best.matchScore >= 5) {
-    return best as LibraryImage;
-  }
-
+  if (best && best.matchScore >= 5) return best as LibraryImage;
   return null;
 }
 
-/**
- * Detect scene type from text
- */
 function detectSceneType(text: string, visualDesc: string): string {
   const combined = `${text} ${visualDesc}`.toLowerCase();
-  
   for (const [type, keywords] of Object.entries(SCENE_KEYWORDS)) {
-    if (keywords.some(kw => combined.includes(kw))) {
-      return type;
-    }
+    if (keywords.some(kw => combined.includes(kw))) return type;
   }
-  
-  return 'village'; // Default
+  return 'village';
 }
 
-/**
- * Detect character type from text
- */
 function detectCharacterType(text: string, visualDesc: string): string {
   const combined = `${text} ${visualDesc}`.toLowerCase();
-  
   for (const [type, keywords] of Object.entries(CHARACTER_KEYWORDS)) {
-    if (keywords.some(kw => combined.includes(kw))) {
-      return type;
-    }
+    if (keywords.some(kw => combined.includes(kw))) return type;
   }
-  
-  return 'child_boy'; // Default
+  return 'child_boy';
 }
 
-/**
- * Detect action from text
- */
 function detectAction(text: string, visualDesc: string): string {
   const combined = `${text} ${visualDesc}`.toLowerCase();
-  
   for (const [action, keywords] of Object.entries(ACTION_KEYWORDS)) {
-    if (keywords.some(kw => combined.includes(kw))) {
-      return action;
-    }
+    if (keywords.some(kw => combined.includes(kw))) return action;
   }
-  
-  return 'standing'; // Default
+  return 'standing';
 }
 
-/**
- * Segment the story into visual scenes using Gemini
- */
 async function segmentStory(story: string, totalDuration: number, apiKey: string): Promise<StoryScene[]> {
   const targetScenes = Math.min(6, Math.max(3, Math.ceil(totalDuration / 10)));
   
@@ -369,41 +349,26 @@ Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[segmentStory] API error:', errorText);
+      console.error('[segmentStory] API error:', await response.text());
       return createDefaultScenes(story, totalDuration, targetScenes);
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-    if (!content) {
-      console.warn('[segmentStory] Empty model content, using fallback scenes');
-      return createDefaultScenes(story, totalDuration, targetScenes);
-    }
+    if (!content) return createDefaultScenes(story, totalDuration, targetScenes);
 
     try {
       const parsed = JSON.parse(content);
       const scenes = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
-
-      if (!scenes.length) {
-        console.warn('[segmentStory] Model returned 0 scenes, using fallback scenes');
-        return createDefaultScenes(story, totalDuration, targetScenes);
-      }
-
-      return scenes;
-    } catch (parseError) {
-      console.error('[segmentStory] Parse error:', parseError);
+      return scenes.length ? scenes : createDefaultScenes(story, totalDuration, targetScenes);
+    } catch {
       return createDefaultScenes(story, totalDuration, targetScenes);
     }
-  } catch (e) {
-    console.error('[segmentStory] Fatal error, using fallback scenes:', e);
+  } catch {
     return createDefaultScenes(story, totalDuration, targetScenes);
   }
 }
 
-/**
- * Generate an anime-style image for a scene
- */
 async function generateSceneImage(
   scene: StoryScene, 
   style: string, 
@@ -427,7 +392,7 @@ STYLE REQUIREMENTS:
 - Atmospheric background matching the mood
 - Professional anime production quality
 
-CONSISTENCY NOTE: This is scene ${sceneIndex + 1} of ${totalScenes} in a story. Maintain visual consistency with characters and setting.
+CONSISTENCY NOTE: This is scene ${sceneIndex + 1} of ${totalScenes} in a story. Maintain visual consistency.
 
 Create a single, complete illustration capturing this exact moment.`;
 
@@ -445,45 +410,30 @@ Create a single, complete illustration capturing this exact moment.`;
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[generateSceneImage] API error:', errorText);
     throw new Error('Image generation failed');
   }
 
   const data = await response.json();
-  
-  // Extract base64 image from response
   const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
   
-  if (!imageUrl) {
-    console.warn('[generateSceneImage] No image in response');
-    throw new Error('No image generated');
-  }
+  if (!imageUrl) throw new Error('No image generated');
 
-  // Extract base64 from data URL
   if (imageUrl.startsWith('data:image')) {
-    const base64 = imageUrl.split(',')[1];
-    return base64;
+    return imageUrl.split(',')[1];
   }
-
   return imageUrl;
 }
 
-/**
- * Create default scenes if AI segmentation fails
- */
 function createDefaultScenes(story: string, duration: number, count: number): StoryScene[] {
   const words = story.split(/\s+/);
   const wordsPerScene = Math.ceil(words.length / count);
   const durationPerScene = Math.floor(duration / count);
   
   const scenes: StoryScene[] = [];
-  
   for (let i = 0; i < count; i++) {
     const start = i * wordsPerScene;
     const end = Math.min((i + 1) * wordsPerScene, words.length);
     const text = words.slice(start, end).join(' ');
-    
     scenes.push({
       sceneNumber: i + 1,
       text,
@@ -492,6 +442,5 @@ function createDefaultScenes(story: string, duration: number, count: number): St
       durationSeconds: durationPerScene
     });
   }
-  
   return scenes;
 }
