@@ -68,13 +68,14 @@ export function StoryPreviewPlayer({
         const scenesWithTiming = scenes.map((scene) => {
           const sceneData = {
             imageUrl: scene.imageUrl || '',
+            videoUrl: scene.videoUrl,
             startTime: currentTime,
             endTime: currentTime + scene.durationSeconds,
             emotion: scene.emotion
           };
           currentTime += scene.durationSeconds;
           return sceneData;
-        }).filter(s => s.imageUrl);
+        }).filter(s => s.imageUrl || s.videoUrl);
         
         // Load scenes
         await engineRef.current.loadScenes(scenesWithTiming);
@@ -310,7 +311,17 @@ export function StoryPreviewPlayer({
                     : "border-amber-500/30 hover:border-amber-500/50"
                 )}
               >
-                {scene.imageUrl ? (
+                {scene.videoUrl ? (
+                  <video
+                    src={scene.videoUrl}
+                    poster={scene.imageUrl}
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                    className="w-full h-full object-cover"
+                  />
+                ) : scene.imageUrl ? (
                   <img 
                     src={scene.imageUrl} 
                     alt={`Scène ${i + 1}`}

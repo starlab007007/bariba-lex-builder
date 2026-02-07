@@ -1,11 +1,12 @@
 /**
  * AssetGallery — TikTok-style gallery for browsing & selecting
- * pre-generated illustrations from the anime_scene_library.
+ * pre-generated illustrations AND short video templates.
  * 
  * Features:
+ * - Photo / Video toggle tabs
  * - Horizontal scrollable category chips (scene_type)
  * - Character sub-filters (character_type)
- * - 3-column grid with tap-to-select
+ * - Shows 3 items per view with "Voir plus" to expand
  * - Max 10 selections with numbered badges
  */
 
@@ -14,8 +15,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { X, ImageIcon } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { X, ImageIcon, Camera, Film } from 'lucide-react';
+import { AssetGridItem } from './gallery/AssetGridItem';
+import { AssetExpandedDrawer } from './gallery/AssetExpandedDrawer';
 
 export interface LibraryAsset {
   id: string;
@@ -27,6 +29,9 @@ export interface LibraryAsset {
   description_en: string;
   action: string | null;
   time_of_day: string | null;
+  asset_type: string;
+  video_url: string | null;
+  video_duration: number | null;
 }
 
 interface AssetGalleryProps {
@@ -60,18 +65,21 @@ const CHARACTER_FILTERS = [
 ] as const;
 
 const MAX_SELECTION = 10;
+const PREVIEW_COUNT = 3;
 
 export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection = MAX_SELECTION, disabled }: AssetGalleryProps) {
+  const [assetType, setAssetType] = useState<'photo' | 'video'>('photo');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activeCharacter, setActiveCharacter] = useState<string>('all');
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Fetch all african assets
+  // Fetch all african assets (photos + videos)
   const { data: assets, isLoading } = useQuery({
-    queryKey: ['anime-scene-library', 'african'],
+    queryKey: ['anime-scene-library', 'african', 'all-types'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('anime_scene_library')
-        .select('id, image_url, scene_type, character_type, emotion, description_fr, description_en, action, time_of_day')
+        .select('id, image_url, scene_type, character_type, emotion, description_fr, description_en, action, time_of_day, asset_type, video_url, video_duration')
         .eq('style', 'african')
         .order('scene_type');
       if (error) throw error;
@@ -80,15 +88,24 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
     staleTime: 5 * 60 * 1000,
   });
 
-  // Filter assets
+  // Filter assets by type + category + character
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
     return assets.filter(a => {
+      if (a.asset_type !== assetType) return false;
       if (activeCategory !== 'all' && a.scene_type !== activeCategory) return false;
       if (activeCharacter !== 'all' && a.character_type !== activeCharacter) return false;
       return true;
     });
-  }, [assets, activeCategory, activeCharacter]);
+  }, [assets, assetType, activeCategory, activeCharacter]);
+
+  // First 3 for preview, rest hidden
+  const previewAssets = useMemo(() => filteredAssets.slice(0, PREVIEW_COUNT), [filteredAssets]);
+  const remainingCount = Math.max(0, filteredAssets.length - PREVIEW_COUNT);
+
+  // Count per type (for tab badges)
+  const photosCount = useMemo(() => assets?.filter(a => a.asset_type === 'photo').length || 0, [assets]);
+  const videosCount = useMemo(() => assets?.filter(a => a.asset_type === 'video').length || 0, [assets]);
 
   // Selection helpers
   const selectedIds = useMemo(() => new Set(selectedAssets.map(a => a.id)), [selectedAssets]);
@@ -135,6 +152,38 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         )}
       </div>
 
+      {/* Photo / Video Tabs */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => { setAssetType('photo'); setActiveCategory('all'); setActiveCharacter('all'); }}
+          className={cn(
+            'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all border',
+            assetType === 'photo'
+              ? 'bg-amber-500/20 text-amber-100 border-amber-400/50 shadow-lg shadow-amber-500/10'
+              : 'bg-amber-950/40 text-amber-200/50 border-amber-500/10 hover:border-amber-500/30'
+          )}
+          disabled={disabled}
+        >
+          <Camera className="w-4 h-4" />
+          📸 Photos
+          {photosCount > 0 && <span className="text-[10px] opacity-60">({photosCount})</span>}
+        </button>
+        <button
+          onClick={() => { setAssetType('video'); setActiveCategory('all'); setActiveCharacter('all'); }}
+          className={cn(
+            'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all border',
+            assetType === 'video'
+              ? 'bg-purple-500/20 text-purple-100 border-purple-400/50 shadow-lg shadow-purple-500/10'
+              : 'bg-amber-950/40 text-amber-200/50 border-amber-500/10 hover:border-amber-500/30'
+          )}
+          disabled={disabled}
+        >
+          <Film className="w-4 h-4" />
+          🎬 Vidéos
+          {videosCount > 0 && <span className="text-[10px] opacity-60">({videosCount})</span>}
+        </button>
+      </div>
+
       {/* Scene category chips */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
         {SCENE_CATEGORIES.map(cat => (
@@ -145,7 +194,9 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
             className={cn(
               'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap',
               activeCategory === cat.key
-                ? 'bg-amber-500/30 text-amber-100 border border-amber-400/50'
+                ? assetType === 'video'
+                  ? 'bg-purple-500/30 text-purple-100 border border-purple-400/50'
+                  : 'bg-amber-500/30 text-amber-100 border border-amber-400/50'
                 : 'bg-amber-950/40 text-amber-200/60 border border-amber-500/10 hover:border-amber-500/30'
             )}
           >
@@ -173,74 +224,73 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         ))}
       </div>
 
-      {/* Grid */}
+      {/* Grid — 3 items preview */}
       {isLoading ? (
         <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="aspect-[9/16] rounded-xl bg-amber-900/30" />
           ))}
         </div>
-      ) : filteredAssets.length === 0 ? (
+      ) : previewAssets.length === 0 ? (
         <div className="text-center py-8 text-amber-200/40 text-sm">
-          Aucune illustration dans cette catégorie
+          {assetType === 'video'
+            ? '🎬 Aucune vidéo dans cette catégorie'
+            : '📸 Aucune illustration dans cette catégorie'}
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
-          <AnimatePresence mode="popLayout">
-            {filteredAssets.map(asset => {
-              const isSelected = selectedIds.has(asset.id);
-              const index = selectionIndex(asset.id);
-              return (
-                <motion.button
-                  key={asset.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  onClick={() => toggleAsset(asset)}
-                  disabled={disabled || (!isSelected && selectedAssets.length >= maxSelection)}
-                  className={cn(
-                    'relative aspect-[9/16] rounded-xl overflow-hidden border-2 transition-all',
-                    isSelected
-                      ? 'border-amber-400 ring-2 ring-amber-400/30 shadow-lg shadow-amber-500/20'
-                      : 'border-transparent hover:border-amber-500/30',
-                    disabled && 'opacity-50 pointer-events-none'
-                  )}
-                >
-                  <img
-                    src={asset.image_url}
-                    alt={asset.description_fr || asset.description_en}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            {previewAssets.map(asset => (
+              <AssetGridItem
+                key={asset.id}
+                asset={asset}
+                isSelected={selectedIds.has(asset.id)}
+                selectionIndex={selectionIndex(asset.id)}
+                onToggle={toggleAsset}
+                disabled={disabled || (!selectedIds.has(asset.id) && selectedAssets.length >= maxSelection)}
+              />
+            ))}
+          </div>
 
-                  {/* Selection overlay */}
-                  {isSelected && (
-                    <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center">
-                      <div className="w-8 h-8 rounded-full bg-amber-500 text-black font-bold text-sm flex items-center justify-center shadow-lg">
-                        {index}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Emotion badge */}
-                  <div className="absolute bottom-1 left-1 right-1 flex justify-between items-end">
-                    <span className="text-[10px] bg-black/60 text-amber-200/80 px-1.5 py-0.5 rounded-md backdrop-blur-sm truncate max-w-[60%]">
-                      {asset.scene_type}
-                    </span>
-                  </div>
-                </motion.button>
-              );
-            })}
-          </AnimatePresence>
-        </div>
+          {/* "Voir plus" button */}
+          {remainingCount > 0 && (
+            <button
+              onClick={() => setDrawerOpen(true)}
+              disabled={disabled}
+              className={cn(
+                'w-full py-2.5 rounded-xl text-sm font-medium transition-all border',
+                assetType === 'video'
+                  ? 'bg-purple-500/10 text-purple-200 border-purple-400/30 hover:bg-purple-500/20'
+                  : 'bg-amber-500/10 text-amber-200 border-amber-400/30 hover:bg-amber-500/20'
+              )}
+            >
+              ▶ Voir plus ({remainingCount})
+            </button>
+          )}
+        </>
       )}
+
+      {/* Expanded drawer */}
+      <AssetExpandedDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        assets={filteredAssets}
+        selectedIds={selectedIds}
+        selectionIndex={selectionIndex}
+        onToggle={toggleAsset}
+        maxSelection={maxSelection}
+        currentCount={selectedAssets.length}
+        assetType={assetType}
+        disabled={disabled}
+      />
 
       {/* Helper text */}
       <p className="text-[11px] text-center text-amber-200/30">
         {selectedAssets.length === 0
-          ? '📸 Sélectionne des illustrations pour ton conte (optionnel)'
-          : `✅ ${selectedAssets.length} illustration${selectedAssets.length > 1 ? 's' : ''} — elles seront utilisées dans ta vidéo`
+          ? assetType === 'video'
+            ? '🎬 Sélectionne des vidéos pour ton conte (optionnel)'
+            : '📸 Sélectionne des illustrations pour ton conte (optionnel)'
+          : `✅ ${selectedAssets.length} sélection${selectedAssets.length > 1 ? 's' : ''} — utilisées dans ta vidéo`
         }
       </p>
     </section>

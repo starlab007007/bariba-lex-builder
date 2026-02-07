@@ -18,6 +18,7 @@ export interface StoryScene {
   durationSeconds: number;
   imageBase64?: string;
   imageUrl?: string;
+  videoUrl?: string;
 }
 
 export interface GenerationState {
@@ -58,7 +59,7 @@ export function useAnimeStoryGenerator() {
    * Distributes selected images evenly across the audio duration
    */
   const generateFromSelectedAssets = useCallback(async (
-    assets: Array<{ id: string; image_url: string; scene_type: string; character_type: string | null; emotion: string; description_fr: string | null; description_en: string }>,
+    assets: Array<{ id: string; image_url: string; scene_type: string; character_type: string | null; emotion: string; description_fr: string | null; description_en: string; asset_type?: string; video_url?: string | null; video_duration?: number | null }>,
     totalDuration: number
   ): Promise<GenerationResult | null> => {
     if (!assets.length) return null;
@@ -75,16 +76,25 @@ export function useAnimeStoryGenerator() {
     });
 
     try {
-      const sceneDuration = Math.max(3, totalDuration / assets.length);
+      const defaultSceneDuration = Math.max(3, totalDuration / assets.length);
 
-      const scenes: StoryScene[] = assets.map((asset, i) => ({
-        sceneNumber: i + 1,
-        text: asset.description_fr || asset.description_en,
-        emotion: asset.emotion,
-        visualDescription: asset.description_en,
-        durationSeconds: Math.round(sceneDuration),
-        imageUrl: asset.image_url,
-      }));
+      const scenes: StoryScene[] = assets.map((asset, i) => {
+        const isVideo = asset.asset_type === 'video' && asset.video_url;
+        // Video assets use their own duration if available, otherwise equal split
+        const dur = isVideo && asset.video_duration
+          ? Math.min(asset.video_duration, defaultSceneDuration)
+          : Math.round(defaultSceneDuration);
+
+        return {
+          sceneNumber: i + 1,
+          text: asset.description_fr || asset.description_en,
+          emotion: asset.emotion,
+          visualDescription: asset.description_en,
+          durationSeconds: dur,
+          imageUrl: asset.image_url,
+          videoUrl: isVideo ? asset.video_url! : undefined,
+        };
+      });
 
       setState(prev => ({
         ...prev,
