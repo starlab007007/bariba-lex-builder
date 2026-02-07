@@ -23,7 +23,8 @@ import { NarratorCapture } from './NarratorCapture';
 import { VinylRecorder } from './VinylRecorder';
 import { StoryPreviewPlayer } from './StoryPreviewPlayer';
 import { PublishStep } from './PublishStep';
-import { AnimeStyleSelector, AnimeStyleName } from './AnimeStyleSelector';
+import type { AnimeStyleName } from './AnimeStyleSelector';
+import { AssetGallery, LibraryAsset } from './AssetGallery';
 import { SceneEditor, EditableScene } from './SceneEditor';
 import { useAnimeStoryGenerator, StoryScene } from './hooks/useAnimeStoryGenerator';
 import { useVFXEngine } from './hooks/useVFXEngine';
@@ -33,11 +34,12 @@ import { supabase } from '@/integrations/supabase/client';
 
 type StudioStep = 'create' | 'transcribing' | 'editing' | 'generating' | 'preview' | 'finalize' | 'success';
 
-const DURATION_OPTIONS = [
-  { value: 15, label: '15s', emoji: '⚡', labelBa: 'Kpékpé' },
-  { value: 30, label: '30s', emoji: '🎬', labelBa: 'Bìyà' },
-  { value: 60, label: '60s', emoji: '🎥', labelBa: 'Gbángbá' }
-];
+/** Auto-calculate duration from audio length */
+function calcDuration(audioSeconds: number): number {
+  if (audioSeconds < 20) return 15;
+  if (audioSeconds <= 45) return 30;
+  return 60;
+}
 
 // Confirmation modal component
 function ConfirmModal({
@@ -124,8 +126,9 @@ export function GriotStudio() {
   const [audioDuration, setAudioDuration] = useState(0);
   const [transcribedStory, setTranscribedStory] = useState('');
   const [editableScenes, setEditableScenes] = useState<EditableScene[]>([]);
-  const [style, setStyle] = useState<AnimeStyleName>('african');
+  const [style] = useState<AnimeStyleName>('african');
   const [duration, setDuration] = useState(30);
+  const [selectedAssets, setSelectedAssets] = useState<LibraryAsset[]>([]);
   const [showNarratorCapture, setShowNarratorCapture] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -138,6 +141,7 @@ export function GriotStudio() {
     result: generationResult,
     generateStory,
     generateFromScenes,
+    generateFromSelectedAssets,
     reset: resetGeneration
   } = useAnimeStoryGenerator();
 
@@ -224,6 +228,8 @@ export function GriotStudio() {
   const handleRecordingComplete = useCallback(async (blob: Blob, recordedDuration: number) => {
     setAudioBlob(blob);
     setAudioDuration(recordedDuration);
+    // Auto-calculate duration based on audio length
+    setDuration(calcDuration(recordedDuration));
 
     // Create narration audio URL from recorded blob
     const url = URL.createObjectURL(blob);
@@ -301,12 +307,19 @@ export function GriotStudio() {
     try {
       await preloadStyleFlares(style);
 
-      const validScenes = editableScenes.filter(s => s.text.trim().length > 0);
-      if (validScenes.length === 0) {
-        throw new Error('Aucune scène avec du texte');
-      }
+      let result;
 
-      const result = await generateFromScenes(validScenes, style, duration);
+      // Option A: user pre-selected assets → direct montage (no Edge Function)
+      if (selectedAssets.length > 0) {
+        result = await generateFromSelectedAssets(selectedAssets, duration);
+      } else {
+        // Option B: AI matching from edited scenes
+        const validScenes = editableScenes.filter(s => s.text.trim().length > 0);
+        if (validScenes.length === 0) {
+          throw new Error('Aucune scène avec du texte');
+        }
+        result = await generateFromScenes(validScenes, style, duration);
+      }
 
       if (!result || !result.scenes.length) {
         throw new Error('Aucune scène générée');
@@ -332,7 +345,7 @@ export function GriotStudio() {
         style, duration
       };
 
-      setTranscribedStory(validScenes.map(s => s.text).join(' '));
+      setTranscribedStory(editableScenes.map(s => s.text).join(' '));
       setStep('preview');
     } catch (error) {
       console.error('[GriotStudio] Generation error:', error);
@@ -343,7 +356,7 @@ export function GriotStudio() {
       });
       setStep('editing');
     }
-  }, [style, duration, editableScenes, preloadStyleFlares, generateFromScenes, narratorPreviewUrl, toast]);
+  }, [style, duration, editableScenes, selectedAssets, preloadStyleFlares, generateFromScenes, generateFromSelectedAssets, narratorPreviewUrl, toast]);
 
   const handleContinueToFinalize = useCallback(() => setStep('finalize'), []);
 
@@ -368,6 +381,7 @@ export function GriotStudio() {
     setAudioDuration(0);
     setTranscribedStory('');
     setEditableScenes([]);
+    setSelectedAssets([]);
     setPublishedVideoId(null);
     setTranscriptionProgress(0);
     clearDraft();
@@ -511,7 +525,7 @@ export function GriotStudio() {
             <section className="py-4">
               <VinylRecorder
                 avatarUrl={narratorPreviewUrl}
-                maxDuration={duration}
+                maxDuration={120}
                 onRecordingComplete={handleRecordingComplete}
                 onAvatarCapture={() => setShowNarratorCapture(true)}
                 disabled={generationState.isGenerating}
@@ -519,31 +533,11 @@ export function GriotStudio() {
               />
             </section>
 
-            <section>
-              <AnimeStyleSelector selected={style} onSelect={setStyle} disabled={generationState.isGenerating} />
-            </section>
-
-            <section>
-              <h3 className="text-sm font-medium text-amber-200/60 mb-3 text-center">⏱️ Durée</h3>
-              <div className="flex justify-center gap-3">
-                {DURATION_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setDuration(opt.value)}
-                    disabled={generationState.isGenerating}
-                    className={cn(
-                      'px-5 py-3 rounded-xl border transition-all min-w-[80px] active:scale-95',
-                      duration === opt.value
-                        ? 'border-amber-400 bg-amber-500/20 text-amber-100'
-                        : 'border-amber-500/20 bg-amber-950/20 text-amber-200/60 hover:border-amber-500/40'
-                    )}
-                  >
-                    <span className="text-lg mr-1">{opt.emoji}</span>
-                    <span className="font-medium">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
+            <AssetGallery
+              selectedAssets={selectedAssets}
+              onSelectionChange={setSelectedAssets}
+              disabled={generationState.isGenerating}
+            />
 
             <p className="text-xs text-center text-amber-200/40 pt-4">🎙️ Maintiens pour enregistrer ton conte</p>
           </>
