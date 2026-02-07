@@ -14,6 +14,7 @@ import type { StoryScene } from './hooks/useAnimeStoryGenerator';
 interface StoryPreviewPlayerProps {
   scenes: StoryScene[];
   audioUrl?: string;
+  narrationAudioUrl?: string;
   narratorAvatarUrl?: string | null;
   style: string;
   duration: number;
@@ -24,6 +25,7 @@ interface StoryPreviewPlayerProps {
 export function StoryPreviewPlayer({
   scenes,
   audioUrl,
+  narrationAudioUrl,
   narratorAvatarUrl,
   style,
   duration,
@@ -82,9 +84,10 @@ export function StoryPreviewPlayer({
           await engineRef.current.loadNarratorAvatar(narratorAvatarUrl);
         }
         
-        // Load audio
-        if (audioUrl) {
-          audioRef.current = new Audio(audioUrl);
+        // Load audio — prioritize narration (user's recorded voice) over TTS
+        const effectiveAudioUrl = narrationAudioUrl || audioUrl;
+        if (effectiveAudioUrl) {
+          audioRef.current = new Audio(effectiveAudioUrl);
           audioRef.current.preload = 'auto';
           
           audioRef.current.ontimeupdate = () => {
@@ -130,7 +133,7 @@ export function StoryPreviewPlayer({
         audioRef.current = null;
       }
     };
-  }, [scenes, audioUrl, narratorAvatarUrl, style]);
+  }, [scenes, audioUrl, narrationAudioUrl, narratorAvatarUrl, style]);
 
   // Play/Pause
   const handlePlayPause = useCallback(() => {
