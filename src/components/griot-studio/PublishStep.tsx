@@ -22,6 +22,7 @@ import { GriotAnimationEngine, ANIMATION_STYLES } from '@/engines/GriotAnimation
 import AudioLibrary from '@/components/tamtam/creator/AudioLibrary';
 import type { AudioTrack } from '@/types/audio';
 import type { StoryScene } from './hooks/useAnimeStoryGenerator';
+import { CompactRecorder } from './CompactRecorder';
 
 type AudioMode = 'voice_only' | 'music_only' | 'voice_and_music';
 
@@ -75,19 +76,28 @@ export function PublishStep({
   const [publishedVideoId, setPublishedVideoId] = useState<string | null>(null);
 
   // Audio mode state
-  const [audioMode, setAudioMode] = useState<AudioMode>('voice_only');
+  const hasInitialNarration = !!(narrationAudioUrl || audioUrl);
+  const [audioMode, setAudioMode] = useState<AudioMode>(hasInitialNarration ? 'voice_only' : 'music_only');
   const [showAudioLibrary, setShowAudioLibrary] = useState(false);
   const [selectedMusicTrack, setSelectedMusicTrack] = useState<AudioTrack | null>(null);
+  const [localNarrationUrl, setLocalNarrationUrl] = useState<string | null>(null);
 
-  // Effective narration URL: prefer narrationAudioUrl (user's recorded voice), fallback to audioUrl (TTS)
-  const effectiveNarrationUrl = narrationAudioUrl || audioUrl;
-
+  // Effective narration URL: local recording > prop narrationAudioUrl > prop audioUrl
+  const effectiveNarrationUrl = localNarrationUrl || narrationAudioUrl || audioUrl;
+  const hasNarration = !!effectiveNarrationUrl;
   // Handle music track selection
   const handleMusicTrackSelect = useCallback((track: AudioTrack) => {
     setSelectedMusicTrack(track);
     setShowAudioLibrary(false);
     toast({ title: `🎵 ${track.title}`, description: 'Musique sélectionnée' });
   }, [toast]);
+
+  // Handle local recording (for manual path without pre-existing narration)
+  const handleLocalRecording = useCallback((_blob: Blob, dur: number, url: string) => {
+    setLocalNarrationUrl(url);
+    if (audioMode === 'music_only') setAudioMode('voice_only');
+    toast({ title: '🎤 Voix enregistrée!', description: `${Math.floor(dur)}s de narration` });
+  }, [toast, audioMode]);
 
   // Generate thumbnail from canvas
   const generateThumbnail = useCallback(async (): Promise<Blob | null> => {
@@ -355,6 +365,21 @@ export function PublishStep({
         />
       </div>
 
+      {/* Narration / Recorder */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-amber-200/60">🎙️ Narration</label>
+        {hasNarration ? (
+          <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/30 rounded-xl">
+            <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+              <Mic className="w-4 h-4 text-green-300" />
+            </div>
+            <p className="text-sm text-green-200 flex-1">✅ Voix enregistrée</p>
+          </div>
+        ) : (
+          <CompactRecorder onRecordingComplete={handleLocalRecording} />
+        )}
+      </div>
+
       {/* Audio Mode Selector — TikTok-style */}
       <div className="space-y-3">
         <label className="text-sm font-medium text-amber-200/60">🎧 Mode audio</label>
@@ -363,11 +388,14 @@ export function PublishStep({
             const Icon = mode.icon;
             const isActive = audioMode === mode.value;
             const needsMusic = mode.value === 'music_only' || mode.value === 'voice_and_music';
+            const needsVoice = mode.value === 'voice_only' || mode.value === 'voice_and_music';
+            const isVoiceDisabled = needsVoice && !hasNarration;
             
             return (
               <button
                 key={mode.value}
                 onClick={() => {
+                  if (isVoiceDisabled) return;
                   if (needsMusic && !selectedMusicTrack) {
                     setShowAudioLibrary(true);
                     setAudioMode(mode.value);
@@ -375,16 +403,20 @@ export function PublishStep({
                     setAudioMode(mode.value);
                   }
                 }}
+                disabled={isVoiceDisabled}
                 className={cn(
-                  'flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all active:scale-95',
-                  isActive
-                    ? 'border-amber-400 bg-amber-500/20 text-amber-100 shadow-lg shadow-amber-500/10'
-                    : 'border-amber-500/20 bg-amber-950/30 text-amber-200/60 hover:border-amber-500/40'
+                  'flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all',
+                  isVoiceDisabled
+                    ? 'border-amber-500/10 bg-amber-950/20 text-amber-200/30 cursor-not-allowed'
+                    : isActive
+                      ? 'border-amber-400 bg-amber-500/20 text-amber-100 shadow-lg shadow-amber-500/10 active:scale-95'
+                      : 'border-amber-500/20 bg-amber-950/30 text-amber-200/60 hover:border-amber-500/40 active:scale-95'
                 )}
               >
                 <span className="text-xl">{mode.emoji}</span>
-                <Icon className={cn('w-4 h-4', isActive ? 'text-amber-300' : 'text-amber-200/40')} />
+                <Icon className={cn('w-4 h-4', isVoiceDisabled ? 'text-amber-200/20' : isActive ? 'text-amber-300' : 'text-amber-200/40')} />
                 <span className="text-[10px] font-medium leading-tight text-center">{mode.label}</span>
+                {isVoiceDisabled && <span className="text-[8px] text-amber-200/20">Enregistre d'abord</span>}
               </button>
             );
           })}
