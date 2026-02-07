@@ -330,13 +330,14 @@ export function GriotStudio() {
       const scenesWithTiming = result.scenes.map((scene: StoryScene) => {
         const sceneData = {
           imageUrl: scene.imageUrl || '',
+          videoUrl: scene.videoUrl,
           startTime: currentTime,
           endTime: currentTime + scene.durationSeconds,
           emotion: scene.emotion
         };
         currentTime += scene.durationSeconds;
         return sceneData;
-      }).filter(s => s.imageUrl);
+      }).filter(s => s.imageUrl || s.videoUrl);
 
       (window as any).__griotPendingScenes = {
         scenes: scenesWithTiming,

@@ -173,6 +173,7 @@ export type Database = {
       anime_scene_library: {
         Row: {
           action: string | null
+          asset_type: string
           character_type: string | null
           created_at: string
           description_en: string
@@ -187,10 +188,13 @@ export type Database = {
           time_of_day: string | null
           updated_at: string
           usage_count: number | null
+          video_duration: number | null
+          video_url: string | null
           weather: string | null
         }
         Insert: {
           action?: string | null
+          asset_type?: string
           character_type?: string | null
           created_at?: string
           description_en: string
@@ -205,10 +209,13 @@ export type Database = {
           time_of_day?: string | null
           updated_at?: string
           usage_count?: number | null
+          video_duration?: number | null
+          video_url?: string | null
           weather?: string | null
         }
         Update: {
           action?: string | null
+          asset_type?: string
           character_type?: string | null
           created_at?: string
           description_en?: string
@@ -223,6 +230,8 @@ export type Database = {
           time_of_day?: string | null
           updated_at?: string
           usage_count?: number | null
+          video_duration?: number | null
+          video_url?: string | null
           weather?: string | null
         }
         Relationships: []
