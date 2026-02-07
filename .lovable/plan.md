@@ -1,150 +1,133 @@
 
 
-# Griot Digital v7 — Pipeline MovieFlow-Inspired
+# Correction Audio + Selecteur de Musique pour Griot Studio
 
-## Vue d'ensemble
+## Probleme identifie
 
-Transformer le Griot Studio en un pipeline professionnel inspiré de MovieFlow, avec un parcours en 5 etapes claires :
-
-**Enregistrer la voix → Transcrire en texte → Editer le script en scenes → Matcher les illustrations → Previsualiser et publier**
-
-Le changement majeur : l'audio est d'abord **transcrit en texte**, l'utilisateur peut **editer le script scene par scene**, puis chaque scene est **matchee intelligemment** avec les images/videos de la bibliotheque existante.
-
----
-
-## Architecture du nouveau pipeline
+L'audio du narrateur (la voix enregistree par l'utilisateur via le VinylRecorder) est stockee dans `audioBlob` dans GriotStudio.tsx mais **jamais transmise** au preview ni a l'export. Le systeme genere une voix TTS artificielle via l'Edge Function `french-tts` a la place, qui peut echouer silencieusement. Resultat : la video finale n'a pas d'audio.
 
 ```text
-ETAPE 1: ENREGISTREMENT          ETAPE 2: TRANSCRIPTION
-+-------------------+           +---------------------+
-| VinylRecorder     |  -------> | ElevenLabs STT      |
-| (audio capture)   |           | (batch transcribe)  |
-+-------------------+           +---------------------+
-                                         |
-                                         v
-ETAPE 3: EDITEUR DE SCRIPT      ETAPE 4: GENERATION
-+-------------------+           +---------------------+
-| SceneEditor       |  -------> | Smart Scene Matcher  |
-| (phrase = scene)  |           | (library + fallback) |
-| + emotion picker  |           | + transitions        |
-+-------------------+           +---------------------+
-                                         |
-                                         v
-                                ETAPE 5: PREVIEW + PUBLISH
-                                +---------------------+
-                                | StoryPreviewPlayer   |
-                                | + PublishStep         |
-                                +---------------------+
+Flux actuel (CASSE) :
+VinylRecorder → audioBlob (stocke mais jamais utilise)
+                           ↓
+                    useAnimeStoryGenerator → french-tts → audioUrl (TTS, peut echouer)
+                           ↓
+                    StoryPreviewPlayer(audioUrl=TTS)  ← voix originale PERDUE
+                    PublishStep(audioUrl=TTS)          ← voix originale PERDUE
 ```
 
----
+## Solution
 
-## Changements detailles
+### 1. Utiliser la voix enregistree du narrateur comme audio principal
 
-### 1. Nouvelle Edge Function : `transcribe-audio`
-
-**Fichier** : `supabase/functions/transcribe-audio/index.ts`
-
-- Recoit l'audio blob enregistre par le VinylRecorder
-- Utilise l'API ElevenLabs STT (batch, modele `scribe_v2`) avec la cle `ELEVENLABS_API_KEY` deja configuree
-- Retourne le texte transcrit + timestamps par mot
-- Langue : francais (`fra`) avec auto-detection en fallback
-- Fallback : si ElevenLabs echoue, utiliser Lovable AI (Gemini Flash) pour une transcription approximative depuis une description
-
-### 2. Nouveau composant : `SceneEditor`
-
-**Fichier** : `src/components/griot-studio/SceneEditor.tsx`
-
-Un editeur de script interactif ou chaque phrase devient une scene :
-
-- Affiche le texte transcrit, decoupee automatiquement en scenes (1 phrase = 1 scene)
-- Chaque scene est une carte editable avec :
-  - Le texte de la scene (modifiable)
-  - Un selecteur d'emotion (joie, tristesse, mystere, action, sagesse, etc.)
-  - Un apercu miniature de l'image matchee
-  - Drag-and-drop pour reorganiser les scenes
-- Boutons : ajouter une scene, supprimer une scene, fusionner deux scenes
-- Interface tactile optimisee (gros boutons, swipe)
-
-### 3. Modification du `useAnimeStoryGenerator`
-
-**Fichier** : `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts`
-
-Ajouter une nouvelle methode `generateFromScenes` qui :
-
-- Recoit un tableau de scenes editees (texte + emotion + type)
-- Pour chaque scene, appelle le matching intelligent de la bibliotheque `anime_scene_library` :
-  - Score >= 5 : utilise l'image de la bibliotheque
-  - Score < 5 : genere via IA en temps reel (fallback)
-- Calcule automatiquement la duree par scene en fonction du nombre de mots
-- Genere les transitions entre scenes (fondu, glissement, etc.)
-
-### 4. Mise a jour du workflow principal `GriotStudio.tsx`
+La voix du narrateur (le `audioBlob` du VinylRecorder) doit etre l'audio principal de la video, pas le TTS genere.
 
 **Fichier** : `src/components/griot-studio/GriotStudio.tsx`
 
-Nouveau flux d'etapes :
+- Creer un `narrationAudioUrl` a partir du `audioBlob` via `URL.createObjectURL(audioBlob)`
+- Passer cette URL a `StoryPreviewPlayer` et `PublishStep` comme audio principal
+- Supprimer l'appel TTS de `useAnimeStoryGenerator` (inutile puisque l'utilisateur a deja enregistre sa voix)
 
 ```text
-'create' → 'transcribing' → 'editing' → 'generating' → 'preview' → 'finalize' → 'success'
+Flux corrige :
+VinylRecorder → audioBlob → URL.createObjectURL() → narrationAudioUrl
+                                                      ↓
+                    StoryPreviewPlayer(audioUrl=narrationAudioUrl)  ← voix ORIGINALE
+                    PublishStep(audioUrl=narrationAudioUrl)          ← voix ORIGINALE
 ```
 
-- **create** : Enregistrement audio (VinylRecorder) + style + duree (inchange)
-- **transcribing** (NOUVEAU) : Animation d'ecoute avec message "Ecoute de ton conte..." + appel a `transcribe-audio`
-- **editing** (NOUVEAU) : Affichage du `SceneEditor` avec le script decoupage. L'utilisateur peut modifier, reorganiser, changer les emotions
-- **generating** : Matching des illustrations (optimise, plus rapide car les scenes sont deja definies)
-- **preview** : Previsualisation (inchange)
-- **finalize** : Publication (inchange)
+### 2. Ajouter un selecteur de mode audio (avant publication)
 
-### 5. Smart Scene Matcher (amelioration)
+Integrer dans l'etape `finalize` (PublishStep) un selecteur de mode audio style TikTok :
 
-**Fichier** : `supabase/functions/generate-anime-story/index.ts`
+- **Mode 1** : Voix du narrateur uniquement (par defaut)
+- **Mode 2** : Musique de fond uniquement (depuis la bibliotheque)
+- **Mode 3** : Voix du narrateur + musique de fond (volume musique reduit a 20-30%)
 
-Modifier pour accepter un nouveau mode `pre_segmented: true` :
+### 3. Integrer le composant AudioLibrary existant
 
-- Quand les scenes sont pre-decoupees par l'editeur, skip la segmentation IA
-- Utiliser directement les emotions et types de scene fournis pour le matching
-- Resultat : matching plus precis (les emotions sont choisies par l'utilisateur) et plus rapide (pas de segmentation)
+Le composant `AudioLibrary.tsx` (deja existant dans `src/components/tamtam/creator/`) sera reutilise dans le `PublishStep` pour permettre la selection de musique de fond. Il dispose deja de :
+- Interface TikTok-style avec categories et recherche
+- Preview audio avec play/pause
+- Hook `useAudioLibrary` et `useTrackPlayer`
 
-### 6. Mise a jour du `handleRecordingComplete`
+### 4. Mixage audio dans l'export video
 
-**Fichier** : `src/components/griot-studio/GriotStudio.tsx`
-
-Au lieu de lancer directement la generation apres l'enregistrement :
-
-1. Uploader l'audio vers le bucket `tamtam-audio`
-2. Appeler `transcribe-audio` pour obtenir le texte
-3. Decouper le texte en phrases (scenes)
-4. Passer a l'etape `editing` avec le script pre-rempli
-5. L'utilisateur valide/edite puis lance la generation
+Modifier la fonction `exportVideo` dans `PublishStep.tsx` pour :
+- Combiner voix + musique via Web Audio API (GainNode pour le volume)
+- La voix du narrateur reste a volume 1.0
+- La musique de fond a volume 0.25 (reduite pour ne pas couvrir la voix)
+- Le tout est mixe dans un seul MediaStream avant l'enregistrement MediaRecorder
 
 ---
 
-## Fichiers a creer
+## Changements techniques detailles
 
-| Fichier | Description |
-|---------|-------------|
-| `supabase/functions/transcribe-audio/index.ts` | Edge Function de transcription via ElevenLabs STT |
-| `src/components/griot-studio/SceneEditor.tsx` | Editeur de script scene par scene |
+### Fichier 1 : `src/components/griot-studio/GriotStudio.tsx`
+
+- Creer un `narrationAudioUrl` = `URL.createObjectURL(audioBlob)` apres l'enregistrement
+- Passer `narrationAudioUrl` (voix originale) a `StoryPreviewPlayer` au lieu de `generationResult.audioUrl` (TTS)
+- Passer `narrationAudioUrl` + `audioBlob` a `PublishStep`
+- Cleanup URL.revokeObjectURL dans reset/unmount
+
+### Fichier 2 : `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts`
+
+- Supprimer les phases de generation TTS (`generating_audio`, appel a `french-tts`) dans `generateFromScenes`
+- Le resultat ne contient plus `audioUrl`/`audioBase64` (l'audio vient du blob utilisateur)
+- Simplifier le flux : matching illustrations seulement
+
+### Fichier 3 : `src/components/griot-studio/StoryPreviewPlayer.tsx`
+
+- Accepter une prop `narrationAudioUrl` (voix enregistree) en plus de `audioUrl`
+- Priorite : utiliser `narrationAudioUrl` si disponible, sinon `audioUrl`
+- Aucun changement fonctionnel majeur
+
+### Fichier 4 : `src/components/griot-studio/PublishStep.tsx` (changements majeurs)
+
+- Ajouter un selecteur de mode audio avec 3 options :
+  - "Voix seule" (icone Mic)
+  - "Musique seule" (icone Music)
+  - "Voix + Musique" (icone Mic + Music)
+- Integrer un bouton "Choisir une musique" qui ouvre le composant `AudioLibrary`
+- Accepter `narrationAudioUrl` et `narrationBlob` comme nouvelles props
+- Modifier `exportVideo()` pour mixer les sources audio selon le mode choisi :
+  - Mode voix seule : utiliser uniquement `narrationAudioUrl` via MediaElementSource
+  - Mode musique seule : utiliser uniquement la musique selectionnee
+  - Mode voix + musique : combiner les deux via Web Audio API avec GainNodes (voix=1.0, musique=0.25)
+
+### Fichier 5 : `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts`
+
+- Retirer l'appel `french-tts` de `generateFromScenes()` (etape TTS inutile car on utilise la voix originale)
+- Garder l'appel dans `generateStory()` (methode legacy) pour compatibilite
+
+---
+
+## Architecture du mixage audio (Web Audio API, 100% gratuit)
+
+```text
+Mode "Voix + Musique":
+
+narrationAudioUrl → Audio() → createMediaElementSource() → GainNode(1.0) ─┐
+                                                                            ├→ createMediaStreamDestination() → combinedStream
+musicTrackUrl     → Audio() → createMediaElementSource() → GainNode(0.25)─┘
+                                                                            
+combinedStream + videoStream → MediaRecorder → Blob (video finale avec audio)
+```
+
+Tout est fait avec les APIs Web natives (Web Audio API, MediaRecorder, MediaStream) — aucune API payante necessaire.
+
+---
 
 ## Fichiers a modifier
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/components/griot-studio/GriotStudio.tsx` | Nouveaux steps transcribing + editing, nouveau flux |
-| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Methode `generateFromScenes` pour scenes pre-editees |
-| `supabase/functions/generate-anime-story/index.ts` | Mode `pre_segmented` pour skip la segmentation IA |
+| `src/components/griot-studio/GriotStudio.tsx` | Passer audioBlob/narrationAudioUrl au preview et publish |
+| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Supprimer generation TTS dans generateFromScenes |
+| `src/components/griot-studio/StoryPreviewPlayer.tsx` | Accepter narrationAudioUrl |
+| `src/components/griot-studio/PublishStep.tsx` | Selecteur mode audio + integration AudioLibrary + mixage Web Audio |
 
----
+## Aucun nouveau fichier a creer
 
-## Experience utilisateur finale
-
-1. **Parler** : L'utilisateur enregistre son conte via le disque vinyle anime
-2. **Transcrire** : Animation d'ecoute, le texte apparait progressivement
-3. **Editer** : Le script est presente scene par scene, l'utilisateur peut modifier le texte, choisir les emotions, reorganiser
-4. **Illustrer** : Les images sont matchees intelligemment depuis la bibliotheque (ultra-rapide)
-5. **Previsualiser** : Diaporama anime avec effets Ken Burns synchronise sur l'audio
-6. **Publier** : Export et publication dans le feed
-
-Ce pipeline garantit un controle creatif total tout en restant simple et rapide, exactement comme MovieFlow.
+Le composant `AudioLibrary` existant est reutilise tel quel.
 
