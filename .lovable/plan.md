@@ -1,149 +1,161 @@
 
-# Simplification du Studio Griot + Galerie d'Assets Pre-generes
+
+# Extension Video de la Bibliotheque + Refonte AssetGallery avec Tabs Photo/Video
 
 ## Vue d'ensemble
 
-Supprimer les menus de style (Manga/Chibi/Fantasy/Conte Africain) et de duree visibles sur l'ecran de creation. Le style "african" sera utilise par defaut en arriere-plan. A la place de ces menus, ajouter sous l'enregistreur audio une **galerie de selection d'assets** (photos et videos pre-generes de la bibliotheque `anime_scene_library`) que l'utilisateur peut parcourir, selectionner et utiliser pour le montage final de son conte.
+Ajouter le support video a la bibliotheque `anime_scene_library`, creer une structure de stockage organisee pour les videos courtes pre-generees (5-8s), et refondre le composant `AssetGallery` pour afficher un selecteur Photo/Video avec 3 elements par categorie et un bouton "Voir plus" qui ouvre une vue etendue.
 
 ---
 
-## Ce qui va changer
+## 1. Extension de la base de donnees
 
-### 1. Suppressions dans `GriotStudio.tsx` (etape "create")
+**Migration SQL** : Ajouter une colonne `video_url` et un champ `asset_type` a la table `anime_scene_library`
 
-**Supprimer** :
-- Le composant `AnimeStyleSelector` (le menu 4 styles en capture jointe)
-- Le selecteur de duree (15s/30s/60s)
-- Forcer `style = 'african'` en dur (valeur par defaut, jamais affichee)
-- La duree sera calculee automatiquement en fonction de la longueur de l'enregistrement audio
-
-L'import de `AnimeStyleSelector` sera retire. Le state `style` gardera sa valeur initiale `'african'` sans UI pour le changer.
-
-### 2. Nouveau composant : `AssetGallery.tsx`
-
-Un composant galerie place **sous le VinylRecorder** qui affiche les images pre-generees de la bibliotheque `anime_scene_library` avec :
-
-**Categories de navigation** (inspirees de Kuaishou/TikTok) :
-- Tous (toutes les images)
-- Village (scene_type: village)
-- Foret (scene_type: forest)
-- Montagne (scene_type: mountain)
-- Riviere (scene_type: river)
-- Marche (scene_type: market)
-- Nuit (scene_type: night)
-- Voyage (scene_type: journey)
-- Maison (scene_type: home)
-- Rassemblement (scene_type: gathering)
-- Esprits (scene_type: spirit)
-
-**Sous-filtres par personnage** :
-- Ancien/Sage (elder)
-- Garcon (child_boy)
-- Fille (child_girl)
-- Groupe (group)
-- Animal (animal)
-- Esprit (spirit)
-
-**Interface** :
-- Barre de categories horizontale scrollable (pills/chips style TikTok)
-- Grille 3 colonnes de miniatures (aspect ratio 9:16)
-- Tap pour selectionner/deselectionner une image
-- Badge compteur des images selectionnees
-- Les images selectionnees seront utilisees pour le montage video a la place du matching automatique
-
-**Donnees** : Requete directe sur la table `anime_scene_library` (54 images disponibles, toutes avec `image_url` publique)
-
-### 3. Modifications dans `GriotStudio.tsx`
-
-**Nouveau state** :
-- `selectedAssets`: tableau d'images selectionnees depuis la galerie
-- Suppression du state `style` expose a l'utilisateur (garde en interne = `'african'`)
-
-**Nouveau flux** :
 ```text
-AVANT:
-VinylRecorder → AnimeStyleSelector → DureeSelector → (enregistrer)
-
-APRES:
-VinylRecorder → AssetGallery (photos/videos pre-generes) → (enregistrer)
+Colonnes ajoutees :
+- asset_type : TEXT ('photo' ou 'video'), defaut 'photo'
+- video_url : TEXT nullable (URL de la video dans le bucket anime-library)
+- video_duration : REAL nullable (duree en secondes, ex: 5.5)
 ```
 
-La duree sera determinee automatiquement :
-- Si audio < 20s : duree = 15
-- Si audio 20-45s : duree = 30
-- Si audio > 45s : duree = 60
+Cela permet aux assets existants (54 images) de garder leur type `photo` par defaut, et d'ajouter de nouveaux enregistrements de type `video`.
 
-### 4. Integration des assets selectionnes dans le pipeline
+## 2. Organisation des fichiers video dans le bucket `anime-library`
 
-Quand l'utilisateur a selectionne des assets ET enregistre sa voix :
+Structure proposee dans le bucket public `anime-library` :
 
-**Option A** (assets selectionnes) : Les images choisies par l'utilisateur sont utilisees directement pour le montage, reparties uniformement sur la duree de l'audio. Le matching IA est saute.
-
-**Option B** (aucune selection) : Le comportement actuel est preserve - le matching intelligent avec la bibliotheque est utilise apres transcription et edition des scenes.
-
-Modification dans `useAnimeStoryGenerator.ts` : ajouter une methode `generateFromSelectedAssets(assets, audioDuration)` qui :
-- Prend les images selectionnees
-- Les repartit equitablement sur la duree totale
-- Cree des objets `StoryScene` avec les metadonnees existantes (emotion, scene_type)
-- Skip completement l'appel a l'Edge Function (pas de matching necessaire)
-
-### 5. Modification du flux apres enregistrement
-
-Si des assets sont pre-selectionnes :
 ```text
-Enregistrer → Transcription → Edition scenes (avec previews des assets choisis) → Preview → Publish
+anime-library/
+  african/
+    joy/
+      village_child_boy_standing_xxx.png        (existant - photo)
+      village_child_boy_standing_xxx.webm        (nouveau - video)
+    sadness/
+      ...
+    wonder/
+      ...
+  videos/
+    african/
+      animals/
+        lion_savane_01.mp4
+        elephant_riviere_01.mp4
+        oiseau_foret_01.mp4
+      village/
+        danse_village_01.mp4
+        marche_village_01.mp4
+        feu_camp_01.mp4
+      forest/
+        arbres_vent_01.mp4
+        riviere_foret_01.mp4
+        brume_foret_01.mp4
+      mythology/
+        esprit_eau_01.mp4
+        masque_danse_01.mp4
+        ancetre_feu_01.mp4
+      nature/
+        coucher_soleil_01.mp4
+        pluie_savane_01.mp4
+        etoiles_nuit_01.mp4
+      tales/
+        conte_enfant_01.mp4
+        roi_palais_01.mp4
+        griot_parole_01.mp4
 ```
 
-Si aucun asset selectionne :
+**Convention de nommage** : `{sujet}_{lieu}_{numero}.mp4`
+
+Les videos seront inserees dans la table `anime_scene_library` avec `asset_type = 'video'` et les metadonnees correspondantes (scene_type, character_type, emotion).
+
+## 3. Refonte du composant `AssetGallery.tsx`
+
+### Interface repensee
+
 ```text
-Enregistrer → Transcription → Edition scenes → Matching auto (comportement actuel) → Preview → Publish
++-----------------------------------------+
+| Illustrations         [2/10 selectionnes]|
++-----------------------------------------+
+|  [ 📸 Photos ]  [ 🎬 Videos ]           |  <-- Toggle tabs
++-----------------------------------------+
+|  🏘️ Village  🌳 Foret  🦁 Animaux ...   |  <-- Categories scrollables
++-----------------------------------------+
+|  [img1]  [img2]  [img3]                  |  <-- 3 premiers assets
+|                                          |
+|      [ ▶ Voir plus (8) ]                |  <-- Bouton voir plus
++-----------------------------------------+
+|  👧 Enfant  🧓 Ancien  👥 Groupe  ...   |  <-- Sous-filtres caractere
++-----------------------------------------+
 ```
+
+### Changements cles
+
+- **Tabs Photo/Video** : Deux boutons en haut pour basculer entre `photo` et `video`
+- **Affichage limite** : Seulement 3 assets visibles par categorie
+- **Bouton "Voir plus"** : Affiche le nombre restant, ouvre un modal/drawer avec la grille complete
+- **Preview video** : Les miniatures video jouent automatiquement en boucle (muted) au survol/tap
+- **Selection unifiee** : Les photos et videos sont selectionnables ensemble (max 10 total)
+
+### Modal "Voir plus"
+
+Quand l'utilisateur clique sur "Voir plus" :
+- Un drawer/modal plein ecran s'ouvre
+- Affiche tous les assets de la categorie active (photos ou videos selon le tab)
+- Grille 3 colonnes avec tap pour selectionner
+- Bouton "Fermer" pour revenir
+- Le compteur de selection reste visible
+
+## 4. Modifications dans les fichiers existants
+
+### `AssetGallery.tsx` (refonte majeure)
+
+- Ajouter state `assetType: 'photo' | 'video'`
+- Modifier la requete pour filtrer par `asset_type`
+- Pour les videos : inclure `video_url` dans le select
+- Limiter l'affichage a 3 elements, afficher le compteur restant
+- Ajouter un modal `AssetExpandedView` inline pour le "Voir plus"
+- Les miniatures video utilisent `<video>` avec `autoPlay muted loop playsInline`
+
+### `GriotStudio.tsx`
+
+- Passer la prop `selectedAssets` qui peut contenir photos et videos
+- Le type `LibraryAsset` est etendu avec `video_url?`, `asset_type`, `video_duration?`
+
+### `useAnimeStoryGenerator.ts`
+
+- `generateFromSelectedAssets` : gerer les assets video (utiliser `video_url` si present, sinon `image_url`)
+- `StoryScene` : ajouter `videoUrl?: string` optionnel pour les scenes basees sur des videos
+- Adapter le calcul de duree : les scenes video utilisent leur propre duree (`video_duration`) au lieu de la repartition uniforme
+
+### `StoryPreviewPlayer.tsx`
+
+- Si une scene a un `videoUrl`, afficher un element `<video>` au lieu d'une image statique
+- Le video element doit etre synchronise avec le timeline general
+- Autoplay muted (le son vient de la narration, pas de la video template)
 
 ---
 
-## Fichiers a creer
-
-| Fichier | Description |
-|---------|-------------|
-| `src/components/griot-studio/AssetGallery.tsx` | Galerie de photos/videos pre-generees avec filtres par categorie et personnage |
-
-## Fichiers a modifier
+## 5. Fichiers a modifier
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/components/griot-studio/GriotStudio.tsx` | Supprimer AnimeStyleSelector + DureeSelector, ajouter AssetGallery, forcer style='african', auto-calculer duree, gerer selectedAssets |
-| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Ajouter methode `generateFromSelectedAssets` pour montage direct |
+| `src/components/griot-studio/AssetGallery.tsx` | Tabs Photo/Video, limite 3 items, bouton "Voir plus", modal etendu, preview video |
+| `src/components/griot-studio/GriotStudio.tsx` | Etendre le type LibraryAsset |
+| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Support videoUrl dans StoryScene et generateFromSelectedAssets |
+| `src/components/griot-studio/StoryPreviewPlayer.tsx` | Rendu video pour les scenes avec videoUrl |
 
-## Donnees disponibles dans la bibliotheque
+## 6. Migration SQL
 
-La table `anime_scene_library` contient **54 images** reparties comme suit :
+```text
+- ALTER TABLE anime_scene_library ADD COLUMN asset_type TEXT DEFAULT 'photo'
+- ALTER TABLE anime_scene_library ADD COLUMN video_url TEXT
+- ALTER TABLE anime_scene_library ADD COLUMN video_duration REAL
+```
 
-**Par lieu** : village (10), foret (9), montagne (5), riviere (5), marche (5), nuit (4), journey (4), home (4), gathering (4), spirit (1)
+## 7. Details techniques importants
 
-**Par personnage** : elder (16), child_boy (14), child_girl (12), group (5), animal (1), spirit (2)
+- **Pas d'API payante** : tout reste gratuit. Les videos sont hebergees sur le bucket public existant `anime-library`
+- **Preview video** : utilise `<video autoPlay muted loop playsInline>` natif du navigateur
+- **Performance** : les videos sont courtes (5-8s) et legeres, chargement lazy
+- **Compatibilite** : les assets existants (54 photos) gardent `asset_type = 'photo'` par defaut grace au DEFAULT
+- **Le modal "Voir plus"** reste dans le meme composant (pas de navigation) pour garder le contexte de selection
 
-**Par emotion** : joy (29), sadness (11), wonder (2), peace (2), excitement (2), fear (1), tension (1)
-
-Toutes les images sont hebergees sur le bucket public `anime-library` avec des URLs directement accessibles.
-
----
-
-## Details techniques de l'AssetGallery
-
-### Chargement des donnees
-- Requete `supabase.from('anime_scene_library').select('*').eq('style', 'african')` au montage
-- Cache avec `useQuery` (staleTime: 5min)
-- Affichage d'un skeleton loader pendant le chargement
-
-### Interface utilisateur
-- Header avec titre "Choisis tes illustrations" et compteur de selection
-- Barre de categories horizontale (scrollable, style chips TikTok)
-- Grille responsive : 3 colonnes sur mobile, 4 sur tablette
-- Chaque image : coin arrondi, overlay au tap avec numero de selection
-- Maximum 10 images selectionnables
-- Bouton "Tout deselectionner" si > 0 selectionne
-
-### Performance
-- Images chargees en `loading="lazy"`
-- Thumbnails optimisees (les images sont deja en WebP depuis le bucket)
-- Pas d'API externe, tout est gratuit (lecture directe de la base)
