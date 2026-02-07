@@ -120,6 +120,7 @@ export function GriotStudio() {
   const [narratorFile, setNarratorFile] = useState<File | Blob | null>(null);
   const [narratorPreviewUrl, setNarratorPreviewUrl] = useState<string | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [narrationAudioUrl, setNarrationAudioUrl] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState(0);
   const [transcribedStory, setTranscribedStory] = useState('');
   const [editableScenes, setEditableScenes] = useState<EditableScene[]>([]);
@@ -223,6 +224,10 @@ export function GriotStudio() {
   const handleRecordingComplete = useCallback(async (blob: Blob, recordedDuration: number) => {
     setAudioBlob(blob);
     setAudioDuration(recordedDuration);
+
+    // Create narration audio URL from recorded blob
+    const url = URL.createObjectURL(blob);
+    setNarrationAudioUrl(url);
 
     if ('vibrate' in navigator) navigator.vibrate([50, 30, 50]);
 
@@ -356,6 +361,9 @@ export function GriotStudio() {
     engineRef.current?.stopPreview();
     resetGeneration();
     clearNarrator();
+    // Revoke narration URL
+    if (narrationAudioUrl) URL.revokeObjectURL(narrationAudioUrl);
+    setNarrationAudioUrl(null);
     setAudioBlob(null);
     setAudioDuration(0);
     setTranscribedStory('');
@@ -364,7 +372,7 @@ export function GriotStudio() {
     setTranscriptionProgress(0);
     clearDraft();
     setStep('create');
-  }, [resetGeneration, clearNarrator, clearDraft]);
+  }, [resetGeneration, clearNarrator, clearDraft, narrationAudioUrl]);
 
   const handleBack = useCallback(() => {
     if (step === 'finalize') setStep('preview');
@@ -687,6 +695,7 @@ export function GriotStudio() {
             <StoryPreviewPlayer
               scenes={generationResult.scenes}
               audioUrl={generationResult.audioUrl}
+              narrationAudioUrl={narrationAudioUrl || undefined}
               narratorAvatarUrl={narratorPreviewUrl}
               style={style}
               duration={duration}
@@ -723,6 +732,8 @@ export function GriotStudio() {
             <PublishStep
               scenes={generationResult.scenes}
               audioUrl={generationResult.audioUrl}
+              narrationAudioUrl={narrationAudioUrl || undefined}
+              narrationBlob={audioBlob || undefined}
               narratorAvatarUrl={narratorPreviewUrl}
               style={style}
               duration={duration}

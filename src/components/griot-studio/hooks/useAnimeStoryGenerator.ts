@@ -134,36 +134,9 @@ export function useAnimeStoryGenerator() {
         return { ...scene, imageUrl: makeScenePlaceholderDataUrl(scene) };
       });
 
-      // PHASE 2: Generate audio narration
-      setState(prev => ({
-        ...prev,
-        currentPhase: 'generating_audio',
-        progress: 75,
-        message: '🎙️ Génération de la narration vocale...'
-      }));
-
-      let audioBase64: string | undefined;
-      let audioUrl: string | undefined;
-
-      try {
-        const fullText = scenes.map((s: StoryScene) => s.text).join(' ... ');
-        const { data: ttsData, error: ttsError } = await supabase.functions.invoke('french-tts', {
-          body: { text: fullText, returnAudio: true }
-        });
-
-        if (!ttsError && ttsData?.audioContent) {
-          audioBase64 = ttsData.audioContent;
-          const audioBlob = base64ToBlob(audioBase64, 'audio/mpeg');
-          audioUrl = URL.createObjectURL(audioBlob);
-        }
-      } catch (audioError) {
-        console.warn('[useAnimeStoryGenerator] Audio generation failed:', audioError);
-      }
-
+      // No TTS generation — user's recorded narration is used directly
       const generationResult: GenerationResult = {
         scenes: scenesWithUrls,
-        audioBase64,
-        audioUrl,
         totalDuration
       };
 
