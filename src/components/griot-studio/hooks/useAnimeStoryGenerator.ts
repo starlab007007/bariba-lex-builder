@@ -54,6 +54,82 @@ export function useAnimeStoryGenerator() {
   const [result, setResult] = useState<GenerationResult | null>(null);
 
   /**
+   * Generate from manually selected library assets (no Edge Function needed)
+   * Distributes selected images evenly across the audio duration
+   */
+  const generateFromSelectedAssets = useCallback(async (
+    assets: Array<{ id: string; image_url: string; scene_type: string; character_type: string | null; emotion: string; description_fr: string | null; description_en: string }>,
+    totalDuration: number
+  ): Promise<GenerationResult | null> => {
+    if (!assets.length) return null;
+    const startTime = Date.now();
+
+    setState({
+      isGenerating: true,
+      currentPhase: 'generating_images',
+      progress: 20,
+      message: '📸 Montage des illustrations sélectionnées...',
+      currentScene: 0,
+      totalScenes: assets.length,
+      error: null
+    });
+
+    try {
+      const sceneDuration = Math.max(3, totalDuration / assets.length);
+
+      const scenes: StoryScene[] = assets.map((asset, i) => ({
+        sceneNumber: i + 1,
+        text: asset.description_fr || asset.description_en,
+        emotion: asset.emotion,
+        visualDescription: asset.description_en,
+        durationSeconds: Math.round(sceneDuration),
+        imageUrl: asset.image_url,
+      }));
+
+      setState(prev => ({
+        ...prev,
+        progress: 80,
+        currentScene: scenes.length,
+        message: `📸 ${scenes.length} illustrations prêtes!`
+      }));
+
+      const generationResult: GenerationResult = {
+        scenes,
+        totalDuration
+      };
+
+      const totalTime = Date.now() - startTime;
+      console.log(`[useAnimeStoryGenerator] generateFromSelectedAssets complete in ${totalTime}ms`);
+
+      setState({
+        isGenerating: false,
+        currentPhase: 'complete',
+        progress: 100,
+        message: `✅ Prêt en ${(totalTime / 1000).toFixed(1)}s!`,
+        currentScene: scenes.length,
+        totalScenes: scenes.length,
+        error: null
+      });
+
+      setResult(generationResult);
+      return generationResult;
+
+    } catch (error) {
+      console.error('[useAnimeStoryGenerator] generateFromSelectedAssets error:', error);
+      setState({
+        isGenerating: false,
+        currentPhase: 'error',
+        progress: 0,
+        message: '',
+        currentScene: 0,
+        totalScenes: 0,
+        error: error instanceof Error ? error.message : 'Erreur de montage'
+      });
+      return null;
+    }
+  }, []);
+
+  /**
    * Generate from pre-edited scenes (MovieFlow pipeline)
    * Skips AI segmentation — scenes come from SceneEditor
    */
@@ -307,6 +383,7 @@ export function useAnimeStoryGenerator() {
     result,
     generateStory,
     generateFromScenes,
+    generateFromSelectedAssets,
     reset
   };
 }
