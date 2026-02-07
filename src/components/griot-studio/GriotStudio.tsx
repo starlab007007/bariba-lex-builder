@@ -134,6 +134,7 @@ export function GriotStudio() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [publishedVideoId, setPublishedVideoId] = useState<string | null>(null);
   const [transcriptionProgress, setTranscriptionProgress] = useState(0);
+  const [isManualMode, setIsManualMode] = useState(false);
 
   // Hooks
   const {
@@ -225,31 +226,18 @@ export function GriotStudio() {
   /**
    * Recording complete → start transcription
    */
-  const handleRecordingComplete = useCallback(async (blob: Blob, recordedDuration: number) => {
-    setAudioBlob(blob);
-    setAudioDuration(recordedDuration);
-    // Auto-calculate duration based on audio length
-    setDuration(calcDuration(recordedDuration));
-
-    // Create narration audio URL from recorded blob
-    const url = URL.createObjectURL(blob);
-    setNarrationAudioUrl(url);
-
-    if ('vibrate' in navigator) navigator.vibrate([50, 30, 50]);
-
-    toast({ title: '🎤 Enregistré!', description: `${Math.floor(recordedDuration)}s de ton conte.` });
-
-    // Move to transcription step
+  /**
+   * Start transcription process (extracted for reuse)
+   */
+  const startTranscription = useCallback(async (blob: Blob) => {
     setStep('transcribing');
     setTranscriptionProgress(10);
 
     try {
-      // Animate progress
       const progressInterval = setInterval(() => {
         setTranscriptionProgress(prev => Math.min(prev + 5, 85));
       }, 500);
 
-      // Call transcribe-audio edge function
       const formData = new FormData();
       formData.append('audio', blob, 'recording.webm');
 
@@ -264,17 +252,11 @@ export function GriotStudio() {
       if (data?.success && data?.text) {
         setTranscriptionProgress(100);
         setTranscribedStory(data.text);
-
-        // Split into scenes
         const scenes = splitTextIntoScenes(data.text);
         setEditableScenes(scenes);
-
         toast({ title: '📝 Transcription terminée!', description: `${scenes.length} scènes détectées.` });
-
-        // Move to editing step
         setTimeout(() => setStep('editing'), 500);
       } else if (data?.useClientSide) {
-        // Fallback: use demo text for now
         throw new Error('Transcription serveur indisponible');
       } else {
         throw new Error(data?.error || 'Transcription échouée');
@@ -282,21 +264,39 @@ export function GriotStudio() {
     } catch (error) {
       console.error('[GriotStudio] Transcription error:', error);
       setTranscriptionProgress(0);
-
-      // Fallback: let user type/edit manually with placeholder
       const fallbackText = 'Il était une fois, dans un village lointain, un conte merveilleux. Les anciens racontaient des histoires autour du feu. Chaque mot portait la sagesse des générations passées.';
       setTranscribedStory(fallbackText);
       setEditableScenes(splitTextIntoScenes(fallbackText));
-
       toast({
         title: '⚠️ Transcription manuelle',
         description: 'Modifie le texte ci-dessous avec ton conte.',
         variant: 'destructive'
       });
-
       setStep('editing');
     }
   }, [toast]);
+
+  /**
+   * Recording complete → save audio, then auto-transcribe or stay for manual path
+   */
+  const handleRecordingComplete = useCallback(async (blob: Blob, recordedDuration: number) => {
+    setAudioBlob(blob);
+    setAudioDuration(recordedDuration);
+    setDuration(calcDuration(recordedDuration));
+    const url = URL.createObjectURL(blob);
+    setNarrationAudioUrl(url);
+
+    if ('vibrate' in navigator) navigator.vibrate([50, 30, 50]);
+    toast({ title: '🎤 Enregistré!', description: `${Math.floor(recordedDuration)}s de ton conte.` });
+
+    // Manual path: if assets are selected, stay in create (user clicks "Utiliser")
+    if (selectedAssets.length > 0) {
+      return;
+    }
+
+    // Auto path: proceed to transcription
+    await startTranscription(blob);
+  }, [toast, selectedAssets, startTranscription]);
 
   /**
    * Generate from edited scenes (MovieFlow approach)
@@ -361,6 +361,55 @@ export function GriotStudio() {
 
   const handleContinueToFinalize = useCallback(() => setStep('finalize'), []);
 
+  // Manual path: use selected assets directly → finalize
+  const handleUseAssets = useCallback(async () => {
+    if (selectedAssets.length === 0) return;
+    if ('vibrate' in navigator) navigator.vibrate(50);
+
+    try {
+      const result = await generateFromSelectedAssets(selectedAssets, duration);
+      if (!result || !result.scenes.length) {
+        throw new Error('Aucune scène générée');
+      }
+
+      let ct = 0;
+      const scenesWithTiming = result.scenes.map((scene: StoryScene) => {
+        const data = {
+          imageUrl: scene.imageUrl || '',
+          videoUrl: scene.videoUrl,
+          startTime: ct,
+          endTime: ct + scene.durationSeconds,
+          emotion: scene.emotion
+        };
+        ct += scene.durationSeconds;
+        return data;
+      }).filter(s => s.imageUrl || s.videoUrl);
+
+      (window as any).__griotPendingScenes = {
+        scenes: scenesWithTiming,
+        narratorUrl: narratorPreviewUrl,
+        audioUrl: narrationAudioUrl,
+        style, duration
+      };
+
+      setIsManualMode(true);
+      setStep('finalize');
+    } catch (error) {
+      console.error('[GriotStudio] Use assets error:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de préparer les illustrations.',
+        variant: 'destructive'
+      });
+    }
+  }, [selectedAssets, duration, generateFromSelectedAssets, narratorPreviewUrl, narrationAudioUrl, style, toast]);
+
+  // Auto path: trigger transcription manually (back-from-transcription scenario)
+  const handleAutoPath = useCallback(async () => {
+    if (!audioBlob) return;
+    await startTranscription(audioBlob);
+  }, [audioBlob, startTranscription]);
+
   const handlePublishSuccess = useCallback((videoId: string) => {
     setPublishedVideoId(videoId);
     clearDraft();
@@ -383,6 +432,7 @@ export function GriotStudio() {
     setTranscribedStory('');
     setEditableScenes([]);
     setSelectedAssets([]);
+    setIsManualMode(false);
     setPublishedVideoId(null);
     setTranscriptionProgress(0);
     clearDraft();
@@ -390,12 +440,15 @@ export function GriotStudio() {
   }, [resetGeneration, clearNarrator, clearDraft, narrationAudioUrl]);
 
   const handleBack = useCallback(() => {
-    if (step === 'finalize') setStep('preview');
+    if (step === 'finalize') {
+      if (isManualMode) { setIsManualMode(false); setStep('create'); }
+      else setStep('preview');
+    }
     else if (step === 'preview') { engineRef.current?.stopPreview(); setStep('editing'); }
     else if (step === 'generating') setStep('editing');
     else if (step === 'editing') setStep('create');
     else if (step === 'transcribing') setStep('create');
-  }, [step]);
+  }, [step, isManualMode]);
 
   const handleCancelClick = useCallback(() => {
     if (audioBlob || generationResult) setShowCancelConfirm(true);
@@ -410,8 +463,9 @@ export function GriotStudio() {
 
   const handleModify = useCallback(() => {
     engineRef.current?.stopPreview();
-    setStep('editing');
-  }, []);
+    if (isManualMode) { setIsManualMode(false); setStep('create'); }
+    else setStep('editing');
+  }, [isManualMode]);
 
   const canGenerate = audioBlob !== null;
 
@@ -426,7 +480,9 @@ export function GriotStudio() {
     success: { emoji: '🎉', label: 'Publié!' },
   };
 
-  const stepOrder: StudioStep[] = ['create', 'transcribing', 'editing', 'generating', 'preview', 'finalize'];
+  const stepOrder: StudioStep[] = isManualMode 
+    ? ['create', 'finalize'] 
+    : ['create', 'transcribing', 'editing', 'generating', 'preview', 'finalize'];
   const currentStepIndex = stepOrder.indexOf(step);
 
   return (
@@ -523,24 +579,114 @@ export function GriotStudio() {
               </div>
             )}
 
-            <section className="py-4">
-              <VinylRecorder
-                avatarUrl={narratorPreviewUrl}
-                maxDuration={120}
-                onRecordingComplete={handleRecordingComplete}
-                onAvatarCapture={() => setShowNarratorCapture(true)}
-                disabled={generationState.isGenerating}
-                accentColor="#FFD700"
-              />
-            </section>
+            {/* Audio Section: recorded confirmation OR recorder */}
+            {audioBlob ? (
+              <motion.section
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="py-3"
+              >
+                <div className="flex items-center gap-4 p-4 bg-green-500/10 border border-green-500/30 rounded-2xl">
+                  <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-2xl">✅</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-green-200">Voix enregistrée</p>
+                    <p className="text-xs text-green-200/60">{Math.floor(audioDuration)}s de narration</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (narrationAudioUrl) URL.revokeObjectURL(narrationAudioUrl);
+                      setAudioBlob(null);
+                      setNarrationAudioUrl(null);
+                      setAudioDuration(0);
+                    }}
+                    className="text-xs text-amber-200/50 hover:text-amber-100 transition-colors px-2 py-1 flex-shrink-0"
+                  >
+                    🔄 Refaire
+                  </button>
+                </div>
+              </motion.section>
+            ) : (
+              <section className="py-4">
+                <VinylRecorder
+                  avatarUrl={narratorPreviewUrl}
+                  maxDuration={120}
+                  onRecordingComplete={handleRecordingComplete}
+                  onAvatarCapture={() => setShowNarratorCapture(true)}
+                  disabled={generationState.isGenerating}
+                  accentColor="#FFD700"
+                />
+              </section>
+            )}
 
+            {/* Asset Gallery */}
             <AssetGallery
               selectedAssets={selectedAssets}
               onSelectionChange={setSelectedAssets}
               disabled={generationState.isGenerating}
             />
 
-            <p className="text-xs text-center text-amber-200/40 pt-4">🎙️ Maintiens pour enregistrer ton conte</p>
+            {/* Bottom CTAs */}
+            <div className="pt-4 space-y-3 pb-8">
+              {/* Manual path: assets selected → "Utiliser" */}
+              {selectedAssets.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                >
+                  <Button
+                    size="lg"
+                    onClick={handleUseAssets}
+                    disabled={generationState.isGenerating}
+                    className={cn(
+                      'w-full py-6 text-base font-semibold rounded-2xl',
+                      'bg-gradient-to-r from-green-500 to-emerald-500',
+                      'hover:from-green-400 hover:to-emerald-400',
+                      'shadow-xl shadow-green-500/20'
+                    )}
+                  >
+                    <Check className="w-5 h-5 mr-2" />
+                    ✅ Utiliser ({selectedAssets.length} sélection{selectedAssets.length > 1 ? 's' : ''})
+                  </Button>
+                  <p className="text-xs text-center text-amber-200/40 mt-2">
+                    {audioBlob ? 'Passer à la publication →' : 'Enregistrer ta voix à l\'étape suivante'}
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Auto path: audio recorded, no assets → continue with AI */}
+              {audioBlob && selectedAssets.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Button
+                    size="lg"
+                    onClick={handleAutoPath}
+                    className={cn(
+                      'w-full py-6 text-base font-semibold rounded-2xl',
+                      'bg-gradient-to-r from-amber-500 to-orange-500',
+                      'hover:from-amber-400 hover:to-orange-400'
+                    )}
+                  >
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    ▶ Continuer avec l'IA
+                  </Button>
+                  <p className="text-xs text-center text-amber-200/40 mt-2">
+                    Transcription et illustration automatiques
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Default hint */}
+              {!audioBlob && selectedAssets.length === 0 && (
+                <p className="text-xs text-center text-amber-200/40">
+                  🎙️ Enregistre ton conte ou sélectionne des illustrations
+                </p>
+              )}
+            </div>
           </>
         )}
 
