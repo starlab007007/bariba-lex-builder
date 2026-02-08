@@ -1,73 +1,133 @@
 
-# Diagnostic et Corrections - Audio manquant dans le rendu final
 
-## Bug principal identifie : la musique n'est JAMAIS incluse dans l'export
+# Interface Admin d'Upload Manuel - Photos, Videos et Musiques
 
-### Cause racine (CRITIQUE)
+## Objectif
+Creer une interface d'administration complete permettant d'uploader manuellement des photos, videos et musiques dans la bibliotheque de contes, avec classification par categorie, emotion, personnage, etc.
 
-Dans `PublishStep.tsx`, ligne 140 :
-```
-const musicUrl = selectedMusicTrack?.source?.url;
-```
+## Architecture
 
-Or, **TOUS les morceaux** de la bibliotheque audio utilisent `source.path` (pas `source.url`) car ils sont de type `"local"`. Exemple dans `music_library.json` :
-```json
-"source": {
-  "type": "local",
-  "path": "/templates/packs/audio/tracks/traditional/yaru_diguidiru.mp3"
-}
-```
+L'interface sera integree dans le dashboard admin existant sous l'onglet "Bibliotheque Anime" (`AnimeLibraryManager.tsx`), avec 3 sous-onglets : **Photos**, **Videos**, **Musiques**.
 
-Le champ `source.url` est donc toujours `undefined`. Le code pense qu'il n'y a pas de musique et exporte la video **sans audio musical**.
+### Structure des fichiers
 
-### Solution
-
-Corriger la resolution de l'URL musicale pour prendre en compte les deux formats :
-```
-const musicUrl = selectedMusicTrack?.source?.url || selectedMusicTrack?.source?.path;
+```text
+src/components/admin/
+  AnimeLibraryManager.tsx        (modifie - ajout des onglets upload)
+  AssetUploadForm.tsx            (nouveau - formulaire upload photo/video)
+  MusicUploadForm.tsx            (nouveau - formulaire upload musique)
 ```
 
-## Bug secondaire : la voix (narration) peut aussi etre perdue
+### Base de donnees
 
-La narration vient d'un `blob:` URL cree par `URL.createObjectURL(blob)` lors de l'enregistrement. Ce blob URL est valide tant que le document reste le meme. Cependant, si l'utilisateur navigue entre les etapes, le blob peut etre ramasse par le garbage collector.
-
-### Solution de securite
-
-Stocker egalement le `Blob` brut (`narrationBlob`) comme source de secours. Si le `fetch(blobUrl)` echoue, utiliser directement le blob en memoire via `new Response(blob).arrayBuffer()`.
-
-## Bug 3 : Redirection post-publication
-
-Le code actuel a DEUX redirections concurrentes (une dans PublishStep, une dans GriotStudio) toutes les deux a 1.5s. Cela peut creer des conflits. Il faut centraliser la redirection dans un seul endroit.
+- **Photos et Videos** : enregistrement dans la table existante `anime_scene_library` avec `asset_type = 'photo'` ou `asset_type = 'video'`
+- **Musiques** : creation d'une nouvelle table `music_library_tracks` pour stocker les musiques dans la base de donnees (actuellement les musiques sont uniquement en fichiers JSON statiques, ce qui empeche l'ajout dynamique)
 
 ---
 
-## Plan de corrections
+## Plan detaille
 
-### Fichier : `src/components/griot-studio/PublishStep.tsx`
+### 1. Migration base de donnees - Table `music_library_tracks`
 
-1. **Ligne 140** : Corriger la resolution du musicUrl
-   - Avant : `const musicUrl = selectedMusicTrack?.source?.url;`
-   - Apres : `const musicUrl = selectedMusicTrack?.source?.url || selectedMusicTrack?.source?.path;`
+Nouvelle table pour stocker les pistes musicales uploadees :
 
-2. **Lignes 169-183** : Ajouter un fallback pour la voix si le fetch du blob URL echoue
-   - Tenter d'abord `fetch(effectiveNarrationUrl)`
-   - Si ca echoue et que `narrationBlob` est disponible, utiliser directement le blob brut avec `narrationBlob.arrayBuffer()`
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | uuid (PK) | Identifiant unique |
+| title | text | Nom de la piste |
+| artist | text | Artiste/source |
+| category | text | traditional, educational, ambient, celebration, nature |
+| mood | text | energetic, calm, joyful, reflective, motivating |
+| duration | real | Duree en secondes |
+| bpm | integer | Battements par minute (optionnel) |
+| description_fr | text | Description en francais |
+| tags | jsonb | Tags pour le filtrage |
+| audio_url | text | URL publique du fichier audio |
+| storage_path | text | Chemin dans le bucket |
+| usage_count | integer | Compteur d'utilisation |
+| created_at | timestamptz | Date de creation |
 
-3. **Lignes 326-338** : Supprimer la redirection doublon dans PublishStep
-   - Garder uniquement l'appel `onPublishSuccess?.(result.videoId || '')`
-   - La redirection est geree par le parent GriotStudio
+Politique RLS : lecture publique, ecriture reservee aux admins.
 
-### Fichier : `src/components/griot-studio/GriotStudio.tsx`
+### 2. Composant `AssetUploadForm.tsx` (Photos et Videos)
 
-1. **Lignes 413-421** : Renforcer la redirection avec un fallback `window.location.href`
-   - Apres `navigate()`, ajouter un second timeout de securite avec `window.location.href` comme ultime recours
+Formulaire avec :
+- **Selecteur de type** : Photo ou Video
+- **Upload de fichier** : zone drag-and-drop ou clic, acceptant :
+  - Photos : `.webp`, `.jpg`, `.png` (max 5 Mo)
+  - Videos : `.mp4`, `.webm` (max 20 Mo)
+- **Upload de thumbnail** (pour les videos) : image de couverture
+- **Champs de classification** :
+  - Style : african, fantasy, manga, chibi (select)
+  - Emotion : joy, sadness, wonder, fear, excitement, peace, tension (select)
+  - Scene : village, forest, river, mountain, market, home, night, journey, gathering, spirit (select)
+  - Personnage : child_boy, child_girl, elder, animal, spirit, group (select)
+  - Action : standing, walking, talking, dancing, working, sleeping, running, discovering (select)
+  - Moment de la journee : day, night, dawn, dusk (select)
+- **Description** : champ texte (FR et EN)
+- **Apercu** : affichage de l'image ou video avant soumission
+
+Logique d'upload :
+1. Upload du fichier vers le bucket `anime-library` avec chemin structure : `{style}/{asset_type}/{scene_type}/{fichier}`
+2. Insertion dans `anime_scene_library` avec toutes les metadonnees
+3. Feedback de succes/erreur avec toast
+
+### 3. Composant `MusicUploadForm.tsx` (Musiques)
+
+Formulaire avec :
+- **Upload de fichier** : `.mp3`, `.ogg`, `.wav` (max 10 Mo)
+- **Champs de classification** :
+  - Titre de la piste
+  - Artiste (optionnel)
+  - Categorie : traditional, educational, ambient, celebration, nature (select)
+  - Humeur : energetic, calm, joyful, reflective, motivating (select)
+  - BPM (optionnel, champ numerique)
+  - Tags (champ texte, separes par virgules)
+- **Description** : champ texte
+- **Lecteur audio** : apercu du fichier avant soumission
+
+Logique d'upload :
+1. Upload du fichier vers le bucket `anime-library` avec chemin : `music/{category}/{fichier}`
+2. Extraction automatique de la duree via l'API Audio
+3. Insertion dans `music_library_tracks`
+4. Feedback avec toast
+
+### 4. Modification de `AnimeLibraryManager.tsx`
+
+Ajout de 3 onglets dans le gestionnaire :
+- **Galerie** : vue existante (AnimeLibraryGrid + stats)
+- **Upload Photo/Video** : le formulaire AssetUploadForm
+- **Upload Musique** : le formulaire MusicUploadForm
+
+### 5. Integration avec le systeme existant
+
+Le `MusicDrawer.tsx` et `AudioLibraryService.ts` qui servent les musiques aux contes devront etre mis a jour pour aussi charger les pistes depuis la nouvelle table `music_library_tracks`, en complement des fichiers JSON statiques existants.
 
 ---
 
-## Resume des corrections
+## Taxonomie complete (reference pour les selects)
 
-| Bug | Cause | Impact | Solution |
-|-----|-------|--------|----------|
-| Musique absente de l'export | `source.url` est undefined pour les tracks locales (qui utilisent `source.path`) | Toutes les videos sont exportees sans musique | Utiliser `source.url OR source.path` |
-| Voix peut etre perdue | Le blob URL peut devenir invalide si le GC nettoie le blob original | Export silencieux si la voix est perdue | Fallback sur `narrationBlob` brut |
-| Double redirection | PublishStep ET GriotStudio redirigent tous les deux | Navigation potentiellement conflictuelle | Centraliser dans GriotStudio uniquement |
+| Champ | Valeurs |
+|-------|---------|
+| Style | african, fantasy, manga, chibi |
+| Emotion | joy, sadness, wonder, fear, excitement, peace, tension |
+| Scene | village, forest, river, mountain, market, home, night, journey, gathering, spirit |
+| Personnage | child_boy, child_girl, elder, animal, spirit, group |
+| Action | standing, walking, talking, dancing, working, sleeping, running, discovering |
+| Moment | day, night, dawn, dusk |
+| Categorie musique | traditional, educational, ambient, celebration, nature |
+| Humeur musique | energetic, calm, joyful, reflective, motivating |
+
+---
+
+## Resume des modifications
+
+| Fichier | Action |
+|---------|--------|
+| Migration SQL | Creer table `music_library_tracks` + RLS |
+| `src/components/admin/AssetUploadForm.tsx` | Nouveau - Upload photo/video |
+| `src/components/admin/MusicUploadForm.tsx` | Nouveau - Upload musique |
+| `src/components/admin/AnimeLibraryManager.tsx` | Modifier - Ajout onglets |
+| `src/services/AudioLibraryService.ts` | Modifier - Charger aussi depuis DB |
+| `src/components/tamtam/creator/MusicDrawer.tsx` | Modifier - Integrer nouvelles pistes |
+
