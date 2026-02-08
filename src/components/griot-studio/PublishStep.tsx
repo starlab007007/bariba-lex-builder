@@ -1,5 +1,5 @@
 /**
- * PublishStep v2.0
+ * PublishStep v3.0
  * Finalization screen with audio mode selector (TikTok-style), music library integration,
  * Web Audio API mixing, export MP4 and publish to feed.
  * 
@@ -11,7 +11,7 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Share2, Upload, Check, Loader2, Sparkles, ArrowRight, ExternalLink, Mic, Music, Volume2 } from 'lucide-react';
+import { Share2, Upload, Loader2, Sparkles, ArrowRight, Mic, Music, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -22,7 +22,7 @@ import { GriotAnimationEngine, ANIMATION_STYLES } from '@/engines/GriotAnimation
 import AudioLibrary from '@/components/tamtam/creator/AudioLibrary';
 import type { AudioTrack } from '@/types/audio';
 import type { StoryScene } from './hooks/useAnimeStoryGenerator';
-import { CompactRecorder } from './CompactRecorder';
+import { VinylRecorder } from './VinylRecorder';
 
 type AudioMode = 'voice_only' | 'music_only' | 'voice_and_music';
 
@@ -85,6 +85,7 @@ export function PublishStep({
   // Effective narration URL: local recording > prop narrationAudioUrl > prop audioUrl
   const effectiveNarrationUrl = localNarrationUrl || narrationAudioUrl || audioUrl;
   const hasNarration = !!effectiveNarrationUrl;
+
   // Handle music track selection
   const handleMusicTrackSelect = useCallback((track: AudioTrack) => {
     setSelectedMusicTrack(track);
@@ -92,8 +93,9 @@ export function PublishStep({
     toast({ title: `🎵 ${track.title}`, description: 'Musique sélectionnée' });
   }, [toast]);
 
-  // Handle local recording (for manual path without pre-existing narration)
-  const handleLocalRecording = useCallback((_blob: Blob, dur: number, url: string) => {
+  // Handle local recording from VinylRecorder
+  const handleLocalRecording = useCallback((blob: Blob, dur: number) => {
+    const url = URL.createObjectURL(blob);
     setLocalNarrationUrl(url);
     if (audioMode === 'music_only') setAudioMode('voice_only');
     toast({ title: '🎤 Voix enregistrée!', description: `${Math.floor(dur)}s de narration` });
@@ -109,7 +111,6 @@ export function PublishStep({
 
   /**
    * Export video with proper audio mixing via Web Audio API
-   * Supports 3 modes: voice_only, music_only, voice_and_music
    */
   const exportVideo = useCallback(async (): Promise<Blob | null> => {
     if (!canvasRef.current || !engineRef.current) return null;
@@ -118,14 +119,11 @@ export function PublishStep({
     const engine = engineRef.current;
     const animStyle = ANIMATION_STYLES[style] || ANIMATION_STYLES.fantasy;
     
-    // Get canvas stream at 24 FPS
     const videoStream = canvas.captureStream(24);
-    
     let combinedStream = videoStream;
     const audioElements: HTMLAudioElement[] = [];
     let audioContext: AudioContext | null = null;
     
-    // Determine which audio sources to use
     const useVoice = audioMode === 'voice_only' || audioMode === 'voice_and_music';
     const useMusic = audioMode === 'music_only' || audioMode === 'voice_and_music';
     
@@ -138,65 +136,50 @@ export function PublishStep({
         audioContext = new AudioContext();
         const destination = audioContext.createMediaStreamDestination();
         
-        // Add voice track
         if (hasVoice) {
-          console.log('[PublishStep] Adding voice track');
           const voiceEl = new Audio(effectiveNarrationUrl);
           voiceEl.crossOrigin = 'anonymous';
           voiceEl.volume = 1;
-          
           await new Promise<void>((res, rej) => {
             voiceEl.oncanplaythrough = () => res();
             voiceEl.onerror = () => rej(new Error('Voice audio load failed'));
             voiceEl.load();
           });
-          
           const voiceSource = audioContext.createMediaElementSource(voiceEl);
           const voiceGain = audioContext.createGain();
           voiceGain.gain.value = 1.0;
           voiceSource.connect(voiceGain);
           voiceGain.connect(destination);
-          
           audioElements.push(voiceEl);
         }
         
-        // Add music track
         if (hasMusic) {
-          console.log('[PublishStep] Adding music track:', selectedMusicTrack?.title);
           const musicEl = new Audio(musicUrl);
           musicEl.crossOrigin = 'anonymous';
-          musicEl.loop = true; // Loop music to fill duration
+          musicEl.loop = true;
           musicEl.volume = 1;
-          
           await new Promise<void>((res, rej) => {
             musicEl.oncanplaythrough = () => res();
             musicEl.onerror = () => rej(new Error('Music audio load failed'));
             musicEl.load();
           });
-          
           const musicSource = audioContext.createMediaElementSource(musicEl);
           const musicGain = audioContext.createGain();
-          // Music at 25% when combined with voice, 80% when alone
           musicGain.gain.value = audioMode === 'voice_and_music' ? 0.25 : 0.8;
           musicSource.connect(musicGain);
           musicGain.connect(destination);
-          
           audioElements.push(musicEl);
         }
         
-        // Create combined stream with video + mixed audio
         combinedStream = new MediaStream([
           ...videoStream.getVideoTracks(),
           ...destination.stream.getAudioTracks()
         ]);
-        
-        console.log('[PublishStep] Audio tracks added successfully, mode:', audioMode);
       } catch (e) {
         console.warn('[PublishStep] Could not add audio tracks:', e);
       }
     }
     
-    // Determine best supported format
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
       ? 'video/webm;codecs=vp9,opus'
       : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
@@ -216,29 +199,20 @@ export function PublishStep({
     
     return new Promise((resolve) => {
       recorder.onstop = () => {
-        // Cleanup
         audioElements.forEach(el => { el.pause(); el.src = ''; });
         audioContext?.close().catch(() => {});
-        
         const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
-        console.log('[PublishStep] Video export complete, size:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
         resolve(blob);
       };
       
       recorder.start(100);
-      
-      // Start all audio elements in sync
       audioElements.forEach(el => {
         el.currentTime = 0;
         el.play().catch(e => console.warn('Audio play error:', e));
       });
-      
-      // Start animation playback
       engine.startSlideshowPreview(duration, animStyle, (progress) => {
         setExportProgress(progress * 100);
       });
-      
-      // Stop after duration
       setTimeout(() => {
         recorder.stop();
         engine.stopPreview();
@@ -246,30 +220,6 @@ export function PublishStep({
       }, duration * 1000 + 500);
     });
   }, [canvasRef, engineRef, style, duration, effectiveNarrationUrl, audioMode, selectedMusicTrack]);
-
-  // Handle download
-  const handleDownload = useCallback(async () => {
-    setIsExporting(true);
-    setExportProgress(0);
-    try {
-      toast({ title: '🎬 Export en cours...', description: 'Création de ta vidéo...' });
-      const videoBlob = await exportVideo();
-      if (videoBlob) {
-        const url = URL.createObjectURL(videoBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `griot-anime-${Date.now()}.${videoBlob.type.includes('mp4') ? 'mp4' : 'webm'}`;
-        link.click();
-        URL.revokeObjectURL(url);
-        toast({ title: '✅ Export terminé!', description: 'Ta vidéo a été téléchargée.' });
-      }
-    } catch (error) {
-      console.error('[PublishStep] Export error:', error);
-      toast({ title: 'Erreur d\'export', description: 'Réessaie dans quelques instants.', variant: 'destructive' });
-    } finally {
-      setIsExporting(false);
-    }
-  }, [exportVideo, toast]);
 
   // Handle share
   const handleShare = useCallback(async () => {
@@ -288,7 +238,7 @@ export function PublishStep({
   // Handle publish to feed
   const handlePublish = useCallback(async () => {
     try {
-      toast({ title: '🚀 Publication en cours...', description: 'Envoi vers le feed FITILA...' });
+      toast({ title: '🚀 Publication en cours...', description: 'Envoi vers le feed...' });
       const videoBlob = await exportVideo();
       if (!videoBlob) throw new Error('Échec de l\'export vidéo');
       const thumbnailBlob = await generateThumbnail();
@@ -319,34 +269,38 @@ export function PublishStep({
     }
   }, [exportVideo, generateThumbnail, publishVideo, title, storyText, duration, onPublishSuccess, toast]);
 
-  // Success state
+  // Success state — simple toast-like popup, auto-redirect
   if (isPublished) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="text-center py-8 space-y-6"
+        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
       >
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', delay: 0.2 }}
-          className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center"
+          initial={{ scale: 0.8, y: 30 }}
+          animate={{ scale: 1, y: 0 }}
+          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+          className="bg-gradient-to-br from-amber-950 via-amber-900/90 to-amber-950 border border-amber-500/30 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl shadow-amber-500/20 space-y-5"
         >
-          <Check className="w-12 h-12 text-white" />
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', delay: 0.2 }}
+            className="text-6xl"
+          >
+            🎉
+          </motion.div>
+          <h2 className="text-2xl font-bold text-white">Félicitations !</h2>
+          <p className="text-amber-200/70 text-sm">Ton conte est maintenant visible par tous sur le feed</p>
+          <Button
+            size="lg"
+            onClick={() => window.location.href = publishedVideoId ? `/fitila?video=${publishedVideoId}` : '/fitila'}
+            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-semibold"
+          >
+            📺 Voir dans le Feed
+          </Button>
         </motion.div>
-        <div>
-          <h2 className="text-2xl font-bold text-amber-100 mb-2">🎉 Publié!</h2>
-          <p className="text-amber-200/60">Ton conte est maintenant sur FITILA</p>
-        </div>
-        <div className="flex flex-col gap-3 max-w-xs mx-auto">
-          <Button size="lg" onClick={() => window.location.href = '/fitila'} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400">
-            <ExternalLink className="w-4 h-4 mr-2" />📺 Voir le Feed
-          </Button>
-          <Button variant="outline" onClick={onReset} className="w-full border-amber-500/30 text-amber-200 hover:bg-amber-500/10">
-            <Sparkles className="w-4 h-4 mr-2" />🔄 Créer un autre
-          </Button>
-        </div>
       </motion.div>
     );
   }
@@ -355,39 +309,47 @@ export function PublishStep({
     <div className="space-y-6">
       {/* Title Input */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-amber-200/60">📝 Titre / Yíròn</label>
+        <label className="text-sm font-medium text-amber-200/80">📝 Titre</label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Mon conte animé..."
-          className="bg-amber-950/30 border-amber-500/30 text-amber-100 placeholder:text-amber-200/30"
+          className="bg-amber-950/40 border-amber-500/30 text-amber-100 placeholder:text-amber-200/30"
           maxLength={60}
         />
       </div>
 
-      {/* Narration / Recorder */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-amber-200/60">🎙️ Narration</label>
+      {/* Narration / Vinyl Recorder */}
+      <div className="space-y-3">
+        <label className="text-sm font-medium text-amber-200/80">🎙️ Narration</label>
         {hasNarration ? (
-          <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/30 rounded-xl">
-            <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-              <Mic className="w-4 h-4 text-green-300" />
+          <div className="flex items-center gap-3 p-4 bg-emerald-900/30 border border-emerald-500/30 rounded-2xl">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <Mic className="w-5 h-5 text-emerald-300" />
             </div>
-            <p className="text-sm text-green-200 flex-1">✅ Voix enregistrée</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-emerald-200">✅ Voix enregistrée</p>
+              <p className="text-xs text-emerald-200/60">Prêt pour la publication</p>
+            </div>
           </div>
         ) : (
-          <CompactRecorder onRecordingComplete={handleLocalRecording} />
+          <VinylRecorder
+            avatarUrl={narratorAvatarUrl}
+            maxDuration={120}
+            onRecordingComplete={handleLocalRecording}
+            disabled={false}
+            accentColor="#FFD700"
+          />
         )}
       </div>
 
       {/* Audio Mode Selector — TikTok-style */}
       <div className="space-y-3">
-        <label className="text-sm font-medium text-amber-200/60">🎧 Mode audio</label>
+        <label className="text-sm font-medium text-amber-200/80">🎧 Mode audio</label>
         <div className="grid grid-cols-3 gap-2">
           {AUDIO_MODES.map((mode) => {
             const Icon = mode.icon;
             const isActive = audioMode === mode.value;
-            const needsMusic = mode.value === 'music_only' || mode.value === 'voice_and_music';
             const needsVoice = mode.value === 'voice_only' || mode.value === 'voice_and_music';
             const isVoiceDisabled = needsVoice && !hasNarration;
             
@@ -396,6 +358,7 @@ export function PublishStep({
                 key={mode.value}
                 onClick={() => {
                   if (isVoiceDisabled) return;
+                  const needsMusic = mode.value === 'music_only' || mode.value === 'voice_and_music';
                   if (needsMusic && !selectedMusicTrack) {
                     setShowAudioLibrary(true);
                     setAudioMode(mode.value);
@@ -407,16 +370,16 @@ export function PublishStep({
                 className={cn(
                   'flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all',
                   isVoiceDisabled
-                    ? 'border-amber-500/10 bg-amber-950/20 text-amber-200/30 cursor-not-allowed'
+                    ? 'border-white/5 bg-white/5 text-white/20 cursor-not-allowed'
                     : isActive
-                      ? 'border-amber-400 bg-amber-500/20 text-amber-100 shadow-lg shadow-amber-500/10 active:scale-95'
-                      : 'border-amber-500/20 bg-amber-950/30 text-amber-200/60 hover:border-amber-500/40 active:scale-95'
+                      ? 'border-amber-400 bg-amber-500/20 text-white shadow-lg shadow-amber-500/10 active:scale-95'
+                      : 'border-white/10 bg-white/5 text-white/60 hover:border-amber-500/40 active:scale-95'
                 )}
               >
                 <span className="text-xl">{mode.emoji}</span>
-                <Icon className={cn('w-4 h-4', isVoiceDisabled ? 'text-amber-200/20' : isActive ? 'text-amber-300' : 'text-amber-200/40')} />
+                <Icon className={cn('w-4 h-4', isVoiceDisabled ? 'text-white/15' : isActive ? 'text-amber-300' : 'text-white/40')} />
                 <span className="text-[10px] font-medium leading-tight text-center">{mode.label}</span>
-                {isVoiceDisabled && <span className="text-[8px] text-amber-200/20">Enregistre d'abord</span>}
+                {isVoiceDisabled && <span className="text-[8px] text-white/20">Enregistre d'abord</span>}
               </button>
             );
           })}
@@ -435,8 +398,8 @@ export function PublishStep({
                   <Music className="w-5 h-5 text-amber-300" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-amber-100 truncate">{selectedMusicTrack.title}</p>
-                  <p className="text-xs text-amber-200/50">{selectedMusicTrack.artist}</p>
+                  <p className="text-sm font-medium text-white truncate">{selectedMusicTrack.title}</p>
+                  <p className="text-xs text-white/50">{selectedMusicTrack.artist}</p>
                 </div>
                 <Button
                   variant="ghost"
@@ -451,7 +414,7 @@ export function PublishStep({
               <Button
                 variant="outline"
                 onClick={() => setShowAudioLibrary(true)}
-                className="w-full border-amber-500/30 text-amber-200 hover:bg-amber-500/10 h-12"
+                className="w-full border-amber-500/30 text-white hover:bg-amber-500/10 h-12"
               >
                 <Music className="w-4 h-4 mr-2" />
                 🎵 Choisir une musique
@@ -461,7 +424,7 @@ export function PublishStep({
         )}
 
         {/* Audio mode info */}
-        <p className="text-[10px] text-amber-200/40 text-center">
+        <p className="text-[10px] text-white/40 text-center">
           {audioMode === 'voice_only' && '🎙️ Ta voix de griot sera l\'audio principal'}
           {audioMode === 'music_only' && '🎵 Seule la musique sera dans la vidéo'}
           {audioMode === 'voice_and_music' && '🎧 Voix à 100% + musique à 25%'}
@@ -473,7 +436,7 @@ export function PublishStep({
         {scenes[0]?.imageUrl ? (
           <img src={scenes[0].imageUrl} alt="Preview" className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-amber-200/40">📺</div>
+          <div className="w-full h-full flex items-center justify-center text-white/40">📺</div>
         )}
       </div>
 
@@ -481,34 +444,23 @@ export function PublishStep({
       {(isExporting || isPublishing) && (
         <div className="space-y-2">
           <Progress value={isExporting ? exportProgress : publishProgress} className="h-3" />
-          <p className="text-sm text-center text-amber-200/60">
+          <p className="text-sm text-center text-white/60">
             {isExporting ? `Export: ${Math.round(exportProgress)}%` : publishStage}
           </p>
         </div>
       )}
 
-      {/* Action Buttons */}
+      {/* Action Buttons — No download, simplified */}
       <div className="grid grid-cols-1 gap-3">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={handleDownload}
-          disabled={isExporting || isPublishing}
-          className="w-full h-14 bg-amber-500/10 border-amber-500/30 text-amber-200 hover:bg-amber-500/20"
-        >
-          {isExporting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
-          ⬇️ Télécharger / Sɛ̀rɛ̀
-        </Button>
-        
         <Button
           variant="outline"
           size="lg"
           onClick={handleShare}
           disabled={isExporting || isPublishing}
-          className="w-full h-14 bg-amber-500/10 border-amber-500/30 text-amber-200 hover:bg-amber-500/20"
+          className="w-full h-14 bg-white/5 border-white/10 text-white hover:bg-white/10"
         >
           <Share2 className="w-5 h-5 mr-2" />
-          📤 Partager / Pín
+          📤 Partager
         </Button>
         
         <Button
@@ -517,20 +469,21 @@ export function PublishStep({
           disabled={isExporting || isPublishing || !title.trim()}
           className={cn(
             "w-full h-16 text-lg font-semibold",
-            "bg-gradient-to-r from-amber-500 to-orange-500",
-            "hover:from-amber-400 hover:to-orange-400",
+            "bg-gradient-to-r from-emerald-500 to-teal-500",
+            "hover:from-emerald-400 hover:to-teal-400",
+            "text-white",
             "disabled:opacity-50"
           )}
         >
           {isPublishing ? (
             <><Loader2 className="w-6 h-6 mr-2 animate-spin" />Publication...</>
           ) : (
-            <><Upload className="w-6 h-6 mr-2" />🌐 Publier sur FITILA<ArrowRight className="w-5 h-5 ml-2" /></>
+            <><Upload className="w-6 h-6 mr-2" />🚀 Publier<ArrowRight className="w-5 h-5 ml-2" /></>
           )}
         </Button>
       </div>
 
-      <p className="text-xs text-center text-amber-200/40">Ta vidéo sera visible par tous sur le feed</p>
+      <p className="text-xs text-center text-white/30">Ta vidéo sera visible par tous sur le feed</p>
 
       {/* Audio Library Modal */}
       <AnimatePresence>
