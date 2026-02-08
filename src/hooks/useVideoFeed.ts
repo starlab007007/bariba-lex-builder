@@ -60,7 +60,7 @@ export function useVideoFeed(): UseVideoFeedReturn {
       
       const { data, error: fetchError } = await supabase
         .from('videos')
-        .select('*')
+        .select('*, tamtam_profiles!videos_user_id_fkey(user_id, username, display_name, avatar_url, is_verified)')
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .range(offsetRef.current, offsetRef.current + PAGE_SIZE - 1);
@@ -86,9 +86,9 @@ export function useVideoFeed(): UseVideoFeedReturn {
           metadata: v.metadata || null,
           author: {
             id: v.user_id,
-            name: v.template_name ? `Créateur ${v.template_name}` : 'Créateur FITILA',
-            username: '@fitila_creator',
-            avatarUrl: undefined
+            name: v.tamtam_profiles?.display_name || v.template_name || 'Créateur FITILA',
+            username: v.tamtam_profiles?.username ? `@${v.tamtam_profiles.username}` : '@fitila_user',
+            avatarUrl: v.tamtam_profiles?.avatar_url || undefined
           }
         }));
         
@@ -149,8 +149,8 @@ export function useVideoFeed(): UseVideoFeedReturn {
               metadata: v.metadata || null,
               author: {
                 id: v.user_id,
-                name: v.template_name ? `Créateur ${v.template_name}` : 'Créateur FITILA',
-                username: '@fitila_creator',
+                name: v.template_name || 'Créateur FITILA',
+                username: '@fitila_user',
                 avatarUrl: undefined
               }
             };
