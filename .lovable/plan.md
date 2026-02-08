@@ -1,161 +1,113 @@
 
 
-# Extension Video de la Bibliotheque + Refonte AssetGallery avec Tabs Photo/Video
+# Diagnostic Complet + Harmonisation du Griot Studio et Feed FITILA
 
-## Vue d'ensemble
+## Problemes identifies
 
-Ajouter le support video a la bibliotheque `anime_scene_library`, creer une structure de stockage organisee pour les videos courtes pre-generees (5-8s), et refondre le composant `AssetGallery` pour afficher un selecteur Photo/Video avec 3 elements par categorie et un bouton "Voir plus" qui ouvre une vue etendue.
+### Bug 1 : Layout coupe en bas - contenu masque par le footer fixe
+Le `footer` fixe en bas de `GriotStudio.tsx` (ligne 895) couvre le contenu car la zone principale utilise `pb-24` qui n'est pas toujours suffisant, surtout sur tablette/desktop. Le contenu du `PublishStep` peut etre coupe sur les petits ecrans.
 
----
+### Bug 2 : Scroll bloque sur mobile
+Le conteneur principal a `overflow-hidden` sur le parent (`h-[100dvh] overflow-hidden` ligne 489) et le `main` a `overflow-y-auto`. Sur certains ecrans, le contenu de PublishStep depasse mais le scroll ne fonctionne pas toujours correctement a cause de conflits CSS.
 
-## 1. Extension de la base de donnees
+### Bug 3 : La musique selectionnee ne joue pas dans le rendu final
+Dans `PublishStep.tsx`, quand l'utilisateur selectionne "Musique seule" ou "Voix + Musique" et choisit un morceau depuis la `AudioLibrary`, le fichier audio du track (`selectedMusicTrack?.source?.url`) est utilise dans `exportVideo()`. Cependant, ces URLs peuvent echouer a cause du CORS (`crossOrigin = 'anonymous'`). Il faut un meilleur fallback et valider que l'URL est accessible.
 
-**Migration SQL** : Ajouter une colonne `video_url` et un champ `asset_type` a la table `anime_scene_library`
+### Bug 4 : Publication sans audio enregistre - mode music seul
+Si l'utilisateur ne record pas de voix et selectionne "Musique seule", le bouton Publier fonctionne mais l'export video peut echouer silencieusement car `canvasRef` ou `engineRef` ne sont pas initialises en mode manuel (pas de canvas visible).
 
-```text
-Colonnes ajoutees :
-- asset_type : TEXT ('photo' ou 'video'), defaut 'photo'
-- video_url : TEXT nullable (URL de la video dans le bucket anime-library)
-- video_duration : REAL nullable (duree en secondes, ex: 5.5)
-```
+### Bug 5 : `generationResult` peut etre null en mode manual
+La condition `step === 'finalize' && generationResult` (ligne 867) bloque le rendu de PublishStep si `generationResult` n'est pas defini. En mode manuel, `handleUseAssets` appelle `generateFromSelectedAssets` qui met a jour `result` via `setResult`, mais il y a un potentiel delai de synchronisation.
 
-Cela permet aux assets existants (54 images) de garder leur type `photo` par defaut, et d'ajouter de nouveaux enregistrements de type `video`.
+### Bug 6 : Redirect post-publication utilise `window.location.href` au lieu de `navigate`
+Ligne 276 de `PublishStep.tsx` force un rechargement complet (`window.location.href = '/fitila'`), perdant l'etat de l'app. Il faut utiliser `useNavigate` de React Router.
 
-## 2. Organisation des fichiers video dans le bucket `anime-library`
+### Bug 7 : VinylRecorder dans PublishStep ne passe pas onAvatarCapture
+Le `VinylRecorder` integre dans `PublishStep` ne recoit pas la prop `onAvatarCapture`, donc le bouton camera dans le disque ne fait rien quand il n'y a pas d'avatar.
 
-Structure proposee dans le bucket public `anime-library` :
-
-```text
-anime-library/
-  african/
-    joy/
-      village_child_boy_standing_xxx.png        (existant - photo)
-      village_child_boy_standing_xxx.webm        (nouveau - video)
-    sadness/
-      ...
-    wonder/
-      ...
-  videos/
-    african/
-      animals/
-        lion_savane_01.mp4
-        elephant_riviere_01.mp4
-        oiseau_foret_01.mp4
-      village/
-        danse_village_01.mp4
-        marche_village_01.mp4
-        feu_camp_01.mp4
-      forest/
-        arbres_vent_01.mp4
-        riviere_foret_01.mp4
-        brume_foret_01.mp4
-      mythology/
-        esprit_eau_01.mp4
-        masque_danse_01.mp4
-        ancetre_feu_01.mp4
-      nature/
-        coucher_soleil_01.mp4
-        pluie_savane_01.mp4
-        etoiles_nuit_01.mp4
-      tales/
-        conte_enfant_01.mp4
-        roi_palais_01.mp4
-        griot_parole_01.mp4
-```
-
-**Convention de nommage** : `{sujet}_{lieu}_{numero}.mp4`
-
-Les videos seront inserees dans la table `anime_scene_library` avec `asset_type = 'video'` et les metadonnees correspondantes (scene_type, character_type, emotion).
-
-## 3. Refonte du composant `AssetGallery.tsx`
-
-### Interface repensee
-
-```text
-+-----------------------------------------+
-| Illustrations         [2/10 selectionnes]|
-+-----------------------------------------+
-|  [ 📸 Photos ]  [ 🎬 Videos ]           |  <-- Toggle tabs
-+-----------------------------------------+
-|  🏘️ Village  🌳 Foret  🦁 Animaux ...   |  <-- Categories scrollables
-+-----------------------------------------+
-|  [img1]  [img2]  [img3]                  |  <-- 3 premiers assets
-|                                          |
-|      [ ▶ Voir plus (8) ]                |  <-- Bouton voir plus
-+-----------------------------------------+
-|  👧 Enfant  🧓 Ancien  👥 Groupe  ...   |  <-- Sous-filtres caractere
-+-----------------------------------------+
-```
-
-### Changements cles
-
-- **Tabs Photo/Video** : Deux boutons en haut pour basculer entre `photo` et `video`
-- **Affichage limite** : Seulement 3 assets visibles par categorie
-- **Bouton "Voir plus"** : Affiche le nombre restant, ouvre un modal/drawer avec la grille complete
-- **Preview video** : Les miniatures video jouent automatiquement en boucle (muted) au survol/tap
-- **Selection unifiee** : Les photos et videos sont selectionnables ensemble (max 10 total)
-
-### Modal "Voir plus"
-
-Quand l'utilisateur clique sur "Voir plus" :
-- Un drawer/modal plein ecran s'ouvre
-- Affiche tous les assets de la categorie active (photos ou videos selon le tab)
-- Grille 3 colonnes avec tap pour selectionner
-- Bouton "Fermer" pour revenir
-- Le compteur de selection reste visible
-
-## 4. Modifications dans les fichiers existants
-
-### `AssetGallery.tsx` (refonte majeure)
-
-- Ajouter state `assetType: 'photo' | 'video'`
-- Modifier la requete pour filtrer par `asset_type`
-- Pour les videos : inclure `video_url` dans le select
-- Limiter l'affichage a 3 elements, afficher le compteur restant
-- Ajouter un modal `AssetExpandedView` inline pour le "Voir plus"
-- Les miniatures video utilisent `<video>` avec `autoPlay muted loop playsInline`
-
-### `GriotStudio.tsx`
-
-- Passer la prop `selectedAssets` qui peut contenir photos et videos
-- Le type `LibraryAsset` est etendu avec `video_url?`, `asset_type`, `video_duration?`
-
-### `useAnimeStoryGenerator.ts`
-
-- `generateFromSelectedAssets` : gerer les assets video (utiliser `video_url` si present, sinon `image_url`)
-- `StoryScene` : ajouter `videoUrl?: string` optionnel pour les scenes basees sur des videos
-- Adapter le calcul de duree : les scenes video utilisent leur propre duree (`video_duration`) au lieu de la repartition uniforme
-
-### `StoryPreviewPlayer.tsx`
-
-- Si une scene a un `videoUrl`, afficher un element `<video>` au lieu d'une image statique
-- Le video element doit etre synchronise avec le timeline general
-- Autoplay muted (le son vient de la narration, pas de la video template)
+### Bug 8 : Responsive - contenu PublishStep trop espace sur desktop
+Les elements de PublishStep sont en colonne sans contrainte de largeur max adequate pour tablette/desktop. Le preview, les boutons et les selecteurs s'etirent trop.
 
 ---
 
-## 5. Fichiers a modifier
+## Plan d'action
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/components/griot-studio/AssetGallery.tsx` | Tabs Photo/Video, limite 3 items, bouton "Voir plus", modal etendu, preview video |
-| `src/components/griot-studio/GriotStudio.tsx` | Etendre le type LibraryAsset |
-| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Support videoUrl dans StoryScene et generateFromSelectedAssets |
-| `src/components/griot-studio/StoryPreviewPlayer.tsx` | Rendu video pour les scenes avec videoUrl |
+### 1. Fix Layout Scroll (GriotStudio.tsx)
+- Retirer `overflow-hidden` du conteneur principal
+- Augmenter le `padding-bottom` du main pour accommoder le footer fixe
+- S'assurer que le contenu scrolle correctement sur tous les ecrans
+- Rendre le footer non-fixe ou integre dans le flux pour eviter les chevauchements
 
-## 6. Migration SQL
+### 2. Fix PublishStep - Scroll + Responsive (PublishStep.tsx)
+- Wrapper tout le contenu dans un conteneur scrollable avec `overflow-y-auto`
+- Ajouter des breakpoints responsive : `max-w-md` pour mobile, `max-w-lg` pour tablette, avec centrage
+- Assurer que la miniature de preview, le selecteur audio, et les boutons sont tous visibles via scroll
+- Adapter les tailles des elements (thumbnail plus petit sur mobile, plus grand sur desktop)
 
-```text
-- ALTER TABLE anime_scene_library ADD COLUMN asset_type TEXT DEFAULT 'photo'
-- ALTER TABLE anime_scene_library ADD COLUMN video_url TEXT
-- ALTER TABLE anime_scene_library ADD COLUMN video_duration REAL
-```
+### 3. Fix Audio/Musique dans le rendu (PublishStep.tsx)
+- Ajouter une verification de validite de l'URL musicale avant l'export
+- Ajouter un fallback si la musique ne charge pas (continuer l'export sans musique plutot que crash)
+- Log des erreurs audio plus explicites pour debug
 
-## 7. Details techniques importants
+### 4. Fix Navigation post-publication (PublishStep.tsx)
+- Passer `navigate` de React Router comme prop ou utiliser `useNavigate` directement
+- Remplacer `window.location.href = '/fitila'` par `navigate('/fitila')`
+- Garder le delai de 2.5s avec animation de progression
 
-- **Pas d'API payante** : tout reste gratuit. Les videos sont hebergees sur le bucket public existant `anime-library`
-- **Preview video** : utilise `<video autoPlay muted loop playsInline>` natif du navigateur
-- **Performance** : les videos sont courtes (5-8s) et legeres, chargement lazy
-- **Compatibilite** : les assets existants (54 photos) gardent `asset_type = 'photo'` par defaut grace au DEFAULT
-- **Le modal "Voir plus"** reste dans le meme composant (pas de navigation) pour garder le contexte de selection
+### 5. Fix mode manuel - canvas initialisation (GriotStudio.tsx)
+- S'assurer que le canvas est monte et l'engine initialisee meme en mode manuel avant l'etape finalize
+- Gerer le cas ou `generationResult` est null : afficher un fallback ou attendre le resultat
+
+### 6. Harmonisation des couleurs et lisibilite
+- Verifier que tous les textes ont un contraste suffisant sur leurs fonds
+- Uniformiser la palette : `text-amber-100` sur `bg-amber-950`, `text-white` sur `bg-black`
+- Les labels, descriptions et hints doivent etre lisibles
+
+### 7. Responsive adaptatif (tous les fichiers)
+- Mobile (< 640px) : tout en colonne, elements compacts, scroll vertical
+- Tablette (640-1024px) : layout centre avec `max-w-lg mx-auto`
+- Desktop (> 1024px) : layout centre avec `max-w-xl mx-auto`, preview plus grand
+
+---
+
+## Details techniques - Fichiers a modifier
+
+### `src/components/griot-studio/GriotStudio.tsx`
+- Ligne 489 : Retirer `overflow-hidden` du div racine, utiliser `min-h-[100dvh]` + `overflow-y-auto`
+- Ligne 561 : Augmenter le padding bottom du main a `pb-32` pour le footer
+- Ligne 867 : Gerer le cas `generationResult === null` en mode finalize (afficher loading ou fallback)
+- Ligne 872 : Rendre le canvas visible mais hors ecran (position absolute) pour que l'engine fonctionne en mode manuel
+- Ligne 895 : Rendre le footer sticky au lieu de fixed, ou augmenter le padding
+
+### `src/components/griot-studio/PublishStep.tsx`
+- Ligne 273-280 : Remplacer `window.location.href` par `useNavigate()` de React Router
+- Ligne 310 : Wrapper dans `overflow-y-auto` avec scroll padding
+- Ligne 337-345 : Passer `onAvatarCapture` au VinylRecorder si disponible
+- Ligne 115-221 : Ajouter try/catch robuste autour du chargement audio avec fallback gracieux
+- Ligne 437-443 : Rendre la miniature responsive (taille adaptative mobile/tablet/desktop)
+- Ligne 456-486 : Boutons d'action avec min-height garanti pour accessibilite
+
+### `src/components/griot-studio/AssetGallery.tsx`
+- Verifier que le scroll horizontal des categories fonctionne bien sur tous les ecrans
+- S'assurer que la grille 3-colonnes est bien adaptative
+
+### `src/components/griot-studio/VinylAuthorDisc.tsx`
+- Pas de changement necessaire (deja responsive)
+
+### `src/components/griot-studio/StoryPreviewPlayer.tsx`
+- S'assurer que le player audio joue la musique selectionnee si c'est le mode choisi
+- Le composant est deja responsive
+
+---
+
+## Resume des corrections
+
+| Probleme | Fichier | Impact |
+|----------|---------|--------|
+| Layout tronque / scroll bloque | GriotStudio.tsx | Utilisateur ne voit pas tout le contenu |
+| Musique ne joue pas dans l'export | PublishStep.tsx | Video publiee sans audio selectionne |
+| Redirect brutal post-publication | PublishStep.tsx | Perte d'etat React |
+| Canvas non initialise en mode manuel | GriotStudio.tsx | Export video echoue |
+| Responsive insuffisant | PublishStep.tsx + GriotStudio.tsx | UI cassee sur tablette/desktop |
+| VinylRecorder sans avatar capture | PublishStep.tsx | Bouton camera inoperant |
 
