@@ -547,6 +547,7 @@ const VideoFeedCard: React.FC<{
 }> = ({ post, isActive, onLike, onComment, onShare, isMuted, onToggleMute }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
@@ -554,23 +555,25 @@ const VideoFeedCard: React.FC<{
   const navigate = useNavigate();
 
   // Support both tamtam_posts and videos table format
-  const videoUrl = post.media_url || post.video_url;
-  const thumbnailUrl = post.thumbnail_url;
-  const authorName = post.profile?.display_name || 'Créateur';
-  const likesCount = post.likes_count || post.reactions_count || 0;
-  const commentsCount = post.comments_count || 0;
-  const sharesCount = post.shares_count || 0;
-  const avatarUrl = post.profile?.avatar_url;
+  const videoUrl = post.media_url || post.video_url || post.videoUrl;
+  const thumbnailUrl = post.thumbnail_url || post.thumbnailUrl;
+  const authorName = post.profile?.display_name || post.author?.name || 'Créateur';
+  const authorUsername = post.profile?.username 
+    ? `@${post.profile.username}` 
+    : post.author?.username || '@fitila_user';
+  const likesCount = post.likes_count || post.likesCount || post.reactions_count || 0;
+  const commentsCount = post.comments_count || post.commentsCount || 0;
+  const sharesCount = post.shares_count || post.sharesCount || 0;
+  const avatarUrl = post.profile?.avatar_url || post.author?.avatarUrl;
+  const authorId = post.profile?.user_id || post.author?.id || post.user_id;
   const feelingEmoji = post.feeling_emoji;
 
   useEffect(() => {
     if (!videoRef.current) return;
     if (isActive) {
-      // Start muted first to guarantee autoplay, then unmute if requested
       videoRef.current.muted = true;
       videoRef.current.play().then(() => {
         setIsPlaying(true);
-        // After autoplay succeeds, apply user's mute preference
         if (videoRef.current) videoRef.current.muted = isMuted;
       }).catch(() => {});
     } else {
@@ -579,7 +582,6 @@ const VideoFeedCard: React.FC<{
     }
   }, [isActive, isMuted]);
 
-  // Tap to play/pause (Kuaishou-style)
   const handleVideoTap = useCallback(() => {
     if (!videoRef.current) return;
     if (isPlaying) {
@@ -594,18 +596,21 @@ const VideoFeedCard: React.FC<{
     triggerFeedback('notification');
   }, [isPlaying]);
 
-  const handleProfileClick = () => {
-    if (post.profile?.user_id) {
-      navigate(`/fitila/profile/${post.profile.user_id}`);
-    }
-  };
+  const handleProfileClick = useCallback(() => {
+    if (authorId) navigate(`/fitila/profile/${authorId}`);
+  }, [authorId, navigate]);
+
+  const handleFollow = useCallback(() => {
+    setIsFollowing(prev => !prev);
+    triggerFeedback('success');
+  }, []);
 
   return (
     <div className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative bg-black overflow-hidden">
-      {/* Tap zone for play/pause — covers entire video */}
+      {/* Tap zone for play/pause */}
       <div className="absolute inset-0 z-10" onClick={handleVideoTap} />
 
-      {/* Play/Pause indicator — Kuaishou-style center icon */}
+      {/* Play/Pause indicator */}
       <AnimatePresence>
         {showPlayIcon && (
           <motion.div
@@ -626,7 +631,7 @@ const VideoFeedCard: React.FC<{
         )}
       </AnimatePresence>
 
-      {/* Video/Media - FULLSCREEN ABSOLUTE */}
+      {/* Video/Media - FULLSCREEN */}
       {videoUrl ? (
         <video 
           ref={videoRef} 
@@ -640,11 +645,7 @@ const VideoFeedCard: React.FC<{
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
         />
       ) : thumbnailUrl ? (
-        <img 
-          src={thumbnailUrl} 
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
           <span className="text-7xl">{feelingEmoji || '🎬'}</span>
@@ -658,21 +659,17 @@ const VideoFeedCard: React.FC<{
         </div>
       )}
 
-      
-      {/* Author info - Minimaliste en bas à gauche - Responsive */}
+      {/* Author info - bottom left with @username */}
       <div 
         className="absolute bottom-0 left-0 right-14 sm:right-16 px-3 sm:px-4"
-        style={{ 
-          paddingBottom: 'max(3.5rem, calc(env(safe-area-inset-bottom) + 3.5rem))'
-        }}
+        style={{ paddingBottom: 'max(3.5rem, calc(env(safe-area-inset-bottom) + 3.5rem))' }}
       >
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2" 
+          className="flex items-center gap-2 z-20 relative" 
           onClick={handleProfileClick}
         >
-          {/* Avatar transparent - Responsive */}
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border border-white/20">
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -682,54 +679,78 @@ const VideoFeedCard: React.FC<{
               </div>
             )}
           </div>
-          <span className="text-white/80 text-xs sm:text-sm font-medium">{authorName}</span>
+          <span className="text-white/90 text-xs sm:text-sm font-semibold drop-shadow-md">{authorUsername}</span>
         </motion.div>
       </div>
 
-      {/* Right sidebar - Actions 100% transparentes - Responsive */}
+      {/* Right sidebar - Actions vertically centered */}
       <div 
-        className="absolute right-2 sm:right-3 md:right-4 flex flex-col items-center gap-3 sm:gap-4 md:gap-5"
-        style={{ 
-          bottom: 'max(4.5rem, calc(env(safe-area-inset-bottom) + 4.5rem))'
-        }}
+        className="absolute right-2 sm:right-3 md:right-4 flex flex-col items-center gap-2 sm:gap-3 md:gap-4 z-20"
+        style={{ top: '50%', transform: 'translateY(-10%)' }}
       >
-        {/* Like - Transparent */}
+        {/* Follow Avatar Button */}
+        <div className="relative mb-1">
+          <motion.button 
+            whileTap={{ scale: 0.9 }} 
+            onClick={handleProfileClick}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 border-white/40 shadow-lg"
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
+                <span className="text-sm">👤</span>
+              </div>
+            )}
+          </motion.button>
+          {!isFollowing && (
+            <motion.button 
+              whileTap={{ scale: 0.8 }}
+              onClick={(e) => { e.stopPropagation(); handleFollow(); }}
+              className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shadow-md z-30"
+            >
+              <Plus className="w-3 h-3 text-white" strokeWidth={3} />
+            </motion.button>
+          )}
+        </div>
+
+        {/* Like */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={() => { setIsLiked(!isLiked); onLike(); triggerFeedback('notification'); }} 
           className="flex flex-col items-center"
         >
-          <Heart className={`w-6 h-6 sm:w-7 sm:h-7 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
-          <span className="text-white/80 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 drop-shadow-md">{likesCount + (isLiked ? 1 : 0)}</span>
+          <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
+          <span className="text-white/80 text-[10px] font-medium mt-0.5 drop-shadow-md">{likesCount + (isLiked ? 1 : 0)}</span>
         </motion.button>
         
-        {/* Comment - Transparent */}
+        {/* Comment */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={onComment} 
           className="flex flex-col items-center"
         >
-          <MessageCircle className="w-6 h-6 sm:w-7 sm:h-7 text-white drop-shadow-lg" strokeWidth={1.5} />
-          <span className="text-white/80 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 drop-shadow-md">{commentsCount}</span>
+          <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />
+          <span className="text-white/80 text-[10px] font-medium mt-0.5 drop-shadow-md">{commentsCount}</span>
         </motion.button>
         
-        {/* Bookmark - Transparent */}
+        {/* Bookmark */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={() => { setIsSaved(!isSaved); triggerFeedback('success'); }}
           className="flex flex-col items-center"
         >
-          <Bookmark className={`w-6 h-6 sm:w-7 sm:h-7 ${isSaved ? 'text-amber-400 fill-amber-400' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
+          <Bookmark className={`w-5 h-5 sm:w-6 sm:h-6 ${isSaved ? 'text-amber-400 fill-amber-400' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
         </motion.button>
         
-        {/* Share - Transparent */}
+        {/* Share */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
           onClick={onShare} 
           className="flex flex-col items-center"
         >
-          <Share2 className="w-6 h-6 sm:w-7 sm:h-7 text-white drop-shadow-lg" strokeWidth={1.5} />
-          <span className="text-white/80 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 drop-shadow-md">{sharesCount}</span>
+          <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />
+          <span className="text-white/80 text-[10px] font-medium mt-0.5 drop-shadow-md">{sharesCount}</span>
         </motion.button>
       </div>
     </div>

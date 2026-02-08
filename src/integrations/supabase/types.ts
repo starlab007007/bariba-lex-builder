@@ -2720,7 +2720,15 @@ export type Database = {
           video_url?: string
           views_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "videos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       word_submissions: {
         Row: {
