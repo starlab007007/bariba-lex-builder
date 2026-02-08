@@ -887,25 +887,8 @@ export function GriotStudio() {
           </section>
         )}
 
-        {/* Step: Success */}
-        {step === 'success' && (
-          <section className="py-12 text-center space-y-6">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }} className="text-6xl">
-              🎉
-            </motion.div>
-            <h2 className="text-2xl font-bold text-amber-100">Publié sur FITILA!</h2>
-            <p className="text-amber-200/60">Ton conte est maintenant visible par tous</p>
-
-            <div className="flex flex-col gap-3 max-w-xs mx-auto pt-4">
-              <Button size="lg" onClick={handleViewInFeed} className="w-full bg-gradient-to-r from-amber-500 to-orange-500">
-                📺 Voir dans le Feed
-              </Button>
-              <Button variant="outline" onClick={handleReset} className="w-full border-amber-500/30 text-amber-200">
-                🔄 Créer un autre conte
-              </Button>
-            </div>
-          </section>
-        )}
+        {/* Step: Success — handled by PublishStep popup now */}
+        {step === 'success' && null}
       </main>
 
       {/* Footer */}

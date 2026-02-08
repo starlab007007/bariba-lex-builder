@@ -8,6 +8,7 @@ import { useVideoFeed } from '@/hooks/useVideoFeed';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
+import { VinylAuthorDisc } from '@/components/griot-studio/VinylAuthorDisc';
 import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
 import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
@@ -609,14 +610,28 @@ const VideoFeedCard: React.FC<{
         </div>
       )}
 
-      {/* Volume toggle button - Top right */}
+      {/* Vinyl Author Disc — Top right */}
+      <div
+        className="absolute z-20"
+        style={{ 
+          top: 'max(1rem, calc(env(safe-area-inset-top) + 1rem))',
+          right: '0.75rem'
+        }}
+      >
+        <VinylAuthorDisc avatarUrl={avatarUrl} size={52} />
+      </div>
+
+      {/* Volume toggle button — Below vinyl disc */}
       <motion.button
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => { onToggleMute(); triggerFeedback('notification'); }}
-        className="absolute top-4 right-3 sm:right-4 z-20 p-2 sm:p-2.5 rounded-full bg-black/30 backdrop-blur-sm"
-        style={{ top: 'max(1rem, calc(env(safe-area-inset-top) + 1rem))' }}
+        className="absolute z-20 p-2 sm:p-2.5 rounded-full bg-black/30 backdrop-blur-sm"
+        style={{ 
+          top: 'max(4.5rem, calc(env(safe-area-inset-top) + 4.5rem))',
+          right: '0.75rem'
+        }}
       >
         {isMuted ? (
           <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />

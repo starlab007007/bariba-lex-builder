@@ -6,6 +6,7 @@ import {
   MessageCircle, RefreshCw, Sparkles, TrendingUp, Loader2
 } from 'lucide-react';
 import { useVideoFeed } from '@/hooks/useVideoFeed';
+import { VinylAuthorDisc } from '@/components/griot-studio/VinylAuthorDisc';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎬 FITILA VIDEO FEED - TIKTOK-STYLE
@@ -193,11 +194,16 @@ const VideoCard: React.FC<{
         </span>
       </motion.div>
 
-      {/* Mute button */}
+      {/* Vinyl Author Disc — Top right */}
+      <div className="absolute top-16 right-4 z-10">
+        <VinylAuthorDisc avatarUrl={post.author.avatarUrl} size={52} />
+      </div>
+
+      {/* Mute button — Below vinyl */}
       <motion.button
         whileTap={{ scale: 0.9 }}
         onClick={() => { setIsMuted(!isMuted); if (videoRef.current) videoRef.current.muted = !isMuted; }}
-        className="absolute top-16 right-4 w-12 h-12 rounded-full bg-black/50 backdrop-blur-xl flex items-center justify-center border border-white/10 shadow-xl"
+        className="absolute top-32 right-4 w-12 h-12 rounded-full bg-black/50 backdrop-blur-xl flex items-center justify-center border border-white/10 shadow-xl"
       >
         {isMuted ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
       </motion.button>
