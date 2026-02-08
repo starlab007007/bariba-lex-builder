@@ -486,7 +486,7 @@ export function GriotStudio() {
   const currentStepIndex = stepOrder.indexOf(step);
 
   return (
-    <div className="min-h-[100dvh] h-[100dvh] flex flex-col bg-gradient-to-b from-amber-950 via-black to-black text-white overflow-hidden">
+    <div className="min-h-[100dvh] flex flex-col bg-gradient-to-b from-amber-950 via-black to-black text-white overflow-y-auto">
       {/* Confirmation Modal */}
       <AnimatePresence>
         <ConfirmModal
@@ -558,7 +558,7 @@ export function GriotStudio() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 max-w-lg mx-auto space-y-6 pb-24">
+      <main className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 max-w-lg mx-auto w-full space-y-6 pb-32">
 
         {/* Step: Create */}
         {step === 'create' && (
@@ -864,26 +864,34 @@ export function GriotStudio() {
         )}
 
         {/* Step: Finalize */}
-        {step === 'finalize' && generationResult && (
+        {step === 'finalize' && (
           <section className="space-y-4 flex flex-col items-center w-full">
             <div className="text-center mb-4">
               <h2 className="text-lg font-semibold text-amber-100">📤 Finaliser / Sɔ̀ɔ́rɔ́</h2>
             </div>
-            <canvas ref={canvasRef} width={540} height={960} className="hidden" />
-            <PublishStep
-              scenes={generationResult.scenes}
-              audioUrl={generationResult.audioUrl}
-              narrationAudioUrl={narrationAudioUrl || undefined}
-              narrationBlob={audioBlob || undefined}
-              narratorAvatarUrl={narratorPreviewUrl}
-              style={style}
-              duration={duration}
-              storyText={transcribedStory}
-              canvasRef={canvasRef}
-              engineRef={engineRef}
-              onPublishSuccess={handlePublishSuccess}
-              onReset={handleReset}
-            />
+            {/* Canvas must remain mounted (off-screen) for engine to work in manual mode */}
+            <canvas ref={canvasRef} width={540} height={960} className="absolute -left-[9999px] opacity-0 pointer-events-none" aria-hidden="true" />
+            {generationResult ? (
+              <PublishStep
+                scenes={generationResult.scenes}
+                audioUrl={generationResult.audioUrl}
+                narrationAudioUrl={narrationAudioUrl || undefined}
+                narrationBlob={audioBlob || undefined}
+                narratorAvatarUrl={narratorPreviewUrl}
+                style={style}
+                duration={duration}
+                storyText={transcribedStory}
+                canvasRef={canvasRef}
+                engineRef={engineRef}
+                onPublishSuccess={handlePublishSuccess}
+                onReset={handleReset}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
+                <p className="text-sm text-amber-200/60">Préparation des scènes...</p>
+              </div>
+            )}
           </section>
         )}
 
@@ -891,8 +899,8 @@ export function GriotStudio() {
         {step === 'success' && null}
       </main>
 
-      {/* Footer */}
-      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-black/60 backdrop-blur-sm safe-area-inset-bottom">
+      {/* Footer — integrated in flow, not fixed */}
+      <footer className="py-3 bg-black/40 safe-area-inset-bottom">
         <p className="text-center text-xs text-amber-200/30">Griot Animé v7 • FITILA AI</p>
       </footer>
     </div>

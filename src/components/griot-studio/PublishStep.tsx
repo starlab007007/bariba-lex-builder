@@ -1,15 +1,18 @@
 /**
- * PublishStep v3.0
+ * PublishStep v3.1
  * Finalization screen with audio mode selector (TikTok-style), music library integration,
  * Web Audio API mixing, export MP4 and publish to feed.
  * 
- * Audio modes:
- * - voice_only: Narrator's recorded voice only (default)
- * - music_only: Background music only (from AudioLibrary)
- * - voice_and_music: Voice + background music (music at 25% volume)
+ * v3.1 fixes:
+ * - useNavigate instead of window.location.href
+ * - Robust audio loading with try/catch fallback
+ * - Responsive layout with max-w-md, centered
+ * - VinylRecorder onAvatarCapture support
+ * - Scroll-friendly layout
  */
 
 import React, { useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, Upload, Loader2, Sparkles, ArrowRight, Mic, Music, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -64,6 +67,7 @@ export function PublishStep({
   onReset
 }: PublishStepProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { publishVideo, isPublishing, publishProgress, publishStage } = useVideoPublish();
   
   const [title, setTitle] = useState(() => {
@@ -111,9 +115,13 @@ export function PublishStep({
 
   /**
    * Export video with proper audio mixing via Web Audio API
+   * Includes robust try/catch for audio loading with graceful fallback
    */
   const exportVideo = useCallback(async (): Promise<Blob | null> => {
-    if (!canvasRef.current || !engineRef.current) return null;
+    if (!canvasRef.current || !engineRef.current) {
+      console.error('[PublishStep] Canvas or engine not initialized');
+      return null;
+    }
     
     const canvas = canvasRef.current;
     const engine = engineRef.current;
@@ -135,48 +143,66 @@ export function PublishStep({
       try {
         audioContext = new AudioContext();
         const destination = audioContext.createMediaStreamDestination();
+        let audioConnected = false;
         
+        // Load voice audio with fallback
         if (hasVoice) {
-          const voiceEl = new Audio(effectiveNarrationUrl);
-          voiceEl.crossOrigin = 'anonymous';
-          voiceEl.volume = 1;
-          await new Promise<void>((res, rej) => {
-            voiceEl.oncanplaythrough = () => res();
-            voiceEl.onerror = () => rej(new Error('Voice audio load failed'));
-            voiceEl.load();
-          });
-          const voiceSource = audioContext.createMediaElementSource(voiceEl);
-          const voiceGain = audioContext.createGain();
-          voiceGain.gain.value = 1.0;
-          voiceSource.connect(voiceGain);
-          voiceGain.connect(destination);
-          audioElements.push(voiceEl);
+          try {
+            const voiceEl = new Audio(effectiveNarrationUrl);
+            voiceEl.crossOrigin = 'anonymous';
+            voiceEl.volume = 1;
+            await new Promise<void>((res, rej) => {
+              const timeout = setTimeout(() => rej(new Error('Voice load timeout')), 10000);
+              voiceEl.oncanplaythrough = () => { clearTimeout(timeout); res(); };
+              voiceEl.onerror = () => { clearTimeout(timeout); rej(new Error('Voice audio load failed')); };
+              voiceEl.load();
+            });
+            const voiceSource = audioContext.createMediaElementSource(voiceEl);
+            const voiceGain = audioContext.createGain();
+            voiceGain.gain.value = 1.0;
+            voiceSource.connect(voiceGain);
+            voiceGain.connect(destination);
+            audioElements.push(voiceEl);
+            audioConnected = true;
+          } catch (voiceErr) {
+            console.warn('[PublishStep] Voice audio failed to load, continuing without voice:', voiceErr);
+          }
         }
         
+        // Load music audio with fallback
         if (hasMusic) {
-          const musicEl = new Audio(musicUrl);
-          musicEl.crossOrigin = 'anonymous';
-          musicEl.loop = true;
-          musicEl.volume = 1;
-          await new Promise<void>((res, rej) => {
-            musicEl.oncanplaythrough = () => res();
-            musicEl.onerror = () => rej(new Error('Music audio load failed'));
-            musicEl.load();
-          });
-          const musicSource = audioContext.createMediaElementSource(musicEl);
-          const musicGain = audioContext.createGain();
-          musicGain.gain.value = audioMode === 'voice_and_music' ? 0.25 : 0.8;
-          musicSource.connect(musicGain);
-          musicGain.connect(destination);
-          audioElements.push(musicEl);
+          try {
+            const musicEl = new Audio(musicUrl);
+            musicEl.crossOrigin = 'anonymous';
+            musicEl.loop = true;
+            musicEl.volume = 1;
+            await new Promise<void>((res, rej) => {
+              const timeout = setTimeout(() => rej(new Error('Music load timeout')), 10000);
+              musicEl.oncanplaythrough = () => { clearTimeout(timeout); res(); };
+              musicEl.onerror = () => { clearTimeout(timeout); rej(new Error('Music audio load failed')); };
+              musicEl.load();
+            });
+            const musicSource = audioContext.createMediaElementSource(musicEl);
+            const musicGain = audioContext.createGain();
+            musicGain.gain.value = audioMode === 'voice_and_music' ? 0.25 : 0.8;
+            musicSource.connect(musicGain);
+            musicGain.connect(destination);
+            audioElements.push(musicEl);
+            audioConnected = true;
+          } catch (musicErr) {
+            console.warn('[PublishStep] Music audio failed to load, continuing without music:', musicErr);
+            toast({ title: '⚠️ Musique indisponible', description: 'Export sans musique de fond.', variant: 'destructive' });
+          }
         }
         
-        combinedStream = new MediaStream([
-          ...videoStream.getVideoTracks(),
-          ...destination.stream.getAudioTracks()
-        ]);
+        if (audioConnected) {
+          combinedStream = new MediaStream([
+            ...videoStream.getVideoTracks(),
+            ...destination.stream.getAudioTracks()
+          ]);
+        }
       } catch (e) {
-        console.warn('[PublishStep] Could not add audio tracks:', e);
+        console.warn('[PublishStep] Audio context setup failed, exporting video only:', e);
       }
     }
     
@@ -219,7 +245,7 @@ export function PublishStep({
         audioElements.forEach(el => el.pause());
       }, duration * 1000 + 500);
     });
-  }, [canvasRef, engineRef, style, duration, effectiveNarrationUrl, audioMode, selectedMusicTrack]);
+  }, [canvasRef, engineRef, style, duration, effectiveNarrationUrl, audioMode, selectedMusicTrack, toast]);
 
   // Handle share
   const handleShare = useCallback(async () => {
@@ -269,22 +295,22 @@ export function PublishStep({
     }
   }, [exportVideo, generateThumbnail, publishVideo, title, storyText, duration, onPublishSuccess, toast]);
 
-  // Success: auto-redirect to feed after brief delay
+  // Success: auto-redirect to feed using React Router
   React.useEffect(() => {
     if (isPublished) {
       const timer = setTimeout(() => {
-        window.location.href = '/fitila';
+        navigate(publishedVideoId ? `/fitila?video=${publishedVideoId}` : '/fitila');
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [isPublished]);
+  }, [isPublished, navigate, publishedVideoId]);
 
   if (isPublished) {
     return (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center py-16 px-6 text-center space-y-6"
+        className="flex flex-col items-center justify-center py-16 px-6 text-center space-y-6 w-full max-w-md mx-auto"
       >
         <motion.div
           initial={{ scale: 0 }}
@@ -308,7 +334,7 @@ export function PublishStep({
   }
 
   return (
-    <div className="space-y-6 w-full max-w-md mx-auto">
+    <div className="space-y-5 w-full max-w-md mx-auto overflow-y-auto">
       {/* Title Input */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-amber-200/80">📝 Titre</label>
@@ -339,6 +365,7 @@ export function PublishStep({
             avatarUrl={narratorAvatarUrl}
             maxDuration={120}
             onRecordingComplete={handleLocalRecording}
+            onAvatarCapture={undefined}
             disabled={false}
             accentColor="#FFD700"
           />
@@ -370,7 +397,7 @@ export function PublishStep({
                 }}
                 disabled={isVoiceDisabled}
                 className={cn(
-                  'flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all',
+                  'flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all min-h-[72px]',
                   isVoiceDisabled
                     ? 'border-white/5 bg-white/5 text-white/20 cursor-not-allowed'
                     : isActive
@@ -433,8 +460,8 @@ export function PublishStep({
         </p>
       </div>
 
-      {/* Preview Thumbnail */}
-      <div className="aspect-[9/16] w-full max-w-[200px] sm:max-w-[240px] mx-auto rounded-2xl overflow-hidden bg-amber-950/30 border border-amber-500/20 shadow-lg">
+      {/* Preview Thumbnail — Responsive */}
+      <div className="aspect-[9/16] w-full max-w-[180px] sm:max-w-[220px] md:max-w-[260px] mx-auto rounded-2xl overflow-hidden bg-amber-950/30 border border-amber-500/20 shadow-lg">
         {scenes[0]?.imageUrl ? (
           <img src={scenes[0].imageUrl} alt="Preview" className="w-full h-full object-cover" />
         ) : (
@@ -452,7 +479,7 @@ export function PublishStep({
         </div>
       )}
 
-      {/* Action Buttons — Centered, responsive */}
+      {/* Action Buttons — Centered, responsive, min-height for accessibility */}
       <div className="space-y-3 w-full">
         <Button
           variant="outline"
@@ -485,7 +512,7 @@ export function PublishStep({
         </Button>
       </div>
 
-      <p className="text-xs text-center text-white/30">Ta vidéo sera visible par tous sur le feed</p>
+      <p className="text-xs text-center text-white/30 pb-4">Ta vidéo sera visible par tous sur le feed</p>
 
       {/* Audio Library Modal */}
       <AnimatePresence>
