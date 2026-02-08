@@ -238,6 +238,9 @@ export type Database = {
       }
       asset_imports: {
         Row: {
+          ai_analysis_status: string | null
+          ai_confidence: number | null
+          ai_metadata: Json | null
           category: string
           conversion_progress: number | null
           converted_at: string | null
@@ -258,6 +261,9 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          ai_analysis_status?: string | null
+          ai_confidence?: number | null
+          ai_metadata?: Json | null
           category: string
           conversion_progress?: number | null
           converted_at?: string | null
@@ -278,6 +284,9 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          ai_analysis_status?: string | null
+          ai_confidence?: number | null
+          ai_metadata?: Json | null
           category?: string
           conversion_progress?: number | null
           converted_at?: string | null
