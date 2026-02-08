@@ -264,9 +264,10 @@ export function PublishStep({
       };
       
       // Start all AudioBufferSourceNodes FIRST, then start recording
+      // Clip audio to video duration so audio doesn't exceed video length
       for (const node of sourceNodes) {
-        node.start(0);
-        console.log('[PublishStep] AudioBufferSourceNode started');
+        node.start(0, 0, duration);
+        console.log('[PublishStep] AudioBufferSourceNode started, clipped to', duration, 'seconds');
       }
       
       // Small delay to ensure audio buffers are flowing
@@ -322,6 +323,17 @@ export function PublishStep({
       
       toast({ title: '🚀 Publication en cours...', description: 'Envoi vers le feed...' });
       
+      // Build metadata from scenes for searchability
+      const sceneMetadata = scenes.map(s => ({
+        text: s.text,
+        emotion: s.emotion,
+        visualDescription: s.visualDescription,
+        imageUrl: s.imageUrl,
+        videoUrl: s.videoUrl,
+        sceneNumber: s.sceneNumber,
+        durationSeconds: s.durationSeconds,
+      }));
+
       const result = await publishVideo({
         video: videoBlob,
         thumbnail: thumbnailBlob,
@@ -329,7 +341,13 @@ export function PublishStep({
         description: storyText.slice(0, 200),
         templateId: 'griot-anime',
         templateName: 'Griot Animé IA',
-        duration
+        duration,
+        metadata: {
+          style,
+          scenes: sceneMetadata,
+          audioMode,
+          musicTrack: selectedMusicTrack ? { id: selectedMusicTrack.id, title: selectedMusicTrack.title } : null,
+        }
       });
       
       if (result.success) {
@@ -500,20 +518,15 @@ export function PublishStep({
         </div>
       )}
 
-      {/* Published success — redirect feedback */}
+      {/* Published success — brief feedback, parent handles redirect */}
       {isPublished ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-4 py-8"
+          className="flex flex-col items-center gap-3 py-6"
         >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-            className="w-12 h-12 border-3 border-emerald-400/30 border-t-emerald-400 rounded-full"
-          />
-          <p className="text-emerald-300 font-semibold text-lg">🎉 Publié!</p>
-          <p className="text-white/60 text-sm">Redirection vers le feed...</p>
+          <span className="text-5xl">🎉</span>
+          <p className="text-emerald-300 font-semibold text-lg">Publié avec succès!</p>
         </motion.div>
       ) : (
         <>

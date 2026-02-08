@@ -2664,6 +2664,7 @@ export type Database = {
           id: string
           is_public: boolean | null
           likes_count: number | null
+          metadata: Json | null
           shares_count: number | null
           template_id: string | null
           template_name: string | null
@@ -2681,6 +2682,7 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           likes_count?: number | null
+          metadata?: Json | null
           shares_count?: number | null
           template_id?: string | null
           template_name?: string | null
@@ -2698,6 +2700,7 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           likes_count?: number | null
+          metadata?: Json | null
           shares_count?: number | null
           template_id?: string | null
           template_name?: string | null
