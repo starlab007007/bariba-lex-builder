@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.transcribe-audio]
 verify_jwt = false
+
+[functions.analyze-asset]
+verify_jwt = false

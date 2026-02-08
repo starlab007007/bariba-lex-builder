@@ -1,5 +1,6 @@
 /**
  * Music Upload Form - Upload music tracks to music_library_tracks
+ * With automatic AI-powered classification and filename parsing
  */
 
 import { useState, useRef, useCallback } from 'react';
@@ -8,6 +9,8 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -15,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Upload, Music2, Loader2, Play, Pause, X } from 'lucide-react';
+import { Upload, Music2, Loader2, Play, Pause, X, Sparkles } from 'lucide-react';
+import { analyzeMusicFile, type MusicSuggestions } from '@/utils/assetAnalyzer';
 
 const CATEGORIES = [
   { id: 'traditional', label: 'Traditionnel', emoji: '🥁' },
@@ -33,12 +37,26 @@ const MOODS = [
   { id: 'motivating', label: 'Motivant', emoji: '💪' },
 ] as const;
 
+/** Small AI badge indicator */
+function AiBadge() {
+  return (
+    <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0 gap-1 font-normal">
+      <Sparkles className="h-2.5 w-2.5" />
+      IA
+    </Badge>
+  );
+}
+
 export function MusicUploadForm() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [duration, setDuration] = useState<number>(0);
+
+  // AI analysis state
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiFields, setAiFields] = useState<Set<string>>(new Set());
 
   // Fields
   const [title, setTitle] = useState('');
@@ -52,7 +70,20 @@ export function MusicUploadForm() {
   const fileRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const applySuggestions = (suggestions: MusicSuggestions) => {
+    const touched = new Set<string>();
+
+    if (suggestions.title) { setTitle(suggestions.title); touched.add('title'); }
+    if (suggestions.artist) { setArtist(suggestions.artist); touched.add('artist'); }
+    if (suggestions.category) { setCategory(suggestions.category); touched.add('category'); }
+    if (suggestions.mood) { setMood(suggestions.mood); touched.add('mood'); }
+    if (suggestions.tags?.length) { setTags(suggestions.tags.join(', ')); touched.add('tags'); }
+    if (suggestions.description_fr) { setDescriptionFr(suggestions.description_fr); touched.add('descriptionFr'); }
+
+    setAiFields(touched);
+  };
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     if (f.size > 10 * 1024 * 1024) {
@@ -64,17 +95,36 @@ export function MusicUploadForm() {
     setPreviewUrl(url);
 
     // Extract duration via Audio API
+    let extractedDuration = 0;
     const audio = new Audio(url);
     audio.addEventListener('loadedmetadata', () => {
-      setDuration(Math.round(audio.duration));
+      extractedDuration = Math.round(audio.duration);
+      setDuration(extractedDuration);
     });
 
-    // Auto-fill title from filename
-    if (!title) {
-      const name = f.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
-      setTitle(name.charAt(0).toUpperCase() + name.slice(1));
+    // Wait briefly for duration, then trigger AI analysis
+    setAnalyzing(true);
+    setAiFields(new Set());
+
+    // Give audio a moment to load metadata
+    await new Promise(resolve => setTimeout(resolve, 500));
+    if (!extractedDuration && audio.duration) {
+      extractedDuration = Math.round(audio.duration);
+      setDuration(extractedDuration);
     }
-  }, [title]);
+
+    try {
+      const suggestions = await analyzeMusicFile(f, extractedDuration);
+      if (Object.keys(suggestions).length > 0) {
+        applySuggestions(suggestions);
+        toast({ title: '🤖 Analyse IA terminée', description: 'Métadonnées pré-remplies.' });
+      }
+    } catch (err) {
+      console.warn('Music AI analysis failed:', err);
+    } finally {
+      setAnalyzing(false);
+    }
+  }, []);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -96,6 +146,7 @@ export function MusicUploadForm() {
     setBpm('');
     setTags('');
     setDescriptionFr('');
+    setAiFields(new Set());
     if (fileRef.current) fileRef.current.value = '';
     if (audioRef.current) {
       audioRef.current.pause();
@@ -121,7 +172,6 @@ export function MusicUploadForm() {
       const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const storagePath = `music/${category}/${fileName}`;
 
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('anime-library')
         .upload(storagePath, file, { contentType: file.type });
@@ -132,13 +182,11 @@ export function MusicUploadForm() {
         .from('anime-library')
         .getPublicUrl(storagePath);
 
-      // Parse tags
       const parsedTags = tags
         .split(',')
         .map(t => t.trim())
         .filter(Boolean);
 
-      // Insert into music_library_tracks
       const { error: insertError } = await supabase
         .from('music_library_tracks' as any)
         .insert({
@@ -160,7 +208,7 @@ export function MusicUploadForm() {
       resetForm();
     } catch (error: any) {
       console.error('Music upload error:', error);
-      toast({ title: 'Erreur', description: error.message || 'Échec de l\'upload', variant: 'destructive' });
+      toast({ title: 'Erreur', description: error.message || "Échec de l'upload", variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -170,16 +218,29 @@ export function MusicUploadForm() {
     <div className="space-y-6">
       {/* Audio preview element */}
       {previewUrl && (
-        <audio
-          ref={audioRef}
-          src={previewUrl}
-          onEnded={() => setIsPlaying(false)}
-        />
+        <audio ref={audioRef} src={previewUrl} onEnded={() => setIsPlaying(false)} />
+      )}
+
+      {/* AI Analysis Banner */}
+      {analyzing && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20 animate-pulse">
+          <Sparkles className="h-5 w-5 text-primary animate-spin" />
+          <span className="text-sm font-medium text-primary">Analyse IA en cours...</span>
+        </div>
+      )}
+
+      {aiFields.size > 0 && !analyzing && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/15">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-xs text-muted-foreground">
+            {aiFields.size} champs pré-remplis par l'IA. Vous pouvez les modifier.
+          </span>
+        </div>
       )}
 
       {/* File Upload Zone */}
       <div
-        onClick={() => fileRef.current?.click()}
+        onClick={() => !analyzing && fileRef.current?.click()}
         className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
       >
         <input ref={fileRef} type="file" accept=".mp3,.ogg,.wav" className="hidden" onChange={handleFileChange} />
@@ -222,46 +283,80 @@ export function MusicUploadForm() {
       {/* Title & Artist */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Titre *</Label>
-          <Input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Tambours de fête"
-          />
+          <Label className="flex items-center">
+            Titre *
+            {aiFields.has('title') && <AiBadge />}
+          </Label>
+          {analyzing ? (
+            <Skeleton className="h-10 w-full mt-1" />
+          ) : (
+            <Input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Tambours de fête"
+              className={aiFields.has('title') ? 'border-primary/40 bg-primary/5' : ''}
+            />
+          )}
         </div>
         <div>
-          <Label>Artiste</Label>
-          <Input
-            value={artist}
-            onChange={e => setArtist(e.target.value)}
-            placeholder="TAM-TAM"
-          />
+          <Label className="flex items-center">
+            Artiste
+            {aiFields.has('artist') && <AiBadge />}
+          </Label>
+          {analyzing ? (
+            <Skeleton className="h-10 w-full mt-1" />
+          ) : (
+            <Input
+              value={artist}
+              onChange={e => setArtist(e.target.value)}
+              placeholder="TAM-TAM"
+              className={aiFields.has('artist') ? 'border-primary/40 bg-primary/5' : ''}
+            />
+          )}
         </div>
       </div>
 
       {/* Category & Mood */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Catégorie</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.emoji} {c.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label className="flex items-center">
+            Catégorie
+            {aiFields.has('category') && <AiBadge />}
+          </Label>
+          {analyzing ? (
+            <Skeleton className="h-10 w-full mt-1" />
+          ) : (
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className={aiFields.has('category') ? 'border-primary/40 bg-primary/5' : ''}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.emoji} {c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <div>
-          <Label>Humeur</Label>
-          <Select value={mood} onValueChange={setMood}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {MOODS.map(m => (
-                <SelectItem key={m.id} value={m.id}>{m.emoji} {m.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label className="flex items-center">
+            Humeur
+            {aiFields.has('mood') && <AiBadge />}
+          </Label>
+          {analyzing ? (
+            <Skeleton className="h-10 w-full mt-1" />
+          ) : (
+            <Select value={mood} onValueChange={setMood}>
+              <SelectTrigger className={aiFields.has('mood') ? 'border-primary/40 bg-primary/5' : ''}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MOODS.map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.emoji} {m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -279,29 +374,45 @@ export function MusicUploadForm() {
           />
         </div>
         <div>
-          <Label>Tags (séparés par virgules)</Label>
-          <Input
-            value={tags}
-            onChange={e => setTags(e.target.value)}
-            placeholder="percussion, danse, énergie"
-          />
+          <Label className="flex items-center">
+            Tags (séparés par virgules)
+            {aiFields.has('tags') && <AiBadge />}
+          </Label>
+          {analyzing ? (
+            <Skeleton className="h-10 w-full mt-1" />
+          ) : (
+            <Input
+              value={tags}
+              onChange={e => setTags(e.target.value)}
+              placeholder="percussion, danse, énergie"
+              className={aiFields.has('tags') ? 'border-primary/40 bg-primary/5' : ''}
+            />
+          )}
         </div>
       </div>
 
       {/* Description */}
       <div>
-        <Label>Description</Label>
-        <Input
-          value={descriptionFr}
-          onChange={e => setDescriptionFr(e.target.value)}
-          placeholder="Rythme traditionnel de tambours pour les contes..."
-        />
+        <Label className="flex items-center">
+          Description
+          {aiFields.has('descriptionFr') && <AiBadge />}
+        </Label>
+        {analyzing ? (
+          <Skeleton className="h-10 w-full mt-1" />
+        ) : (
+          <Input
+            value={descriptionFr}
+            onChange={e => setDescriptionFr(e.target.value)}
+            placeholder="Rythme traditionnel de tambours pour les contes..."
+            className={aiFields.has('descriptionFr') ? 'border-primary/40 bg-primary/5' : ''}
+          />
+        )}
       </div>
 
       {/* Submit */}
       <Button
         onClick={handleSubmit}
-        disabled={uploading || !file || !title}
+        disabled={uploading || analyzing || !file || !title}
         className="w-full"
         size="lg"
       >
