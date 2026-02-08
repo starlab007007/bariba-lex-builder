@@ -8,7 +8,7 @@ import { useVideoFeed } from '@/hooks/useVideoFeed';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
-import { VinylAuthorDisc } from '@/components/griot-studio/VinylAuthorDisc';
+
 import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
 import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
@@ -548,6 +548,8 @@ const VideoFeedCard: React.FC<{
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showPlayIcon, setShowPlayIcon] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
 
@@ -564,11 +566,27 @@ const VideoFeedCard: React.FC<{
   useEffect(() => {
     if (isActive && videoRef.current) {
       videoRef.current.muted = isMuted;
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     } else if (videoRef.current) {
       videoRef.current.pause();
+      setIsPlaying(false);
     }
   }, [isActive, isMuted]);
+
+  // Tap to play/pause (Kuaishou-style)
+  const handleVideoTap = useCallback(() => {
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    }
+    setShowPlayIcon(true);
+    setTimeout(() => setShowPlayIcon(false), 600);
+    triggerFeedback('notification');
+  }, [isPlaying]);
 
   const handleProfileClick = () => {
     if (post.profile?.user_id) {
@@ -578,6 +596,30 @@ const VideoFeedCard: React.FC<{
 
   return (
     <div className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative bg-black overflow-hidden">
+      {/* Tap zone for play/pause — covers entire video */}
+      <div className="absolute inset-0 z-10" onClick={handleVideoTap} />
+
+      {/* Play/Pause indicator — Kuaishou-style center icon */}
+      <AnimatePresence>
+        {showPlayIcon && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 0.8, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.2 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+          >
+            <div className="w-20 h-20 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+              {isPlaying ? (
+                <Pause className="w-10 h-10 text-white" fill="white" />
+              ) : (
+                <Play className="w-10 h-10 text-white ml-1" fill="white" />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Video/Media - FULLSCREEN ABSOLUTE */}
       {videoUrl ? (
         <video 
@@ -610,35 +652,6 @@ const VideoFeedCard: React.FC<{
         </div>
       )}
 
-      {/* Vinyl Author Disc — Top right */}
-      <div
-        className="absolute z-20"
-        style={{ 
-          top: 'max(1rem, calc(env(safe-area-inset-top) + 1rem))',
-          right: '0.75rem'
-        }}
-      >
-        <VinylAuthorDisc avatarUrl={avatarUrl} size={52} />
-      </div>
-
-      {/* Volume toggle button — Below vinyl disc */}
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => { onToggleMute(); triggerFeedback('notification'); }}
-        className="absolute z-20 p-2 sm:p-2.5 rounded-full bg-black/30 backdrop-blur-sm"
-        style={{ 
-          top: 'max(4.5rem, calc(env(safe-area-inset-top) + 4.5rem))',
-          right: '0.75rem'
-        }}
-      >
-        {isMuted ? (
-          <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />
-        ) : (
-          <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />
-        )}
-      </motion.button>
       
       {/* Author info - Minimaliste en bas à gauche - Responsive */}
       <div 
@@ -733,7 +746,7 @@ export default function TamTamSocial() {
 
   const [activeTab, setActiveTab] = useState<BottomTab>('fil');
   const [feedMode, setFeedMode] = useState<FeedMode>('creation');
-  const [isMuted, setIsMuted] = useState(true); // Audio muted by default (browser autoplay policy)
+  const [isMuted, setIsMuted] = useState(false); // Audio plays automatically (Kuaishou-style)
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showCreator, setShowCreator] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);

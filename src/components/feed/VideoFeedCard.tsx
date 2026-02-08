@@ -5,8 +5,8 @@
 
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Bookmark, Volume2, VolumeX, Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Heart, MessageCircle, Share2, Bookmark, Play, Pause, Plus } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 
 interface VideoFeedCardProps {
@@ -31,6 +31,8 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showPlayIcon, setShowPlayIcon] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
 
@@ -49,10 +51,10 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     
     if (isActive) {
       videoRef.current.muted = isMuted;
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     } else {
       videoRef.current.pause();
-      // Reset video when not active to save memory
+      setIsPlaying(false);
       videoRef.current.currentTime = 0;
     }
   }, [isActive, isMuted]);
@@ -85,13 +87,47 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     triggerFeedback('success');
   }, []);
 
-  const handleMuteToggle = useCallback(() => {
-    onToggleMute();
+  // Tap to play/pause (Kuaishou-style)
+  const handleVideoTap = useCallback(() => {
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    }
+    setShowPlayIcon(true);
+    setTimeout(() => setShowPlayIcon(false), 600);
     triggerFeedback('notification');
-  }, [onToggleMute]);
+  }, [isPlaying]);
 
   return (
     <div className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative bg-black overflow-hidden">
+      {/* Tap zone for play/pause */}
+      <div className="absolute inset-0 z-10" onClick={handleVideoTap} />
+
+      {/* Play/Pause indicator — Kuaishou-style */}
+      <AnimatePresence>
+        {showPlayIcon && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 0.8, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.2 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+          >
+            <div className="w-20 h-20 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+              {isPlaying ? (
+                <Pause className="w-10 h-10 text-white" fill="white" />
+              ) : (
+                <Play className="w-10 h-10 text-white ml-1" fill="white" />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Video/Media - FULLSCREEN ABSOLUTE */}
       {videoUrl ? (
         <video 
@@ -128,22 +164,6 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
           />
         </div>
       )}
-
-      {/* Volume toggle button - Top right */}
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={handleMuteToggle}
-        className="absolute top-4 right-3 sm:right-4 z-20 p-2 sm:p-2.5 rounded-full bg-black/30 backdrop-blur-sm"
-        style={{ top: 'max(1rem, calc(env(safe-area-inset-top) + 1rem))' }}
-      >
-        {isMuted ? (
-          <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />
-        ) : (
-          <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />
-        )}
-      </motion.button>
       
       {/* Author info - Minimal bottom left */}
       <div 
