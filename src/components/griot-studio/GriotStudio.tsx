@@ -865,7 +865,7 @@ export function GriotStudio() {
 
         {/* Step: Finalize */}
         {step === 'finalize' && generationResult && (
-          <section className="space-y-4">
+          <section className="space-y-4 flex flex-col items-center w-full">
             <div className="text-center mb-4">
               <h2 className="text-lg font-semibold text-amber-100">📤 Finaliser / Sɔ̀ɔ́rɔ́</h2>
             </div>

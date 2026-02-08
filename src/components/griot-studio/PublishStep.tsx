@@ -269,44 +269,46 @@ export function PublishStep({
     }
   }, [exportVideo, generateThumbnail, publishVideo, title, storyText, duration, onPublishSuccess, toast]);
 
-  // Success state — simple toast-like popup, auto-redirect
+  // Success: auto-redirect to feed after brief delay
+  React.useEffect(() => {
+    if (isPublished) {
+      const timer = setTimeout(() => {
+        window.location.href = '/fitila';
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isPublished]);
+
   if (isPublished) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col items-center justify-center py-16 px-6 text-center space-y-6"
       >
         <motion.div
-          initial={{ scale: 0.8, y: 30 }}
-          animate={{ scale: 1, y: 0 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className="bg-gradient-to-br from-amber-950 via-amber-900/90 to-amber-950 border border-amber-500/30 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl shadow-amber-500/20 space-y-5"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', damping: 15, stiffness: 300 }}
+          className="text-7xl"
         >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', delay: 0.2 }}
-            className="text-6xl"
-          >
-            🎉
-          </motion.div>
-          <h2 className="text-2xl font-bold text-white">Félicitations !</h2>
-          <p className="text-amber-200/70 text-sm">Ton conte est maintenant visible par tous sur le feed</p>
-          <Button
-            size="lg"
-            onClick={() => window.location.href = publishedVideoId ? `/fitila?video=${publishedVideoId}` : '/fitila'}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-semibold"
-          >
-            📺 Voir dans le Feed
-          </Button>
+          🎉
         </motion.div>
+        <h2 className="text-2xl font-bold text-amber-100">Félicitations !</h2>
+        <p className="text-amber-200/60 text-sm">Ton conte est maintenant visible sur le feed</p>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: '100%' }}
+          transition={{ duration: 2.5, ease: 'linear' }}
+          className="h-1 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full max-w-xs"
+        />
+        <p className="text-xs text-amber-200/40">Redirection automatique...</p>
       </motion.div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-md mx-auto">
       {/* Title Input */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-amber-200/80">📝 Titre</label>
@@ -432,7 +434,7 @@ export function PublishStep({
       </div>
 
       {/* Preview Thumbnail */}
-      <div className="aspect-video w-full max-w-xs mx-auto rounded-xl overflow-hidden bg-amber-950/30 border border-amber-500/20">
+      <div className="aspect-[9/16] w-full max-w-[200px] sm:max-w-[240px] mx-auto rounded-2xl overflow-hidden bg-amber-950/30 border border-amber-500/20 shadow-lg">
         {scenes[0]?.imageUrl ? (
           <img src={scenes[0].imageUrl} alt="Preview" className="w-full h-full object-cover" />
         ) : (
@@ -450,14 +452,14 @@ export function PublishStep({
         </div>
       )}
 
-      {/* Action Buttons — No download, simplified */}
-      <div className="grid grid-cols-1 gap-3">
+      {/* Action Buttons — Centered, responsive */}
+      <div className="space-y-3 w-full">
         <Button
           variant="outline"
           size="lg"
           onClick={handleShare}
           disabled={isExporting || isPublishing}
-          className="w-full h-14 bg-white/5 border-white/10 text-white hover:bg-white/10"
+          className="w-full h-14 bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-2xl"
         >
           <Share2 className="w-5 h-5 mr-2" />
           📤 Partager
@@ -468,7 +470,7 @@ export function PublishStep({
           onClick={handlePublish}
           disabled={isExporting || isPublishing || !title.trim()}
           className={cn(
-            "w-full h-16 text-lg font-semibold",
+            "w-full h-16 text-lg font-semibold rounded-2xl",
             "bg-gradient-to-r from-emerald-500 to-teal-500",
             "hover:from-emerald-400 hover:to-teal-400",
             "text-white",
