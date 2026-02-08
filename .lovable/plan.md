@@ -1,53 +1,69 @@
 
+# Corrections Finales - Redirection, Feed Kuaishou, et Audio
 
-# Diagnostic et Corrections - Griot Studio
+## Problemes identifies
 
-## Bugs critiques identifies
+### 1. Redirection post-publication ne fonctionne pas
+Dans `PublishStep.tsx` (lignes 310-317), le `useEffect` appelle `navigate()` apres 2.5s, mais le composant `GriotStudio.tsx` appelle `handlePublishSuccess` qui ne change plus le step (correction precedente). Le probleme : `navigate()` est appele dans un composant enfant (`PublishStep`) qui est monte a l'interieur de `GriotStudio` — or `GriotStudio` est probablement monte sous une route qui n'est pas `/fitila`. Le `navigate` devrait fonctionner, mais il est possible que le composant parent interfere ou que l'ecran de felicitation bloque visuellement sans que la navigation s'execute correctement. La solution : forcer la navigation depuis le parent `GriotStudio` apres le succes, et reduire le delai a un simple popup anime avant redirection.
 
-### Bug 1 : Ecran vierge apres publication (CRITIQUE)
-Dans `GriotStudio.tsx`, le callback `handlePublishSuccess` (ligne 413) change le step a `'success'`. Cela demonte le composant `PublishStep` car la condition `step === 'finalize'` (ligne 867) devient fausse. Or, a la ligne 899, `step === 'success'` rend `null`. Resultat : ecran vide apres publication.
+### 2. VinylAuthorDisc et bouton Volume visibles dans le feed (capture 2)
+Dans `TamTamSocial.tsx` (lignes 613-641), le composant `VideoFeedCard` affiche :
+- Un `VinylAuthorDisc` en haut a droite (ligne 621)
+- Un bouton Volume juste en dessous (lignes 625-641)
 
-**Correction** : Ne plus changer le step a `'success'` depuis le parent. Laisser `PublishStep` gerer son propre etat de succes et sa redirection.
+L'utilisateur demande de les supprimer. Ces elements doivent etre retires du `VideoFeedCard` dans `TamTamSocial.tsx`.
 
-### Bug 2 : Aucun indicateur visuel pendant la publication
-Dans `PublishStep.tsx`, la variable `isExporting` (ligne 77) est declaree mais jamais mise a `true` dans `handlePublish` (ligne 265). La barre de progression (ligne 473) ne s'affiche donc jamais pendant l'export video. L'utilisateur clique sur "Publier" et ne voit rien se passer.
+Dans `TamTamVideoFeed.tsx` (lignes 197-209), le meme pattern existe aussi avec `VinylAuthorDisc` et un bouton mute. A supprimer egalement.
 
-**Correction** : Ajouter `setIsExporting(true)` avant `exportVideo()` et `setIsExporting(false)` apres, dans `handlePublish`.
+### 3. Feed video style Kuaishou avec autoplay et play/stop
+Actuellement, les videos dans le feed (`VideoFeedCard` dans `TamTamSocial.tsx`) jouent automatiquement quand elles sont actives (lignes 564-571). Mais elles sont `muted` par defaut (ligne 736: `isMuted: true`). L'utilisateur veut que l'audio joue automatiquement avec la video (style Kuaishou).
 
-### Bug 3 : Scroll bloque - double conteneur scrollable
-Dans `GriotStudio.tsx`, le conteneur parent (ligne 489) a `overflow-y-auto` ET le `main` (ligne 561) a aussi `overflow-y-auto`. Deux conteneurs scrollables imbriques creent des conflits : le scroll interne capture les evenements tactiles sur mobile, empechant le defilement visible.
+Le composant doit :
+- Jouer la video automatiquement quand elle est active (deja le cas)
+- Avoir un gros bouton Play/Pause centre au tap (deja partiellement)
+- Jouer l'audio automatiquement (changer `isMuted` par defaut a `false`)
+- Permettre de stopper/rejouer d'un simple tap
 
-**Correction** : Utiliser `h-[100dvh]` (hauteur fixe) sur le parent SANS `overflow-y-auto`. Seul le `main` (flex-1) gere le scroll avec `overflow-y-auto`.
+### 4. Musique/audio joue automatiquement dans le feed
+Les videos publiees depuis Griot Studio contiennent deja l'audio mixe (voix + musique) dans le fichier video exporte (via Web Audio API dans `exportVideo`). Donc l'audio est dans le flux video lui-meme. Il suffit de s'assurer que `muted={false}` pour que tout fonctionne.
 
 ---
 
 ## Plan de corrections
 
-### Fichier 1 : `src/components/griot-studio/GriotStudio.tsx`
+### Fichier 1 : `src/components/griot-studio/PublishStep.tsx`
+- Supprimer l'ecran de felicitation interne (`isPublished` bloc, lignes 319-345)
+- Apres publication reussie, appeler directement `onPublishSuccess` et laisser le parent gerer la redirection
+- Ajouter un toast de felicitation au lieu d'un ecran bloquant
 
-1. **Ligne 413-417** : Modifier `handlePublishSuccess` pour ne PAS changer le step. Laisser PublishStep gerer l'etat de succes et la redirection automatique.
+### Fichier 2 : `src/components/griot-studio/GriotStudio.tsx`
+- Modifier `handlePublishSuccess` pour naviguer automatiquement vers `/fitila` apres un court delai (1.5s)
+- Afficher un toast de felicitation au moment du succes
+- Utiliser `useNavigate` pour la redirection propre
 
-2. **Ligne 489** : Changer `min-h-[100dvh] ... overflow-y-auto` en `h-[100dvh] flex flex-col` sans overflow sur le parent. Seul le `main` scrolle.
+### Fichier 3 : `src/pages/tamtam/TamTamSocial.tsx`
+- **Supprimer** le `VinylAuthorDisc` du `VideoFeedCard` (lignes 613-622)
+- **Supprimer** le bouton Volume du `VideoFeedCard` (lignes 624-641)
+- **Changer** l'etat initial de `isMuted` de `true` a `false` pour autoplay avec son (ligne 736)
+- Supprimer l'import de `VinylAuthorDisc`
+- Supprimer les imports inutilises (`Volume2`, `VolumeX` du VideoFeedCard)
+- Ajouter un bouton Play/Pause central au tap sur la video (style Kuaishou)
 
-3. **Ligne 561** : Garder `flex-1 overflow-y-auto overscroll-contain` sur le main — c'est le seul conteneur scrollable.
-
-4. **Ligne 899** : Supprimer le cas `step === 'success'` devenu inutile.
-
-### Fichier 2 : `src/components/griot-studio/PublishStep.tsx`
-
-1. **Ligne 265-296** : Corriger `handlePublish` pour ajouter `setIsExporting(true/false)` autour de `exportVideo()`, donnant un retour visuel pendant l'export.
-
-2. **Ligne 298-306** : Ameliorer la redirection post-publication avec un delai et une animation de progression visible.
-
-3. **Ligne 337** : S'assurer que le conteneur PublishStep a `overflow-y-auto` propre pour que tout le contenu (titre, narration, mode audio, miniature, boutons) soit accessible par scroll.
+### Fichier 4 : `src/components/tamtam/TamTamVideoFeed.tsx`
+- **Supprimer** le `VinylAuthorDisc` du `VideoCard` (lignes 197-200)
+- **Supprimer** le bouton mute du `VideoCard` (lignes 202-209)
+- Supprimer l'import de `VinylAuthorDisc`
+- Changer `isMuted` par defaut a `false` (ligne 88)
+- S'assurer que l'audio joue automatiquement avec la video
 
 ---
 
-## Resume des corrections
+## Resume
 
-| Bug | Cause | Solution |
-|-----|-------|----------|
-| Ecran vierge post-publication | `step='success'` demonte PublishStep, `success` rend null | Ne pas changer step, laisser PublishStep gerer |
-| Pas d'indicateur de publication | `isExporting` jamais mis a true | Ajouter setIsExporting dans handlePublish |
-| Scroll bloque | Double overflow-y-auto imbrique | h-[100dvh] sur parent, overflow uniquement sur main |
-
+| Correction | Fichier | Impact |
+|------------|---------|--------|
+| Redirection automatique post-publication | GriotStudio.tsx + PublishStep.tsx | Navigation fluide vers le feed |
+| Supprimer VinylAuthorDisc du feed | TamTamSocial.tsx + TamTamVideoFeed.tsx | Interface nettoyee |
+| Supprimer bouton Volume du feed | TamTamSocial.tsx + TamTamVideoFeed.tsx | Interface nettoyee |
+| Autoplay video avec son | TamTamSocial.tsx + TamTamVideoFeed.tsx | Experience Kuaishou immersive |
+| Play/Stop au tap | TamTamSocial.tsx | Controle intuitif de la lecture |
