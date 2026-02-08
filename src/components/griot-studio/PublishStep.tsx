@@ -139,49 +139,65 @@ export function PublishStep({
     const musicUrl = selectedMusicTrack?.source?.url;
     const hasMusic = useMusic && musicUrl;
     
+    console.log('[PublishStep] Export config:', { audioMode, hasVoice, hasMusic, effectiveNarrationUrl: !!effectiveNarrationUrl, musicUrl: !!musicUrl });
+    
     if (hasVoice || hasMusic) {
       try {
         audioContext = new AudioContext();
+        // CRITICAL: Resume AudioContext (required on mobile after user gesture)
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+        console.log('[PublishStep] AudioContext state:', audioContext.state);
+        
         const destination = audioContext.createMediaStreamDestination();
         let audioConnected = false;
         
-        // Load voice audio with fallback
+        // Helper: load an audio element robustly
+        const loadAudioElement = async (url: string, label: string): Promise<HTMLAudioElement> => {
+          const el = new Audio();
+          // CRITICAL: Only set crossOrigin for remote URLs, NOT for blob: URLs
+          const isBlobUrl = url.startsWith('blob:');
+          if (!isBlobUrl) {
+            el.crossOrigin = 'anonymous';
+          }
+          el.volume = 1;
+          el.preload = 'auto';
+          el.src = url;
+          
+          await new Promise<void>((res, rej) => {
+            const timeout = setTimeout(() => rej(new Error(`${label} load timeout (10s)`)), 10000);
+            el.oncanplaythrough = () => { clearTimeout(timeout); res(); };
+            el.onerror = (e) => { clearTimeout(timeout); rej(new Error(`${label} load error: ${e}`)); };
+            el.load();
+          });
+          console.log(`[PublishStep] ${label} loaded successfully`);
+          return el;
+        };
+        
+        // Load voice audio
         if (hasVoice) {
           try {
-            const voiceEl = new Audio(effectiveNarrationUrl);
-            voiceEl.crossOrigin = 'anonymous';
-            voiceEl.volume = 1;
-            await new Promise<void>((res, rej) => {
-              const timeout = setTimeout(() => rej(new Error('Voice load timeout')), 10000);
-              voiceEl.oncanplaythrough = () => { clearTimeout(timeout); res(); };
-              voiceEl.onerror = () => { clearTimeout(timeout); rej(new Error('Voice audio load failed')); };
-              voiceEl.load();
-            });
+            const voiceEl = await loadAudioElement(effectiveNarrationUrl, 'Voice');
             const voiceSource = audioContext.createMediaElementSource(voiceEl);
             const voiceGain = audioContext.createGain();
             voiceGain.gain.value = 1.0;
             voiceSource.connect(voiceGain);
             voiceGain.connect(destination);
+            voiceGain.connect(audioContext.destination); // Also output to speakers for monitoring
             audioElements.push(voiceEl);
             audioConnected = true;
+            console.log('[PublishStep] Voice audio connected to MediaStream');
           } catch (voiceErr) {
-            console.warn('[PublishStep] Voice audio failed to load, continuing without voice:', voiceErr);
+            console.error('[PublishStep] Voice audio FAILED:', voiceErr);
           }
         }
         
-        // Load music audio with fallback
+        // Load music audio
         if (hasMusic) {
           try {
-            const musicEl = new Audio(musicUrl);
-            musicEl.crossOrigin = 'anonymous';
+            const musicEl = await loadAudioElement(musicUrl, 'Music');
             musicEl.loop = true;
-            musicEl.volume = 1;
-            await new Promise<void>((res, rej) => {
-              const timeout = setTimeout(() => rej(new Error('Music load timeout')), 10000);
-              musicEl.oncanplaythrough = () => { clearTimeout(timeout); res(); };
-              musicEl.onerror = () => { clearTimeout(timeout); rej(new Error('Music audio load failed')); };
-              musicEl.load();
-            });
             const musicSource = audioContext.createMediaElementSource(musicEl);
             const musicGain = audioContext.createGain();
             musicGain.gain.value = audioMode === 'voice_and_music' ? 0.25 : 0.8;
@@ -189,28 +205,36 @@ export function PublishStep({
             musicGain.connect(destination);
             audioElements.push(musicEl);
             audioConnected = true;
+            console.log('[PublishStep] Music audio connected to MediaStream');
           } catch (musicErr) {
-            console.warn('[PublishStep] Music audio failed to load, continuing without music:', musicErr);
+            console.error('[PublishStep] Music audio FAILED:', musicErr);
             toast({ title: '⚠️ Musique indisponible', description: 'Export sans musique de fond.', variant: 'destructive' });
           }
         }
         
         if (audioConnected) {
+          const audioTracks = destination.stream.getAudioTracks();
+          console.log('[PublishStep] Audio tracks for MediaRecorder:', audioTracks.length);
           combinedStream = new MediaStream([
             ...videoStream.getVideoTracks(),
-            ...destination.stream.getAudioTracks()
+            ...audioTracks
           ]);
         }
       } catch (e) {
-        console.warn('[PublishStep] Audio context setup failed, exporting video only:', e);
+        console.error('[PublishStep] Audio context setup FAILED, exporting video only:', e);
       }
     }
     
+    // Select best available codec with audio support
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
       ? 'video/webm;codecs=vp9,opus'
       : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
         ? 'video/webm;codecs=vp8,opus'
-        : 'video/webm';
+        : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9'
+          : 'video/webm';
+    
+    console.log('[PublishStep] MediaRecorder mimeType:', mimeType, 'tracks:', combinedStream.getTracks().map(t => `${t.kind}:${t.label}`));
     
     const chunks: Blob[] = [];
     const recorder = new MediaRecorder(combinedStream, { 
@@ -228,22 +252,43 @@ export function PublishStep({
         audioElements.forEach(el => { el.pause(); el.src = ''; });
         audioContext?.close().catch(() => {});
         const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+        console.log('[PublishStep] Export complete. Blob size:', blob.size, 'Audio tracks included:', combinedStream.getAudioTracks().length);
         resolve(blob);
       };
       
-      recorder.start(100);
-      audioElements.forEach(el => {
-        el.currentTime = 0;
-        el.play().catch(e => console.warn('Audio play error:', e));
-      });
-      engine.startSlideshowPreview(duration, animStyle, (progress) => {
-        setExportProgress(progress * 100);
-      });
-      setTimeout(() => {
-        recorder.stop();
-        engine.stopPreview();
-        audioElements.forEach(el => el.pause());
-      }, duration * 1000 + 500);
+      // Start audio playback FIRST, then start recording
+      const startRecording = async () => {
+        // Play all audio elements first
+        for (const el of audioElements) {
+          el.currentTime = 0;
+          try {
+            await el.play();
+            console.log('[PublishStep] Audio element playing');
+          } catch (e) {
+            console.error('[PublishStep] Audio play error:', e);
+          }
+        }
+        
+        // Small delay to ensure audio is flowing through AudioContext
+        await new Promise(r => setTimeout(r, 100));
+        
+        // Now start recording
+        recorder.start(100);
+        
+        // Start animation
+        engine.startSlideshowPreview(duration, animStyle, (progress) => {
+          setExportProgress(progress * 100);
+        });
+        
+        // Stop after duration
+        setTimeout(() => {
+          recorder.stop();
+          engine.stopPreview();
+          audioElements.forEach(el => el.pause());
+        }, duration * 1000 + 500);
+      };
+      
+      startRecording();
     });
   }, [canvasRef, engineRef, style, duration, effectiveNarrationUrl, audioMode, selectedMusicTrack, toast]);
 
@@ -292,7 +337,12 @@ export function PublishStep({
       if (result.success) {
         setIsPublished(true);
         setPublishedVideoId(result.videoId || null);
+        // Notify parent immediately — parent handles redirect
         onPublishSuccess?.(result.videoId || '');
+        // Fallback redirect if parent doesn't handle it
+        setTimeout(() => {
+          navigate(result.videoId ? `/fitila?video=${result.videoId}` : '/fitila');
+        }, 2000);
       }
     } catch (error) {
       console.error('[PublishStep] Publish error:', error);
@@ -454,40 +504,59 @@ export function PublishStep({
         </div>
       )}
 
-      {/* Action Buttons — Centered, responsive, min-height for accessibility */}
-      <div className="space-y-3 w-full">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={handleShare}
-          disabled={isExporting || isPublishing}
-          className="w-full h-14 bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-2xl"
+      {/* Published success — redirect feedback */}
+      {isPublished ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4 py-8"
         >
-          <Share2 className="w-5 h-5 mr-2" />
-          📤 Partager
-        </Button>
-        
-        <Button
-          size="lg"
-          onClick={handlePublish}
-          disabled={isExporting || isPublishing || !title.trim()}
-          className={cn(
-            "w-full h-16 text-lg font-semibold rounded-2xl",
-            "bg-gradient-to-r from-emerald-500 to-teal-500",
-            "hover:from-emerald-400 hover:to-teal-400",
-            "text-white",
-            "disabled:opacity-50"
-          )}
-        >
-          {isPublishing ? (
-            <><Loader2 className="w-6 h-6 mr-2 animate-spin" />Publication...</>
-          ) : (
-            <><Upload className="w-6 h-6 mr-2" />🚀 Publier<ArrowRight className="w-5 h-5 ml-2" /></>
-          )}
-        </Button>
-      </div>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+            className="w-12 h-12 border-3 border-emerald-400/30 border-t-emerald-400 rounded-full"
+          />
+          <p className="text-emerald-300 font-semibold text-lg">🎉 Publié!</p>
+          <p className="text-white/60 text-sm">Redirection vers le feed...</p>
+        </motion.div>
+      ) : (
+        <>
+          {/* Action Buttons — Centered, responsive, min-height for accessibility */}
+          <div className="space-y-3 w-full">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleShare}
+              disabled={isExporting || isPublishing}
+              className="w-full h-14 bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-2xl"
+            >
+              <Share2 className="w-5 h-5 mr-2" />
+              📤 Partager
+            </Button>
+            
+            <Button
+              size="lg"
+              onClick={handlePublish}
+              disabled={isExporting || isPublishing || !title.trim()}
+              className={cn(
+                "w-full h-16 text-lg font-semibold rounded-2xl",
+                "bg-gradient-to-r from-emerald-500 to-teal-500",
+                "hover:from-emerald-400 hover:to-teal-400",
+                "text-white",
+                "disabled:opacity-50"
+              )}
+            >
+              {isPublishing ? (
+                <><Loader2 className="w-6 h-6 mr-2 animate-spin" />Publication...</>
+              ) : (
+                <><Upload className="w-6 h-6 mr-2" />🚀 Publier<ArrowRight className="w-5 h-5 ml-2" /></>
+              )}
+            </Button>
+          </div>
 
-      <p className="text-xs text-center text-white/30 pb-4">Ta vidéo sera visible par tous sur le feed</p>
+          <p className="text-xs text-center text-white/30 pb-4">Ta vidéo sera visible par tous sur le feed</p>
+        </>
+      )}
 
       {/* Audio Library Modal */}
       <AnimatePresence>
