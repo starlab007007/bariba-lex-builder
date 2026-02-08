@@ -1,5 +1,6 @@
 /**
  * Asset Upload Form - Upload photos and videos to anime_scene_library
+ * With automatic AI-powered classification
  */
 
 import { useState, useRef, useCallback } from 'react';
@@ -8,6 +9,8 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -15,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Upload, X, Image, Video, Loader2, Eye } from 'lucide-react';
+import { Upload, X, Image, Video, Loader2, Eye, Sparkles } from 'lucide-react';
+import { analyzeImage, analyzeVideoFrame, type ImageSuggestions } from '@/utils/assetAnalyzer';
 
 const STYLES = ['african', 'fantasy', 'manga', 'chibi'] as const;
 const EMOTIONS = ['joy', 'sadness', 'wonder', 'fear', 'excitement', 'peace', 'tension'] as const;
@@ -38,6 +42,54 @@ const LABELS: Record<string, string> = {
   day: 'Jour', dawn: 'Aube', dusk: 'Crépuscule',
 };
 
+/** Small AI badge indicator */
+function AiBadge() {
+  return (
+    <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0 gap-1 font-normal">
+      <Sparkles className="h-2.5 w-2.5" />
+      IA
+    </Badge>
+  );
+}
+
+/** Select field wrapper with optional AI badge and skeleton state */
+function ClassificationSelect({
+  label,
+  value,
+  onValueChange,
+  options,
+  analyzing,
+  aiSuggested,
+}: {
+  label: string;
+  value: string;
+  onValueChange: (v: string) => void;
+  options: readonly string[];
+  analyzing: boolean;
+  aiSuggested: boolean;
+}) {
+  return (
+    <div>
+      <Label className="flex items-center">
+        {label}
+        {aiSuggested && <AiBadge />}
+      </Label>
+      {analyzing ? (
+        <Skeleton className="h-10 w-full mt-1" />
+      ) : (
+        <Select value={value} onValueChange={onValueChange}>
+          <SelectTrigger className={aiSuggested ? 'border-primary/40 bg-primary/5' : ''}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map(o => <SelectItem key={o} value={o}>{LABELS[o] || o}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+}
+
 export function AssetUploadForm() {
   const [assetType, setAssetType] = useState<'photo' | 'video'>('photo');
   const [file, setFile] = useState<File | null>(null);
@@ -45,6 +97,10 @@ export function AssetUploadForm() {
   const [preview, setPreview] = useState<string | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // AI analysis state
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiFields, setAiFields] = useState<Set<string>>(new Set());
 
   // Classification fields
   const [style, setStyle] = useState('african');
@@ -59,13 +115,25 @@ export function AssetUploadForm() {
   const fileRef = useRef<HTMLInputElement>(null);
   const thumbRef = useRef<HTMLInputElement>(null);
 
-  const acceptTypes = assetType === 'photo'
-    ? '.webp,.jpg,.jpeg,.png'
-    : '.mp4,.webm';
-
+  const acceptTypes = assetType === 'photo' ? '.webp,.jpg,.jpeg,.png' : '.mp4,.webm';
   const maxSize = assetType === 'photo' ? 5 * 1024 * 1024 : 20 * 1024 * 1024;
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const applySuggestions = (suggestions: ImageSuggestions) => {
+    const touched = new Set<string>();
+
+    if (suggestions.style) { setStyle(suggestions.style); touched.add('style'); }
+    if (suggestions.emotion) { setEmotion(suggestions.emotion); touched.add('emotion'); }
+    if (suggestions.scene_type) { setSceneType(suggestions.scene_type); touched.add('sceneType'); }
+    if (suggestions.character_type) { setCharacterType(suggestions.character_type); touched.add('characterType'); }
+    if (suggestions.action) { setAction(suggestions.action); touched.add('action'); }
+    if (suggestions.time_of_day) { setTimeOfDay(suggestions.time_of_day); touched.add('timeOfDay'); }
+    if (suggestions.description_en) { setDescriptionEn(suggestions.description_en); touched.add('descriptionEn'); }
+    if (suggestions.description_fr) { setDescriptionFr(suggestions.description_fr); touched.add('descriptionFr'); }
+
+    setAiFields(touched);
+  };
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     if (f.size > maxSize) {
@@ -74,6 +142,25 @@ export function AssetUploadForm() {
     }
     setFile(f);
     setPreview(URL.createObjectURL(f));
+
+    // Trigger AI analysis
+    setAnalyzing(true);
+    setAiFields(new Set());
+    try {
+      const suggestions = assetType === 'photo'
+        ? await analyzeImage(f)
+        : await analyzeVideoFrame(f);
+
+      if (Object.keys(suggestions).length > 0) {
+        applySuggestions(suggestions);
+        toast({ title: '🤖 Analyse IA terminée', description: 'Champs pré-remplis automatiquement.' });
+      }
+    } catch (err) {
+      console.warn('AI analysis failed:', err);
+      toast({ title: 'Analyse IA échouée', description: 'Classifiez manuellement.', variant: 'destructive' });
+    } finally {
+      setAnalyzing(false);
+    }
   }, [assetType, maxSize]);
 
   const handleThumbnailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,6 +177,7 @@ export function AssetUploadForm() {
     setThumbnailPreview(null);
     setDescriptionFr('');
     setDescriptionEn('');
+    setAiFields(new Set());
     if (fileRef.current) fileRef.current.value = '';
     if (thumbRef.current) thumbRef.current.value = '';
   };
@@ -106,7 +194,6 @@ export function AssetUploadForm() {
       const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const storagePath = `${style}/${assetType}/${sceneType}/${fileName}`;
 
-      // Upload main file
       const { error: uploadError } = await supabase.storage
         .from('anime-library')
         .upload(storagePath, file, { contentType: file.type });
@@ -122,7 +209,6 @@ export function AssetUploadForm() {
 
       if (assetType === 'video') {
         videoUrl = urlData.publicUrl;
-        // Upload thumbnail if provided
         if (thumbnail) {
           const thumbExt = thumbnail.name.split('.').pop();
           const thumbPath = `${style}/thumbnail/${sceneType}/${Date.now()}.${thumbExt}`;
@@ -130,11 +216,10 @@ export function AssetUploadForm() {
           const { data: thumbUrl } = supabase.storage.from('anime-library').getPublicUrl(thumbPath);
           imageUrl = thumbUrl.publicUrl;
         } else {
-          imageUrl = videoUrl; // fallback
+          imageUrl = videoUrl;
         }
       }
 
-      // Insert into anime_scene_library
       const { error: insertError } = await supabase
         .from('anime_scene_library')
         .insert({
@@ -159,7 +244,7 @@ export function AssetUploadForm() {
       resetForm();
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast({ title: 'Erreur', description: error.message || 'Échec de l\'upload', variant: 'destructive' });
+      toast({ title: 'Erreur', description: error.message || "Échec de l'upload", variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -167,6 +252,23 @@ export function AssetUploadForm() {
 
   return (
     <div className="space-y-6">
+      {/* AI Analysis Banner */}
+      {analyzing && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20 animate-pulse">
+          <Sparkles className="h-5 w-5 text-primary animate-spin" />
+          <span className="text-sm font-medium text-primary">Analyse IA en cours...</span>
+        </div>
+      )}
+
+      {aiFields.size > 0 && !analyzing && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/15">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-xs text-muted-foreground">
+            {aiFields.size} champs pré-remplis par l'IA. Vous pouvez les modifier.
+          </span>
+        </div>
+      )}
+
       {/* Asset Type Toggle */}
       <div className="flex gap-2">
         <Button
@@ -189,7 +291,7 @@ export function AssetUploadForm() {
 
       {/* File Upload Zone */}
       <div
-        onClick={() => fileRef.current?.click()}
+        onClick={() => !analyzing && fileRef.current?.click()}
         className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
       >
         <input ref={fileRef} type="file" accept={acceptTypes} className="hidden" onChange={handleFileChange} />
@@ -245,91 +347,54 @@ export function AssetUploadForm() {
 
       {/* Classification Grid */}
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Style</Label>
-          <Select value={style} onValueChange={setStyle}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STYLES.map(s => <SelectItem key={s} value={s}>{LABELS[s]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label>Émotion</Label>
-          <Select value={emotion} onValueChange={setEmotion}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {EMOTIONS.map(e => <SelectItem key={e} value={e}>{LABELS[e]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label>Scène</Label>
-          <Select value={sceneType} onValueChange={setSceneType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {SCENES.map(s => <SelectItem key={s} value={s}>{LABELS[s]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label>Personnage</Label>
-          <Select value={characterType} onValueChange={setCharacterType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {CHARACTERS.map(c => <SelectItem key={c} value={c}>{LABELS[c]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label>Action</Label>
-          <Select value={action} onValueChange={setAction}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {ACTIONS.map(a => <SelectItem key={a} value={a}>{LABELS[a]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label>Moment</Label>
-          <Select value={timeOfDay} onValueChange={setTimeOfDay}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {TIME_OF_DAY.map(t => <SelectItem key={t} value={t}>{LABELS[t]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        <ClassificationSelect label="Style" value={style} onValueChange={setStyle} options={STYLES} analyzing={analyzing} aiSuggested={aiFields.has('style')} />
+        <ClassificationSelect label="Émotion" value={emotion} onValueChange={setEmotion} options={EMOTIONS} analyzing={analyzing} aiSuggested={aiFields.has('emotion')} />
+        <ClassificationSelect label="Scène" value={sceneType} onValueChange={setSceneType} options={SCENES} analyzing={analyzing} aiSuggested={aiFields.has('sceneType')} />
+        <ClassificationSelect label="Personnage" value={characterType} onValueChange={setCharacterType} options={CHARACTERS} analyzing={analyzing} aiSuggested={aiFields.has('characterType')} />
+        <ClassificationSelect label="Action" value={action} onValueChange={setAction} options={ACTIONS} analyzing={analyzing} aiSuggested={aiFields.has('action')} />
+        <ClassificationSelect label="Moment" value={timeOfDay} onValueChange={setTimeOfDay} options={TIME_OF_DAY} analyzing={analyzing} aiSuggested={aiFields.has('timeOfDay')} />
       </div>
 
       {/* Descriptions */}
       <div className="space-y-3">
         <div>
-          <Label>Description (EN) *</Label>
-          <Input
-            value={descriptionEn}
-            onChange={e => setDescriptionEn(e.target.value)}
-            placeholder="A child standing in a sunny village..."
-          />
+          <Label className="flex items-center">
+            Description (EN) *
+            {aiFields.has('descriptionEn') && <AiBadge />}
+          </Label>
+          {analyzing ? (
+            <Skeleton className="h-10 w-full mt-1" />
+          ) : (
+            <Input
+              value={descriptionEn}
+              onChange={e => setDescriptionEn(e.target.value)}
+              placeholder="A child standing in a sunny village..."
+              className={aiFields.has('descriptionEn') ? 'border-primary/40 bg-primary/5' : ''}
+            />
+          )}
         </div>
         <div>
-          <Label>Description (FR)</Label>
-          <Input
-            value={descriptionFr}
-            onChange={e => setDescriptionFr(e.target.value)}
-            placeholder="Un enfant debout dans un village ensoleillé..."
-          />
+          <Label className="flex items-center">
+            Description (FR)
+            {aiFields.has('descriptionFr') && <AiBadge />}
+          </Label>
+          {analyzing ? (
+            <Skeleton className="h-10 w-full mt-1" />
+          ) : (
+            <Input
+              value={descriptionFr}
+              onChange={e => setDescriptionFr(e.target.value)}
+              placeholder="Un enfant debout dans un village ensoleillé..."
+              className={aiFields.has('descriptionFr') ? 'border-primary/40 bg-primary/5' : ''}
+            />
+          )}
         </div>
       </div>
 
       {/* Submit */}
       <Button
         onClick={handleSubmit}
-        disabled={uploading || !file || !descriptionEn}
+        disabled={uploading || analyzing || !file || !descriptionEn}
         className="w-full"
         size="lg"
       >
