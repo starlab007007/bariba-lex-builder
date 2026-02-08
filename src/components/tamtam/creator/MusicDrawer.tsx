@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { AIMusicGenerationService, MusicGenerationProgress, GeneratedMusicTrack } from "@/services/AIMusicGenerationService";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   MUSIC_LIBRARY, 
   MUSIC_CATEGORIES, 
@@ -90,9 +91,43 @@ export default function MusicDrawer({
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dbTracks, setDbTracks] = useState<MusicTrack[]>([]);
 
-  // Filter tracks
-  const filteredTracks = MUSIC_LIBRARY.filter((track) => {
+  // Load DB music tracks
+  useEffect(() => {
+    const loadDbTracks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('music_library_tracks' as any)
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error || !data) return;
+
+        const mapped: MusicTrack[] = (data as any[]).map((row) => ({
+          id: `db_${row.id}`,
+          name: row.title,
+          name_ba: undefined,
+          category: row.category as MusicTrack['category'],
+          mood: row.mood as MusicTrack['mood'],
+          duration: row.duration || 0,
+          bpm: row.bpm || undefined,
+          description: row.description_fr || '',
+          tags: Array.isArray(row.tags) ? row.tags : [],
+          url: row.audio_url,
+          isGenerated: false,
+        }));
+        setDbTracks(mapped);
+      } catch (e) {
+        // Silently fail
+      }
+    };
+    if (isOpen) loadDbTracks();
+  }, [isOpen]);
+
+  // Merge static + DB tracks, then filter
+  const allTracks = [...MUSIC_LIBRARY, ...dbTracks];
+  const filteredTracks = allTracks.filter((track) => {
     if (activeCategory !== "all" && track.category !== activeCategory) return false;
     if (activeMood !== "all" && track.mood !== activeMood) return false;
     if (searchQuery) {

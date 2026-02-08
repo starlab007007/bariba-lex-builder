@@ -708,6 +708,54 @@ export type Database = {
         }
         Relationships: []
       }
+      music_library_tracks: {
+        Row: {
+          artist: string | null
+          audio_url: string
+          bpm: number | null
+          category: string
+          created_at: string
+          description_fr: string | null
+          duration: number | null
+          id: string
+          mood: string
+          storage_path: string
+          tags: Json | null
+          title: string
+          usage_count: number | null
+        }
+        Insert: {
+          artist?: string | null
+          audio_url: string
+          bpm?: number | null
+          category?: string
+          created_at?: string
+          description_fr?: string | null
+          duration?: number | null
+          id?: string
+          mood?: string
+          storage_path: string
+          tags?: Json | null
+          title: string
+          usage_count?: number | null
+        }
+        Update: {
+          artist?: string | null
+          audio_url?: string
+          bpm?: number | null
+          category?: string
+          created_at?: string
+          description_fr?: string | null
+          duration?: number | null
+          id?: string
+          mood?: string
+          storage_path?: string
+          tags?: Json | null
+          title?: string
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       noun_class_attributes: {
         Row: {
           class_code: string
