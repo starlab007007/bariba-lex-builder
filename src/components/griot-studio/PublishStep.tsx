@@ -264,11 +264,20 @@ export function PublishStep({
   // Handle publish to feed
   const handlePublish = useCallback(async () => {
     try {
-      toast({ title: '🚀 Publication en cours...', description: 'Envoi vers le feed...' });
+      setIsExporting(true);
+      setExportProgress(0);
+      toast({ title: '🎬 Export vidéo en cours...', description: 'Préparation de ta vidéo...' });
+      
       const videoBlob = await exportVideo();
       if (!videoBlob) throw new Error('Échec de l\'export vidéo');
+      
+      setIsExporting(false);
+      setExportProgress(100);
+      
       const thumbnailBlob = await generateThumbnail();
       if (!thumbnailBlob) throw new Error('Échec de la génération de miniature');
+      
+      toast({ title: '🚀 Publication en cours...', description: 'Envoi vers le feed...' });
       
       const result = await publishVideo({
         video: videoBlob,
@@ -287,6 +296,8 @@ export function PublishStep({
       }
     } catch (error) {
       console.error('[PublishStep] Publish error:', error);
+      setIsExporting(false);
+      setExportProgress(0);
       toast({
         title: 'Erreur de publication',
         description: error instanceof Error ? error.message : 'Réessaie dans quelques instants.',

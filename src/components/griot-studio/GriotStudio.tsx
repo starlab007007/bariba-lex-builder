@@ -413,7 +413,7 @@ export function GriotStudio() {
   const handlePublishSuccess = useCallback((videoId: string) => {
     setPublishedVideoId(videoId);
     clearDraft();
-    setStep('success');
+    // Don't change step — PublishStep handles its own success UI + auto-redirect
   }, [clearDraft]);
 
   const handleViewInFeed = useCallback(() => {
@@ -486,7 +486,7 @@ export function GriotStudio() {
   const currentStepIndex = stepOrder.indexOf(step);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-gradient-to-b from-amber-950 via-black to-black text-white overflow-y-auto">
+    <div className="h-[100dvh] flex flex-col bg-gradient-to-b from-amber-950 via-black to-black text-white">
       {/* Confirmation Modal */}
       <AnimatePresence>
         <ConfirmModal
@@ -896,7 +896,7 @@ export function GriotStudio() {
         )}
 
         {/* Step: Success — handled by PublishStep popup now */}
-        {step === 'success' && null}
+        {/* Success state is now handled internally by PublishStep */}
       </main>
 
       {/* Footer — integrated in flow, not fixed */}
