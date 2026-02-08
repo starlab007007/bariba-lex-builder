@@ -564,10 +564,16 @@ const VideoFeedCard: React.FC<{
   const feelingEmoji = post.feeling_emoji;
 
   useEffect(() => {
-    if (isActive && videoRef.current) {
-      videoRef.current.muted = isMuted;
-      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
-    } else if (videoRef.current) {
+    if (!videoRef.current) return;
+    if (isActive) {
+      // Start muted first to guarantee autoplay, then unmute if requested
+      videoRef.current.muted = true;
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+        // After autoplay succeeds, apply user's mute preference
+        if (videoRef.current) videoRef.current.muted = isMuted;
+      }).catch(() => {});
+    } else {
       videoRef.current.pause();
       setIsPlaying(false);
     }

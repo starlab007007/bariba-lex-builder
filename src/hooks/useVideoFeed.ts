@@ -19,6 +19,7 @@ export interface FeedVideo {
   likesCount: number;
   sharesCount: number;
   createdAt: string;
+  metadata: Record<string, any> | null;
   author: {
     id: string | null;
     name: string;
@@ -82,6 +83,7 @@ export function useVideoFeed(): UseVideoFeedReturn {
           likesCount: v.likes_count || 0,
           sharesCount: v.shares_count || 0,
           createdAt: v.created_at,
+          metadata: v.metadata || null,
           author: {
             id: v.user_id,
             name: v.template_name ? `Créateur ${v.template_name}` : 'Créateur FITILA',
@@ -144,6 +146,7 @@ export function useVideoFeed(): UseVideoFeedReturn {
               likesCount: v.likes_count || 0,
               sharesCount: v.shares_count || 0,
               createdAt: v.created_at,
+              metadata: v.metadata || null,
               author: {
                 id: v.user_id,
                 name: v.template_name ? `Créateur ${v.template_name}` : 'Créateur FITILA',

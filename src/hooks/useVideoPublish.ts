@@ -15,6 +15,7 @@ export interface VideoPublishData {
   templateId?: string;
   templateName?: string;
   duration?: number;
+  metadata?: Record<string, any>;
 }
 
 export interface PublishResult {
@@ -119,7 +120,8 @@ export function useVideoPublish(): UseVideoPublishReturn {
         template_id: data.templateId || 'griot-digital',
         template_name: data.templateName || 'Griot Digital',
         duration_seconds: data.duration ? Math.floor(data.duration) : null,
-        is_public: true
+        is_public: true,
+        metadata: data.metadata || null
       };
 
       const { data: insertResult, error: insertError } = await supabase

@@ -415,21 +415,11 @@ export function GriotStudio() {
     clearDraft();
     const feedUrl = videoId ? `/fitila?video=${videoId}` : '/fitila';
     toast({ title: '🎉 Félicitations !', description: 'Ton conte est maintenant visible sur le feed.' });
-    // Primary redirect via SPA navigation
+    // Force full page reload to close all modals (FullscreenCreator overlay)
     setTimeout(() => {
-      try {
-        navigate(feedUrl);
-      } catch {
-        window.location.href = feedUrl;
-      }
-      // Ultimate safety fallback
-      setTimeout(() => {
-        if (window.location.pathname !== '/fitila') {
-          window.location.href = feedUrl;
-        }
-      }, 2000);
-    }, 1500);
-  }, [clearDraft, toast, navigate]);
+      window.location.href = feedUrl;
+    }, 1200);
+  }, [clearDraft, toast]);
 
   const handleViewInFeed = useCallback(() => {
     navigate(publishedVideoId ? `/fitila?video=${publishedVideoId}` : '/fitila');
