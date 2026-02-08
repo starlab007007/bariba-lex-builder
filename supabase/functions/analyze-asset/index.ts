@@ -83,7 +83,7 @@ serve(async (req) => {
                 scene_type: { type: "string", enum: ["village", "forest", "river", "mountain", "market", "home", "night", "journey", "gathering", "spirit"] },
                 character_type: { type: "string", enum: ["child_boy", "child_girl", "elder", "animal", "spirit", "group"] },
                 action: { type: "string", enum: ["standing", "walking", "talking", "dancing", "working", "sleeping", "running", "discovering"] },
-                time_of_day: { type: "string", enum: ["day", "night", "dawn", "dusk"] },
+                time_of_day: { type: "string", enum: ["day", "night", "dawn", "dusk"], description: "Time of day: day for daytime scenes, night for nighttime, dawn for sunrise, dusk for sunset" },
                 description_en: { type: "string", description: "Short English description of the image (max 100 chars)" },
                 description_fr: { type: "string", description: "Short French description of the image (max 100 chars)" },
                 confidence: { type: "number", description: "Confidence score 0-1" },
