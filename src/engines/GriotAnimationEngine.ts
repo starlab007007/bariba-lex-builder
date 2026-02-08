@@ -143,9 +143,13 @@ interface Particle {
   angle: number;
 }
 
+// Media source can be image or video
+type SceneMediaSource = HTMLImageElement | HTMLVideoElement;
+
 // Scene for slideshow mode
 export interface AnimatedScene {
-  image: HTMLImageElement;
+  image: SceneMediaSource;
+  video?: HTMLVideoElement; // if source is video, also stored here for lifecycle management
   startTime: number;
   endTime: number;
   emotion: string;
@@ -207,30 +211,81 @@ export class GriotAnimationEngine {
   }
 
   /**
+   * Check if URL points to a video file
+   */
+  private isVideoUrl(url: string): boolean {
+    const lower = url.toLowerCase();
+    return lower.includes('.mp4') || lower.includes('.webm') || lower.includes('.mov') || lower.includes('.ogg');
+  }
+
+  /**
    * Load scenes for slideshow mode
+   * Supports both image and video assets
    */
   async loadScenes(sceneData: Array<{
     imageUrl: string;
+    videoUrl?: string;
     startTime: number;
     endTime: number;
     emotion: string;
   }>): Promise<void> {
+    // Cleanup previous video elements
+    this.disposeSceneVideos();
     this.scenes = [];
     
     for (const scene of sceneData) {
-      const image = await this.loadImage(scene.imageUrl);
       const motionPlan = this.generateMotionPlan(scene.emotion);
       
-      this.scenes.push({
-        image,
-        startTime: scene.startTime,
-        endTime: scene.endTime,
-        emotion: scene.emotion,
-        motionPlan
-      });
+      // Determine best media source: prefer videoUrl, fallback to imageUrl
+      const mediaUrl = scene.videoUrl || scene.imageUrl;
+      
+      if (mediaUrl && this.isVideoUrl(mediaUrl)) {
+        // Load as video element
+        try {
+          const videoEl = await this.loadVideo(mediaUrl);
+          this.scenes.push({
+            image: videoEl,
+            video: videoEl,
+            startTime: scene.startTime,
+            endTime: scene.endTime,
+            emotion: scene.emotion,
+            motionPlan
+          });
+          console.log(`[GriotEngine] Scene loaded as VIDEO: ${mediaUrl.substring(mediaUrl.lastIndexOf('/') + 1)}`);
+        } catch (err) {
+          console.warn(`[GriotEngine] Video load failed, trying as image:`, err);
+          // Fallback: try loading as image (some servers serve video thumbnails)
+          try {
+            const img = await this.loadImage(scene.imageUrl);
+            this.scenes.push({
+              image: img,
+              startTime: scene.startTime,
+              endTime: scene.endTime,
+              emotion: scene.emotion,
+              motionPlan
+            });
+          } catch {
+            console.error(`[GriotEngine] Scene ${scene.startTime}s: both video and image load failed`);
+          }
+        }
+      } else if (mediaUrl) {
+        // Load as image
+        try {
+          const img = await this.loadImage(mediaUrl);
+          this.scenes.push({
+            image: img,
+            startTime: scene.startTime,
+            endTime: scene.endTime,
+            emotion: scene.emotion,
+            motionPlan
+          });
+        } catch (err) {
+          console.warn(`[GriotEngine] Image load failed for scene at ${scene.startTime}s:`, err);
+        }
+      }
     }
     
-    console.log(`[GriotEngine] Loaded ${this.scenes.length} scenes for slideshow`);
+    console.log(`[GriotEngine] Loaded ${this.scenes.length} scenes for slideshow (${this.scenes.filter(s => !!s.video).length} videos)`);
   }
 
   private async loadImage(url: string): Promise<HTMLImageElement> {
@@ -241,6 +296,68 @@ export class GriotAnimationEngine {
       img.crossOrigin = 'anonymous';
       img.src = url;
     });
+  }
+
+  /**
+   * Load a video element for canvas rendering
+   */
+  private async loadVideo(url: string): Promise<HTMLVideoElement> {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.src = url;
+      
+      const onReady = () => {
+        video.removeEventListener('canplaythrough', onReady);
+        video.removeEventListener('error', onError);
+        // Start playing so drawImage can capture frames
+        video.play().catch(() => {});
+        console.log(`[GriotEngine] Video ready: ${video.videoWidth}x${video.videoHeight}, ${video.duration.toFixed(1)}s`);
+        resolve(video);
+      };
+      
+      const onError = () => {
+        video.removeEventListener('canplaythrough', onReady);
+        video.removeEventListener('error', onError);
+        reject(new Error(`Failed to load video: ${url.substring(url.lastIndexOf('/') + 1)}`));
+      };
+      
+      video.addEventListener('canplaythrough', onReady);
+      video.addEventListener('error', onError);
+      
+      // Force load
+      video.load();
+      
+      // Timeout after 15s
+      setTimeout(() => {
+        video.removeEventListener('canplaythrough', onReady);
+        video.removeEventListener('error', onError);
+        // If we have some data, resolve anyway
+        if (video.readyState >= 2) {
+          video.play().catch(() => {});
+          resolve(video);
+        } else {
+          reject(new Error(`Video load timeout: ${url.substring(url.lastIndexOf('/') + 1)}`));
+        }
+      }, 15000);
+    });
+  }
+
+  /**
+   * Cleanup video elements from scenes
+   */
+  private disposeSceneVideos(): void {
+    for (const scene of this.scenes) {
+      if (scene.video) {
+        scene.video.pause();
+        scene.video.src = '';
+        scene.video.load();
+      }
+    }
   }
 
   /**
@@ -362,10 +479,10 @@ export class GriotAnimationEngine {
   }
 
   /**
-   * Draw the animated image with Ken Burns effect
+   * Draw the animated image/video with Ken Burns effect
    */
   drawAnimatedImage(
-    image: HTMLImageElement,
+    source: SceneMediaSource,
     time: number,
     duration: number,
     motionPlan: MotionPlan
@@ -411,7 +528,11 @@ export class GriotAnimationEngine {
     this.ctx.translate(this.width / 2 + offsetX, this.height / 2 + offsetY);
     this.ctx.scale(scale, scale);
     
-    const imgAspect = image.width / image.height;
+    // Get dimensions from either image or video
+    const srcWidth = source instanceof HTMLVideoElement ? (source.videoWidth || this.width) : source.width;
+    const srcHeight = source instanceof HTMLVideoElement ? (source.videoHeight || this.height) : source.height;
+    
+    const imgAspect = srcWidth / srcHeight;
     const canvasAspect = this.width / this.height;
     let drawWidth, drawHeight;
     
@@ -423,7 +544,7 @@ export class GriotAnimationEngine {
       drawHeight = this.width / imgAspect;
     }
     
-    this.ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+    this.ctx.drawImage(source, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
     this.ctx.restore();
   }
 
@@ -525,6 +646,7 @@ export class GriotAnimationEngine {
 
   /**
    * Draw current scene with transition
+   * Manages video element playback state for active/inactive scenes
    */
   private drawCurrentScene(time: number, duration: number): void {
     if (this.scenes.length === 0) return;
@@ -533,6 +655,17 @@ export class GriotAnimationEngine {
     const scene = this.scenes[from];
     
     if (!scene) return;
+    
+    // Ensure active scene's video is playing, pause others
+    this.scenes.forEach((s, i) => {
+      if (s.video) {
+        if (i === from || (progress > 0 && i === to)) {
+          if (s.video.paused) s.video.play().catch(() => {});
+        } else {
+          if (!s.video.paused) s.video.pause();
+        }
+      }
+    });
     
     const sceneLocalTime = time - scene.startTime;
     const sceneDuration = scene.endTime - scene.startTime;
@@ -691,7 +824,7 @@ export class GriotAnimationEngine {
    * Start real-time animation preview (single image mode)
    */
   startPreview(
-    image: HTMLImageElement,
+    image: SceneMediaSource,
     duration: number,
     motionPlan: MotionPlan,
     style: AnimationStyle,
@@ -738,13 +871,17 @@ export class GriotAnimationEngine {
     if (this.audioElement) {
       this.audioElement.pause();
     }
+    // Pause all scene videos
+    this.scenes.forEach(s => {
+      if (s.video && !s.video.paused) s.video.pause();
+    });
   }
 
   /**
    * Render video frames for export
    */
   async renderFrames(
-    image: HTMLImageElement,
+    image: SceneMediaSource,
     duration: number,
     motionPlan: MotionPlan,
     style: AnimationStyle,
@@ -986,6 +1123,7 @@ export class GriotAnimationEngine {
    */
   dispose(): void {
     this.stopPreview();
+    this.disposeSceneVideos();
     this.flareImages.clear();
     this.particles = [];
     this.scenes = [];
