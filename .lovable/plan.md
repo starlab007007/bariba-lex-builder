@@ -1,113 +1,53 @@
 
 
-# Diagnostic Complet + Harmonisation du Griot Studio et Feed FITILA
+# Diagnostic et Corrections - Griot Studio
 
-## Problemes identifies
+## Bugs critiques identifies
 
-### Bug 1 : Layout coupe en bas - contenu masque par le footer fixe
-Le `footer` fixe en bas de `GriotStudio.tsx` (ligne 895) couvre le contenu car la zone principale utilise `pb-24` qui n'est pas toujours suffisant, surtout sur tablette/desktop. Le contenu du `PublishStep` peut etre coupe sur les petits ecrans.
+### Bug 1 : Ecran vierge apres publication (CRITIQUE)
+Dans `GriotStudio.tsx`, le callback `handlePublishSuccess` (ligne 413) change le step a `'success'`. Cela demonte le composant `PublishStep` car la condition `step === 'finalize'` (ligne 867) devient fausse. Or, a la ligne 899, `step === 'success'` rend `null`. Resultat : ecran vide apres publication.
 
-### Bug 2 : Scroll bloque sur mobile
-Le conteneur principal a `overflow-hidden` sur le parent (`h-[100dvh] overflow-hidden` ligne 489) et le `main` a `overflow-y-auto`. Sur certains ecrans, le contenu de PublishStep depasse mais le scroll ne fonctionne pas toujours correctement a cause de conflits CSS.
+**Correction** : Ne plus changer le step a `'success'` depuis le parent. Laisser `PublishStep` gerer son propre etat de succes et sa redirection.
 
-### Bug 3 : La musique selectionnee ne joue pas dans le rendu final
-Dans `PublishStep.tsx`, quand l'utilisateur selectionne "Musique seule" ou "Voix + Musique" et choisit un morceau depuis la `AudioLibrary`, le fichier audio du track (`selectedMusicTrack?.source?.url`) est utilise dans `exportVideo()`. Cependant, ces URLs peuvent echouer a cause du CORS (`crossOrigin = 'anonymous'`). Il faut un meilleur fallback et valider que l'URL est accessible.
+### Bug 2 : Aucun indicateur visuel pendant la publication
+Dans `PublishStep.tsx`, la variable `isExporting` (ligne 77) est declaree mais jamais mise a `true` dans `handlePublish` (ligne 265). La barre de progression (ligne 473) ne s'affiche donc jamais pendant l'export video. L'utilisateur clique sur "Publier" et ne voit rien se passer.
 
-### Bug 4 : Publication sans audio enregistre - mode music seul
-Si l'utilisateur ne record pas de voix et selectionne "Musique seule", le bouton Publier fonctionne mais l'export video peut echouer silencieusement car `canvasRef` ou `engineRef` ne sont pas initialises en mode manuel (pas de canvas visible).
+**Correction** : Ajouter `setIsExporting(true)` avant `exportVideo()` et `setIsExporting(false)` apres, dans `handlePublish`.
 
-### Bug 5 : `generationResult` peut etre null en mode manual
-La condition `step === 'finalize' && generationResult` (ligne 867) bloque le rendu de PublishStep si `generationResult` n'est pas defini. En mode manuel, `handleUseAssets` appelle `generateFromSelectedAssets` qui met a jour `result` via `setResult`, mais il y a un potentiel delai de synchronisation.
+### Bug 3 : Scroll bloque - double conteneur scrollable
+Dans `GriotStudio.tsx`, le conteneur parent (ligne 489) a `overflow-y-auto` ET le `main` (ligne 561) a aussi `overflow-y-auto`. Deux conteneurs scrollables imbriques creent des conflits : le scroll interne capture les evenements tactiles sur mobile, empechant le defilement visible.
 
-### Bug 6 : Redirect post-publication utilise `window.location.href` au lieu de `navigate`
-Ligne 276 de `PublishStep.tsx` force un rechargement complet (`window.location.href = '/fitila'`), perdant l'etat de l'app. Il faut utiliser `useNavigate` de React Router.
-
-### Bug 7 : VinylRecorder dans PublishStep ne passe pas onAvatarCapture
-Le `VinylRecorder` integre dans `PublishStep` ne recoit pas la prop `onAvatarCapture`, donc le bouton camera dans le disque ne fait rien quand il n'y a pas d'avatar.
-
-### Bug 8 : Responsive - contenu PublishStep trop espace sur desktop
-Les elements de PublishStep sont en colonne sans contrainte de largeur max adequate pour tablette/desktop. Le preview, les boutons et les selecteurs s'etirent trop.
+**Correction** : Utiliser `h-[100dvh]` (hauteur fixe) sur le parent SANS `overflow-y-auto`. Seul le `main` (flex-1) gere le scroll avec `overflow-y-auto`.
 
 ---
 
-## Plan d'action
+## Plan de corrections
 
-### 1. Fix Layout Scroll (GriotStudio.tsx)
-- Retirer `overflow-hidden` du conteneur principal
-- Augmenter le `padding-bottom` du main pour accommoder le footer fixe
-- S'assurer que le contenu scrolle correctement sur tous les ecrans
-- Rendre le footer non-fixe ou integre dans le flux pour eviter les chevauchements
+### Fichier 1 : `src/components/griot-studio/GriotStudio.tsx`
 
-### 2. Fix PublishStep - Scroll + Responsive (PublishStep.tsx)
-- Wrapper tout le contenu dans un conteneur scrollable avec `overflow-y-auto`
-- Ajouter des breakpoints responsive : `max-w-md` pour mobile, `max-w-lg` pour tablette, avec centrage
-- Assurer que la miniature de preview, le selecteur audio, et les boutons sont tous visibles via scroll
-- Adapter les tailles des elements (thumbnail plus petit sur mobile, plus grand sur desktop)
+1. **Ligne 413-417** : Modifier `handlePublishSuccess` pour ne PAS changer le step. Laisser PublishStep gerer l'etat de succes et la redirection automatique.
 
-### 3. Fix Audio/Musique dans le rendu (PublishStep.tsx)
-- Ajouter une verification de validite de l'URL musicale avant l'export
-- Ajouter un fallback si la musique ne charge pas (continuer l'export sans musique plutot que crash)
-- Log des erreurs audio plus explicites pour debug
+2. **Ligne 489** : Changer `min-h-[100dvh] ... overflow-y-auto` en `h-[100dvh] flex flex-col` sans overflow sur le parent. Seul le `main` scrolle.
 
-### 4. Fix Navigation post-publication (PublishStep.tsx)
-- Passer `navigate` de React Router comme prop ou utiliser `useNavigate` directement
-- Remplacer `window.location.href = '/fitila'` par `navigate('/fitila')`
-- Garder le delai de 2.5s avec animation de progression
+3. **Ligne 561** : Garder `flex-1 overflow-y-auto overscroll-contain` sur le main — c'est le seul conteneur scrollable.
 
-### 5. Fix mode manuel - canvas initialisation (GriotStudio.tsx)
-- S'assurer que le canvas est monte et l'engine initialisee meme en mode manuel avant l'etape finalize
-- Gerer le cas ou `generationResult` est null : afficher un fallback ou attendre le resultat
+4. **Ligne 899** : Supprimer le cas `step === 'success'` devenu inutile.
 
-### 6. Harmonisation des couleurs et lisibilite
-- Verifier que tous les textes ont un contraste suffisant sur leurs fonds
-- Uniformiser la palette : `text-amber-100` sur `bg-amber-950`, `text-white` sur `bg-black`
-- Les labels, descriptions et hints doivent etre lisibles
+### Fichier 2 : `src/components/griot-studio/PublishStep.tsx`
 
-### 7. Responsive adaptatif (tous les fichiers)
-- Mobile (< 640px) : tout en colonne, elements compacts, scroll vertical
-- Tablette (640-1024px) : layout centre avec `max-w-lg mx-auto`
-- Desktop (> 1024px) : layout centre avec `max-w-xl mx-auto`, preview plus grand
+1. **Ligne 265-296** : Corriger `handlePublish` pour ajouter `setIsExporting(true/false)` autour de `exportVideo()`, donnant un retour visuel pendant l'export.
 
----
+2. **Ligne 298-306** : Ameliorer la redirection post-publication avec un delai et une animation de progression visible.
 
-## Details techniques - Fichiers a modifier
-
-### `src/components/griot-studio/GriotStudio.tsx`
-- Ligne 489 : Retirer `overflow-hidden` du div racine, utiliser `min-h-[100dvh]` + `overflow-y-auto`
-- Ligne 561 : Augmenter le padding bottom du main a `pb-32` pour le footer
-- Ligne 867 : Gerer le cas `generationResult === null` en mode finalize (afficher loading ou fallback)
-- Ligne 872 : Rendre le canvas visible mais hors ecran (position absolute) pour que l'engine fonctionne en mode manuel
-- Ligne 895 : Rendre le footer sticky au lieu de fixed, ou augmenter le padding
-
-### `src/components/griot-studio/PublishStep.tsx`
-- Ligne 273-280 : Remplacer `window.location.href` par `useNavigate()` de React Router
-- Ligne 310 : Wrapper dans `overflow-y-auto` avec scroll padding
-- Ligne 337-345 : Passer `onAvatarCapture` au VinylRecorder si disponible
-- Ligne 115-221 : Ajouter try/catch robuste autour du chargement audio avec fallback gracieux
-- Ligne 437-443 : Rendre la miniature responsive (taille adaptative mobile/tablet/desktop)
-- Ligne 456-486 : Boutons d'action avec min-height garanti pour accessibilite
-
-### `src/components/griot-studio/AssetGallery.tsx`
-- Verifier que le scroll horizontal des categories fonctionne bien sur tous les ecrans
-- S'assurer que la grille 3-colonnes est bien adaptative
-
-### `src/components/griot-studio/VinylAuthorDisc.tsx`
-- Pas de changement necessaire (deja responsive)
-
-### `src/components/griot-studio/StoryPreviewPlayer.tsx`
-- S'assurer que le player audio joue la musique selectionnee si c'est le mode choisi
-- Le composant est deja responsive
+3. **Ligne 337** : S'assurer que le conteneur PublishStep a `overflow-y-auto` propre pour que tout le contenu (titre, narration, mode audio, miniature, boutons) soit accessible par scroll.
 
 ---
 
 ## Resume des corrections
 
-| Probleme | Fichier | Impact |
-|----------|---------|--------|
-| Layout tronque / scroll bloque | GriotStudio.tsx | Utilisateur ne voit pas tout le contenu |
-| Musique ne joue pas dans l'export | PublishStep.tsx | Video publiee sans audio selectionne |
-| Redirect brutal post-publication | PublishStep.tsx | Perte d'etat React |
-| Canvas non initialise en mode manuel | GriotStudio.tsx | Export video echoue |
-| Responsive insuffisant | PublishStep.tsx + GriotStudio.tsx | UI cassee sur tablette/desktop |
-| VinylRecorder sans avatar capture | PublishStep.tsx | Bouton camera inoperant |
+| Bug | Cause | Solution |
+|-----|-------|----------|
+| Ecran vierge post-publication | `step='success'` demonte PublishStep, `success` rend null | Ne pas changer step, laisser PublishStep gerer |
+| Pas d'indicateur de publication | `isExporting` jamais mis a true | Ajouter setIsExporting dans handlePublish |
+| Scroll bloque | Double overflow-y-auto imbrique | h-[100dvh] sur parent, overflow uniquement sur main |
 
