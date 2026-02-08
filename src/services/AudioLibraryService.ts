@@ -1,5 +1,5 @@
 // Audio Library Service - Singleton for managing TAM-TAM audio tracks
-// Includes caching, search, and preloading
+// Includes caching, search, preloading, and DB track loading
 
 import type { 
   AudioTrack, 
@@ -7,6 +7,7 @@ import type {
   AudioSearchOptions, 
   AudioCacheStats 
 } from '@/types/audio';
+import { supabase } from '@/integrations/supabase/client';
 
 const DEBUG = false;
 const CACHE_NAME = 'tamtam-audio-cache-v1';
@@ -19,6 +20,7 @@ class AudioLibraryServiceClass {
   private memoryCache: Map<string, Blob> = new Map();
   private loadingPromises: Map<string, Promise<Blob>> = new Map();
   private isInitialized = false;
+  private dbTracks: AudioTrack[] = [];
 
   private constructor() {}
 
@@ -44,6 +46,9 @@ class AudioLibraryServiceClass {
       
       if (DEBUG) console.log('[AudioLibrary] Loaded:', this.library?.metadata);
       
+      // Load DB tracks in parallel
+      await this.loadDbTracks();
+      
       // Preload featured tracks
       this.preloadFeatured();
       
@@ -54,10 +59,45 @@ class AudioLibraryServiceClass {
     }
   }
 
-  // Get all tracks flat
+  // Load tracks from music_library_tracks DB table
+  private async loadDbTracks(): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from('music_library_tracks' as any)
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        if (DEBUG) console.warn('[AudioLibrary] DB tracks load error:', error);
+        return;
+      }
+
+      this.dbTracks = (data || []).map((row: any) => ({
+        id: `db_${row.id}`,
+        title: row.title,
+        artist: row.artist || 'TAM-TAM',
+        duration: row.duration || 0,
+        bpm: row.bpm || undefined,
+        mood: [row.mood],
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        language: 'fr',
+        description: { fr: row.description_fr || '', bariba: '' },
+        source: {
+          type: 'url' as const,
+          url: row.audio_url,
+        },
+      }));
+
+      if (DEBUG) console.log('[AudioLibrary] DB tracks loaded:', this.dbTracks.length);
+    } catch (error) {
+      if (DEBUG) console.warn('[AudioLibrary] DB tracks error:', error);
+    }
+  }
+
+  // Get all tracks flat (JSON library + DB tracks)
   getAllTracks(): AudioTrack[] {
-    if (!this.library) return [];
-    return this.library.categories.flatMap(cat => cat.tracks);
+    const jsonTracks = this.library ? this.library.categories.flatMap(cat => cat.tracks) : [];
+    return [...jsonTracks, ...this.dbTracks];
   }
 
   // Get track by ID
