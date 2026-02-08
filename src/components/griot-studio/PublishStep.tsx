@@ -306,43 +306,7 @@ export function PublishStep({
     }
   }, [exportVideo, generateThumbnail, publishVideo, title, storyText, duration, onPublishSuccess, toast]);
 
-  // Success: auto-redirect to feed using React Router
-  React.useEffect(() => {
-    if (isPublished) {
-      const timer = setTimeout(() => {
-        navigate(publishedVideoId ? `/fitila?video=${publishedVideoId}` : '/fitila');
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [isPublished, navigate, publishedVideoId]);
-
-  if (isPublished) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center py-16 px-6 text-center space-y-6 w-full max-w-md mx-auto"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', damping: 15, stiffness: 300 }}
-          className="text-7xl"
-        >
-          🎉
-        </motion.div>
-        <h2 className="text-2xl font-bold text-amber-100">Félicitations !</h2>
-        <p className="text-amber-200/60 text-sm">Ton conte est maintenant visible sur le feed</p>
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: '100%' }}
-          transition={{ duration: 2.5, ease: 'linear' }}
-          className="h-1 bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full max-w-xs"
-        />
-        <p className="text-xs text-amber-200/40">Redirection automatique...</p>
-      </motion.div>
-    );
-  }
+  // Success: no blocking screen — parent handles redirect via onPublishSuccess
 
   return (
     <div className="space-y-5 w-full max-w-md mx-auto overflow-y-auto">

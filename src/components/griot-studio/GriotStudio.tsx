@@ -413,8 +413,12 @@ export function GriotStudio() {
   const handlePublishSuccess = useCallback((videoId: string) => {
     setPublishedVideoId(videoId);
     clearDraft();
-    // Don't change step — PublishStep handles its own success UI + auto-redirect
-  }, [clearDraft]);
+    // Show success toast and auto-redirect to feed
+    toast({ title: '🎉 Félicitations !', description: 'Ton conte est maintenant visible sur le feed.' });
+    setTimeout(() => {
+      navigate(videoId ? `/fitila?video=${videoId}` : '/fitila');
+    }, 1500);
+  }, [clearDraft, toast, navigate]);
 
   const handleViewInFeed = useCallback(() => {
     navigate(publishedVideoId ? `/fitila?video=${publishedVideoId}` : '/fitila');
