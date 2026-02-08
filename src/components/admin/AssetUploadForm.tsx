@@ -220,6 +220,19 @@ export function AssetUploadForm() {
         }
       }
 
+      // Build full AI metadata object for centralized storage
+      const aiMetadata = {
+        style,
+        emotion,
+        scene_type: sceneType,
+        character_type: characterType,
+        action,
+        time_of_day: timeOfDay,
+        description_en: descriptionEn,
+        description_fr: descriptionFr || null,
+        ai_suggested_fields: Array.from(aiFields),
+      };
+
       const { error: insertError } = await supabase
         .from('anime_scene_library')
         .insert({
@@ -239,6 +252,24 @@ export function AssetUploadForm() {
         });
 
       if (insertError) throw insertError;
+
+      // Record in asset_imports with full AI metadata
+      await supabase
+        .from('asset_imports' as any)
+        .insert({
+          category: assetType === 'photo' ? 'image' : 'video',
+          original_name: file.name,
+          target_name: fileName,
+          file_size: file.size,
+          mime_type: file.type,
+          storage_path: storagePath,
+          public_url: imageUrl,
+          status: 'completed',
+          original_format: ext,
+          ai_metadata: aiMetadata,
+          ai_analysis_status: aiFields.size > 0 ? 'completed' : 'skipped',
+          ai_confidence: aiFields.size > 0 ? (aiFields.size / 8) : null,
+        });
 
       toast({ title: '✅ Upload réussi !', description: `${assetType === 'photo' ? 'Photo' : 'Vidéo'} ajoutée à la bibliothèque.` });
       resetForm();

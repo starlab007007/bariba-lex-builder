@@ -187,6 +187,19 @@ export function MusicUploadForm() {
         .map(t => t.trim())
         .filter(Boolean);
 
+      // Build full AI metadata for centralized storage
+      const aiMetadata = {
+        title,
+        artist: artist || 'TAM-TAM',
+        category,
+        mood,
+        bpm: bpm ? parseInt(bpm) : null,
+        duration: duration || 0,
+        tags: parsedTags,
+        description_fr: descriptionFr || null,
+        ai_suggested_fields: Array.from(aiFields),
+      };
+
       const { error: insertError } = await supabase
         .from('music_library_tracks' as any)
         .insert({
@@ -203,6 +216,24 @@ export function MusicUploadForm() {
         });
 
       if (insertError) throw insertError;
+
+      // Record in asset_imports with full AI metadata
+      await supabase
+        .from('asset_imports' as any)
+        .insert({
+          category: 'music',
+          original_name: file.name,
+          target_name: fileName,
+          file_size: file.size,
+          mime_type: file.type,
+          storage_path: storagePath,
+          public_url: urlData.publicUrl,
+          status: 'completed',
+          original_format: ext,
+          ai_metadata: aiMetadata,
+          ai_analysis_status: aiFields.size > 0 ? 'completed' : 'skipped',
+          ai_confidence: aiFields.size > 0 ? (aiFields.size / 6) : null,
+        });
 
       toast({ title: '🎵 Musique ajoutée !', description: `"${title}" est maintenant dans la bibliothèque.` });
       resetForm();
