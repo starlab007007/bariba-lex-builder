@@ -115,7 +115,8 @@ export function PublishStep({
 
   /**
    * Export video with proper audio mixing via Web Audio API
-   * Includes robust try/catch for audio loading with graceful fallback
+   * Uses fetch + decodeAudioData + AudioBufferSourceNode for reliable audio
+   * (avoids createMediaElementSource CORS issues that silently mute audio)
    */
   const exportVideo = useCallback(async (): Promise<Blob | null> => {
     if (!canvasRef.current || !engineRef.current) {
@@ -129,8 +130,8 @@ export function PublishStep({
     
     const videoStream = canvas.captureStream(24);
     let combinedStream = videoStream;
-    const audioElements: HTMLAudioElement[] = [];
     let audioContext: AudioContext | null = null;
+    const sourceNodes: AudioBufferSourceNode[] = [];
     
     const useVoice = audioMode === 'voice_only' || audioMode === 'voice_and_music';
     const useMusic = audioMode === 'music_only' || audioMode === 'voice_and_music';
@@ -139,82 +140,72 @@ export function PublishStep({
     const musicUrl = selectedMusicTrack?.source?.url;
     const hasMusic = useMusic && musicUrl;
     
-    console.log('[PublishStep] Export config:', { audioMode, hasVoice, hasMusic, effectiveNarrationUrl: !!effectiveNarrationUrl, musicUrl: !!musicUrl });
+    console.log('[PublishStep] Export config:', { audioMode, hasVoice, hasMusic, effectiveNarrationUrl: effectiveNarrationUrl?.substring(0, 40), musicUrl: musicUrl?.substring(0, 40) });
     
     if (hasVoice || hasMusic) {
       try {
-        audioContext = new AudioContext();
-        // CRITICAL: Resume AudioContext (required on mobile after user gesture)
-        if (audioContext.state === 'suspended') {
-          await audioContext.resume();
-        }
-        console.log('[PublishStep] AudioContext state:', audioContext.state);
+        audioContext = new AudioContext({ sampleRate: 44100 });
+        if (audioContext.state === 'suspended') await audioContext.resume();
+        console.log('[PublishStep] AudioContext state:', audioContext.state, 'sampleRate:', audioContext.sampleRate);
         
         const destination = audioContext.createMediaStreamDestination();
         let audioConnected = false;
         
-        // Helper: load an audio element robustly
-        const loadAudioElement = async (url: string, label: string): Promise<HTMLAudioElement> => {
-          const el = new Audio();
-          // CRITICAL: Only set crossOrigin for remote URLs, NOT for blob: URLs
-          const isBlobUrl = url.startsWith('blob:');
-          if (!isBlobUrl) {
-            el.crossOrigin = 'anonymous';
-          }
-          el.volume = 1;
-          el.preload = 'auto';
-          el.src = url;
-          
-          await new Promise<void>((res, rej) => {
-            const timeout = setTimeout(() => rej(new Error(`${label} load timeout (10s)`)), 10000);
-            el.oncanplaythrough = () => { clearTimeout(timeout); res(); };
-            el.onerror = (e) => { clearTimeout(timeout); rej(new Error(`${label} load error: ${e}`)); };
-            el.load();
-          });
-          console.log(`[PublishStep] ${label} loaded successfully`);
-          return el;
+        // Helper: fetch URL → decode to AudioBuffer (works for blob: and https:)
+        const loadAudioBuffer = async (url: string, label: string): Promise<AudioBuffer> => {
+          console.log(`[PublishStep] Fetching ${label}...`);
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`${label} fetch failed: ${response.status}`);
+          const arrayBuffer = await response.arrayBuffer();
+          console.log(`[PublishStep] ${label} fetched: ${(arrayBuffer.byteLength / 1024).toFixed(0)} KB`);
+          // Clone buffer because decodeAudioData detaches it
+          const bufferCopy = arrayBuffer.slice(0);
+          const audioBuffer = await audioContext!.decodeAudioData(bufferCopy);
+          console.log(`[PublishStep] ${label} decoded: ${audioBuffer.duration.toFixed(1)}s, ${audioBuffer.numberOfChannels}ch, ${audioBuffer.sampleRate}Hz`);
+          return audioBuffer;
         };
         
-        // Load voice audio
+        // Load and connect VOICE
         if (hasVoice) {
           try {
-            const voiceEl = await loadAudioElement(effectiveNarrationUrl, 'Voice');
-            const voiceSource = audioContext.createMediaElementSource(voiceEl);
+            const voiceBuffer = await loadAudioBuffer(effectiveNarrationUrl, 'Voice');
+            const voiceSource = audioContext.createBufferSource();
+            voiceSource.buffer = voiceBuffer;
             const voiceGain = audioContext.createGain();
             voiceGain.gain.value = 1.0;
             voiceSource.connect(voiceGain);
             voiceGain.connect(destination);
-            voiceGain.connect(audioContext.destination); // Also output to speakers for monitoring
-            audioElements.push(voiceEl);
+            sourceNodes.push(voiceSource);
             audioConnected = true;
-            console.log('[PublishStep] Voice audio connected to MediaStream');
-          } catch (voiceErr) {
-            console.error('[PublishStep] Voice audio FAILED:', voiceErr);
+            console.log('[PublishStep] ✅ Voice connected to MediaStream');
+          } catch (err) {
+            console.error('[PublishStep] ❌ Voice audio FAILED:', err);
           }
         }
         
-        // Load music audio
+        // Load and connect MUSIC
         if (hasMusic) {
           try {
-            const musicEl = await loadAudioElement(musicUrl, 'Music');
-            musicEl.loop = true;
-            const musicSource = audioContext.createMediaElementSource(musicEl);
+            const musicBuffer = await loadAudioBuffer(musicUrl, 'Music');
+            const musicSource = audioContext.createBufferSource();
+            musicSource.buffer = musicBuffer;
+            musicSource.loop = true;
             const musicGain = audioContext.createGain();
             musicGain.gain.value = audioMode === 'voice_and_music' ? 0.25 : 0.8;
             musicSource.connect(musicGain);
             musicGain.connect(destination);
-            audioElements.push(musicEl);
+            sourceNodes.push(musicSource);
             audioConnected = true;
-            console.log('[PublishStep] Music audio connected to MediaStream');
-          } catch (musicErr) {
-            console.error('[PublishStep] Music audio FAILED:', musicErr);
+            console.log('[PublishStep] ✅ Music connected to MediaStream');
+          } catch (err) {
+            console.error('[PublishStep] ❌ Music audio FAILED:', err);
             toast({ title: '⚠️ Musique indisponible', description: 'Export sans musique de fond.', variant: 'destructive' });
           }
         }
         
         if (audioConnected) {
           const audioTracks = destination.stream.getAudioTracks();
-          console.log('[PublishStep] Audio tracks for MediaRecorder:', audioTracks.length);
+          console.log('[PublishStep] Audio tracks for recorder:', audioTracks.length, audioTracks.map(t => t.label));
           combinedStream = new MediaStream([
             ...videoStream.getVideoTracks(),
             ...audioTracks
@@ -234,7 +225,8 @@ export function PublishStep({
           ? 'video/webm;codecs=vp9'
           : 'video/webm';
     
-    console.log('[PublishStep] MediaRecorder mimeType:', mimeType, 'tracks:', combinedStream.getTracks().map(t => `${t.kind}:${t.label}`));
+    console.log('[PublishStep] MediaRecorder mimeType:', mimeType);
+    console.log('[PublishStep] Combined stream tracks:', combinedStream.getTracks().map(t => `${t.kind}:${t.readyState}`));
     
     const chunks: Blob[] = [];
     const recorder = new MediaRecorder(combinedStream, { 
@@ -249,31 +241,24 @@ export function PublishStep({
     
     return new Promise((resolve) => {
       recorder.onstop = () => {
-        audioElements.forEach(el => { el.pause(); el.src = ''; });
+        // Stop all AudioBufferSourceNodes
+        sourceNodes.forEach(node => { try { node.stop(); } catch {} });
         audioContext?.close().catch(() => {});
         const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
-        console.log('[PublishStep] Export complete. Blob size:', blob.size, 'Audio tracks included:', combinedStream.getAudioTracks().length);
+        console.log('[PublishStep] ✅ Export complete. Blob size:', (blob.size / 1024 / 1024).toFixed(2), 'MB, Audio tracks:', combinedStream.getAudioTracks().length);
         resolve(blob);
       };
       
-      // Start audio playback FIRST, then start recording
-      const startRecording = async () => {
-        // Play all audio elements first
-        for (const el of audioElements) {
-          el.currentTime = 0;
-          try {
-            await el.play();
-            console.log('[PublishStep] Audio element playing');
-          } catch (e) {
-            console.error('[PublishStep] Audio play error:', e);
-          }
-        }
-        
-        // Small delay to ensure audio is flowing through AudioContext
-        await new Promise(r => setTimeout(r, 100));
-        
-        // Now start recording
+      // Start all AudioBufferSourceNodes FIRST, then start recording
+      for (const node of sourceNodes) {
+        node.start(0);
+        console.log('[PublishStep] AudioBufferSourceNode started');
+      }
+      
+      // Small delay to ensure audio buffers are flowing
+      setTimeout(() => {
         recorder.start(100);
+        console.log('[PublishStep] MediaRecorder started');
         
         // Start animation
         engine.startSlideshowPreview(duration, animStyle, (progress) => {
@@ -284,11 +269,9 @@ export function PublishStep({
         setTimeout(() => {
           recorder.stop();
           engine.stopPreview();
-          audioElements.forEach(el => el.pause());
+          console.log('[PublishStep] Recording stopped after', duration, 'seconds');
         }, duration * 1000 + 500);
-      };
-      
-      startRecording();
+      }, 200);
     });
   }, [canvasRef, engineRef, style, duration, effectiveNarrationUrl, audioMode, selectedMusicTrack, toast]);
 
@@ -311,11 +294,12 @@ export function PublishStep({
     try {
       setIsExporting(true);
       setExportProgress(0);
-      toast({ title: '🎬 Export vidéo en cours...', description: 'Préparation de ta vidéo...' });
+      toast({ title: '🎬 Export vidéo en cours...', description: 'Préparation de ta vidéo avec audio...' });
       
       const videoBlob = await exportVideo();
       if (!videoBlob) throw new Error('Échec de l\'export vidéo');
       
+      console.log('[PublishStep] Video exported:', (videoBlob.size / 1024 / 1024).toFixed(2), 'MB, type:', videoBlob.type);
       setIsExporting(false);
       setExportProgress(100);
       
@@ -335,14 +319,23 @@ export function PublishStep({
       });
       
       if (result.success) {
+        console.log('[PublishStep] ✅ Published successfully, videoId:', result.videoId);
         setIsPublished(true);
         setPublishedVideoId(result.videoId || null);
+        
         // Notify parent immediately — parent handles redirect
         onPublishSuccess?.(result.videoId || '');
-        // Fallback redirect if parent doesn't handle it
+        
+        // AGGRESSIVE fallback redirect — ensures user ALWAYS goes to feed
+        const feedUrl = result.videoId ? `/fitila?video=${result.videoId}` : '/fitila';
         setTimeout(() => {
-          navigate(result.videoId ? `/fitila?video=${result.videoId}` : '/fitila');
-        }, 2000);
+          try {
+            navigate(feedUrl);
+          } catch {
+            // Ultimate fallback: hard redirect
+            window.location.href = feedUrl;
+          }
+        }, 1500);
       }
     } catch (error) {
       console.error('[PublishStep] Publish error:', error);
@@ -354,7 +347,7 @@ export function PublishStep({
         variant: 'destructive'
       });
     }
-  }, [exportVideo, generateThumbnail, publishVideo, title, storyText, duration, onPublishSuccess, toast]);
+  }, [exportVideo, generateThumbnail, publishVideo, title, storyText, duration, onPublishSuccess, toast, navigate]);
 
   // Success: no blocking screen — parent handles redirect via onPublishSuccess
 
