@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, Upload, Loader2, Sparkles, ArrowRight, Mic, Music, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -67,7 +67,7 @@ export function PublishStep({
   onReset
 }: PublishStepProps) {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  
   const { publishVideo, isPublishing, publishProgress, publishStage } = useVideoPublish();
   
   const [title, setTitle] = useState(() => {
@@ -137,8 +137,8 @@ export function PublishStep({
     const useMusic = audioMode === 'music_only' || audioMode === 'voice_and_music';
     
     const hasVoice = useVoice && effectiveNarrationUrl;
-    const musicUrl = selectedMusicTrack?.source?.url;
-    const hasMusic = useMusic && musicUrl;
+    const musicUrl = selectedMusicTrack?.source?.url || selectedMusicTrack?.source?.path;
+    const hasMusic = useMusic && !!musicUrl;
     
     console.log('[PublishStep] Export config:', { audioMode, hasVoice, hasMusic, effectiveNarrationUrl: effectiveNarrationUrl?.substring(0, 40), musicUrl: musicUrl?.substring(0, 40) });
     
@@ -165,10 +165,24 @@ export function PublishStep({
           return audioBuffer;
         };
         
-        // Load and connect VOICE
+        // Load and connect VOICE (with narrationBlob fallback)
         if (hasVoice) {
           try {
-            const voiceBuffer = await loadAudioBuffer(effectiveNarrationUrl, 'Voice');
+            let voiceArrayBuffer: ArrayBuffer;
+            try {
+              const response = await fetch(effectiveNarrationUrl);
+              if (!response.ok) throw new Error(`Voice fetch failed: ${response.status}`);
+              voiceArrayBuffer = await response.arrayBuffer();
+              console.log(`[PublishStep] Voice fetched from URL: ${(voiceArrayBuffer.byteLength / 1024).toFixed(0)} KB`);
+            } catch (fetchErr) {
+              console.warn('[PublishStep] Voice URL fetch failed, trying narrationBlob fallback...', fetchErr);
+              const fallbackBlob = narrationBlob || audioBlob;
+              if (!fallbackBlob) throw new Error('No narration blob available as fallback');
+              voiceArrayBuffer = await fallbackBlob.arrayBuffer();
+              console.log(`[PublishStep] Voice from blob fallback: ${(voiceArrayBuffer.byteLength / 1024).toFixed(0)} KB`);
+            }
+            const voiceBuffer = await audioContext!.decodeAudioData(voiceArrayBuffer.slice(0));
+            console.log(`[PublishStep] Voice decoded: ${voiceBuffer.duration.toFixed(1)}s, ${voiceBuffer.numberOfChannels}ch`);
             const voiceSource = audioContext.createBufferSource();
             voiceSource.buffer = voiceBuffer;
             const voiceGain = audioContext.createGain();
@@ -179,7 +193,7 @@ export function PublishStep({
             audioConnected = true;
             console.log('[PublishStep] ✅ Voice connected to MediaStream');
           } catch (err) {
-            console.error('[PublishStep] ❌ Voice audio FAILED:', err);
+            console.error('[PublishStep] ❌ Voice audio FAILED (all attempts):', err);
           }
         }
         
@@ -273,7 +287,7 @@ export function PublishStep({
         }, duration * 1000 + 500);
       }, 200);
     });
-  }, [canvasRef, engineRef, style, duration, effectiveNarrationUrl, audioMode, selectedMusicTrack, toast]);
+  }, [canvasRef, engineRef, style, duration, effectiveNarrationUrl, narrationBlob, audioBlob, audioMode, selectedMusicTrack, toast]);
 
   // Handle share
   const handleShare = useCallback(async () => {
@@ -323,19 +337,8 @@ export function PublishStep({
         setIsPublished(true);
         setPublishedVideoId(result.videoId || null);
         
-        // Notify parent immediately — parent handles redirect
+        // Notify parent — parent (GriotStudio) handles redirect exclusively
         onPublishSuccess?.(result.videoId || '');
-        
-        // AGGRESSIVE fallback redirect — ensures user ALWAYS goes to feed
-        const feedUrl = result.videoId ? `/fitila?video=${result.videoId}` : '/fitila';
-        setTimeout(() => {
-          try {
-            navigate(feedUrl);
-          } catch {
-            // Ultimate fallback: hard redirect
-            window.location.href = feedUrl;
-          }
-        }, 1500);
       }
     } catch (error) {
       console.error('[PublishStep] Publish error:', error);
@@ -347,7 +350,7 @@ export function PublishStep({
         variant: 'destructive'
       });
     }
-  }, [exportVideo, generateThumbnail, publishVideo, title, storyText, duration, onPublishSuccess, toast, navigate]);
+  }, [exportVideo, generateThumbnail, publishVideo, title, storyText, duration, onPublishSuccess, toast]);
 
   // Success: no blocking screen — parent handles redirect via onPublishSuccess
 
