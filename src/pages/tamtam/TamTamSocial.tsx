@@ -175,7 +175,7 @@ const FeedIndicator: React.FC<{
       <motion.button
         whileTap={{ scale: 0.9 }}
         onClick={onMenuOpen}
-        className="fixed top-4 left-4 z-40 w-10 h-10 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center safe-area-top"
+        className="fixed top-4 left-4 z-40 w-10 h-10 rounded-full bg-transparent flex items-center justify-center safe-area-top"
       >
         <Menu className="w-5 h-5 text-white" />
       </motion.button>
