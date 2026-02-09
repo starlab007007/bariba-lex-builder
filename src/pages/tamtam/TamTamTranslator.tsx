@@ -245,9 +245,9 @@ export default function TamTamTranslator() {
       size === 'lg' ? 'px-3 py-1.5 text-sm' : 'px-2 py-0.5 text-xs'
     } rounded-full font-medium ${
       lang === 'bariba' 
-        ? 'bg-orange-50 text-orange-600 border border-orange-200' 
-        : 'bg-blue-50 text-blue-600 border border-blue-200'
-    } ${detected ? 'ring-2 ring-green-400/50 ring-offset-1 ring-offset-white' : ''}`}>
+        ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' 
+        : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+    } ${detected ? 'ring-2 ring-green-400/50 ring-offset-1 ring-offset-transparent' : ''}`}>
       <span>{lang === 'bariba' ? '🇧🇯' : '🇫🇷'}</span>
       <span>{lang === 'bariba' ? 'Bariba' : 'Français'}</span>
       {detected && <Sparkles className="w-3 h-3 text-green-600" />}
@@ -382,12 +382,12 @@ export default function TamTamTranslator() {
     >
       <div className="flex flex-col h-[calc(100vh-140px)]">
         {/* Sub-header with language toggle */}
-        <div className="px-4 py-3 border-b border-gray-200 bg-white">
+        <div className="px-4 py-3 border-b border-white/20" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(24px)' }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <OfflineIndicator />
               {autoDetectEnabled && (
-                <span className="flex items-center gap-1 text-green-600 text-xs">
+                <span className="flex items-center gap-1 text-green-400 text-xs">
                   <Sparkles className="w-3 h-3" />
                   Auto
                 </span>
@@ -397,9 +397,9 @@ export default function TamTamTranslator() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowHistory(true)}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                className="p-2 rounded-lg bg-white/15 hover:bg-white/25 transition-colors"
               >
-                <History className="w-5 h-5 text-gray-500" />
+                <History className="w-5 h-5 text-white/70" />
               </button>
               
               <div className="flex items-center gap-1">
@@ -433,7 +433,7 @@ export default function TamTamTranslator() {
                 className="w-3.5 h-3.5 rounded accent-orange-500"
               />
               <Sparkles className="w-3 h-3 text-green-400" />
-              <span className="text-gray-500">Détection auto</span>
+               <span className="text-white/60">Détection auto</span>
             </label>
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
@@ -442,14 +442,14 @@ export default function TamTamTranslator() {
                 onChange={(e) => setConversationMode(e.target.checked)}
                 className="w-3.5 h-3.5 rounded accent-orange-500"
               />
-              <MessageSquare className="w-3 h-3 text-purple-600" />
-              <span className="text-gray-500">Mode conversation</span>
+              <MessageSquare className="w-3 h-3 text-purple-400" />
+              <span className="text-white/60">Mode conversation</span>
             </label>
           </div>
         </div>
 
         {/* Chat Messages Area */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ background: 'rgba(30,30,50,0.65)', backdropFilter: 'blur(20px)' }}>
           {/* Welcome message */}
           {messages.length === 0 && !translator.isProcessing && (
             <motion.div
@@ -464,18 +464,18 @@ export default function TamTamTranslator() {
               >
                 🌐
               </motion.div>
-               <h2 className="text-xl font-bold text-gray-900 mb-2">
+               <h2 className="text-xl font-bold text-white mb-2">
                 Bienvenue! 👋
-              </h2>
-              <p className="text-gray-500 mb-2">
+               </h2>
+               <p className="text-white/60 mb-2">
                 Je traduis entre Français et Bariba
               </p>
               <div className="flex flex-wrap justify-center gap-2 mb-4">
-                <span className="px-2 py-1 bg-green-50 text-green-600 rounded-full text-xs flex items-center gap-1 border border-green-200">
+                <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs flex items-center gap-1 border border-green-500/30">
                   <Sparkles className="w-3 h-3" />
                   Détection automatique
                 </span>
-                <span className="px-2 py-1 bg-purple-50 text-purple-600 rounded-full text-xs flex items-center gap-1 border border-purple-200">
+                <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs flex items-center gap-1 border border-purple-500/30">
                   <MessageSquare className="w-3 h-3" />
                   Mode conversation
                 </span>
@@ -505,25 +505,25 @@ export default function TamTamTranslator() {
                 <div className="flex justify-end">
                 <div className={`max-w-[85%] rounded-2xl rounded-tr-sm p-3 ${
                     msg.sourceLanguage === 'bariba' 
-                      ? 'bg-orange-50 border border-orange-200' 
-                      : 'bg-blue-50 border border-blue-200'
+                      ? 'bg-orange-500/20 border border-orange-500/30' 
+                      : 'bg-blue-500/20 border border-blue-500/30'
                   }`}>
                     <div className="flex items-center gap-2 mb-1">
                       <LanguageBadge lang={msg.sourceLanguage} size="sm" />
                     </div>
-                    <p className="text-gray-900">{msg.sourceText}</p>
+                    <p className="text-white">{msg.sourceText}</p>
                     <div className="flex items-center gap-1 mt-2 justify-end">
                       <button
                         onClick={() => speakText(msg.sourceText, msg.sourceLanguage)}
-                        className="p-1 rounded-full hover:bg-gray-100"
+                        className="p-1 rounded-full hover:bg-white/10"
                       >
-                        <Volume2 className="w-3.5 h-3.5 text-gray-400" />
+                        <Volume2 className="w-3.5 h-3.5 text-white/50" />
                       </button>
                       <button
                         onClick={() => copyText(msg.sourceText)}
-                        className="p-1 rounded-full hover:bg-gray-100"
+                        className="p-1 rounded-full hover:bg-white/10"
                       >
-                        <Copy className="w-3.5 h-3.5 text-gray-400" />
+                        <Copy className="w-3.5 h-3.5 text-white/50" />
                       </button>
                     </div>
                   </div>
@@ -534,26 +534,26 @@ export default function TamTamTranslator() {
                   <div className="flex justify-start">
                     <div className={`max-w-[85%] rounded-2xl rounded-tl-sm p-3 ${
                       msg.targetLanguage === 'bariba' 
-                        ? 'bg-orange-50 border-2 border-orange-200' 
-                        : 'bg-blue-50 border-2 border-blue-200'
+                        ? 'bg-orange-500/25 border-2 border-orange-500/40' 
+                        : 'bg-blue-500/25 border-2 border-blue-500/40'
                     }`}>
                       <div className="flex items-center gap-2 mb-1">
                         <Bot className="w-4 h-4 text-orange-500" />
                         <LanguageBadge lang={msg.targetLanguage} size="sm" />
                       </div>
-                      <p className="text-lg font-medium text-gray-900">{msg.translatedText}</p>
+                      <p className="text-lg font-medium text-white">{msg.translatedText}</p>
                       <div className="flex items-center gap-1 mt-2">
                         <button
                           onClick={() => speakText(msg.translatedText!, msg.targetLanguage)}
                           className={`p-1.5 rounded-full ${
-                            msg.targetLanguage === 'bariba' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'
+                            msg.targetLanguage === 'bariba' ? 'bg-orange-500/30 text-orange-300' : 'bg-blue-500/30 text-blue-300'
                           }`}
                         >
                           <Volume2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => copyText(msg.translatedText!)}
-                          className="p-1.5 rounded-full bg-gray-100 text-gray-500"
+                          className="p-1.5 rounded-full bg-white/10 text-white/60"
                         >
                           <Copy className="w-4 h-4" />
                         </button>
@@ -572,12 +572,12 @@ export default function TamTamTranslator() {
               animate={{ opacity: 1 }}
               className="flex items-center gap-3 p-4"
             >
-              <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
                 <Bot className="w-5 h-5 text-orange-500" />
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-2xl">
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-2xl">
                 <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
-                <span className="text-sm text-gray-500">Traduction en cours...</span>
+                <span className="text-sm text-white/60">Traduction en cours...</span>
               </div>
             </motion.div>
           )}
@@ -616,7 +616,7 @@ export default function TamTamTranslator() {
         </AnimatePresence>
 
         {/* Input Area */}
-        <div className="sticky bottom-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 px-4 py-3">
+        <div className="sticky bottom-0 border-t border-white/15 px-4 py-3" style={{ background: 'rgba(20,20,40,0.85)', backdropFilter: 'blur(32px)' }}>
           {/* Clear button */}
           {messages.length > 0 && (
             <div className="flex justify-center mb-2">
@@ -624,7 +624,7 @@ export default function TamTamTranslator() {
                 variant="ghost"
                 size="sm"
                 onClick={handleClearChat}
-                className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                className="text-white/40 hover:text-red-400 hover:bg-red-500/10"
               >
                 <Trash2 className="w-3.5 h-3.5 mr-1" />
                 Effacer
@@ -642,7 +642,7 @@ export default function TamTamTranslator() {
                 className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all ${
                   translator.currentMode === mode.id
                     ? `bg-gradient-to-br ${mode.color} text-white shadow-lg scale-110`
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200'
+                    : 'bg-white/10 text-white/60 hover:bg-white/20 border border-white/15'
                 }`}
               >
                 {mode.icon}
@@ -661,7 +661,7 @@ export default function TamTamTranslator() {
                 exit={{ opacity: 0, y: -10 }}
                 className="flex flex-col items-center"
               >
-                <p className="text-xs text-gray-400 mb-2">
+                <p className="text-xs text-white/40 mb-2">
                   Parlez - la langue sera détectée automatiquement
                 </p>
                 <TamTamMicButton
@@ -683,7 +683,7 @@ export default function TamTamTranslator() {
               >
                 {detectedLang && (
                   <div className="flex justify-center mb-2">
-                    <span className="text-xs text-green-400 flex items-center gap-1">
+                    <span className="text-xs text-green-300 flex items-center gap-1">
                       <Sparkles className="w-3 h-3" />
                       Détecté: {detectedLang === 'bariba' ? '🇧🇯 Bariba' : '🇫🇷 Français'}
                     </span>
@@ -696,7 +696,7 @@ export default function TamTamTranslator() {
                     onChange={(e) => setTextInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Tapez dans n'importe quelle langue..."
-                    className="flex-1 min-h-[50px] max-h-[100px] text-base rounded-xl border-2 border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:border-orange-500/50 resize-none"
+                    className="flex-1 min-h-[50px] max-h-[100px] text-base rounded-xl border-2 border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-orange-500/50 resize-none"
                     rows={1}
                   />
                   <Button
