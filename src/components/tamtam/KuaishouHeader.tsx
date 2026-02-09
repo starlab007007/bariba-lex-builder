@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Menu, Bell, Volume2, Shield } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSideMenu } from '@/pages/tamtam/TamTamApp';
+import { useSideMenu } from '@/pages/fitila/FitilaApp';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 
