@@ -1,45 +1,52 @@
 
-# Correction de l'interface camera
 
-## Modifications a effectuer
+# Optimisation camera + bouton flip + flash torche
 
-### 1. Barre laterale droite (Right Rail)
+## Modifications sur `src/components/tamtam/FullscreenCreator.tsx`
 
-Supprimer uniquement ces boutons :
-- **Magic** (ChevronUp) - ligne 3117-3122
-- **Template** (Layers) - ligne 3123-3131
-- **V3** (Sparkles) - ligne 3132-3138
-- **Switch** (RotateCcw) - ligne 3066-3070 (le premier dans le rail)
+### 1. Optimisation du demarrage camera (startStream)
 
-Les boutons suivants sont **conserves** : Timer, Flash, Beautify, Graphics, Stickers, Speed, et tous les boutons post-capture (Texte, Couper, Son).
+Actuellement la camera demande directement 1920x1080, ce qui est lent sur mobile. On va utiliser un demarrage en deux etapes :
 
-### 2. Badge resolution
+- **Etape 1** : Demander un flux basse resolution (640x480) pour affichage quasi instantane
+- **Etape 2** : Une fois le premier frame affiche, upgrader en arriere-plan vers HD (1920x1080)
+- Supprimer les `console.log` verbeux pour reduire le bruit
 
-Supprimer le composant `CameraResolutionIndicator` affiche en haut a droite (lignes 3050-3059).
+### 2. Bouton flip camera (front/arriere)
 
-### 3. Mode selector (pill)
+Un bouton flip camera est deja present (ligne ~3040) dans le top bar. Il sera ameliore :
 
-Retirer "text" de la liste des modes. Le selecteur passera de `["burst", "photo", "video", "text"]` a `["burst", "photo", "video"]` uniquement (ligne 3342).
+- Icone `RotateCcw` dans un cercle glassmorphism visible
+- Toggle entre `"user"` (selfie) et `"environment"` (arriere, par defaut)
+- Le mode par defaut reste `"environment"` (camera arriere)
 
-## Details techniques
+### 3. Flash = Torche pour camera arriere
 
-### Fichier : `src/components/tamtam/FullscreenCreator.tsx`
+Le bouton Flash (ligne ~3066-3071) est actuellement un simple toggle `flashSim` qui fait un ecran blanc. Il sera modifie :
 
-**A. Supprimer le badge HD** (lignes 3050-3059)
-- Retirer le bloc conditionnel contenant `CameraResolutionIndicator`
+- **Camera arriere** (`facing === "environment"`) : activer la torche materielle via `videoTrack.applyConstraints({ advanced: [{ torch: true }] })`
+- **Camera selfie** (`facing === "user"`) : garder le flash ecran blanc actuel (`flashSim`)
+- L'icone Zap changera de couleur quand la torche est active
 
-**B. Supprimer Switch du rail** (lignes 3066-3070)
-- Retirer le `RailButton` avec `RotateCcw` et label "Switch"
+### Details techniques
 
-**C. Supprimer Magic** (lignes 3117-3122)
-- Retirer le `RailButton` avec `ChevronUp` et label "Magic"
+**A. startStream optimise** (lignes 717-756)
 
-**D. Supprimer Template** (lignes 3123-3131)
-- Retirer le `RailButton` avec `Layers` et label "Template"
+```text
+Etape 1: getUserMedia({ video: { facingMode, width: 640, height: 480 }, audio })
+  -> Afficher immediatement
+Etape 2: getUserMedia({ video: { facingMode, width: 1920, height: 1080 }, audio })
+  -> Remplacer le flux une fois pret
+```
 
-**E. Supprimer V3** (lignes 3132-3138)
-- Retirer le `RailButton` avec `Sparkles` et label "V3"
+**B. Flash handler** (ligne 3070)
 
-**F. Retirer "text" du mode selector** (ligne 3342)
-- Changer `["burst", "photo", "video", "text"]` en `["burst", "photo", "video"]`
-- Supprimer la condition `m === "text" ? "Texte"` du label (ligne 3351)
+Remplacer `onClick={() => setFlashSim((v) => !v)}` par une fonction qui :
+1. Verifie `facing`
+2. Si `"environment"` : accede au videoTrack du stream, appelle `applyConstraints({ advanced: [{ torch: !torchActive }] })`, met a jour un state `torchActive`
+3. Si `"user"` : toggle `flashSim` comme avant
+
+**C. Nouveau state**
+
+Ajouter `const [torchActive, setTorchActive] = useState(false)` pour suivre l'etat de la torche materielle. Reinitialiser a `false` quand on change de camera.
+
