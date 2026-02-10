@@ -304,8 +304,7 @@ export default function MusicDrawer({
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 25 }}
-      className="absolute inset-x-0 bottom-0 z-50 bg-black/95 backdrop-blur-xl rounded-t-3xl border-t border-white/10 max-h-[80vh] relative"
-      style={{ overflow: editingTrack ? 'visible' : 'hidden' }}
+      className="absolute inset-x-0 bottom-0 z-50 bg-black/95 backdrop-blur-xl rounded-t-3xl border-t border-white/10 max-h-[80vh] overflow-hidden"
     >
       {/* Hidden audio element */}
       <audio ref={audioRef} onEnded={() => setPlayingTrackId(null)} />
