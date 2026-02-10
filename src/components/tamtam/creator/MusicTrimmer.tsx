@@ -247,7 +247,7 @@ export default function MusicTrimmer({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-      className="absolute inset-0 bg-black/95 flex flex-col z-50"
+      className="fixed inset-0 bg-black/95 flex flex-col z-[100]"
     >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
