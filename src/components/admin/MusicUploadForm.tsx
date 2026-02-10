@@ -229,7 +229,7 @@ export function MusicUploadForm() {
             mime_type: file.type,
             storage_path: storagePath,
             public_url: urlData.publicUrl,
-            status: 'completed',
+            status: 'uploaded',
             original_format: ext,
             ai_metadata: aiMetadata,
             ai_analysis_status: aiFields.size > 0 ? 'completed' : 'skipped',
