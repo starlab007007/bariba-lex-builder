@@ -450,6 +450,7 @@ export default function FullscreenCreator({
   // Camera
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [flashSim, setFlashSim] = useState(false);
+  const [torchActive, setTorchActive] = useState(false);
   const [timerSec, setTimerSec] = useState<0 | 3 | 10>(0);
   const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
   const [lengthSec, setLengthSec] = useState<15 | 30 | 60 | 180 | 600>(30);
@@ -715,34 +716,50 @@ export default function FullscreenCreator({
   }, []);
 
   const startStream = useCallback(async () => {
-    console.log('[Camera] startStream called, facing:', facing, 'mode:', mode);
     setError(null);
     setCameraLoading(true);
     stopStream();
+    setTorchActive(false);
     
     try {
-      // ✅ Check if getUserMedia is available
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("L'API caméra n'est pas disponible sur ce navigateur.");
       }
       
-      const constraints: MediaStreamConstraints = {
-        video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      // Step 1: Fast low-res stream for instant preview
+      const fastConstraints: MediaStreamConstraints = {
+        video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } },
         audio: mode === "video",
       };
       
-      console.log('[Camera] Requesting stream with constraints:', constraints);
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('[Camera] Stream obtained:', stream.getTracks().map(t => `${t.kind}:${t.readyState}`));
+      const fastStream = await navigator.mediaDevices.getUserMedia(fastConstraints);
+      streamRef.current = fastStream;
       
-      streamRef.current = stream;
-      console.log('[Camera] Stream stored in ref, waiting for video element attachment via useEffect');
-      
-      // ✅ DON'T attach here - let the dedicated useEffect handle it
-      // This ensures the video element is mounted before we try to attach
+      // Step 2: Upgrade to HD in background
+      setTimeout(async () => {
+        try {
+          if (streamRef.current !== fastStream) return; // user switched already
+          const hdConstraints: MediaStreamConstraints = {
+            video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: mode === "video",
+          };
+          const hdStream = await navigator.mediaDevices.getUserMedia(hdConstraints);
+          if (streamRef.current !== fastStream) {
+            hdStream.getTracks().forEach(t => t.stop());
+            return;
+          }
+          fastStream.getTracks().forEach(t => t.stop());
+          streamRef.current = hdStream;
+          // Re-attach to video element
+          if (videoRef.current) {
+            videoRef.current.srcObject = hdStream;
+          }
+        } catch {
+          // Keep fast stream if HD upgrade fails
+        }
+      }, 300);
       
     } catch (e: any) {
-      console.error('[Camera] Error:', e);
       setCameraLoading(false);
       const message = e?.name === 'NotAllowedError' 
         ? "Permission caméra refusée. Veuillez autoriser l'accès à la caméra."
@@ -3039,7 +3056,7 @@ export default function FullscreenCreator({
               </button>
             ) : (
               <button
-                onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
+                onClick={() => { setTorchActive(false); setFacing((f) => (f === "environment" ? "user" : "environment")); }}
                 className="h-11 w-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
               >
                 <RotateCcw className="h-5 w-5" />
@@ -3064,10 +3081,24 @@ export default function FullscreenCreator({
                 }}
               />
               <RailButton
-                icon={<Zap className="h-5 w-5" />}
+                icon={<Zap className={`h-5 w-5 ${torchActive ? 'text-yellow-400' : ''}`} />}
                 label="Flash"
-                active={flashSim}
-                onClick={() => setFlashSim((v) => !v)}
+                active={facing === 'environment' ? torchActive : flashSim}
+                onClick={async () => {
+                  if (facing === 'environment' && streamRef.current) {
+                    try {
+                      const track = streamRef.current.getVideoTracks()[0];
+                      const newState = !torchActive;
+                      await track.applyConstraints({ advanced: [{ torch: newState } as any] });
+                      setTorchActive(newState);
+                    } catch {
+                      // Torch not supported, fall back to screen flash
+                      setFlashSim(v => !v);
+                    }
+                  } else {
+                    setFlashSim(v => !v);
+                  }
+                }}
               />
             </>
           )}
