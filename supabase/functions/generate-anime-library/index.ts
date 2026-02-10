@@ -329,12 +329,13 @@ async function handleListLibrary(
     emotion?: string;
     scene_type?: string;
     character_type?: string;
+    asset_type?: string;
     limit?: number;
     offset?: number;
   },
   supabase: ReturnType<typeof createClient>
 ) {
-  const { style, emotion, scene_type, character_type, limit = 50, offset = 0 } = params;
+  const { style, emotion, scene_type, character_type, asset_type, limit = 50, offset = 0 } = params;
 
   let query = supabase
     .from('anime_scene_library')
@@ -344,6 +345,7 @@ async function handleListLibrary(
   if (emotion) query = query.eq('emotion', emotion);
   if (scene_type) query = query.eq('scene_type', scene_type);
   if (character_type) query = query.eq('character_type', character_type);
+  if (asset_type) query = query.eq('asset_type', asset_type);
 
   const { data, error, count } = await query
     .order('created_at', { ascending: false })
