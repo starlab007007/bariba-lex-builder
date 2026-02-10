@@ -253,29 +253,33 @@ export function AssetUploadForm() {
 
       if (insertError) throw insertError;
 
-      // Record in asset_imports with full AI metadata
-      await supabase
-        .from('asset_imports' as any)
-        .insert({
-          category: assetType === 'photo' ? 'image' : 'video',
-          original_name: file.name,
-          target_name: fileName,
-          file_size: file.size,
-          mime_type: file.type,
-          storage_path: storagePath,
-          public_url: imageUrl,
-          status: 'completed',
-          original_format: ext,
-          ai_metadata: aiMetadata,
-          ai_analysis_status: aiFields.size > 0 ? 'completed' : 'skipped',
-          ai_confidence: aiFields.size > 0 ? (aiFields.size / 8) : null,
-        });
+      // Record in asset_imports (non-blocking, don't let it crash the main flow)
+      try {
+        await supabase
+          .from('asset_imports')
+          .insert({
+            category: assetType === 'photo' ? 'image' : 'video',
+            original_name: file.name,
+            target_name: fileName,
+            file_size: file.size,
+            mime_type: file.type,
+            storage_path: storagePath,
+            public_url: imageUrl,
+            status: 'completed',
+            original_format: ext,
+            ai_metadata: aiMetadata,
+            ai_analysis_status: aiFields.size > 0 ? 'completed' : 'skipped',
+            ai_confidence: aiFields.size > 0 ? (aiFields.size / 8) : null,
+          });
+      } catch (importErr) {
+        console.warn('asset_imports record failed (non-fatal):', importErr);
+      }
 
       toast({ title: '✅ Upload réussi !', description: `${assetType === 'photo' ? 'Photo' : 'Vidéo'} ajoutée à la bibliothèque.` });
       resetForm();
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast({ title: 'Erreur', description: error.message || "Échec de l'upload", variant: 'destructive' });
+      toast({ title: 'Erreur', description: error?.message || "Échec de l'upload", variant: 'destructive' });
     } finally {
       setUploading(false);
     }
