@@ -123,7 +123,7 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
                   <div className="text-xs text-white/60 mb-2 flex items-center gap-1">
                     <Eye className="w-3 h-3" /> Filtres visage
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-5 gap-1.5">
                     {AR_EFFECTS.filter(e => e.type === 'face').map(effect => {
                       const isActive = activeAREffects.includes(effect.id);
                       return (
@@ -131,14 +131,14 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
                           key={effect.id}
                           onClick={() => onToggleAREffect(effect.id)}
                           className={cn(
-                            'aspect-square rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all',
+                            'w-14 h-14 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all',
                             isActive
                               ? 'border-white bg-white/20'
-                              : 'border-white/20 bg-white/5 hover:bg-white/10'
+                              : 'border-white/10 bg-white/5 hover:bg-white/10'
                           )}
                         >
-                          <span className="text-2xl">{effect.emoji}</span>
-                          <span className="text-[9px] text-white/80">{effect.label}</span>
+                          <span className="text-lg">{effect.emoji}</span>
+                          <span className="text-[8px] text-white/60 leading-tight">{effect.label}</span>
                         </button>
                       );
                     })}
@@ -150,7 +150,7 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
                   <div className="text-xs text-white/60 mb-2 flex items-center gap-1">
                     <Sparkles className="w-3 h-3" /> Animations
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-5 gap-1.5">
                     {AR_EFFECTS.filter(e => e.type === 'overlay').map(effect => {
                       const isActive = activeAREffects.includes(effect.id);
                       return (
@@ -158,14 +158,14 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
                           key={effect.id}
                           onClick={() => onToggleAREffect(effect.id)}
                           className={cn(
-                            'aspect-square rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all',
+                            'w-14 h-14 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all',
                             isActive
                               ? 'border-white bg-white/20'
-                              : 'border-white/20 bg-white/5 hover:bg-white/10'
+                              : 'border-white/10 bg-white/5 hover:bg-white/10'
                           )}
                         >
-                          <span className="text-2xl">{effect.emoji}</span>
-                          <span className="text-[9px] text-white/80">{effect.label}</span>
+                          <span className="text-lg">{effect.emoji}</span>
+                          <span className="text-[8px] text-white/60 leading-tight">{effect.label}</span>
                         </button>
                       );
                     })}
@@ -177,7 +177,7 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
                   <div className="text-xs text-white/60 mb-2 flex items-center gap-1">
                     <Zap className="w-3 h-3" /> Stickers fun
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-5 gap-1.5">
                     {AR_EFFECTS.filter(e => e.type === 'sticker').map(effect => {
                       const isActive = activeAREffects.includes(effect.id);
                       return (
@@ -185,14 +185,14 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
                           key={effect.id}
                           onClick={() => onToggleAREffect(effect.id)}
                           className={cn(
-                            'aspect-square rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all',
+                            'w-14 h-14 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all',
                             isActive
                               ? 'border-white bg-white/20'
-                              : 'border-white/20 bg-white/5 hover:bg-white/10'
+                              : 'border-white/10 bg-white/5 hover:bg-white/10'
                           )}
                         >
-                          <span className="text-2xl">{effect.emoji}</span>
-                          <span className="text-[9px] text-white/80">{effect.label}</span>
+                          <span className="text-lg">{effect.emoji}</span>
+                          <span className="text-[8px] text-white/60 leading-tight">{effect.label}</span>
                         </button>
                       );
                     })}
