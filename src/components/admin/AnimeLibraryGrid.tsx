@@ -169,10 +169,12 @@ export function AnimeLibraryGrid() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {images.map(image => {
                 const isVideo = image.asset_type === 'video' || 
-                  image.video_url?.match(/\.(mp4|webm|mov)$/i) ||
-                  (image.image_url && !image.video_url && image.image_url.match(/\.(mp4|webm|mov)$/i));
+                  !!image.video_url?.match(/\.(mp4|webm|mov)$/i) ||
+                  (!image.video_url && !!image.image_url?.match(/\.(mp4|webm|mov)$/i));
                 const videoSrc = image.video_url || (isVideo ? image.image_url : null);
-                const thumbSrc = !isVideo ? image.image_url : null;
+                // Use image_url as thumbnail only if it's NOT an mp4
+                const thumbSrc = image.image_url && !image.image_url.match(/\.(mp4|webm|mov)$/i) 
+                  ? image.image_url : null;
 
                 return (
                   <div key={image.id} className="group relative">
@@ -180,13 +182,20 @@ export function AnimeLibraryGrid() {
                       {isVideo && videoSrc ? (
                         <video
                           src={videoSrc}
+                          poster={thumbSrc || undefined}
                           className="object-cover w-full h-full"
                           muted
                           loop
                           playsInline
-                          preload="metadata"
+                          preload="auto"
+                          autoPlay={false}
                           onMouseEnter={e => (e.target as HTMLVideoElement).play().catch(() => {})}
                           onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                          onLoadedData={e => {
+                            // Seek to 0.5s to show a preview frame
+                            const v = e.target as HTMLVideoElement;
+                            if (v.currentTime === 0) v.currentTime = 0.5;
+                          }}
                         />
                       ) : (
                         <img
