@@ -17,6 +17,8 @@ export interface LibraryImage {
   description_en: string;
   description_fr: string;
   image_url: string;
+  video_url: string | null;
+  asset_type: string;
   storage_path: string;
   usage_count: number;
   created_at: string;

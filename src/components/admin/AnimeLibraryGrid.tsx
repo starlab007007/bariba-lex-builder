@@ -10,12 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { LibraryImage } from '@/hooks/useAnimeLibrary';
-import { Loader2, Filter, Grid3X3, RefreshCw } from 'lucide-react';
+import { Loader2, Filter, Grid3X3, RefreshCw, Image, Film } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const STYLES = ['all', 'african', 'fantasy', 'manga', 'chibi'];
 const EMOTIONS = ['all', 'joy', 'sadness', 'wonder', 'fear', 'excitement', 'peace', 'tension'];
 const SCENES = ['all', 'village', 'forest', 'river', 'mountain', 'market', 'home', 'night', 'journey', 'gathering', 'spirit'];
+const ASSET_TYPES = ['all', 'image', 'video'];
 
 export function AnimeLibraryGrid() {
   const [images, setImages] = useState<LibraryImage[]>([]);
@@ -25,7 +26,8 @@ export function AnimeLibraryGrid() {
   const [filters, setFilters] = useState({
     style: 'all',
     emotion: 'all',
-    scene_type: 'all'
+    scene_type: 'all',
+    asset_type: 'all'
   });
 
   const loadImages = async (resetOffset = false) => {
@@ -42,6 +44,7 @@ export function AnimeLibraryGrid() {
       if (filters.style !== 'all') params.style = filters.style;
       if (filters.emotion !== 'all') params.emotion = filters.emotion;
       if (filters.scene_type !== 'all') params.scene_type = filters.scene_type;
+      if (filters.asset_type !== 'all') params.asset_type = filters.asset_type;
 
       const { data, error } = await supabase.functions.invoke('generate-anime-library', {
         body: params
@@ -132,6 +135,19 @@ export function AnimeLibraryGrid() {
               </SelectContent>
             </Select>
 
+            <Select value={filters.asset_type} onValueChange={v => handleFilterChange('asset_type', v)}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {ASSET_TYPES.map(t => (
+                  <SelectItem key={t} value={t} className="capitalize">
+                    {t === 'all' ? 'Photos & Vidéos' : t === 'image' ? '📸 Photos' : '🎬 Vidéos'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Button variant="ghost" size="icon" onClick={() => loadImages(true)}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
@@ -151,31 +167,61 @@ export function AnimeLibraryGrid() {
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {images.map(image => (
-                <div key={image.id} className="group relative">
-                  <AspectRatio ratio={9/16} className="bg-muted rounded-lg overflow-hidden">
-                    <img
-                      src={image.image_url}
-                      alt={image.description_en}
-                      className="object-cover w-full h-full transition-transform group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  </AspectRatio>
-                  <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-b-lg">
-                    <div className="flex flex-wrap gap-1">
-                      <Badge variant="secondary" className="text-xs capitalize">
-                        {image.style}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs capitalize bg-black/50">
-                        {image.emotion}
-                      </Badge>
+              {images.map(image => {
+                const isVideo = image.asset_type === 'video' || 
+                  image.video_url?.match(/\.(mp4|webm|mov)$/i) ||
+                  (image.image_url && !image.video_url && image.image_url.match(/\.(mp4|webm|mov)$/i));
+                const videoSrc = image.video_url || (isVideo ? image.image_url : null);
+                const thumbSrc = !isVideo ? image.image_url : null;
+
+                return (
+                  <div key={image.id} className="group relative">
+                    <AspectRatio ratio={9/16} className="bg-muted rounded-lg overflow-hidden">
+                      {isVideo && videoSrc ? (
+                        <video
+                          src={videoSrc}
+                          className="object-cover w-full h-full"
+                          muted
+                          loop
+                          playsInline
+                          preload="metadata"
+                          onMouseEnter={e => (e.target as HTMLVideoElement).play().catch(() => {})}
+                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                        />
+                      ) : (
+                        <img
+                          src={thumbSrc || image.image_url}
+                          alt={image.description_en}
+                          className="object-cover w-full h-full transition-transform group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      )}
+                      {/* Video badge */}
+                      {isVideo && (
+                        <div className="absolute top-2 left-2">
+                          <Badge variant="secondary" className="text-xs bg-black/60 text-white border-0">
+                            <Film className="w-3 h-3 mr-1" />
+                            Vidéo
+                          </Badge>
+                        </div>
+                      )}
+                    </AspectRatio>
+                    <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-b-lg">
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {image.style}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs capitalize bg-black/50">
+                          {image.emotion}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-white/80 mt-1 line-clamp-2">
+                        {image.scene_type} • {image.character_type}
+                      </p>
                     </div>
-                    <p className="text-xs text-white/80 mt-1 line-clamp-2">
-                      {image.scene_type} • {image.character_type}
-                    </p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {images.length < total && (
