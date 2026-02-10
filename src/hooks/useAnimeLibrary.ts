@@ -59,8 +59,14 @@ export function useAnimeLibrary() {
         body: { action: 'get_stats' }
       });
 
-      if (fnError) throw new Error(fnError.message);
-      if (!data?.success) throw new Error(data?.error || 'Failed to fetch stats');
+      if (fnError) {
+        console.warn('Stats edge function error (non-fatal):', fnError);
+        return null;
+      }
+      if (!data?.success) {
+        console.warn('Stats response error:', data?.error);
+        return null;
+      }
 
       setStats(data.stats);
       return data.stats;
@@ -92,8 +98,14 @@ export function useAnimeLibrary() {
         body: { action: 'list_library', ...filters }
       });
 
-      if (fnError) throw new Error(fnError.message);
-      if (!data?.success) throw new Error(data?.error || 'Failed to list images');
+      if (fnError) {
+        console.warn('List edge function error (non-fatal):', fnError);
+        return null;
+      }
+      if (!data?.success) {
+        console.warn('List response error:', data?.error);
+        return null;
+      }
 
       setImages(data.images);
       return { images: data.images, total: data.total };
