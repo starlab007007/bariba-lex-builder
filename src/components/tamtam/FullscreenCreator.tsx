@@ -3434,22 +3434,43 @@ export default function FullscreenCreator({
                   )}
                 </div>
 
-                {/* ===== TEMPLATE BUTTON (replaces Album) ===== */}
-                <button 
-                  onClick={() => {
-                    setTemplateFlowPhase('selecting');
-                    setDrawer('template');
-                  }} 
-                  className="flex flex-col items-center gap-1"
-                >
-                  <div className={cn(
-                    "w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-all",
-                    activeUnifiedTemplate ? "bg-orange-500/30 border-orange-400" : "bg-black/40 border-white/10"
-                  )}>
-                    <Layers className="h-5 w-5" />
-                  </div>
-                  <span className="text-[10px] text-white/80">Template</span>
-                </button>
+                {/* ===== TEMPLATE MINI-CARDS (Griot + Chronicle) ===== */}
+                <div className="flex gap-2">
+                  {/* Griot Animé IA */}
+                  <motion.button
+                    onClick={() => {
+                      if (navigator.vibrate) navigator.vibrate(50);
+                      setShowGriotDigitalMode(true);
+                      setToast('🎭 Griot Animé activé');
+                    }}
+                    animate={{ scale: [1, 1.03, 1] }}
+                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-14 h-20 rounded-xl bg-gradient-to-br from-purple-600/80 to-amber-500/80 backdrop-blur-md border border-white/20 flex flex-col items-center justify-center gap-1 shadow-lg shadow-purple-500/20 relative overflow-hidden"
+                  >
+                    <div className="absolute top-0.5 right-0.5 bg-amber-400 rounded-full px-1 py-0.5">
+                      <span className="text-[6px] font-bold text-black">PRO</span>
+                    </div>
+                    <span className="text-2xl">🎭</span>
+                    <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Griot</span>
+                  </motion.button>
+
+                  {/* Village Chronicle */}
+                  <motion.button
+                    onClick={() => {
+                      if (navigator.vibrate) navigator.vibrate(50);
+                      setShowNewsStudioMode(true);
+                      setToast('📺 Chronicle activé');
+                    }}
+                    animate={{ scale: [1, 1.03, 1] }}
+                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut', delay: 1.5 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-14 h-20 rounded-xl bg-gradient-to-br from-blue-600/80 to-orange-500/80 backdrop-blur-md border border-white/20 flex flex-col items-center justify-center gap-1 shadow-lg shadow-blue-500/20 relative overflow-hidden"
+                  >
+                    <span className="text-2xl">📺</span>
+                    <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Chronicle</span>
+                  </motion.button>
+                </div>
                 
                 {/* Hidden Album input - still accessible */}
                 <input
