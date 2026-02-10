@@ -3047,27 +3047,12 @@ export default function FullscreenCreator({
             )}
           </div>
           
-          {/* ✅ Camera Resolution & Performance Indicator */}
-          {!hasCapture && videoRef.current && (
-            <div className="absolute top-14 right-4 z-40">
-              <CameraResolutionIndicator
-                videoRef={videoRef}
-                performanceTier={performanceInfo?.tier}
-                showQualityPreserved={isKEngineActive}
-              />
-            </div>
-          )}
         </div>
 
         {/* ===== RIGHT RAIL ===== */}
         <div className="absolute right-3 top-24 bottom-48 z-30 flex flex-col items-center justify-start gap-2 overflow-y-auto py-2">
           {!hasCapture && (
             <>
-              <RailButton
-                icon={<RotateCcw className="h-5 w-5" />}
-                label="Switch"
-                onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
-              />
               <RailButton
                 icon={<Timer className="h-5 w-5" />}
                 label={timerSec ? `${timerSec}s` : "Timer"}
@@ -3113,28 +3098,6 @@ export default function FullscreenCreator({
               setSpeed(next as 0.5 | 1 | 2);
               setToast(`Speed ${next}x`);
             }}
-          />
-          <RailButton
-            icon={<ChevronUp className="h-5 w-5" />}
-            label="Magic"
-            onClick={() => setDrawer(drawer === "magic" ? "none" : "magic")}
-            active={drawer === "magic" || effects.arEffects.length > 0}
-          />
-          <RailButton
-            icon={<Layers className="h-5 w-5" />}
-            label="Template"
-            onClick={() => {
-              setTemplateFlowPhase('selecting');
-              setDrawer('template');
-            }}
-            active={activeUnifiedTemplate !== null || effects.templateId !== "free"}
-          />
-          {/* ✅ NEW: Template System V3.0 Button */}
-          <RailButton
-            icon={<Sparkles className="h-5 w-5" />}
-            label="V3"
-            onClick={() => setShowTemplateSelectorV3(true)}
-            active={selectedTemplateV3 !== null}
           />
 
           {hasCapture && (
@@ -3339,7 +3302,7 @@ export default function FullscreenCreator({
         {!hasCapture && (
           <div className="absolute left-1/2 -translate-x-1/2 bottom-[168px] z-20">
             <div className="inline-flex bg-black/50 backdrop-blur-xl rounded-full p-1 border border-white/10">
-              {(["burst", "photo", "video", "text"] as CaptureMode[]).map((m) => (
+              {(["burst", "photo", "video"] as CaptureMode[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
@@ -3348,7 +3311,7 @@ export default function FullscreenCreator({
                     mode === m ? "bg-white text-black" : "text-white/70 hover:text-white"
                   )}
                 >
-                  {m === "burst" ? "Burst" : m === "photo" ? "Photo" : m === "video" ? "Vidéo" : "Texte"}
+                  {m === "burst" ? "Burst" : m === "photo" ? "Photo" : "Vidéo"}
                 </button>
               ))}
             </div>
