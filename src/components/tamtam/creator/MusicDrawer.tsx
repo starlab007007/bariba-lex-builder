@@ -22,6 +22,7 @@ import {
 import { AIMusicGenerationService, MusicGenerationProgress, GeneratedMusicTrack } from "@/services/AIMusicGenerationService";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import MusicTrimmer from "./MusicTrimmer";
 import { 
   MUSIC_LIBRARY, 
   MUSIC_CATEGORIES, 
@@ -82,6 +83,11 @@ export default function MusicDrawer({
   const [fadeIn, setFadeIn] = useState(selectedMusic?.fadeIn ?? true);
   const [fadeOut, setFadeOut] = useState(selectedMusic?.fadeOut ?? true);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Trim editor state
+  const [editingTrack, setEditingTrack] = useState<MusicTrack | null>(null);
+  const [trimOffset, setTrimOffset] = useState(0);
+  const [trimDuration, setTrimDuration] = useState(videoDuration);
   
   // AI Generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -171,17 +177,30 @@ export default function MusicDrawer({
     }
   }, [isOpen]);
 
-  // Select track
+  // Open trim editor instead of direct select
   const selectTrack = (track: MusicTrack) => {
+    // Stop any playing audio
+    audioRef.current?.pause();
+    setPlayingTrackId(null);
+    // Open trimmer
+    setTrimOffset(0);
+    setTrimDuration(Math.min(track.duration, videoDuration));
+    setEditingTrack(track);
+  };
+
+  // Confirm trim selection
+  const confirmTrim = () => {
+    if (!editingTrack) return;
     const music: SelectedMusic = {
-      track,
+      track: editingTrack,
       volume,
       fadeIn,
       fadeOut,
-      startOffset: 0,
-      trimmedDuration: Math.min(track.duration, videoDuration),
+      startOffset: trimOffset,
+      trimmedDuration: trimDuration,
     };
     onSelectMusic(music);
+    setEditingTrack(null);
   };
 
   // Handle custom upload
@@ -289,6 +308,25 @@ export default function MusicDrawer({
     >
       {/* Hidden audio element */}
       <audio ref={audioRef} onEnded={() => setPlayingTrackId(null)} />
+
+      {/* Trim Editor Overlay */}
+      <AnimatePresence>
+        {editingTrack && (
+          <MusicTrimmer
+            audioUrl={editingTrack.url || ''}
+            trackName={editingTrack.name}
+            totalDuration={editingTrack.duration}
+            clipDuration={videoDuration}
+            startOffset={trimOffset}
+            onTrimChange={(offset, dur) => {
+              setTrimOffset(offset);
+              setTrimDuration(dur);
+            }}
+            onConfirm={confirmTrim}
+            onBack={() => setEditingTrack(null)}
+          />
+        )}
+      </AnimatePresence>
       
       {/* Hidden file input */}
       <input
