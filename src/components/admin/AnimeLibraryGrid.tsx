@@ -47,15 +47,20 @@ export function AnimeLibraryGrid() {
         body: params
       });
 
-      if (error) throw error;
+      if (error) {
+        console.warn('Edge function error (non-fatal):', error);
+        return;
+      }
+
+      const imgList = Array.isArray(data?.images) ? data.images : [];
 
       if (resetOffset) {
-        setImages(data.images || []);
+        setImages(imgList);
         setOffset(0);
       } else {
-        setImages(prev => [...prev, ...(data.images || [])]);
+        setImages(prev => [...prev, ...imgList]);
       }
-      setTotal(data.total || 0);
+      setTotal(typeof data?.total === 'number' ? data.total : 0);
     } catch (err) {
       console.error('Failed to load images:', err);
     } finally {
