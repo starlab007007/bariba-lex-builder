@@ -31,9 +31,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Check admin role when session changes
         if (session?.user) {
-          setTimeout(() => {
-            checkAdminRole(session.user.id);
-          }, 0);
+          // Only re-check admin role on SIGNED_IN, not on TOKEN_REFRESHED
+          // to avoid flickering isAdmin during uploads / background refreshes
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            setTimeout(() => {
+              checkAdminRole(session.user.id);
+            }, 0);
+          }
         } else {
           setIsAdmin(false);
         }
@@ -64,14 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('Error checking admin role:', error);
-        setIsAdmin(false);
+        // Don't reset isAdmin on transient errors — keep current value
         return;
       }
 
       setIsAdmin(!!data);
     } catch (error) {
       console.error('Error checking admin role:', error);
-      setIsAdmin(false);
+      // Don't reset isAdmin on transient errors — keep current value
     }
   };
 
