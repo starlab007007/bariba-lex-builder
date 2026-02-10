@@ -201,7 +201,7 @@ export function MusicUploadForm() {
       };
 
       const { error: insertError } = await supabase
-        .from('music_library_tracks' as any)
+        .from('music_library_tracks')
         .insert({
           title,
           artist: artist || 'TAM-TAM',
@@ -217,29 +217,33 @@ export function MusicUploadForm() {
 
       if (insertError) throw insertError;
 
-      // Record in asset_imports with full AI metadata
-      await supabase
-        .from('asset_imports' as any)
-        .insert({
-          category: 'music',
-          original_name: file.name,
-          target_name: fileName,
-          file_size: file.size,
-          mime_type: file.type,
-          storage_path: storagePath,
-          public_url: urlData.publicUrl,
-          status: 'completed',
-          original_format: ext,
-          ai_metadata: aiMetadata,
-          ai_analysis_status: aiFields.size > 0 ? 'completed' : 'skipped',
-          ai_confidence: aiFields.size > 0 ? (aiFields.size / 6) : null,
-        });
+      // Record in asset_imports (non-blocking)
+      try {
+        await supabase
+          .from('asset_imports')
+          .insert({
+            category: 'music',
+            original_name: file.name,
+            target_name: fileName,
+            file_size: file.size,
+            mime_type: file.type,
+            storage_path: storagePath,
+            public_url: urlData.publicUrl,
+            status: 'completed',
+            original_format: ext,
+            ai_metadata: aiMetadata,
+            ai_analysis_status: aiFields.size > 0 ? 'completed' : 'skipped',
+            ai_confidence: aiFields.size > 0 ? (aiFields.size / 6) : null,
+          });
+      } catch (importErr) {
+        console.warn('asset_imports record failed (non-fatal):', importErr);
+      }
 
       toast({ title: '🎵 Musique ajoutée !', description: `"${title}" est maintenant dans la bibliothèque.` });
       resetForm();
     } catch (error: any) {
       console.error('Music upload error:', error);
-      toast({ title: 'Erreur', description: error.message || "Échec de l'upload", variant: 'destructive' });
+      toast({ title: 'Erreur', description: error?.message || "Échec de l'upload", variant: 'destructive' });
     } finally {
       setUploading(false);
     }

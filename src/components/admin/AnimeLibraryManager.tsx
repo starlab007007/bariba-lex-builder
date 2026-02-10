@@ -3,7 +3,7 @@
  * Admin interface for managing pre-generated anime illustrations, videos, and music
  */
 
-import { useEffect } from 'react';
+import { useEffect, Component, type ReactNode } from 'react';
 import { useAnimeLibrary } from '@/hooks/useAnimeLibrary';
 import { AnimeLibraryStats } from './AnimeLibraryStats';
 import { AnimeLibraryControls } from './AnimeLibraryControls';
@@ -12,7 +12,39 @@ import { AssetUploadForm } from './AssetUploadForm';
 import { MusicUploadForm } from './MusicUploadForm';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RefreshCw, BookImage, Image, Music2, Upload } from 'lucide-react';
+import { RefreshCw, BookImage, Image, Music2, Upload, AlertTriangle } from 'lucide-react';
+
+/** Error boundary to prevent white page crashes */
+class LibraryErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('AnimeLibrary crash:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-center space-y-4">
+          <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
+          <p className="font-semibold">Une erreur est survenue</p>
+          <p className="text-sm text-muted-foreground">{this.state.error?.message}</p>
+          <Button variant="outline" onClick={() => this.setState({ hasError: false, error: null })}>
+            Réessayer
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export function AnimeLibraryManager() {
   const { stats, loading, error, fetchStats } = useAnimeLibrary();
@@ -22,6 +54,7 @@ export function AnimeLibraryManager() {
   }, [fetchStats]);
 
   return (
+    <LibraryErrorBoundary>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -122,5 +155,6 @@ export function AnimeLibraryManager() {
         </TabsContent>
       </Tabs>
     </div>
+    </LibraryErrorBoundary>
   );
 }
