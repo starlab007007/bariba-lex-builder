@@ -9,6 +9,9 @@ import {
   TemplateSegment,
   EffectType
 } from '../types/KuaishouTypes';
+import { TikTokLookPipeline, type PipelineSettings, type QualityPreset, DEFAULT_SETTINGS } from '../lib/TikTokLookPipeline';
+import { FaceDetectionService } from '../lib/FaceDetectionService';
+import { WebCodecsEncoder } from '../lib/WebCodecsEncoder';
 
 export class CaptureEngine {
   private camera: MediaStream | null = null;
@@ -21,6 +24,13 @@ export class CaptureEngine {
   private realtimeEffects: Set<string> = new Set();
   private animationFrame: number = 0;
   private flashEnabled: boolean = false;
+
+  // TikTok Look Pipeline (WebGL GPU-accelerated beauty/color)
+  private glPipeline: TikTokLookPipeline | null = null;
+  private glCanvas: HTMLCanvasElement | null = null;
+  private faceService: FaceDetectionService | null = null;
+  private encoder: WebCodecsEncoder | null = null;
+  private pipelineActive: boolean = false;
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -119,6 +129,66 @@ export class CaptureEngine {
   }
 
   // ==========================================
+  // TIKTOK LOOK PIPELINE (WebGL)
+  // ==========================================
+
+  async initializeTikTokPipeline(settings?: Partial<PipelineSettings>): Promise<boolean> {
+    try {
+      this.glCanvas = document.createElement('canvas');
+      this.glCanvas.width = this.canvas.width;
+      this.glCanvas.height = this.canvas.height;
+
+      this.glPipeline = new TikTokLookPipeline(this.glCanvas, settings);
+      const success = await this.glPipeline.initialize();
+
+      if (!success) {
+        console.warn('⚠️ WebGL pipeline unavailable, using CPU fallback');
+        this.glPipeline = null;
+        this.glCanvas = null;
+        return false;
+      }
+
+      this.faceService = new FaceDetectionService(
+        Math.round(this.canvas.width / 2),
+        Math.round(this.canvas.height / 2),
+        2
+      );
+      await this.faceService.initialize();
+      this.encoder = new WebCodecsEncoder();
+      this.pipelineActive = true;
+      console.log('✅ TikTok Look pipeline initialized');
+      return true;
+    } catch (err) {
+      console.error('❌ TikTok pipeline init failed:', err);
+      return false;
+    }
+  }
+
+  updatePipelineSettings(settings: Partial<PipelineSettings>): void {
+    this.glPipeline?.updateSettings(settings);
+  }
+
+  getPipelineSettings(): PipelineSettings | null {
+    return this.glPipeline?.getSettings() || null;
+  }
+
+  isPipelineActive(): boolean {
+    return this.pipelineActive;
+  }
+
+  setPipelineShowRaw(raw: boolean): void {
+    this.glPipeline?.setShowRaw(raw);
+  }
+
+  getGLCanvas(): HTMLCanvasElement | null {
+    return this.glCanvas;
+  }
+
+  getPipelineStats() {
+    return this.glPipeline?.getPerformanceStats() || { fps: 0, frameTimeMs: 0, gpuLoad: 'low' as const };
+  }
+
+  // ==========================================
   // PREVIEW TEMPS RÉEL
   // ==========================================
 
@@ -126,11 +196,17 @@ export class CaptureEngine {
     const renderLoop = () => {
       if (!this.camera) return;
 
-      // Dessiner frame vidéo
-      this.ctx.drawImage(this.videoElement, 0, 0, this.canvas.width, this.canvas.height);
-
-      // Appliquer effets temps réel
-      this.applyRealtimeEffects();
+      if (this.pipelineActive && this.glPipeline) {
+        // GPU path: WebGL shader pipeline
+        const mask = this.faceService?.getMaskCanvas() || null;
+        this.faceService?.detect(this.videoElement);
+        this.glPipeline.processFrame(this.videoElement, mask);
+        this.ctx.drawImage(this.glCanvas!, 0, 0, this.canvas.width, this.canvas.height);
+      } else {
+        // CPU fallback
+        this.ctx.drawImage(this.videoElement, 0, 0, this.canvas.width, this.canvas.height);
+        this.applyRealtimeEffects();
+      }
 
       this.animationFrame = requestAnimationFrame(renderLoop);
     };
@@ -140,74 +216,38 @@ export class CaptureEngine {
 
   private applyRealtimeEffects(): void {
     if (this.realtimeEffects.has('beauty')) {
-      this.applyBeautyFilter();
+      this.applyBeautyFilterCPU();
     }
-
-    if (this.realtimeEffects.has('stabilization')) {
-      // Stabilisation appliquée via gyroscope ou buffer
-      this.applyStabilization();
-    }
-
     if (this.realtimeEffects.has('hdr')) {
-      this.applyHDRLike();
+      this.applyHDRLikeCPU();
     }
   }
 
-  private applyBeautyFilter(): void {
+  private applyBeautyFilterCPU(): void {
     const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
     const data = imageData.data;
-
-    // Beauty filter simple (skin smoothing)
     for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-
-      // Détection peau approximative
+      const r = data[i], g = data[i + 1], b = data[i + 2];
       if (r > 95 && g > 40 && b > 20 && r > g && r > b) {
-        const smoothFactor = 0.2;
-        data[i] = r + (128 - r) * smoothFactor;
-        data[i + 1] = g + (128 - g) * smoothFactor;
-        data[i + 2] = b + (128 - b) * smoothFactor;
+        data[i] = r + (128 - r) * 0.2;
+        data[i + 1] = g + (128 - g) * 0.2;
+        data[i + 2] = b + (128 - b) * 0.2;
       }
     }
-
     this.ctx.putImageData(imageData, 0, 0);
   }
 
-  private applyStabilization(): void {
-    // Stabilisation simplifiée
-    // En production, utiliser gyroscope data ou optical flow
-  }
-
-  private applyHDRLike(): void {
+  private applyHDRLikeCPU(): void {
     const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
     const data = imageData.data;
-
     for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-
-      const avg = (r + g + b) / 3;
-
-      // Ajuster highlights et shadows
-      if (avg > 180) {
-        data[i] *= 0.95;
-        data[i + 1] *= 0.95;
-        data[i + 2] *= 0.95;
-      } else if (avg < 75) {
-        data[i] *= 1.2;
-        data[i + 1] *= 1.2;
-        data[i + 2] *= 1.2;
-      }
-
-      // Clamp
+      const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      if (avg > 180) { data[i] *= 0.95; data[i + 1] *= 0.95; data[i + 2] *= 0.95; }
+      else if (avg < 75) { data[i] *= 1.2; data[i + 1] *= 1.2; data[i + 2] *= 1.2; }
       data[i] = Math.min(255, data[i]);
       data[i + 1] = Math.min(255, data[i + 1]);
       data[i + 2] = Math.min(255, data[i + 2]);
     }
-
     this.ctx.putImageData(imageData, 0, 0);
   }
 
@@ -523,6 +563,16 @@ export class CaptureEngine {
     if (this.recorder && this.isRecording) {
       this.recorder.stop();
     }
+
+    // Clean up TikTok pipeline
+    this.glPipeline?.destroy();
+    this.faceService?.destroy();
+    this.encoder?.destroy();
+    this.glPipeline = null;
+    this.faceService = null;
+    this.encoder = null;
+    this.glCanvas = null;
+    this.pipelineActive = false;
 
     this.videoElement.srcObject = null;
   }
