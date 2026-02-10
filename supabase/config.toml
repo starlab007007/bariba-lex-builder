@@ -98,3 +98,6 @@ verify_jwt = false
 
 [functions.analyze-asset]
 verify_jwt = false
+
+[functions.video-enhance]
+verify_jwt = false
