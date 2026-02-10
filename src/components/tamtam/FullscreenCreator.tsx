@@ -6,6 +6,8 @@
 // ✅ NATIVE TEMPLATE INTEGRATION: Templates overlay on camera without page navigation
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useTikTokLook } from "@/hooks/useTikTokLook";
+import { BeautyControlsPanel } from "@/components/tamtam/BeautyControlsPanel";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatePresence, motion } from "framer-motion";
@@ -465,6 +467,9 @@ export default function FullscreenCreator({
   const updateEffects = useCallback((updates: Partial<CaptureEffects>) => {
     setEffects((prev) => ({ ...prev, ...updates }));
   }, []);
+
+  // TikTok Look Pipeline
+  const tikTokLook = useTikTokLook();
 
   const selectedTemplate = useMemo(() => getTemplateById(effects.templateId), [effects.templateId]);
 
@@ -3568,34 +3573,17 @@ export default function FullscreenCreator({
         {/* ===== DRAWERS ===== */}
         <AnimatePresence>
           {drawer === "beautify" && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[120] bg-black/50 backdrop-blur-sm"
-              onClick={() => setDrawer("none")}
-            >
-              <motion.div
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="absolute left-0 right-0 bottom-0 rounded-t-[28px] bg-[#0b0b0e] border-t border-white/10 p-4 max-h-[60vh] overflow-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-                <div className="font-semibold mb-4 flex items-center gap-2">
-                  <SunMedium className="h-5 w-5" /> Beautify & Filtres
-                </div>
-                <VideoFiltersInlinePanel
-                  selectedId={effects.filterId}
-                  onSelect={(id) => updateEffects({ filterId: id })}
-                  showIntensity
-                  intensity={effects.filterIntensity}
-                  onIntensityChange={(v) => updateEffects({ filterIntensity: v })}
-                />
-              </motion.div>
-            </motion.div>
+            <BeautyControlsPanel
+              isOpen={true}
+              onClose={() => setDrawer("none")}
+              settings={tikTokLook.settings}
+              onUpdateSettings={tikTokLook.updateSettings}
+              stats={tikTokLook.stats}
+              onShowRaw={tikTokLook.setShowRaw}
+              showingRaw={tikTokLook.showingRaw}
+              pipelineActive={tikTokLook.initialized}
+              devMode={false}
+            />
           )}
         </AnimatePresence>
 
