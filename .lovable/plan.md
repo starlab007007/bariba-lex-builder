@@ -1,56 +1,94 @@
 
-# Adaptation des couleurs de la page Traducteur
+# Remplacement du bouton "Template" par des mini-cartes visuelles animees
 
 ## Objectif
+Remplacer le bouton unique "Template" (icone Layers) dans la vue camera par **deux mini-cartes visuelles** representant chaque template actif (Griot Anime IA et Village Chronicle). Chaque carte sera cliquable et activera directement le template correspondant.
 
-Passer la page `/fitila/translator` d'un theme sombre (fond noir, texte blanc) a un theme clair correspondant a la capture jointe, sans modifier la structure ni les fonctionnalites.
+## Design Vision
 
-## Changements de couleurs
+La zone actuelle du bouton Template sera transformee en un **carrousel horizontal compact** avec deux cartes miniatures premium:
 
-Le fichier concerne est uniquement `src/pages/tamtam/TamTamTranslator.tsx`.
+- **Cartes 56x80px** avec coins arrondis (12px) et bordure luminescente
+- **Arriere-plan gradient unique** par template (violet/or pour Griot, bleu/orange pour Chronicle)
+- **Emoji large** au centre comme identifiant visuel (🎭 et 📺)
+- **Nom court** en bas (10px, blanc)
+- **Animation idle**: leger effet de "breathing" (scale pulse) pour attirer l'attention
+- **Animation au tap**: scale bounce + haptic feedback
+- **Badge "PRO"** dore en haut a droite pour Griot
+- **Glassmorphism** avec backdrop-blur pour s'integrer au-dessus de la camera
 
-### Correspondances de couleurs
+## Comportement
+- Cliquer sur "Griot Anime IA" -> active directement le mode Griot Studio
+- Cliquer sur "Village Chronicle" -> active directement le mode News Studio
+- Pas de passage par la gallery intermediaire (acces direct)
 
-```text
-ACTUEL (sombre)                    CIBLE (clair)
---------------------------------------------
-kuaishou-bg (fond page)         -> bg-gray-50 / bg-background
-text-white                      -> text-gray-900
-text-white/60                   -> text-gray-500
-text-white/40                   -> text-gray-400
-text-white/50                   -> text-gray-400
-bg-white/5, bg-white/10         -> bg-white, bg-gray-100
-border-white/10                 -> border-gray-200
-bg-[#14141C]/95 (barre input)   -> bg-white/95 border-gray-200
-kuaishou-card                   -> bg-white border-gray-200
-bg-orange-500/20                -> bg-orange-50
-text-orange-300                 -> text-orange-600
-bg-blue-500/20                  -> bg-blue-50
-text-blue-300                   -> text-blue-600
-bg-green-500/20                 -> bg-green-50
-text-green-400                  -> text-green-600
-bg-purple-500/20                -> bg-purple-50
-text-purple-400                 -> text-purple-600
-placeholder:text-white/40       -> placeholder:text-gray-400
-bg-white/10 hover states        -> bg-gray-100 hover states
+## Modifications techniques
+
+### Fichier: `src/components/tamtam/FullscreenCreator.tsx`
+
+**1. Remplacer le bloc Template Button (lignes ~3437-3452)**
+
+L'ancien code:
+```tsx
+<button onClick={() => { setTemplateFlowPhase('selecting'); setDrawer('template'); }}>
+  <div className="w-12 h-12 rounded-full ...">
+    <Layers className="h-5 w-5" />
+  </div>
+  <span>Template</span>
+</button>
 ```
 
-### Zones impactees dans le fichier
+Sera remplace par un composant inline avec deux mini-cartes:
+```tsx
+<div className="flex gap-2">
+  {/* Griot Anime IA */}
+  <motion.button
+    onClick={() => {
+      if (navigator.vibrate) navigator.vibrate(50);
+      setShowGriotDigitalMode(true);
+      setToast('🎭 Griot Anime active');
+    }}
+    animate={{ scale: [1, 1.03, 1] }}
+    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+    whileTap={{ scale: 0.9 }}
+    className="w-14 h-20 rounded-xl bg-gradient-to-br from-purple-600/80 to-amber-500/80 
+               backdrop-blur-md border border-white/20 flex flex-col items-center justify-center 
+               gap-1 shadow-lg shadow-purple-500/20 relative overflow-hidden"
+  >
+    <div className="absolute top-0.5 right-0.5 bg-amber-400 rounded-full px-1 py-0.5">
+      <span className="text-[6px] font-bold text-black">PRO</span>
+    </div>
+    <span className="text-2xl">🎭</span>
+    <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">
+      Griot
+    </span>
+  </motion.button>
 
-1. **LanguageBadge** (ligne ~244) : badges langue avec fond et texte
-2. **HistoryPanel** (ligne ~258) : panneau lateral historique (fond, bordures, texte)
-3. **HistoryCard** (ligne ~334) : cartes historique
-4. **Sub-header** (ligne ~385) : barre langues et toggles
-5. **Zone chat / messages** (ligne ~452) : messages, bulles, welcome
-6. **Processing indicator** (ligne ~569) : indicateur de chargement
-7. **Input Area** (ligne ~619) : barre de saisie en bas (fond, textarea, boutons de mode)
+  {/* Village Chronicle */}
+  <motion.button
+    onClick={() => {
+      if (navigator.vibrate) navigator.vibrate(50);
+      setShowNewsStudioMode(true);
+      setToast('📺 Chronicle active');
+    }}
+    animate={{ scale: [1, 1.03, 1] }}
+    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut', delay: 1.5 }}
+    whileTap={{ scale: 0.9 }}
+    className="w-14 h-20 rounded-xl bg-gradient-to-br from-blue-600/80 to-orange-500/80 
+               backdrop-blur-md border border-white/20 flex flex-col items-center justify-center 
+               gap-1 shadow-lg shadow-blue-500/20 relative overflow-hidden"
+  >
+    <span className="text-2xl">📺</span>
+    <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">
+      Chronicle
+    </span>
+  </motion.button>
+</div>
+```
 
-### Details techniques
+**2. Ajuster l'alignement du bottom bar**
 
-- Remplacer toutes les classes `text-white` par `text-gray-900` (texte principal) ou `text-gray-500` (texte secondaire)
-- Remplacer `border-white/10` par `border-gray-200`
-- Remplacer `bg-white/5` et `bg-white/10` par `bg-white` ou `bg-gray-100`
-- Remplacer `bg-[#14141C]/95` par `bg-white/95`
-- Remplacer les classes `kuaishou-bg`, `kuaishou-card`, `kuaishou-header` par des classes Tailwind claires equivalentes
-- Conserver les couleurs d'accent orange (boutons primaires, gradients) telles quelles
-- Ajuster les etats hover pour un contexte clair (`hover:bg-gray-100` au lieu de `hover:bg-white/10`)
+Le conteneur `flex items-center justify-center gap-8` devra potentiellement etre ajuste (gap reduit) pour accommoder les deux cartes a la place du bouton unique, tout en gardant le bouton de capture central proéminent.
+
+### Aucun nouveau fichier requis
+Le changement est localise dans un seul fichier. Les deux templates sont deja importees et les handlers (`setShowGriotDigitalMode`, `setShowNewsStudioMode`) existent deja dans le composant.
