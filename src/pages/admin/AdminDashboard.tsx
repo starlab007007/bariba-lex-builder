@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Component, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminOverview from '@/components/admin/AdminOverview';
 import DictionaryManager from '@/components/admin/DictionaryManager';
@@ -22,17 +22,85 @@ import {
   FileText, Globe, 
   BookOpen, 
   Sparkles, Shield, 
-  Activity, Download, Edit3, Volume2, Film, BookImage
+  Activity, Download, Edit3, Volume2, Film, BookImage,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+
+/** Global error boundary for the entire admin dashboard */
+class AdminErrorBoundary extends Component<
+  { children: ReactNode; onReset?: () => void },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode; onReset?: () => void }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('AdminDashboard crash:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-center space-y-4 p-8 max-w-md">
+            <AlertTriangle className="h-12 w-12 mx-auto text-destructive" />
+            <h2 className="text-xl font-semibold">Erreur dans le tableau de bord</h2>
+            <p className="text-sm text-muted-foreground">{this.state.error?.message}</p>
+            <Button variant="outline" onClick={() => { this.setState({ hasError: false, error: null }); this.props.onReset?.(); }}>
+              Réessayer
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/** Error boundary wrapper for individual tab content */
+class TabErrorBoundary extends Component<
+  { children: ReactNode; tabName: string },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode; tabName: string }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error(`Tab "${this.props.tabName}" crash:`, error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-center space-y-4">
+          <AlertTriangle className="h-10 w-10 mx-auto text-destructive" />
+          <p className="font-semibold">Erreur dans cet onglet</p>
+          <p className="text-sm text-muted-foreground">{this.state.error?.message}</p>
+          <Button variant="outline" onClick={() => this.setState({ hasError: false, error: null })}>
+            Réessayer
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   return (
+    <AdminErrorBoundary>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -162,35 +230,38 @@ export default function AdminDashboard() {
             </TabsList>
           </div>
 
-          {/* Tab Contents */}
-          <TabsContent value="overview"><AdminOverview /></TabsContent>
+          {/* Tab Contents - each wrapped in error boundary */}
+          <TabsContent value="overview"><TabErrorBoundary tabName="overview"><AdminOverview /></TabErrorBoundary></TabsContent>
           <TabsContent value="model-health">
-            <div className="space-y-6">
-              <ModelHealthDashboard />
-              <ByT5SpaceConfig />
-            </div>
+            <TabErrorBoundary tabName="model-health">
+              <div className="space-y-6">
+                <ModelHealthDashboard />
+                <ByT5SpaceConfig />
+              </div>
+            </TabErrorBoundary>
           </TabsContent>
-          <TabsContent value="audio-services"><AudioServicesMonitor /></TabsContent>
-          <TabsContent value="dictionary"><DictionaryManager /></TabsContent>
-          <TabsContent value="dictionary-advanced"><AdvancedDictionaryManager /></TabsContent>
-          <TabsContent value="idioms"><IdiomManager /></TabsContent>
+          <TabsContent value="audio-services"><TabErrorBoundary tabName="audio-services"><AudioServicesMonitor /></TabErrorBoundary></TabsContent>
+          <TabsContent value="dictionary"><TabErrorBoundary tabName="dictionary"><DictionaryManager /></TabErrorBoundary></TabsContent>
+          <TabsContent value="dictionary-advanced"><TabErrorBoundary tabName="dictionary-advanced"><AdvancedDictionaryManager /></TabErrorBoundary></TabsContent>
+          <TabsContent value="idioms"><TabErrorBoundary tabName="idioms"><IdiomManager /></TabErrorBoundary></TabsContent>
           
-          <TabsContent value="quality"><QualityMetricsDashboard /></TabsContent>
-          <TabsContent value="diagnostic"><TranslationDiagnosticDashboard /></TabsContent>
+          <TabsContent value="quality"><TabErrorBoundary tabName="quality"><QualityMetricsDashboard /></TabErrorBoundary></TabsContent>
+          <TabsContent value="diagnostic"><TabErrorBoundary tabName="diagnostic"><TranslationDiagnosticDashboard /></TabErrorBoundary></TabsContent>
           
-          <TabsContent value="analytics"><AnalyticsDashboard /></TabsContent>
+          <TabsContent value="analytics"><TabErrorBoundary tabName="analytics"><AnalyticsDashboard /></TabErrorBoundary></TabsContent>
           
-          <TabsContent value="templates-ia"><TemplateGenerationAdmin /></TabsContent>
-          <TabsContent value="anime-library"><AnimeLibraryManager /></TabsContent>
+          <TabsContent value="templates-ia"><TabErrorBoundary tabName="templates-ia"><TemplateGenerationAdmin /></TabErrorBoundary></TabsContent>
+          <TabsContent value="anime-library"><TabErrorBoundary tabName="anime-library"><AnimeLibraryManager /></TabErrorBoundary></TabsContent>
           
-          <TabsContent value="grammar-stats"><GrammaticalStatsDashboard /></TabsContent>
-          <TabsContent value="bulk-edit"><BulkEditPanel /></TabsContent>
-          <TabsContent value="export"><DictionaryExporter /></TabsContent>
+          <TabsContent value="grammar-stats"><TabErrorBoundary tabName="grammar-stats"><GrammaticalStatsDashboard /></TabErrorBoundary></TabsContent>
+          <TabsContent value="bulk-edit"><TabErrorBoundary tabName="bulk-edit"><BulkEditPanel /></TabErrorBoundary></TabsContent>
+          <TabsContent value="export"><TabErrorBoundary tabName="export"><DictionaryExporter /></TabErrorBoundary></TabsContent>
           
-          <TabsContent value="users"><UserRoleManager /></TabsContent>
-          <TabsContent value="settings"><AdminSettings /></TabsContent>
+          <TabsContent value="users"><TabErrorBoundary tabName="users"><UserRoleManager /></TabErrorBoundary></TabsContent>
+          <TabsContent value="settings"><TabErrorBoundary tabName="settings"><AdminSettings /></TabErrorBoundary></TabsContent>
         </Tabs>
       </div>
     </div>
+    </AdminErrorBoundary>
   );
 }
