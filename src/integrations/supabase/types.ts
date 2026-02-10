@@ -2665,6 +2665,39 @@ export type Database = {
         }
         Relationships: []
       }
+      video_processing_jobs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          renditions: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          renditions?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          renditions?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
       videos: {
         Row: {
           created_at: string | null
