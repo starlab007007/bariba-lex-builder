@@ -1,12 +1,13 @@
 /**
  * AssetGridItem — Single asset card (photo or video) for the gallery grid.
- * Videos auto-play muted on hover/tap.
+ * Optimized: skeleton placeholder, fade-in, IntersectionObserver lazy video, GPU-accelerated hover.
  */
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Play } from 'lucide-react';
+import { Play, Film } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { LibraryAsset } from '../AssetGallery';
 
 interface AssetGridItemProps {
@@ -19,8 +20,23 @@ interface AssetGridItemProps {
 
 export function AssetGridItem({ asset, isSelected, selectionIndex, onToggle, disabled }: AssetGridItemProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const isVideo = asset.asset_type === 'video' && asset.video_url;
+
+  // IntersectionObserver for lazy mounting of videos
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const handleMouseEnter = useCallback(() => {
     setIsHovering(true);
@@ -39,10 +55,11 @@ export function AssetGridItem({ asset, isSelected, selectionIndex, onToggle, dis
 
   return (
     <motion.button
-      layout
-      initial={{ opacity: 0, scale: 0.9 }}
+      ref={containerRef as any}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
       onClick={() => onToggle(asset)}
       disabled={disabled}
       onMouseEnter={handleMouseEnter}
@@ -51,27 +68,57 @@ export function AssetGridItem({ asset, isSelected, selectionIndex, onToggle, dis
       onTouchEnd={handleMouseLeave}
       className={cn(
         'relative aspect-[9/16] rounded-xl overflow-hidden border-2 transition-all',
+        'will-change-transform',
         isSelected
           ? 'border-amber-400 ring-2 ring-amber-400/30 shadow-lg shadow-amber-500/20'
           : 'border-transparent hover:border-amber-500/30',
         disabled && 'opacity-50 pointer-events-none'
       )}
     >
+      {/* Skeleton placeholder while loading */}
+      {!imageLoaded && (
+        <div className="absolute inset-0 z-10">
+          <Skeleton className="w-full h-full rounded-xl bg-amber-900/30" />
+          {isVideo && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Film className="w-6 h-6 text-amber-200/30" />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Thumbnail: video or image */}
       {isVideo ? (
         <>
-          <video
-            ref={videoRef}
-            src={asset.video_url!}
-            poster={asset.image_url}
-            muted
-            loop
-            playsInline
-            preload="none"
-            className="w-full h-full object-cover"
-          />
+          {isVisible ? (
+            <video
+              ref={videoRef}
+              src={asset.video_url!}
+              poster={asset.image_url}
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              onLoadedData={() => setImageLoaded(true)}
+              className={cn(
+                'w-full h-full object-cover transition-opacity duration-300',
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              )}
+            />
+          ) : (
+            // Poster image as fallback when not visible
+            <img
+              src={asset.image_url}
+              alt=""
+              onLoad={() => setImageLoaded(true)}
+              className={cn(
+                'w-full h-full object-cover transition-opacity duration-300',
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              )}
+            />
+          )}
           {/* Play icon overlay when not hovering */}
-          {!isHovering && (
+          {!isHovering && imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
                 <Play className="w-4 h-4 text-white ml-0.5" />
@@ -84,7 +131,11 @@ export function AssetGridItem({ asset, isSelected, selectionIndex, onToggle, dis
           src={asset.image_url}
           alt={asset.description_fr || asset.description_en}
           loading="lazy"
-          className="w-full h-full object-cover"
+          onLoad={() => setImageLoaded(true)}
+          className={cn(
+            'w-full h-full object-cover transition-opacity duration-300',
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          )}
         />
       )}
 

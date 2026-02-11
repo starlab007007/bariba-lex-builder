@@ -1,22 +1,140 @@
 /**
  * Anime Library Grid Component
- * Displays generated images with filters
+ * Displays generated images/videos with filters.
+ * Optimized: lazy video via IntersectionObserver, skeleton placeholders, max 2 simultaneous playbacks.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Skeleton } from '@/components/ui/skeleton';
 import { LibraryImage } from '@/hooks/useAnimeLibrary';
-import { Loader2, Filter, Grid3X3, RefreshCw, Image, Film } from 'lucide-react';
+import { Loader2, Filter, Grid3X3, RefreshCw, Film } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 const STYLES = ['all', 'african', 'fantasy', 'manga', 'chibi'];
 const EMOTIONS = ['all', 'joy', 'sadness', 'wonder', 'fear', 'excitement', 'peace', 'tension'];
 const SCENES = ['all', 'village', 'forest', 'river', 'mountain', 'market', 'home', 'night', 'journey', 'gathering', 'spirit'];
 const ASSET_TYPES = ['all', 'image', 'video'];
+
+// Track playing videos globally to limit simultaneous playback
+const playingVideos = new Set<HTMLVideoElement>();
+const MAX_PLAYING = 2;
+
+function pauseOldest() {
+  if (playingVideos.size <= MAX_PLAYING) return;
+  const oldest = playingVideos.values().next().value;
+  if (oldest) {
+    oldest.pause();
+    playingVideos.delete(oldest);
+  }
+}
+
+/** Lazy-loaded video with IntersectionObserver */
+function LazyVideo({ src, poster, className }: { src: string; poster?: string; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        setVisible(entry.isIntersecting);
+        // Pause + free memory when off-screen
+        if (!entry.isIntersecting && videoRef.current) {
+          videoRef.current.pause();
+          playingVideos.delete(videoRef.current);
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    playingVideos.add(v);
+    pauseOldest();
+    v.play().catch(() => {});
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    v.currentTime = 0;
+    playingVideos.delete(v);
+  }, []);
+
+  return (
+    <div ref={ref} className={cn('relative w-full h-full', className)}>
+      {/* Skeleton until loaded */}
+      {!loaded && (
+        <div className="absolute inset-0 z-10">
+          <Skeleton className="w-full h-full bg-muted" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Film className="w-6 h-6 text-muted-foreground/40" />
+          </div>
+        </div>
+      )}
+      {visible ? (
+        <video
+          ref={videoRef}
+          src={src}
+          poster={poster || undefined}
+          className={cn(
+            'object-cover w-full h-full transition-opacity duration-300',
+            loaded ? 'opacity-100' : 'opacity-0'
+          )}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          onLoadedData={() => setLoaded(true)}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        />
+      ) : poster ? (
+        <img
+          src={poster}
+          alt=""
+          className={cn('object-cover w-full h-full transition-opacity duration-300', loaded ? 'opacity-100' : 'opacity-0')}
+          onLoad={() => setLoaded(true)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** Lazy-loaded image with skeleton + fade-in */
+function LazyImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="relative w-full h-full">
+      {!loaded && <Skeleton className="absolute inset-0 bg-muted z-10" />}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        className={cn(
+          'object-cover w-full h-full transition-all duration-300 will-change-transform group-hover:scale-105',
+          loaded ? 'opacity-100' : 'opacity-0',
+          className
+        )}
+      />
+    </div>
+  );
+}
 
 export function AnimeLibraryGrid() {
   const [images, setImages] = useState<LibraryImage[]>([]);
@@ -157,8 +275,12 @@ export function AnimeLibraryGrid() {
       
       <CardContent>
         {loading && images.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <AspectRatio key={i} ratio={9/16} className="bg-muted rounded-lg overflow-hidden">
+                <Skeleton className="w-full h-full" />
+              </AspectRatio>
+            ))}
           </div>
         ) : images.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
@@ -172,7 +294,6 @@ export function AnimeLibraryGrid() {
                   !!image.video_url?.match(/\.(mp4|webm|mov)$/i) ||
                   (!image.video_url && !!image.image_url?.match(/\.(mp4|webm|mov)$/i));
                 const videoSrc = image.video_url || (isVideo ? image.image_url : null);
-                // Use image_url as thumbnail only if it's NOT an mp4
                 const thumbSrc = image.image_url && !image.image_url.match(/\.(mp4|webm|mov)$/i) 
                   ? image.image_url : null;
 
@@ -180,30 +301,9 @@ export function AnimeLibraryGrid() {
                   <div key={image.id} className="group relative">
                     <AspectRatio ratio={9/16} className="bg-muted rounded-lg overflow-hidden">
                       {isVideo && videoSrc ? (
-                        <video
-                          src={videoSrc}
-                          poster={thumbSrc || undefined}
-                          className="object-cover w-full h-full"
-                          muted
-                          loop
-                          playsInline
-                          preload="auto"
-                          autoPlay={false}
-                          onMouseEnter={e => (e.target as HTMLVideoElement).play().catch(() => {})}
-                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                          onLoadedData={e => {
-                            // Seek to 0.5s to show a preview frame
-                            const v = e.target as HTMLVideoElement;
-                            if (v.currentTime === 0) v.currentTime = 0.5;
-                          }}
-                        />
+                        <LazyVideo src={videoSrc} poster={thumbSrc || undefined} />
                       ) : (
-                        <img
-                          src={thumbSrc || image.image_url}
-                          alt={image.description_en}
-                          className="object-cover w-full h-full transition-transform group-hover:scale-105"
-                          loading="lazy"
-                        />
+                        <LazyImage src={thumbSrc || image.image_url} alt={image.description_en} />
                       )}
                       {/* Video badge */}
                       {isVideo && (
