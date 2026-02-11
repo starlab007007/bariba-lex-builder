@@ -344,6 +344,145 @@ export type Database = {
         }
         Relationships: []
       }
+      conte_vivant_progress: {
+        Row: {
+          choices: Json | null
+          completed_at: string | null
+          created_at: string
+          endings_unlocked: string[] | null
+          id: string
+          path_taken: string[] | null
+          replay_count: number
+          story_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          choices?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          endings_unlocked?: string[] | null
+          id?: string
+          path_taken?: string[] | null
+          replay_count?: number
+          story_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          choices?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          endings_unlocked?: string[] | null
+          id?: string
+          path_taken?: string[] | null
+          replay_count?: number
+          story_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conte_vivant_progress_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "conte_vivant_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conte_vivant_stories: {
+        Row: {
+          created_at: string
+          creator_id: string
+          description: string | null
+          graph: Json
+          id: string
+          languages: string[] | null
+          published_at: string | null
+          status: string
+          thumbnail_url: string | null
+          title: string
+          total_endings: number | null
+          total_segments: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          graph?: Json
+          id?: string
+          languages?: string[] | null
+          published_at?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          total_endings?: number | null
+          total_segments?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          graph?: Json
+          id?: string
+          languages?: string[] | null
+          published_at?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          total_endings?: number | null
+          total_segments?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      conte_vivant_votes: {
+        Row: {
+          created_at: string
+          id: string
+          resolved_at: string | null
+          results: Json | null
+          segment_id: string
+          session_id: string
+          story_id: string
+          voter_count: number | null
+          winner: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          resolved_at?: string | null
+          results?: Json | null
+          segment_id: string
+          session_id?: string
+          story_id: string
+          voter_count?: number | null
+          winner?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          resolved_at?: string | null
+          results?: Json | null
+          segment_id?: string
+          session_id?: string
+          story_id?: string
+          voter_count?: number | null
+          winner?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conte_vivant_votes_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "conte_vivant_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dictionary_enrichments: {
         Row: {
           applied: boolean | null

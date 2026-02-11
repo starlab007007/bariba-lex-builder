@@ -97,6 +97,7 @@ import { OneTakePro } from "./templates/OneTakePro";
 
 // ✅ Premium Templates: Griot Animé, Beat Maker AI, News Studio
 import { GriotStudio } from "@/components/griot-studio/GriotStudio";
+import ConteVivantStudio from "@/features/conte-vivant/components/ConteVivantStudio";
 import { BeatMakerStudio } from "@/components/BeatMakerStudio";
 import NewsStudio from "@/components/NewsStudio";
 import { PremiumTemplateGallery } from "./creator/PremiumTemplateGallery";
@@ -3906,7 +3907,7 @@ export default function FullscreenCreator({
           )}
         </AnimatePresence>
 
-        {/* ============ PREMIUM TEMPLATES: Conte Live ============ */}
+        {/* ============ PREMIUM TEMPLATES: Conte Live (Conte Vivant Studio) ============ */}
         <AnimatePresence>
           {showConteLiveMode && (
             <motion.div
@@ -3921,7 +3922,7 @@ export default function FullscreenCreator({
               >
                 <X className="w-5 h-5" />
               </button>
-              <GriotStudio />
+              <ConteVivantStudio />
             </motion.div>
           )}
         </AnimatePresence>
