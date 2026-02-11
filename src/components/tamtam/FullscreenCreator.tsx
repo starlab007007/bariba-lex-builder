@@ -3442,14 +3442,25 @@ export default function FullscreenCreator({
                       setShowGriotDigitalMode(true);
                       setToast('🎭 Griot Animé activé');
                     }}
-                    animate={{ scale: [1, 1.03, 1] }}
-                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                    animate={{ 
+                      y: [0, -3, 0],
+                      boxShadow: [
+                        '0 0 8px rgba(168, 85, 247, 0.3)',
+                        '0 0 16px rgba(245, 158, 11, 0.5)',
+                        '0 0 8px rgba(168, 85, 247, 0.3)'
+                      ]
+                    }}
+                    transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
                     whileTap={{ scale: 0.9 }}
-                    className="w-14 h-20 rounded-xl bg-gradient-to-br from-purple-600/80 to-amber-500/80 backdrop-blur-md border border-white/20 flex flex-col items-center justify-center gap-1 shadow-lg shadow-purple-500/20 relative overflow-hidden"
+                    className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 flex flex-col items-center justify-center gap-1 relative overflow-hidden"
                   >
-                    <div className="absolute top-0.5 right-0.5 bg-amber-400 rounded-full px-1 py-0.5">
+                    <motion.div 
+                      className="absolute top-0.5 right-0.5 bg-amber-400 rounded-full px-1 py-0.5"
+                      animate={{ scale: [1, 1.15, 1] }}
+                      transition={{ repeat: Infinity, duration: 1.5 }}
+                    >
                       <span className="text-[6px] font-bold text-black">PRO</span>
-                    </div>
+                    </motion.div>
                     <span className="text-2xl">🎭</span>
                     <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Griot</span>
                   </motion.button>
@@ -3461,10 +3472,17 @@ export default function FullscreenCreator({
                       setShowNewsStudioMode(true);
                       setToast('📺 Chronicle activé');
                     }}
-                    animate={{ scale: [1, 1.03, 1] }}
-                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut', delay: 1.5 }}
+                    animate={{ 
+                      rotate: [-1, 1, -1],
+                      boxShadow: [
+                        '0 0 8px rgba(59, 130, 246, 0.3)',
+                        '0 0 16px rgba(249, 115, 22, 0.5)',
+                        '0 0 8px rgba(59, 130, 246, 0.3)'
+                      ]
+                    }}
+                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut', delay: 0.5 }}
                     whileTap={{ scale: 0.9 }}
-                    className="w-14 h-20 rounded-xl bg-gradient-to-br from-blue-600/80 to-orange-500/80 backdrop-blur-md border border-white/20 flex flex-col items-center justify-center gap-1 shadow-lg shadow-blue-500/20 relative overflow-hidden"
+                    className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 flex flex-col items-center justify-center gap-1 relative overflow-hidden"
                   >
                     <span className="text-2xl">📺</span>
                     <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Chronicle</span>
