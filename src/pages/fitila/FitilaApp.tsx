@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useState, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FitilaLanguageProvider, useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
@@ -67,8 +67,8 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 
   const handleNavigate = (path: string) => {
     triggerFeedback('click');
-    navigate(path);
     onClose();
+    setTimeout(() => navigate(path), 150);
   };
 
   const isActive = (path: string) => {
@@ -87,7 +87,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[100]"
+            className="fixed inset-0 z-[100] pointer-events-auto"
             style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)' }}
           />
 
@@ -96,7 +96,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 w-[300px] z-[101] overflow-y-auto"
+            className="fixed left-0 top-0 bottom-0 w-[300px] z-[101] overflow-y-auto pointer-events-auto"
             style={{
               background: 'linear-gradient(180deg, rgba(20, 20, 28, 0.98) 0%, rgba(10, 10, 15, 0.99) 100%)',
               backdropFilter: 'blur(20px)',
@@ -279,6 +279,12 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 
 function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+
+  // Safety net: close menu on route change
+  useEffect(() => {
+    if (isMenuOpen) setIsMenuOpen(false);
+  }, [location.pathname]);
 
   const menuContext: SideMenuContextType = {
     isOpen: isMenuOpen,
