@@ -1,89 +1,204 @@
 
+# Conte Vivant -- Storytelling Interactif a Embranchements
 
-# Ajouter le template "Conte Live" a cote de Griot
+## Resume
 
-## Objectif
+Le document decrit un systeme de storytelling interactif ou le spectateur choisit la direction de l'histoire toutes les 15 secondes, avec 2-3 options par embranchement. Actuellement, le bouton "Conte Live" dans l'interface camera ouvre simplement le GriotStudio existant (meme fonctionnement que Griot). L'objectif est de transformer "Conte Live" en un veritable systeme de contes a embranchements.
 
-Creer un nouveau bouton "Conte Live" place juste a cote de "Griot" dans l'interface camera, avec le meme fonctionnement (ouvre le GriotStudio).
+## Etat actuel vs Cible
 
-## Modifications
+**Ce qui existe deja** :
+- Bouton "Conte Live" dans l'interface camera (ouvre GriotStudio)
+- GriotStudio : enregistrement audio, transcription, generation de scenes, export video
+- K-Engine / GriotAnimationEngine pour le rendu video
+- Asset Library pour le matching d'images
+- Feed video TikTok-style (table `videos`)
+- Supabase Realtime (peut remplacer Redis/WebSocket)
 
-### Fichier : `src/components/tamtam/FullscreenCreator.tsx`
+**Ce qui doit etre construit** :
+- Story Graph Engine (graphe DAG pour les embranchements)
+- Story Builder UI (editeur pour creer les branches)
+- Branching Player (lecteur avec pre-cache multi-segments)
+- Choice UI (overlay de choix + timer 5s)
+- Mode Communaute (vote en temps reel via Supabase Realtime)
+- Systeme de badges par chemin
+- Tables base de donnees (contes, segments, progression, votes)
 
-**1. Nouvel etat**
-- Ajouter `const [showConteLiveMode, setShowConteLiveMode] = useState(false);` a cote des autres etats premium (ligne ~593)
+## Plan d'implementation -- Phase 1 MVP
 
-**2. Nouveau bouton mini-carte**
-- Inserer un 3eme bouton "Conte Live" dans le `<div className="flex gap-2">` (ligne 3437), place entre Griot et Chronicle
-- Icone : `🎪` (chapiteau / spectacle vivant)
-- Fond transparent identique : `bg-white/10 backdrop-blur-sm border border-white/25`
-- Animation distinctive : pulsation de scale (`scale: [1, 1.05, 1]`) + lueur verte/dorée alternante via `boxShadow`
-- Badge "LIVE" anime en rouge au lieu de "PRO"
-- Texte : "Conte Live"
+On suit l'approche Phase 1 du document : mode solo, 2 niveaux, 2 choix par noeud.
 
-**3. Nouveau panneau fullscreen**
-- Ajouter un bloc `AnimatePresence` apres celui de Griot (ligne ~3876) qui affiche `<GriotStudio />` quand `showConteLiveMode` est true
-- Bouton X pour fermer via `setShowConteLiveMode(false)`
-- Fonctionnement strictement identique a Griot
+### Etape 1 : Base de donnees
 
-## Detail technique
+Creer 3 tables :
 
 ```text
-// Nouvel etat (ligne ~593)
-const [showConteLiveMode, setShowConteLiveMode] = useState(false);
+conte_vivant_stories
+  - id (UUID PK)
+  - creator_id (UUID)
+  - title (VARCHAR)
+  - description (TEXT)
+  - languages (TEXT[])
+  - graph (JSONB) -- le DAG complet (segments, choix, liens)
+  - status (published/draft)
+  - total_segments (INT)
+  - total_endings (INT)
+  - thumbnail_url (TEXT)
+  - created_at, published_at (TIMESTAMPTZ)
 
-// Mini-carte "Conte Live" (entre Griot et Chronicle)
-<motion.button
-  onClick={() => {
-    if (navigator.vibrate) navigator.vibrate(50);
-    setShowConteLiveMode(true);
-    setToast('🎪 Conte Live activé');
-  }}
-  animate={{ 
-    scale: [1, 1.05, 1],
-    boxShadow: [
-      '0 0 8px rgba(34, 197, 94, 0.3)',
-      '0 0 16px rgba(234, 179, 8, 0.5)',
-      '0 0 8px rgba(34, 197, 94, 0.3)'
-    ]
-  }}
-  transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 0.3 }}
-  whileTap={{ scale: 0.9 }}
-  className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 flex flex-col items-center justify-center gap-1 relative overflow-hidden"
->
-  <motion.div 
-    className="absolute top-0.5 right-0.5 bg-red-500 rounded-full px-1 py-0.5"
-    animate={{ scale: [1, 1.15, 1], opacity: [1, 0.7, 1] }}
-    transition={{ repeat: Infinity, duration: 1 }}
-  >
-    <span className="text-[6px] font-bold text-white">LIVE</span>
-  </motion.div>
-  <span className="text-2xl">🎪</span>
-  <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Conte</span>
-</motion.button>
+conte_vivant_progress
+  - id (UUID PK)
+  - user_id (UUID)
+  - story_id (UUID FK)
+  - path_taken (TEXT[])
+  - choices (JSONB)
+  - endings_unlocked (TEXT[])
+  - completed_at (TIMESTAMPTZ)
+  - replay_count (INT DEFAULT 0)
+  - UNIQUE(user_id, story_id)
 
-// Panneau fullscreen (apres le bloc Griot)
-<AnimatePresence>
-  {showConteLiveMode && (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="absolute inset-0 z-[200] bg-background"
-    >
-      <button
-        onClick={() => setShowConteLiveMode(false)}
-        className="absolute top-4 right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur"
-      >
-        <X className="w-5 h-5" />
-      </button>
-      <GriotStudio />
-    </motion.div>
-  )}
-</AnimatePresence>
+conte_vivant_votes
+  - id (UUID PK)
+  - session_id (UUID)
+  - story_id (UUID FK)
+  - segment_id (TEXT)
+  - results (JSONB)
+  - winner (VARCHAR)
+  - voter_count (INT)
+  - resolved_at (TIMESTAMPTZ)
 ```
 
-## Fichier modifie
+RLS : lecture publique pour les contes publies, ecriture reservee au createur. Progression liee a l'utilisateur authentifie.
 
-1. `src/components/tamtam/FullscreenCreator.tsx` : ajout etat + mini-carte + panneau fullscreen
+### Etape 2 : Types et modele de donnees
 
+Creer `src/features/conte-vivant/types/story.types.ts` :
+- `StoryGraph` : structure JSONB du DAG (entry_segment, segments map)
+- `StorySegment` : video_url, duration, is_choice_point, choices[], is_ending, ending_badge
+- `StoryChoice` : id, label, icon, next_segment, is_default
+- `ConteVivantStory` : metadonnees + graph
+
+### Etape 3 : Story Builder UI (simplifie)
+
+Creer `src/features/conte-vivant/components/StoryBuilder.tsx` :
+- Interface formulaire (pas de graphe visuel pour le MVP)
+- Etape 1 : Ecrire/enregistrer le segment d'intro
+- Etape 2 : Definir 2 choix avec labels + icones
+- Etape 3 : Pour chaque branche, ecrire/enregistrer le segment suivant
+- Etape 4 : Definir les fins ou ajouter un niveau supplementaire
+- Reutilise le VinylRecorder existant pour l'enregistrement audio
+- Reutilise l'AssetGallery pour la selection d'images par segment
+- Chaque segment = audio + visuels, rendu par le GriotAnimationEngine existant
+
+### Etape 4 : Branching Player
+
+Creer `src/features/conte-vivant/components/BranchingPlayer.tsx` :
+- Lecteur video qui charge et joue les segments un par un
+- Pre-cache : pendant la lecture du segment actuel, telecharge les 2-3 segments suivants possibles en parallele
+- Quand le segment approche de la fin (5s avant), affiche le ChoiceOverlay
+- A la selection d'un choix, transition fluide (crossfade 300ms) vers le segment suivant
+- Timeout 5s : si aucun choix, selectionne le choix par defaut
+
+### Etape 5 : Choice Overlay UI
+
+Creer `src/features/conte-vivant/components/ChoiceOverlay.tsx` :
+- 2-3 boutons animes avec icone + texte court
+- Barre de progression (timer 5 secondes)
+- Animation d'entree (slide-up + scale)
+- Feedback haptic au choix
+- Mode solo : clic direct
+- Mode communaute (Phase 2) : barre de vote en temps reel
+
+### Etape 6 : Ending Card
+
+Creer `src/features/conte-vivant/components/EndingCard.tsx` :
+- Ecran de fin avec badge debloque (ex: "Tu es un Guerrier!")
+- Affiche "Fin X/N -- Explore les autres chemins!"
+- Boutons : Rejouer / Partager / Retour au feed
+
+### Etape 7 : Hooks de navigation
+
+Creer `src/features/conte-vivant/hooks/useStoryGraph.ts` :
+- Charge le graphe depuis la BDD
+- Methodes : `getSegment(id)`, `getChoices(segmentId)`, `resolve(choiceId)`, `getDefault(segmentId)`
+- Track le chemin parcouru (path_taken)
+
+Creer `src/features/conte-vivant/hooks/useBranchPreload.ts` :
+- Pre-charge les segments suivants en parallele
+- Qualite adaptative selon le reseau (navigator.connection)
+- Libere les segments non-choisis du cache
+
+Creer `src/features/conte-vivant/hooks/useChoiceTimer.ts` :
+- Timer de 5 secondes avec callback timeout
+- Retourne le temps restant pour l'affichage de la barre
+
+### Etape 8 : Integration dans le bouton "Conte Live"
+
+Modifier `FullscreenCreator.tsx` :
+- Le bouton "Conte Live" ouvre desormais le nouveau `ConteVivantStudio` au lieu du `GriotStudio`
+- Le studio guide le createur a travers le Story Builder
+
+### Etape 9 : Integration Feed
+
+Modifier le feed pour afficher les contes vivants avec :
+- Badge "INTERACTIF" dore
+- Miniature avec legere animation pulse
+- Au clic, ouvre le BranchingPlayer au lieu du player video standard
+
+### Etape 10 : Service API
+
+Creer `src/features/conte-vivant/services/storyGraphApi.ts` :
+- CRUD complet des contes vivants via Supabase
+- Sauvegarde/chargement de la progression utilisateur
+- Publication (upload segments + enregistrement graphe)
+
+## Structure de fichiers
+
+```text
+src/features/conte-vivant/
+  components/
+    ConteVivantStudio.tsx     -- Studio principal (orchestrateur)
+    StoryBuilder.tsx           -- Editeur de conte branche
+    SegmentEditor.tsx          -- Edition d'un segment (audio + visuels)
+    BranchingPlayer.tsx        -- Player interactif
+    ChoiceOverlay.tsx          -- UI des choix + timer
+    EndingCard.tsx             -- Ecran de fin + badge
+    StoryTreePreview.tsx       -- Visualisation de l'arbre
+  hooks/
+    useStoryGraph.ts           -- Navigation DAG
+    useBranchPreload.ts        -- Pre-cache adaptatif
+    useChoiceTimer.ts          -- Timer 5 secondes
+    useConteVivantCRUD.ts      -- Operations BDD
+  services/
+    storyGraphApi.ts           -- API CRUD
+  types/
+    story.types.ts             -- Types TypeScript
+```
+
+## Adaptations a l'environnement Lovable
+
+Le document mentionne des technologies non disponibles dans Lovable (Redis, ClickHouse, Socket.io). Voici les adaptations :
+
+| Document | Implementation Lovable |
+|---|---|
+| Redis Pub/Sub pour votes | Supabase Realtime (postgres_changes) |
+| Socket.io WebSocket | Supabase Realtime channels |
+| ClickHouse analytics | Table PostgreSQL + requetes simples |
+| Cloudflare R2 CDN | Supabase Storage (bucket existant) |
+| React Flow (editeur graphe) | Formulaire etape par etape (MVP) |
+| HLS streaming adaptatif | Lecture MP4 directe avec pre-cache fetch() |
+
+## Ce qui est hors scope Phase 1
+
+- Mode Communaute (vote en temps reel) → Phase 3
+- Story Builder visuel drag-and-drop (React Flow) → Phase 2
+- Analytics avancees / heatmap decisions → Phase 4
+- Support offline / pre-download complet → Phase 4
+- Adaptive bitrate HLS → utilisation MP4 direct
+
+## Fichiers modifies
+
+1. `src/components/tamtam/FullscreenCreator.tsx` -- pointer Conte Live vers le nouveau studio
+2. `src/pages/tamtam/TamTamSocial.tsx` -- badge interactif dans le feed
+3. Nouveaux fichiers dans `src/features/conte-vivant/` (10+ fichiers)
+4. Migration SQL pour les 3 tables + RLS
