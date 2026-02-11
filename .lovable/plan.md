@@ -1,68 +1,89 @@
 
 
-# Fond transparent et animations attractives pour les mini-cartes Griot et Chronicle
+# Ajouter le template "Conte Live" a cote de Griot
 
-## Etat actuel
+## Objectif
 
-Les deux mini-cartes dans l'interface camera (`FullscreenCreator.tsx`, lignes 3439-3471) ont :
-- **Griot** : fond `bg-gradient-to-br from-purple-600/80 to-amber-500/80` (opaque a 80%)
-- **Chronicle** : fond `bg-gradient-to-br from-blue-600/80 to-orange-500/80` (opaque a 80%)
-- Animation : simple `scale [1, 1.03, 1]` lente (3s) -- peu visible
+Creer un nouveau bouton "Conte Live" place juste a cote de "Griot" dans l'interface camera, avec le meme fonctionnement (ouvre le GriotStudio).
 
 ## Modifications
 
 ### Fichier : `src/components/tamtam/FullscreenCreator.tsx`
 
-**1. Fond transparent**
-- Remplacer les fonds gradient opaques par `bg-white/10 backdrop-blur-sm` pour un effet vitré transparent
-- Garder la bordure `border-white/20` pour la lisibilité
+**1. Nouvel etat**
+- Ajouter `const [showConteLiveMode, setShowConteLiveMode] = useState(false);` a cote des autres etats premium (ligne ~593)
 
-**2. Animations attractives**
+**2. Nouveau bouton mini-carte**
+- Inserer un 3eme bouton "Conte Live" dans le `<div className="flex gap-2">` (ligne 3437), place entre Griot et Chronicle
+- Icone : `🎪` (chapiteau / spectacle vivant)
+- Fond transparent identique : `bg-white/10 backdrop-blur-sm border border-white/25`
+- Animation distinctive : pulsation de scale (`scale: [1, 1.05, 1]`) + lueur verte/dorée alternante via `boxShadow`
+- Badge "LIVE" anime en rouge au lieu de "PRO"
+- Texte : "Conte Live"
 
-Pour la carte **Griot** :
-- Animation de pulsation lumineuse : `boxShadow` qui alterne entre une lueur violette/ambrée
-- Leger mouvement de rebond vertical (`y: [0, -3, 0]`) toutes les 2.5s
-- Le badge PRO aura une animation de rotation/pulse
-
-Pour la carte **Chronicle** :
-- Animation de lueur bleue pulsante via `boxShadow`
-- Leger mouvement de rotation (`rotate: [-1, 1, -1]`) toutes les 3s en decalage
-- Effet de brillance (shimmer) qui traverse la carte periodiquement
-
-Les deux cartes garderont leur `whileTap={{ scale: 0.9 }}` pour le feedback tactile.
+**3. Nouveau panneau fullscreen**
+- Ajouter un bloc `AnimatePresence` apres celui de Griot (ligne ~3876) qui affiche `<GriotStudio />` quand `showConteLiveMode` est true
+- Bouton X pour fermer via `setShowConteLiveMode(false)`
+- Fonctionnement strictement identique a Griot
 
 ## Detail technique
 
 ```text
-// Griot card
-className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 ..."
-animate={{ 
-  y: [0, -3, 0],
-  boxShadow: [
-    '0 0 8px rgba(168, 85, 247, 0.3)',
-    '0 0 16px rgba(245, 158, 11, 0.5)',
-    '0 0 8px rgba(168, 85, 247, 0.3)'
-  ]
-}}
-transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+// Nouvel etat (ligne ~593)
+const [showConteLiveMode, setShowConteLiveMode] = useState(false);
 
-// Chronicle card  
-className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 ..."
-animate={{
-  rotate: [-1, 1, -1],
-  boxShadow: [
-    '0 0 8px rgba(59, 130, 246, 0.3)',
-    '0 0 16px rgba(249, 115, 22, 0.5)',
-    '0 0 8px rgba(59, 130, 246, 0.3)'
-  ]
-}}
-transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut', delay: 0.5 }}
+// Mini-carte "Conte Live" (entre Griot et Chronicle)
+<motion.button
+  onClick={() => {
+    if (navigator.vibrate) navigator.vibrate(50);
+    setShowConteLiveMode(true);
+    setToast('🎪 Conte Live activé');
+  }}
+  animate={{ 
+    scale: [1, 1.05, 1],
+    boxShadow: [
+      '0 0 8px rgba(34, 197, 94, 0.3)',
+      '0 0 16px rgba(234, 179, 8, 0.5)',
+      '0 0 8px rgba(34, 197, 94, 0.3)'
+    ]
+  }}
+  transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 0.3 }}
+  whileTap={{ scale: 0.9 }}
+  className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 flex flex-col items-center justify-center gap-1 relative overflow-hidden"
+>
+  <motion.div 
+    className="absolute top-0.5 right-0.5 bg-red-500 rounded-full px-1 py-0.5"
+    animate={{ scale: [1, 1.15, 1], opacity: [1, 0.7, 1] }}
+    transition={{ repeat: Infinity, duration: 1 }}
+  >
+    <span className="text-[6px] font-bold text-white">LIVE</span>
+  </motion.div>
+  <span className="text-2xl">🎪</span>
+  <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Conte</span>
+</motion.button>
 
-// PRO badge animation
-animate={{ scale: [1, 1.15, 1] }}
-transition={{ repeat: Infinity, duration: 1.5 }}
+// Panneau fullscreen (apres le bloc Griot)
+<AnimatePresence>
+  {showConteLiveMode && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-[200] bg-background"
+    >
+      <button
+        onClick={() => setShowConteLiveMode(false)}
+        className="absolute top-4 right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur"
+      >
+        <X className="w-5 h-5" />
+      </button>
+      <GriotStudio />
+    </motion.div>
+  )}
+</AnimatePresence>
 ```
 
-### Fichier modifie
+## Fichier modifie
 
-1. `src/components/tamtam/FullscreenCreator.tsx` (lignes 3436-3472) : fond transparent + animations enrichies
+1. `src/components/tamtam/FullscreenCreator.tsx` : ajout etat + mini-carte + panneau fullscreen
+
