@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Share2, Upload, Loader2, Sparkles, ArrowRight, Mic, Music, Volume2 } from 'lucide-react';
+import { Share2, Upload, Loader2, Sparkles, ArrowRight, Mic, Music, Volume2, Headphones, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -87,6 +87,9 @@ export function PublishStep({
   const [selectedMusicTrack, setSelectedMusicTrack] = useState<AudioTrack | null>(null);
   const [musicTrimInfo, setMusicTrimInfo] = useState<TrimInfo | null>(null);
   const [localNarrationUrl, setLocalNarrationUrl] = useState<string | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const previewCtxRef = useRef<AudioContext | null>(null);
+  const previewSourcesRef = useRef<AudioBufferSourceNode[]>([]);
 
   // Effective narration URL: local recording > prop narrationAudioUrl > prop audioUrl
   const effectiveNarrationUrl = localNarrationUrl || narrationAudioUrl || audioUrl;
@@ -107,6 +110,94 @@ export function PublishStep({
     if (audioMode === 'music_only') setAudioMode('voice_only');
     toast({ title: '🎤 Voix enregistrée!', description: `${Math.floor(dur)}s de narration` });
   }, [toast, audioMode]);
+
+  // Preview mix: play voice + music for 5s
+  const stopPreview = useCallback(() => {
+    previewSourcesRef.current.forEach(s => { try { s.stop(); } catch {} });
+    previewSourcesRef.current = [];
+    previewCtxRef.current?.close().catch(() => {});
+    previewCtxRef.current = null;
+    setIsPreviewing(false);
+  }, []);
+
+  const togglePreview = useCallback(async () => {
+    if (isPreviewing) {
+      stopPreview();
+      return;
+    }
+
+    const useVoice = audioMode === 'voice_only' || audioMode === 'voice_and_music';
+    const useMusic = audioMode === 'music_only' || audioMode === 'voice_and_music';
+    const musicUrl = selectedMusicTrack?.source?.url || selectedMusicTrack?.source?.path;
+    
+    if (!((useVoice && effectiveNarrationUrl) || (useMusic && musicUrl))) {
+      toast({ title: '⚠️ Pas d\'audio', description: 'Sélectionne un mode audio avec contenu.' });
+      return;
+    }
+
+    try {
+      const ctx = new AudioContext({ sampleRate: 44100 });
+      if (ctx.state === 'suspended') await ctx.resume();
+      previewCtxRef.current = ctx;
+      const sources: AudioBufferSourceNode[] = [];
+      const previewDur = Math.min(5, duration);
+      const musicStartOffset = musicTrimInfo?.startOffset || 0;
+
+      if (useVoice && effectiveNarrationUrl) {
+        try {
+          const res = await fetch(effectiveNarrationUrl);
+          const ab = await res.arrayBuffer();
+          const buf = await ctx.decodeAudioData(ab.slice(0));
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          const gain = ctx.createGain();
+          gain.gain.value = 1.0;
+          src.connect(gain).connect(ctx.destination);
+          sources.push(src);
+        } catch (e) {
+          console.warn('[Preview] Voice load failed:', e);
+        }
+      }
+
+      if (useMusic && musicUrl) {
+        try {
+          const res = await fetch(musicUrl);
+          const ab = await res.arrayBuffer();
+          const buf = await ctx.decodeAudioData(ab.slice(0));
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          const gain = ctx.createGain();
+          gain.gain.value = audioMode === 'voice_and_music' ? 0.25 : 0.8;
+          src.connect(gain).connect(ctx.destination);
+          sources.push(src);
+        } catch (e) {
+          console.warn('[Preview] Music load failed:', e);
+        }
+      }
+
+      if (sources.length === 0) {
+        ctx.close();
+        toast({ title: '⚠️ Audio indisponible' });
+        return;
+      }
+
+      previewSourcesRef.current = sources;
+      setIsPreviewing(true);
+
+      // Start sources: voice at 0, music at trim offset
+      for (let i = 0; i < sources.length; i++) {
+        const isMusic = (useVoice && effectiveNarrationUrl) ? i === 1 : i === 0;
+        const offset = isMusic ? musicStartOffset : 0;
+        sources[i].start(0, offset, previewDur);
+      }
+
+      // Auto-stop after preview duration
+      setTimeout(() => stopPreview(), previewDur * 1000 + 200);
+    } catch (e) {
+      console.error('[Preview] Error:', e);
+      stopPreview();
+    }
+  }, [isPreviewing, audioMode, effectiveNarrationUrl, selectedMusicTrack, musicTrimInfo, duration, toast, stopPreview]);
 
   // Generate thumbnail from canvas
   const generateThumbnail = useCallback(async (): Promise<Blob | null> => {
@@ -538,6 +629,28 @@ export function PublishStep({
         <>
           {/* Action Buttons — Centered, responsive, min-height for accessibility */}
           <div className="space-y-3 w-full">
+            {/* Preview mix button */}
+            {(audioMode !== 'voice_only' || effectiveNarrationUrl) && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={togglePreview}
+                disabled={isExporting || isPublishing}
+                className={cn(
+                  "w-full h-14 rounded-2xl transition-all",
+                  isPreviewing
+                    ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                    : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                )}
+              >
+                {isPreviewing ? (
+                  <><Square className="w-5 h-5 mr-2" />⏸ Arrêter l'écoute</>
+                ) : (
+                  <><Headphones className="w-5 h-5 mr-2" />🎵 Écouter le mix</>
+                )}
+              </Button>
+            )}
+
             <Button
               variant="outline"
               size="lg"
