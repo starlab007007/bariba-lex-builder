@@ -224,7 +224,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         ))}
       </div>
 
-      {/* Grid — 3 items preview */}
+      {/* Grid — 3 items preview with smooth transitions */}
       {isLoading ? (
         <div className="grid grid-cols-3 gap-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -232,14 +232,14 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
           ))}
         </div>
       ) : previewAssets.length === 0 ? (
-        <div className="text-center py-8 text-amber-200/40 text-sm">
+        <div className="text-center py-8 text-amber-200/40 text-sm animate-fade-in">
           {assetType === 'video'
             ? '🎬 Aucune vidéo dans cette catégorie'
             : '📸 Aucune illustration dans cette catégorie'}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div key={`${assetType}-${activeCategory}-${activeCharacter}`} className="grid grid-cols-3 gap-2 animate-fade-in">
             {previewAssets.map(asset => (
               <AssetGridItem
                 key={asset.id}

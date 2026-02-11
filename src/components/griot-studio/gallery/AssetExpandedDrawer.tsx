@@ -1,9 +1,9 @@
 /**
  * AssetExpandedDrawer — Full-screen drawer showing all assets
- * for the active category/type, with selection support.
+ * with progressive batch rendering via scroll sentinel.
  */
 
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Drawer,
   DrawerContent,
@@ -12,7 +12,7 @@ import {
   DrawerClose,
 } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AssetGridItem } from './AssetGridItem';
 import type { LibraryAsset } from '../AssetGallery';
@@ -30,6 +30,8 @@ interface AssetExpandedDrawerProps {
   disabled?: boolean;
 }
 
+const BATCH_SIZE = 12;
+
 export function AssetExpandedDrawer({
   open,
   onOpenChange,
@@ -42,6 +44,34 @@ export function AssetExpandedDrawer({
   assetType,
   disabled,
 }: AssetExpandedDrawerProps) {
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when drawer opens or assets change
+  useEffect(() => {
+    if (open) setVisibleCount(BATCH_SIZE);
+  }, [open, assets.length]);
+
+  // IntersectionObserver on sentinel to load more
+  useEffect(() => {
+    if (!open) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount(prev => Math.min(prev + BATCH_SIZE, assets.length));
+        }
+      },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [open, assets.length]);
+
+  const visibleAssets = assets.slice(0, visibleCount);
+  const hasMore = visibleCount < assets.length;
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="bg-black/95 border-amber-500/20 max-h-[85dvh]">
@@ -73,10 +103,10 @@ export function AssetExpandedDrawer({
           </div>
         )}
 
-        {/* Grid */}
+        {/* Grid with progressive loading */}
         <div className="overflow-y-auto px-4 pb-8 pt-2">
           <div className="grid grid-cols-3 gap-2">
-            {assets.map(asset => (
+            {visibleAssets.map(asset => (
               <AssetGridItem
                 key={asset.id}
                 asset={asset}
@@ -87,6 +117,16 @@ export function AssetExpandedDrawer({
               />
             ))}
           </div>
+
+          {/* Scroll sentinel for loading more */}
+          {hasMore && (
+            <div ref={sentinelRef} className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-amber-400/40" />
+              <span className="ml-2 text-xs text-amber-200/40">
+                {visibleCount}/{assets.length}
+              </span>
+            </div>
+          )}
         </div>
       </DrawerContent>
     </Drawer>
