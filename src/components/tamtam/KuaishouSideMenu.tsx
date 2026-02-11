@@ -48,8 +48,8 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
 
   const handleNavigate = (path: string) => {
     triggerFeedback('click');
-    navigate(path);
     onClose();
+    setTimeout(() => navigate(path), 150);
   };
 
   // Quick actions at top
