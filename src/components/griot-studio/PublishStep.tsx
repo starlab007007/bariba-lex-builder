@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { GriotAnimationEngine, ANIMATION_STYLES } from '@/engines/GriotAnimationEngine';
 import AudioLibrary from '@/components/tamtam/creator/AudioLibrary';
+import type { TrimInfo } from '@/components/tamtam/creator/AudioLibrary';
 import type { AudioTrack } from '@/types/audio';
 import type { StoryScene } from './hooks/useAnimeStoryGenerator';
 import { VinylRecorder } from './VinylRecorder';
@@ -84,17 +85,19 @@ export function PublishStep({
   const [audioMode, setAudioMode] = useState<AudioMode>(hasInitialNarration ? 'voice_only' : 'music_only');
   const [showAudioLibrary, setShowAudioLibrary] = useState(false);
   const [selectedMusicTrack, setSelectedMusicTrack] = useState<AudioTrack | null>(null);
+  const [musicTrimInfo, setMusicTrimInfo] = useState<TrimInfo | null>(null);
   const [localNarrationUrl, setLocalNarrationUrl] = useState<string | null>(null);
 
   // Effective narration URL: local recording > prop narrationAudioUrl > prop audioUrl
   const effectiveNarrationUrl = localNarrationUrl || narrationAudioUrl || audioUrl;
   const hasNarration = !!effectiveNarrationUrl;
 
-  // Handle music track selection
-  const handleMusicTrackSelect = useCallback((track: AudioTrack) => {
+  // Handle music track selection with trim info
+  const handleMusicTrackSelect = useCallback((track: AudioTrack, trimInfo?: TrimInfo) => {
     setSelectedMusicTrack(track);
+    setMusicTrimInfo(trimInfo || null);
     setShowAudioLibrary(false);
-    toast({ title: `🎵 ${track.title}`, description: 'Musique sélectionnée' });
+    toast({ title: `🎵 ${track.title}`, description: trimInfo ? `✂️ ${Math.floor(trimInfo.startOffset)}s → ${Math.floor(trimInfo.startOffset + trimInfo.trimmedDuration)}s` : 'Musique sélectionnée' });
   }, [toast]);
 
   // Handle local recording from VinylRecorder
@@ -264,10 +267,13 @@ export function PublishStep({
       };
       
       // Start all AudioBufferSourceNodes FIRST, then start recording
-      // Clip audio to video duration so audio doesn't exceed video length
-      for (const node of sourceNodes) {
-        node.start(0, 0, duration);
-        console.log('[PublishStep] AudioBufferSourceNode started, clipped to', duration, 'seconds');
+      // Voice starts at 0, music starts at trim offset
+      const musicStartOffset = musicTrimInfo?.startOffset || 0;
+      for (let i = 0; i < sourceNodes.length; i++) {
+        const isMusic = hasVoice ? i === 1 : i === 0; // music is 2nd node if voice exists
+        const offset = (isMusic && hasMusic) ? musicStartOffset : 0;
+        sourceNodes[i].start(0, offset, duration);
+        console.log(`[PublishStep] AudioBufferSourceNode[${i}] started at offset=${offset}s, clipped to ${duration}s`);
       }
       
       // Small delay to ensure audio buffers are flowing
@@ -288,7 +294,7 @@ export function PublishStep({
         }, duration * 1000 + 500);
       }, 200);
     });
-  }, [canvasRef, engineRef, style, duration, effectiveNarrationUrl, narrationBlob, audioBlob, audioMode, selectedMusicTrack, toast]);
+  }, [canvasRef, engineRef, style, duration, effectiveNarrationUrl, narrationBlob, audioBlob, audioMode, selectedMusicTrack, musicTrimInfo, toast]);
 
   // Handle share
   const handleShare = useCallback(async () => {
@@ -575,6 +581,7 @@ export function PublishStep({
             onClose={() => setShowAudioLibrary(false)}
             onSelectTrack={handleMusicTrackSelect}
             selectedTrackId={selectedMusicTrack?.id}
+            videoDuration={duration}
           />
         )}
       </AnimatePresence>
