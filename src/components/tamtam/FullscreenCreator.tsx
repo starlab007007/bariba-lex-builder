@@ -591,6 +591,7 @@ export default function FullscreenCreator({
   
   // ============= PREMIUM TEMPLATES MODE (Griot Digital, Beat Maker, News Studio) =============
   const [showGriotDigitalMode, setShowGriotDigitalMode] = useState(false);
+  const [showConteLiveMode, setShowConteLiveMode] = useState(false);
   const [showBeatMakerMode, setShowBeatMakerMode] = useState(false);
   const [showNewsStudioMode, setShowNewsStudioMode] = useState(false);
   const [showPremiumGallery, setShowPremiumGallery] = useState(false);
@@ -3465,6 +3466,36 @@ export default function FullscreenCreator({
                     <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Griot</span>
                   </motion.button>
 
+                  {/* Conte Live */}
+                  <motion.button
+                    onClick={() => {
+                      if (navigator.vibrate) navigator.vibrate(50);
+                      setShowConteLiveMode(true);
+                      setToast('🎪 Conte Live activé');
+                    }}
+                    animate={{ 
+                      scale: [1, 1.05, 1],
+                      boxShadow: [
+                        '0 0 8px rgba(34, 197, 94, 0.3)',
+                        '0 0 16px rgba(234, 179, 8, 0.5)',
+                        '0 0 8px rgba(34, 197, 94, 0.3)'
+                      ]
+                    }}
+                    transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 0.3 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 flex flex-col items-center justify-center gap-1 relative overflow-hidden"
+                  >
+                    <motion.div 
+                      className="absolute top-0.5 right-0.5 bg-red-500 rounded-full px-1 py-0.5"
+                      animate={{ scale: [1, 1.15, 1], opacity: [1, 0.7, 1] }}
+                      transition={{ repeat: Infinity, duration: 1 }}
+                    >
+                      <span className="text-[6px] font-bold text-white">LIVE</span>
+                    </motion.div>
+                    <span className="text-2xl">🎪</span>
+                    <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Conte</span>
+                  </motion.button>
+
                   {/* Village Chronicle */}
                   <motion.button
                     onClick={() => {
@@ -3866,6 +3897,26 @@ export default function FullscreenCreator({
             >
               <button
                 onClick={() => setShowGriotDigitalMode(false)}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <GriotStudio />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ============ PREMIUM TEMPLATES: Conte Live ============ */}
+        <AnimatePresence>
+          {showConteLiveMode && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[200] bg-background"
+            >
+              <button
+                onClick={() => setShowConteLiveMode(false)}
                 className="absolute top-4 right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur"
               >
                 <X className="w-5 h-5" />
