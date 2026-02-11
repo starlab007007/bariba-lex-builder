@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudioLibrary, useTrackPlayer } from '@/hooks/useAudioLibrary';
+import MusicTrimmer from './MusicTrimmer';
 import type { AudioTrack, AudioCategory } from '@/types/audio';
 
 // Helper function to format duration
@@ -26,11 +27,17 @@ const formatDuration = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+export interface TrimInfo {
+  startOffset: number;
+  trimmedDuration: number;
+}
+
 interface AudioLibraryProps {
   isOpen?: boolean;
-  onSelectTrack: (track: AudioTrack) => void;
+  onSelectTrack: (track: AudioTrack, trimInfo?: TrimInfo) => void;
   onClose: () => void;
   selectedTrackId?: string;
+  videoDuration?: number;
 }
 
 const AudioLibrary: React.FC<AudioLibraryProps> = ({
@@ -38,6 +45,7 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
   onSelectTrack,
   onClose,
   selectedTrackId,
+  videoDuration = 30,
 }) => {
   const { library, isLoading, error } = useAudioLibrary();
   const { currentTrack, isPlaying, isLoading: trackLoading, progress, togglePlay, stop } = useTrackPlayer();
@@ -45,6 +53,11 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Trimmer state
+  const [editingTrack, setEditingTrack] = useState<AudioTrack | null>(null);
+  const [trimOffset, setTrimOffset] = useState(0);
+  const [trimDuration, setTrimDuration] = useState(videoDuration);
 
   // Stop playback on unmount
   useEffect(() => {
@@ -78,10 +91,25 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
     return tracks;
   }, [library, activeCategory, searchQuery]);
 
-  // Handle track selection
+  // Open trimmer when selecting a track
   const handleSelect = (track: AudioTrack) => {
     stop();
-    onSelectTrack(track);
+    const audioUrl = track.source?.url || track.source?.path;
+    if (audioUrl) {
+      setTrimOffset(0);
+      setTrimDuration(Math.min(track.duration, videoDuration));
+      setEditingTrack(track);
+    } else {
+      // No audio URL, select directly
+      onSelectTrack(track);
+    }
+  };
+
+  // Confirm trim and pass trimInfo
+  const confirmTrim = () => {
+    if (!editingTrack) return;
+    onSelectTrack(editingTrack, { startOffset: trimOffset, trimmedDuration: trimDuration });
+    setEditingTrack(null);
   };
 
   if (!isOpen) return null;
@@ -272,6 +300,25 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
               </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Music Trimmer Overlay */}
+      <AnimatePresence>
+        {editingTrack && (
+          <MusicTrimmer
+            audioUrl={editingTrack.source?.url || editingTrack.source?.path || ''}
+            trackName={editingTrack.title}
+            totalDuration={editingTrack.duration}
+            clipDuration={videoDuration}
+            startOffset={trimOffset}
+            onTrimChange={(offset, dur) => {
+              setTrimOffset(offset);
+              setTrimDuration(dur);
+            }}
+            onConfirm={confirmTrim}
+            onBack={() => setEditingTrack(null)}
+          />
         )}
       </AnimatePresence>
     </motion.div>
