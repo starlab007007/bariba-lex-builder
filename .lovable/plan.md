@@ -1,58 +1,68 @@
 
-# Correction du bug du menu hamburger FITILA
 
-## Diagnostic
+# Fond transparent et animations attractives pour les mini-cartes Griot et Chronicle
 
-Le bug se manifeste ainsi :
-1. Le menu s'ouvre correctement
-2. Cliquer sur "Profil" fonctionne (premiere fois)
-3. Cliquer sur "Dictionnaire" ou "Traducteur" : la navigation se fait (URL change) mais le menu reste ouvert
-4. Une fois dans cet etat, plus rien ne repond (ni le X, ni le backdrop, ni les autres boutons)
+## Etat actuel
 
-**Cause racine** : Dans `handleNavigate`, `navigate(path)` declenche un changement de route qui provoque un re-render du composant `SideMenuDrawer` (via `useLocation()`). L'appel `onClose()` qui suit se perd car le composant est en cours de reconciliation. Le menu reste bloque en position ouverte avec un etat desynchronise.
+Les deux mini-cartes dans l'interface camera (`FullscreenCreator.tsx`, lignes 3439-3471) ont :
+- **Griot** : fond `bg-gradient-to-br from-purple-600/80 to-amber-500/80` (opaque a 80%)
+- **Chronicle** : fond `bg-gradient-to-br from-blue-600/80 to-orange-500/80` (opaque a 80%)
+- Animation : simple `scale [1, 1.03, 1]` lente (3s) -- peu visible
 
-## Corrections
+## Modifications
 
-### Fichier 1 : `src/pages/fitila/FitilaApp.tsx`
+### Fichier : `src/components/tamtam/FullscreenCreator.tsx`
 
-**Fix 1 - Fermer le menu AVANT de naviguer** :
-- Inverser l'ordre : appeler `onClose()` d'abord, puis `navigate(path)` apres un court delai (`setTimeout` de 150ms) pour laisser l'animation de fermeture se terminer
-- Cela evite le conflit entre le changement de route et la mise a jour de l'etat du menu
+**1. Fond transparent**
+- Remplacer les fonds gradient opaques par `bg-white/10 backdrop-blur-sm` pour un effet vitré transparent
+- Garder la bordure `border-white/20` pour la lisibilité
 
-**Fix 2 - Fermeture automatique sur changement de route** :
-- Ajouter un `useEffect` dans `AppContent` qui ecoute `location.pathname` et ferme le menu automatiquement quand la route change
-- C'est un filet de securite : meme si `onClose` echoue, le menu se fermera
+**2. Animations attractives**
 
-**Fix 3 - Backdrop avec `pointer-events` explicite** :
-- Ajouter `pointer-events: auto` sur le backdrop et le panneau du menu pour garantir que les clics sont captures meme si un element enfant a un z-index ou un positionnement qui interfere
+Pour la carte **Griot** :
+- Animation de pulsation lumineuse : `boxShadow` qui alterne entre une lueur violette/ambrée
+- Leger mouvement de rebond vertical (`y: [0, -3, 0]`) toutes les 2.5s
+- Le badge PRO aura une animation de rotation/pulse
 
-**Fix 4 - Isolation des boutons** :
-- Ajouter `position: relative` et `z-index: 10` aux boutons interactifs (X, Profil, Dictionnaire, etc.) dans le panneau du menu pour s'assurer qu'ils sont bien au-dessus de tout
-- Ajouter `e.stopPropagation()` sur les clics de boutons pour eviter que les events remontent au backdrop
+Pour la carte **Chronicle** :
+- Animation de lueur bleue pulsante via `boxShadow`
+- Leger mouvement de rotation (`rotate: [-1, 1, -1]`) toutes les 3s en decalage
+- Effet de brillance (shimmer) qui traverse la carte periodiquement
+
+Les deux cartes garderont leur `whileTap={{ scale: 0.9 }}` pour le feedback tactile.
 
 ## Detail technique
 
 ```text
-// AVANT (bugge) :
-handleNavigate = (path) => {
-  triggerFeedback('click');
-  navigate(path);      // <-- declenche re-render via useLocation
-  onClose();           // <-- se perd dans le re-render
-}
+// Griot card
+className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 ..."
+animate={{ 
+  y: [0, -3, 0],
+  boxShadow: [
+    '0 0 8px rgba(168, 85, 247, 0.3)',
+    '0 0 16px rgba(245, 158, 11, 0.5)',
+    '0 0 8px rgba(168, 85, 247, 0.3)'
+  ]
+}}
+transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
 
-// APRES (corrige) :
-handleNavigate = (path) => {
-  triggerFeedback('click');
-  onClose();           // <-- ferme le menu immediatement
-  setTimeout(() => navigate(path), 150);  // <-- navigue apres fermeture
-}
+// Chronicle card  
+className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 ..."
+animate={{
+  rotate: [-1, 1, -1],
+  boxShadow: [
+    '0 0 8px rgba(59, 130, 246, 0.3)',
+    '0 0 16px rgba(249, 115, 22, 0.5)',
+    '0 0 8px rgba(59, 130, 246, 0.3)'
+  ]
+}}
+transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut', delay: 0.5 }}
 
-// FILET DE SECURITE dans AppContent :
-useEffect(() => {
-  if (isMenuOpen) setIsMenuOpen(false);
-}, [location.pathname]);
+// PRO badge animation
+animate={{ scale: [1, 1.15, 1] }}
+transition={{ repeat: Infinity, duration: 1.5 }}
 ```
 
-## Fichiers modifies
+### Fichier modifie
 
-1. `src/pages/fitila/FitilaApp.tsx` : inverser ordre close/navigate, ajouter useEffect sur pathname, renforcer pointer-events
+1. `src/components/tamtam/FullscreenCreator.tsx` (lignes 3436-3472) : fond transparent + animations enrichies
