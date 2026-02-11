@@ -42,6 +42,53 @@ export default function MusicTrimmer({
   const effectiveDuration = Math.min(clipDuration, totalDuration);
   const maxOffset = Math.max(0, totalDuration - effectiveDuration);
 
+  // Stop any playing audio
+  const stopPlayback = useCallback(() => {
+    try { sourceRef.current?.stop(); } catch {}
+    sourceRef.current = null;
+    cancelAnimationFrame(animFrameRef.current);
+    setIsPlaying(false);
+    setPlayProgress(0);
+  }, []);
+
+  // Play the selected portion
+  const playSelection = useCallback((offset: number, dur?: number) => {
+    stopPlayback();
+    const ctx = audioCtxRef.current;
+    const buffer = audioBufferRef.current;
+    if (!ctx || !buffer) return;
+
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const playDur = dur || effectiveDuration;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start(0, offset, playDur);
+    sourceRef.current = source;
+    playStartTimeRef.current = ctx.currentTime;
+    setIsPlaying(true);
+
+    const animate = () => {
+      const elapsed = ctx.currentTime - playStartTimeRef.current;
+      const progress = Math.min(elapsed / playDur, 1);
+      setPlayProgress(progress);
+      if (progress < 1) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        setIsPlaying(false);
+        setPlayProgress(0);
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    source.onended = () => {
+      setIsPlaying(false);
+      cancelAnimationFrame(animFrameRef.current);
+      setPlayProgress(0);
+    };
+  }, [effectiveDuration, stopPlayback]);
+
   // Load audio and extract peaks
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +102,6 @@ export default function MusicTrimmer({
         audioBufferRef.current = buffer;
         if (cancelled) return;
 
-        // Extract peaks
         const channelData = buffer.getChannelData(0);
         const numBars = 120;
         const samplesPerBar = Math.floor(channelData.length / numBars);
@@ -69,11 +115,9 @@ export default function MusicTrimmer({
           }
           extractedPeaks.push(max);
         }
-        // Normalize
         const peakMax = Math.max(...extractedPeaks, 0.01);
         setPeaks(extractedPeaks.map(p => p / peakMax));
       } catch (e) {
-        // Generate fake peaks on error
         setPeaks(Array.from({ length: 120 }, () => 0.2 + Math.random() * 0.8));
       }
     };
@@ -110,11 +154,7 @@ export default function MusicTrimmer({
       const y = (h - barH) / 2;
       const inSelection = x >= selStart && x + barW <= selStart + selWidth;
 
-      if (inSelection) {
-        ctx.fillStyle = '#f97316'; // orange
-      } else {
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      }
+      ctx.fillStyle = inSelection ? '#f97316' : 'rgba(255,255,255,0.2)';
       ctx.beginPath();
       ctx.roundRect(x, y, Math.max(barW, 1.5), barH, 1);
       ctx.fill();
@@ -158,15 +198,16 @@ export default function MusicTrimmer({
     }
   }, [peaks, startOffset, totalDuration, effectiveDuration, isPlaying, playProgress]);
 
-  // Drag handling
+  // Drag handling - on canvas only (Play button is outside)
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
+    stopPlayback(); // Stop audio when dragging
     setIsDragging(true);
     dragStartXRef.current = e.clientX;
     dragStartOffsetRef.current = startOffset;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, [startOffset]);
+  }, [startOffset, stopPlayback]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging || !containerRef.current) return;
@@ -179,58 +220,27 @@ export default function MusicTrimmer({
   }, [isDragging, totalDuration, maxOffset, effectiveDuration, onTrimChange]);
 
   const handlePointerUp = useCallback(() => {
+    if (!isDragging) return;
     setIsDragging(false);
-  }, []);
+    // Auto-preview: play 2.5s of the new position
+    setTimeout(() => {
+      playSelection(startOffset, Math.min(2.5, effectiveDuration));
+    }, 100);
+  }, [isDragging, startOffset, effectiveDuration, playSelection]);
 
-  // Play preview
+  // Toggle play for full selection
   const togglePlay = useCallback(() => {
     if (isPlaying) {
-      sourceRef.current?.stop();
-      sourceRef.current = null;
-      setIsPlaying(false);
-      cancelAnimationFrame(animFrameRef.current);
-      setPlayProgress(0);
-      return;
+      stopPlayback();
+    } else {
+      playSelection(startOffset);
     }
-
-    const ctx = audioCtxRef.current;
-    const buffer = audioBufferRef.current;
-    if (!ctx || !buffer) return;
-
-    if (ctx.state === 'suspended') ctx.resume();
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(ctx.destination);
-    source.start(0, startOffset, effectiveDuration);
-    sourceRef.current = source;
-    playStartTimeRef.current = ctx.currentTime;
-    setIsPlaying(true);
-
-    const animate = () => {
-      const elapsed = ctx.currentTime - playStartTimeRef.current;
-      const progress = Math.min(elapsed / effectiveDuration, 1);
-      setPlayProgress(progress);
-      if (progress < 1) {
-        animFrameRef.current = requestAnimationFrame(animate);
-      } else {
-        setIsPlaying(false);
-        setPlayProgress(0);
-      }
-    };
-    animFrameRef.current = requestAnimationFrame(animate);
-
-    source.onended = () => {
-      setIsPlaying(false);
-      cancelAnimationFrame(animFrameRef.current);
-      setPlayProgress(0);
-    };
-  }, [isPlaying, startOffset, effectiveDuration]);
+  }, [isPlaying, startOffset, playSelection, stopPlayback]);
 
   // Cleanup
   useEffect(() => {
     return () => {
-      sourceRef.current?.stop();
+      try { sourceRef.current?.stop(); } catch {}
       cancelAnimationFrame(animFrameRef.current);
     };
   }, []);
@@ -260,7 +270,7 @@ export default function MusicTrimmer({
         </div>
       </div>
 
-      {/* Waveform area */}
+      {/* Waveform area - DRAG ONLY, no play button inside */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-4">
         {/* Time labels */}
         <div className="w-full flex justify-between text-white/40 text-xs px-1">
@@ -268,7 +278,7 @@ export default function MusicTrimmer({
           <span>{formatTime(startOffset + effectiveDuration)}</span>
         </div>
 
-        {/* Canvas */}
+        {/* Canvas - drag zone only */}
         <div
           ref={containerRef}
           className="w-full h-24 relative cursor-grab active:cursor-grabbing touch-none"
@@ -278,25 +288,28 @@ export default function MusicTrimmer({
           onPointerCancel={handlePointerUp}
         >
           <canvas ref={canvasRef} className="w-full h-full" />
-          
-          {/* Play button overlay */}
-          <button
-            onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-orange-500/90 backdrop-blur-sm flex items-center justify-center shadow-lg"
-          >
-            {isPlaying ? (
-              <Pause className="h-5 w-5 text-white" />
-            ) : (
-              <Play className="h-5 w-5 text-white ml-0.5" />
-            )}
-          </button>
         </div>
 
-        {/* Duration indicator */}
-        <div className="flex items-center gap-2">
-          <span className="text-orange-400 text-xs font-medium">
-            Durée clip : {effectiveDuration}s
-          </span>
+        {/* Play controls - SEPARATE from drag zone */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={togglePlay}
+            className="w-14 h-14 rounded-full bg-orange-500/90 backdrop-blur-sm flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+          >
+            {isPlaying ? (
+              <Pause className="h-6 w-6 text-white" />
+            ) : (
+              <Play className="h-6 w-6 text-white ml-0.5" />
+            )}
+          </button>
+          <div className="flex flex-col">
+            <span className="text-white/70 text-xs">
+              {isPlaying ? 'Lecture en cours...' : 'Écouter la sélection'}
+            </span>
+            <span className="text-orange-400 text-xs font-medium">
+              Durée clip : {effectiveDuration}s
+            </span>
+          </div>
         </div>
       </div>
 

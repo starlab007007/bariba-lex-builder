@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Caption } from "./CaptionsDrawer";
 import { SelectedMusic } from "./MusicDrawer";
 import { CaptureEffects } from "./CreatorEffectsData";
+import { trimAudioBlob } from "@/utils/audioTrimmer";
 
 // ✅ K-Engine
 import { kEngine } from "./TemplateEngine";
@@ -321,7 +322,33 @@ export default function PublishScreen({
         textBackground: mediaType === "text" ? selectedBg.id : null,
       };
 
-      // 3) Export job via K-Engine
+      // 3) Pre-trim audio if music has a startOffset
+      let trimmedAudioBlob: Blob | undefined;
+      if (selectedMusic?.startOffset && selectedMusic.startOffset > 0) {
+        const musicUrl = selectedMusic.track?.url || selectedMusic.customUrl;
+        if (musicUrl) {
+          try {
+            setExportMessage("Découpage audio...");
+            trimmedAudioBlob = await trimAudioBlob(
+              musicUrl,
+              selectedMusic.startOffset,
+              selectedMusic.trimmedDuration || 30
+            );
+            // Update meta with trimmed audio blob URL
+            const trimmedUrl = URL.createObjectURL(trimmedAudioBlob);
+            meta.selectedMusic = {
+              ...meta.selectedMusic,
+              url: trimmedUrl,
+              startAt: 0, // Already trimmed
+            };
+            console.log('[PublishScreen] Audio trimmed:', (trimmedAudioBlob.size / 1024).toFixed(0), 'KB');
+          } catch (e) {
+            console.warn('[PublishScreen] Audio trim failed, using original:', e);
+          }
+        }
+      }
+
+      // 4) Export job via K-Engine
       //    ✅ FAST EXPORT: Since capture is already baked-in (stylized via liveCanvas),
       //    we skip re-rendering which is MUCH faster for low-data zones.
       const result = await kEngine.exportJob(
@@ -329,6 +356,7 @@ export default function PublishScreen({
           inputBlob: primaryBlob,
           inputType: mediaType,
           meta,
+          trimmedAudioBlob,
           fastExport: true, // ✅ Skip re-rendering - capture is already stylized
           exportQuality: "medium", // ✅ 720p @ 15fps - good balance for mobile
         },
