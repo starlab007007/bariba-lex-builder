@@ -1,65 +1,65 @@
 
-# Editeur de trim musical (style TikTok)
+# Integration complete du trimmer musical dans tous les flux
 
-## Ce qui va etre ajoute
+## Probleme actuel
 
-Quand un utilisateur selectionne une musique dans la liste, un panneau d'edition s'ouvre avec :
+Le composant `MusicTrimmer` existe mais ne fonctionne pas correctement dans le flux reel :
 
-1. **Une barre de waveform visuelle** - representation des amplitudes audio sous forme de barres verticales (comme dans la capture)
-2. **Une zone de selection draggable** (cadre rose/orange) - permet de choisir quelle partie de la musique jouer
-3. **Auto-ajustement de la duree** - la largeur de la zone de selection correspond automatiquement a la duree video choisie (10s, 15s, 30s, 60s)
-4. **Preview de la partie selectionnee** - bouton Play au centre qui joue uniquement le segment choisi
-5. **Integration dans l'export et le feed** - les champs `startOffset` et `trimmedDuration` (deja presents dans le code) seront correctement remplis
+1. **MusicDrawer** : le trimmer s'ouvre mais la musique trimmee n'est pas utilisee avec le bon `startOffset` dans l'export video (PublishScreen)
+2. **PublishStep (Griot Studio)** : utilise `AudioLibrary` qui ne propose aucun trimmer - la musique joue toujours depuis le debut. Le `node.start(0, 0, duration)` ignore le startOffset.
+3. Aucun des deux flux n'utilise le `startOffset` dans l'export final
 
-## Comment ca fonctionne
+## Modifications prevues
 
-```text
-[===========================WAVEFORM COMPLETE==============================]
-                [====ZONE SELECTIONNEE (30s)====]
-                ^                               ^
-           startOffset                  startOffset + trimmedDuration
-```
+### 1. MusicDrawer.tsx - Correction du flux de trim
 
-L'utilisateur glisse la zone rose/orange sur la waveform pour choisir le segment. La largeur de la zone est fixee par la duree video (ex: 15s). Seule la position horizontale change.
+Le trimmer s'ouvre deja, mais on va s'assurer que :
+- Quand on clique "+" sur un track, le trimmer apparait bien en plein ecran
+- La duree de la zone de selection = `videoDuration` (10/15/30/60s)
+- Le bouton "Utiliser cette partie" ferme le trimmer ET le drawer, et transmet `startOffset` + `trimmedDuration`
+
+### 2. AudioLibrary.tsx - Ajouter le trimmer au flux Griot
+
+Modifier `AudioLibrary` pour integrer `MusicTrimmer` :
+- Ajouter un etat `editingTrack` comme dans MusicDrawer
+- Quand l'utilisateur clique sur un track, ouvrir le trimmer au lieu de selectionner directement
+- Le callback `onSelectTrack` sera enrichi pour transmettre le `startOffset` et `trimmedDuration`
+- Ajouter un nouveau type ou modifier le callback pour inclure les infos de trim
+
+### 3. PublishStep.tsx - Utiliser startOffset dans l'export
+
+Modifier la ligne `node.start(0, 0, duration)` pour les sources musicales :
+- Passer le `startOffset` de la musique selectionnee : `musicSource.start(0, startOffset, duration)`
+- Stocker le `startOffset` dans un state ou le transmettre via le track selectionne
+- Ajouter `musicStartOffset` et `musicTrimDuration` au state de PublishStep
+
+### 4. PublishScreen.tsx - Verifier que l'export utilise les bonnes valeurs
+
+Les metadonnees d'export contiennent deja `startAt` et `duration` mais il faut verifier que l'audio effectif dans le muxing les utilise.
 
 ## Details techniques
 
-### Fichier 1 : `src/components/tamtam/creator/MusicTrimmer.tsx` (nouveau)
+### AudioLibrary.tsx
 
-Composant dedie au trim musical :
-- Charge l'audio via `fetch` + `AudioContext.decodeAudioData`
-- Extrait les amplitudes (peaks) du buffer pour dessiner la waveform
-- Affiche un canvas avec les barres de waveform
-- Superpose une zone de selection draggable (touch + mouse) de largeur fixe
-- Bouton Play central pour ecouter uniquement le segment selectionne
-- Callbacks `onTrimChange(startOffset, trimmedDuration)` vers le parent
+```text
+Avant : clic sur track -> onSelectTrack(track) directement
+Apres : clic sur track -> ouvre MusicTrimmer -> onConfirm -> onSelectTrack(track) avec startOffset
+```
 
-Props :
-- `audioUrl: string` - URL de la musique
-- `totalDuration: number` - duree totale de la musique
-- `clipDuration: number` - duree de la video (10/15/30/60s), definit la largeur de la zone
-- `startOffset: number` - position initiale
-- `onTrimChange: (startOffset: number, trimmedDuration: number) => void`
+Le callback `onSelectTrack` sera modifie pour accepter un second parametre optionnel : `trimInfo?: { startOffset: number, trimmedDuration: number }`
 
-### Fichier 2 : `src/components/tamtam/creator/MusicDrawer.tsx` (modifie)
+### PublishStep.tsx (ligne 269)
 
-- Ajouter un etat `editingTrack` pour savoir quelle musique est en cours d'edition
-- Quand l'utilisateur clique sur le bouton "+" d'un track, au lieu de selectionner directement, ouvrir le panneau de trim (`MusicTrimmer`)
-- Le panneau de trim remplace temporairement la liste des tracks (animation slide)
-- Bouton "Confirmer" pour valider la selection avec le bon `startOffset`
-- Le `videoDuration` existant est utilise pour definir la largeur du clip
+```text
+Avant : node.start(0, 0, duration)
+Apres : musicSource.start(0, musicStartOffset, duration)
+        voiceSource.start(0, 0, duration) // la voix reste inchangee
+```
 
-Flux modifie :
-1. Utilisateur clique sur "+" a cote d'une musique
-2. Le panneau de trim s'ouvre avec la waveform
-3. L'utilisateur glisse la zone de selection
-4. Bouton Play pour previsualiser
-5. Bouton "Utiliser cette partie" pour confirmer -> `onSelectMusic` est appele avec le bon `startOffset` et `trimmedDuration`
+Un nouveau state `musicTrimInfo` stockera `{ startOffset, trimmedDuration }` recu de `handleMusicTrackSelect`.
 
-### Integration export (deja en place)
+### Fichiers modifies
 
-Le `PublishScreen.tsx` utilise deja `selectedMusic.startOffset` et `selectedMusic.trimmedDuration` dans les metadonnees d'export (ligne 313-314). Une fois le trim correctement defini dans le MusicDrawer, les valeurs seront automatiquement transmises a l'export video.
-
-### Integration feed (PublishStep / Griot)
-
-Les composants `PublishStep.tsx` qui utilisent Web Audio API pour le muxing devront respecter le `startOffset` en utilisant `bufferSource.start(0, startOffset, trimmedDuration)` au lieu de `start(0, 0, duration)`. Ceci est deja supporte nativement par l'API Web Audio.
+- `src/components/tamtam/creator/AudioLibrary.tsx` : ajout du MusicTrimmer, modifier le flux de selection
+- `src/components/griot-studio/PublishStep.tsx` : stocker trimInfo, utiliser startOffset dans node.start()
+- `src/components/tamtam/creator/MusicDrawer.tsx` : ajustements mineurs pour garantir la fermeture correcte apres confirmation du trim
