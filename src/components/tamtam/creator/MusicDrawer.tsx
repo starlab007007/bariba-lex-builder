@@ -188,7 +188,7 @@ export default function MusicDrawer({
     setEditingTrack(track);
   };
 
-  // Confirm trim selection
+  // Confirm trim selection with brief audio feedback
   const confirmTrim = () => {
     if (!editingTrack) return;
     const music: SelectedMusic = {
@@ -200,6 +200,17 @@ export default function MusicDrawer({
       trimmedDuration: trimDuration,
     };
     onSelectMusic(music);
+    
+    // Brief audio feedback: play 1s of the trimmed selection
+    const url = editingTrack.url;
+    if (url) {
+      const feedbackAudio = new Audio(url);
+      feedbackAudio.currentTime = trimOffset;
+      feedbackAudio.volume = volume / 100;
+      feedbackAudio.play().catch(() => {});
+      setTimeout(() => { feedbackAudio.pause(); feedbackAudio.src = ''; }, 1000);
+    }
+    
     setEditingTrack(null);
   };
 

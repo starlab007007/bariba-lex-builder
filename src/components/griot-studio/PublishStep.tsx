@@ -117,8 +117,10 @@ export function PublishStep({
     previewSourcesRef.current = [];
     previewCtxRef.current?.close().catch(() => {});
     previewCtxRef.current = null;
+    // Stop canvas animation
+    try { engineRef.current?.stopPreview(); } catch {}
     setIsPreviewing(false);
-  }, []);
+  }, [engineRef]);
 
   const togglePreview = useCallback(async () => {
     if (isPreviewing) {
@@ -140,7 +142,7 @@ export function PublishStep({
       if (ctx.state === 'suspended') await ctx.resume();
       previewCtxRef.current = ctx;
       const sources: AudioBufferSourceNode[] = [];
-      const previewDur = Math.min(5, duration);
+      const previewDur = Math.min(15, duration);
       const musicStartOffset = musicTrimInfo?.startOffset || 0;
 
       if (useVoice && effectiveNarrationUrl) {
@@ -189,6 +191,14 @@ export function PublishStep({
         const isMusic = (useVoice && effectiveNarrationUrl) ? i === 1 : i === 0;
         const offset = isMusic ? musicStartOffset : 0;
         sources[i].start(0, offset, previewDur);
+      }
+
+      // Start canvas animation in sync
+      const animStyle = ANIMATION_STYLES[style] || ANIMATION_STYLES.fantasy;
+      try {
+        engineRef.current?.startSlideshowPreview(previewDur, animStyle);
+      } catch (e) {
+        console.warn('[Preview] Canvas animation start failed:', e);
       }
 
       // Auto-stop after preview duration

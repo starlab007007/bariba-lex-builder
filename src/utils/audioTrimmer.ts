@@ -16,15 +16,26 @@ export async function trimAudioBlob(
     const arrayBuffer = await response.arrayBuffer();
     const fullBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
     
+    // Auto-clip if exceeding buffer length
+    const clippedOffset = Math.min(startOffset, fullBuffer.duration);
+    const maxDuration = fullBuffer.duration - clippedOffset;
+    const clippedDuration = Math.min(duration, maxDuration);
+    
+    if (clippedDuration <= 0) {
+      throw new Error(`Invalid trim: offset=${startOffset}s exceeds audio duration=${fullBuffer.duration}s`);
+    }
+    
+    console.log(`[audioTrimmer] Trimming: ${clippedOffset.toFixed(2)}s → ${(clippedOffset + clippedDuration).toFixed(2)}s (total: ${fullBuffer.duration.toFixed(2)}s)`);
+    
     const sampleRate = fullBuffer.sampleRate;
     const channels = fullBuffer.numberOfChannels;
-    const trimmedLength = Math.ceil(duration * sampleRate);
+    const trimmedLength = Math.ceil(clippedDuration * sampleRate);
     
     const offlineCtx = new OfflineAudioContext(channels, trimmedLength, sampleRate);
     const source = offlineCtx.createBufferSource();
     source.buffer = fullBuffer;
     source.connect(offlineCtx.destination);
-    source.start(0, startOffset, duration);
+    source.start(0, clippedOffset, clippedDuration);
     
     const trimmedBuffer = await offlineCtx.startRendering();
     
