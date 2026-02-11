@@ -1,103 +1,112 @@
 
-# Corrections du trimmer musical : lecture, export et preview
+
+# Optimisation complete du processus musical : trimmer, lecture, export et preview finale
 
 ## Problemes identifies
 
-1. **Duree de selection incorrecte** : le `clipDuration` transmis au trimmer peut ne pas correspondre a la duree reelle de la video capturee (seulement la duree selectionnee avant capture, pas la duree effective du fichier video)
-2. **La lecture dans le trimmer ne joue pas uniquement la portion selectionnee** : conflit entre le drag et le bouton Play - le pointerDown sur le canvas capture les events avant le bouton Play, empechant la lecture correcte
-3. **La portion selectionnee n'est pas dans le rendu final (PublishScreen)** : le K-Engine recoit les metadonnees `startAt` et `duration` mais ne muxe pas l'audio avec le bon offset - il passe juste le blob tel quel
-4. **Pas de preview audio avant publication** : l'utilisateur ne peut pas ecouter le mix final (video + musique trimmee) avant de publier
+### 1. MusicTrimmer - Bugs de lecture
+- Le bouton Play fonctionne mais la lecture ne s'arrete pas correctement quand on deplace la selection (le `stopPlayback` est appele mais l'auto-preview de 2.5s peut creer un conflit si l'utilisateur reclique Play rapidement)
+- Pas de feedback visuel clair sur les bornes de la selection (timestamps debut/fin)
+- L'AudioContext n'est jamais ferme proprement au unmount
 
-## Modifications prevues
+### 2. PublishScreen - Pas de preview du rendu final
+- L'ecran de publication affiche la video SANS la musique : le `<video>` joue le fichier brut, jamais le mix video+musique
+- Aucun bouton "Ecouter le mix" ou "Jouer le rendu final" avant publication
+- L'utilisateur publie a l'aveugle sans savoir comment la musique sonne avec sa video
 
-### 1. MusicTrimmer.tsx - Corriger la lecture de la portion selectionnee
+### 3. PublishStep (Griot) - Preview partielle
+- Le bouton "Ecouter le mix" existe deja mais ne joue que l'audio (pas la video/animation)
+- L'animation du canvas ne demarre pas pendant la preview
+- Le startOffset de la musique est bien utilise dans l'export mais pas verifie dans la preview
 
-- Separer le bouton Play du canvas de drag (le sortir de la zone draggable)
-- S'assurer que `togglePlay` arrete toute lecture precedente quand on deplace le trimmer
-- Ajouter un auto-play quand on arrete de dragger : a chaque fin de drag, jouer automatiquement 2-3 secondes de la nouvelle position pour donner un apercu instantane
-- Ajouter un indicateur visuel de la position de lecture (curseur blanc anime qui traverse la selection)
+### 4. MusicDrawer - Fermeture apres confirmation
+- Apres confirmation du trim, le drawer se ferme mais l'utilisateur ne voit pas immediatement le resultat
+- Pas de feedback audio instantane apres validation (la musique devrait jouer brievement pour confirmer)
 
-### 2. MusicDrawer.tsx - Transmettre la duree video reelle
+## Plan de corrections
 
-- Verifier que `videoDuration` correspond bien a la duree video capturee (pas seulement la duree selectionnee au depart)
-- Si une video est deja capturee, utiliser sa duree reelle comme `clipDuration`
+### Fichier 1 : `MusicTrimmer.tsx` - Robustesse
 
-### 3. PublishScreen.tsx - Integrer le startOffset dans l'export K-Engine
+- Fermer l'AudioContext au unmount pour eviter les fuites memoire
+- Ajouter une guard dans `playSelection` pour eviter les lectures simultanees
+- Ameliorer le formatage des timestamps pour montrer `debut -> fin` de la selection
 
-Le K-Engine recoit les metadonnees mais n'utilise pas `startAt` pour le muxing audio. Il faut :
-- Avant d'appeler `kEngine.exportJob()`, si une musique est selectionnee avec un `startOffset`, creer un blob audio trimme (via Web Audio API) contenant uniquement la portion selectionnee
-- Passer ce blob audio trimme au K-Engine au lieu de l'URL complete
+### Fichier 2 : `PublishScreen.tsx` - Preview du rendu final avec musique
 
-Approche technique :
+C'est le changement principal. Ajouter un systeme de preview audio+video synchronise :
+
+- Ajouter un bouton "Ecouter le rendu" a cote du bouton Play existant (ou le remplacer)
+- Quand l'utilisateur clique : charger la musique trimmee via Web Audio API, synchroniser avec le `<video>` element
+- Le `<video>` joue normalement, et l'audio de la musique joue en parallele avec le bon offset et volume
+- Ajouter un etat `isPreviewingMix` et un bouton Stop
+- Au stop ou fin de la video : arreter l'audio
+
+Logique technique :
 ```text
-1. Charger le fichier audio complet via fetch + decodeAudioData
-2. Creer un nouveau AudioBuffer contenant uniquement [startOffset, startOffset + duration]
-3. Encoder ce buffer en WAV/blob
-4. Passer ce blob comme source audio au K-Engine
+1. Creer un AudioContext temporaire
+2. Si selectedMusic avec startOffset > 0 : fetch + decodeAudioData + start(0, startOffset, videoDuration)
+3. Si startOffset === 0 : fetch + decodeAudioData + start(0, 0, videoDuration)
+4. Jouer le <video> element en meme temps
+5. Volume musique: selectedMusic.volume / 100
+6. A la fin ou au stop : fermer AudioContext, arreter video
 ```
 
-### 4. PublishStep.tsx (Griot) - Ajouter bouton preview avant publication
+### Fichier 3 : `PublishStep.tsx` - Preview complete (audio + animation)
 
-- Ajouter un bouton "Ecouter le mix" dans la zone de finalisation
-- Ce bouton joue simultanement la video (canvas animation) et l'audio mixe (voix + musique trimmee) pendant 5 secondes
-- Utiliser le meme code de muxing que l'export (Web Audio API) mais connecte au `destination` au lieu d'un `MediaStreamDestination`
-- Afficher un mini-player avec bouton stop
+Ameliorer la preview existante :
+- Quand l'utilisateur clique "Ecouter le mix", lancer aussi l'animation du canvas via `engine.startSlideshowPreview()`
+- Arreter l'animation quand la preview s'arrete
+- Augmenter la duree de preview de 5s a la duree complete (ou max 15s)
 
-### 5. AudioLibrary.tsx - Meme corrections
+### Fichier 4 : `MusicDrawer.tsx` - Feedback post-confirmation
 
-- S'assurer que `videoDuration` est correctement passe depuis PublishStep
-- Deja fonctionnel, pas de changement majeur
+- Apres `confirmTrim()`, jouer 1 seconde de la portion selectionnee avant de fermer le drawer
+- Afficher un toast de confirmation avec les bornes temporelles
+
+### Fichier 5 : `audioTrimmer.ts` - Validation des parametres
+
+- Ajouter une validation : si `startOffset + duration > fullBuffer.duration`, clipper automatiquement
+- Ajouter un log de debug pour tracer le trim effectif
 
 ## Details techniques
 
-### MusicTrimmer.tsx - Separation drag/play
+### PublishScreen.tsx - Architecture de la preview
 
 ```text
-Avant : bouton Play EN DEDANS de la zone de drag
-         -> pointerDown capture le click -> le Play ne fonctionne pas bien
+Nouveaux states :
+- isPreviewingMix: boolean
+- previewAudioCtx: AudioContext | null (ref)
+- previewSource: AudioBufferSourceNode | null (ref)
 
-Apres : bouton Play EN DESSOUS de la zone de drag (section separee)
-         -> pas de conflit
-         -> auto-preview de 2s apres chaque fin de drag
+Nouveau handler : toggleMixPreview()
+  1. Si isPreviewingMix -> stop audio, pause video
+  2. Sinon :
+     a. Creer AudioContext
+     b. Fetch musicUrl (ou trimmedUrl si offset > 0)
+     c. decodeAudioData
+     d. createBufferSource + createGain (volume = selectedMusic.volume / 100)
+     e. connect destination
+     f. source.start(0, startOffset, videoDuration)
+     g. videoRef.current.currentTime = 0; videoRef.current.play()
+     h. setIsPreviewingMix(true)
+
+UI : Le bouton Play central change pour indiquer "Mix" quand une musique est selectionnee
 ```
 
-Structure modifiee :
-```text
-[Header: nom du track + duree]
-[Waveform canvas - zone de drag uniquement]
-[Controles: Play/Pause + timestamps]  <-- bouton Play deplace ici
-[Bouton "Utiliser cette partie"]
-```
-
-### PublishScreen.tsx - Trim audio avant export
-
-```text
-async function trimAudioBlob(audioUrl, startOffset, duration):
-  1. fetch(audioUrl) -> arrayBuffer
-  2. audioCtx.decodeAudioData(arrayBuffer) -> fullBuffer
-  3. Creer offlineCtx(channels, duration * sampleRate, sampleRate)
-  4. source.start(0, startOffset, duration) dans offlineCtx
-  5. offlineCtx.startRendering() -> trimmedBuffer
-  6. Encoder trimmedBuffer en WAV blob
-  7. Retourner le blob
-```
-
-### PublishStep.tsx - Mini preview player
+### PublishStep.tsx - Animation pendant preview
 
 ```text
-Nouveau composant inline :
-[🎵 Ecouter le mix]  ->  [⏸ Arret | 0:03 / 0:05]
-
-Logique :
-- Charger voix + musique dans AudioContext
-- Mixer avec les gains (voix: 1.0, musique: 0.25)
-- Jouer pendant 5s max
-- Lancer aussi l'animation du canvas
+Modifier togglePreview() :
+  - Apres demarrage des sources audio
+  - Appeler engineRef.current.startSlideshowPreview(previewDur, animStyle)
+  - Au stop : engineRef.current.stopPreview()
 ```
 
-### Fichiers modifies
+### Fichiers modifies (resume)
 
-1. `src/components/tamtam/creator/MusicTrimmer.tsx` : reorganiser UI, separer Play du drag, auto-preview apres drag
-2. `src/components/tamtam/creator/PublishScreen.tsx` : ajouter trimAudioBlob() avant export K-Engine
-3. `src/components/griot-studio/PublishStep.tsx` : ajouter bouton preview mix avant publication
-4. `src/components/tamtam/creator/MusicDrawer.tsx` : verification duree video reelle
+1. `src/components/tamtam/creator/MusicTrimmer.tsx` : cleanup AudioContext, guard de lecture
+2. `src/components/tamtam/creator/PublishScreen.tsx` : ajout preview mix video+musique  
+3. `src/components/griot-studio/PublishStep.tsx` : animation canvas pendant preview
+4. `src/components/tamtam/creator/MusicDrawer.tsx` : feedback audio post-trim
+5. `src/utils/audioTrimmer.ts` : validation des bornes
+
