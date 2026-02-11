@@ -51,12 +51,13 @@ export default function MusicTrimmer({
     setPlayProgress(0);
   }, []);
 
-  // Play the selected portion
+  // Play the selected portion (with guard against simultaneous plays)
   const playSelection = useCallback((offset: number, dur?: number) => {
     stopPlayback();
     const ctx = audioCtxRef.current;
     const buffer = audioBufferRef.current;
     if (!ctx || !buffer) return;
+    if (ctx.state === 'closed') return; // Guard: context already closed
 
     if (ctx.state === 'suspended') ctx.resume();
 
@@ -237,11 +238,13 @@ export default function MusicTrimmer({
     }
   }, [isPlaying, startOffset, playSelection, stopPlayback]);
 
-  // Cleanup
+  // Cleanup - close AudioContext
   useEffect(() => {
     return () => {
       try { sourceRef.current?.stop(); } catch {}
       cancelAnimationFrame(animFrameRef.current);
+      audioCtxRef.current?.close().catch(() => {});
+      audioCtxRef.current = null;
     };
   }, []);
 
@@ -266,7 +269,7 @@ export default function MusicTrimmer({
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm font-semibold truncate">{trackName}</p>
-          <p className="text-white/50 text-xs">{formatTime(effectiveDuration)} sélectionnés sur {formatTime(totalDuration)}</p>
+          <p className="text-white/50 text-xs">{formatTime(startOffset)} → {formatTime(startOffset + effectiveDuration)} sur {formatTime(totalDuration)}</p>
         </div>
       </div>
 

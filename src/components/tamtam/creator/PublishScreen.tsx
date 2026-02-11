@@ -1,7 +1,7 @@
 // src/components/tamtam/creator/PublishScreen.tsx
 // Fullscreen publish screen with K-Engine exportJob integration
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -23,6 +23,8 @@ import {
   Video,
   Sparkles,
   Check,
+  Headphones,
+  Square,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Caption } from "./CaptionsDrawer";
@@ -244,6 +246,9 @@ export default function PublishScreen({
   const [exportMessage, setExportMessage] = useState<string>("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewAudioCtxRef = useRef<AudioContext | null>(null);
+  const previewSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const [isPreviewingMix, setIsPreviewingMix] = useState(false);
 
   const selectedBg = TEXT_BACKGROUNDS[textBgIndex];
 
@@ -256,10 +261,72 @@ export default function PublishScreen({
 
   const togglePlay = () => {
     if (!videoRef.current) return;
-    if (isPlaying) videoRef.current.pause();
-    else videoRef.current.play();
+    if (isPlaying) {
+      videoRef.current.pause();
+      stopMixPreview();
+    } else {
+      videoRef.current.play();
+    }
     setIsPlaying(!isPlaying);
   };
+
+  // Stop mix preview audio
+  const stopMixPreview = useCallback(() => {
+    try { previewSourceRef.current?.stop(); } catch {}
+    previewSourceRef.current = null;
+    previewAudioCtxRef.current?.close().catch(() => {});
+    previewAudioCtxRef.current = null;
+    setIsPreviewingMix(false);
+  }, []);
+
+  // Toggle mix preview: plays video + music simultaneously
+  const toggleMixPreview = useCallback(async () => {
+    if (isPreviewingMix) {
+      stopMixPreview();
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      }
+      setIsPlaying(false);
+      return;
+    }
+
+    if (!selectedMusic || !videoRef.current) return;
+    const musicUrl = selectedMusic.track?.url || selectedMusic.customUrl;
+    if (!musicUrl) return;
+
+    try {
+      const ctx = new AudioContext({ sampleRate: 44100 });
+      if (ctx.state === 'suspended') await ctx.resume();
+      previewAudioCtxRef.current = ctx;
+
+      const res = await fetch(musicUrl);
+      const ab = await res.arrayBuffer();
+      const buf = await ctx.decodeAudioData(ab.slice(0));
+
+      const source = ctx.createBufferSource();
+      source.buffer = buf;
+      const gain = ctx.createGain();
+      gain.gain.value = (selectedMusic.volume || 70) / 100;
+      source.connect(gain).connect(ctx.destination);
+
+      const offset = selectedMusic.startOffset || 0;
+      const videoDur = videoRef.current.duration || 30;
+      source.start(0, offset, videoDur);
+      previewSourceRef.current = source;
+
+      source.onended = () => stopMixPreview();
+
+      // Sync video playback
+      videoRef.current.currentTime = 0;
+      videoRef.current.play();
+      setIsPlaying(true);
+      setIsPreviewingMix(true);
+    } catch (e) {
+      console.warn('[PublishScreen] Mix preview failed:', e);
+      stopMixPreview();
+    }
+  }, [isPreviewingMix, selectedMusic, stopMixPreview]);
 
   const toggleMute = () => {
     if (!videoRef.current) return;
@@ -685,6 +752,26 @@ export default function PublishScreen({
               <AlertCircle className="h-4 w-4" />
               {error}
             </div>
+          )}
+
+          {/* Mix preview button (only when music is selected and mediaType is video) */}
+          {selectedMusic && mediaType === "video" && (
+            <button
+              onClick={toggleMixPreview}
+              disabled={isPublishing || exporting}
+              className={cn(
+                "w-full h-12 rounded-2xl flex items-center justify-center gap-2 text-sm font-medium transition-all",
+                isPreviewingMix
+                  ? "bg-orange-500/20 border border-orange-500/50 text-orange-300"
+                  : "bg-white/5 border border-white/10 text-white/80 hover:bg-white/10"
+              )}
+            >
+              {isPreviewingMix ? (
+                <><Square className="h-4 w-4" /> ⏸ Arrêter le rendu</>
+              ) : (
+                <><Headphones className="h-4 w-4" /> 🎵 Écouter le rendu final</>
+              )}
+            </button>
           )}
 
           {/* Publish button */}
