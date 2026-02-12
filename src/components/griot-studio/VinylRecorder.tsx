@@ -1,6 +1,9 @@
 /**
- * VinylRecorder v1.1
+ * VinylRecorder v1.2
  * Cross-browser audio recording with animated vinyl disc
+ * - Blue text theme
+ * - Photo upload for narrator avatar via camera/file input
+ * - Gain density slider (tonearm)
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -29,13 +32,19 @@ export function VinylRecorder({
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null);
+  const [gainValue, setGainValue] = useState(0.75);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const discControls = useAnimation();
+
+  const displayAvatar = avatarUrl || localAvatarUrl;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -82,9 +91,33 @@ export function VinylRecorder({
     };
   }, [isRecording, maxDuration]);
 
+  // Update gain in real-time
+  useEffect(() => {
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.setValueAtTime(gainValue, gainNodeRef.current.context.currentTime);
+    }
+  }, [gainValue]);
+
   const vibrate = useCallback((pattern: number | number[]) => {
     if ('vibrate' in navigator) navigator.vibrate(pattern);
   }, []);
+
+  const handleAvatarFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setLocalAvatarUrl(url);
+    if (onAvatarCapture) onAvatarCapture();
+    vibrate(30);
+  }, [onAvatarCapture, vibrate]);
+
+  const handleAvatarClick = useCallback(() => {
+    if (onAvatarCapture) {
+      onAvatarCapture();
+    } else {
+      fileInputRef.current?.click();
+    }
+  }, [onAvatarCapture]);
 
   const startRecording = useCallback(async () => {
     if (disabled) return;
@@ -94,8 +127,19 @@ export function VinylRecorder({
       });
       chunksRef.current = [];
       
+      // Set up gain node for density control
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const gainNode = audioContext.createGain();
+      gainNode.gain.setValueAtTime(gainValue, audioContext.currentTime);
+      gainNodeRef.current = gainNode;
+      
+      const destination = audioContext.createMediaStreamDestination();
+      source.connect(gainNode);
+      gainNode.connect(destination);
+      
       const mimeType = getSupportedAudioMimeType();
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = new MediaRecorder(destination.stream, { mimeType });
       
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
@@ -103,6 +147,8 @@ export function VinylRecorder({
       
       mediaRecorder.onstop = () => {
         stream.getTracks().forEach(track => track.stop());
+        audioContext.close();
+        gainNodeRef.current = null;
         if (chunksRef.current.length > 0) {
           const audioBlob = new Blob(chunksRef.current, { type: getAudioBlobType() });
           const finalDuration = (Date.now() - startTimeRef.current) / 1000;
@@ -121,7 +167,7 @@ export function VinylRecorder({
       setPermissionDenied(true);
       vibrate([100, 50, 100]);
     }
-  }, [disabled, onRecordingComplete, vibrate]);
+  }, [disabled, onRecordingComplete, vibrate, gainValue]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -139,6 +185,33 @@ export function VinylRecorder({
 
   return (
     <div className="flex flex-col items-center gap-4">
+      {/* Hidden file input for avatar photo */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={handleAvatarFileChange}
+      />
+
+      {/* Density/Gain Slider (tonearm) */}
+      <div className="flex items-center gap-2 w-full max-w-[200px]">
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={gainValue}
+          onChange={(e) => setGainValue(parseFloat(e.target.value))}
+          className="flex-1 h-2 rounded-full appearance-none bg-gray-600 accent-blue-600 cursor-pointer"
+          title={`Densité : ${Math.round(gainValue * 100)}%`}
+        />
+        <span className="text-xs font-mono text-blue-300 w-10 text-right">
+          {Math.round(gainValue * 100)}%
+        </span>
+      </div>
+
       {/* Vinyl Disc Container */}
       <div className="relative">
         <svg width={size} height={size} className="absolute inset-0 -rotate-90">
@@ -168,14 +241,14 @@ export function VinylRecorder({
           <div className={cn(
             "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
             "w-20 h-20 rounded-full overflow-hidden border-2 shadow-inner",
-            isRecording ? "border-red-500" : "border-amber-400"
-          )} style={{ borderColor: isRecording ? '#EF4444' : accentColor }}>
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Narrateur" className="w-full h-full object-cover" />
+            isRecording ? "border-red-500" : "border-blue-500"
+          )} style={{ borderColor: isRecording ? '#EF4444' : '#2563eb' }}>
+            {displayAvatar ? (
+              <img src={displayAvatar} alt="Narrateur" className="w-full h-full object-cover" />
             ) : (
-              <button onClick={onAvatarCapture}
-                className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-900/80 to-amber-950 hover:from-amber-800/80 hover:to-amber-900 transition-colors">
-                <Camera className="w-6 h-6 text-amber-200/60" />
+              <button onClick={handleAvatarClick}
+                className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900/80 to-blue-950 hover:from-blue-800/80 hover:to-blue-900 transition-colors">
+                <Camera className="w-6 h-6 text-blue-200/80" />
               </button>
             )}
           </div>
@@ -195,15 +268,15 @@ export function VinylRecorder({
 
       {/* Time Display */}
       <div className="text-center">
-        <p className="text-3xl font-mono font-bold text-white">{formatTime(duration)}</p>
-        <p className="text-sm text-amber-200/70">/ {formatTime(maxDuration)}</p>
+        <p className="text-3xl font-mono font-bold text-blue-100">{formatTime(duration)}</p>
+        <p className="text-sm text-blue-300/70">/ {formatTime(maxDuration)}</p>
       </div>
 
       {/* Record Button */}
       <button onClick={handleToggleRecording} disabled={disabled}
         className={cn(
           "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 transform active:scale-95 shadow-lg",
-          isRecording ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400",
+          isRecording ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500",
           disabled && "opacity-50 cursor-not-allowed"
         )}>
         {isRecording ? <Square className="w-6 h-6 text-white fill-white" /> : <Mic className="w-7 h-7 text-white" />}
@@ -211,7 +284,7 @@ export function VinylRecorder({
 
       {/* Labels */}
       <div className="text-center">
-        <p className="text-sm font-medium text-amber-100">
+        <p className="text-sm font-medium text-blue-200">
           {isRecording ? '🔴 Parle... / Sɔ̀...' : '🎙️ Raconte / Sɔ̀'}
         </p>
         {permissionDenied && (
