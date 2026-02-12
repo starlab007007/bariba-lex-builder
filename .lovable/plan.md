@@ -1,169 +1,140 @@
 
+# Plan de correction complet : Audio, Responsive, Lisibilite, UX
 
-# Conte Vivant -- Refonte Immersive Audio-First
+## Diagnostic des problemes identifies
 
-## Resume
+### 1. AUDIO : Enregistrement echoue sur Safari/Chrome/Opera mobile
+**Cause racine :** Les composants `SegmentEditor.tsx` et `VinylRecorder.tsx` utilisent `audio/webm;codecs=opus` comme MIME type, qui n'est **pas supporte sur Safari iOS**. Safari necessite `audio/mp4`.
 
-Transformer le systeme Conte Vivant actuel (3 segments textuels, sans medias) en une experience immersive 100% audio-first avec 11 segments interactifs utilisant les 300+ photos/videos IA de `anime_scene_library`. Navigation uniquement par icones et gestes tap.
+- `SegmentEditor.tsx` ligne 64 : `new Blob(chunks, { type: 'audio/webm' })` -- pas de detection MIME
+- `VinylRecorder.tsx` lignes 122-125 : test uniquement `audio/webm;codecs=opus` puis fallback `audio/webm` -- Safari ignore les deux
+- `useAudioRecorder.ts` lignes 71-75 : meme probleme, pas de fallback `audio/mp4`
 
-## Etat actuel analyse
+**Solution :** Le projet a deja un pattern Safari-compatible dans `GriotDigitalCreator.tsx` (`getSupportedAudioMimeType`). Il faut extraire cette logique dans un utilitaire partage et l'appliquer partout.
 
-- **ConteVivantStudio** : home/builder/player avec demo 3 segments (texte seul, pas de medias)
-- **BranchingPlayer** : utilise `useStoryGraph` pour la navigation DAG, `useBranchPreload` pour le pre-cache, `useChoiceTimer` pour le timer 5s
-- **ChoiceOverlay** : boutons textuels avec barre horizontale
-- **EndingCard** : ecran basique avec texte
-- **SegmentEditor** : editeur texte + enregistrement audio basique (pas d'AssetGallery)
-- **StoryBuilder** : 6 etapes formulaire, pas de selection de medias visuels
-- **Types** : `StorySegment` n'a pas de `mediaType`, `media_url`, `color`, `position`
+### 2. RESPONSIVE : L'affichage n'est pas adapte mobile
+**Problemes trouves :**
+- `ConteVivantStudio.tsx` : conteneur `flex-col items-center justify-center p-6` sans `h-[100dvh]` ni `overflow-y-auto`, le contenu peut deborder
+- `StoryBuilder.tsx` : le header + step indicators + contenu + footer ne gerent pas bien le scroll sur petit ecran
+- `SegmentEditor.tsx` : les boutons d'action s'empilent mal sur ecrans etroits (<375px)
+- `StoryTreePreview.tsx` : `max-h-64` trop petit sur mobile, coupe l'arbre
+- Les step indicators dans `StoryBuilder` debordent horizontalement sans scrollbar visible
 
-## Plan d'implementation (10 etapes)
+### 3. LISIBILITE : Couleurs de texte illisibles
+**Problemes trouves :**
+- `ConteVivantStudio.tsx` : texte `text-white/40` et `text-white/50` sur fond `#08080c` -- contraste insuffisant (ratio ~2:1, minimum WCAG AA = 4.5:1)
+- `StoryBuilder.tsx` : utilise `text-muted-foreground` qui peut etre gris clair sur fond clair en mode light
+- `SegmentEditor.tsx` : `text-muted-foreground` pour les labels, difficilement lisible
+- Les badges `text-[10px]` sont trop petits pour etre lus sur mobile
 
-### Etape 1 : Types mis a jour
+### 4. PARCOURS UTILISATEUR : Navigation incomplete et non intuitive
+**Problemes trouves :**
+- **Pas de bouton Annuler** sur le `SegmentEditor` (on ne peut pas annuler une modification en cours)
+- **Pas de previsualisation jouable** depuis le StoryBuilder : le bouton "Apercu" montre seulement l'arbre textuel (`StoryTreePreview`), pas un vrai player
+- **Pas de lecture audio/video** dans l'apercu du SegmentEditor : les videos sont `muted` sans controle, les audios de narration ne sont pas jouables
+- **Navigation Previous/Next** existe dans StoryBuilder mais les boutons sont petits et sans indication visuelle de progression
+- **Pas de confirmation** avant publication
+- **Pas de bouton "Tester mon conte"** dans l'etape Preview pour lancer le BranchingPlayer
 
-Fichier modifie : `src/features/conte-vivant/types/story.types.ts`
+---
 
-Ajouter aux interfaces existantes :
-- `StorySegment` : `mediaType`, `media_url`, `narrator_audio_url`, `choice_audio_url`, `background_music_url`
-- `StoryChoice` : `color`, `position`
-- `SegmentDraft` : `mediaType`, `media_url`, `narrator_audio_blob`, `narrator_audio_url`
+## Plan d'implementation
 
-### Etape 2 : Conte demo 11 segments
+### Etape 1 : Utilitaire audio cross-browser (nouveau fichier)
+Creer `src/lib/audioMimeUtils.ts` en extrayant la logique de `GriotDigitalCreator.tsx` :
+- `getSupportedAudioMimeType()` : detecte le bon MIME (audio/mp4 sur Safari, audio/webm sinon)
+- `getAudioBlobType()` : retourne le type correct pour le Blob
+- `isIOSDevice()` et `isSafariBrowser()` reutilisables
 
-Nouveau fichier : `src/features/conte-vivant/data/demoStory.ts`
+### Etape 2 : Corriger l'enregistrement audio partout
+**Fichiers modifies :**
+- `src/hooks/useAudioRecorder.ts` : utiliser `getSupportedAudioMimeType()` au lieu du MIME en dur
+- `src/components/griot-studio/VinylRecorder.tsx` : meme correction
+- `src/features/conte-vivant/components/SegmentEditor.tsx` : meme correction pour le recorder inline + ajouter gestion d'erreur avec toast
 
-Fonction `loadDemoStory()` qui :
-- Requete `anime_scene_library` pour 7 assets reels (village/elder/photo, journey/group/video, forest/elder/photo, etc.)
-- Construit un StoryGraph complet avec 11 segments : intro, guerriers, devin, piege, poursuite, potion, chant + 4 segments intermediaires
-- 4 fins avec badges : Guerrier, Cavalier, Sage, Griot
-- Choix avec couleurs (#FF6B35, #00D4AA, #22C55E, #A855F7, #F5A623, #EC4899) et positions (left/right)
+### Etape 3 : Corriger la lisibilite et le contraste
+**Fichiers modifies :**
+- `ConteVivantStudio.tsx` :
+  - Remplacer `text-white/40` par `text-white/70` (contraste > 4.5:1)
+  - Remplacer `text-white/50` par `text-white/70`
+  - Augmenter la taille des labels de `text-[10px]` a `text-xs` (12px)
+- `StoryBuilder.tsx` :
+  - Forcer le theme sombre pour tout le builder (`style={{ backgroundColor: '#08080c', color: '#e5e5e5' }}`)
+  - Augmenter la visibilite des step indicators
+- `SegmentEditor.tsx` :
+  - Augmenter le contraste des labels et placeholders
+  - Tailles de texte minimum 12px
 
-### Etape 3 : 6 nouveaux composants visuels
+### Etape 4 : Rendre le layout responsive
+**Fichiers modifies :**
+- `ConteVivantStudio.tsx` :
+  - Ajouter `h-[100dvh]` au conteneur racine
+  - Ajouter `overflow-y-auto` sur le contenu scrollable
+  - Adapter la grille de stats avec `grid-cols-2 sm:grid-cols-3`
+- `StoryBuilder.tsx` :
+  - Le conteneur principal doit etre `h-[100dvh] flex flex-col`
+  - Le contenu central doit etre `flex-1 overflow-y-auto`
+  - Les step indicators doivent avoir un scroll horizontal smooth avec indicateur
+  - Les boutons Previous/Next doivent etre plus grands (min 44px de hauteur) avec labels visibles
+- `SegmentEditor.tsx` :
+  - Les boutons d'action en `flex-wrap` avec `gap-2` (deja fait partiellement)
+  - Le selecteur de couleurs en scroll horizontal si necessaire
 
-**3a. KenBurnsPhoto.tsx** -- Photo avec animation CSS zoom+pan 12s, 4 directions aleatoires, fade-in 300ms
+### Etape 5 : Ameliorer le parcours utilisateur
+**Fichiers modifies :**
+- `StoryBuilder.tsx` :
+  - Ajouter un bouton "Tester le conte" dans l'etape Preview qui lance le `BranchingPlayer` en overlay
+  - Ajouter une confirmation modale avant publication ("Etes-vous sur de vouloir publier ?")
+  - Ameliorer les boutons de navigation : plus grands, avec icones + texte, couleur primaire pour "Suivant"
+  - Afficher clairement l'etape en cours avec un compteur "Etape X sur Y"
+- `SegmentEditor.tsx` :
+  - Ajouter la lecture de l'audio de narration (bouton Play avec `<audio>` visible)
+  - Ajouter la lecture de la video (bouton Play sur la miniature)
+  - Supprimer le doublon de bouton "Audio" (il y a deux recorders : le simple et le VinylRecorder)
+- `ConteVivantStudio.tsx` :
+  - Le bouton "Mes contes" doit etre fonctionnel (actuellement ne fait rien)
 
-**3b. AudioWaveBar.tsx** -- 5 barres verticales animees (CSS keyframes waveHeight), couleur ambre #F5A623, position absolue en bas
+### Etape 6 : Previsualisation complete dans le builder
+**Fichiers modifies :**
+- `StoryBuilder.tsx` :
+  - Dans l'etape "preview", ajouter un bouton "Jouer le conte" qui affiche le `BranchingPlayer` en plein ecran
+  - Afficher un resume complet avec miniatures, durees, nombre de fins
 
-**3c. CircularTimer.tsx** -- Cercle SVG 60px, stroke dore #F5A623, stroke-dashoffset anime sur 5s, chiffre au centre, rouge sous 2s
+---
 
-**3d. ProgressDots.tsx** -- Indicateur points lumineux en haut centre, point actuel ambre, precedents blancs, futurs gris
+## Resume des fichiers a modifier
 
-**3e. GoldenParticles.tsx** -- 12 cercles dores animes en radial autour du badge de fin, framer-motion scale+translate+opacity
+| Fichier | Modifications |
+|---------|---------------|
+| `src/lib/audioMimeUtils.ts` | **Nouveau** - Utilitaire MIME audio cross-browser |
+| `src/hooks/useAudioRecorder.ts` | MIME dynamique Safari/Chrome |
+| `src/components/griot-studio/VinylRecorder.tsx` | MIME dynamique + gestion erreur |
+| `src/features/conte-vivant/components/SegmentEditor.tsx` | MIME fix, supprimer doublon recorder, ajouter playback |
+| `src/features/conte-vivant/components/StoryBuilder.tsx` | Responsive, navigation amelioree, preview jouable, confirmation publication |
+| `src/features/conte-vivant/components/ConteVivantStudio.tsx` | h-[100dvh], contraste texte, responsive grid |
 
-**3f. SegmentTransition.tsx** -- Overlay noir crossfade 300ms entre segments, callback onMidpoint pour changer de segment
+## Details techniques
 
-### Etape 4 : BranchingPlayer refonte complete
+### Pattern MIME audio (extrait de la solution existante)
+```text
+Ordre de priorite Safari iOS : audio/mp4 > audio/webm > audio/ogg
+Ordre de priorite Chrome/Firefox : audio/webm;codecs=opus > audio/webm > audio/mp4
+Detection : navigator.userAgent pour iOS + MediaRecorder.isTypeSupported()
+Blob type : doit correspondre au MIME utilise par MediaRecorder
+```
 
-Fichier modifie : `src/features/conte-vivant/components/BranchingPlayer.tsx`
+### Regles de contraste WCAG AA
+```text
+Texte normal (< 18px) : ratio minimum 4.5:1
+Texte large (>= 18px bold ou >= 24px) : ratio minimum 3:1
+Fond #08080c + text white/70 = ratio ~8:1 (OK)
+Fond #08080c + text white/40 = ratio ~2.5:1 (ECHEC)
+```
 
-Remplacement complet :
-- Accepte un `storyGraph` avec les nouvelles proprietes (media_url, mediaType, color, position)
-- Fond #08080c noir profond
-- Photos : KenBurnsPhoto en plein ecran 9:16
-- Videos : `<video>` natif plein ecran, autoPlay, playsInline
-- AudioWaveBar en bas (animation simulee)
-- ProgressDots en haut centre
-- Tap pause/play sur l'ecran
-- Au moment du choix : image scale(0.85) + blur(4px) + overlay noir 40% + vibration haptic
-- Transition crossfade 300ms via SegmentTransition
-- Pre-cache via useBranchPreload existant
-- Timer auto : durationSec puis affiche choix ou ending
-- Utilise useStoryGraph pour la navigation (adapte pour les nouveaux champs)
-
-### Etape 5 : ChoiceOverlay refonte audio-first
-
-Fichier modifie : `src/features/conte-vivant/components/ChoiceOverlay.tsx`
-
-Remplacement complet :
-- Icones GRANDES 48px emoji, PAS de texte obligatoire
-- Couleurs distinctes par choix (utilise choice.color)
-- Positions gauche/droite (utilise choice.position)
-- CircularTimer dore au centre en haut (remplace barre horizontale)
-- Bordure pulsante avec glow animation (boxShadow anime)
-- Haptic navigator.vibrate(100) a l'apparition
-- Flash blanc si timeout
-
-### Etape 6 : EndingCard refonte avec particles
-
-Fichier modifie : `src/features/conte-vivant/components/EndingCard.tsx`
-
-Remplacement complet :
-- Fond #08080c avec gradient radial subtil
-- Badge rebondissant animation spring + GoldenParticles autour
-- Indicateurs visuels des fins (icones des badges, pas juste texte "2/4")
-- 3 boutons icones ronds : Rejouer (or), Partager (bleu), Suivant (vert)
-- Zero texte obligatoire pour naviguer
-
-### Etape 7 : SegmentEditor ameliore
-
-Fichier modifie : `src/features/conte-vivant/components/SegmentEditor.tsx`
-
-Ajouts a l'existant :
-- Bouton icone qui ouvre AssetGallery (importe depuis griot-studio) en mode single-select
-- Preview miniature 48x86px de l'asset selectionne
-- Stocke media_url et mediaType dans le draft
-- Pour les choix : 5 pastilles colorees cliquables + 3 boutons position (gauche/droite/centre)
-
-### Etape 8 : StoryBuilder ameliore
-
-Fichier modifie : `src/features/conte-vivant/components/StoryBuilder.tsx`
-
-Ajouts a l'existant :
-- Bouton musique qui ouvre AudioLibrary (importe depuis tamtam/creator)
-- Miniatures 40x72px dans la liste des segments
-- Validation : segments sans media_url ont une bordure orange clignotante
-- buildGraph() inclut media_url, mediaType, color, position dans la sortie
-
-### Etape 9 : ConteVivantStudio ameliore
-
-Fichier modifie : `src/features/conte-vivant/components/ConteVivantStudio.tsx`
-
-Changements :
-- Fond bg-[#08080c]
-- Bouton "Demo" appelle loadDemoStory() async puis ouvre BranchingPlayer avec les 11 segments
-- Import de loadDemoStory depuis data/demoStory
-- Icones au lieu de texte pour les boutons principaux
-
-### Etape 10 : Adaptation useStoryGraph
-
-Fichier modifie : `src/features/conte-vivant/hooks/useStoryGraph.ts`
-
-Le hook existant utilise `next_segment` dans les choix. Le BranchingPlayer refait gere son propre state directement a partir du storyGraph. Pas de modification majeure necessaire, juste s'assurer que les types sont compatibles avec les nouveaux champs.
-
-## Fichiers
-
-**7 nouveaux** :
-1. `src/features/conte-vivant/data/demoStory.ts`
-2. `src/features/conte-vivant/components/KenBurnsPhoto.tsx`
-3. `src/features/conte-vivant/components/AudioWaveBar.tsx`
-4. `src/features/conte-vivant/components/CircularTimer.tsx`
-5. `src/features/conte-vivant/components/ProgressDots.tsx`
-6. `src/features/conte-vivant/components/GoldenParticles.tsx`
-7. `src/features/conte-vivant/components/SegmentTransition.tsx`
-
-**6 modifies** :
-1. `src/features/conte-vivant/types/story.types.ts`
-2. `src/features/conte-vivant/components/BranchingPlayer.tsx`
-3. `src/features/conte-vivant/components/ChoiceOverlay.tsx`
-4. `src/features/conte-vivant/components/EndingCard.tsx`
-5. `src/features/conte-vivant/components/SegmentEditor.tsx`
-6. `src/features/conte-vivant/components/StoryBuilder.tsx`
-7. `src/features/conte-vivant/components/ConteVivantStudio.tsx`
-
-**Non modifies** : VinylRecorder, AssetGallery, AudioLibrary, MusicDrawer, useChoiceTimer, useBranchPreload, storyGraphApi, GriotAnimationEngine
-
-**Zero nouvelle dependance npm.**
-
-## Design System
-
-| Element | Valeur |
-|---|---|
-| Fond principal | #08080c |
-| Surface | #0f0f18, #161622 |
-| Or/accent | #F5A623 |
-| Action gauche | #FF6B35 |
-| Action droite | #00D4AA |
-| Border radius cartes | 14px |
-| Border radius boutons ronds | 50% |
-| Touch target minimum | 48px |
-| Haptic | navigator.vibrate() |
-
+### Layout responsive
+```text
+Conteneur principal : h-[100dvh] flex flex-col
+Zone scrollable : flex-1 overflow-y-auto
+Boutons tactiles : min-h-[44px] (WCAG 2.1 AA)
+Texte minimum : 12px (text-xs)
+```
