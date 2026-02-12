@@ -20,7 +20,7 @@ interface StoryBuilderProps {
 }
 
 const defaultSegment = (id: string, title = ''): SegmentDraft => ({
-  id, title, text_content: '', image_urls: [], duration: 15, is_ending: false,
+  id, title, text_content: '', image_urls: [], duration: 30, is_ending: false,
 });
 
 const defaultChoice = (id: string, label = '', isDefault = false): ChoiceDraft => ({

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Mic, Square, Trash2, ImageIcon, Loader2, Play, Pause, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,23 @@ import { aiAssetGenerator } from '@/services/aiAssetGenerator';
 import { toast } from 'sonner';
 import { getSupportedAudioMimeType, getAudioBlobType, getRecorderTimeslice } from '@/lib/audioMimeUtils';
 import type { SegmentDraft } from '../types/story.types';
+
+const MAX_RECORDING_DURATION = 30; // seconds
+
+async function transcribeBlob(blob: Blob): Promise<string | null> {
+  try {
+    const formData = new FormData();
+    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    formData.append('file', new File([blob], `narration.${ext}`, { type: blob.type }));
+
+    const { data, error } = await supabase.functions.invoke('transcribe-audio', { body: formData });
+    if (error) throw error;
+    return data?.text || null;
+  } catch (err: any) {
+    console.error('Transcription error:', err);
+    return null;
+  }
+}
 
 interface SegmentEditorProps {
   segment: SegmentDraft;
@@ -44,6 +61,12 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [recordingElapsed, setRecordingElapsed] = useState(0);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingStartRef = useRef<number>(0);
+  const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const { data: characterRefs } = useQuery({
     queryKey: ['character-references'],
     queryFn: async () => {
@@ -51,6 +74,24 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
       return data || [];
     },
   });
+
+  const cleanupRecordingTimers = useCallback(() => {
+    if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null; }
+    if (autoStopRef.current) { clearTimeout(autoStopRef.current); autoStopRef.current = null; }
+    setRecordingElapsed(0);
+  }, []);
+
+  const autoTranscribe = useCallback(async (blob: Blob, updatedSegment: SegmentDraft) => {
+    setIsTranscribing(true);
+    const text = await transcribeBlob(blob);
+    setIsTranscribing(false);
+    if (text) {
+      onChange({ ...updatedSegment, text_content: text });
+      toast.success('Transcription terminée');
+    } else {
+      toast.error('Transcription échouée — texte non rempli');
+    }
+  }, [onChange]);
 
   const startRecording = async () => {
     try {
@@ -63,13 +104,32 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: getAudioBlobType() });
         const url = URL.createObjectURL(blob);
-        onChange({ ...segment, audio_blob: blob, audio_url: url, duration: 15 });
+        const elapsed = Math.round((Date.now() - recordingStartRef.current) / 1000);
+        const updated = { ...segment, audio_blob: blob, audio_url: url, duration: Math.min(elapsed, MAX_RECORDING_DURATION) };
+        onChange(updated);
+        cleanupRecordingTimers();
+        // Auto-transcribe
+        autoTranscribe(blob, updated);
         stream.getTracks().forEach(t => t.stop());
       };
 
       recorder.start(getRecorderTimeslice());
       setMediaRecorder(recorder);
       setIsRecording(true);
+      recordingStartRef.current = Date.now();
+      setRecordingElapsed(0);
+
+      // Elapsed timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingElapsed(Math.floor((Date.now() - recordingStartRef.current) / 1000));
+      }, 200);
+
+      // Auto-stop at max duration
+      autoStopRef.current = setTimeout(() => {
+        recorder.stop();
+        setIsRecording(false);
+        setMediaRecorder(null);
+      }, MAX_RECORDING_DURATION * 1000);
     } catch (err: any) {
       console.error('Recording error:', err);
       toast.error('Micro non accessible : ' + (err.message || 'Erreur'));
@@ -80,6 +140,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
     mediaRecorder?.stop();
     setIsRecording(false);
     setMediaRecorder(null);
+    cleanupRecordingTimers();
   };
 
   const handleAssetSelect = (assets: LibraryAsset[]) => {
@@ -96,8 +157,11 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
 
   const handleNarrationComplete = (blob: Blob, duration: number) => {
     const url = URL.createObjectURL(blob);
-    onChange({ ...segment, narrator_audio_blob: blob, narrator_audio_url: url, duration: Math.round(duration) });
+    const updated = { ...segment, narrator_audio_blob: blob, narrator_audio_url: url, duration: Math.round(duration) };
+    onChange(updated);
     setShowRecorder(false);
+    // Auto-transcribe narration
+    autoTranscribe(blob, updated);
   };
 
   const handleGenerateAsset = async () => {
@@ -165,6 +229,26 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         className="w-full h-20 px-3 py-2 rounded-md border border-white/20 bg-white/10 text-white text-sm resize-none placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
       />
 
+      {/* Inline recording timer */}
+      {isRecording && (
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/30 animate-pulse">
+          <Square className="w-4 h-4 text-destructive" />
+          <span className="text-sm font-mono font-bold text-destructive">
+            {recordingElapsed}s / {MAX_RECORDING_DURATION}s
+          </span>
+          <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-full bg-destructive rounded-full transition-all" style={{ width: `${(recordingElapsed / MAX_RECORDING_DURATION) * 100}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Transcription loading indicator */}
+      {isTranscribing && (
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
+          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+          <span className="text-xs font-medium text-primary">Transcription en cours...</span>
+        </div>
+      )}
       {/* Media preview with playback controls */}
       {segment.media_url && (
         <div className="flex items-center gap-2">
