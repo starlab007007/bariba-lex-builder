@@ -1,118 +1,122 @@
 
+# Plan de correction : Persistance audio, Media et Integration Feed
 
-# Plan de correction complet : Audio, Affichage, Responsive, UX
+## Problemes critiques identifies
 
-## Bugs critiques identifies
+### PROBLEME 1 : Audio/voix perdus apres publication (CRITIQUE)
+L'enregistrement audio via VinylRecorder et le recorder inline cree des URLs temporaires (`blob:https://...`) via `URL.createObjectURL()`. Ces URLs sont valides uniquement dans la session navigateur courante. Quand le graph est sauvegarde dans la base de donnees via `createStory()`, ces URLs blob sont stockees telles quelles dans le champ JSON `graph`. Au rechargement ou pour un autre utilisateur, ces URLs sont mortes -- l'audio ne peut plus etre lu.
 
-### BUG 1 : Audio/voix absents du rendu final
-**Cause racine** : Dans `StoryBuilder.tsx` ligne 76, `buildGraph()` ecrit `audio_url: introSegment.audio_url` mais l'enregistreur VinylRecorder sauve la narration dans `narrator_audio_url`. Le champ `audio_url` reste toujours `undefined`. Meme probleme ligne 91 pour les branches.
+**Solution** : Avant publication, uploader chaque blob audio (narration + musique) vers le stockage fichiers, puis remplacer les URLs blob par des URLs publiques permanentes dans le graph.
 
-**Correction** : Dans `buildGraph()`, mapper `narrator_audio_url` vers le champ `narrator_audio_url` du StorySegment ET aussi vers `audio_url` comme fallback.
+### PROBLEME 2 : Photos/videos locales perdues (meme cause)
+Si un utilisateur selectionne un media depuis la galerie avec une URL Supabase, ca fonctionne. Mais si un media est genere localement (capture, blob), le meme probleme de blob URL s'applique.
 
-### BUG 2 : BranchingPlayer ne joue pas l'audio
-**Cause racine** : Le composant `BranchingPlayer.tsx` n'a aucun element `<audio>` pour lire la narration ou la musique de fond. Il affiche uniquement les visuels (video/photo) et les choix, mais aucun son n'est emis.
+**Solution** : Verifier et uploader tout media avec URL blob avant publication.
 
-**Correction** : Ajouter un element `<audio>` pour la narration du segment courant et un second pour la musique de fond, avec autoplay et gestion du cycle de vie.
+### PROBLEME 3 : Le conte publie n'apparait pas dans le feed video
+Le feed video (`TamTamSocial`, `useVideoFeed`) lit uniquement la table `videos`. Les contes publies vont dans `conte_vivant_stories` -- une table completement separee. Il n'y a aucun pont entre les deux.
 
-### BUG 3 : Theme clair au lieu du theme sombre
-**Cause racine visible dans les 8 screenshots** : `StoryBuilder.tsx` utilise `bg-background text-foreground` (ligne 164) qui rend en mode clair (fond blanc, texte gris). Tout le builder est illisible.
-
-**Correction** : Forcer le fond sombre `bg-[#08080c]` et les couleurs de texte `text-white` sur le StoryBuilder, comme deja fait sur ConteVivantStudio.
-
-### BUG 4 : Photos/videos de la galerie absentes du rendu
-**Cause racine** : Dans `handleAssetSelect` (SegmentEditor ligne 85-94), le media est correctement sauve dans le segment. Mais dans `buildGraph()`, seul `media_url` et `mediaType` sont transmis -- ce qui est correct. Le vrai probleme est que les URLs blob (`blob://...`) creees localement ne sont pas persistantes et disparaissent quand le player est monte. Pour les assets de la galerie avec des URLs Supabase, ca devrait fonctionner. Le probleme est lie au BUG 2 : pas d'audio = impression que le rendu est incomplet.
-
-### BUG 5 : Textes illisibles
-**Visible dans tous les screenshots** : Placeholder gris clair sur fond blanc, labels `text-foreground/60` a peine visibles, bordures quasi invisibles.
+**Solution** : Ajouter une entree dans le feed video avec un marqueur `template_id: 'conte-vivant'` et stocker le `story_id` dans les metadata. Le composant feed detectera ce type et lancera le `BranchingPlayer` au lieu d'une lecture video standard.
 
 ---
 
 ## Plan d'implementation
 
-### Fichier 1 : `src/features/conte-vivant/components/StoryBuilder.tsx`
+### Etape 1 : Creer un service d'upload des blobs audio/media
 
-**A. Forcer le theme sombre**
-- Ligne 164 : Remplacer `bg-background text-foreground` par un style inline `backgroundColor: '#08080c', color: '#e5e5e5'`
-- Appliquer des classes de texte claires partout : `text-white`, `text-white/70` au lieu de `text-foreground/60`
-- Les cartes de segments : fond `bg-white/5` avec bordure `border-white/10` au lieu de `bg-card/50`
-- Les inputs : fond `bg-white/10` avec texte blanc, placeholder `placeholder:text-white/40`
-- Boutons "Precedent"/"Suivant" : couleurs explicites blanches
-- Step indicators : fond sombre avec texte visible
+Creer `src/features/conte-vivant/services/storyAssetUploader.ts` :
+- Fonction `uploadStoryAssets(graph, segments)` qui :
+  1. Parcourt tous les segments du graph
+  2. Detecte les URLs qui commencent par `blob:`
+  3. Upload chaque blob vers le storage (bucket `videos` ou creer un bucket `story-assets`)
+  4. Remplace les URLs blob par les URLs publiques permanentes
+  5. Retourne le graph nettoye avec des URLs persistantes
+- Gestion specifique pour `narrator_audio_url`, `audio_url`, `media_url`, `background_music_url`
 
-**B. Corriger buildGraph() pour inclure l'audio**
-- Ligne 76 : ajouter `narrator_audio_url: introSegment.narrator_audio_url`
-- Ligne 76 : `audio_url: introSegment.audio_url || introSegment.narrator_audio_url` (fallback)
-- Ligne 91 : meme correction pour les branches
-- Ligne 104 : meme correction pour les sub-branches
+### Etape 2 : Modifier le flux de publication dans ConteVivantStudio
 
-**C. Ameliorer la navigation**
-- Afficher le compteur d'etape sur mobile aussi (retirer `hidden sm:block`)
-- Augmenter la taille du texte des boutons de navigation
+Modifier `handlePublish` dans `ConteVivantStudio.tsx` :
+- Avant d'appeler `createStory()`, appeler `uploadStoryAssets()` pour uploader les blobs
+- Passer les blobs audio depuis les `SegmentDraft` (champs `narrator_audio_blob`, `audio_blob`) au service d'upload
+- Le `StoryBuilder` doit transmettre les blobs en plus du graph lors de l'appel a `onPublish`
 
-### Fichier 2 : `src/features/conte-vivant/components/BranchingPlayer.tsx`
+### Etape 3 : Passer les blobs audio au flux de publication
 
-**A. Ajouter la lecture audio**
-- Ajouter un `useRef<HTMLAudioElement>` pour la narration
-- Ajouter un `useRef<HTMLAudioElement>` pour la musique de fond
-- Quand le segment change : charger `seg.narrator_audio_url || seg.audio_url` dans l'element audio narration et lancer `play()`
-- Quand `seg.background_music_url` existe : charger et jouer en boucle avec volume a 0.25
-- Arreter les audios lors des transitions et quand le player se ferme
+Modifier `StoryBuilder.tsx` :
+- `buildGraph()` retourne deja les URLs -- mais les blobs sont dans les `SegmentDraft` (non dans le graph)
+- Creer une fonction `collectBlobs()` qui retourne un mapping `segmentId -> { narrationBlob, mediaBlob }`
+- Modifier `onPublish` pour passer les blobs en parametre supplementaire
+- Modifier l'interface `StoryBuilderProps` pour accepter `onPublish(graph, title, description, blobs)`
 
-### Fichier 3 : `src/features/conte-vivant/components/SegmentEditor.tsx`
+### Etape 4 : Publier dans le feed video apres publication du conte
 
-**A. Forcer le theme sombre**
-- Le conteneur principal : fond `bg-white/5` avec bordure `border-white/10` et texte `text-white`
-- Les inputs : fond `bg-white/10`, texte blanc, placeholder visible
-- La textarea : memes corrections
-- Les labels : `text-white/70` au lieu de `text-foreground/70`
-- Les boutons Visuel/Narration/Generer IA : bordures et textes visibles sur fond sombre
+Modifier `ConteVivantStudio.tsx` :
+- Apres `publishStory(story.id)`, creer egalement une entree dans la table `videos` :
+  - `video_url` : URL de la premiere image/video du conte (ou une URL de thumbnail)
+  - `template_id` : `'conte-vivant'`
+  - `template_name` : `'Conte Vivant'`
+  - `metadata` : `{ story_id: story.id, is_interactive: true }`
+  - `is_public` : true
+- Cela permet au conte d'apparaitre dans le feed
 
-**B. Ameliorer la previsualisation media**
-- Agrandir la miniature de `w-16 h-[86px]` a `w-20 h-28` pour mieux voir le contenu
-- Ajouter un label "Photo" ou "Video" sous la miniature
+### Etape 5 : Modifier le feed pour supporter les contes interactifs
 
-### Fichier 4 : `src/features/conte-vivant/components/StoryTreePreview.tsx`
+Modifier `src/pages/tamtam/TamTamSocial.tsx` (ou `VideoFeedCard`) :
+- Detecter quand un post a `template_id === 'conte-vivant'` ou `metadata.is_interactive === true`
+- Au lieu de jouer une video, afficher un bouton "Jouer le conte" qui ouvre le `BranchingPlayer` en plein ecran
+- Charger le graph depuis `conte_vivant_stories` via le `story_id` dans les metadata
 
-- Appliquer le theme sombre : fonds, textes et bordures adaptes
-- Augmenter `max-h-64` a `max-h-[50vh]` pour ne pas couper l'arbre
+### Etape 6 : Generer une thumbnail pour le conte
+
+Dans le flux de publication :
+- Si le segment d'introduction a un `media_url` (photo), l'utiliser comme thumbnail
+- Si c'est une video, capturer la premiere frame
+- Uploader la thumbnail et la passer a l'entree `videos`
 
 ---
 
-## Resume des corrections critiques
+## Resume des fichiers a modifier/creer
 
-| Probleme | Fichier | Correction |
-|----------|---------|------------|
-| Audio perdu dans le graph | StoryBuilder.tsx | Mapper `narrator_audio_url` dans `buildGraph()` |
-| Pas de lecture audio | BranchingPlayer.tsx | Ajouter elements `<audio>` pour narration + musique |
-| Theme clair illisible | StoryBuilder.tsx | Forcer `bg-[#08080c]` + textes blancs |
-| Theme clair illisible | SegmentEditor.tsx | Forcer fond sombre + textes blancs |
-| Textes illisibles | Tous les fichiers | Remplacer `text-foreground/60` par `text-white/70` |
-| Compteur etape cache | StoryBuilder.tsx | Retirer `hidden sm:block` sur le compteur |
+| Fichier | Action |
+|---------|--------|
+| `src/features/conte-vivant/services/storyAssetUploader.ts` | **Nouveau** - Upload blobs vers storage |
+| `src/features/conte-vivant/components/StoryBuilder.tsx` | Ajouter `collectBlobs()`, modifier `onPublish` signature |
+| `src/features/conte-vivant/components/ConteVivantStudio.tsx` | Upload assets avant publication + creer entree feed |
+| `src/pages/tamtam/TamTamSocial.tsx` | Detecter et afficher les contes interactifs dans le feed |
+| `src/components/feed/VideoFeedCard.tsx` | Support du type conte interactif |
 
 ## Details techniques
 
-### Mapping audio dans buildGraph
+### Detection des URLs blob
 ```text
-AVANT : audio_url: introSegment.audio_url  (toujours undefined)
-APRES : audio_url: introSegment.narrator_audio_url || introSegment.audio_url
-        narrator_audio_url: introSegment.narrator_audio_url
+const isBlobUrl = (url: string) => url?.startsWith('blob:');
 ```
 
-### Element audio dans BranchingPlayer
+### Upload pattern
 ```text
-<audio ref={narrationRef} src={seg.narrator_audio_url || seg.audio_url} autoPlay />
-<audio ref={bgMusicRef} src={seg.background_music_url} loop volume={0.25} />
+1. Lire le blob depuis le SegmentDraft (narrator_audio_blob)
+2. Generer un nom de fichier unique: `stories/${storyId}/${segmentId}-narration.webm`
+3. Upload vers storage bucket 'videos'
+4. Obtenir l'URL publique
+5. Remplacer dans le graph
 ```
 
-### Palette de couleurs sombres
+### Entree feed pour conte interactif
 ```text
-Fond principal : #08080c
-Fond carte : rgba(255,255,255,0.05) = bg-white/5
-Bordure carte : rgba(255,255,255,0.1) = border-white/10
-Texte principal : #e5e5e5 = text-white/90
-Texte secondaire : rgba(255,255,255,0.7) = text-white/70
-Texte tertiaire : rgba(255,255,255,0.5) = text-white/50
-Input fond : rgba(255,255,255,0.1) = bg-white/10
-Input bordure : rgba(255,255,255,0.2) = border-white/20
+{
+  video_url: thumbnailUrl ou premiere media URL,
+  thumbnail_url: thumbnailUrl,
+  template_id: 'conte-vivant',
+  template_name: 'Conte Vivant',
+  title: titre du conte,
+  metadata: { story_id: '...', is_interactive: true, total_segments: N, total_endings: M }
+}
 ```
 
+### Detection dans le feed
+```text
+if (post.metadata?.is_interactive || post.templateId === 'conte-vivant') {
+  // Afficher badge "Conte Interactif" + bouton "Jouer"
+  // Au clic: charger graph depuis conte_vivant_stories et ouvrir BranchingPlayer
+}
+```
