@@ -1,63 +1,51 @@
 
 
-# Plan : Transcription automatique des narrations + Decompte + Segments 30s
+# Plan : Emoji Picker pour les fins + Texte noir + Verification du flux
 
-## Objectif
+## Probleme identifie
 
-Chaque enregistrement vocal dans le Conte Vivant sera automatiquement transcrit via Mistral Voxtral Mini et le texte sera injecte dans le champ "texte narratif du segment". Un decompteur visuel sera affiche pendant l'enregistrement, et la duree maximum sera augmentee a 30 secondes pour les segments d'introduction et de branches.
+Dans l'etape "Branches" du StoryBuilder, quand "C'est une fin" est coche, les deux champs actuels sont :
+1. Un champ texte libre pour le badge emoji -- difficile a utiliser, l'utilisateur doit connaitre les emojis
+2. Un champ titre avec texte blanc sur fond sombre -- peu lisible selon la demande
 
-## Changements
+## Changements prevus
 
 ### 1. `src/features/conte-vivant/components/SegmentEditor.tsx`
 
-**Transcription automatique apres enregistrement :**
-- Modifier `handleNarrationComplete` pour appeler la fonction Edge `transcribe-audio` avec le blob audio
-- Une fois la transcription recue, remplir automatiquement le champ `text_content` du segment
-- Afficher un indicateur de chargement "Transcription en cours..." pendant l'appel
-- En cas d'echec, afficher un toast d'erreur mais conserver l'audio
+**Remplacer le champ texte `ending_badge` par un selecteur d'emojis :**
 
-**Augmenter la duree max a 30 secondes :**
-- Le `VinylRecorder` dans le Dialog recevra `maxDuration={30}` au lieu de la valeur actuelle (30 deja en place, a verifier)
+- Remplacer l'Input libre par un bouton qui affiche l'emoji selectionne (ou un placeholder)
+- Au clic, ouvrir un Popover contenant une grille d'emojis predefinies :
+  - `👍` Like / `👎` Dislike / `❤️` Amour / `💔` Triste
+  - `⚔️` Combat / `🏆` Victoire / `💀` Defaite / `🌟` Etoile
+  - `🎭` Theatre / `🔥` Feu / `😂` Rire / `😢` Pleure
+  - `🦁` Lion / `🐉` Dragon / `👑` Roi / `🌍` Monde
+- Cliquer sur un emoji le selectionne et ferme le popover
+- L'emoji selectionne est affiche dans le bouton
 
-**Meme logique pour l'enregistrement direct (micro inline) :**
-- Le `startRecording` / `stopRecording` inline declenchera aussi la transcription automatique
-- Ajouter un decompteur de temps visible pendant l'enregistrement inline (affichage du temps ecoule et du temps restant)
-- Stopper automatiquement l'enregistrement quand la duree limite (30s) est atteinte
+**Champ titre de la fin en texte noir :**
 
-### 2. `src/components/griot-studio/VinylRecorder.tsx`
+- Ajouter les classes `bg-white text-black placeholder:text-gray-400` au champ `ending_title` pour garantir la lisibilite sur fond sombre
 
-- Le VinylRecorder a deja un decompteur et un arret automatique a `maxDuration` -- aucun changement necessaire ici
-- Il gere deja le gain et l'affichage du temps
+### 2. Verification du flux complet (analyse)
 
-### 3. `src/features/conte-vivant/components/StoryBuilder.tsx`
+Le flux actuel du conte vivant est le suivant :
 
-- Verifier que `defaultSegment` utilise `duration: 30` au lieu de `15` pour permettre des segments de 30 secondes par defaut
+| Etape | Composant | Etat |
+|-------|-----------|------|
+| Introduction (30s) | SegmentEditor avec VinylRecorder | OK - transcription auto Mistral |
+| Choix | Emoji + label par choix | OK |
+| Branches (30s chacune) | SegmentEditor avec narration + visuel | OK - transcription auto |
+| Fins | Badge emoji + titre | A ameliorer (emoji picker) |
+| Apercu | StoryTreePreview + BranchingPlayer | OK - graphe DAG |
+| Publication | buildGraph + collectBlobs + onPublish | OK - upload blobs |
+| Lecture | BranchingPlayer avec narration + musique | OK - Ken Burns + choix |
 
-## Details techniques
+Le flux de bout en bout est fonctionnel : les narrations enregistrees sont uploadees via `storyAssetUploader`, le graphe est construit correctement avec `buildGraph()`, et le `BranchingPlayer` lit les segments avec les audios et visuels associes.
 
-### Flux de transcription dans SegmentEditor
-
-```text
-1. Utilisateur enregistre via VinylRecorder ou micro inline
-2. onRecordingComplete(blob, duration) est appele
-3. -> Sauvegarder blob + URL dans le segment (comportement actuel)
-4. -> Envoyer le blob a POST /functions/v1/transcribe-audio (FormData)
-5. -> Si succes : onChange({ ...segment, text_content: result.text })
-6. -> Si echec : toast.error("Transcription echouee")
-7. -> Indicateur "Transcription..." visible pendant l'appel
-```
-
-### Decompteur inline pour l'enregistrement direct
-
-L'enregistrement direct dans SegmentEditor (bouton micro) aura :
-- Un timer affiche en temps reel (ex: "12s / 30s")
-- Un arret automatique a 30 secondes via `setTimeout` + verification dans l'intervalle
-- Meme logique de transcription automatique apres arret
-
-### Fichiers modifies
+## Fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/features/conte-vivant/components/SegmentEditor.tsx` | Transcription auto, decompteur inline, duree 30s |
-| `src/features/conte-vivant/components/StoryBuilder.tsx` | `defaultSegment` duration: 30 |
+| `src/features/conte-vivant/components/SegmentEditor.tsx` | Emoji picker Popover + texte noir pour le titre de fin |
 
