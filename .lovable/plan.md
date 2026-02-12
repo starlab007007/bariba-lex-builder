@@ -1,81 +1,63 @@
 
 
-# Plan : Remplacer ElevenLabs STT par Mistral Voxtral Mini Transcribe V2
+# Plan : Transcription automatique des narrations + Decompte + Segments 30s
 
-## Contexte
+## Objectif
 
-Actuellement, la fonction Edge `transcribe-audio` utilise **ElevenLabs STT (scribe_v2)** comme moteur principal de transcription, avec un fallback vers Gemini Flash. Pour reduire les couts, on remplace ElevenLabs par **Mistral Voxtral Mini Transcribe V2** ($0.003/min vs ElevenLabs payant).
+Chaque enregistrement vocal dans le Conte Vivant sera automatiquement transcrit via Mistral Voxtral Mini et le texte sera injecte dans le champ "texte narratif du segment". Un decompteur visuel sera affiche pendant l'enregistrement, et la duree maximum sera augmentee a 30 secondes pour les segments d'introduction et de branches.
 
-## API Mistral Voxtral - Format
+## Changements
 
-L'endpoint Mistral pour la transcription :
+### 1. `src/features/conte-vivant/components/SegmentEditor.tsx`
 
-```text
-POST https://api.mistral.ai/v1/audio/transcriptions
-Headers: Authorization: Bearer MISTRAL_API_KEY
-Body (multipart/form-data):
-  - model: "voxtral-mini-latest"
-  - file: <fichier audio>
-  - language: "fr"
-  - timestamp_granularities: "word"   (pour obtenir les timestamps mot par mot)
-  - diarize: false
-```
+**Transcription automatique apres enregistrement :**
+- Modifier `handleNarrationComplete` pour appeler la fonction Edge `transcribe-audio` avec le blob audio
+- Une fois la transcription recue, remplir automatiquement le champ `text_content` du segment
+- Afficher un indicateur de chargement "Transcription en cours..." pendant l'appel
+- En cas d'echec, afficher un toast d'erreur mais conserver l'audio
 
-La reponse inclut le texte transcrit et des timestamps par mot, ce qui est equivalent a ce que fournissait ElevenLabs.
+**Augmenter la duree max a 30 secondes :**
+- Le `VinylRecorder` dans le Dialog recevra `maxDuration={30}` au lieu de la valeur actuelle (30 deja en place, a verifier)
 
-## Fichiers a modifier
+**Meme logique pour l'enregistrement direct (micro inline) :**
+- Le `startRecording` / `stopRecording` inline declenchera aussi la transcription automatique
+- Ajouter un decompteur de temps visible pendant l'enregistrement inline (affichage du temps ecoule et du temps restant)
+- Stopper automatiquement l'enregistrement quand la duree limite (30s) est atteinte
 
-### 1. `supabase/functions/transcribe-audio/index.ts`
-- **Supprimer** completement la fonction `transcribeWithElevenLabs()`
-- **Ajouter** une nouvelle fonction `transcribeWithMistral()` qui appelle `https://api.mistral.ai/v1/audio/transcriptions`
-- **Remplacer** la reference a `ELEVENLABS_API_KEY` par `MISTRAL_API_KEY` dans le flux principal
-- **Conserver** le fallback Gemini tel quel
-- **Mettre a jour** les commentaires et logs
+### 2. `src/components/griot-studio/VinylRecorder.tsx`
 
-### 2. Secret a configurer
-- **Ajouter** le secret `MISTRAL_API_KEY` via l'outil de gestion des secrets
-- `ELEVENLABS_API_KEY` reste disponible pour le TTS (`french-tts`) -- on ne le supprime pas
+- Le VinylRecorder a deja un decompteur et un arret automatique a `maxDuration` -- aucun changement necessaire ici
+- Il gere deja le gain et l'affichage du temps
 
-### 3. Commentaires dans les fichiers clients (pas de changement de code)
-- `src/components/griot-studio/GriotStudio.tsx` : le commentaire "ElevenLabs STT" sera obsolete, mise a jour du commentaire
-- `src/lib/AIServicesHub.ts` : aucun changement (appelle simplement `transcribe-audio`)
-- `src/services/UnifiedAudioService.ts` : aucun changement (utilise aussi `transcribe-audio`)
+### 3. `src/features/conte-vivant/components/StoryBuilder.tsx`
+
+- Verifier que `defaultSegment` utilise `duration: 30` au lieu de `15` pour permettre des segments de 30 secondes par defaut
 
 ## Details techniques
 
-### Nouvelle fonction `transcribeWithMistral()`
+### Flux de transcription dans SegmentEditor
 
 ```text
-async function transcribeWithMistral(audioFile, apiKey):
-  1. Creer un FormData avec:
-     - model = "voxtral-mini-latest"
-     - file = audioFile
-     - language = "fr"
-     - timestamp_granularities = "word"
-  2. POST vers https://api.mistral.ai/v1/audio/transcriptions
-     Header: Authorization: Bearer apiKey
-  3. Parser la reponse JSON
-  4. Retourner { text, words[], language }
+1. Utilisateur enregistre via VinylRecorder ou micro inline
+2. onRecordingComplete(blob, duration) est appele
+3. -> Sauvegarder blob + URL dans le segment (comportement actuel)
+4. -> Envoyer le blob a POST /functions/v1/transcribe-audio (FormData)
+5. -> Si succes : onChange({ ...segment, text_content: result.text })
+6. -> Si echec : toast.error("Transcription echouee")
+7. -> Indicateur "Transcription..." visible pendant l'appel
 ```
 
-### Flux principal mis a jour
+### Decompteur inline pour l'enregistrement direct
 
-```text
-1. Lire MISTRAL_API_KEY (au lieu de ELEVENLABS_API_KEY)
-2. Si MISTRAL_API_KEY existe -> transcribeWithMistral()
-3. Si echec ou vide -> fallback Gemini (inchange)
-4. Si tout echoue -> erreur avec suggestion Web Speech API
-```
+L'enregistrement direct dans SegmentEditor (bouton micro) aura :
+- Un timer affiche en temps reel (ex: "12s / 30s")
+- Un arret automatique a 30 secondes via `setTimeout` + verification dans l'intervalle
+- Meme logique de transcription automatique apres arret
 
-### Format de reponse Mistral attendu
+### Fichiers modifies
 
-La reponse Mistral `/v1/audio/transcriptions` avec `timestamp_granularities=word` retourne un JSON contenant le texte complet et les mots avec timestamps, compatible avec le format actuel `{ text, words[], language }`.
-
-## Resume des changements
-
-| Fichier | Action |
-|---------|--------|
-| `supabase/functions/transcribe-audio/index.ts` | Remplacer ElevenLabs par Mistral Voxtral |
-| `src/components/griot-studio/GriotStudio.tsx` | Mise a jour commentaire uniquement |
-| Secret `MISTRAL_API_KEY` | A configurer par l'utilisateur |
+| Fichier | Modification |
+|---------|-------------|
+| `src/features/conte-vivant/components/SegmentEditor.tsx` | Transcription auto, decompteur inline, duree 30s |
+| `src/features/conte-vivant/components/StoryBuilder.tsx` | `defaultSegment` duration: 30 |
 
