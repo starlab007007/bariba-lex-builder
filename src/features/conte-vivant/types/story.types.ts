@@ -91,10 +91,10 @@ export type BuilderStep =
 export type NarratorVoice = 'announcer' | 'narrator' | 'female' | 'alloy';
 
 export const NARRATOR_VOICES: { key: NarratorVoice; label: string; description: string }[] = [
-  { key: 'narrator', label: '🎙️ Timothy', description: 'Narrateur classique' },
-  { key: 'announcer', label: '📢 Mark', description: 'Voix annonceur' },
-  { key: 'female', label: '👩 Sarah', description: 'Voix féminine' },
-  { key: 'alloy', label: '🤖 Alex', description: 'Voix neutre' },
+  { key: 'narrator', label: '🎙️ Timothy', description: 'Narrateur masculin' },
+  { key: 'announcer', label: '📢 Mark', description: 'Présentateur' },
+  { key: 'female', label: '👩 Sarah', description: 'Narratrice' },
+  { key: 'alloy', label: '🗣️ Alex', description: 'Voix neutre' },
 ];
 
 export interface SegmentDraft {
