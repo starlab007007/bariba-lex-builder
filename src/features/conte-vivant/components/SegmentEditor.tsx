@@ -206,7 +206,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         {/* Asset Gallery Sheet */}
         <Sheet open={showAssetGallery} onOpenChange={setShowAssetGallery}>
           <SheetTrigger asChild>
-            <Button size="sm" variant="outline" className="gap-1.5 min-h-[44px]">
+            <Button size="sm" className="gap-1.5 min-h-[44px] bg-blue-600 hover:bg-blue-500 text-white font-semibold">
               <ImageIcon className="w-4 h-4" />
               Visuel
               {segment.media_url && <span className="text-xs bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center">✓</span>}
@@ -223,7 +223,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         {/* Narration Recorder Dialog */}
         <Dialog open={showRecorder} onOpenChange={setShowRecorder}>
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline" className="gap-1.5 min-h-[44px]">
+            <Button size="sm" className="gap-1.5 min-h-[44px] bg-blue-600 hover:bg-blue-500 text-white font-semibold">
               <Mic className="w-4 h-4" />
               Narration
               {segment.narrator_audio_url && <span className="text-xs text-green-500 ml-1">✅</span>}

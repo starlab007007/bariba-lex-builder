@@ -224,9 +224,9 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
           <button key={step.key} onClick={() => setCurrentStep(step.key)}
             className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors min-h-[36px] flex-shrink-0
               ${i === stepIdx
-                ? 'bg-amber-500 text-white font-semibold'
+                ? 'bg-blue-600 text-white font-semibold'
                 : i < stepIdx
-                  ? 'bg-amber-500/20 text-amber-300'
+                  ? 'bg-blue-600/20 text-blue-300'
                   : 'bg-white/5 text-white/50'
               }`}>
             <span>{step.icon}</span>
@@ -345,7 +345,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
 
               {/* Test Story Button */}
               <Button onClick={() => setShowTestPlayer(true)} size="lg"
-                className="w-full gap-2 min-h-[48px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-semibold">
+                className="w-full gap-2 min-h-[48px] bg-blue-600 hover:bg-blue-500 text-white font-semibold">
                 <Play className="w-5 h-5" />
                 🎪 Tester mon conte
               </Button>
@@ -360,7 +360,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
               <p className="text-sm text-white/60 max-w-xs mx-auto">
                 Votre conte "{title || 'Sans titre'}" sera disponible pour tous les spectateurs.
               </p>
-              <Button onClick={() => setShowPublishConfirm(true)} size="lg" className="gap-2 min-h-[48px]">
+              <Button onClick={() => setShowPublishConfirm(true)} size="lg" className="gap-2 min-h-[48px] bg-blue-600 hover:bg-blue-500 text-white font-semibold">
                 <Upload className="w-4 h-4" />
                 Publier le conte
               </Button>
@@ -380,7 +380,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
         <span className="text-xs text-white/50">{stepIdx + 1}/{STEPS.length}</span>
         <Button disabled={stepIdx === STEPS.length - 1}
           onClick={() => setCurrentStep(STEPS[stepIdx + 1]?.key ?? 'publish')}
-          className="gap-1.5 min-h-[44px] flex-1 sm:flex-none bg-amber-500 hover:bg-amber-400 text-white">
+          className="gap-1.5 min-h-[44px] flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white font-semibold">
           <span>Suivant</span>
           <ChevronRight className="w-4 h-4" />
         </Button>
@@ -402,7 +402,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
           </DialogDescription>
           <DialogFooter className="flex gap-2">
             <Button variant="outline" onClick={() => setShowPublishConfirm(false)} className="min-h-[44px]">Annuler</Button>
-            <Button onClick={handlePublish} className="min-h-[44px] gap-2">
+            <Button onClick={handlePublish} className="min-h-[44px] gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold">
               <Upload className="w-4 h-4" />
               Publier
             </Button>
