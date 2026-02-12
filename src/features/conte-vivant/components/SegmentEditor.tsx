@@ -162,7 +162,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         value={segment.text_content}
         onChange={(e) => onChange({ ...segment, text_content: e.target.value })}
         placeholder="Texte narratif du segment..."
-        className="w-full h-20 px-3 py-2 rounded-md border border-white/20 bg-white/10 text-white text-sm resize-none placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+        className="w-full h-20 px-3 py-2 rounded-md border border-white/20 bg-white/10 text-white text-sm resize-none placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
       />
 
       {/* Media preview with playback controls */}
@@ -289,9 +289,9 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
                 <button key={pos} onClick={() => setSelectedPosition(pos)}
                   className="flex-1 px-3 py-2 rounded-lg border-2 text-sm transition min-h-[44px]"
                   style={{
-                    background: selectedPosition === pos ? 'hsl(var(--accent))' : 'transparent',
-                    borderColor: selectedPosition === pos ? 'hsl(var(--primary))' : 'hsl(var(--border))',
-                    color: selectedPosition === pos ? 'hsl(var(--primary))' : 'hsl(var(--foreground))',
+                    background: selectedPosition === pos ? 'rgb(37 99 235)' : 'transparent',
+                    borderColor: selectedPosition === pos ? 'rgb(37 99 235)' : 'hsl(var(--border))',
+                    color: selectedPosition === pos ? '#fff' : 'hsl(var(--foreground))',
                   }}>
                   {pos === 'left' ? '← Gauche' : 'Droite →'}
                 </button>
