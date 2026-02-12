@@ -97,6 +97,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
         narrator_audio_url: seg.narrator_audio_url,
         image_urls: seg.image_urls, text_content: seg.text_content,
         duration: seg.duration, mediaType: seg.mediaType, media_url: seg.media_url,
+        background_music_url: selectedMusic?.url,
         is_choice_point: !seg.is_ending && (branch.sub_choices?.length ?? 0) > 0,
         choices: branch.sub_choices?.map((sc, si) => ({
           id: sc.id, label: sc.label || `Choix ${si + 1}`, icon: sc.icon,
@@ -112,6 +113,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
           narrator_audio_url: sub.segment.narrator_audio_url,
           image_urls: sub.segment.image_urls, text_content: sub.segment.text_content,
           duration: sub.segment.duration, mediaType: sub.segment.mediaType, media_url: sub.segment.media_url,
+          background_music_url: selectedMusic?.url,
           is_choice_point: false, choices: [],
           is_ending: sub.segment.is_ending, ending_badge: sub.segment.ending_badge, ending_title: sub.segment.ending_title,
         };
