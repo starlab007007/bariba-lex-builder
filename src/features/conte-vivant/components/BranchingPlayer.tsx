@@ -159,11 +159,11 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
               className="w-full h-full object-cover"
               autoPlay
               playsInline
-              loop={!seg.is_choice_point && !seg.is_ending}
+              loop
               onEnded={handleVideoEnded}
             />
           ) : mediaUrl ? (
-            <KenBurnsPhoto src={mediaUrl} />
+            <KenBurnsPhoto src={mediaUrl} segKey={segKey} />
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0f0f18, #161622)' }}>
               <span className="text-6xl">{seg.ending_badge || '📖'}</span>
