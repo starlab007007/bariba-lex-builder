@@ -88,6 +88,15 @@ export type BuilderStep =
   | 'preview' 
   | 'publish';
 
+export type NarratorVoice = 'announcer' | 'narrator' | 'female' | 'alloy';
+
+export const NARRATOR_VOICES: { key: NarratorVoice; label: string; description: string }[] = [
+  { key: 'narrator', label: '🎙️ Timothy', description: 'Narrateur classique' },
+  { key: 'announcer', label: '📢 Mark', description: 'Voix annonceur' },
+  { key: 'female', label: '👩 Sarah', description: 'Voix féminine' },
+  { key: 'alloy', label: '🤖 Alex', description: 'Voix neutre' },
+];
+
 export interface SegmentDraft {
   id: string;
   title: string;
@@ -103,6 +112,7 @@ export interface SegmentDraft {
   media_url?: string;
   narrator_audio_blob?: Blob;
   narrator_audio_url?: string;
+  voice?: NarratorVoice;
 }
 
 export interface ChoiceDraft {

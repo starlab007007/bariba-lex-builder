@@ -14,6 +14,7 @@ import { aiAssetGenerator } from '@/services/aiAssetGenerator';
 import { toast } from 'sonner';
 import { getSupportedAudioMimeType, getAudioBlobType, getRecorderTimeslice } from '@/lib/audioMimeUtils';
 import type { SegmentDraft } from '../types/story.types';
+import { NARRATOR_VOICES, type NarratorVoice } from '../types/story.types';
 
 const MAX_RECORDING_DURATION = 30; // seconds
 
@@ -94,8 +95,9 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
     if (!text.trim()) return null;
     setIsGeneratingTTS(true);
     try {
+      const voiceToUse = seg.voice || 'narrator';
       const { data, error } = await supabase.functions.invoke('french-tts', {
-        body: { text, voice: 'narrator', returnAudio: true },
+        body: { text, voice: voiceToUse, returnAudio: true },
       });
       if (error) throw error;
       if (!data?.audioBase64) {
@@ -355,6 +357,41 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
           </Button>
         </div>
       )}
+
+      {/* Voice selector */}
+      <div className="space-y-1.5">
+        <p className="text-xs text-white/70 font-medium">🎙️ Voix du narrateur</p>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {NARRATOR_VOICES.map((v) => (
+            <button
+              key={v.key}
+              onClick={() => {
+                onChange({ ...segment, voice: v.key });
+                if (segment.narrator_audio_url && segment.text_content.trim()) {
+                  const updatedSeg = { ...segment, voice: v.key, narrator_audio_url: undefined, narrator_audio_blob: undefined };
+                  onChange(updatedSeg);
+                  generateTTSAudio(segment.text_content, updatedSeg).then(result => {
+                    if (result) {
+                      onChange(result);
+                      toast.success(`🎙️ Voix ${v.label} générée`);
+                    }
+                  });
+                }
+              }}
+              className="flex-shrink-0 px-3 py-2 rounded-lg border-2 transition text-xs min-w-[70px] text-center"
+              style={{
+                background: (segment.voice || 'narrator') === v.key ? 'rgb(147 51 234)' : 'rgba(255,255,255,0.05)',
+                borderColor: (segment.voice || 'narrator') === v.key ? 'rgb(168 85 247)' : 'rgba(255,255,255,0.1)',
+                color: '#fff',
+              }}
+            >
+              <span className="block text-base">{v.label.split(' ')[0]}</span>
+              <span className="block text-[10px] text-white/60">{v.label.split(' ')[1]}</span>
+              <span className="block text-[9px] text-white/40 mt-0.5">{v.description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Media & narration actions */}
       <div className="flex flex-wrap gap-2">
