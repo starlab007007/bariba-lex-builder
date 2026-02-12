@@ -22,7 +22,7 @@ serve(async (req) => {
 
   try {
     const formData = await req.formData();
-    const audioFile = formData.get('audio') as File | null;
+    const audioFile = (formData.get('file') || formData.get('audio')) as File | null;
 
     if (!audioFile) {
       return new Response(
