@@ -240,8 +240,8 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
         <AnimatePresence mode="wait">
           {currentStep === 'intro' && (
             <motion.div key="intro" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre du conte..." className="text-lg font-semibold" />
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description courte..." />
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre du conte..." className="text-lg font-semibold bg-white text-black placeholder:text-gray-400 border-white/20" />
+              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description courte..." className="bg-white text-black placeholder:text-gray-400 border-white/20" />
               <SegmentEditor segment={introSegment} onChange={setIntroSegment} label="📖 Segment d'introduction" />
             </motion.div>
           )}
@@ -253,9 +253,9 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
                 <div key={choice.id} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
                   <div className="flex items-center gap-2">
                     <Input value={choice.icon} onChange={(e) => updateChoice(idx, { icon: e.target.value })}
-                      placeholder="Emoji" className="w-16 text-center text-lg" />
+                      placeholder="Emoji" className="w-16 text-center text-lg bg-white text-black placeholder:text-gray-400 border-white/20" />
                     <Input value={choice.label} onChange={(e) => updateChoice(idx, { label: e.target.value })}
-                      placeholder={`Choix ${idx + 1} (ex: Combattre le dragon)`} className="flex-1" />
+                      placeholder={`Choix ${idx + 1} (ex: Combattre le dragon)`} className="flex-1 bg-white text-black placeholder:text-gray-400 border-white/20" />
                   </div>
                   <label className="flex items-center gap-2 text-xs text-white/70">
                     <input type="radio" name="default_choice" checked={choice.is_default}
@@ -375,7 +375,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
           onClick={() => setCurrentStep(STEPS[stepIdx - 1]?.key ?? 'intro')}
           className="gap-1.5 min-h-[44px] flex-1 sm:flex-none border-white/20 text-white hover:bg-white/10">
           <ChevronLeft className="w-4 h-4" />
-          <span>Précédent</span>
+          <span className="text-white">Précédent</span>
         </Button>
         <span className="text-xs text-white/50">{stepIdx + 1}/{STEPS.length}</span>
         <Button disabled={stepIdx === STEPS.length - 1}

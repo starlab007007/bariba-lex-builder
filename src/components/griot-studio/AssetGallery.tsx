@@ -159,28 +159,28 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
           className={cn(
             'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all border',
             assetType === 'photo'
-              ? 'bg-blue-600/20 text-blue-100 border-blue-400/50 shadow-lg shadow-blue-500/10'
+              ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20'
               : 'bg-blue-950/40 text-blue-200/50 border-blue-500/10 hover:border-blue-500/30'
           )}
           disabled={disabled}
         >
           <Camera className="w-4 h-4" />
           📸 Photos
-          {photosCount > 0 && <span className="text-[10px] opacity-60">({photosCount})</span>}
+          {photosCount > 0 && <span className="text-[10px] opacity-80">({photosCount})</span>}
         </button>
         <button
           onClick={() => { setAssetType('video'); setActiveCategory('all'); setActiveCharacter('all'); }}
           className={cn(
             'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all border',
             assetType === 'video'
-              ? 'bg-blue-600/20 text-blue-100 border-blue-400/50 shadow-lg shadow-blue-500/10'
+              ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20'
               : 'bg-blue-950/40 text-blue-200/50 border-blue-500/10 hover:border-blue-500/30'
           )}
           disabled={disabled}
         >
           <Film className="w-4 h-4" />
           🎬 Vidéos
-          {videosCount > 0 && <span className="text-[10px] opacity-60">({videosCount})</span>}
+          {videosCount > 0 && <span className="text-[10px] opacity-80">({videosCount})</span>}
         </button>
       </div>
 
@@ -194,7 +194,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
             className={cn(
               'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap',
               activeCategory === cat.key
-                ? 'bg-blue-600/30 text-blue-100 border border-blue-400/50'
+                ? 'bg-blue-600 text-white border border-blue-500'
                 : 'bg-blue-950/40 text-blue-200/60 border border-blue-500/10 hover:border-blue-500/30'
             )}
           >
@@ -213,7 +213,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
             className={cn(
               'flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] transition-all whitespace-nowrap',
               activeCharacter === ch.key
-                ? 'bg-blue-600/25 text-blue-200 border border-blue-400/40'
+                ? 'bg-blue-600 text-white border border-blue-500'
                 : 'bg-blue-950/30 text-blue-200/50 border border-transparent hover:text-blue-200/70'
             )}
           >
