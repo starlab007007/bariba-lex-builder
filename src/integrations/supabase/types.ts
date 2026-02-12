@@ -174,13 +174,17 @@ export type Database = {
         Row: {
           action: string | null
           asset_type: string
+          character_reference_id: string | null
           character_type: string | null
+          consistency_score: number | null
           created_at: string
           description_en: string
           description_fr: string | null
           emotion: string
+          generation_metadata: Json | null
           id: string
           image_url: string
+          quality_score: number | null
           scene_type: string
           storage_path: string
           style: string
@@ -195,13 +199,17 @@ export type Database = {
         Insert: {
           action?: string | null
           asset_type?: string
+          character_reference_id?: string | null
           character_type?: string | null
+          consistency_score?: number | null
           created_at?: string
           description_en: string
           description_fr?: string | null
           emotion: string
+          generation_metadata?: Json | null
           id?: string
           image_url: string
+          quality_score?: number | null
           scene_type: string
           storage_path: string
           style: string
@@ -216,13 +224,17 @@ export type Database = {
         Update: {
           action?: string | null
           asset_type?: string
+          character_reference_id?: string | null
           character_type?: string | null
+          consistency_score?: number | null
           created_at?: string
           description_en?: string
           description_fr?: string | null
           emotion?: string
+          generation_metadata?: Json | null
           id?: string
           image_url?: string
+          quality_score?: number | null
           scene_type?: string
           storage_path?: string
           style?: string
@@ -234,7 +246,15 @@ export type Database = {
           video_url?: string | null
           weather?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "anime_scene_library_character_reference_id_fkey"
+            columns: ["character_reference_id"]
+            isOneToOne: false
+            referencedRelation: "character_references"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       asset_imports: {
         Row: {
@@ -341,6 +361,36 @@ export type Database = {
           requirement_type?: string
           requirement_value?: number
           tier?: string
+        }
+        Relationships: []
+      }
+      character_references: {
+        Row: {
+          character_name: string
+          color_palette: string[] | null
+          created_at: string | null
+          embedding_metadata: Json | null
+          id: string
+          reference_image_url: string
+          style_keywords: string[] | null
+        }
+        Insert: {
+          character_name: string
+          color_palette?: string[] | null
+          created_at?: string | null
+          embedding_metadata?: Json | null
+          id?: string
+          reference_image_url: string
+          style_keywords?: string[] | null
+        }
+        Update: {
+          character_name?: string
+          color_palette?: string[] | null
+          created_at?: string | null
+          embedding_metadata?: Json | null
+          id?: string
+          reference_image_url?: string
+          style_keywords?: string[] | null
         }
         Relationships: []
       }
