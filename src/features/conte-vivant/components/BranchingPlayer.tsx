@@ -203,9 +203,9 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
     }
   };
 
-  // Get media URL
+  // Get media URL - check all possible sources
   const mediaUrl = seg?.media_url || seg?.video_url || seg?.image_urls?.[0];
-  const isVideo = seg?.mediaType === 'video' || !!seg?.video_url;
+  const isVideo = seg?.mediaType === 'video' || !!seg?.video_url || (typeof mediaUrl === 'string' && /\.(mp4|webm|mov)/i.test(mediaUrl));
 
   if (!seg) return null;
 

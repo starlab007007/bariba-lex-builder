@@ -86,6 +86,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
       image_urls: introSegment.image_urls, text_content: introSegment.text_content,
       duration: introSegment.duration, is_choice_point: true,
       mediaType: introSegment.mediaType, media_url: introSegment.media_url,
+      video_url: introSegment.mediaType === 'video' ? introSegment.media_url : undefined,
       background_music_url: selectedMusic?.url,
       choices: choices.map((c, i) => ({
         id: c.id, label: c.label || `Choix ${i + 1}`, icon: c.icon,
@@ -102,6 +103,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
         narrator_audio_url: seg.narrator_audio_url,
         image_urls: seg.image_urls, text_content: seg.text_content,
         duration: seg.duration, mediaType: seg.mediaType, media_url: seg.media_url,
+        video_url: seg.mediaType === 'video' ? seg.media_url : undefined,
         background_music_url: selectedMusic?.url,
         is_choice_point: !seg.is_ending && (branch.sub_choices?.length ?? 0) > 0,
         choices: branch.sub_choices?.map((sc, si) => ({
@@ -118,6 +120,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
           narrator_audio_url: sub.segment.narrator_audio_url,
           image_urls: sub.segment.image_urls, text_content: sub.segment.text_content,
           duration: sub.segment.duration, mediaType: sub.segment.mediaType, media_url: sub.segment.media_url,
+          video_url: sub.segment.mediaType === 'video' ? sub.segment.media_url : undefined,
           background_music_url: selectedMusic?.url,
           is_choice_point: false, choices: [],
           is_ending: sub.segment.is_ending, ending_badge: sub.segment.ending_badge, ending_title: sub.segment.ending_title,
@@ -157,8 +160,9 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
 
   const generateTTSForSegment = async (text: string, seg: SegmentDraft): Promise<SegmentDraft | null> => {
     try {
+      const voiceToUse = seg.voice || 'narrator';
       const { data, error } = await supabase.functions.invoke('french-tts', {
-        body: { text, voice: 'narrator', returnAudio: true },
+        body: { text, voice: voiceToUse, returnAudio: true },
       });
       if (error || !data?.audioBase64) return null;
       const dataUri = `data:audio/mpeg;base64,${data.audioBase64}`;
