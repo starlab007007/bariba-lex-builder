@@ -159,8 +159,8 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
           className={cn(
             'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all border',
             assetType === 'photo'
-              ? 'bg-amber-500/20 text-amber-100 border-amber-400/50 shadow-lg shadow-amber-500/10'
-              : 'bg-amber-950/40 text-amber-200/50 border-amber-500/10 hover:border-amber-500/30'
+              ? 'bg-blue-600/20 text-blue-100 border-blue-400/50 shadow-lg shadow-blue-500/10'
+              : 'bg-blue-950/40 text-blue-200/50 border-blue-500/10 hover:border-blue-500/30'
           )}
           disabled={disabled}
         >
@@ -173,8 +173,8 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
           className={cn(
             'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all border',
             assetType === 'video'
-              ? 'bg-purple-500/20 text-purple-100 border-purple-400/50 shadow-lg shadow-purple-500/10'
-              : 'bg-amber-950/40 text-amber-200/50 border-amber-500/10 hover:border-amber-500/30'
+              ? 'bg-blue-600/20 text-blue-100 border-blue-400/50 shadow-lg shadow-blue-500/10'
+              : 'bg-blue-950/40 text-blue-200/50 border-blue-500/10 hover:border-blue-500/30'
           )}
           disabled={disabled}
         >
@@ -194,10 +194,8 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
             className={cn(
               'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap',
               activeCategory === cat.key
-                ? assetType === 'video'
-                  ? 'bg-purple-500/30 text-purple-100 border border-purple-400/50'
-                  : 'bg-amber-500/30 text-amber-100 border border-amber-400/50'
-                : 'bg-amber-950/40 text-amber-200/60 border border-amber-500/10 hover:border-amber-500/30'
+                ? 'bg-blue-600/30 text-blue-100 border border-blue-400/50'
+                : 'bg-blue-950/40 text-blue-200/60 border border-blue-500/10 hover:border-blue-500/30'
             )}
           >
             {cat.emoji} {cat.label}
@@ -215,8 +213,8 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
             className={cn(
               'flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] transition-all whitespace-nowrap',
               activeCharacter === ch.key
-                ? 'bg-orange-500/25 text-orange-200 border border-orange-400/40'
-                : 'bg-amber-950/30 text-amber-200/50 border border-transparent hover:text-amber-200/70'
+                ? 'bg-blue-600/25 text-blue-200 border border-blue-400/40'
+                : 'bg-blue-950/30 text-blue-200/50 border border-transparent hover:text-blue-200/70'
             )}
           >
             {ch.emoji} {ch.label}
@@ -228,11 +226,11 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
       {isLoading ? (
         <div className="grid grid-cols-3 gap-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-[9/16] rounded-xl bg-amber-900/30" />
+            <Skeleton key={i} className="aspect-[9/16] rounded-xl bg-blue-900/30" />
           ))}
         </div>
       ) : previewAssets.length === 0 ? (
-        <div className="text-center py-8 text-amber-200/40 text-sm animate-fade-in">
+        <div className="text-center py-8 text-blue-200/40 text-sm animate-fade-in">
           {assetType === 'video'
             ? '🎬 Aucune vidéo dans cette catégorie'
             : '📸 Aucune illustration dans cette catégorie'}
