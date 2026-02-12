@@ -1,88 +1,81 @@
 
 
-# Plan : Boutons principaux en bleu + texte blanc sur tout le parcours Conte Vivant
+# Plan : Remplacer ElevenLabs STT par Mistral Voxtral Mini Transcribe V2
 
-## Analyse des boutons actuels
+## Contexte
 
-En parcourant tous les fichiers du flux de creation (de l'accueil jusqu'a la publication), voici chaque bouton "payload" (action principale) et sa couleur actuelle :
+Actuellement, la fonction Edge `transcribe-audio` utilise **ElevenLabs STT (scribe_v2)** comme moteur principal de transcription, avec un fallback vers Gemini Flash. Pour reduire les couts, on remplace ElevenLabs par **Mistral Voxtral Mini Transcribe V2** ($0.003/min vs ElevenLabs payant).
 
-### ConteVivantStudio.tsx (Accueil)
-- "Creer un conte" / "Demo" / "Mes contes" : fond `#1a1a2a`, bordure `#444` -- pas de couleur d'action claire
-- "Creer mon premier conte" : couleur par defaut du composant Button (violet/primary)
-- "Jouer" (liste des contes) : variant outline, bordure blanche
+## API Mistral Voxtral - Format
 
-### StoryBuilder.tsx (Builder)
-- Step indicators actifs : `bg-amber-500` (orange)
-- Bouton "Suivant" : `bg-amber-500` (orange)
-- Bouton "Precedent" : outline blanc
-- "Tester mon conte" : gradient amber-to-orange
-- "Publier le conte" : couleur par defaut Button
-- Dialog confirmation "Publier" : couleur par defaut Button
+L'endpoint Mistral pour la transcription :
 
-### SegmentEditor.tsx (Editeur de segment)
-- "Visuel" : variant outline (gris)
-- "Narration" : variant outline (gris)
-- "Generer IA" : outline violet
+```text
+POST https://api.mistral.ai/v1/audio/transcriptions
+Headers: Authorization: Bearer MISTRAL_API_KEY
+Body (multipart/form-data):
+  - model: "voxtral-mini-latest"
+  - file: <fichier audio>
+  - language: "fr"
+  - timestamp_granularities: "word"   (pour obtenir les timestamps mot par mot)
+  - diarize: false
+```
 
-### ChoiceOverlay.tsx (Player - choix)
-- Boutons de choix : couleur dynamique par choix (orange/teal/etc.) -- ceux-ci restent tels quels car ils sont thematiques
+La reponse inclut le texte transcrit et des timestamps par mot, ce qui est equivalent a ce que fournissait ElevenLabs.
 
----
+## Fichiers a modifier
 
-## Corrections a appliquer
+### 1. `supabase/functions/transcribe-audio/index.ts`
+- **Supprimer** completement la fonction `transcribeWithElevenLabs()`
+- **Ajouter** une nouvelle fonction `transcribeWithMistral()` qui appelle `https://api.mistral.ai/v1/audio/transcriptions`
+- **Remplacer** la reference a `ELEVENLABS_API_KEY` par `MISTRAL_API_KEY` dans le flux principal
+- **Conserver** le fallback Gemini tel quel
+- **Mettre a jour** les commentaires et logs
 
-### Regle : Tout bouton d'action principale = `bg-blue-600 hover:bg-blue-500 text-white`
+### 2. Secret a configurer
+- **Ajouter** le secret `MISTRAL_API_KEY` via l'outil de gestion des secrets
+- `ELEVENLABS_API_KEY` reste disponible pour le TTS (`french-tts`) -- on ne le supprime pas
 
-### Fichier 1 : `ConteVivantStudio.tsx`
-- Boutons d'action "Creer un conte", "Demo", "Mes contes" : changer la bordure active et ajouter un accent bleu sur hover
-- "Creer mon premier conte" (ligne 203) : ajouter `className="mt-4 bg-blue-600 hover:bg-blue-500 text-white"`
-- "Jouer" (ligne 212-213) : changer en `bg-blue-600 hover:bg-blue-500 text-white` au lieu de outline
-- Bouton "Retour" (ligne 197) : reste ghost (bouton secondaire, pas payload)
-
-### Fichier 2 : `StoryBuilder.tsx`
-- Bouton "Suivant" (ligne 383) : remplacer `bg-amber-500 hover:bg-amber-400` par `bg-blue-600 hover:bg-blue-500`
-- Bouton "Tester mon conte" (ligne 348) : remplacer le gradient amber/orange par `bg-blue-600 hover:bg-blue-500 text-white`
-- Bouton "Publier le conte" (ligne 363) : ajouter `bg-blue-600 hover:bg-blue-500 text-white`
-- Bouton "Publier" dans la dialog de confirmation (ligne 405) : ajouter `bg-blue-600 hover:bg-blue-500 text-white`
-- Step indicators actifs (ligne 227) : changer `bg-amber-500` par `bg-blue-600` et les steps passes en `bg-blue-600/20 text-blue-300`
-- Bouton "Precedent" : reste outline (bouton secondaire)
-
-### Fichier 3 : `SegmentEditor.tsx`
-- Bouton "Visuel" (ligne 209) : changer en `bg-blue-600 hover:bg-blue-500 text-white` (c'est une action primaire de l'editeur)
-- Bouton "Narration" (ligne 226) : changer en `bg-blue-600 hover:bg-blue-500 text-white`
-- Bouton "Generer IA" (ligne 238) : garder en violet distinct (action secondaire speciale IA)
-
-### Fichier 4 : `ChoiceOverlay.tsx`
-- Pas de changement : les boutons de choix utilisent des couleurs thematiques dynamiques liees au conte
-
----
-
-## Resume visuel
-
-| Bouton | Fichier | Avant | Apres |
-|--------|---------|-------|-------|
-| Creer mon premier conte | ConteVivantStudio | default/primary | `bg-blue-600 text-white` |
-| Jouer | ConteVivantStudio | outline blanc | `bg-blue-600 text-white` |
-| Suivant | StoryBuilder | `bg-amber-500` | `bg-blue-600 text-white` |
-| Tester mon conte | StoryBuilder | gradient amber/orange | `bg-blue-600 text-white` |
-| Publier le conte | StoryBuilder | default | `bg-blue-600 text-white` |
-| Publier (confirm) | StoryBuilder | default | `bg-blue-600 text-white` |
-| Step actif | StoryBuilder | `bg-amber-500` | `bg-blue-600` |
-| Steps passes | StoryBuilder | `bg-amber-500/20` | `bg-blue-600/20` |
-| Visuel | SegmentEditor | outline gris | `bg-blue-600 text-white` |
-| Narration | SegmentEditor | outline gris | `bg-blue-600 text-white` |
-| Generer IA | SegmentEditor | outline violet | Inchange (action IA speciale) |
-| Choix interactifs | ChoiceOverlay | couleurs dynamiques | Inchange |
+### 3. Commentaires dans les fichiers clients (pas de changement de code)
+- `src/components/griot-studio/GriotStudio.tsx` : le commentaire "ElevenLabs STT" sera obsolete, mise a jour du commentaire
+- `src/lib/AIServicesHub.ts` : aucun changement (appelle simplement `transcribe-audio`)
+- `src/services/UnifiedAudioService.ts` : aucun changement (utilise aussi `transcribe-audio`)
 
 ## Details techniques
 
-### Classe CSS standard pour tous les boutons payload
+### Nouvelle fonction `transcribeWithMistral()`
+
 ```text
-bg-blue-600 hover:bg-blue-500 text-white font-semibold
+async function transcribeWithMistral(audioFile, apiKey):
+  1. Creer un FormData avec:
+     - model = "voxtral-mini-latest"
+     - file = audioFile
+     - language = "fr"
+     - timestamp_granularities = "word"
+  2. POST vers https://api.mistral.ai/v1/audio/transcriptions
+     Header: Authorization: Bearer apiKey
+  3. Parser la reponse JSON
+  4. Retourner { text, words[], language }
 ```
 
-### Fichiers modifies
-- `src/features/conte-vivant/components/ConteVivantStudio.tsx`
-- `src/features/conte-vivant/components/StoryBuilder.tsx`
-- `src/features/conte-vivant/components/SegmentEditor.tsx`
+### Flux principal mis a jour
+
+```text
+1. Lire MISTRAL_API_KEY (au lieu de ELEVENLABS_API_KEY)
+2. Si MISTRAL_API_KEY existe -> transcribeWithMistral()
+3. Si echec ou vide -> fallback Gemini (inchange)
+4. Si tout echoue -> erreur avec suggestion Web Speech API
+```
+
+### Format de reponse Mistral attendu
+
+La reponse Mistral `/v1/audio/transcriptions` avec `timestamp_granularities=word` retourne un JSON contenant le texte complet et les mots avec timestamps, compatible avec le format actuel `{ text, words[], language }`.
+
+## Resume des changements
+
+| Fichier | Action |
+|---------|--------|
+| `supabase/functions/transcribe-audio/index.ts` | Remplacer ElevenLabs par Mistral Voxtral |
+| `src/components/griot-studio/GriotStudio.tsx` | Mise a jour commentaire uniquement |
+| Secret `MISTRAL_API_KEY` | A configurer par l'utilisateur |
 
