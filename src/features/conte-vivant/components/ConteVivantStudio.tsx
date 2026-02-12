@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import StoryBuilder from './StoryBuilder';
 import BranchingPlayer from './BranchingPlayer';
 import { createStory, publishStory } from '../services/storyGraphApi';
+import { uploadStoryAssets } from '../services/storyAssetUploader';
 import type { StoryGraph } from '../types/story.types';
 import { toast } from 'sonner';
 import { loadDemoStory } from '../data/demoStory';
@@ -49,20 +50,59 @@ export default function ConteVivantStudio() {
     },
   });
 
-  const handlePublish = async (graph: StoryGraph, title: string, description: string) => {
+  const handlePublish = async (
+    graph: StoryGraph,
+    title: string,
+    description: string,
+    blobs: Record<string, { narrationBlob?: Blob; audioBlob?: Blob }>,
+  ) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error('Connecte-toi pour publier'); return; }
-      const totalSegments = Object.keys(graph.segments).length;
-      const totalEndings = Object.values(graph.segments).filter(s => s.is_ending).length;
+
+      // Step 1: Upload blob assets to persistent storage
+      toast.info('📤 Upload des médias en cours...');
+      const persistedGraph = await uploadStoryAssets(graph, blobs);
+
+      const totalSegments = Object.keys(persistedGraph.segments).length;
+      const totalEndings = Object.values(persistedGraph.segments).filter(s => s.is_ending).length;
+
+      // Step 2: Get thumbnail from intro segment
+      const introSeg = persistedGraph.segments[persistedGraph.entry_segment];
+      const thumbnailUrl = introSeg?.media_url || introSeg?.image_urls?.[0] || '';
+
+      // Step 3: Create & publish story
       const story = await createStory({
-        creator_id: user.id, title: title || 'Conte sans titre', description, graph,
+        creator_id: user.id, title: title || 'Conte sans titre', description,
+        graph: persistedGraph,
         total_segments: totalSegments, total_endings: totalEndings,
+        thumbnail_url: thumbnailUrl,
       });
       await publishStory(story.id);
+
+      // Step 4: Create entry in videos table for feed visibility
+      const videoUrl = thumbnailUrl || introSeg?.media_url || 'https://placehold.co/720x1280/1a1a2a/F5A623?text=🎪';
+      await supabase.from('videos').insert({
+        user_id: user.id,
+        title: title || 'Conte sans titre',
+        description: description || '',
+        video_url: videoUrl,
+        thumbnail_url: thumbnailUrl || null,
+        template_id: 'conte-vivant',
+        template_name: 'Conte Vivant',
+        is_public: true,
+        metadata: {
+          story_id: story.id,
+          is_interactive: true,
+          total_segments: totalSegments,
+          total_endings: totalEndings,
+        },
+      } as any);
+
       toast.success('🎪 Conte publié avec succès !');
       setView('home');
     } catch (err: any) {
+      console.error('[ConteVivantStudio] Publish error:', err);
       toast.error('Erreur : ' + (err.message || 'Publication échouée'));
     }
   };

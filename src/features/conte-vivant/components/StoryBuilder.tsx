@@ -12,8 +12,10 @@ import AudioLibrary from '@/components/tamtam/creator/AudioLibrary';
 import type { AudioTrack } from '@/types/audio';
 import type { SegmentDraft, ChoiceDraft, BranchDraft, StoryGraph, BuilderStep } from '../types/story.types';
 
+type BlobMap = Record<string, { narrationBlob?: Blob; audioBlob?: Blob }>;
+
 interface StoryBuilderProps {
-  onPublish: (graph: StoryGraph, title: string, description: string) => void;
+  onPublish: (graph: StoryGraph, title: string, description: string, blobs: BlobMap) => void;
   onCancel: () => void;
 }
 
@@ -131,9 +133,25 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
     return { isValid: errors.length === 0, errors, warnings };
   }, [buildGraph]);
 
+  const collectBlobs = useCallback((): BlobMap => {
+    const map: BlobMap = {};
+    const addSeg = (seg: SegmentDraft) => {
+      if (seg.narrator_audio_blob || seg.audio_blob) {
+        map[seg.id] = { narrationBlob: seg.narrator_audio_blob, audioBlob: seg.audio_blob };
+      }
+    };
+    addSeg(introSegment);
+    branches.forEach(b => {
+      addSeg(b.segment);
+      b.sub_branches?.forEach(sub => addSeg(sub.segment));
+    });
+    return map;
+  }, [introSegment, branches]);
+
   const handlePublish = () => {
     const graph = buildGraph();
-    onPublish(graph, title, description);
+    const blobs = collectBlobs();
+    onPublish(graph, title, description, blobs);
     setShowPublishConfirm(false);
   };
 
