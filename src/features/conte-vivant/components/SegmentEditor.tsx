@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Mic, Square, Trash2, ImageIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mic, Square, Trash2, ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { AssetGallery, type LibraryAsset } from '@/components/griot-studio/AssetGallery';
+import { VinylRecorder } from '@/components/griot-studio/VinylRecorder';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { aiAssetGenerator } from '@/services/aiAssetGenerator';
+import { toast } from 'sonner';
 import type { SegmentDraft } from '../types/story.types';
 
 interface SegmentEditorProps {
@@ -13,11 +21,37 @@ interface SegmentEditorProps {
   showChoiceOptions?: boolean;
 }
 
-const CHOICE_COLORS = ['#FF6B35', '#00D4AA', '#F5A623', '#A855F7', '#EC4899'];
+const CHOICE_COLORS = [
+  { name: 'Orange', hex: '#FF6B35' },
+  { name: 'Teal', hex: '#00D4AA' },
+  { name: 'Or', hex: '#F5A623' },
+  { name: 'Purple', hex: '#A855F7' },
+  { name: 'Pink', hex: '#EC4899' },
+];
 
 export default function SegmentEditor({ segment, onChange, label, showEndingOptions, showChoiceOptions }: SegmentEditorProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [showAssetGallery, setShowAssetGallery] = useState(false);
+  const [showRecorder, setShowRecorder] = useState(false);
+  const [selectedAssets, setSelectedAssets] = useState<LibraryAsset[]>([]);
+  const [selectedColor, setSelectedColor] = useState('#FF6B35');
+  const [selectedPosition, setSelectedPosition] = useState<'left' | 'right'>('left');
+  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState('');
+
+  // Fetch character references
+  const { data: characterRefs } = useQuery({
+    queryKey: ['character-references'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('character_references')
+        .select('*')
+        .order('character_name');
+      return data || [];
+    },
+  });
 
   const startRecording = async () => {
     try {
@@ -47,6 +81,59 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
     setMediaRecorder(null);
   };
 
+  const handleAssetSelect = (assets: LibraryAsset[]) => {
+    setSelectedAssets(assets);
+    if (assets.length > 0) {
+      const asset = assets[assets.length - 1];
+      onChange({
+        ...segment,
+        media_url: asset.video_url || asset.image_url,
+        mediaType: asset.asset_type === 'video' ? 'video' : 'photo',
+      });
+    }
+  };
+
+  const handleNarrationComplete = (blob: Blob, duration: number) => {
+    const url = URL.createObjectURL(blob);
+    onChange({
+      ...segment,
+      narrator_audio_blob: blob,
+      narrator_audio_url: url,
+      duration: Math.round(duration),
+    });
+    setShowRecorder(false);
+  };
+
+  const handleGenerateAsset = async () => {
+    if (!selectedCharacter) {
+      toast.error('Sélectionnez un personnage de référence');
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      setGenerationProgress('🎨 Préparation...');
+      const charRef = characterRefs?.find((c: any) => c.id === selectedCharacter);
+      setGenerationProgress('✨ Génération en cours...');
+      const asset = await aiAssetGenerator.generateConsistentAsset({
+        sceneType: 'village',
+        characterType: charRef?.character_name || 'griot',
+        mediaType: segment.mediaType || 'photo',
+        durationSec: segment.duration || 12,
+      });
+      onChange({
+        ...segment,
+        media_url: (asset as any).image_url,
+        mediaType: (asset as any).asset_type === 'video' ? 'video' : 'photo',
+      });
+      toast.success(`Asset généré avec ${Math.round(((asset as any).consistency_score || 0.8) * 100)}% de cohérence`);
+    } catch (error: any) {
+      toast.error('Échec de la génération : ' + (error.message || 'Erreur'));
+    } finally {
+      setIsGenerating(false);
+      setGenerationProgress('');
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -74,7 +161,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
       {/* Media preview */}
       {segment.media_url && (
         <div className="flex items-center gap-2">
-          <div className="w-12 h-[86px] rounded-lg overflow-hidden bg-black/20 flex-shrink-0">
+          <div className="w-12 h-[86px] rounded-lg overflow-hidden bg-black/20 flex-shrink-0 relative">
             {segment.mediaType === 'video' ? (
               <video src={segment.media_url} className="w-full h-full object-cover" muted />
             ) : (
@@ -91,15 +178,72 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         </div>
       )}
 
-      {/* Media select placeholder */}
-      {!segment.media_url && (
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {/* TODO: open AssetGallery */}}>
-          <ImageIcon className="w-3.5 h-3.5" />
-          🖼️ Choisir un visuel
-        </Button>
-      )}
+      {/* Media & narration actions */}
+      <div className="flex flex-wrap gap-2">
+        {/* Asset Gallery Sheet */}
+        <Sheet open={showAssetGallery} onOpenChange={setShowAssetGallery}>
+          <SheetTrigger asChild>
+            <Button size="sm" variant="outline" className="gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5" />
+              🖼️ Visuel
+              {segment.media_url && (
+                <span className="text-[10px] bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center">✓</span>
+              )}
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[85vh] bg-background">
+            <div className="p-4 space-y-4 overflow-y-auto h-full">
+              <h3 className="text-lg font-bold text-foreground">Sélectionner un visuel</h3>
+              <AssetGallery
+                selectedAssets={selectedAssets}
+                onSelectionChange={handleAssetSelect}
+                maxSelection={1}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
 
-      {/* Audio */}
+        {/* Narration Recorder Dialog */}
+        <Dialog open={showRecorder} onOpenChange={setShowRecorder}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline" className="gap-1.5">
+              <Mic className="w-3.5 h-3.5" />
+              🎙️ Narration
+              {segment.narrator_audio_url && (
+                <span className="text-[10px] text-green-400 ml-1">
+                  ✅ {segment.duration}s
+                </span>
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-background border-border max-w-sm">
+            <VinylRecorder
+              onRecordingComplete={handleNarrationComplete}
+              maxDuration={30}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* AI Generate button */}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleGenerateAsset}
+          disabled={isGenerating || !selectedCharacter}
+          className="gap-1.5 border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {generationProgress}
+            </>
+          ) : (
+            '✨ Générer IA'
+          )}
+        </Button>
+      </div>
+
+      {/* Audio (original simple recorder) */}
       <div className="flex items-center gap-2">
         {!isRecording ? (
           <Button size="sm" variant="outline" onClick={startRecording} className="gap-1.5">
@@ -126,6 +270,75 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
           </div>
         )}
       </div>
+
+      {/* Character reference selector */}
+      {characterRefs && characterRefs.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground font-medium">🎭 Personnage de référence</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {characterRefs.map((char: any) => (
+              <button
+                key={char.id}
+                onClick={() => setSelectedCharacter(char.id)}
+                className="flex-shrink-0 p-2 rounded-lg border-2 transition text-xs"
+                style={{
+                  background: selectedCharacter === char.id ? 'hsl(var(--accent))' : 'transparent',
+                  borderColor: selectedCharacter === char.id ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+                }}
+              >
+                <img src={char.reference_image_url} alt="" className="w-8 h-8 rounded-full object-cover mx-auto" />
+                <span className="block mt-1 text-muted-foreground">{char.character_name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Choice options: color + position */}
+      {showChoiceOptions && (
+        <div className="space-y-3 pt-2 border-t border-border/30">
+          {/* Color picker */}
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground font-medium">🎨 Couleur du choix</p>
+            <div className="flex gap-2">
+              {CHOICE_COLORS.map(color => (
+                <button
+                  key={color.hex}
+                  onClick={() => setSelectedColor(color.hex)}
+                  className="w-7 h-7 rounded-full transition-transform hover:scale-110"
+                  style={{
+                    backgroundColor: color.hex,
+                    border: selectedColor === color.hex ? '2px solid white' : '2px solid transparent',
+                    boxShadow: selectedColor === color.hex ? `0 0 8px ${color.hex}` : 'none',
+                  }}
+                  title={color.name}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Position picker */}
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground font-medium">📍 Position du choix</p>
+            <div className="flex gap-2">
+              {(['left', 'right'] as const).map(pos => (
+                <button
+                  key={pos}
+                  onClick={() => setSelectedPosition(pos)}
+                  className="flex-1 px-3 py-1.5 rounded-lg border-2 text-sm transition"
+                  style={{
+                    background: selectedPosition === pos ? 'hsl(var(--accent))' : 'transparent',
+                    borderColor: selectedPosition === pos ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+                    color: selectedPosition === pos ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                  }}
+                >
+                  {pos === 'left' ? '← Gauche' : 'Droite →'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Ending options */}
       {showEndingOptions && (
