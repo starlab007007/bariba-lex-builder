@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AssetGallery, type LibraryAsset } from '@/components/griot-studio/AssetGallery';
 import { VinylRecorder } from '@/components/griot-studio/VinylRecorder';
 import { useQuery } from '@tanstack/react-query';
@@ -38,6 +39,13 @@ interface SegmentEditorProps {
   showEndingOptions?: boolean;
   showChoiceOptions?: boolean;
 }
+
+const ENDING_EMOJIS = [
+  { emoji: '👍', label: 'Like' }, { emoji: '👎', label: 'Dislike' }, { emoji: '❤️', label: 'Amour' }, { emoji: '💔', label: 'Triste' },
+  { emoji: '⚔️', label: 'Combat' }, { emoji: '🏆', label: 'Victoire' }, { emoji: '💀', label: 'Défaite' }, { emoji: '🌟', label: 'Étoile' },
+  { emoji: '🎭', label: 'Théâtre' }, { emoji: '🔥', label: 'Feu' }, { emoji: '😂', label: 'Rire' }, { emoji: '😢', label: 'Pleure' },
+  { emoji: '🦁', label: 'Lion' }, { emoji: '🐉', label: 'Dragon' }, { emoji: '👑', label: 'Roi' }, { emoji: '🌍', label: 'Monde' },
+];
 
 const CHOICE_COLORS = [
   { name: 'Orange', hex: '#FF6B35' },
@@ -394,11 +402,28 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
             <span className="text-white">C'est une fin</span>
           </label>
           {segment.is_ending && (
-            <div className="flex gap-2">
-              <Input value={segment.ending_badge ?? ''} onChange={(e) => onChange({ ...segment, ending_badge: e.target.value })}
-                placeholder="Badge emoji (ex: ⚔️)" className="w-24 text-sm" />
+            <div className="flex gap-2 items-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-12 h-10 text-xl bg-white/10 border-white/20 hover:bg-white/20">
+                    {segment.ending_badge || '😀'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2 bg-popover border-border" align="start">
+                  <div className="grid grid-cols-4 gap-1">
+                    {ENDING_EMOJIS.map(({ emoji, label }) => (
+                      <button key={emoji} onClick={() => onChange({ ...segment, ending_badge: emoji })}
+                        className="flex flex-col items-center p-1.5 rounded-lg hover:bg-accent transition text-center"
+                        title={label}>
+                        <span className="text-xl">{emoji}</span>
+                        <span className="text-[10px] text-muted-foreground leading-tight">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Input value={segment.ending_title ?? ''} onChange={(e) => onChange({ ...segment, ending_title: e.target.value })}
-                placeholder="Titre de la fin" className="flex-1 text-sm" />
+                placeholder="Titre de la fin" className="flex-1 text-sm bg-white text-black placeholder:text-gray-400" />
             </div>
           )}
         </div>
