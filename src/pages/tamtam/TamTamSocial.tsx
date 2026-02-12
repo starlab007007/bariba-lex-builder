@@ -12,6 +12,8 @@ import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
 import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
 import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
+import BranchingPlayer from '@/features/conte-vivant/components/BranchingPlayer';
+import type { StoryGraph } from '@/features/conte-vivant/types/story.types';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
 import { useSideMenu } from '@/pages/fitila/FitilaApp';
@@ -544,7 +546,9 @@ const VideoFeedCard: React.FC<{
   onShare: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
-}> = ({ post, isActive, onLike, onComment, onShare, isMuted, onToggleMute }) => {
+  onPlayInteractive?: (storyId: string) => void;
+}> = ({ post, isActive, onLike, onComment, onShare, isMuted, onToggleMute, onPlayInteractive }) => {
+  const isInteractive = post.template_id === 'conte-vivant' || post.metadata?.is_interactive;
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -653,9 +657,31 @@ const VideoFeedCard: React.FC<{
       )}
       
       {/* Loading state */}
-      {!isLoaded && videoUrl && (
+      {!isLoaded && videoUrl && !isInteractive && (
         <div className="absolute inset-0 bg-black flex items-center justify-center">
           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full" />
+        </div>
+      )}
+
+      {/* Interactive Story Badge + Play Button */}
+      {isInteractive && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40">
+          <span className="text-6xl mb-3">🎪</span>
+          <p className="text-white font-bold text-lg mb-1">Conte Interactif</p>
+          <p className="text-white/60 text-xs mb-4">
+            {post.metadata?.total_segments || '?'} segments · {post.metadata?.total_endings || '?'} fins
+          </p>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const storyId = post.metadata?.story_id;
+              if (storyId && onPlayInteractive) onPlayInteractive(storyId);
+            }}
+            className="px-8 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base shadow-lg"
+          >
+            ▶️ Jouer le conte
+          </motion.button>
         </div>
       )}
 
@@ -781,6 +807,16 @@ export default function TamTamSocial() {
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; postId: string | null; comments: TamTamComment[]; isLoading: boolean }>({ isOpen: false, postId: null, comments: [], isLoading: false });
   const [focusVideoId, setFocusVideoId] = useState<string | null>(null);
+  const [interactiveStory, setInteractiveStory] = useState<{ graph: StoryGraph; id: string } | null>(null);
+
+  const handlePlayInteractiveStory = useCallback(async (storyId: string) => {
+    try {
+      const { data } = await supabase.from('conte_vivant_stories').select('graph').eq('id', storyId).single();
+      if (data?.graph) {
+        setInteractiveStory({ graph: data.graph as unknown as StoryGraph, id: storyId });
+      }
+    } catch { toast({ title: '❌ Erreur chargement du conte' }); }
+  }, [toast]);
 
   // Read ?video= param to scroll to published video
   useEffect(() => {
@@ -1000,6 +1036,7 @@ export default function TamTamSocial() {
         avatar_url: v.author.avatarUrl,
       },
       reactions: { like: v.likesCount, love: 0, laugh: 0, wow: 0, pray: 0 },
+      metadata: v.metadata,
       // Flag to identify this is from videos table
       _sourceTable: 'videos',
     }));
@@ -1117,6 +1154,7 @@ export default function TamTamSocial() {
                       onShare={() => handleShare(post.id)}
                       isMuted={isMuted}
                       onToggleMute={() => setIsMuted(prev => !prev)}
+                      onPlayInteractive={handlePlayInteractiveStory}
                     />
                   );
                 })
@@ -1166,6 +1204,17 @@ export default function TamTamSocial() {
       <FullscreenCreator open={showCreator} onClose={() => setShowCreator(false)} onPublish={handleCreatorComplete} />
 
       <TamTamCommentsModal isOpen={commentsModal.isOpen} onClose={() => setCommentsModal(prev => ({ ...prev, isOpen: false }))} comments={commentsModal.comments} onAddComment={async () => {}} isLoading={commentsModal.isLoading} />
+
+      {/* Interactive Story Player Overlay */}
+      {interactiveStory && (
+        <div className="fixed inset-0 z-[100] bg-black">
+          <BranchingPlayer
+            graph={interactiveStory.graph}
+            storyId={interactiveStory.id}
+            onClose={() => setInteractiveStory(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }
