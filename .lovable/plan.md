@@ -1,51 +1,78 @@
 
 
-# Plan : Emoji Picker pour les fins + Texte noir + Verification du flux
+# Diagnostic et corrections du BranchingPlayer
 
-## Probleme identifie
+## Bugs identifies
 
-Dans l'etape "Branches" du StoryBuilder, quand "C'est une fin" est coche, les deux champs actuels sont :
-1. Un champ texte libre pour le badge emoji -- difficile a utiliser, l'utilisateur doit connaitre les emojis
-2. Un champ titre avec texte blanc sur fond sombre -- peu lisible selon la demande
+### Bug 1 : Video en boucle bloque la progression
+Dans `BranchingPlayer.tsx` ligne 205, la balise `<video>` a l'attribut `loop`. Cela signifie que `onEnded` ne se declenche jamais. De plus, ligne 82, le timer est desactive pour les segments video (`if (seg.mediaType === 'video') return`). Resultat : **les segments video ne progressent jamais** vers les choix ou la fin.
 
-## Changements prevus
+**Correction** : Retirer `loop` de la video et toujours utiliser le timer base sur `seg.duration` comme mecanisme principal de progression, meme pour les videos.
 
-### 1. `src/features/conte-vivant/components/SegmentEditor.tsx`
+### Bug 2 : Segments sans fin et sans choix = impasse
+Dans `buildGraph()` (StoryBuilder.tsx ligne 100), si une branche n'est pas une fin ET n'a pas de sous-choix, alors `is_choice_point: false` et `is_ending: false`. Le timer (ligne 84-91) ne declenche rien car aucune condition n'est remplie. Le segment joue indefiniment.
 
-**Remplacer le champ texte `ending_badge` par un selecteur d'emojis :**
+**Correction** : Dans le timer du BranchingPlayer, ajouter un cas de repli : si le segment n'est ni une fin ni un point de choix, afficher automatiquement la carte de fin generique apres la duree du segment.
 
-- Remplacer l'Input libre par un bouton qui affiche l'emoji selectionne (ou un placeholder)
-- Au clic, ouvrir un Popover contenant une grille d'emojis predefinies :
-  - `👍` Like / `👎` Dislike / `❤️` Amour / `💔` Triste
-  - `⚔️` Combat / `🏆` Victoire / `💀` Defaite / `🌟` Etoile
-  - `🎭` Theatre / `🔥` Feu / `😂` Rire / `😢` Pleure
-  - `🦁` Lion / `🐉` Dragon / `👑` Roi / `🌍` Monde
-- Cliquer sur un emoji le selectionne et ferme le popover
-- L'emoji selectionne est affiche dans le bouton
+### Bug 3 : Audio ne joue pas (politique autoplay du navigateur)
+L'appel `narrationRef.current.play()` se fait dans un `useEffect`, pas directement depuis un geste utilisateur. Les navigateurs bloquent silencieusement cet appel. Le `.catch(() => {})` masque l'erreur.
 
-**Champ titre de la fin en texte noir :**
+**Correction** : 
+- Appeler `narrationRef.current.load()` avant `play()` pour reinitialiser l'element audio
+- Ajouter un `AudioContext` resume au premier clic utilisateur
+- Loguer les erreurs de lecture au lieu de les ignorer
 
-- Ajouter les classes `bg-white text-black placeholder:text-gray-400` au champ `ending_title` pour garantir la lisibilite sur fond sombre
+### Bug 4 : Segments de branche sans background_music_url
+Dans `buildGraph()`, seul le segment intro recoit `background_music_url: selectedMusic?.url`. Les branches n'ont pas ce champ, donc la musique s'arrete apres l'intro.
 
-### 2. Verification du flux complet (analyse)
+**Correction** : Propager `selectedMusic?.url` a tous les segments du graphe.
 
-Le flux actuel du conte vivant est le suivant :
+## Modifications
 
-| Etape | Composant | Etat |
-|-------|-----------|------|
-| Introduction (30s) | SegmentEditor avec VinylRecorder | OK - transcription auto Mistral |
-| Choix | Emoji + label par choix | OK |
-| Branches (30s chacune) | SegmentEditor avec narration + visuel | OK - transcription auto |
-| Fins | Badge emoji + titre | A ameliorer (emoji picker) |
-| Apercu | StoryTreePreview + BranchingPlayer | OK - graphe DAG |
-| Publication | buildGraph + collectBlobs + onPublish | OK - upload blobs |
-| Lecture | BranchingPlayer avec narration + musique | OK - Ken Burns + choix |
+### `src/features/conte-vivant/components/BranchingPlayer.tsx`
 
-Le flux de bout en bout est fonctionnel : les narrations enregistrees sont uploadees via `storyAssetUploader`, le graphe est construit correctement avec `buildGraph()`, et le `BranchingPlayer` lit les segments avec les audios et visuels associes.
+1. **Retirer `loop`** de la balise video (ligne 205)
+2. **Unifier le timer** : supprimer le `return` early pour les videos (ligne 82). Utiliser `seg.duration` comme timer universel. Si le segment a une narration audio, ecouter `onended` de l'audio pour declencher la progression quand l'audio finit, avec un fallback sur le timer duration.
+3. **Gerer les segments sans issue** : ajouter un 3eme cas dans le timer -- si le segment n'est ni ending ni choice_point, le traiter comme une fin implicite (afficher EndingCard avec un badge par defaut)
+4. **Corriger la lecture audio** : appeler `.load()` puis `.play()`, et loguer les erreurs au lieu de les ignorer silencieusement
+5. **Reprendre l'AudioContext** : au premier clic (`handleTap`), creer/reprendre un AudioContext pour debloquer l'autoplay
 
-## Fichiers modifies
+### `src/features/conte-vivant/components/StoryBuilder.tsx`
+
+1. **Propager la musique** : dans `buildGraph()`, ajouter `background_music_url: selectedMusic?.url` a tous les segments (branches et sous-branches), pas seulement l'intro
+
+## Details techniques
+
+### Timer unifie (BranchingPlayer)
+
+```text
+Ancien flux :
+  - Si video → pas de timer, attend onEnded (qui ne vient jamais avec loop)
+  - Si photo → timer de seg.duration secondes
+
+Nouveau flux :
+  - Timer de seg.duration secondes pour TOUS les segments
+  - Quand le timer expire :
+    1. Si is_ending → afficher EndingCard
+    2. Si is_choice_point avec choices → afficher ChoiceOverlay
+    3. Sinon → traiter comme fin implicite (EndingCard generique)
+  - Si narration audio presente : ecouter onended pour declencher plus tot
+  - Video : pas de loop, lecture simple
+```
+
+### Audio resume pattern
+
+```text
+1. Premier clic utilisateur sur le player (handleTap)
+2. Creer AudioContext() et appeler .resume()
+3. narrationRef.current.load() puis .play()
+4. Console.warn si play() echoue au lieu de catch silencieux
+```
+
+### Fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/features/conte-vivant/components/SegmentEditor.tsx` | Emoji picker Popover + texte noir pour le titre de fin |
+| `src/features/conte-vivant/components/BranchingPlayer.tsx` | Timer unifie, retirer loop, audio fix, gestion impasses |
+| `src/features/conte-vivant/components/StoryBuilder.tsx` | Propager background_music_url a toutes les branches |
 
