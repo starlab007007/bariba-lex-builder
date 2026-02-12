@@ -5,7 +5,7 @@
  * Workflow: Record → Transcribe → Edit Scenes → Generate Images → Preview → Publish
  * 
  * v7 changes:
- * - Audio transcription via ElevenLabs STT
+ * - Audio transcription via Mistral Voxtral Mini STT
  * - Interactive SceneEditor (1 phrase = 1 scene)
  * - Pre-segmented scene matching (skip AI segmentation)
  * - Cloud draft save/restore

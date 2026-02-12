@@ -1,8 +1,8 @@
 /**
  * Transcribe Audio Edge Function
  * 
- * Receives an audio blob and transcribes it to text using ElevenLabs STT (batch, scribe_v2).
- * Falls back to Lovable AI (Gemini Flash) if ElevenLabs fails.
+ * Receives an audio blob and transcribes it to text using Mistral Voxtral Mini (batch).
+ * Falls back to Lovable AI (Gemini Flash) if Mistral fails.
  * 
  * Returns: { text, words[], language }
  */
@@ -33,32 +33,31 @@ serve(async (req) => {
 
     console.log(`[transcribe-audio] Received audio: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}`);
 
-    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
+    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
-    // Try ElevenLabs STT first
-    if (ELEVENLABS_API_KEY) {
+    // Try Mistral Voxtral Mini STT first
+    if (MISTRAL_API_KEY) {
       try {
-        const result = await transcribeWithElevenLabs(audioFile, ELEVENLABS_API_KEY);
+        const result = await transcribeWithMistral(audioFile, MISTRAL_API_KEY);
         if (result && result.text && result.text.trim().length > 0) {
-          console.log(`[transcribe-audio] ElevenLabs success: ${result.text.length} chars`);
+          console.log(`[transcribe-audio] Mistral success: ${result.text.length} chars`);
           return new Response(
-            JSON.stringify({ success: true, ...result, method: 'elevenlabs' }),
+            JSON.stringify({ success: true, ...result, method: 'mistral' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        console.warn('[transcribe-audio] ElevenLabs returned empty text, falling back...');
-      } catch (elevenLabsError) {
-        console.error('[transcribe-audio] ElevenLabs error:', elevenLabsError);
+        console.warn('[transcribe-audio] Mistral returned empty text, falling back...');
+      } catch (mistralError) {
+        console.error('[transcribe-audio] Mistral error:', mistralError);
       }
     } else {
-      console.log('[transcribe-audio] No ELEVENLABS_API_KEY, skipping ElevenLabs');
+      console.log('[transcribe-audio] No MISTRAL_API_KEY, skipping Mistral');
     }
 
-    // Fallback: Lovable AI (Gemini Flash) — describe what the audio should contain
+    // Fallback: Lovable AI (Gemini Flash)
     if (LOVABLE_API_KEY) {
       try {
-        // Convert audio to base64 for Gemini
         const audioBytes = await audioFile.arrayBuffer();
         const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBytes)));
         
@@ -98,37 +97,36 @@ serve(async (req) => {
 });
 
 /**
- * Transcribe audio using ElevenLabs STT (scribe_v2 batch)
+ * Transcribe audio using Mistral Voxtral Mini Transcribe V2
  */
-async function transcribeWithElevenLabs(
+async function transcribeWithMistral(
   audioFile: File,
   apiKey: string
 ): Promise<{ text: string; words: Array<{ text: string; start: number; end: number }>; language: string }> {
   const formData = new FormData();
   formData.append('file', audioFile);
-  formData.append('model_id', 'scribe_v2');
-  formData.append('language_code', 'fra'); // French
-  formData.append('tag_audio_events', 'false');
-  formData.append('diarize', 'false');
+  formData.append('model', 'voxtral-mini-latest');
+  formData.append('language', 'fr');
+  formData.append('timestamp_granularities', 'word');
 
-  console.log('[transcribe-audio] Calling ElevenLabs STT...');
+  console.log('[transcribe-audio] Calling Mistral Voxtral Mini STT...');
 
-  const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+  const response = await fetch('https://api.mistral.ai/v1/audio/transcriptions', {
     method: 'POST',
     headers: {
-      'xi-api-key': apiKey,
+      'Authorization': `Bearer ${apiKey}`,
     },
     body: formData,
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[transcribe-audio] ElevenLabs HTTP error:', response.status, errorText);
-    throw new Error(`ElevenLabs STT error: ${response.status}`);
+    console.error('[transcribe-audio] Mistral HTTP error:', response.status, errorText);
+    throw new Error(`Mistral STT error: ${response.status}`);
   }
 
   const data = await response.json();
-  
+
   return {
     text: data.text || '',
     words: (data.words || []).map((w: any) => ({
@@ -136,7 +134,7 @@ async function transcribeWithElevenLabs(
       start: w.start,
       end: w.end,
     })),
-    language: data.language_code || 'fra',
+    language: data.language || 'fr',
   };
 }
 
