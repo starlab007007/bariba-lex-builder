@@ -200,7 +200,7 @@ export default function ConteVivantStudio() {
               {(!myStories || myStories.length === 0) ? (
                 <div className="text-center py-12">
                   <p className="text-white/60 text-sm">Aucun conte créé pour l'instant</p>
-                  <Button className="mt-4" onClick={() => setView('builder')}>✏️ Créer mon premier conte</Button>
+                  <Button className="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold" onClick={() => setView('builder')}>✏️ Créer mon premier conte</Button>
                 </div>
               ) : (
                 myStories.map(story => (
@@ -209,8 +209,8 @@ export default function ConteVivantStudio() {
                       <p className="font-semibold text-white">{story.title}</p>
                       <p className="text-xs text-white/60">{story.total_segments} segments · {story.total_endings} fins · {story.status}</p>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => handlePlayStory(story.id)}
-                      className="gap-1.5 min-h-[44px] text-white border-white/20">
+                    <Button size="sm" onClick={() => handlePlayStory(story.id)}
+                      className="gap-1.5 min-h-[44px] bg-blue-600 hover:bg-blue-500 text-white font-semibold">
                       ▶️ Jouer
                     </Button>
                   </div>
