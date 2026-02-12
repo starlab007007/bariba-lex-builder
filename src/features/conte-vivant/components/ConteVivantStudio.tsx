@@ -22,12 +22,13 @@ export default function ConteVivantStudio() {
   const { data: stats } = useQuery({
     queryKey: ['conte-vivant-stats'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('anime_scene_library')
-        .select('consistency_score, asset_type, generation_metadata');
+        .select('consistency_score, asset_type');
+      if (error) throw error;
       const total = data?.length || 0;
       const avgConsistency = total > 0
-        ? (data?.reduce((sum, item) => sum + (Number((item as any).consistency_score) || 0), 0) || 0) / total
+        ? (data.reduce((sum, item) => sum + (Number(item.consistency_score) || 0), 0)) / total
         : 0;
       const videos = data?.filter(item => item.asset_type === 'video').length || 0;
       return { total, avgConsistency, videos, photos: total - videos };

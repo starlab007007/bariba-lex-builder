@@ -73,8 +73,10 @@ export class AIAssetGenerator {
   }
 
   private buildEnhancedPrompt(params: GenerationParams, charRef: CharacterReference): string {
-    return `[CHARACTER] ${params.characterType} - ${charRef.style_keywords.join(', ')}
-[PALETTE] ${charRef.color_palette.join(', ')}
+    const keywords = charRef.style_keywords?.join(', ') || 'default style';
+    const palette = charRef.color_palette?.join(', ') || 'warm earth tones';
+    return `[CHARACTER] ${params.characterType} - ${keywords}
+[PALETTE] ${palette}
 [SCENE] ${params.sceneType} | Mood: ${params.mood || 'neutral'}
 [STYLE] African storytelling, warm earthy tones, 1080x1920 portrait`.trim();
   }
