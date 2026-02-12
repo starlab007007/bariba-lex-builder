@@ -27,10 +27,37 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
   const videoRef = useRef<HTMLVideoElement>(null);
   const narrationRef = useRef<HTMLAudioElement>(null);
   const bgMusicRef = useRef<HTMLAudioElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioUnlockedRef = useRef(false);
 
   const seg = graph.segments[currentId];
   const totalEndings = Object.values(graph.segments).filter(s => s.is_ending).length;
   const maxDepth = Math.max(3, path.length + 2);
+
+  // Unlock AudioContext on first user gesture
+  const unlockAudio = useCallback(() => {
+    if (audioUnlockedRef.current) return;
+    audioUnlockedRef.current = true;
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContext();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+      // Retry playing audio after unlock
+      const narrationUrl = seg?.narrator_audio_url || seg?.audio_url;
+      if (narrationRef.current && narrationUrl) {
+        narrationRef.current.load();
+        narrationRef.current.play().catch(e => console.warn('[ConteVivant] Audio play after unlock failed:', e));
+      }
+      if (bgMusicRef.current && bgMusicRef.current.src) {
+        bgMusicRef.current.play().catch(e => console.warn('[ConteVivant] Music play after unlock failed:', e));
+      }
+    } catch (e) {
+      console.warn('[ConteVivant] AudioContext unlock error:', e);
+    }
+  }, [seg]);
 
   // Audio playback for narration + background music
   useEffect(() => {
@@ -40,7 +67,8 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
     if (narrationRef.current) {
       if (narrationUrl) {
         narrationRef.current.src = narrationUrl;
-        narrationRef.current.play().catch(() => {});
+        narrationRef.current.load();
+        narrationRef.current.play().catch(e => console.warn('[ConteVivant] Narration autoplay blocked:', e));
       } else {
         narrationRef.current.pause();
         narrationRef.current.removeAttribute('src');
@@ -53,7 +81,8 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
         bgMusicRef.current.src = musicUrl;
         bgMusicRef.current.loop = true;
         bgMusicRef.current.volume = 0.25;
-        bgMusicRef.current.play().catch(() => {});
+        bgMusicRef.current.load();
+        bgMusicRef.current.play().catch(e => console.warn('[ConteVivant] Music autoplay blocked:', e));
       } else if (!musicUrl) {
         bgMusicRef.current.pause();
         bgMusicRef.current.removeAttribute('src');
@@ -70,49 +99,60 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
     return () => {
       narrationRef.current?.pause();
       bgMusicRef.current?.pause();
+      audioCtxRef.current?.close().catch(() => {});
     };
   }, []);
 
-  // Timer: after durationSec → show choices or ending
-  useEffect(() => {
+  // Advance segment when narration audio ends (before timer)
+  const advanceSegment = useCallback(() => {
     if (phase !== 'playing' || !seg) return;
-    clearTimeout(timerRef.current);
-
-    // For videos, wait for the video to end instead of using duration
-    if (seg.mediaType === 'video') return;
-
-    timerRef.current = setTimeout(() => {
-      if (seg.is_ending) {
-        setPhase('ending');
-        trackEnding(seg);
-      } else if (seg.is_choice_point && seg.choices?.length) {
-        setPhase('choosing');
-        try { navigator.vibrate?.(100); } catch {}
-      }
-    }, (seg.duration || 12) * 1000);
-
-    return () => clearTimeout(timerRef.current);
-  }, [currentId, phase, seg]);
-
-  const trackEnding = useCallback((s: StorySegment) => {
-    if (s.ending_badge && s.ending_title) {
-      setEndingsFound(prev => {
-        if (prev.some(e => e.name === s.ending_title)) return prev;
-        return [...prev, { icon: s.ending_badge!, name: s.ending_title! }];
-      });
-    }
-  }, []);
-
-  const handleVideoEnded = useCallback(() => {
-    if (!seg) return;
     if (seg.is_ending) {
       setPhase('ending');
       trackEnding(seg);
     } else if (seg.is_choice_point && seg.choices?.length) {
       setPhase('choosing');
       try { navigator.vibrate?.(100); } catch {}
+    } else {
+      // Dead-end: treat as implicit ending
+      setPhase('ending');
+      trackEnding(seg);
     }
-  }, [seg, trackEnding]);
+  }, [phase, seg]);
+
+  // Unified timer for ALL segment types (photo + video)
+  useEffect(() => {
+    if (phase !== 'playing' || !seg) return;
+    clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(() => {
+      advanceSegment();
+    }, (seg.duration || 12) * 1000);
+
+    // Also listen for narration end to advance early
+    const narration = narrationRef.current;
+    const onNarrationEnd = () => {
+      clearTimeout(timerRef.current);
+      advanceSegment();
+    };
+    if (narration) {
+      narration.addEventListener('ended', onNarrationEnd);
+    }
+
+    return () => {
+      clearTimeout(timerRef.current);
+      narration?.removeEventListener('ended', onNarrationEnd);
+    };
+  }, [currentId, phase, seg, advanceSegment]);
+
+  const trackEnding = useCallback((s: StorySegment) => {
+    if (s.ending_badge || s.ending_title) {
+      setEndingsFound(prev => {
+        const name = s.ending_title || 'Fin';
+        if (prev.some(e => e.name === name)) return prev;
+        return [...prev, { icon: s.ending_badge || '🏁', name }];
+      });
+    }
+  }, []);
 
   const goToSegment = useCallback((nextId: string) => {
     setPhase('transitioning');
@@ -147,11 +187,16 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
   };
 
   const handleTap = () => {
+    unlockAudio();
     if (phase === 'playing') {
       setIsPlaying(p => {
         if (videoRef.current) {
           if (p) videoRef.current.pause();
           else videoRef.current.play();
+        }
+        if (narrationRef.current) {
+          if (p) narrationRef.current.pause();
+          else narrationRef.current.play().catch(() => {});
         }
         return !p;
       });
@@ -202,8 +247,7 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
               className="w-full h-full object-cover"
               autoPlay
               playsInline
-              loop
-              onEnded={handleVideoEnded}
+              muted
             />
           ) : mediaUrl ? (
             <KenBurnsPhoto src={mediaUrl} segKey={segKey} />
