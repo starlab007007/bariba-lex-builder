@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Square, Trash2, ImageIcon, Loader2, Play, Pause, Video } from 'lucide-react';
+import { Mic, Square, Trash2, ImageIcon, Loader2, Play, Pause, Video, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -70,6 +70,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isGeneratingTTS, setIsGeneratingTTS] = useState(false);
   const [recordingElapsed, setRecordingElapsed] = useState(0);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingStartRef = useRef<number>(0);
@@ -89,17 +90,71 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
     setRecordingElapsed(0);
   }, []);
 
+  const generateTTSAudio = useCallback(async (text: string, seg: SegmentDraft): Promise<SegmentDraft | null> => {
+    if (!text.trim()) return null;
+    setIsGeneratingTTS(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('french-tts', {
+        body: { text, voice: 'narrator', returnAudio: true },
+      });
+      if (error) throw error;
+      if (!data?.audioBase64) {
+        toast.error('Génération audio échouée (pas de données)');
+        return null;
+      }
+      const dataUri = `data:audio/mpeg;base64,${data.audioBase64}`;
+      // Create blob for upload
+      const res = await fetch(dataUri);
+      const blob = await res.blob();
+      // Calculate real audio duration
+      return new Promise<SegmentDraft>((resolve) => {
+        const audio = new Audio(dataUri);
+        audio.onloadedmetadata = () => {
+          const duration = Math.ceil(audio.duration);
+          const updated = { ...seg, narrator_audio_url: dataUri, narrator_audio_blob: blob, duration };
+          resolve(updated);
+        };
+        audio.onerror = () => {
+          // Fallback: keep text duration
+          const updated = { ...seg, narrator_audio_url: dataUri, narrator_audio_blob: blob };
+          resolve(updated);
+        };
+      });
+    } catch (err: any) {
+      console.error('TTS generation error:', err);
+      toast.error('Erreur génération voix: ' + (err.message || 'Erreur'));
+      return null;
+    } finally {
+      setIsGeneratingTTS(false);
+    }
+  }, []);
+
+  const handleGenerateTTS = useCallback(async () => {
+    const result = await generateTTSAudio(segment.text_content, segment);
+    if (result) {
+      onChange(result);
+      toast.success('🎙️ Voix générée et synchronisée');
+    }
+  }, [segment, onChange, generateTTSAudio]);
+
   const autoTranscribe = useCallback(async (blob: Blob, updatedSegment: SegmentDraft) => {
     setIsTranscribing(true);
     const text = await transcribeBlob(blob);
     setIsTranscribing(false);
     if (text) {
-      onChange({ ...updatedSegment, text_content: text });
+      const segWithText = { ...updatedSegment, text_content: text };
+      onChange(segWithText);
       toast.success('Transcription terminée');
+      // Auto-generate TTS after transcription
+      const ttsResult = await generateTTSAudio(text, segWithText);
+      if (ttsResult) {
+        onChange(ttsResult);
+        toast.success('🎙️ Voix auto-générée');
+      }
     } else {
       toast.error('Transcription échouée — texte non rempli');
     }
-  }, [onChange]);
+  }, [onChange, generateTTSAudio]);
 
   const startRecording = async () => {
     try {
@@ -281,6 +336,14 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         </div>
       )}
 
+      {/* TTS generation loading */}
+      {isGeneratingTTS && (
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-500/10 border border-purple-500/30">
+          <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+          <span className="text-xs font-medium text-purple-300">Génération de la voix...</span>
+        </div>
+      )}
+
       {/* Narration audio playback */}
       {segment.narrator_audio_url && (
         <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/20 border border-accent/30">
@@ -325,6 +388,19 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
             <VinylRecorder onRecordingComplete={handleNarrationComplete} maxDuration={30} />
           </DialogContent>
         </Dialog>
+
+        {/* TTS Generate button */}
+        {segment.text_content.trim() && !segment.narrator_audio_url && (
+          <Button size="sm" onClick={handleGenerateTTS}
+            disabled={isGeneratingTTS}
+            className="gap-1.5 min-h-[44px] bg-purple-600 hover:bg-purple-500 text-white font-semibold">
+            {isGeneratingTTS ? (
+              <><Loader2 className="w-4 h-4 animate-spin" />Génération...</>
+            ) : (
+              <><Volume2 className="w-4 h-4" />Générer la voix</>
+            )}
+          </Button>
+        )}
 
         {/* AI Generate button */}
         <Button size="sm" variant="outline" onClick={handleGenerateAsset}

@@ -1,6 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Eye, Upload, Sparkles, Music, X, Play } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Eye, Upload, Sparkles, Music, X, Play, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -44,6 +47,8 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
   const [showMusicLibrary, setShowMusicLibrary] = useState(false);
   const [showTestPlayer, setShowTestPlayer] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [isBatchGenerating, setIsBatchGenerating] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
 
   const [introSegment, setIntroSegment] = useState<SegmentDraft>(defaultSegment('intro', 'Introduction'));
   const [choices, setChoices] = useState<ChoiceDraft[]>([
@@ -150,7 +155,73 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
     return map;
   }, [introSegment, branches]);
 
-  const handlePublish = () => {
+  const generateTTSForSegment = async (text: string, seg: SegmentDraft): Promise<SegmentDraft | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('french-tts', {
+        body: { text, voice: 'narrator', returnAudio: true },
+      });
+      if (error || !data?.audioBase64) return null;
+      const dataUri = `data:audio/mpeg;base64,${data.audioBase64}`;
+      const res = await fetch(dataUri);
+      const blob = await res.blob();
+      return new Promise<SegmentDraft>((resolve) => {
+        const audio = new Audio(dataUri);
+        audio.onloadedmetadata = () => {
+          resolve({ ...seg, narrator_audio_url: dataUri, narrator_audio_blob: blob, duration: Math.ceil(audio.duration) });
+        };
+        audio.onerror = () => resolve({ ...seg, narrator_audio_url: dataUri, narrator_audio_blob: blob });
+      });
+    } catch { return null; }
+  };
+
+  const handlePublish = async () => {
+    // Batch generate TTS for segments missing audio
+    const allSegments: { seg: SegmentDraft; setter: (s: SegmentDraft) => void }[] = [];
+
+    if (introSegment.text_content.trim() && !introSegment.narrator_audio_url) {
+      allSegments.push({ seg: introSegment, setter: setIntroSegment });
+    }
+    branches.forEach((branch, idx) => {
+      if (branch.segment.text_content.trim() && !branch.segment.narrator_audio_url) {
+        allSegments.push({
+          seg: branch.segment,
+          setter: (s) => updateBranchSegment(idx, s),
+        });
+      }
+      branch.sub_branches?.forEach((sub, si) => {
+        if (sub.segment.text_content.trim() && !sub.segment.narrator_audio_url) {
+          allSegments.push({
+            seg: sub.segment,
+            setter: (s) => {
+              const newBranches = [...branches];
+              const newSubs = [...(newBranches[idx].sub_branches || [])];
+              newSubs[si] = { ...newSubs[si], segment: s };
+              newBranches[idx] = { ...newBranches[idx], sub_branches: newSubs };
+              setBranches(newBranches);
+            },
+          });
+        }
+      });
+    });
+
+    if (allSegments.length > 0) {
+      setIsBatchGenerating(true);
+      setBatchProgress({ current: 0, total: allSegments.length });
+
+      for (let i = 0; i < allSegments.length; i++) {
+        setBatchProgress({ current: i + 1, total: allSegments.length });
+        const result = await generateTTSForSegment(allSegments[i].seg.text_content, allSegments[i].seg);
+        if (result) {
+          allSegments[i].setter(result);
+        }
+      }
+      setIsBatchGenerating(false);
+      toast.success('🎙️ Toutes les voix ont été générées');
+
+      // Wait a tick for state to update before building graph
+      await new Promise(r => setTimeout(r, 100));
+    }
+
     const graph = buildGraph();
     const blobs = collectBlobs();
     onPublish(graph, title, description, blobs);
@@ -402,11 +473,20 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
           <DialogDescription>
             Votre conte "{title || 'Sans titre'}" sera visible par tous. Êtes-vous sûr ?
           </DialogDescription>
+          {isBatchGenerating && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-purple-300">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Génération des voix... ({batchProgress.current}/{batchProgress.total})
+              </div>
+              <Progress value={(batchProgress.current / batchProgress.total) * 100} className="h-2" />
+            </div>
+          )}
           <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowPublishConfirm(false)} className="min-h-[44px]">Annuler</Button>
-            <Button onClick={handlePublish} className="min-h-[44px] gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold">
+            <Button variant="outline" onClick={() => setShowPublishConfirm(false)} className="min-h-[44px]" disabled={isBatchGenerating}>Annuler</Button>
+            <Button onClick={handlePublish} className="min-h-[44px] gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold" disabled={isBatchGenerating}>
               <Upload className="w-4 h-4" />
-              Publier
+              {isBatchGenerating ? 'Génération...' : 'Publier'}
             </Button>
           </DialogFooter>
         </DialogContent>
