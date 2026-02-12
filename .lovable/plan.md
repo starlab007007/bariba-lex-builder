@@ -1,204 +1,169 @@
 
-# Conte Vivant -- Storytelling Interactif a Embranchements
+
+# Conte Vivant -- Refonte Immersive Audio-First
 
 ## Resume
 
-Le document decrit un systeme de storytelling interactif ou le spectateur choisit la direction de l'histoire toutes les 15 secondes, avec 2-3 options par embranchement. Actuellement, le bouton "Conte Live" dans l'interface camera ouvre simplement le GriotStudio existant (meme fonctionnement que Griot). L'objectif est de transformer "Conte Live" en un veritable systeme de contes a embranchements.
+Transformer le systeme Conte Vivant actuel (3 segments textuels, sans medias) en une experience immersive 100% audio-first avec 11 segments interactifs utilisant les 300+ photos/videos IA de `anime_scene_library`. Navigation uniquement par icones et gestes tap.
 
-## Etat actuel vs Cible
+## Etat actuel analyse
 
-**Ce qui existe deja** :
-- Bouton "Conte Live" dans l'interface camera (ouvre GriotStudio)
-- GriotStudio : enregistrement audio, transcription, generation de scenes, export video
-- K-Engine / GriotAnimationEngine pour le rendu video
-- Asset Library pour le matching d'images
-- Feed video TikTok-style (table `videos`)
-- Supabase Realtime (peut remplacer Redis/WebSocket)
+- **ConteVivantStudio** : home/builder/player avec demo 3 segments (texte seul, pas de medias)
+- **BranchingPlayer** : utilise `useStoryGraph` pour la navigation DAG, `useBranchPreload` pour le pre-cache, `useChoiceTimer` pour le timer 5s
+- **ChoiceOverlay** : boutons textuels avec barre horizontale
+- **EndingCard** : ecran basique avec texte
+- **SegmentEditor** : editeur texte + enregistrement audio basique (pas d'AssetGallery)
+- **StoryBuilder** : 6 etapes formulaire, pas de selection de medias visuels
+- **Types** : `StorySegment` n'a pas de `mediaType`, `media_url`, `color`, `position`
 
-**Ce qui doit etre construit** :
-- Story Graph Engine (graphe DAG pour les embranchements)
-- Story Builder UI (editeur pour creer les branches)
-- Branching Player (lecteur avec pre-cache multi-segments)
-- Choice UI (overlay de choix + timer 5s)
-- Mode Communaute (vote en temps reel via Supabase Realtime)
-- Systeme de badges par chemin
-- Tables base de donnees (contes, segments, progression, votes)
+## Plan d'implementation (10 etapes)
 
-## Plan d'implementation -- Phase 1 MVP
+### Etape 1 : Types mis a jour
 
-On suit l'approche Phase 1 du document : mode solo, 2 niveaux, 2 choix par noeud.
+Fichier modifie : `src/features/conte-vivant/types/story.types.ts`
 
-### Etape 1 : Base de donnees
+Ajouter aux interfaces existantes :
+- `StorySegment` : `mediaType`, `media_url`, `narrator_audio_url`, `choice_audio_url`, `background_music_url`
+- `StoryChoice` : `color`, `position`
+- `SegmentDraft` : `mediaType`, `media_url`, `narrator_audio_blob`, `narrator_audio_url`
 
-Creer 3 tables :
+### Etape 2 : Conte demo 11 segments
 
-```text
-conte_vivant_stories
-  - id (UUID PK)
-  - creator_id (UUID)
-  - title (VARCHAR)
-  - description (TEXT)
-  - languages (TEXT[])
-  - graph (JSONB) -- le DAG complet (segments, choix, liens)
-  - status (published/draft)
-  - total_segments (INT)
-  - total_endings (INT)
-  - thumbnail_url (TEXT)
-  - created_at, published_at (TIMESTAMPTZ)
+Nouveau fichier : `src/features/conte-vivant/data/demoStory.ts`
 
-conte_vivant_progress
-  - id (UUID PK)
-  - user_id (UUID)
-  - story_id (UUID FK)
-  - path_taken (TEXT[])
-  - choices (JSONB)
-  - endings_unlocked (TEXT[])
-  - completed_at (TIMESTAMPTZ)
-  - replay_count (INT DEFAULT 0)
-  - UNIQUE(user_id, story_id)
+Fonction `loadDemoStory()` qui :
+- Requete `anime_scene_library` pour 7 assets reels (village/elder/photo, journey/group/video, forest/elder/photo, etc.)
+- Construit un StoryGraph complet avec 11 segments : intro, guerriers, devin, piege, poursuite, potion, chant + 4 segments intermediaires
+- 4 fins avec badges : Guerrier, Cavalier, Sage, Griot
+- Choix avec couleurs (#FF6B35, #00D4AA, #22C55E, #A855F7, #F5A623, #EC4899) et positions (left/right)
 
-conte_vivant_votes
-  - id (UUID PK)
-  - session_id (UUID)
-  - story_id (UUID FK)
-  - segment_id (TEXT)
-  - results (JSONB)
-  - winner (VARCHAR)
-  - voter_count (INT)
-  - resolved_at (TIMESTAMPTZ)
-```
+### Etape 3 : 6 nouveaux composants visuels
 
-RLS : lecture publique pour les contes publies, ecriture reservee au createur. Progression liee a l'utilisateur authentifie.
+**3a. KenBurnsPhoto.tsx** -- Photo avec animation CSS zoom+pan 12s, 4 directions aleatoires, fade-in 300ms
 
-### Etape 2 : Types et modele de donnees
+**3b. AudioWaveBar.tsx** -- 5 barres verticales animees (CSS keyframes waveHeight), couleur ambre #F5A623, position absolue en bas
 
-Creer `src/features/conte-vivant/types/story.types.ts` :
-- `StoryGraph` : structure JSONB du DAG (entry_segment, segments map)
-- `StorySegment` : video_url, duration, is_choice_point, choices[], is_ending, ending_badge
-- `StoryChoice` : id, label, icon, next_segment, is_default
-- `ConteVivantStory` : metadonnees + graph
+**3c. CircularTimer.tsx** -- Cercle SVG 60px, stroke dore #F5A623, stroke-dashoffset anime sur 5s, chiffre au centre, rouge sous 2s
 
-### Etape 3 : Story Builder UI (simplifie)
+**3d. ProgressDots.tsx** -- Indicateur points lumineux en haut centre, point actuel ambre, precedents blancs, futurs gris
 
-Creer `src/features/conte-vivant/components/StoryBuilder.tsx` :
-- Interface formulaire (pas de graphe visuel pour le MVP)
-- Etape 1 : Ecrire/enregistrer le segment d'intro
-- Etape 2 : Definir 2 choix avec labels + icones
-- Etape 3 : Pour chaque branche, ecrire/enregistrer le segment suivant
-- Etape 4 : Definir les fins ou ajouter un niveau supplementaire
-- Reutilise le VinylRecorder existant pour l'enregistrement audio
-- Reutilise l'AssetGallery pour la selection d'images par segment
-- Chaque segment = audio + visuels, rendu par le GriotAnimationEngine existant
+**3e. GoldenParticles.tsx** -- 12 cercles dores animes en radial autour du badge de fin, framer-motion scale+translate+opacity
 
-### Etape 4 : Branching Player
+**3f. SegmentTransition.tsx** -- Overlay noir crossfade 300ms entre segments, callback onMidpoint pour changer de segment
 
-Creer `src/features/conte-vivant/components/BranchingPlayer.tsx` :
-- Lecteur video qui charge et joue les segments un par un
-- Pre-cache : pendant la lecture du segment actuel, telecharge les 2-3 segments suivants possibles en parallele
-- Quand le segment approche de la fin (5s avant), affiche le ChoiceOverlay
-- A la selection d'un choix, transition fluide (crossfade 300ms) vers le segment suivant
-- Timeout 5s : si aucun choix, selectionne le choix par defaut
+### Etape 4 : BranchingPlayer refonte complete
 
-### Etape 5 : Choice Overlay UI
+Fichier modifie : `src/features/conte-vivant/components/BranchingPlayer.tsx`
 
-Creer `src/features/conte-vivant/components/ChoiceOverlay.tsx` :
-- 2-3 boutons animes avec icone + texte court
-- Barre de progression (timer 5 secondes)
-- Animation d'entree (slide-up + scale)
-- Feedback haptic au choix
-- Mode solo : clic direct
-- Mode communaute (Phase 2) : barre de vote en temps reel
+Remplacement complet :
+- Accepte un `storyGraph` avec les nouvelles proprietes (media_url, mediaType, color, position)
+- Fond #08080c noir profond
+- Photos : KenBurnsPhoto en plein ecran 9:16
+- Videos : `<video>` natif plein ecran, autoPlay, playsInline
+- AudioWaveBar en bas (animation simulee)
+- ProgressDots en haut centre
+- Tap pause/play sur l'ecran
+- Au moment du choix : image scale(0.85) + blur(4px) + overlay noir 40% + vibration haptic
+- Transition crossfade 300ms via SegmentTransition
+- Pre-cache via useBranchPreload existant
+- Timer auto : durationSec puis affiche choix ou ending
+- Utilise useStoryGraph pour la navigation (adapte pour les nouveaux champs)
 
-### Etape 6 : Ending Card
+### Etape 5 : ChoiceOverlay refonte audio-first
 
-Creer `src/features/conte-vivant/components/EndingCard.tsx` :
-- Ecran de fin avec badge debloque (ex: "Tu es un Guerrier!")
-- Affiche "Fin X/N -- Explore les autres chemins!"
-- Boutons : Rejouer / Partager / Retour au feed
+Fichier modifie : `src/features/conte-vivant/components/ChoiceOverlay.tsx`
 
-### Etape 7 : Hooks de navigation
+Remplacement complet :
+- Icones GRANDES 48px emoji, PAS de texte obligatoire
+- Couleurs distinctes par choix (utilise choice.color)
+- Positions gauche/droite (utilise choice.position)
+- CircularTimer dore au centre en haut (remplace barre horizontale)
+- Bordure pulsante avec glow animation (boxShadow anime)
+- Haptic navigator.vibrate(100) a l'apparition
+- Flash blanc si timeout
 
-Creer `src/features/conte-vivant/hooks/useStoryGraph.ts` :
-- Charge le graphe depuis la BDD
-- Methodes : `getSegment(id)`, `getChoices(segmentId)`, `resolve(choiceId)`, `getDefault(segmentId)`
-- Track le chemin parcouru (path_taken)
+### Etape 6 : EndingCard refonte avec particles
 
-Creer `src/features/conte-vivant/hooks/useBranchPreload.ts` :
-- Pre-charge les segments suivants en parallele
-- Qualite adaptative selon le reseau (navigator.connection)
-- Libere les segments non-choisis du cache
+Fichier modifie : `src/features/conte-vivant/components/EndingCard.tsx`
 
-Creer `src/features/conte-vivant/hooks/useChoiceTimer.ts` :
-- Timer de 5 secondes avec callback timeout
-- Retourne le temps restant pour l'affichage de la barre
+Remplacement complet :
+- Fond #08080c avec gradient radial subtil
+- Badge rebondissant animation spring + GoldenParticles autour
+- Indicateurs visuels des fins (icones des badges, pas juste texte "2/4")
+- 3 boutons icones ronds : Rejouer (or), Partager (bleu), Suivant (vert)
+- Zero texte obligatoire pour naviguer
 
-### Etape 8 : Integration dans le bouton "Conte Live"
+### Etape 7 : SegmentEditor ameliore
 
-Modifier `FullscreenCreator.tsx` :
-- Le bouton "Conte Live" ouvre desormais le nouveau `ConteVivantStudio` au lieu du `GriotStudio`
-- Le studio guide le createur a travers le Story Builder
+Fichier modifie : `src/features/conte-vivant/components/SegmentEditor.tsx`
 
-### Etape 9 : Integration Feed
+Ajouts a l'existant :
+- Bouton icone qui ouvre AssetGallery (importe depuis griot-studio) en mode single-select
+- Preview miniature 48x86px de l'asset selectionne
+- Stocke media_url et mediaType dans le draft
+- Pour les choix : 5 pastilles colorees cliquables + 3 boutons position (gauche/droite/centre)
 
-Modifier le feed pour afficher les contes vivants avec :
-- Badge "INTERACTIF" dore
-- Miniature avec legere animation pulse
-- Au clic, ouvre le BranchingPlayer au lieu du player video standard
+### Etape 8 : StoryBuilder ameliore
 
-### Etape 10 : Service API
+Fichier modifie : `src/features/conte-vivant/components/StoryBuilder.tsx`
 
-Creer `src/features/conte-vivant/services/storyGraphApi.ts` :
-- CRUD complet des contes vivants via Supabase
-- Sauvegarde/chargement de la progression utilisateur
-- Publication (upload segments + enregistrement graphe)
+Ajouts a l'existant :
+- Bouton musique qui ouvre AudioLibrary (importe depuis tamtam/creator)
+- Miniatures 40x72px dans la liste des segments
+- Validation : segments sans media_url ont une bordure orange clignotante
+- buildGraph() inclut media_url, mediaType, color, position dans la sortie
 
-## Structure de fichiers
+### Etape 9 : ConteVivantStudio ameliore
 
-```text
-src/features/conte-vivant/
-  components/
-    ConteVivantStudio.tsx     -- Studio principal (orchestrateur)
-    StoryBuilder.tsx           -- Editeur de conte branche
-    SegmentEditor.tsx          -- Edition d'un segment (audio + visuels)
-    BranchingPlayer.tsx        -- Player interactif
-    ChoiceOverlay.tsx          -- UI des choix + timer
-    EndingCard.tsx             -- Ecran de fin + badge
-    StoryTreePreview.tsx       -- Visualisation de l'arbre
-  hooks/
-    useStoryGraph.ts           -- Navigation DAG
-    useBranchPreload.ts        -- Pre-cache adaptatif
-    useChoiceTimer.ts          -- Timer 5 secondes
-    useConteVivantCRUD.ts      -- Operations BDD
-  services/
-    storyGraphApi.ts           -- API CRUD
-  types/
-    story.types.ts             -- Types TypeScript
-```
+Fichier modifie : `src/features/conte-vivant/components/ConteVivantStudio.tsx`
 
-## Adaptations a l'environnement Lovable
+Changements :
+- Fond bg-[#08080c]
+- Bouton "Demo" appelle loadDemoStory() async puis ouvre BranchingPlayer avec les 11 segments
+- Import de loadDemoStory depuis data/demoStory
+- Icones au lieu de texte pour les boutons principaux
 
-Le document mentionne des technologies non disponibles dans Lovable (Redis, ClickHouse, Socket.io). Voici les adaptations :
+### Etape 10 : Adaptation useStoryGraph
 
-| Document | Implementation Lovable |
+Fichier modifie : `src/features/conte-vivant/hooks/useStoryGraph.ts`
+
+Le hook existant utilise `next_segment` dans les choix. Le BranchingPlayer refait gere son propre state directement a partir du storyGraph. Pas de modification majeure necessaire, juste s'assurer que les types sont compatibles avec les nouveaux champs.
+
+## Fichiers
+
+**7 nouveaux** :
+1. `src/features/conte-vivant/data/demoStory.ts`
+2. `src/features/conte-vivant/components/KenBurnsPhoto.tsx`
+3. `src/features/conte-vivant/components/AudioWaveBar.tsx`
+4. `src/features/conte-vivant/components/CircularTimer.tsx`
+5. `src/features/conte-vivant/components/ProgressDots.tsx`
+6. `src/features/conte-vivant/components/GoldenParticles.tsx`
+7. `src/features/conte-vivant/components/SegmentTransition.tsx`
+
+**6 modifies** :
+1. `src/features/conte-vivant/types/story.types.ts`
+2. `src/features/conte-vivant/components/BranchingPlayer.tsx`
+3. `src/features/conte-vivant/components/ChoiceOverlay.tsx`
+4. `src/features/conte-vivant/components/EndingCard.tsx`
+5. `src/features/conte-vivant/components/SegmentEditor.tsx`
+6. `src/features/conte-vivant/components/StoryBuilder.tsx`
+7. `src/features/conte-vivant/components/ConteVivantStudio.tsx`
+
+**Non modifies** : VinylRecorder, AssetGallery, AudioLibrary, MusicDrawer, useChoiceTimer, useBranchPreload, storyGraphApi, GriotAnimationEngine
+
+**Zero nouvelle dependance npm.**
+
+## Design System
+
+| Element | Valeur |
 |---|---|
-| Redis Pub/Sub pour votes | Supabase Realtime (postgres_changes) |
-| Socket.io WebSocket | Supabase Realtime channels |
-| ClickHouse analytics | Table PostgreSQL + requetes simples |
-| Cloudflare R2 CDN | Supabase Storage (bucket existant) |
-| React Flow (editeur graphe) | Formulaire etape par etape (MVP) |
-| HLS streaming adaptatif | Lecture MP4 directe avec pre-cache fetch() |
+| Fond principal | #08080c |
+| Surface | #0f0f18, #161622 |
+| Or/accent | #F5A623 |
+| Action gauche | #FF6B35 |
+| Action droite | #00D4AA |
+| Border radius cartes | 14px |
+| Border radius boutons ronds | 50% |
+| Touch target minimum | 48px |
+| Haptic | navigator.vibrate() |
 
-## Ce qui est hors scope Phase 1
-
-- Mode Communaute (vote en temps reel) → Phase 3
-- Story Builder visuel drag-and-drop (React Flow) → Phase 2
-- Analytics avancees / heatmap decisions → Phase 4
-- Support offline / pre-download complet → Phase 4
-- Adaptive bitrate HLS → utilisation MP4 direct
-
-## Fichiers modifies
-
-1. `src/components/tamtam/FullscreenCreator.tsx` -- pointer Conte Live vers le nouveau studio
-2. `src/pages/tamtam/TamTamSocial.tsx` -- badge interactif dans le feed
-3. Nouveaux fichiers dans `src/features/conte-vivant/` (10+ fichiers)
-4. Migration SQL pour les 3 tables + RLS
