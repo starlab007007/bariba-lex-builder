@@ -10,15 +10,15 @@ interface TTSRequest {
   text: string;
   voice?: string;
   speed?: number;
-  returnAudio?: boolean; // If true, return actual audio blob
+  returnAudio?: boolean;
 }
 
-// ElevenLabs voice IDs - French-friendly voices
+// Inworld TTS-1.5 Mini voice mapping
 const VOICE_MAP: Record<string, string> = {
-  'announcer': 'onwK4e9ZLuTAKqWW03F9', // Daniel - professional French
-  'narrator': 'JBFqnCBsd6RMkjVDRZzb',  // George - authoritative
-  'female': 'EXAVITQu4vr4xnSDxMaL',    // Sarah - clear female voice
-  'alloy': 'onwK4e9ZLuTAKqWW03F9',     // Default to Daniel
+  'announcer': 'Mark',
+  'narrator': 'Timothy',
+  'female': 'Sarah',
+  'alloy': 'Alex',
 };
 
 serve(async (req) => {
@@ -82,65 +82,72 @@ Retourne UNIQUEMENT le texte optimisé, sans explications.`
       }
     }
 
-    // Step 2: If returnAudio is true, generate actual audio using ElevenLabs
+    // Step 2: If returnAudio is true, generate actual audio using Inworld TTS-1.5 Mini
     if (returnAudio) {
-      const elevenLabsApiKey = Deno.env.get('ELEVENLABS_API_KEY');
+      const aimlApiKey = Deno.env.get('AIML_API_KEY');
       
-      if (elevenLabsApiKey) {
+      if (aimlApiKey) {
         try {
-          const voiceId = VOICE_MAP[voice] || VOICE_MAP['announcer'];
-          console.log(`[TTS] Generating audio with ElevenLabs voice: ${voiceId}`);
+          const inworldVoice = VOICE_MAP[voice] || VOICE_MAP['announcer'];
+          console.log(`[TTS] Generating audio with Inworld TTS-1.5 Mini voice: ${inworldVoice}`);
           
-          const audioResponse = await fetch(
-            `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
-            {
-              method: 'POST',
-              headers: {
-                'xi-api-key': elevenLabsApiKey,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                text: optimizedText,
-                model_id: 'eleven_multilingual_v2',
-                voice_settings: {
-                  stability: 0.6,
-                  similarity_boost: 0.75,
-                  style: 0.4,
-                  use_speaker_boost: true,
-                  speed: speed,
-                },
-              }),
-            }
-          );
+          const ttsResponse = await fetch('https://api.aimlapi.com/v1/tts', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${aimlApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'inworld/tts-1-5-mini',
+              text: optimizedText,
+              voice: inworldVoice,
+              format: 'mp3',
+            }),
+          });
 
-          if (audioResponse.ok) {
-            const audioBuffer = await audioResponse.arrayBuffer();
-            const audioBase64 = base64Encode(audioBuffer);
-            const duration = Date.now() - startTime;
+          if (ttsResponse.ok) {
+            const ttsData = await ttsResponse.json();
+            const audioUrl = ttsData?.audio?.url;
             
-            console.log(`[TTS] ElevenLabs audio generated: ${audioBuffer.byteLength} bytes in ${duration}ms`);
-            
-            return new Response(
-              JSON.stringify({
-                success: true,
-                method: 'elevenlabs',
-                text: optimizedText,
-                audioBase64,
-                audioFormat: 'audio/mpeg',
-                audioSize: audioBuffer.byteLength,
-                duration,
-              }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+            if (audioUrl) {
+              console.log(`[TTS] Got audio URL, downloading: ${audioUrl}`);
+              
+              // Download the audio file
+              const audioDownload = await fetch(audioUrl);
+              if (audioDownload.ok) {
+                const audioBuffer = await audioDownload.arrayBuffer();
+                const audioBase64 = base64Encode(audioBuffer);
+                const duration = Date.now() - startTime;
+                
+                console.log(`[TTS] Inworld audio generated: ${audioBuffer.byteLength} bytes in ${duration}ms`);
+                
+                return new Response(
+                  JSON.stringify({
+                    success: true,
+                    method: 'inworld-tts',
+                    text: optimizedText,
+                    audioBase64,
+                    audioFormat: 'audio/mpeg',
+                    audioSize: audioBuffer.byteLength,
+                    duration,
+                  }),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+              } else {
+                console.error('[TTS] Failed to download audio from URL:', audioDownload.status);
+              }
+            } else {
+              console.error('[TTS] No audio URL in response:', JSON.stringify(ttsData));
+            }
           } else {
-            const errorText = await audioResponse.text();
-            console.error('[TTS] ElevenLabs error:', errorText);
+            const errorText = await ttsResponse.text();
+            console.error('[TTS] Inworld TTS error:', ttsResponse.status, errorText);
           }
-        } catch (elevenLabsError) {
-          console.error('[TTS] ElevenLabs failed:', elevenLabsError);
+        } catch (inworldError) {
+          console.error('[TTS] Inworld TTS failed:', inworldError);
         }
       } else {
-        console.log('[TTS] No ELEVENLABS_API_KEY, falling back to text optimization only');
+        console.log('[TTS] No AIML_API_KEY, falling back to text optimization only');
       }
       
       // Fallback: Return optimized text for client-side Web Speech API
