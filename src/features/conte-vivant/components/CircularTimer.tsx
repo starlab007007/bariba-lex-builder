@@ -25,7 +25,9 @@ export default function CircularTimer({ duration, onComplete, isActive }: Circul
   }, [isActive, duration, onComplete]);
 
   if (!isActive) return null;
-  const color = remaining <= 2 ? '#EF4444' : '#F5A623';
+
+  const color = remaining <= 1 ? '#EF4444' : remaining <= 3 ? '#FF6B35' : '#F5A623';
+  const isPulse = remaining <= 1;
 
   return (
     <div className="relative w-[60px] h-[60px] flex items-center justify-center">
@@ -39,7 +41,20 @@ export default function CircularTimer({ duration, onComplete, isActive }: Circul
           style={{ transition: 'stroke-dashoffset 0.05s linear, stroke 0.3s ease' }}
         />
       </svg>
-      <span className="text-white font-bold text-lg z-10">{Math.ceil(remaining)}</span>
+      <span
+        className="text-white font-bold text-lg z-10"
+        style={{
+          animation: isPulse ? 'timerPulse 0.5s ease-in-out infinite' : 'none',
+        }}
+      >
+        {Math.ceil(remaining)}
+      </span>
+      <style>{`
+        @keyframes timerPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.3); }
+        }
+      `}</style>
     </div>
   );
 }
