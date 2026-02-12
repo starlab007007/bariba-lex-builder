@@ -1,78 +1,89 @@
 
+# Plan : Integration TTS ElevenLabs pour narration automatique du Conte Vivant
 
-# Diagnostic et corrections du BranchingPlayer
+## Objectif
 
-## Bugs identifies
+Chaque segment du conte aura son texte narratif automatiquement converti en audio via ElevenLabs (deja configure avec API key). L'audio genere remplacera/completera la narration manuelle. La duree du segment sera synchronisee avec la duree de l'audio genere.
 
-### Bug 1 : Video en boucle bloque la progression
-Dans `BranchingPlayer.tsx` ligne 205, la balise `<video>` a l'attribut `loop`. Cela signifie que `onEnded` ne se declenche jamais. De plus, ligne 82, le timer est desactive pour les segments video (`if (seg.mediaType === 'video') return`). Resultat : **les segments video ne progressent jamais** vers les choix ou la fin.
+## Architecture
 
-**Correction** : Retirer `loop` de la video et toujours utiliser le timer base sur `seg.duration` comme mecanisme principal de progression, meme pour les videos.
+Le projet dispose deja d'une Edge Function `french-tts` qui utilise ElevenLabs avec `returnAudio: true`. On va la reutiliser directement depuis le `SegmentEditor` pour generer l'audio TTS a partir du `text_content` de chaque segment.
 
-### Bug 2 : Segments sans fin et sans choix = impasse
-Dans `buildGraph()` (StoryBuilder.tsx ligne 100), si une branche n'est pas une fin ET n'a pas de sous-choix, alors `is_choice_point: false` et `is_ending: false`. Le timer (ligne 84-91) ne declenche rien car aucune condition n'est remplie. Le segment joue indefiniment.
+## Changements
 
-**Correction** : Dans le timer du BranchingPlayer, ajouter un cas de repli : si le segment n'est ni une fin ni un point de choix, afficher automatiquement la carte de fin generique apres la duree du segment.
+### 1. `src/features/conte-vivant/components/SegmentEditor.tsx`
 
-### Bug 3 : Audio ne joue pas (politique autoplay du navigateur)
-L'appel `narrationRef.current.play()` se fait dans un `useEffect`, pas directement depuis un geste utilisateur. Les navigateurs bloquent silencieusement cet appel. Le `.catch(() => {})` masque l'erreur.
+**Ajouter un bouton "Generer la voix" :**
 
-**Correction** : 
-- Appeler `narrationRef.current.load()` avant `play()` pour reinitialiser l'element audio
-- Ajouter un `AudioContext` resume au premier clic utilisateur
-- Loguer les erreurs de lecture au lieu de les ignorer
+- Nouveau bouton visible quand `text_content` est non vide et qu'il n'y a pas deja de narration audio
+- Au clic, appelle `french-tts` avec `{ text: segment.text_content, voice: 'narrator', returnAudio: true }`
+- Si succes (`audioBase64` recu) :
+  - Convertir le base64 en Blob
+  - Creer une URL blob et l'assigner a `narrator_audio_url` et `narrator_audio_blob`
+  - Calculer la duree de l'audio via un element `<audio>` temporaire et mettre a jour `segment.duration`
+- Afficher un indicateur de chargement "Generation de la voix..." pendant l'appel
+- En cas d'echec, toast d'erreur
 
-### Bug 4 : Segments de branche sans background_music_url
-Dans `buildGraph()`, seul le segment intro recoit `background_music_url: selectedMusic?.url`. Les branches n'ont pas ce champ, donc la musique s'arrete apres l'intro.
+**Auto-generation optionnelle apres transcription :**
 
-**Correction** : Propager `selectedMusic?.url` a tous les segments du graphe.
+- Apres la transcription automatique (quand `autoTranscribe` remplit `text_content`), proposer automatiquement la generation TTS
+- Enchainement : Enregistrement vocal -> Transcription Mistral -> Generation voix ElevenLabs -> Audio TTS injecte dans le segment
 
-## Modifications
+**Synchronisation duree :**
 
-### `src/features/conte-vivant/components/BranchingPlayer.tsx`
+- Quand l'audio TTS est genere, calculer sa duree reelle avec `audio.duration` et mettre a jour `segment.duration` pour que la presentation visuelle soit synchronisee
 
-1. **Retirer `loop`** de la balise video (ligne 205)
-2. **Unifier le timer** : supprimer le `return` early pour les videos (ligne 82). Utiliser `seg.duration` comme timer universel. Si le segment a une narration audio, ecouter `onended` de l'audio pour declencher la progression quand l'audio finit, avec un fallback sur le timer duration.
-3. **Gerer les segments sans issue** : ajouter un 3eme cas dans le timer -- si le segment n'est ni ending ni choice_point, le traiter comme une fin implicite (afficher EndingCard avec un badge par defaut)
-4. **Corriger la lecture audio** : appeler `.load()` puis `.play()`, et loguer les erreurs au lieu de les ignorer silencieusement
-5. **Reprendre l'AudioContext** : au premier clic (`handleTap`), creer/reprendre un AudioContext pour debloquer l'autoplay
+### 2. `src/features/conte-vivant/components/StoryBuilder.tsx`
 
-### `src/features/conte-vivant/components/StoryBuilder.tsx`
+**Generation TTS en lot avant publication :**
 
-1. **Propager la musique** : dans `buildGraph()`, ajouter `background_music_url: selectedMusic?.url` a tous les segments (branches et sous-branches), pas seulement l'intro
+- Avant `handlePublish`, pour chaque segment dont le `text_content` est rempli mais sans `narrator_audio_url`, generer automatiquement l'audio TTS
+- Afficher une barre de progression "Generation des voix... (2/5)"
+- Cela garantit que TOUS les segments du produit final ont un audio de narration
+
+### 3. Aucune nouvelle Edge Function necessaire
+
+La fonction `french-tts` existante fait deja exactement ce qu'il faut avec `returnAudio: true` et ElevenLabs.
 
 ## Details techniques
 
-### Timer unifie (BranchingPlayer)
+### Flux de generation TTS dans SegmentEditor
 
 ```text
-Ancien flux :
-  - Si video → pas de timer, attend onEnded (qui ne vient jamais avec loop)
-  - Si photo → timer de seg.duration secondes
-
-Nouveau flux :
-  - Timer de seg.duration secondes pour TOUS les segments
-  - Quand le timer expire :
-    1. Si is_ending → afficher EndingCard
-    2. Si is_choice_point avec choices → afficher ChoiceOverlay
-    3. Sinon → traiter comme fin implicite (EndingCard generique)
-  - Si narration audio presente : ecouter onended pour declencher plus tot
-  - Video : pas de loop, lecture simple
+1. Utilisateur ecrit ou transcrit le texte narratif
+2. Clic sur "Generer la voix" (ou auto apres transcription)
+3. -> POST /functions/v1/french-tts { text, voice: "narrator", returnAudio: true }
+4. -> Reponse: { audioBase64, audioFormat: "audio/mpeg" }
+5. -> Convertir base64 en Blob: atob() -> Uint8Array -> Blob
+6. -> Creer URL blob, assigner a narrator_audio_url + narrator_audio_blob
+7. -> Calculer duree audio avec element Audio temporaire
+8. -> Mettre a jour segment.duration = duree audio
+9. -> Toast succes "Voix generee"
 ```
 
-### Audio resume pattern
+### Conversion base64 vers Blob
 
 ```text
-1. Premier clic utilisateur sur le player (handleTap)
-2. Creer AudioContext() et appeler .resume()
-3. narrationRef.current.load() puis .play()
-4. Console.warn si play() echoue au lieu de catch silencieux
+- Utiliser data URI: `data:audio/mpeg;base64,${audioBase64}` pour preview
+- Creer Blob via fetch du data URI pour le stockage
+- Assigner le Blob au segment pour upload ulterieur via storyAssetUploader
+```
+
+### Generation en lot (StoryBuilder)
+
+```text
+Avant publication :
+  Pour chaque segment dans [introSegment, ...branches.map(b => b.segment), ...subBranches] :
+    Si text_content non vide ET pas de narrator_audio_url :
+      -> Appeler french-tts avec returnAudio: true
+      -> Convertir et assigner l'audio
+      -> Mettre a jour la duree
+  Puis continuer avec handlePublish normal
 ```
 
 ### Fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/features/conte-vivant/components/BranchingPlayer.tsx` | Timer unifie, retirer loop, audio fix, gestion impasses |
-| `src/features/conte-vivant/components/StoryBuilder.tsx` | Propager background_music_url a toutes les branches |
-
+| `src/features/conte-vivant/components/SegmentEditor.tsx` | Bouton "Generer la voix", auto-TTS apres transcription, sync duree |
+| `src/features/conte-vivant/components/StoryBuilder.tsx` | Generation TTS en lot avant publication |
