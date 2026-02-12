@@ -411,8 +411,15 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
               <div className="p-3 rounded-xl bg-card/50 border border-border/50">
                 <p className="text-sm"><strong>Titre :</strong> {title || '(sans titre)'}</p>
                 <p className="text-sm"><strong>Description :</strong> {description || '(aucune)'}</p>
-                <p className="text-sm"><strong>Segments :</strong> {Object.keys(buildGraph().segments).length}</p>
-                <p className="text-sm"><strong>Fins :</strong> {Object.values(buildGraph().segments).filter(s => s.is_ending).length}</p>
+                {(() => {
+                  const g = buildGraph();
+                  return (
+                    <>
+                      <p className="text-sm"><strong>Segments :</strong> {Object.keys(g.segments).length}</p>
+                      <p className="text-sm"><strong>Fins :</strong> {Object.values(g.segments).filter(s => s.is_ending).length}</p>
+                    </>
+                  );
+                })()}
                 {selectedMusic && (
                   <p className="text-sm"><strong>Musique :</strong> 🎵 {selectedMusic.name}</p>
                 )}
