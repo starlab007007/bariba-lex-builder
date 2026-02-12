@@ -25,10 +25,53 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
   const [isPlaying, setIsPlaying] = useState(true);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const narrationRef = useRef<HTMLAudioElement>(null);
+  const bgMusicRef = useRef<HTMLAudioElement>(null);
 
   const seg = graph.segments[currentId];
   const totalEndings = Object.values(graph.segments).filter(s => s.is_ending).length;
   const maxDepth = Math.max(3, path.length + 2);
+
+  // Audio playback for narration + background music
+  useEffect(() => {
+    if (phase !== 'playing' || !seg) return;
+
+    const narrationUrl = seg.narrator_audio_url || seg.audio_url;
+    if (narrationRef.current) {
+      if (narrationUrl) {
+        narrationRef.current.src = narrationUrl;
+        narrationRef.current.play().catch(() => {});
+      } else {
+        narrationRef.current.pause();
+        narrationRef.current.removeAttribute('src');
+      }
+    }
+
+    if (bgMusicRef.current) {
+      const musicUrl = seg.background_music_url;
+      if (musicUrl && bgMusicRef.current.src !== musicUrl) {
+        bgMusicRef.current.src = musicUrl;
+        bgMusicRef.current.loop = true;
+        bgMusicRef.current.volume = 0.25;
+        bgMusicRef.current.play().catch(() => {});
+      } else if (!musicUrl) {
+        bgMusicRef.current.pause();
+        bgMusicRef.current.removeAttribute('src');
+      }
+    }
+
+    return () => {
+      narrationRef.current?.pause();
+    };
+  }, [currentId, phase, seg]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      narrationRef.current?.pause();
+      bgMusicRef.current?.pause();
+    };
+  }, []);
 
   // Timer: after durationSec → show choices or ending
   useEffect(() => {
@@ -201,6 +244,10 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
 
       {/* Transition */}
       <SegmentTransition show={phase === 'transitioning'} onMidpoint={() => {}} />
+
+      {/* Audio elements (hidden) */}
+      <audio ref={narrationRef} preload="auto" />
+      <audio ref={bgMusicRef} preload="auto" />
 
       {/* Ending */}
       <AnimatePresence>

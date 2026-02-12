@@ -73,7 +73,9 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
     const segments: StoryGraph['segments'] = {};
 
     segments['intro'] = {
-      id: 'intro', title: introSegment.title, audio_url: introSegment.audio_url,
+      id: 'intro', title: introSegment.title,
+      audio_url: introSegment.narrator_audio_url || introSegment.audio_url,
+      narrator_audio_url: introSegment.narrator_audio_url,
       image_urls: introSegment.image_urls, text_content: introSegment.text_content,
       duration: introSegment.duration, is_choice_point: true,
       mediaType: introSegment.mediaType, media_url: introSegment.media_url,
@@ -88,7 +90,9 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
     branches.forEach((branch) => {
       const seg = branch.segment;
       segments[seg.id] = {
-        id: seg.id, title: seg.title, audio_url: seg.audio_url,
+        id: seg.id, title: seg.title,
+        audio_url: seg.narrator_audio_url || seg.audio_url,
+        narrator_audio_url: seg.narrator_audio_url,
         image_urls: seg.image_urls, text_content: seg.text_content,
         duration: seg.duration, mediaType: seg.mediaType, media_url: seg.media_url,
         is_choice_point: !seg.is_ending && (branch.sub_choices?.length ?? 0) > 0,
@@ -101,7 +105,9 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
 
       branch.sub_branches?.forEach(sub => {
         segments[sub.segment.id] = {
-          id: sub.segment.id, title: sub.segment.title, audio_url: sub.segment.audio_url,
+          id: sub.segment.id, title: sub.segment.title,
+          audio_url: sub.segment.narrator_audio_url || sub.segment.audio_url,
+          narrator_audio_url: sub.segment.narrator_audio_url,
           image_urls: sub.segment.image_urls, text_content: sub.segment.text_content,
           duration: sub.segment.duration, mediaType: sub.segment.mediaType, media_url: sub.segment.media_url,
           is_choice_point: false, choices: [],
@@ -137,13 +143,13 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
     const isVideo = seg.mediaType === 'video';
 
     return (
-      <div className="flex items-center gap-2 p-2 rounded-lg bg-card/30 border border-border/30">
-        <div className="w-10 h-16 rounded-md overflow-hidden bg-muted/30 flex-shrink-0 relative">
+      <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10">
+        <div className="w-12 h-20 rounded-md overflow-hidden bg-white/5 flex-shrink-0 relative">
           {hasMedia ? (
             isVideo ? <video src={seg.media_url} className="w-full h-full object-cover" muted playsInline />
               : <img src={seg.media_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-foreground/40 text-xs">—</div>
+            <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">—</div>
           )}
           <div className="absolute bottom-0.5 right-0.5 flex gap-0.5">
             {isVideo && <span className="text-[9px] bg-purple-500 text-white rounded px-0.5">🎬</span>}
@@ -152,8 +158,8 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-foreground truncate">{segLabel}</p>
-          <p className="text-xs text-foreground/60">{seg.duration}s</p>
+          <p className="text-xs font-medium text-white truncate">{segLabel}</p>
+          <p className="text-xs text-white/60">{seg.duration}s</p>
           {!hasMedia && <p className="text-xs text-amber-400">⚠️ Pas de média</p>}
         </div>
       </div>
@@ -161,19 +167,19 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-background text-foreground">
+    <div className="flex flex-col h-[100dvh]" style={{ backgroundColor: '#08080c', color: '#e5e5e5' }}>
       {/* Header */}
-      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border/50 flex-shrink-0">
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-white/10 flex-shrink-0">
         <div>
-          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2 text-white">
             <span>🎪</span> Conte Vivant
           </h2>
-          <p className="text-xs text-foreground/60">Étape {stepIdx + 1} sur {STEPS.length}</p>
+          <p className="text-xs text-white/60">Étape {stepIdx + 1} sur {STEPS.length}</p>
         </div>
         <div className="flex items-center gap-2">
           <Sheet open={showMusicLibrary} onOpenChange={setShowMusicLibrary}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1 text-foreground/70 min-h-[44px]">
+              <Button variant="ghost" size="sm" className="gap-1 text-white/70 min-h-[44px]">
                 <Music className="w-4 h-4" />
                 {selectedMusic ? (
                   <span className="text-xs text-primary max-w-[50px] truncate">{selectedMusic.name}</span>
@@ -190,23 +196,23 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
               <X className="w-3 h-3" />
             </button>
           )}
-          <Button variant="ghost" size="sm" onClick={onCancel} className="min-h-[44px] text-foreground/70">Annuler</Button>
+          <Button variant="ghost" size="sm" onClick={onCancel} className="min-h-[44px] text-white/70">Annuler</Button>
         </div>
       </div>
 
       {/* Step indicators - scrollable */}
-      <div className="flex px-3 py-2 gap-1.5 overflow-x-auto flex-shrink-0 scrollbar-none">
+      <div className="flex px-3 py-2 gap-1.5 overflow-x-auto flex-shrink-0 scrollbar-none border-b border-white/10">
         {STEPS.map((step, i) => (
           <button key={step.key} onClick={() => setCurrentStep(step.key)}
             className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors min-h-[36px] flex-shrink-0
               ${i === stepIdx
-                ? 'bg-primary text-primary-foreground font-semibold'
+                ? 'bg-amber-500 text-white font-semibold'
                 : i < stepIdx
-                  ? 'bg-primary/20 text-primary'
-                  : 'bg-muted text-foreground/50'
+                  ? 'bg-amber-500/20 text-amber-300'
+                  : 'bg-white/5 text-white/50'
               }`}>
             <span>{step.icon}</span>
-            <span className="hidden sm:inline">{step.label}</span>
+            <span>{step.label}</span>
           </button>
         ))}
       </div>
@@ -224,16 +230,16 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
 
           {currentStep === 'choices' && (
             <motion.div key="choices" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <p className="text-sm text-foreground/70">Définissez les choix proposés au spectateur :</p>
+              <p className="text-sm text-white/70">Définissez les choix proposés au spectateur :</p>
               {choices.map((choice, idx) => (
-                <div key={choice.id} className="p-3 rounded-xl bg-card/50 border border-border/50 space-y-2">
+                <div key={choice.id} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
                   <div className="flex items-center gap-2">
                     <Input value={choice.icon} onChange={(e) => updateChoice(idx, { icon: e.target.value })}
                       placeholder="Emoji" className="w-16 text-center text-lg" />
                     <Input value={choice.label} onChange={(e) => updateChoice(idx, { label: e.target.value })}
                       placeholder={`Choix ${idx + 1} (ex: Combattre le dragon)`} className="flex-1" />
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-foreground/70">
+                  <label className="flex items-center gap-2 text-xs text-white/70">
                     <input type="radio" name="default_choice" checked={choice.is_default}
                       onChange={() => { choices.forEach((_, i) => updateChoice(i, { is_default: i === idx })); }} />
                     Choix par défaut (si timeout)
@@ -245,7 +251,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
 
           {currentStep === 'branches' && (
             <motion.div key="branches" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <p className="text-sm text-foreground/70">Éditez le contenu de chaque branche :</p>
+              <p className="text-sm text-white/70">Éditez le contenu de chaque branche :</p>
               <div className="space-y-2">
                 {renderSegmentMini(introSegment, `📖 ${introSegment.title || 'Introduction'}`)}
                 {branches.map((branch, idx) => (
@@ -255,7 +261,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
               <div className="border-t border-border/30 pt-4 space-y-4">
                 {branches.map((branch, idx) => (
                   <div key={branch.segment.id} className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <div className="flex items-center gap-2 text-sm font-medium text-white">
                       <span>{choices[idx]?.icon || '👉'}</span>
                       <span>{choices[idx]?.label || `Branche ${idx + 1}`}</span>
                     </div>
@@ -269,9 +275,9 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
 
           {currentStep === 'endings' && (
             <motion.div key="endings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <p className="text-sm text-foreground/70">Vérifiez les fins de votre conte :</p>
+              <p className="text-sm text-white/70">Vérifiez les fins de votre conte :</p>
               {branches.map((branch, idx) => (
-                <div key={branch.segment.id} className="p-3 rounded-xl bg-card/50 border border-border/50 space-y-2">
+                <div key={branch.segment.id} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
                   <p className="text-sm font-medium flex items-center gap-2">
                     <span>{choices[idx]?.icon}</span>
                     <span>{choices[idx]?.label || `Branche ${idx + 1}`}</span>
@@ -280,7 +286,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
                       : <span className="ml-auto text-xs text-amber-400">⚠️ Pas encore une fin</span>}
                   </p>
                   {branch.segment.is_ending && (
-                    <p className="text-xs text-foreground/60">
+                    <p className="text-xs text-white/60">
                       Badge: {branch.segment.ending_badge || '—'} | {branch.segment.ending_title || '—'}
                     </p>
                   )}
@@ -290,8 +296,8 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
               {(() => {
                 const validation = validateGraph();
                 return (
-                  <div className="p-3 rounded-xl bg-card/30 border border-border/30 space-y-2">
-                    <h4 className="text-sm font-semibold text-foreground">📋 Validation</h4>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                    <h4 className="text-sm font-semibold text-white">📋 Validation</h4>
                     {validation.errors.map((err, i) => <p key={i} className="text-xs text-destructive">❌ {err}</p>)}
                     {validation.warnings.map((w, i) => <p key={i} className="text-xs text-amber-400">⚠️ {w}</p>)}
                     {validation.isValid && validation.warnings.length === 0 && (
@@ -311,8 +317,8 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
               <StoryTreePreview graph={buildGraph()} />
 
               {/* Story summary */}
-              <div className="p-3 rounded-xl bg-card/50 border border-border/50 space-y-1">
-                <p className="text-sm"><strong>Titre :</strong> {title || '(sans titre)'}</p>
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                <p className="text-sm text-white"><strong>Titre :</strong> {title || '(sans titre)'}</p>
                 <p className="text-sm"><strong>Description :</strong> {description || '(aucune)'}</p>
                 <p className="text-sm"><strong>Segments :</strong> {Object.keys(buildGraph().segments).length}</p>
                 <p className="text-sm"><strong>Fins :</strong> {Object.values(buildGraph().segments).filter(s => s.is_ending).length}</p>
@@ -333,7 +339,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
               className="space-y-6 text-center py-8">
               <Sparkles className="w-12 h-12 mx-auto text-amber-400" />
               <h3 className="text-xl font-bold">Prêt à publier ?</h3>
-              <p className="text-sm text-foreground/60 max-w-xs mx-auto">
+              <p className="text-sm text-white/60 max-w-xs mx-auto">
                 Votre conte "{title || 'Sans titre'}" sera disponible pour tous les spectateurs.
               </p>
               <Button onClick={() => setShowPublishConfirm(true)} size="lg" className="gap-2 min-h-[48px]">
@@ -346,17 +352,17 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
       </div>
 
       {/* Navigation footer */}
-      <div className="flex items-center justify-between p-3 sm:p-4 border-t border-border/50 flex-shrink-0 gap-2">
+      <div className="flex items-center justify-between p-3 sm:p-4 border-t border-white/10 flex-shrink-0 gap-2">
         <Button variant="outline" disabled={stepIdx === 0}
           onClick={() => setCurrentStep(STEPS[stepIdx - 1]?.key ?? 'intro')}
-          className="gap-1.5 min-h-[44px] flex-1 sm:flex-none">
+          className="gap-1.5 min-h-[44px] flex-1 sm:flex-none border-white/20 text-white hover:bg-white/10">
           <ChevronLeft className="w-4 h-4" />
           <span>Précédent</span>
         </Button>
-        <span className="text-xs text-foreground/50 hidden sm:block">{stepIdx + 1}/{STEPS.length}</span>
+        <span className="text-xs text-white/50">{stepIdx + 1}/{STEPS.length}</span>
         <Button disabled={stepIdx === STEPS.length - 1}
           onClick={() => setCurrentStep(STEPS[stepIdx + 1]?.key ?? 'publish')}
-          className="gap-1.5 min-h-[44px] flex-1 sm:flex-none">
+          className="gap-1.5 min-h-[44px] flex-1 sm:flex-none bg-amber-500 hover:bg-amber-400 text-white">
           <span>Suivant</span>
           <ChevronRight className="w-4 h-4" />
         </Button>
