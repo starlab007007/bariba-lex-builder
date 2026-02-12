@@ -257,9 +257,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
               disabled={disabled}
               className={cn(
                 'w-full py-2.5 rounded-xl text-sm font-medium transition-all border',
-                assetType === 'video'
-                  ? 'bg-purple-500/10 text-purple-200 border-purple-400/30 hover:bg-purple-500/20'
-                  : 'bg-amber-500/10 text-amber-200 border-amber-400/30 hover:bg-amber-500/20'
+                'bg-blue-600 text-white border-blue-500 hover:bg-blue-500'
               )}
             >
               ▶ Voir plus ({remainingCount})

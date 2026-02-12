@@ -108,11 +108,10 @@ export const TemplateStepNavigator: React.FC<TemplateStepNavigatorProps> = ({
       {/* Boutons navigation */}
       <div className="flex items-center gap-3 pb-2">
         <Button
-          variant="outline"
           size="lg"
           onClick={handlePrevious}
           disabled={!canGoBack || currentStep === 0}
-          className="flex-1 h-12 text-base font-medium gap-2"
+          className="flex-1 h-12 text-base font-medium gap-2 bg-blue-600 hover:bg-blue-500 text-white"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="hidden sm:inline">{previousLabel}</span>

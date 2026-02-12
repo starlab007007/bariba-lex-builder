@@ -373,7 +373,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
       <div className="flex items-center justify-between p-3 sm:p-4 border-t border-white/10 flex-shrink-0 gap-2">
         <Button variant="outline" disabled={stepIdx === 0}
           onClick={() => setCurrentStep(STEPS[stepIdx - 1]?.key ?? 'intro')}
-          className="gap-1.5 min-h-[44px] flex-1 sm:flex-none border-white/20 text-white hover:bg-white/10">
+          className="gap-1.5 min-h-[44px] flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white font-semibold">
           <ChevronLeft className="w-4 h-4" />
           <span className="text-white">Précédent</span>
         </Button>
