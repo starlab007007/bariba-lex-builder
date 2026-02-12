@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { getSupportedAudioMimeType, getAudioBlobType, getRecorderTimeslice } from '@/lib/audioMimeUtils';
 
 export interface AudioRecorderState {
   isRecording: boolean;
@@ -68,11 +69,8 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       streamRef.current = stream;
       chunksRef.current = [];
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-          ? 'audio/webm;codecs=opus' 
-          : 'audio/webm'
-      });
+      const mimeType = getSupportedAudioMimeType();
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -82,7 +80,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, { type: getAudioBlobType() });
         const url = URL.createObjectURL(blob);
         console.log('[useAudioRecorder] Recording stopped, blob size:', blob.size, 'bytes');
         setState(prev => ({
@@ -95,7 +93,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       };
 
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(50); // Collect data every 50ms (more frequent for better capture)
+      mediaRecorder.start(getRecorderTimeslice());
 
       // Start duration timer
       const startTime = Date.now();
@@ -144,7 +142,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
           }
 
           if (chunksRef.current.length > 0) {
-            const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+            const blob = new Blob(chunksRef.current, { type: getAudioBlobType() });
             console.log('[useAudioRecorder] Created blob:', blob.size, 'bytes from', chunksRef.current.length, 'chunks');
             const base64 = await blobToBase64(blob);
             console.log('[useAudioRecorder] Base64 length:', base64.length);
