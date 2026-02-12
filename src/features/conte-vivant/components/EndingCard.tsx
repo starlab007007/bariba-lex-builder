@@ -14,6 +14,12 @@ interface EndingCardProps {
 }
 
 export default function EndingCard({ badge, totalEndings, discoveredEndings, onReplay, onShare, onNext }: EndingCardProps) {
+  const actions = [
+    { fn: onReplay, icon: <RotateCcw className="w-6 h-6 text-white" />, bg: '#F5A623' },
+    { fn: onShare, icon: <Share2 className="w-6 h-6 text-white" />, bg: '#3B82F6' },
+    { fn: onNext, icon: <Play className="w-6 h-6 text-white" />, bg: '#22C55E' },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -55,44 +61,47 @@ export default function EndingCard({ badge, totalEndings, discoveredEndings, onR
       >
         {Array.from({ length: totalEndings }).map((_, i) => {
           const discovered = discoveredEndings[i];
+          const isCurrent = discovered?.name === badge.name;
           return (
-            <div
+            <motion.div
               key={i}
               className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
               style={{
                 backgroundColor: discovered ? '#F5A62330' : '#ffffff10',
-                border: discovered ? '2px solid #F5A623' : '2px solid #ffffff20',
+                border: isCurrent
+                  ? '3px solid #F5A623'
+                  : discovered
+                    ? '2px solid #F5A623'
+                    : '2px solid #ffffff20',
               }}
+              animate={isCurrent ? {
+                boxShadow: ['0 0 0px #F5A62300', '0 0 14px #F5A62380', '0 0 0px #F5A62300'],
+              } : {}}
+              transition={isCurrent ? { duration: 1.8, repeat: Infinity } : {}}
             >
-              {discovered ? discovered.icon : '?'}
-            </div>
+              {discovered ? discovered.icon : <span style={{ color: '#555' }}>?</span>}
+            </motion.div>
           );
         })}
       </motion.div>
 
-      {/* Action buttons */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1 }}
-        className="flex gap-6"
-      >
-        {[
-          { fn: onReplay, icon: <RotateCcw className="w-6 h-6 text-white" />, bg: '#F5A623' },
-          { fn: onShare, icon: <Share2 className="w-6 h-6 text-white" />, bg: '#3B82F6' },
-          { fn: onNext, icon: <Play className="w-6 h-6 text-white" />, bg: '#22C55E' },
-        ].map(({ fn, icon, bg }, i) => (
+      {/* Action buttons - staggered */}
+      <div className="flex gap-6">
+        {actions.map(({ fn, icon, bg }, i) => (
           <motion.button
             key={i}
             onClick={fn}
-            whileTap={{ scale: 0.9 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.2 + i * 0.12, type: 'spring', stiffness: 260, damping: 20 }}
+            whileTap={{ scale: 0.88 }}
             className="w-14 h-14 rounded-full flex items-center justify-center"
             style={{ backgroundColor: bg }}
           >
             {icon}
           </motion.button>
         ))}
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
