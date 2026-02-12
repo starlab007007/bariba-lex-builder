@@ -1,99 +1,97 @@
-import React from 'react';
 import { motion } from 'framer-motion';
-import { RotateCcw, Share2, ArrowLeft, Trophy } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { RotateCcw, Share2, Play } from 'lucide-react';
+import GoldenParticles from './GoldenParticles';
+
+interface Badge { icon: string; name: string; }
 
 interface EndingCardProps {
-  badge?: string;
-  endingTitle?: string;
-  endingsUnlocked: number;
+  badge: Badge;
   totalEndings: number;
+  discoveredEndings: Badge[];
   onReplay: () => void;
-  onShare?: () => void;
-  onBack: () => void;
+  onShare: () => void;
+  onNext: () => void;
 }
 
-export default function EndingCard({
-  badge,
-  endingTitle,
-  endingsUnlocked,
-  totalEndings,
-  onReplay,
-  onShare,
-  onBack,
-}: EndingCardProps) {
+export default function EndingCard({ badge, totalEndings, discoveredEndings, onReplay, onShare, onNext }: EndingCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg p-6"
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center p-8"
+      style={{ background: 'radial-gradient(ellipse at center, #161622 0%, #08080c 70%)' }}
+      onClick={(e) => e.stopPropagation()}
     >
-      <motion.div
-        initial={{ scale: 0.8, y: 40 }}
-        animate={{ scale: 1, y: 0 }}
-        transition={{ type: 'spring', damping: 15, delay: 0.2 }}
-        className="w-full max-w-sm bg-card/90 backdrop-blur-xl rounded-3xl border border-border/50 p-8 text-center space-y-6"
+      {/* Badge with particles */}
+      <div className="relative mb-6">
+        <GoldenParticles show={true} />
+        <motion.div
+          initial={{ scale: 0, rotate: -10 }}
+          animate={{ scale: 1, rotate: [-10, 5, -2, 0] }}
+          transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.3 }}
+          className="w-28 h-28 rounded-full flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, #F5A623, #FF8C00)' }}
+        >
+          <span className="text-6xl">{badge.icon}</span>
+        </motion.div>
+      </div>
+
+      <motion.p
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+        className="text-white text-2xl font-bold mb-8"
       >
-        {/* Badge */}
-        {badge && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', damping: 10, delay: 0.5 }}
-            className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30"
+        {badge.name}
+      </motion.p>
+
+      {/* Endings discovered */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.8 }}
+        className="flex gap-3 mb-10"
+      >
+        {Array.from({ length: totalEndings }).map((_, i) => {
+          const discovered = discoveredEndings[i];
+          return (
+            <div
+              key={i}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
+              style={{
+                backgroundColor: discovered ? '#F5A62330' : '#ffffff10',
+                border: discovered ? '2px solid #F5A623' : '2px solid #ffffff20',
+              }}
+            >
+              {discovered ? discovered.icon : '?'}
+            </div>
+          );
+        })}
+      </motion.div>
+
+      {/* Action buttons */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1 }}
+        className="flex gap-6"
+      >
+        {[
+          { fn: onReplay, icon: <RotateCcw className="w-6 h-6 text-white" />, bg: '#F5A623' },
+          { fn: onShare, icon: <Share2 className="w-6 h-6 text-white" />, bg: '#3B82F6' },
+          { fn: onNext, icon: <Play className="w-6 h-6 text-white" />, bg: '#22C55E' },
+        ].map(({ fn, icon, bg }, i) => (
+          <motion.button
+            key={i}
+            onClick={fn}
+            whileTap={{ scale: 0.9 }}
+            className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: bg }}
           >
-            <span className="text-5xl">{badge}</span>
-          </motion.div>
-        )}
-
-        {!badge && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', damping: 10, delay: 0.5 }}
-            className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center"
-          >
-            <Trophy className="w-12 h-12 text-primary-foreground" />
-          </motion.div>
-        )}
-
-        {/* Title */}
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">
-            {endingTitle ?? 'Fin atteinte !'}
-          </h2>
-          <p className="text-muted-foreground mt-2 text-sm">
-            Fin {endingsUnlocked}/{totalEndings} — Explore les autres chemins !
-          </p>
-        </div>
-
-        {/* Progress bar */}
-        <div className="w-full bg-muted rounded-full h-2">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${(endingsUnlocked / Math.max(totalEndings, 1)) * 100}%` }}
-            transition={{ delay: 0.8, duration: 0.6 }}
-            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col gap-3">
-          <Button onClick={onReplay} className="w-full gap-2">
-            <RotateCcw className="w-4 h-4" />
-            Rejouer
-          </Button>
-          {onShare && (
-            <Button variant="outline" onClick={onShare} className="w-full gap-2">
-              <Share2 className="w-4 h-4" />
-              Partager
-            </Button>
-          )}
-          <Button variant="ghost" onClick={onBack} className="w-full gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Retour
-          </Button>
-        </div>
+            {icon}
+          </motion.button>
+        ))}
       </motion.div>
     </motion.div>
   );

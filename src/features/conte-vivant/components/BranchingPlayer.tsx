@@ -1,222 +1,224 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { useStoryGraph } from '../hooks/useStoryGraph';
-import { useBranchPreload } from '../hooks/useBranchPreload';
+import KenBurnsPhoto from './KenBurnsPhoto';
+import AudioWaveBar from './AudioWaveBar';
+import ProgressDots from './ProgressDots';
 import ChoiceOverlay from './ChoiceOverlay';
 import EndingCard from './EndingCard';
-import type { StoryGraph } from '../types/story.types';
+import SegmentTransition from './SegmentTransition';
+import type { StoryGraph, StorySegment } from '../types/story.types';
 
 interface BranchingPlayerProps {
   graph: StoryGraph;
-  storyId: string;
+  storyId?: string;
   onClose: () => void;
   onComplete?: (pathTaken: string[], endingsUnlocked: string[]) => void;
 }
 
-export default function BranchingPlayer({ graph, storyId, onClose, onComplete }: BranchingPlayerProps) {
-  const {
-    currentSegment,
-    currentSegmentId,
-    pathTaken,
-    choicesMade,
-    isComplete,
-    totalEndings,
-    startStory,
-    getChoices,
-    getSegment,
-    resolveChoice,
-    resolveDefault,
-  } = useStoryGraph({ graph });
-
-  const { preloadSegments, getCachedUrl } = useBranchPreload();
+export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps) {
+  const [currentId, setCurrentId] = useState(graph.entry_segment);
+  const [segKey, setSegKey] = useState(0);
+  const [phase, setPhase] = useState<'playing' | 'choosing' | 'transitioning' | 'ending'>('playing');
+  const [path, setPath] = useState<string[]>([]);
+  const [endingsFound, setEndingsFound] = useState<Array<{ icon: string; name: string }>>([]);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [showChoices, setShowChoices] = useState(false);
-  const [endingsUnlocked, setEndingsUnlocked] = useState<string[]>([]);
-  const [transitioning, setTransitioning] = useState(false);
 
-  // Start story on mount
-  useEffect(() => {
-    startStory();
-  }, [startStory]);
+  const seg = graph.segments[currentId];
+  const totalEndings = Object.values(graph.segments).filter(s => s.is_ending).length;
+  const maxDepth = Math.max(3, path.length + 2);
 
-  // Preload next segments when current segment changes
+  // Timer: after durationSec → show choices or ending
   useEffect(() => {
-    if (!currentSegment || !currentSegmentId) return;
-    if (currentSegment.is_choice_point) {
-      preloadSegments(currentSegment.choices, (segId) => {
-        const seg = getSegment(segId);
-        return seg?.video_url ?? seg?.audio_url;
+    if (phase !== 'playing' || !seg) return;
+    clearTimeout(timerRef.current);
+
+    // For videos, wait for the video to end instead of using duration
+    if (seg.mediaType === 'video') return;
+
+    timerRef.current = setTimeout(() => {
+      if (seg.is_ending) {
+        setPhase('ending');
+        trackEnding(seg);
+      } else if (seg.is_choice_point && seg.choices?.length) {
+        setPhase('choosing');
+        try { navigator.vibrate?.(100); } catch {}
+      }
+    }, (seg.duration || 12) * 1000);
+
+    return () => clearTimeout(timerRef.current);
+  }, [currentId, phase, seg]);
+
+  const trackEnding = useCallback((s: StorySegment) => {
+    if (s.ending_badge && s.ending_title) {
+      setEndingsFound(prev => {
+        if (prev.some(e => e.name === s.ending_title)) return prev;
+        return [...prev, { icon: s.ending_badge!, name: s.ending_title! }];
       });
     }
-  }, [currentSegmentId, currentSegment, preloadSegments, getSegment]);
+  }, []);
 
-  // Track time for choice overlay
-  const handleTimeUpdate = useCallback(() => {
-    if (!videoRef.current || !currentSegment) return;
-    const remaining = videoRef.current.duration - videoRef.current.currentTime;
-    if (remaining <= 5 && currentSegment.is_choice_point && !showChoices) {
-      setShowChoices(true);
-    }
-  }, [currentSegment, showChoices]);
-
-  // Handle video end
   const handleVideoEnded = useCallback(() => {
-    if (!currentSegment) return;
-    if (currentSegment.is_choice_point && !showChoices) {
-      setShowChoices(true);
-    } else if (!currentSegment.is_choice_point && !currentSegment.is_ending) {
-      // Auto-advance for non-choice, non-ending segments
-      resolveDefault();
+    if (!seg) return;
+    if (seg.is_ending) {
+      setPhase('ending');
+      trackEnding(seg);
+    } else if (seg.is_choice_point && seg.choices?.length) {
+      setPhase('choosing');
+      try { navigator.vibrate?.(100); } catch {}
     }
-  }, [currentSegment, showChoices, resolveDefault]);
+  }, [seg, trackEnding]);
 
-  // Handle choice selection
-  const handleChoose = useCallback((choiceId: string) => {
-    setShowChoices(false);
-    setTransitioning(true);
+  const goToSegment = useCallback((nextId: string) => {
+    setPhase('transitioning');
     setTimeout(() => {
-      resolveChoice(choiceId);
-      setTransitioning(false);
+      setPath(p => [...p, currentId]);
+      setCurrentId(nextId);
+      setSegKey(k => k + 1);
+      setPhase('playing');
+      setIsPlaying(true);
     }, 300);
-  }, [resolveChoice]);
+  }, [currentId]);
 
-  // Track ending
-  useEffect(() => {
-    if (isComplete && currentSegment?.is_ending) {
-      const endingId = currentSegment.id;
-      setEndingsUnlocked(prev => {
-        if (prev.includes(endingId)) return prev;
-        return [...prev, endingId];
+  const handleChoice = useCallback((choiceId: string) => {
+    const choice = seg?.choices?.find(c => c.id === choiceId);
+    if (choice) {
+      try { navigator.vibrate?.(50); } catch {}
+      goToSegment(choice.next_segment);
+    }
+  }, [seg, goToSegment]);
+
+  const handleTimeout = useCallback(() => {
+    const def = seg?.choices?.find(c => c.is_default) || seg?.choices?.[0];
+    if (def) goToSegment(def.next_segment);
+  }, [seg, goToSegment]);
+
+  const handleReplay = () => {
+    setCurrentId(graph.entry_segment);
+    setPath([]);
+    setSegKey(k => k + 1);
+    setPhase('playing');
+    setIsPlaying(true);
+  };
+
+  const handleTap = () => {
+    if (phase === 'playing') {
+      setIsPlaying(p => {
+        if (videoRef.current) {
+          if (p) videoRef.current.pause();
+          else videoRef.current.play();
+        }
+        return !p;
       });
     }
-  }, [isComplete, currentSegment]);
+  };
 
-  // Get media URL (cached or original)
-  const mediaUrl = currentSegmentId
-    ? getCachedUrl(currentSegmentId) ?? currentSegment?.video_url ?? currentSegment?.audio_url
-    : undefined;
+  // Get media URL
+  const mediaUrl = seg?.media_url || seg?.video_url || seg?.image_urls?.[0];
+  const isVideo = seg?.mediaType === 'video' || !!seg?.video_url;
+
+  if (!seg) return null;
 
   return (
-    <div className="relative w-full h-full bg-black overflow-hidden">
+    <div
+      className="relative w-full h-full overflow-hidden"
+      style={{ backgroundColor: '#08080c' }}
+      onClick={handleTap}
+    >
       {/* Close button */}
       <button
-        onClick={onClose}
-        className="absolute top-4 right-4 z-[60] p-2 rounded-full bg-black/50 backdrop-blur-sm"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-4 left-4 z-[60] w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center"
       >
         <X className="w-5 h-5 text-white" />
       </button>
 
-      {/* Segment info */}
-      {currentSegment && !isComplete && (
-        <motion.div
-          key={currentSegmentId}
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute top-4 left-4 z-40 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm"
-        >
-          <span className="text-white text-xs font-medium">{currentSegment.title}</span>
-        </motion.div>
-      )}
+      {/* Progress dots */}
+      <ProgressDots current={path.length} total={maxDepth} />
 
-      {/* Video/Image content */}
+      {/* Media layer */}
       <AnimatePresence mode="wait">
-        {currentSegment && !isComplete && (
-          <motion.div
-            key={currentSegmentId}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="absolute inset-0"
-          >
-            {currentSegment.video_url ? (
-              <video
-                ref={videoRef}
-                src={mediaUrl}
-                className="w-full h-full object-cover"
-                autoPlay
-                playsInline
-                onTimeUpdate={handleTimeUpdate}
-                onEnded={handleVideoEnded}
-              />
-            ) : currentSegment.image_urls?.[0] ? (
-              <div className="w-full h-full relative">
-                <img
-                  src={currentSegment.image_urls[0]}
-                  alt={currentSegment.title}
-                  className="w-full h-full object-cover"
-                />
-                {currentSegment.audio_url && (
-                  <audio
-                    src={currentSegment.audio_url}
-                    autoPlay
-                    onEnded={handleVideoEnded}
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
-                <div className="text-center p-8">
-                  <span className="text-6xl mb-4 block">📖</span>
-                  <p className="text-white text-lg font-medium">{currentSegment.text_content ?? currentSegment.title}</p>
-                </div>
-                {currentSegment.audio_url && (
-                  <audio
-                    src={currentSegment.audio_url}
-                    autoPlay
-                    onEnded={handleVideoEnded}
-                  />
-                )}
-              </div>
-            )}
-          </motion.div>
-        )}
+        <motion.div
+          key={segKey}
+          initial={{ opacity: 0 }}
+          animate={{
+            opacity: 1,
+            scale: phase === 'choosing' ? 0.85 : 1,
+            filter: phase === 'choosing' ? 'blur(4px)' : 'blur(0px)',
+          }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="absolute inset-0"
+        >
+          {isVideo && mediaUrl ? (
+            <video
+              ref={videoRef}
+              src={mediaUrl}
+              className="w-full h-full object-cover"
+              autoPlay
+              playsInline
+              loop={!seg.is_choice_point && !seg.is_ending}
+              onEnded={handleVideoEnded}
+            />
+          ) : mediaUrl ? (
+            <KenBurnsPhoto src={mediaUrl} />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0f0f18, #161622)' }}>
+              <span className="text-6xl">{seg.ending_badge || '📖'}</span>
+            </div>
+          )}
+        </motion.div>
       </AnimatePresence>
 
-      {/* Transition overlay */}
+      {/* Dark overlay for choices */}
       <AnimatePresence>
-        {transitioning && (
+        {phase === 'choosing' && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[45] bg-black/60"
+            className="absolute inset-0 z-[35] bg-black/40"
           />
         )}
       </AnimatePresence>
 
-      {/* Choice overlay */}
-      {currentSegment && (
-        <ChoiceOverlay
-          choices={getChoices(currentSegment.id)}
-          visible={showChoices && !isComplete}
-          onChoose={handleChoose}
-        />
-      )}
+      {/* Audio wave bar */}
+      <AudioWaveBar isPlaying={isPlaying && phase === 'playing'} />
 
-      {/* Ending card */}
-      {isComplete && currentSegment && (
-        <EndingCard
-          badge={currentSegment.ending_badge}
-          endingTitle={currentSegment.ending_title}
-          endingsUnlocked={endingsUnlocked.length}
-          totalEndings={totalEndings}
-          onReplay={() => {
-            setEndingsUnlocked(prev => prev);
-            startStory();
-          }}
-          onBack={onClose}
-          onShare={() => {
-            if (navigator.share) {
-              navigator.share({
-                title: 'Conte Vivant',
-                text: `J'ai terminé ce conte interactif !`,
-              }).catch(() => {});
-            }
-          }}
-        />
-      )}
+      {/* Choice overlay */}
+      <AnimatePresence>
+        {phase === 'choosing' && seg.choices && seg.choices.length > 0 && (
+          <ChoiceOverlay
+            choices={seg.choices}
+            onChoice={handleChoice}
+            onTimeout={handleTimeout}
+            timerDuration={5}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Transition */}
+      <SegmentTransition show={phase === 'transitioning'} onMidpoint={() => {}} />
+
+      {/* Ending */}
+      <AnimatePresence>
+        {phase === 'ending' && (
+          <EndingCard
+            badge={{ icon: seg.ending_badge || '🏆', name: seg.ending_title || 'Fin' }}
+            totalEndings={totalEndings}
+            discoveredEndings={endingsFound}
+            onReplay={handleReplay}
+            onShare={() => {
+              if (navigator.share) {
+                navigator.share({ title: 'Conte Vivant', text: `J'ai obtenu le badge ${seg.ending_badge} !` }).catch(() => {});
+              }
+            }}
+            onNext={onClose}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

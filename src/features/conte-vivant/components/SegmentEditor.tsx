@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Square, ImagePlus, Trash2 } from 'lucide-react';
+import { Mic, Square, Trash2, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { SegmentDraft } from '../types/story.types';
@@ -10,9 +10,12 @@ interface SegmentEditorProps {
   onChange: (updated: SegmentDraft) => void;
   label: string;
   showEndingOptions?: boolean;
+  showChoiceOptions?: boolean;
 }
 
-export default function SegmentEditor({ segment, onChange, label, showEndingOptions }: SegmentEditorProps) {
+const CHOICE_COLORS = ['#FF6B35', '#00D4AA', '#F5A623', '#A855F7', '#EC4899'];
+
+export default function SegmentEditor({ segment, onChange, label, showEndingOptions, showChoiceOptions }: SegmentEditorProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
 
@@ -68,12 +71,40 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         className="w-full h-20 px-3 py-2 rounded-md border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
       />
 
+      {/* Media preview */}
+      {segment.media_url && (
+        <div className="flex items-center gap-2">
+          <div className="w-12 h-[86px] rounded-lg overflow-hidden bg-black/20 flex-shrink-0">
+            {segment.mediaType === 'video' ? (
+              <video src={segment.media_url} className="w-full h-full object-cover" muted />
+            ) : (
+              <img src={segment.media_url} alt="" className="w-full h-full object-cover" />
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onChange({ ...segment, media_url: undefined, mediaType: undefined })}
+          >
+            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+          </Button>
+        </div>
+      )}
+
+      {/* Media select placeholder */}
+      {!segment.media_url && (
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {/* TODO: open AssetGallery */}}>
+          <ImageIcon className="w-3.5 h-3.5" />
+          🖼️ Choisir un visuel
+        </Button>
+      )}
+
       {/* Audio */}
       <div className="flex items-center gap-2">
         {!isRecording ? (
           <Button size="sm" variant="outline" onClick={startRecording} className="gap-1.5">
             <Mic className="w-3.5 h-3.5" />
-            Enregistrer audio
+            🎙️ Audio
           </Button>
         ) : (
           <Button size="sm" variant="destructive" onClick={stopRecording} className="gap-1.5">
