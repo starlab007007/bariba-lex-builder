@@ -145,16 +145,16 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-3 p-4 rounded-2xl bg-card/50 border border-border/50"
+      className="space-y-3 p-4 rounded-2xl bg-white/5 border border-white/10"
     >
-      <h4 className="font-semibold text-sm text-foreground">{label}</h4>
+      <h4 className="font-semibold text-sm text-white">{label}</h4>
 
       {/* Title */}
       <Input
         value={segment.title}
         onChange={(e) => onChange({ ...segment, title: e.target.value })}
         placeholder="Titre du segment..."
-        className="text-sm"
+        className="text-sm bg-white/10 border-white/20 text-white placeholder:text-white/40"
       />
 
       {/* Text content */}
@@ -162,7 +162,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         value={segment.text_content}
         onChange={(e) => onChange({ ...segment, text_content: e.target.value })}
         placeholder="Texte narratif du segment..."
-        className="w-full h-20 px-3 py-2 rounded-md border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+        className="w-full h-20 px-3 py-2 rounded-md border border-white/20 bg-white/10 text-white text-sm resize-none placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
       />
 
       {/* Media preview with playback controls */}
@@ -192,7 +192,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
       {/* Narration audio playback */}
       {segment.narrator_audio_url && (
         <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/20 border border-accent/30">
-          <span className="text-xs font-medium text-foreground">🎙️ Narration ({segment.duration}s)</span>
+          <span className="text-xs font-medium text-white">🎙️ Narration ({segment.duration}s)</span>
           <audio src={segment.narrator_audio_url} controls className="h-8 flex-1" />
           <Button size="icon" variant="ghost" className="w-7 h-7"
             onClick={() => onChange({ ...segment, narrator_audio_blob: undefined, narrator_audio_url: undefined })}>
@@ -247,7 +247,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
       {/* Character reference selector */}
       {characterRefs && characterRefs.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-xs text-foreground/70 font-medium">🎭 Personnage de référence</p>
+          <p className="text-xs text-white/70 font-medium">🎭 Personnage de référence</p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {characterRefs.map((char: any) => (
               <button key={char.id} onClick={() => setSelectedCharacter(char.id)}
@@ -257,7 +257,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
                   borderColor: selectedCharacter === char.id ? 'hsl(var(--primary))' : 'hsl(var(--border))',
                 }}>
                 <img src={char.reference_image_url} alt="" className="w-8 h-8 rounded-full object-cover mx-auto" />
-                <span className="block mt-1 text-foreground/70">{char.character_name}</span>
+                <span className="block mt-1 text-white/70">{char.character_name}</span>
               </button>
             ))}
           </div>
@@ -266,9 +266,9 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
 
       {/* Choice options: color + position */}
       {showChoiceOptions && (
-        <div className="space-y-3 pt-2 border-t border-border/30">
+        <div className="space-y-3 pt-2 border-t border-white/10">
           <div className="space-y-1.5">
-            <p className="text-xs text-foreground/70 font-medium">🎨 Couleur du choix</p>
+            <p className="text-xs text-white/70 font-medium">🎨 Couleur du choix</p>
             <div className="flex gap-2 overflow-x-auto">
               {CHOICE_COLORS.map(color => (
                 <button key={color.hex} onClick={() => setSelectedColor(color.hex)}
@@ -283,7 +283,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-xs text-foreground/70 font-medium">📍 Position du choix</p>
+            <p className="text-xs text-white/70 font-medium">📍 Position du choix</p>
             <div className="flex gap-2">
               {(['left', 'right'] as const).map(pos => (
                 <button key={pos} onClick={() => setSelectedPosition(pos)}
@@ -303,11 +303,11 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
 
       {/* Ending options */}
       {showEndingOptions && (
-        <div className="space-y-2 pt-2 border-t border-border/30">
+        <div className="space-y-2 pt-2 border-t border-white/10">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={segment.is_ending}
               onChange={(e) => onChange({ ...segment, is_ending: e.target.checked })} className="rounded" />
-            <span className="text-foreground">C'est une fin</span>
+            <span className="text-white">C'est une fin</span>
           </label>
           {segment.is_ending && (
             <div className="flex gap-2">

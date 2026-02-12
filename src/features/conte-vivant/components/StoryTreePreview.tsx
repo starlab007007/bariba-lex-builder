@@ -56,7 +56,7 @@ export default function StoryTreePreview({ graph }: StoryTreePreviewProps) {
 
   if (!graph.entry_segment) {
     return (
-      <div className="text-center text-muted-foreground py-8">
+      <div className="text-center text-white/50 py-8">
         <span className="text-3xl mb-2 block">🌱</span>
         <p className="text-sm">L'arbre sera visible après l'ajout de segments</p>
       </div>
@@ -64,8 +64,8 @@ export default function StoryTreePreview({ graph }: StoryTreePreviewProps) {
   }
 
   return (
-    <div className="space-y-1 overflow-auto max-h-64 p-2 rounded-xl bg-black/20">
-      <p className="text-xs text-muted-foreground mb-2 font-medium">🌳 Arbre du conte</p>
+    <div className="space-y-1 overflow-auto max-h-[50vh] p-2 rounded-xl bg-white/5 border border-white/10">
+      <p className="text-xs text-white/60 mb-2 font-medium">🌳 Arbre du conte</p>
       {renderSegment(graph.entry_segment)}
     </div>
   );
