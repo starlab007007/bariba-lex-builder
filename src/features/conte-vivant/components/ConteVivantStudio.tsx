@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Plus, Play } from 'lucide-react';
+import { Plus, Play, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StoryBuilder from './StoryBuilder';
 import BranchingPlayer from './BranchingPlayer';
@@ -8,13 +8,14 @@ import { createStory, publishStory } from '../services/storyGraphApi';
 import type { StoryGraph } from '../types/story.types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { loadDemoStory } from '../data/demoStory';
 
 type StudioView = 'home' | 'builder' | 'player';
 
 export default function ConteVivantStudio() {
   const [view, setView] = useState<StudioView>('home');
   const [playingGraph, setPlayingGraph] = useState<StoryGraph | null>(null);
-  const [playingStoryId, setPlayingStoryId] = useState<string>('');
+  const [loadingDemo, setLoadingDemo] = useState(false);
 
   const handlePublish = async (graph: StoryGraph, title: string, description: string) => {
     try {
@@ -44,54 +45,21 @@ export default function ConteVivantStudio() {
     }
   };
 
-  const handlePlayDemo = () => {
-    // Demo graph for testing
-    const demoGraph: StoryGraph = {
-      entry_segment: 'intro',
-      segments: {
-        intro: {
-          id: 'intro',
-          title: 'Le village endormi',
-          text_content: 'Le village est plongé dans un sommeil magique. Un bruit étrange vient de la forêt...',
-          duration: 10,
-          is_choice_point: true,
-          choices: [
-            { id: 'go_forest', label: 'Aller dans la forêt', icon: '🌳', next_segment: 'forest', is_default: true },
-            { id: 'stay_village', label: 'Rester au village', icon: '🏘️', next_segment: 'village', is_default: false },
-          ],
-          is_ending: false,
-        },
-        forest: {
-          id: 'forest',
-          title: 'La forêt enchantée',
-          text_content: 'Tu découvres une créature magique qui garde un trésor ancien...',
-          duration: 10,
-          is_choice_point: false,
-          choices: [],
-          is_ending: true,
-          ending_badge: '🌟',
-          ending_title: 'L\'Explorateur',
-        },
-        village: {
-          id: 'village',
-          title: 'Le secret du village',
-          text_content: 'En cherchant dans le village, tu trouves une carte ancienne cachée sous la fontaine...',
-          duration: 10,
-          is_choice_point: false,
-          choices: [],
-          is_ending: true,
-          ending_badge: '🗺️',
-          ending_title: 'Le Sage',
-        },
-      },
-    };
-    setPlayingGraph(demoGraph);
-    setPlayingStoryId('demo');
-    setView('player');
+  const handlePlayDemo = async () => {
+    setLoadingDemo(true);
+    try {
+      const story = await loadDemoStory();
+      setPlayingGraph(story);
+      setView('player');
+    } catch (err) {
+      toast.error('Erreur chargement démo');
+    } finally {
+      setLoadingDemo(false);
+    }
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-background">
+    <div className="w-full h-full flex flex-col" style={{ backgroundColor: '#08080c' }}>
       <AnimatePresence mode="wait">
         {/* HOME */}
         {view === 'home' && (
@@ -106,14 +74,15 @@ export default function ConteVivantStudio() {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', damping: 15 }}
-              className="w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-2xl shadow-amber-500/30"
+              className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-2xl"
+              style={{ background: 'linear-gradient(135deg, #F5A623, #FF8C00)', boxShadow: '0 10px 40px #F5A62340' }}
             >
               <span className="text-5xl">🎪</span>
             </motion.div>
 
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-foreground">Conte Vivant</h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h1 className="text-2xl font-bold text-white">Conte Vivant</h1>
+              <p className="text-sm text-white/50 mt-1">
                 Storytelling interactif à embranchements
               </p>
             </div>
@@ -123,6 +92,7 @@ export default function ConteVivantStudio() {
                 onClick={() => setView('builder')}
                 size="lg"
                 className="w-full gap-2"
+                style={{ backgroundColor: '#F5A623', color: '#08080c' }}
               >
                 <Plus className="w-5 h-5" />
                 Créer un conte
@@ -132,16 +102,17 @@ export default function ConteVivantStudio() {
                 onClick={handlePlayDemo}
                 variant="outline"
                 size="lg"
-                className="w-full gap-2"
+                className="w-full gap-2 border-white/20 text-white hover:bg-white/10"
+                disabled={loadingDemo}
               >
                 <Play className="w-5 h-5" />
-                Démo interactive
+                {loadingDemo ? '⏳ Chargement...' : '🎭 Démo interactive'}
               </Button>
 
               <Button
                 variant="ghost"
                 size="lg"
-                className="w-full gap-2"
+                className="w-full gap-2 text-white/60 hover:text-white hover:bg-white/5"
               >
                 <BookOpen className="w-5 h-5" />
                 Mes contes
@@ -177,7 +148,6 @@ export default function ConteVivantStudio() {
           >
             <BranchingPlayer
               graph={playingGraph}
-              storyId={playingStoryId}
               onClose={() => {
                 setView('home');
                 setPlayingGraph(null);

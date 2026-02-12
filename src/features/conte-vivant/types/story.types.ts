@@ -8,6 +8,8 @@ export interface StoryChoice {
   icon: string;
   next_segment: string;
   is_default: boolean;
+  color?: string;
+  position?: 'left' | 'right' | 'center';
 }
 
 export interface StorySegment {
@@ -24,6 +26,11 @@ export interface StorySegment {
   ending_title?: string;
   text_content?: string;
   narrator_style?: string;
+  mediaType?: 'photo' | 'video';
+  media_url?: string;
+  narrator_audio_url?: string;
+  choice_audio_url?: string;
+  background_music_url?: string;
 }
 
 export interface StoryGraph {
@@ -92,6 +99,10 @@ export interface SegmentDraft {
   is_ending: boolean;
   ending_badge?: string;
   ending_title?: string;
+  mediaType?: 'photo' | 'video';
+  media_url?: string;
+  narrator_audio_blob?: Blob;
+  narrator_audio_url?: string;
 }
 
 export interface ChoiceDraft {

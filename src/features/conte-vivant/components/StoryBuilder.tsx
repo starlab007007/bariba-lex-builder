@@ -69,6 +69,8 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
       text_content: introSegment.text_content,
       duration: introSegment.duration,
       is_choice_point: true,
+      mediaType: introSegment.mediaType,
+      media_url: introSegment.media_url,
       choices: choices.map((c, i) => ({
         id: c.id,
         label: c.label || `Choix ${i + 1}`,
@@ -89,6 +91,8 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
         image_urls: seg.image_urls,
         text_content: seg.text_content,
         duration: seg.duration,
+        mediaType: seg.mediaType,
+        media_url: seg.media_url,
         is_choice_point: !seg.is_ending && (branch.sub_choices?.length ?? 0) > 0,
         choices: branch.sub_choices?.map((sc, si) => ({
           id: sc.id,
@@ -111,6 +115,8 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
           image_urls: sub.segment.image_urls,
           text_content: sub.segment.text_content,
           duration: sub.segment.duration,
+          mediaType: sub.segment.mediaType,
+          media_url: sub.segment.media_url,
           is_choice_point: false,
           choices: [],
           is_ending: sub.segment.is_ending,
