@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, Trash2, ImageIcon, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { Mic, Square, Trash2, ImageIcon, Loader2, Play, Pause, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { aiAssetGenerator } from '@/services/aiAssetGenerator';
 import { toast } from 'sonner';
+import { getSupportedAudioMimeType, getAudioBlobType, getRecorderTimeslice } from '@/lib/audioMimeUtils';
 import type { SegmentDraft } from '../types/story.types';
 
 interface SegmentEditorProps {
@@ -40,15 +41,13 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
   const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
+  const [isPlayingVideo, setIsPlayingVideo] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Fetch character references
   const { data: characterRefs } = useQuery({
     queryKey: ['character-references'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('character_references')
-        .select('*')
-        .order('character_name');
+      const { data } = await supabase.from('character_references').select('*').order('character_name');
       return data || [];
     },
   });
@@ -56,22 +55,24 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const mimeType = getSupportedAudioMimeType();
+      const recorder = new MediaRecorder(stream, { mimeType });
       const chunks: Blob[] = [];
 
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const blob = new Blob(chunks, { type: getAudioBlobType() });
         const url = URL.createObjectURL(blob);
         onChange({ ...segment, audio_blob: blob, audio_url: url, duration: 15 });
         stream.getTracks().forEach(t => t.stop());
       };
 
-      recorder.start();
+      recorder.start(getRecorderTimeslice());
       setMediaRecorder(recorder);
       setIsRecording(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Recording error:', err);
+      toast.error('Micro non accessible : ' + (err.message || 'Erreur'));
     }
   };
 
@@ -95,12 +96,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
 
   const handleNarrationComplete = (blob: Blob, duration: number) => {
     const url = URL.createObjectURL(blob);
-    onChange({
-      ...segment,
-      narrator_audio_blob: blob,
-      narrator_audio_url: url,
-      duration: Math.round(duration),
-    });
+    onChange({ ...segment, narrator_audio_blob: blob, narrator_audio_url: url, duration: Math.round(duration) });
     setShowRecorder(false);
   };
 
@@ -134,6 +130,17 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
     }
   };
 
+  const toggleVideoPlay = () => {
+    if (videoRef.current) {
+      if (isPlayingVideo) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlayingVideo(!isPlayingVideo);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -158,21 +165,37 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         className="w-full h-20 px-3 py-2 rounded-md border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
       />
 
-      {/* Media preview */}
+      {/* Media preview with playback controls */}
       {segment.media_url && (
         <div className="flex items-center gap-2">
-          <div className="w-12 h-[86px] rounded-lg overflow-hidden bg-black/20 flex-shrink-0 relative">
+          <div className="w-16 h-[86px] rounded-lg overflow-hidden bg-black/20 flex-shrink-0 relative">
             {segment.mediaType === 'video' ? (
-              <video src={segment.media_url} className="w-full h-full object-cover" muted />
+              <>
+                <video ref={videoRef} src={segment.media_url} className="w-full h-full object-cover"
+                  onEnded={() => setIsPlayingVideo(false)} playsInline />
+                <button onClick={toggleVideoPlay}
+                  className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition">
+                  {isPlayingVideo ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
+                </button>
+              </>
             ) : (
               <img src={segment.media_url} alt="" className="w-full h-full object-cover" />
             )}
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onChange({ ...segment, media_url: undefined, mediaType: undefined })}
-          >
+          <Button size="sm" variant="ghost"
+            onClick={() => onChange({ ...segment, media_url: undefined, mediaType: undefined })}>
+            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+          </Button>
+        </div>
+      )}
+
+      {/* Narration audio playback */}
+      {segment.narrator_audio_url && (
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/20 border border-accent/30">
+          <span className="text-xs font-medium text-foreground">🎙️ Narration ({segment.duration}s)</span>
+          <audio src={segment.narrator_audio_url} controls className="h-8 flex-1" />
+          <Button size="icon" variant="ghost" className="w-7 h-7"
+            onClick={() => onChange({ ...segment, narrator_audio_blob: undefined, narrator_audio_url: undefined })}>
             <Trash2 className="w-3.5 h-3.5 text-destructive" />
           </Button>
         </div>
@@ -183,22 +206,16 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         {/* Asset Gallery Sheet */}
         <Sheet open={showAssetGallery} onOpenChange={setShowAssetGallery}>
           <SheetTrigger asChild>
-            <Button size="sm" variant="outline" className="gap-1.5">
-              <ImageIcon className="w-3.5 h-3.5" />
-              🖼️ Visuel
-              {segment.media_url && (
-                <span className="text-[10px] bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center">✓</span>
-              )}
+            <Button size="sm" variant="outline" className="gap-1.5 min-h-[44px]">
+              <ImageIcon className="w-4 h-4" />
+              Visuel
+              {segment.media_url && <span className="text-xs bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center">✓</span>}
             </Button>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-[85vh] bg-background">
             <div className="p-4 space-y-4 overflow-y-auto h-full">
               <h3 className="text-lg font-bold text-foreground">Sélectionner un visuel</h3>
-              <AssetGallery
-                selectedAssets={selectedAssets}
-                onSelectionChange={handleAssetSelect}
-                maxSelection={1}
-              />
+              <AssetGallery selectedAssets={selectedAssets} onSelectionChange={handleAssetSelect} maxSelection={1} />
             </div>
           </SheetContent>
         </Sheet>
@@ -206,88 +223,41 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
         {/* Narration Recorder Dialog */}
         <Dialog open={showRecorder} onOpenChange={setShowRecorder}>
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline" className="gap-1.5">
-              <Mic className="w-3.5 h-3.5" />
-              🎙️ Narration
-              {segment.narrator_audio_url && (
-                <span className="text-[10px] text-green-400 ml-1">
-                  ✅ {segment.duration}s
-                </span>
-              )}
+            <Button size="sm" variant="outline" className="gap-1.5 min-h-[44px]">
+              <Mic className="w-4 h-4" />
+              Narration
+              {segment.narrator_audio_url && <span className="text-xs text-green-500 ml-1">✅</span>}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-background border-border max-w-sm">
-            <VinylRecorder
-              onRecordingComplete={handleNarrationComplete}
-              maxDuration={30}
-            />
+            <VinylRecorder onRecordingComplete={handleNarrationComplete} maxDuration={30} />
           </DialogContent>
         </Dialog>
 
         {/* AI Generate button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleGenerateAsset}
+        <Button size="sm" variant="outline" onClick={handleGenerateAsset}
           disabled={isGenerating || !selectedCharacter}
-          className="gap-1.5 border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
-        >
+          className="gap-1.5 min-h-[44px] border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
           {isGenerating ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              {generationProgress}
-            </>
-          ) : (
-            '✨ Générer IA'
-          )}
+            <><Loader2 className="w-4 h-4 animate-spin" />{generationProgress}</>
+          ) : '✨ Générer IA'}
         </Button>
-      </div>
-
-      {/* Audio (original simple recorder) */}
-      <div className="flex items-center gap-2">
-        {!isRecording ? (
-          <Button size="sm" variant="outline" onClick={startRecording} className="gap-1.5">
-            <Mic className="w-3.5 h-3.5" />
-            🎙️ Audio
-          </Button>
-        ) : (
-          <Button size="sm" variant="destructive" onClick={stopRecording} className="gap-1.5">
-            <Square className="w-3.5 h-3.5" />
-            Arrêter
-          </Button>
-        )}
-        {segment.audio_url && (
-          <div className="flex items-center gap-2 flex-1">
-            <audio src={segment.audio_url} controls className="h-8 flex-1" />
-            <Button
-              size="icon"
-              variant="ghost"
-              className="w-7 h-7"
-              onClick={() => onChange({ ...segment, audio_blob: undefined, audio_url: undefined })}
-            >
-              <Trash2 className="w-3.5 h-3.5 text-destructive" />
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Character reference selector */}
       {characterRefs && characterRefs.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-xs text-muted-foreground font-medium">🎭 Personnage de référence</p>
+          <p className="text-xs text-foreground/70 font-medium">🎭 Personnage de référence</p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {characterRefs.map((char: any) => (
-              <button
-                key={char.id}
-                onClick={() => setSelectedCharacter(char.id)}
-                className="flex-shrink-0 p-2 rounded-lg border-2 transition text-xs"
+              <button key={char.id} onClick={() => setSelectedCharacter(char.id)}
+                className="flex-shrink-0 p-2 rounded-lg border-2 transition text-xs min-w-[60px]"
                 style={{
                   background: selectedCharacter === char.id ? 'hsl(var(--accent))' : 'transparent',
                   borderColor: selectedCharacter === char.id ? 'hsl(var(--primary))' : 'hsl(var(--border))',
-                }}
-              >
+                }}>
                 <img src={char.reference_image_url} alt="" className="w-8 h-8 rounded-full object-cover mx-auto" />
-                <span className="block mt-1 text-muted-foreground">{char.character_name}</span>
+                <span className="block mt-1 text-foreground/70">{char.character_name}</span>
               </button>
             ))}
           </div>
@@ -297,41 +267,32 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
       {/* Choice options: color + position */}
       {showChoiceOptions && (
         <div className="space-y-3 pt-2 border-t border-border/30">
-          {/* Color picker */}
           <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground font-medium">🎨 Couleur du choix</p>
-            <div className="flex gap-2">
+            <p className="text-xs text-foreground/70 font-medium">🎨 Couleur du choix</p>
+            <div className="flex gap-2 overflow-x-auto">
               {CHOICE_COLORS.map(color => (
-                <button
-                  key={color.hex}
-                  onClick={() => setSelectedColor(color.hex)}
-                  className="w-7 h-7 rounded-full transition-transform hover:scale-110"
+                <button key={color.hex} onClick={() => setSelectedColor(color.hex)}
+                  className="w-8 h-8 rounded-full transition-transform hover:scale-110 flex-shrink-0"
                   style={{
                     backgroundColor: color.hex,
                     border: selectedColor === color.hex ? '2px solid white' : '2px solid transparent',
                     boxShadow: selectedColor === color.hex ? `0 0 8px ${color.hex}` : 'none',
-                  }}
-                  title={color.name}
-                />
+                  }} title={color.name} />
               ))}
             </div>
           </div>
 
-          {/* Position picker */}
           <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground font-medium">📍 Position du choix</p>
+            <p className="text-xs text-foreground/70 font-medium">📍 Position du choix</p>
             <div className="flex gap-2">
               {(['left', 'right'] as const).map(pos => (
-                <button
-                  key={pos}
-                  onClick={() => setSelectedPosition(pos)}
-                  className="flex-1 px-3 py-1.5 rounded-lg border-2 text-sm transition"
+                <button key={pos} onClick={() => setSelectedPosition(pos)}
+                  className="flex-1 px-3 py-2 rounded-lg border-2 text-sm transition min-h-[44px]"
                   style={{
                     background: selectedPosition === pos ? 'hsl(var(--accent))' : 'transparent',
                     borderColor: selectedPosition === pos ? 'hsl(var(--primary))' : 'hsl(var(--border))',
-                    color: selectedPosition === pos ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
-                  }}
-                >
+                    color: selectedPosition === pos ? 'hsl(var(--primary))' : 'hsl(var(--foreground))',
+                  }}>
                   {pos === 'left' ? '← Gauche' : 'Droite →'}
                 </button>
               ))}
@@ -344,28 +305,16 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
       {showEndingOptions && (
         <div className="space-y-2 pt-2 border-t border-border/30">
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={segment.is_ending}
-              onChange={(e) => onChange({ ...segment, is_ending: e.target.checked })}
-              className="rounded"
-            />
-            <span className="text-muted-foreground">C'est une fin</span>
+            <input type="checkbox" checked={segment.is_ending}
+              onChange={(e) => onChange({ ...segment, is_ending: e.target.checked })} className="rounded" />
+            <span className="text-foreground">C'est une fin</span>
           </label>
           {segment.is_ending && (
             <div className="flex gap-2">
-              <Input
-                value={segment.ending_badge ?? ''}
-                onChange={(e) => onChange({ ...segment, ending_badge: e.target.value })}
-                placeholder="Badge emoji (ex: ⚔️)"
-                className="w-24 text-sm"
-              />
-              <Input
-                value={segment.ending_title ?? ''}
-                onChange={(e) => onChange({ ...segment, ending_title: e.target.value })}
-                placeholder="Titre de la fin (ex: Le Guerrier)"
-                className="flex-1 text-sm"
-              />
+              <Input value={segment.ending_badge ?? ''} onChange={(e) => onChange({ ...segment, ending_badge: e.target.value })}
+                placeholder="Badge emoji (ex: ⚔️)" className="w-24 text-sm" />
+              <Input value={segment.ending_title ?? ''} onChange={(e) => onChange({ ...segment, ending_title: e.target.value })}
+                placeholder="Titre de la fin" className="flex-1 text-sm" />
             </div>
           )}
         </div>
