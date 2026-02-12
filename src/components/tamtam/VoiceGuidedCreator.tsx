@@ -527,7 +527,7 @@ export const VoiceGuidedCreator: React.FC<VoiceGuidedCreatorProps> = ({
                   <button
                     onClick={previousStep}
                     disabled={currentStep === 0}
-                    className="flex items-center gap-1 px-4 py-2 text-gray-600 disabled:opacity-50"
+                    className="flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full disabled:opacity-50"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span>Précédent</span>
