@@ -78,16 +78,42 @@ export class AIAssetGenerator {
     return `[CHARACTER] ${params.characterType} - ${keywords}
 [PALETTE] ${palette}
 [SCENE] ${params.sceneType} | Mood: ${params.mood || 'neutral'}
-[STYLE] African storytelling, warm earthy tones, 1080x1920 portrait`.trim();
+[STYLE] African storytelling, warm earthy tones, 1080x1920 portrait
+[CONSISTENCY] MUST maintain exact character appearance: same face, hair, clothing, proportions`.trim();
   }
 
-  private async generatePhoto(_prompt: string, _charRef: CharacterReference): Promise<string> {
-    // TODO: Integrate with real generation API
-    return `https://placehold.co/600x1067/0f0f18/F5A623?text=Generated`;
+  /**
+   * Generate photo using Lovable AI (Gemini 3 Pro Image)
+   * Uses character reference image for multimodal consistency
+   */
+  private async generatePhoto(prompt: string, charRef: CharacterReference): Promise<string> {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-character-asset', {
+        body: {
+          prompt,
+          referenceImageUrl: charRef.reference_image_url,
+          mediaType: 'photo',
+        }
+      });
+
+      if (error || !data?.imageUrl) {
+        console.warn('[AIAssetGenerator] Photo generation failed, using placeholder:', error);
+        return `https://placehold.co/600x1067/0f0f18/F5A623?text=Generated`;
+      }
+
+      return data.imageUrl;
+    } catch (e) {
+      console.error('[AIAssetGenerator] Photo generation error:', e);
+      return `https://placehold.co/600x1067/0f0f18/F5A623?text=Generated`;
+    }
   }
 
+  /**
+   * Generate video (placeholder — real video generation requires external API)
+   */
   private async generateVideo(_prompt: string, _charRef: CharacterReference): Promise<string> {
-    // TODO: Integrate with video generation API
+    // Video generation requires specialized APIs (Runway, Pika, etc.)
+    // For now, return placeholder — real integration pending
     return `https://placehold.co/600x1067/0f0f18/F5A623?text=Video`;
   }
 
@@ -107,7 +133,7 @@ export class AIAssetGenerator {
   }
 
   private async validateConsistency(_generatedUrl: string, _charRef: CharacterReference): Promise<number> {
-    // TODO: Implement facial similarity validation
+    // TODO: Implement facial similarity validation via Lovable AI vision
     return 0.82;
   }
 }

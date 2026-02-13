@@ -246,7 +246,7 @@ export function PublishStep({
     const engine = engineRef.current;
     const animStyle = ANIMATION_STYLES[style] || ANIMATION_STYLES.fantasy;
     
-    const videoStream = canvas.captureStream(24);
+    const videoStream = canvas.captureStream(30);
     let combinedStream = videoStream;
     let audioContext: AudioContext | null = null;
     const sourceNodes: AudioBufferSourceNode[] = [];

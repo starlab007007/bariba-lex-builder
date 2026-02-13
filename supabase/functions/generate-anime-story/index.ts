@@ -1,14 +1,7 @@
 /**
  * Generate Anime Story Edge Function
  * 
- * This function:
- * 1. Analyzes the story text to segment it into 3-6 scenes
- * 2. FIRST tries to match scenes with pre-generated library images
- * 3. Falls back to AI generation only if no suitable match is found
- * 4. Returns scenes with images for the animation engine
- * 
- * v7: Supports pre_segmented mode — skips AI segmentation when scenes
- *     are provided directly from the SceneEditor
+ * v8: Character reference embedding for consistency + multi-clip stitching for long scenes
  */
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -21,7 +14,6 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Style keywords for anime generation
 const STYLE_KEYWORDS: Record<string, string> = {
   manga: 'manga style, detailed lineart, anime eyes, dynamic pose, high contrast, black and white with screentones, japanese manga aesthetic',
   chibi: 'chibi style, cute, big head small body, kawaii, simple background, pastel colors, adorable characters, big expressive eyes',
@@ -29,7 +21,6 @@ const STYLE_KEYWORDS: Record<string, string> = {
   african: 'african-inspired anime, warm earth tones, traditional african patterns, tribal motifs, anime style characters with african features, rich textures, sunset colors'
 };
 
-// Emotion to visual cues mapping
 const EMOTION_VISUALS: Record<string, string> = {
   joy: 'bright colors, warm lighting, cheerful atmosphere, sparkles',
   sadness: 'cool blue tones, soft rain, muted colors, melancholic atmosphere',
@@ -41,7 +32,6 @@ const EMOTION_VISUALS: Record<string, string> = {
   love: 'warm pink tones, soft glow, heart motifs, gentle atmosphere'
 };
 
-// Keywords for scene type detection
 const SCENE_KEYWORDS: Record<string, string[]> = {
   village: ['village', 'villageois', 'case', 'hutte', 'maison', 'communauté', 'marché'],
   forest: ['forêt', 'arbre', 'bois', 'jungle', 'brousse', 'feuillage'],
@@ -55,7 +45,6 @@ const SCENE_KEYWORDS: Record<string, string[]> = {
   spirit: ['esprit', 'magie', 'mystique', 'ancêtre', 'fantôme', 'surnaturel']
 };
 
-// Keywords for character type detection
 const CHARACTER_KEYWORDS: Record<string, string[]> = {
   child_boy: ['garçon', 'fils', 'jeune homme', 'enfant', 'petit'],
   child_girl: ['fille', 'jeune fille', 'enfant', 'petite'],
@@ -65,7 +54,6 @@ const CHARACTER_KEYWORDS: Record<string, string[]> = {
   group: ['villageois', 'famille', 'groupe', 'tous', 'ensemble', 'communauté']
 };
 
-// Keywords for action detection
 const ACTION_KEYWORDS: Record<string, string[]> = {
   standing: ['regarde', 'observe', 'debout', 'attend'],
   walking: ['marche', 'avance', 'va', 'parcourt'],
@@ -85,10 +73,29 @@ interface StoryScene {
   durationSeconds: number;
 }
 
+interface StitchedClip {
+  videoUrl: string;
+  startTime: number;
+  endTime: number;
+}
+
 interface GeneratedScene extends StoryScene {
   imageBase64: string;
   imageUrl?: string;
+  videoUrl?: string;
+  videoDuration?: number;
+  stitchedClips?: StitchedClip[];
   fromLibrary?: boolean;
+  character_reference_id?: string;
+  consistency_score?: number;
+}
+
+interface CharacterReference {
+  id: string;
+  character_name: string;
+  reference_image_url: string;
+  style_keywords: string[];
+  color_palette: string[];
 }
 
 interface LibraryImage {
@@ -99,6 +106,11 @@ interface LibraryImage {
   character_type: string;
   action: string;
   image_url: string;
+  video_url?: string;
+  video_duration?: number;
+  asset_type?: string;
+  character_reference_id?: string;
+  consistency_score?: number;
 }
 
 serve(async (req) => {
@@ -132,11 +144,10 @@ serve(async (req) => {
       hasApiKey: !!LOVABLE_API_KEY,
     });
 
-    // PHASE 1: Get scenes — either pre-segmented or AI-analyzed
+    // PHASE 1: Get scenes
     let safeScenes: StoryScene[];
 
     if (pre_segmented && Array.isArray(preEditedScenes) && preEditedScenes.length > 0) {
-      // Use pre-edited scenes directly (from SceneEditor)
       console.log(`[generate-anime-story] Using ${preEditedScenes.length} pre-segmented scenes`);
       safeScenes = preEditedScenes.map((s: any, i: number) => ({
         sceneNumber: s.sceneNumber || i + 1,
@@ -146,7 +157,6 @@ serve(async (req) => {
         durationSeconds: s.durationSeconds || Math.floor(duration / preEditedScenes.length),
       }));
     } else {
-      // AI segmentation (original flow)
       const scenes = LOVABLE_API_KEY
         ? await segmentStory(story, duration, LOVABLE_API_KEY)
         : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
@@ -158,7 +168,7 @@ serve(async (req) => {
 
     console.log(`[generate-anime-story] Processing ${safeScenes.length} scenes`);
 
-    // PHASE 2: Match with library + fallback generation
+    // PHASE 2: Match with library + character reference + fallback generation
     const imagePromises = safeScenes.map((scene, i) => 
       getSceneImage(scene, style, i, safeScenes.length, supabase, LOVABLE_API_KEY)
     );
@@ -167,8 +177,9 @@ serve(async (req) => {
 
     const libraryMatches = generatedScenes.filter(s => s.fromLibrary).length;
     const aiGenerated = generatedScenes.filter(s => !s.fromLibrary).length;
+    const withCharRef = generatedScenes.filter(s => s.character_reference_id).length;
     
-    console.log(`[generate-anime-story] Complete: ${libraryMatches} library, ${aiGenerated} AI-generated`);
+    console.log(`[generate-anime-story] Complete: ${libraryMatches} library, ${aiGenerated} AI, ${withCharRef} with char ref`);
 
     return new Response(
       JSON.stringify({
@@ -176,7 +187,7 @@ serve(async (req) => {
         scenes: generatedScenes,
         totalDuration: duration,
         style,
-        stats: { libraryMatches, aiGenerated }
+        stats: { libraryMatches, aiGenerated, withCharRef }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -194,7 +205,23 @@ serve(async (req) => {
 });
 
 /**
+ * Look up a character reference from the database
+ */
+async function getCharacterReference(
+  supabase: ReturnType<typeof createClient>,
+  characterType: string
+): Promise<CharacterReference | null> {
+  const { data } = await supabase
+    .from('character_references')
+    .select('*')
+    .eq('character_name', characterType)
+    .maybeSingle();
+  return data as CharacterReference | null;
+}
+
+/**
  * Get image for a scene - tries library first, then AI generation
+ * Now with character reference embedding for consistency
  */
 async function getSceneImage(
   scene: StoryScene,
@@ -208,12 +235,19 @@ async function getSceneImage(
   const characterType = detectCharacterType(scene.text, scene.visualDescription);
   const action = detectAction(scene.text, scene.visualDescription);
 
+  // Fetch character reference for consistency
+  const charRef = await getCharacterReference(supabase, characterType);
+  if (charRef) {
+    console.log(`[getSceneImage] Character ref found: ${charRef.character_name} (${charRef.id})`);
+  }
+
   console.log(`[getSceneImage] Scene ${sceneIndex + 1}: type=${sceneType}, char=${characterType}, action=${action}, emotion=${scene.emotion}`);
 
-  const libraryMatch = await findLibraryMatch(supabase, style, scene.emotion, sceneType, characterType, action);
+  // Try library match with character reference bonus
+  const libraryMatch = await findLibraryMatch(supabase, style, scene.emotion, sceneType, characterType, action, charRef?.id);
 
   if (libraryMatch) {
-    console.log(`[getSceneImage] Library match for scene ${sceneIndex + 1}: ${libraryMatch.id}`);
+    console.log(`[getSceneImage] Library match for scene ${sceneIndex + 1}: ${libraryMatch.id} (score includes char ref bonus)`);
     
     supabase
       .from('anime_scene_library')
@@ -221,12 +255,31 @@ async function getSceneImage(
       .eq('id', libraryMatch.id)
       .then(() => {});
 
-    return {
+    const result: GeneratedScene = {
       ...scene,
       imageBase64: '',
       imageUrl: libraryMatch.image_url,
-      fromLibrary: true
+      fromLibrary: true,
+      character_reference_id: libraryMatch.character_reference_id || charRef?.id,
+      consistency_score: libraryMatch.consistency_score || 0.75,
     };
+
+    // If library match has video, include it
+    if (libraryMatch.asset_type === 'video' && libraryMatch.video_url) {
+      result.videoUrl = libraryMatch.video_url;
+      result.videoDuration = libraryMatch.video_duration || 5;
+    }
+
+    // DÉFI 3: For long scenes (>8s), find complementary clips for stitching
+    if (scene.durationSeconds > 8) {
+      const stitched = await findStitchedClips(supabase, style, scene.emotion, sceneType, characterType, scene.durationSeconds, libraryMatch.id);
+      if (stitched.length > 0) {
+        result.stitchedClips = stitched;
+        console.log(`[getSceneImage] Stitched ${stitched.length} clips for long scene ${sceneIndex + 1}`);
+      }
+    }
+
+    return result;
   }
 
   if (!apiKey) {
@@ -235,8 +288,14 @@ async function getSceneImage(
   }
 
   try {
-    const imageBase64 = await generateSceneImage(scene, style, sceneIndex, totalScenes, apiKey);
-    return { ...scene, imageBase64, fromLibrary: false };
+    const imageBase64 = await generateSceneImage(scene, style, sceneIndex, totalScenes, apiKey, charRef);
+    return {
+      ...scene,
+      imageBase64,
+      fromLibrary: false,
+      character_reference_id: charRef?.id,
+      consistency_score: charRef ? 0.8 : 0.5,
+    };
   } catch (error) {
     console.error(`[getSceneImage] Failed to generate image for scene ${sceneIndex + 1}:`, error);
     return { ...scene, imageBase64: '', fromLibrary: false };
@@ -244,7 +303,51 @@ async function getSceneImage(
 }
 
 /**
+ * Find complementary video clips for scenes longer than 8s
+ */
+async function findStitchedClips(
+  supabase: ReturnType<typeof createClient>,
+  style: string,
+  emotion: string,
+  sceneType: string,
+  characterType: string,
+  targetDuration: number,
+  excludeId: string
+): Promise<StitchedClip[]> {
+  const { data, error } = await supabase
+    .from('anime_scene_library')
+    .select('video_url, video_duration')
+    .eq('style', style)
+    .eq('asset_type', 'video')
+    .not('video_url', 'is', null)
+    .neq('id', excludeId)
+    .or(`emotion.eq.${emotion},scene_type.eq.${sceneType}`)
+    .order('usage_count', { ascending: true })
+    .limit(4);
+
+  if (error || !data || data.length === 0) return [];
+
+  const clips: StitchedClip[] = [];
+  let currentTime = 8; // Start after first clip
+
+  for (const item of data) {
+    if (!item.video_url) continue;
+    const clipDur = item.video_duration || 5;
+    if (currentTime >= targetDuration) break;
+    clips.push({
+      videoUrl: item.video_url,
+      startTime: currentTime,
+      endTime: Math.min(currentTime + clipDur, targetDuration),
+    });
+    currentTime += clipDur;
+  }
+
+  return clips;
+}
+
+/**
  * Find a matching image from the library
+ * DÉFI 1: +2 bonus for matching character_reference_id
  */
 async function findLibraryMatch(
   supabase: ReturnType<typeof createClient>,
@@ -252,14 +355,15 @@ async function findLibraryMatch(
   emotion: string,
   sceneType: string,
   characterType: string,
-  action: string
+  action: string,
+  characterRefId?: string
 ): Promise<LibraryImage | null> {
   const { data, error } = await supabase
     .from('anime_scene_library')
     .select('*')
     .eq('style', style)
     .order('usage_count', { ascending: true })
-    .limit(10);
+    .limit(15);
 
   if (error || !data || data.length === 0) return null;
 
@@ -269,6 +373,10 @@ async function findLibraryMatch(
     if (img.scene_type === sceneType) score += 2;
     if (img.character_type === characterType) score += 1;
     if (img.action === action) score += 1;
+    // DÉFI 1: Character reference consistency bonus
+    if (characterRefId && img.character_reference_id === characterRefId) score += 2;
+    // Bonus for higher consistency scores
+    if (img.consistency_score && img.consistency_score > 0.8) score += 1;
     return { ...img, matchScore: score };
   });
 
@@ -369,19 +477,38 @@ Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
   }
 }
 
+/**
+ * Generate scene image with character reference embedding for consistency
+ */
 async function generateSceneImage(
   scene: StoryScene, 
   style: string, 
   sceneIndex: number, 
   totalScenes: number,
-  apiKey: string
+  apiKey: string,
+  charRef?: CharacterReference | null
 ): Promise<string> {
   const styleKeywords = STYLE_KEYWORDS[style] || STYLE_KEYWORDS.fantasy;
   const emotionVisuals = EMOTION_VISUALS[scene.emotion] || EMOTION_VISUALS.wonder;
   
+  // Build character consistency instructions if reference exists
+  let characterConsistency = '';
+  if (charRef) {
+    const keywords = charRef.style_keywords?.join(', ') || '';
+    const palette = charRef.color_palette?.join(', ') || '';
+    characterConsistency = `
+CHARACTER CONSISTENCY REQUIREMENTS:
+- Character: ${charRef.character_name}
+- Visual traits: ${keywords}
+- Color palette: ${palette}
+- MUST maintain exact character appearance across all scenes
+- Same facial features, hair style, clothing, proportions`;
+  }
+
   const prompt = `Create an anime illustration in ${style} style.
 
 SCENE: ${scene.visualDescription}
+${characterConsistency}
 
 STYLE REQUIREMENTS:
 - ${styleKeywords}
@@ -392,9 +519,23 @@ STYLE REQUIREMENTS:
 - Atmospheric background matching the mood
 - Professional anime production quality
 
-CONSISTENCY NOTE: This is scene ${sceneIndex + 1} of ${totalScenes} in a story. Maintain visual consistency.
+CONSISTENCY NOTE: This is scene ${sceneIndex + 1} of ${totalScenes} in a story. Maintain visual consistency across all scenes.
 
 Create a single, complete illustration capturing this exact moment.`;
+
+  // Build messages — include reference image for multimodal consistency
+  const messages: any[] = [];
+  if (charRef?.reference_image_url) {
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        { type: 'image_url', image_url: { url: charRef.reference_image_url } }
+      ]
+    });
+  } else {
+    messages.push({ role: 'user', content: prompt });
+  }
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -404,7 +545,7 @@ Create a single, complete illustration capturing this exact moment.`;
     },
     body: JSON.stringify({
       model: 'google/gemini-3-pro-image-preview',
-      messages: [{ role: 'user', content: prompt }],
+      messages,
       modalities: ['image', 'text']
     })
   });
