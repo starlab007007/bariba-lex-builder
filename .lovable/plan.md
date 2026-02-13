@@ -1,64 +1,90 @@
 
+# Plan : Narration vocale par scene dans l'Editeur de Scenes
 
-# Plan : Integrer Inworld TTS + Mistral STT dans tout le Griot et Village Chronicle
+## Objectif
 
-## Diagnostic
+Ajouter a chaque scene de l'editeur la possibilite de :
+1. Choisir une voix narrative (Timothy, Mark, Sarah, Alex) ou "Aucune voix"
+2. Generer l'audio TTS pour cette scene individuellement via Inworld TTS-1.5 Mini
+3. Ecouter un apercu de la narration directement dans l'editeur
+4. Transmettre ces audios au rendu final du conte anime
 
-L'analyse du code revele 4 points d'integration narration/TTS/STT repartis dans le projet :
-
-1. **`useAnimeStoryGenerator.ts`** (Griot Studio) - TTS pour narration des scenes animees
-   - BUG : verifie `ttsData?.audioContent` alors que la fonction retourne `audioBase64` -- l'audio n'est jamais recupere
-2. **`GriotStudio.tsx`** - STT via `transcribe-audio` (deja Mistral -- OK)
-3. **`VillageChronicle.ts`** - TTS pour narration du journal TV
-   - Commentaires mentionnent encore "ElevenLabs" mais appelle deja `french-tts` (OK fonctionnellement)
-4. **`SegmentEditor.tsx` / `StoryBuilder.tsx`** (Conte Vivant) - deja migre avec selecteur de voix
-
-## Problemes identifies
-
-| Fichier | Probleme |
-|---------|----------|
-| `useAnimeStoryGenerator.ts` (ligne 336) | Verifie `audioContent` au lieu de `audioBase64` -- audio toujours null |
-| `useAnimeStoryGenerator.ts` (ligne 334) | Ne passe pas de `voice` -- utilise la voix par defaut |
-| `VillageChronicle.ts` (ligne 1803) | Commentaire mentionne "ElevenLabs" alors que c'est Inworld |
-| `VillageChronicle.ts` (ligne 1827) | Commentaire mentionne "ElevenLabs audio received" |
+Si aucune voix n'est selectionnee ou si le texte n'est pas en francais, la generation audio est ignoree et le texte brut est conserve tel quel.
 
 ## Modifications prevues
 
-### 1. `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts`
+### 1. `src/components/griot-studio/SceneEditor.tsx` - Interface enrichie
 
-**Corriger le bug critique** : remplacer `ttsData?.audioContent` par `ttsData?.audioBase64` (le champ retourne par la fonction `french-tts`).
-
-Ajouter le parametre `voice: 'narrator'` dans l'appel TTS pour forcer la voix Timothy (narrateur francais natif).
+**Etendre le type `EditableScene`** pour inclure les champs audio :
 
 ```text
-Avant:  if (!ttsError && ttsData?.audioContent) { audioBase64 = ttsData.audioContent; }
-Apres:  if (!ttsError && ttsData?.success && ttsData?.audioBase64) { audioBase64 = ttsData.audioBase64; }
+export interface EditableScene {
+  id: string;
+  text: string;
+  emotion: string;
+  sceneType?: string;
+  voice?: 'narrator' | 'announcer' | 'female' | 'alloy';  // optionnel = pas de voix
+  audioBase64?: string;       // audio genere en base64
+  audioUrl?: string;          // blob URL pour lecture
+  isGeneratingAudio?: boolean; // etat de generation
+}
 ```
 
-### 2. `src/templates/VillageChronicle.ts`
+**Ajouter dans chaque carte de scene** :
+- Un selecteur de voix (5 options : Timothy, Mark, Sarah, Alex, "Sans voix") sous forme de boutons compacts, similaire au selecteur d'emotion
+- Un bouton "Generer la voix" qui appelle `french-tts` pour cette scene uniquement
+- Un mini-lecteur audio (play/pause) si l'audio a ete genere
+- Un indicateur de chargement pendant la generation
+- Si la voix change, l'audio existant est efface (regeneration necessaire)
 
-Mettre a jour les commentaires pour refleter l'architecture actuelle (Inworld TTS-1.5 Mini, pas ElevenLabs). Aucun changement fonctionnel necessaire car `generateNarration()` appelle deja `french-tts` avec `returnAudio: true` et lit `data.audioBase64`.
+**Logique de generation** :
+- Appel a `supabase.functions.invoke('french-tts', { body: { text, voice, returnAudio: true } })`
+- Stockage du `audioBase64` et creation d'un `audioUrl` blob dans la scene
+- Si `voice` est `undefined` ou vide, pas de generation possible (bouton desactive)
 
-### 3. Aucune modification cote Edge Functions
+### 2. `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` - Utiliser les audios par scene
 
-Les fonctions `french-tts` et `transcribe-audio` sont deja correctement configurees :
-- `french-tts` : Inworld TTS-1.5 Mini avec `language: 'fr'`
-- `transcribe-audio` : Mistral Voxtral Mini avec `language: 'fr'`
+**Modifier `generateFromScenes`** (ligne 223) pour :
+- Verifier si les scenes ont des `audioBase64` individuels
+- Si oui, les combiner pour creer la narration globale du conte
+- Passer ces audios dans le `GenerationResult` pour le rendu final
 
-### 4. Verification de la politique "francais uniquement"
+```text
+// Au lieu de "No TTS generation", on recupere les audios des scenes
+const scenesWithAudio = scenesWithUrls.map((scene, i) => ({
+  ...scene,
+  audioBase64: editedScenes[i]?.audioBase64,
+  audioUrl: editedScenes[i]?.audioUrl,
+}));
+```
 
-Tous les appels STT passent par `transcribe-audio` qui force deja `language: 'fr'`. Tous les appels TTS passent par `french-tts` qui force `language: 'fr'`. La politique est respectee.
+**Etendre `StoryScene`** pour inclure `audioBase64` et `audioUrl` par scene.
+
+**Etendre `GenerationResult`** pour inclure les audios par scene :
+```text
+export interface GenerationResult {
+  scenes: StoryScene[];
+  audioBase64?: string;      // audio global (existant)
+  audioUrl?: string;         // audio global (existant)
+  sceneAudios?: { sceneNumber: number; audioBase64: string }[];  // par scene
+  totalDuration: number;
+}
+```
+
+### 3. Import de `NARRATOR_VOICES` depuis `story.types.ts`
+
+Reutiliser la constante `NARRATOR_VOICES` deja definie dans `src/features/conte-vivant/types/story.types.ts` pour eviter la duplication, en ajoutant une option "Sans voix" dans l'UI.
 
 ## Resume des fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Corriger `audioContent` en `audioBase64`, ajouter `voice: 'narrator'` |
-| `src/templates/VillageChronicle.ts` | Mettre a jour commentaires (ElevenLabs vers Inworld TTS) |
+| `src/components/griot-studio/SceneEditor.tsx` | Ajout selecteur voix, bouton TTS, mini-lecteur audio par scene |
+| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Recuperation audios par scene dans `generateFromScenes`, extension des types |
 
-## Impact
+## Politique francais uniquement
 
-- Le Griot Studio va enfin produire de l'audio dans les contes animes (bug corrige)
-- Tous les templates utilisent Inworld TTS-1.5 Mini en francais natif
-- Tous les STT utilisent Mistral Voxtral Mini en francais
-
+- La generation TTS ne se fait que si une voix est selectionnee
+- L'edge function `french-tts` force deja `language: 'fr'`
+- Si le texte n'est pas en francais, le systeme ne bloque pas mais le resultat sera en francais (prononciation forcee)
+- L'option "Sans voix" permet d'ignorer completement la narration pour une scene
