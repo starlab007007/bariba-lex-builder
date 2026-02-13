@@ -1,113 +1,86 @@
 
-# Optimisation Complete : Griot, Conte Vivant et Feed Video
 
-## Problemes identifies
+# Animations Plein Ecran - AREffectsLayer
 
-### GRIOT STUDIO - 6 problemes
+## Probleme
 
-1. **Fuite memoire `window.__griotPendingScenes`** : Utilisation du global `window` pour passer des donnees entre etapes. Si l'utilisateur quitte sans nettoyer, les scenes restent en memoire indefiniment.
+Les animations (coeurs, etincelles, confettis, etc.) dans l'ecran Magic IA sont trop eparses et semblent concentrees sur les bords de l'ecran au lieu de couvrir toute la surface visible. L'utilisateur veut que chaque animation remplisse visuellement tout l'ecran.
 
-2. **Videos timeline dans StoryPreviewPlayer** : Chaque miniature de scene charge un `<video>` avec `autoPlay` et `loop` (ligne 336-340). Avec 10 scenes, ca fait 10 videos en lecture simultanee juste pour des miniatures.
+## Cause
 
-3. **Double concatenation audio** : `concatenateSceneAudios` est appele dans GriotStudio.tsx (ligne 353) ET dans PublishStep.tsx (ligne 98) ET dans StoryPreviewPlayer.tsx (ligne 93). Le meme travail de decodage/concatenation est fait 3 fois.
+Dans `AREffectsLayer.tsx`, chaque animation utilise un nombre limite de particules (15-40) qui partent toutes du meme bord (bas ou haut) et traversent l'ecran en une seule direction. A tout moment, les particules sont concentrees sur une zone reduite car elles se deplacent toutes dans le meme sens avec des delais similaires.
 
-4. **Pas de timeout sur le chargement video dans GriotAnimationEngine** : `loadVideo()` a un timeout de 15s, mais `loadScenes()` les charge en serie (boucle `for...of`). 5 videos = potentiellement 75s d'attente.
+## Solution
 
-5. **AssetGallery charge TOUS les assets en une requete** : La requete (ligne 80) recupere tous les assets africains sans pagination. Avec 500+ assets, c'est une charge initiale lourde.
+Modifier chaque composant d'animation dans `src/components/tamtam/creator/AREffectsLayer.tsx` pour :
 
-6. **`renderSlideshowFrames` et `renderFrames` utilisent `canvas.toBlob` par frame** : Genere des centaines de blobs PNG individuels (30fps x 30s = 900 blobs). Extreme pression memoire.
+1. **Augmenter le nombre de particules** : Passer de 15-40 a 30-60 particules selon l'effet
+2. **Distribuer les positions initiales sur tout l'ecran** : Au lieu de demarrer toutes les particules du meme bord, les placer aleatoirement sur toute la surface (top: 0-100%, left: 0-100%)
+3. **Varier les trajectoires** : Certaines particules montent, d'autres descendent, d'autres flottent lateralement
+4. **Decaler les delais de demarrage** : Etaler les delais pour qu'a tout moment il y ait des particules partout
+5. **Augmenter la taille des emojis/elements** : Rendre les particules plus grosses pour un effet plus immersif
 
-### CONTE VIVANT - 4 problemes
+## Detail par animation
 
-7. **BranchingPlayer ne pre-charge pas les medias du segment suivant** : Le hook `useBranchPreload` existe mais n'est PAS utilise dans BranchingPlayer.tsx. Chaque transition charge le media a la volee.
+### FloatingHeartsAnimation (coeurs)
+- 15 -> 35 particules
+- Position initiale : repartie sur tout l'ecran (`top: random 0-100%`, `left: random 0-100%`)
+- Mouvement : flottement multi-directionnel (haut/bas/gauche/droite) au lieu de uniquement bas-vers-haut
+- Taille emoji : `p.size * 24px` -> `p.size * 32px`
+- Delais etales de 0 a 5s
 
-8. **Fuite memoire audio dans BranchingPlayer** : `narrationRef` et `bgMusicRef` ne sont jamais `src = ''` au changement de segment. Les anciens buffers audio restent en memoire.
+### SparklesAnimation (etincelles)
+- 20 -> 40 particules
+- Position initiale sur tout l'ecran au lieu de uniquement en bas
+- Mouvement flottant dans toutes les directions
+- Taille augmentee
 
-9. **StoryBuilder TTS sequentiel** : `handlePublish` genere les voix TTS une par une (boucle `for`, ligne 215). Avec 5 segments, c'est 5 requetes en serie au lieu de parallele.
+### RainAnimation (pluie)
+- 40 -> 60 gouttes - deja correct (haut vers bas) mais distribuer les positions verticales initiales pour que les gouttes ne partent pas toutes du meme point
 
-10. **StoryBuilder mini-videos non lazy** : `renderSegmentMini` (ligne 244) rend des `<video>` pour chaque segment sans lazy loading. Tous les medias se chargent meme hors ecran.
+### ConfettiAnimation (confettis)
+- 30 -> 50 confettis
+- Position initiale repartie sur tout l'ecran
+- Taille des confettis augmentee (`w-2 h-3` -> `w-3 h-4`)
 
-### FEED VIDEO - 4 problemes
+### SnowAnimation (neige)
+- 35 -> 50 flocons
+- Meme approche : positions initiales distribuees verticalement
+- Taille augmentee
 
-11. **VideoFeedCard ne revoke pas les blob URLs** : Le cleanup (ligne 72-73) clear le `src` mais ne revoke jamais les blob URLs si le videoUrl est un blob.
+### BubblesAnimation (bulles)
+- 20 -> 35 bulles
+- Position initiale sur tout l'ecran
+- Taille augmentee
 
-12. **`getCurrentPosts` recalcule la fusion + tri a chaque render** : Le `useMemo` depend de `posts` et `videoFeedItems`, mais aussi de `feedMode`. Chaque changement de feed re-trie tout le tableau.
+### FirefliesAnimation (lucioles)
+- 25 -> 40 lucioles
+- Deja distribuees sur l'ecran (OK) mais augmenter la zone de mouvement et la taille du halo lumineux
 
-13. **VideoFeedCard `preload="auto"` pour les voisins** : Les videos a +/-2 du current index ont `preload="none"` seulement si non-active. Mais le composant est quand meme rendu avec le `<video>` element, ce qui demarre le parsing du conteneur video.
+## Modification de `generateParticles`
 
-14. **Realtime subscription dupliquee** : `useVideoFeed` cree un nouveau `newVideo` sans les infos profil (ligne 136-156). Le profil affiche toujours "Createur FITILA" pour les videos recues en temps reel.
+Ajouter un champ `y` (position verticale initiale aleatoire 0-100%) dans la generation de particules pour permettre la distribution sur tout l'ecran :
 
-## Solution par fichier
+```text
+const generateParticles = (count, seed) => {
+  return Array.from({ length: count }, (_, i) => ({
+    id: `${seed}-${i}`,
+    x: Math.random() * 100,
+    y: Math.random() * 100,       // NOUVEAU: position verticale
+    delay: Math.random() * 4,      // delais plus etales
+    duration: 2 + Math.random() * 3,
+    size: 0.8 + Math.random() * 1.2, // tailles plus grandes
+  }));
+};
+```
 
-### 1. `src/engines/GriotAnimationEngine.ts`
+## Fichier modifie
 
-- **Chargement parallele des scenes** : Remplacer la boucle `for...of` dans `loadScenes()` par `Promise.allSettled()` pour charger toutes les images/videos simultanement
-- **Supprimer `renderSlideshowFrames` et `renderFrames`** : Ces methodes ne sont pas utilisees dans le pipeline actuel (PublishStep utilise captureStream). Les supprimer reduit la taille du bundle et evite la tentation de les appeler
-- **Timeout video reduit** : Passer de 15s a 8s pour accelerer le fallback vers les images
-
-### 2. `src/components/griot-studio/GriotStudio.tsx`
-
-- **Remplacer `window.__griotPendingScenes`** par un `useRef` : Stocker les donnees pendantes dans un ref React au lieu du global window. Nettoyage automatique au unmount
-- **Eviter la double concatenation** : Stocker le resultat de `concatenateSceneAudios` dans un ref et le passer directement a PublishStep et StoryPreviewPlayer via props, au lieu de re-concatener dans chaque composant
-
-### 3. `src/components/griot-studio/PublishStep.tsx`
-
-- **Recevoir l'audio concatene en prop** : Ajouter une prop `concatenatedAudioUrl?: string` et supprimer le `useEffect` de concatenation interne (ligne 97-106). Utiliser directement la prop
-
-### 4. `src/components/griot-studio/StoryPreviewPlayer.tsx`
-
-- **Recevoir l'audio concatene en prop** : Meme approche que PublishStep. Supprimer la concatenation locale
-- **Miniatures : remplacer `<video>` par des images poster** : Au lieu de charger 10 videos pour les miniatures (ligne 334-340), utiliser `<img>` avec le `scene.imageUrl` ou une vignette statique. Les videos ne sont necessaires que pour le canvas principal
-
-### 5. `src/components/griot-studio/AssetGallery.tsx`
-
-- **Pagination de la requete** : Ajouter `.range(0, 99)` a la requete initiale et un bouton "Charger plus" dans le drawer. Cela reduit la charge initiale de 500+ a 100 assets
-
-### 6. `src/features/conte-vivant/components/BranchingPlayer.tsx`
-
-- **Integrer `useBranchPreload`** : Appeler `preloadSegments()` quand un segment a des choix pour pre-charger les medias des branches suivantes
-- **Nettoyer les sources audio** : Au changement de segment, appeler `narrationRef.current.src = ''` et `narrationRef.current.load()` pour liberer l'ancien buffer
-- **Lazy media loading** : Ne charger la video/image que quand le segment est actif (pas en avance sauf via preload)
-
-### 7. `src/features/conte-vivant/components/StoryBuilder.tsx`
-
-- **TTS parallele** : Remplacer la boucle sequentielle (ligne 215) par `Promise.allSettled()` pour generer toutes les voix en parallele
-- **Lazy video dans `renderSegmentMini`** : Remplacer `<video>` par `<img>` avec le poster/thumbnail pour les miniatures de segments
-
-### 8. `src/components/feed/VideoFeedCard.tsx`
-
-- **`preload="metadata"` au lieu de `"none"`** : Pour les videos non-actives, utiliser `metadata` au lieu de `none` pour avoir les dimensions et la premiere frame sans charger tout le fichier
-- **Ajouter `loading="lazy"` sur l'image poster** : L'image thumbnail est deja lazy, confirmer que c'est le cas
-
-### 9. `src/hooks/useVideoFeed.ts`
-
-- **Enrichir les videos realtime** : Quand un INSERT arrive, faire une requete rapide pour recuperer le profil avant d'ajouter la video au state
-- **Debounce du loadMore** : Ajouter un debounce de 300ms pour eviter les appels multiples lors du scroll rapide
-
-### 10. `src/pages/tamtam/TamTamSocial.tsx`
-
-- **Separer `videosAsVideoCards` dans un useMemo dedie** : Le mapping des videos en format post est recalcule dans `getCurrentPosts` a chaque changement de feedMode. L'extraire dans son propre `useMemo` avec `[videoFeedItems]` comme seule dependance
-- **Optimiser le DOM du scroll container** : Les divs placeholder pour la virtualisation n'ont pas de `key` stable basee sur l'index, ce qui peut causer des re-renders inutiles
-
-## Resume des fichiers
-
-| Fichier | Optimisations |
+| Fichier | Modifications |
 |---------|---------------|
-| `GriotAnimationEngine.ts` | Chargement parallele, suppression methodes inutilisees, timeout reduit |
-| `GriotStudio.tsx` | Ref au lieu de window global, centralisation concatenation audio |
-| `PublishStep.tsx` | Prop audio concatene, suppression useEffect doublon |
-| `StoryPreviewPlayer.tsx` | Prop audio concatene, miniatures image au lieu de video |
-| `AssetGallery.tsx` | Pagination requete (100 premiers) |
-| `BranchingPlayer.tsx` | Integration preload, cleanup audio, lazy media |
-| `StoryBuilder.tsx` | TTS parallele, miniatures image |
-| `VideoFeedCard.tsx` | preload metadata, cleanup ameliore |
-| `useVideoFeed.ts` | Profil realtime, debounce loadMore |
-| `TamTamSocial.tsx` | useMemo separe pour videosAsVideoCards |
+| `src/components/tamtam/creator/AREffectsLayer.tsx` | Augmentation particules, distribution plein ecran, tailles plus grandes, mouvements multi-directionnels |
 
-## Impact attendu
+## Resultat attendu
 
-- **Chargement initial** : -40% temps (pagination assets, chargement parallele)
-- **Memoire** : -30% usage (suppression videos miniatures, cleanup audio, suppression renderFrames)
-- **Transitions Conte Vivant** : Quasi-instantanees (pre-chargement branches)
-- **Feed scroll** : Plus fluide (virtualisation optimisee, preload metadata)
-- **TTS Conte Vivant** : 3-5x plus rapide (generation parallele)
+Chaque animation couvre visuellement 100% de la surface de l'ecran avec des particules reparties uniformement, creant un effet immersif TikTok/Douyin.
+
