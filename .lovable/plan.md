@@ -1,90 +1,92 @@
 
-# Plan : Narration vocale par scene dans l'Editeur de Scenes
+# Plan : Integrer les audios par scene dans le rendu final
 
-## Objectif
+## Diagnostic
 
-Ajouter a chaque scene de l'editeur la possibilite de :
-1. Choisir une voix narrative (Timothy, Mark, Sarah, Alex) ou "Aucune voix"
-2. Generer l'audio TTS pour cette scene individuellement via Inworld TTS-1.5 Mini
-3. Ecouter un apercu de la narration directement dans l'editeur
-4. Transmettre ces audios au rendu final du conte anime
+Les audios generes par scene dans le `SceneEditor` (via Inworld TTS) sont stockes sur chaque objet `scene.audioBase64` / `scene.audioUrl`, mais **jamais utilises** dans le pipeline de rendu :
 
-Si aucune voix n'est selectionnee ou si le texte n'est pas en francais, la generation audio est ignoree et le texte brut est conserve tel quel.
+| Composant | Probleme |
+|-----------|----------|
+| `StoryPreviewPlayer.tsx` (ligne 89) | Utilise uniquement `narrationAudioUrl \|\| audioUrl` (props globales). Ignore `scene.audioUrl` |
+| `PublishStep.tsx` (ligne 95) | `effectiveNarrationUrl = localNarrationUrl \|\| narrationAudioUrl \|\| audioUrl`. Ignore les audios par scene |
+| `GriotStudio.tsx` (ligne 882) | Passe `generationResult.audioUrl` (global) mais pas les audios individuels des scenes |
 
-## Modifications prevues
+**Resultat** : Quand l'utilisateur genere des voix par scene dans l'editeur, elles ne sont jamais lues ni dans la preview ni dans la video finale.
 
-### 1. `src/components/griot-studio/SceneEditor.tsx` - Interface enrichie
+## Solution
 
-**Etendre le type `EditableScene`** pour inclure les champs audio :
+Concatener les audios par scene en un seul blob audio avant de les passer au preview et au rendu final. Cela se fait dans `GriotStudio.tsx` au moment de la transition vers l'etape preview/finalize.
+
+### 1. `src/components/griot-studio/GriotStudio.tsx` - Agreger les audios
+
+Apres `generateFromScenes`, verifier si les scenes contiennent des `audioBase64` individuels. Si oui, les concatener en un seul fichier audio (via Web Audio API `decodeAudioData` + `OfflineAudioContext`) et stocker le resultat dans `narrationAudioUrl`.
 
 ```text
-export interface EditableScene {
-  id: string;
-  text: string;
-  emotion: string;
-  sceneType?: string;
-  voice?: 'narrator' | 'announcer' | 'female' | 'alloy';  // optionnel = pas de voix
-  audioBase64?: string;       // audio genere en base64
-  audioUrl?: string;          // blob URL pour lecture
-  isGeneratingAudio?: boolean; // etat de generation
+Logique :
+1. Filtrer les scenes qui ont un audioBase64
+2. Decoder chaque base64 en AudioBuffer
+3. Creer un OfflineAudioContext de la duree totale
+4. Positionner chaque buffer a son offset temporel (cumul des durees)
+5. Rendre le resultat en un seul blob audio
+6. Stocker dans narrationAudioUrl
+```
+
+### 2. `src/components/griot-studio/GriotStudio.tsx` - Fonction utilitaire
+
+Creer une fonction `concatenateSceneAudios(scenes: StoryScene[])` qui :
+- Prend les scenes avec `audioBase64` et `durationSeconds`
+- Retourne un `{ blob: Blob, url: string }` ou `null` si aucun audio
+
+### 3. `src/components/griot-studio/StoryPreviewPlayer.tsx` - Fallback par scene
+
+Ajouter un fallback : si `narrationAudioUrl` et `audioUrl` sont vides, verifier si les scenes individuelles ont des `audioUrl` et les jouer en sequence (un audio par scene, declenche au changement de scene).
+
+### 4. `src/components/griot-studio/PublishStep.tsx` - Fallback par scene
+
+Meme logique : si `effectiveNarrationUrl` est vide, concatener les audios des scenes pour le mixage final. Utiliser la meme technique Web Audio API deja en place dans le composant.
+
+## Approche technique detaillee
+
+### Concatenation audio (fonction partagee)
+
+```text
+async function concatenateSceneAudios(scenes): Promise<Blob | null>
+  1. scenes.filter(s => s.audioBase64)
+  2. Si aucun => return null
+  3. Decoder chaque base64 en ArrayBuffer puis AudioBuffer
+  4. Calculer duree totale = somme des durees de chaque buffer
+  5. OfflineAudioContext(1, sampleRate * dureeTotale, sampleRate)
+  6. Pour chaque scene : createBufferSource, positionner a l'offset cumule
+  7. startRendering() => AudioBuffer final
+  8. Encoder en WAV blob
+  9. return blob
+```
+
+### Integration dans GriotStudio
+
+Apres la generation des scenes (quand `generationResult` est disponible et qu'il n'y a pas de `audioUrl` global), lancer la concatenation et stocker le resultat :
+
+```text
+if (!generationResult.audioUrl && scenes.some(s => s.audioBase64)) {
+  const blob = await concatenateSceneAudios(scenes);
+  if (blob) {
+    setNarrationAudioUrl(URL.createObjectURL(blob));
+    setAudioBlob(blob);
+  }
 }
 ```
-
-**Ajouter dans chaque carte de scene** :
-- Un selecteur de voix (5 options : Timothy, Mark, Sarah, Alex, "Sans voix") sous forme de boutons compacts, similaire au selecteur d'emotion
-- Un bouton "Generer la voix" qui appelle `french-tts` pour cette scene uniquement
-- Un mini-lecteur audio (play/pause) si l'audio a ete genere
-- Un indicateur de chargement pendant la generation
-- Si la voix change, l'audio existant est efface (regeneration necessaire)
-
-**Logique de generation** :
-- Appel a `supabase.functions.invoke('french-tts', { body: { text, voice, returnAudio: true } })`
-- Stockage du `audioBase64` et creation d'un `audioUrl` blob dans la scene
-- Si `voice` est `undefined` ou vide, pas de generation possible (bouton desactive)
-
-### 2. `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` - Utiliser les audios par scene
-
-**Modifier `generateFromScenes`** (ligne 223) pour :
-- Verifier si les scenes ont des `audioBase64` individuels
-- Si oui, les combiner pour creer la narration globale du conte
-- Passer ces audios dans le `GenerationResult` pour le rendu final
-
-```text
-// Au lieu de "No TTS generation", on recupere les audios des scenes
-const scenesWithAudio = scenesWithUrls.map((scene, i) => ({
-  ...scene,
-  audioBase64: editedScenes[i]?.audioBase64,
-  audioUrl: editedScenes[i]?.audioUrl,
-}));
-```
-
-**Etendre `StoryScene`** pour inclure `audioBase64` et `audioUrl` par scene.
-
-**Etendre `GenerationResult`** pour inclure les audios par scene :
-```text
-export interface GenerationResult {
-  scenes: StoryScene[];
-  audioBase64?: string;      // audio global (existant)
-  audioUrl?: string;         // audio global (existant)
-  sceneAudios?: { sceneNumber: number; audioBase64: string }[];  // par scene
-  totalDuration: number;
-}
-```
-
-### 3. Import de `NARRATOR_VOICES` depuis `story.types.ts`
-
-Reutiliser la constante `NARRATOR_VOICES` deja definie dans `src/features/conte-vivant/types/story.types.ts` pour eviter la duplication, en ajoutant une option "Sans voix" dans l'UI.
 
 ## Resume des fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/components/griot-studio/SceneEditor.tsx` | Ajout selecteur voix, bouton TTS, mini-lecteur audio par scene |
-| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Recuperation audios par scene dans `generateFromScenes`, extension des types |
+| `src/components/griot-studio/GriotStudio.tsx` | Ajouter concatenation des audios par scene apres generation, stocker dans `narrationAudioUrl` |
+| `src/components/griot-studio/StoryPreviewPlayer.tsx` | Ajouter fallback lecture sequentielle des audios par scene |
+| `src/components/griot-studio/PublishStep.tsx` | Ajouter fallback concatenation des audios par scene pour le mixage final |
 
-## Politique francais uniquement
+## Impact
 
-- La generation TTS ne se fait que si une voix est selectionnee
-- L'edge function `french-tts` force deja `language: 'fr'`
-- Si le texte n'est pas en francais, le systeme ne bloque pas mais le resultat sera en francais (prononciation forcee)
-- L'option "Sans voix" permet d'ignorer completement la narration pour une scene
+- Les voix narratives generees par scene seront entendues dans la preview
+- Les voix narratives generees par scene seront integrees dans la video finale exportee
+- Compatible avec le systeme existant (si un audio global existe, il est prioritaire)
+- Aucune modification des edge functions necessaire
