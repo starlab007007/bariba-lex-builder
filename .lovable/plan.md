@@ -1,66 +1,64 @@
 
 
-# Plan : Remplacer ElevenLabs par Inworld TTS-1.5 Mini
+# Plan : Integrer Inworld TTS + Mistral STT dans tout le Griot et Village Chronicle
 
 ## Diagnostic
 
-Les logs de la fonction `french-tts` montrent que **ElevenLabs a bloque le compte** :
+L'analyse du code revele 4 points d'integration narration/TTS/STT repartis dans le projet :
+
+1. **`useAnimeStoryGenerator.ts`** (Griot Studio) - TTS pour narration des scenes animees
+   - BUG : verifie `ttsData?.audioContent` alors que la fonction retourne `audioBase64` -- l'audio n'est jamais recupere
+2. **`GriotStudio.tsx`** - STT via `transcribe-audio` (deja Mistral -- OK)
+3. **`VillageChronicle.ts`** - TTS pour narration du journal TV
+   - Commentaires mentionnent encore "ElevenLabs" mais appelle deja `french-tts` (OK fonctionnellement)
+4. **`SegmentEditor.tsx` / `StoryBuilder.tsx`** (Conte Vivant) - deja migre avec selecteur de voix
+
+## Problemes identifies
+
+| Fichier | Probleme |
+|---------|----------|
+| `useAnimeStoryGenerator.ts` (ligne 336) | Verifie `audioContent` au lieu de `audioBase64` -- audio toujours null |
+| `useAnimeStoryGenerator.ts` (ligne 334) | Ne passe pas de `voice` -- utilise la voix par defaut |
+| `VillageChronicle.ts` (ligne 1803) | Commentaire mentionne "ElevenLabs" alors que c'est Inworld |
+| `VillageChronicle.ts` (ligne 1827) | Commentaire mentionne "ElevenLabs audio received" |
+
+## Modifications prevues
+
+### 1. `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts`
+
+**Corriger le bug critique** : remplacer `ttsData?.audioContent` par `ttsData?.audioBase64` (le champ retourne par la fonction `french-tts`).
+
+Ajouter le parametre `voice: 'narrator'` dans l'appel TTS pour forcer la voix Timothy (narrateur francais natif).
+
+```text
+Avant:  if (!ttsError && ttsData?.audioContent) { audioBase64 = ttsData.audioContent; }
+Apres:  if (!ttsError && ttsData?.success && ttsData?.audioBase64) { audioBase64 = ttsData.audioBase64; }
 ```
-ElevenLabs error: "Unusual activity detected. Free Tier usage disabled."
-```
-Sur 4 appels TTS, seul le premier a produit de l'audio. Les 3 autres ont retourne `success: false` sans donnees audio. Le player n'a donc rien a lire.
 
-## Solution : Inworld TTS-1.5 Mini via AI/ML API
+### 2. `src/templates/VillageChronicle.ts`
 
-Remplacer ElevenLabs par Inworld TTS-1.5 Mini, un modele TTS rapide et abordable accessible via l'API AI/ML.
+Mettre a jour les commentaires pour refleter l'architecture actuelle (Inworld TTS-1.5 Mini, pas ElevenLabs). Aucun changement fonctionnel necessaire car `generateNarration()` appelle deja `french-tts` avec `returnAudio: true` et lit `data.audioBase64`.
 
-**API Inworld TTS-1.5 Mini :**
-- Endpoint : `POST https://api.aimlapi.com/v1/tts`
-- Auth : `Bearer <AIML_API_KEY>`
-- Body : `{ model: "inworld/tts-1-5-mini", text: "...", voice: "Sarah", format: "mp3" }`
-- Reponse : `{ audio: { url: "https://cdn.aimlapi.com/..." } }` (URL vers le fichier audio)
+### 3. Aucune modification cote Edge Functions
 
-## Etapes
+Les fonctions `french-tts` et `transcribe-audio` sont deja correctement configurees :
+- `french-tts` : Inworld TTS-1.5 Mini avec `language: 'fr'`
+- `transcribe-audio` : Mistral Voxtral Mini avec `language: 'fr'`
 
-### 1. Ajouter le secret `AIML_API_KEY`
+### 4. Verification de la politique "francais uniquement"
 
-Demander a l'utilisateur de fournir sa cle API AI/ML (depuis aimlapi.com).
+Tous les appels STT passent par `transcribe-audio` qui force deja `language: 'fr'`. Tous les appels TTS passent par `french-tts` qui force `language: 'fr'`. La politique est respectee.
 
-### 2. Modifier `supabase/functions/french-tts/index.ts`
-
-**Remplacer le bloc ElevenLabs par Inworld TTS-1.5 Mini :**
-
-- Retirer les imports et constantes ElevenLabs (VOICE_MAP, etc.)
-- Quand `returnAudio: true` :
-  1. Appeler `POST https://api.aimlapi.com/v1/tts` avec `{ model: "inworld/tts-1-5-mini", text: optimizedText, voice: "Sarah", format: "mp3" }`
-  2. La reponse contient `{ audio: { url: "..." } }` -- une URL vers le fichier MP3
-  3. Telecharger le fichier audio depuis cette URL via `fetch(audioUrl)`
-  4. Convertir le buffer en base64 avec `base64Encode()`
-  5. Retourner la reponse dans le meme format qu'avant : `{ success: true, method: "inworld-tts", audioBase64, audioFormat: "audio/mpeg", ... }`
-- Le fallback reste identique : si l'appel echoue, retourner le texte optimise pour Web Speech API
-
-**Mapping des voix :**
-
-| Voix demandee | Voix Inworld |
-|---------------|--------------|
-| announcer | Mark |
-| narrator | Timothy |
-| female | Sarah |
-| alloy | Alex |
-
-### 3. Aucun changement cote client
-
-Le format de reponse reste identique (`audioBase64` en base64), donc `SegmentEditor.tsx`, `StoryBuilder.tsx` et `BranchingPlayer.tsx` n'ont pas besoin de modification.
-
-## Fichiers modifies
+## Resume des fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `supabase/functions/french-tts/index.ts` | Remplacer ElevenLabs par Inworld TTS-1.5 Mini |
+| `src/components/griot-studio/hooks/useAnimeStoryGenerator.ts` | Corriger `audioContent` en `audioBase64`, ajouter `voice: 'narrator'` |
+| `src/templates/VillageChronicle.ts` | Mettre a jour commentaires (ElevenLabs vers Inworld TTS) |
 
-## Secret a ajouter
+## Impact
 
-| Secret | Description |
-|--------|-------------|
-| `AIML_API_KEY` | Cle API AI/ML pour acceder a Inworld TTS-1.5 Mini |
+- Le Griot Studio va enfin produire de l'audio dans les contes animes (bug corrige)
+- Tous les templates utilisent Inworld TTS-1.5 Mini en francais natif
+- Tous les STT utilisent Mistral Voxtral Mini en francais
 
