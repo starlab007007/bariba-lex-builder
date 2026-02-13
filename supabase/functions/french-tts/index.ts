@@ -101,6 +101,7 @@ Retourne UNIQUEMENT le texte optimisé, sans explications.`
               model: 'inworld/tts-1-5-mini',
               text: optimizedText,
               voice: inworldVoice,
+              language: 'fr',
               format: 'mp3',
             }),
           });
@@ -146,8 +147,59 @@ Retourne UNIQUEMENT le texte optimisé, sans explications.`
         } catch (inworldError) {
           console.error('[TTS] Inworld TTS failed:', inworldError);
         }
-      } else {
-        console.log('[TTS] No AIML_API_KEY, falling back to text optimization only');
+      }
+      
+      // Fallback 2: Try ElevenLabs
+      const elevenLabsKey = Deno.env.get('ELEVENLABS_API_KEY');
+      if (elevenLabsKey) {
+        try {
+          const ELEVEN_VOICE_MAP: Record<string, string> = {
+            'announcer': 'pFZP5JQG7iQjIQuC4Bku', // Lily (French)
+            'narrator': 'onwK4e9ZLuTAKqWW03F9', // Daniel (French)
+            'female': 'pFZP5JQG7iQjIQuC4Bku', // Lily (French)
+            'alloy': 'onwK4e9ZLuTAKqWW03F9', // Daniel (French)
+          };
+          const voiceId = ELEVEN_VOICE_MAP[voice] || ELEVEN_VOICE_MAP['narrator'];
+          console.log(`[TTS] Fallback to ElevenLabs voice: ${voiceId}`);
+          
+          const elResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+            method: 'POST',
+            headers: {
+              'xi-api-key': elevenLabsKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: optimizedText,
+              model_id: 'eleven_multilingual_v2',
+              voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+            }),
+          });
+
+          if (elResponse.ok) {
+            const audioBuffer = await elResponse.arrayBuffer();
+            const audioBase64 = base64Encode(audioBuffer);
+            const duration = Date.now() - startTime;
+            console.log(`[TTS] ElevenLabs audio: ${audioBuffer.byteLength} bytes in ${duration}ms`);
+            
+            return new Response(
+              JSON.stringify({
+                success: true,
+                method: 'elevenlabs-tts',
+                text: optimizedText,
+                audioBase64,
+                audioFormat: 'audio/mpeg',
+                audioSize: audioBuffer.byteLength,
+                duration,
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          } else {
+            const errText = await elResponse.text();
+            console.error('[TTS] ElevenLabs error:', elResponse.status, errText);
+          }
+        } catch (elErr) {
+          console.error('[TTS] ElevenLabs failed:', elErr);
+        }
       }
       
       // Fallback: Return optimized text for client-side Web Speech API
