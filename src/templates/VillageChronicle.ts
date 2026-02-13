@@ -1800,7 +1800,7 @@ export class VillageChronicleEngine {
   // ============================================
 
   /**
-   * Generate French TTS narration using ElevenLabs server-side TTS
+   * Generate French TTS narration using Inworld TTS-1.5 Mini (français natif)
    * Returns actual audio Blob for video muxing with FFmpeg
    */
   async generateNarration(script: string): Promise<Blob | null> {
@@ -1822,9 +1822,9 @@ export class VillageChronicleEngine {
         return null;
       }
       
-      // Check if we got real audio (ElevenLabs)
+      // Check if we got real audio (Inworld TTS)
       if (data?.success && data?.audioBase64) {
-        console.log(`[VillageChronicle] ElevenLabs audio received: ${data.audioSize} bytes`);
+        console.log(`[VillageChronicle] Inworld TTS audio received: ${data.audioSize} bytes`);
         
         // Convert base64 to Blob using data URI approach
         const audioUrl = `data:${data.audioFormat || 'audio/mpeg'};base64,${data.audioBase64}`;

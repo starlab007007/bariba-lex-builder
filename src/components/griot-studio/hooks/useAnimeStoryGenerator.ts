@@ -331,10 +331,10 @@ export function useAnimeStoryGenerator() {
       try {
         const fullText = scenes.map((s: StoryScene) => s.text).join(' ... ');
         const { data: ttsData, error: ttsError } = await supabase.functions.invoke('french-tts', {
-          body: { text: fullText, returnAudio: true }
+          body: { text: fullText, voice: 'narrator', returnAudio: true }
         });
-        if (!ttsError && ttsData?.audioContent) {
-          audioBase64 = ttsData.audioContent;
+        if (!ttsError && ttsData?.success && ttsData?.audioBase64) {
+          audioBase64 = ttsData.audioBase64;
           const audioBlob = base64ToBlob(audioBase64, 'audio/mpeg');
           audioUrl = URL.createObjectURL(audioBlob);
         }
