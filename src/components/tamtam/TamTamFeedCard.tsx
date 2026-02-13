@@ -167,7 +167,8 @@ export const TamTamFeedCard: React.FC<TamTamFeedCardProps> = ({
         </div>
       )}
 
-      {/* Audio Player - Always visible for audio posts or as overlay */}
+      {/* Audio Player - Only show when audio exists */}
+      {post.audio_url && (
       <div className="px-4 py-3">
         <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-emerald-50 rounded-2xl p-3">
           <motion.button
@@ -207,6 +208,7 @@ export const TamTamFeedCard: React.FC<TamTamFeedCardProps> = ({
           onEnded={() => setIsPlaying(false)}
         />
       </div>
+      )}
 
       {/* Transcript Toggle + Read Button */}
       {(transcript || altTranscript) && (

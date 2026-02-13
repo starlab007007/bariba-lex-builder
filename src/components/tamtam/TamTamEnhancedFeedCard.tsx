@@ -313,14 +313,16 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
             </div>
           )}
           
-          {/* Audio overlay button */}
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={handlePlayPause}
-            className="absolute bottom-4 right-4 w-14 h-14 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20"
-          >
-            {isPlaying ? <Pause className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-          </motion.button>
+          {/* Audio overlay button - only if audio exists */}
+          {post.audio_url && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={handlePlayPause}
+              className="absolute bottom-4 right-4 w-14 h-14 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20"
+            >
+              {isPlaying ? <Pause className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+            </motion.button>
+          )}
         </div>
       )}
 
@@ -410,8 +412,8 @@ export const TamTamEnhancedFeedCard: React.FC<TamTamEnhancedFeedCardProps> = ({
         </div>
       )}
 
-      {/* Audio Player - Light Glass Style */}
-      {post.media_type !== 'poll' && (
+      {/* Audio Player - Only show when audio exists */}
+      {post.media_type !== 'poll' && post.audio_url && (
         <div className="px-4 py-3">
           <div className="audio-player-light flex items-center gap-3">
             <motion.button
