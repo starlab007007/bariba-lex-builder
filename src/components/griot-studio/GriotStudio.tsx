@@ -31,6 +31,7 @@ import { useVFXEngine } from './hooks/useVFXEngine';
 import { useGriotDraft } from './hooks/useGriotDraft';
 import { GriotAnimationEngine } from '@/engines/GriotAnimationEngine';
 import { supabase } from '@/integrations/supabase/client';
+import { concatenateSceneAudios } from '@/utils/concatenateSceneAudios';
 
 type StudioStep = 'create' | 'transcribing' | 'editing' | 'generating' | 'preview' | 'finalize' | 'success';
 
@@ -347,6 +348,21 @@ export function GriotStudio() {
       };
 
       setTranscribedStory(editableScenes.map(s => s.text).join(' '));
+
+      // Concatenate per-scene TTS audios into a single narration if no global audio
+      if (!narrationAudioUrl && !result.audioUrl && result.scenes.some(s => s.audioBase64)) {
+        try {
+          const concatenated = await concatenateSceneAudios(result.scenes);
+          if (concatenated) {
+            setNarrationAudioUrl(concatenated.url);
+            setAudioBlob(concatenated.blob);
+            console.log('[GriotStudio] Concatenated per-scene audios into narration');
+          }
+        } catch (e) {
+          console.warn('[GriotStudio] Failed to concatenate scene audios:', e);
+        }
+      }
+
       setStep('preview');
     } catch (error) {
       console.error('[GriotStudio] Generation error:', error);
@@ -357,7 +373,7 @@ export function GriotStudio() {
       });
       setStep('editing');
     }
-  }, [style, duration, editableScenes, selectedAssets, preloadStyleFlares, generateFromScenes, generateFromSelectedAssets, narratorPreviewUrl, toast]);
+  }, [style, duration, editableScenes, selectedAssets, preloadStyleFlares, generateFromScenes, generateFromSelectedAssets, narratorPreviewUrl, narrationAudioUrl, toast]);
 
   const handleContinueToFinalize = useCallback(() => setStep('finalize'), []);
 

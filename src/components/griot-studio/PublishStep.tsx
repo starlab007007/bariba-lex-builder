@@ -11,7 +11,7 @@
  * - Scroll-friendly layout
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, Upload, Loader2, Sparkles, ArrowRight, Mic, Music, Volume2, Headphones, Square } from 'lucide-react';
@@ -27,6 +27,7 @@ import type { TrimInfo } from '@/components/tamtam/creator/AudioLibrary';
 import type { AudioTrack } from '@/types/audio';
 import type { StoryScene } from './hooks/useAnimeStoryGenerator';
 import { VinylRecorder } from './VinylRecorder';
+import { concatenateSceneAudios } from '@/utils/concatenateSceneAudios';
 
 type AudioMode = 'voice_only' | 'music_only' | 'voice_and_music';
 
@@ -81,7 +82,7 @@ export function PublishStep({
   const [publishedVideoId, setPublishedVideoId] = useState<string | null>(null);
 
   // Audio mode state
-  const hasInitialNarration = !!(narrationAudioUrl || audioUrl);
+  const hasInitialNarration = !!(narrationAudioUrl || audioUrl || scenes.some(s => s.audioBase64));
   const [audioMode, setAudioMode] = useState<AudioMode>(hasInitialNarration ? 'voice_only' : 'music_only');
   const [showAudioLibrary, setShowAudioLibrary] = useState(false);
   const [selectedMusicTrack, setSelectedMusicTrack] = useState<AudioTrack | null>(null);
@@ -90,9 +91,22 @@ export function PublishStep({
   const [isPreviewing, setIsPreviewing] = useState(false);
   const previewCtxRef = useRef<AudioContext | null>(null);
   const previewSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const [scenesConcatenatedUrl, setScenesConcatenatedUrl] = useState<string | null>(null);
 
-  // Effective narration URL: local recording > prop narrationAudioUrl > prop audioUrl
-  const effectiveNarrationUrl = localNarrationUrl || narrationAudioUrl || audioUrl;
+  // On mount: if no global narration, try concatenating per-scene audios
+  useEffect(() => {
+    if (!narrationAudioUrl && !audioUrl && scenes.some(s => s.audioBase64)) {
+      concatenateSceneAudios(scenes).then(result => {
+        if (result) {
+          setScenesConcatenatedUrl(result.url);
+          console.log('[PublishStep] Concatenated per-scene audios as fallback');
+        }
+      }).catch(e => console.warn('[PublishStep] Scene audio concat failed:', e));
+    }
+  }, [scenes, narrationAudioUrl, audioUrl]);
+
+  // Effective narration URL: local recording > prop narrationAudioUrl > prop audioUrl > concatenated scenes
+  const effectiveNarrationUrl = localNarrationUrl || narrationAudioUrl || audioUrl || scenesConcatenatedUrl;
   const hasNarration = !!effectiveNarrationUrl;
 
   // Handle music track selection with trim info

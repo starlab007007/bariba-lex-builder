@@ -8,6 +8,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { concatenateSceneAudios } from '@/utils/concatenateSceneAudios';
 import { GriotAnimationEngine, ANIMATION_STYLES, AnimationStyle } from '@/engines/GriotAnimationEngine';
 import type { StoryScene } from './hooks/useAnimeStoryGenerator';
 
@@ -85,8 +86,22 @@ export function StoryPreviewPlayer({
           await engineRef.current.loadNarratorAvatar(narratorAvatarUrl);
         }
         
-        // Load audio — prioritize narration (user's recorded voice) over TTS
-        const effectiveAudioUrl = narrationAudioUrl || audioUrl;
+        // Load audio — prioritize narration (user's recorded voice) over TTS, then per-scene audios
+        let effectiveAudioUrl = narrationAudioUrl || audioUrl;
+        
+        // Fallback: concatenate per-scene audios if no global audio
+        if (!effectiveAudioUrl && scenes.some(s => s.audioBase64)) {
+          try {
+            const concatenated = await concatenateSceneAudios(scenes);
+            if (concatenated) {
+              effectiveAudioUrl = concatenated.url;
+              console.log('[StoryPreviewPlayer] Using concatenated per-scene audios');
+            }
+          } catch (e) {
+            console.warn('[StoryPreviewPlayer] Scene audio concat failed:', e);
+          }
+        }
+        
         if (effectiveAudioUrl) {
           audioRef.current = new Audio(effectiveAudioUrl);
           audioRef.current.preload = 'auto';
