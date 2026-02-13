@@ -1009,11 +1009,8 @@ export default function TamTamSocial() {
 
   // Filter posts - improved logic to show all posts matching the category
   // ✅ FIX: Combine tamtam_posts AND videos table for complete feed
-  const getCurrentPosts = useMemo(() => {
-    const allPosts = posts.length > 0 ? posts : [];
-    
-    // Convert videos from videos table to post-like format for display
-    const videosAsVideoCards = videoFeedItems.map(v => ({
+  // OPTIMIZED: Separate useMemo for video card mapping (only recalculates when videoFeedItems changes)
+  const videosAsVideoCards = useMemo(() => videoFeedItems.map(v => ({
       id: v.id,
       audio_url: v.videoUrl, // For VideoFeedCard compatibility
       media_url: v.videoUrl,
@@ -1039,7 +1036,10 @@ export default function TamTamSocial() {
       metadata: v.metadata,
       // Flag to identify this is from videos table
       _sourceTable: 'videos',
-    }));
+    })), [videoFeedItems]);
+
+  const getCurrentPosts = useMemo(() => {
+    const allPosts = posts.length > 0 ? posts : [];
     
     switch (feedMode) {
       case 'patrimoine':

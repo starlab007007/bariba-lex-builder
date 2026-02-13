@@ -7,7 +7,8 @@ import ProgressDots from './ProgressDots';
 import ChoiceOverlay from './ChoiceOverlay';
 import EndingCard from './EndingCard';
 import SegmentTransition from './SegmentTransition';
-import type { StoryGraph, StorySegment } from '../types/story.types';
+import type { StoryGraph, StorySegment, StoryChoice } from '../types/story.types';
+import { useBranchPreload } from '../hooks/useBranchPreload';
 
 interface BranchingPlayerProps {
   graph: StoryGraph;
@@ -29,6 +30,7 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
   const bgMusicRef = useRef<HTMLAudioElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioUnlockedRef = useRef(false);
+  const { preloadSegments, getCachedUrl, cancelAll } = useBranchPreload();
 
   const seg = graph.segments[currentId];
   const totalEndings = Object.values(graph.segments).filter(s => s.is_ending).length;
@@ -89,19 +91,36 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
       }
     }
 
+    // Preload next segments' media for instant transitions
+    if (seg.is_choice_point && seg.choices?.length) {
+      const getVideoUrl = (segId: string) => {
+        const nextSeg = graph.segments[segId];
+        return nextSeg?.media_url || nextSeg?.video_url || nextSeg?.image_urls?.[0];
+      };
+      preloadSegments(seg.choices as StoryChoice[], getVideoUrl);
+    }
+
     return () => {
-      narrationRef.current?.pause();
+      // Cleanup audio sources on segment change to free memory
+      if (narrationRef.current) {
+        narrationRef.current.pause();
+        narrationRef.current.src = '';
+        narrationRef.current.load();
+      }
     };
-  }, [currentId, phase, seg]);
+  }, [currentId, phase, seg, preloadSegments, graph.segments]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       narrationRef.current?.pause();
+      if (narrationRef.current) { narrationRef.current.src = ''; narrationRef.current.load(); }
       bgMusicRef.current?.pause();
+      if (bgMusicRef.current) { bgMusicRef.current.src = ''; bgMusicRef.current.load(); }
       audioCtxRef.current?.close().catch(() => {});
+      cancelAll();
     };
-  }, []);
+  }, [cancelAll]);
 
   // Advance segment when narration audio ends (before timer)
   const advanceSegment = useCallback(() => {
@@ -203,8 +222,9 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
     }
   };
 
-  // Get media URL - check all possible sources
-  const mediaUrl = seg?.media_url || seg?.video_url || seg?.image_urls?.[0];
+  // Get media URL - check preload cache first, then all possible sources
+  const rawMediaUrl = seg?.media_url || seg?.video_url || seg?.image_urls?.[0];
+  const mediaUrl = getCachedUrl(currentId) || rawMediaUrl;
   const isVideo = seg?.mediaType === 'video' || !!seg?.video_url || (typeof mediaUrl === 'string' && /\.(mp4|webm|mov)/i.test(mediaUrl));
 
   if (!seg) return null;

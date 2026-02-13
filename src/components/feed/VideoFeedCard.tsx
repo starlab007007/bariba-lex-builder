@@ -65,15 +65,19 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     }
   }, [isActive, isMuted]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount — revoke blob URLs
   useEffect(() => {
+    const currentVideoUrl = videoUrl;
     return () => {
       if (videoRef.current) {
         videoRef.current.pause();
         videoRef.current.src = '';
       }
+      if (currentVideoUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(currentVideoUrl);
+      }
     };
-  }, []);
+  }, [videoUrl]);
 
   const handleProfileClick = useCallback(() => {
     if (authorId) navigate(`/fitila/profile/${authorId}`);
@@ -145,7 +149,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
           loop 
           muted={isMuted}
           playsInline 
-          preload={isActive ? 'auto' : 'none'} 
+          preload={isActive ? 'auto' : 'metadata'} 
           onLoadedData={() => setIsLoaded(true)} 
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
         />

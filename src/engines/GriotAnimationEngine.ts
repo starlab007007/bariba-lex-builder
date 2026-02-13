@@ -180,45 +180,55 @@ export class GriotAnimationEngine {
     this.disposeSceneVideos();
     this.scenes = [];
     
-    for (const scene of sceneData) {
+    // OPTIMIZED: Load all scenes in parallel instead of sequentially
+    const loadPromises = sceneData.map(async (scene) => {
       const motionPlan = this.generateCinematicMotionPlan(scene.emotion);
       const mediaUrl = scene.videoUrl || scene.imageUrl;
       
       if (mediaUrl && this.isVideoUrl(mediaUrl)) {
         try {
           const videoEl = await this.loadVideo(mediaUrl);
-          this.scenes.push({
-            image: videoEl, video: videoEl,
+          return {
+            image: videoEl as SceneMediaSource, video: videoEl,
             startTime: scene.startTime, endTime: scene.endTime,
             emotion: scene.emotion, motionPlan
-          });
-          console.log(`[GriotEngine] Scene loaded as VIDEO: ${mediaUrl.substring(mediaUrl.lastIndexOf('/') + 1)}`);
-        } catch (err) {
-          console.warn(`[GriotEngine] Video load failed, trying as image:`, err);
+          } as AnimatedScene;
+        } catch {
           try {
             const img = await this.loadImage(scene.imageUrl);
-            this.scenes.push({
+            return {
               image: img, startTime: scene.startTime, endTime: scene.endTime,
               emotion: scene.emotion, motionPlan
-            });
+            } as AnimatedScene;
           } catch {
             console.error(`[GriotEngine] Scene ${scene.startTime}s: both video and image load failed`);
+            return null;
           }
         }
       } else if (mediaUrl) {
         try {
           const img = await this.loadImage(mediaUrl);
-          this.scenes.push({
+          return {
             image: img, startTime: scene.startTime, endTime: scene.endTime,
             emotion: scene.emotion, motionPlan
-          });
-        } catch (err) {
-          console.warn(`[GriotEngine] Image load failed for scene at ${scene.startTime}s:`, err);
+          } as AnimatedScene;
+        } catch {
+          return null;
         }
+      }
+      return null;
+    });
+    
+    const results = await Promise.allSettled(loadPromises);
+    
+    // Maintain original order, filter out failures
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        this.scenes.push(result.value);
       }
     }
     
-    console.log(`[GriotEngine] Loaded ${this.scenes.length} scenes (${this.scenes.filter(s => !!s.video).length} videos)`);
+    console.log(`[GriotEngine] Loaded ${this.scenes.length}/${sceneData.length} scenes in parallel (${this.scenes.filter(s => !!s.video).length} videos)`);
   }
 
   private async loadImage(url: string): Promise<HTMLImageElement> {
@@ -268,7 +278,7 @@ export class GriotAnimationEngine {
         } else {
           reject(new Error(`Video load timeout: ${url.substring(url.lastIndexOf('/') + 1)}`));
         }
-      }, 15000);
+      }, 8000);
     });
   }
 
@@ -765,60 +775,7 @@ export class GriotAnimationEngine {
     this.scenes.forEach(s => { if (s.video && !s.video.paused) s.video.pause(); });
   }
 
-  async renderFrames(
-    image: SceneMediaSource, duration: number, motionPlan: MotionPlan,
-    style: AnimationStyle, emotionSegments: EmotionSegment[],
-    fps: number = 30, onProgress?: (progress: number, message: string) => void
-  ): Promise<Blob[]> {
-    const frames: Blob[] = [];
-    const totalFrames = Math.floor(duration * fps);
-    this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
-    for (let frame = 0; frame < totalFrames; frame++) {
-      const time = frame / fps;
-      const progress = frame / totalFrames;
-      this.ctx.clearRect(0, 0, this.width, this.height);
-      this.ctx.filter = 'none';
-      const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
-      this.drawAnimatedImage(image, time, duration, motionPlan);
-      this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
-      this.drawLensFlare(time, emotion, intensity);
-      this.drawVignette(0.3);
-      this.drawNarratorAvatar(time);
-      const blob = await new Promise<Blob>((resolve) => { this.canvas.toBlob((b) => resolve(b!), 'image/png'); });
-      frames.push(blob);
-      onProgress?.(progress, `Rendu frame ${frame + 1}/${totalFrames}`);
-    }
-    return frames;
-  }
-
-  async renderSlideshowFrames(
-    duration: number, style: AnimationStyle,
-    fps: number = 30, onProgress?: (progress: number, message: string) => void
-  ): Promise<Blob[]> {
-    const frames: Blob[] = [];
-    const totalFrames = Math.floor(duration * fps);
-    const emotionSegments: EmotionSegment[] = this.scenes.map(scene => ({
-      startTime: scene.startTime, endTime: scene.endTime,
-      emotion: scene.emotion, intensity: 0.7
-    }));
-    this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
-    for (let frame = 0; frame < totalFrames; frame++) {
-      const time = frame / fps;
-      const progress = frame / totalFrames;
-      this.ctx.clearRect(0, 0, this.width, this.height);
-      this.ctx.filter = 'none';
-      const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
-      this.drawCurrentScene(time, duration);
-      this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
-      this.drawLensFlare(time, emotion, intensity);
-      this.drawVignette(0.3);
-      this.drawNarratorAvatar(time);
-      const blob = await new Promise<Blob>((resolve) => { this.canvas.toBlob((b) => resolve(b!), 'image/png'); });
-      frames.push(blob);
-      onProgress?.(progress, `Rendu frame ${frame + 1}/${totalFrames}`);
-    }
-    return frames;
-  }
+  // renderFrames and renderSlideshowFrames removed — unused in pipeline (PublishStep uses captureStream)
 
   /**
    * Export video blob — now at 30fps

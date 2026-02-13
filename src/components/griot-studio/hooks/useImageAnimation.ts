@@ -234,18 +234,17 @@ export function useImageAnimation(canvasRef: React.RefObject<HTMLCanvasElement>)
     // Preload flares
     await engineRef.current.preloadFlares(style);
 
-    // Render frames
-    const frames = await engineRef.current.renderFrames(
-      imageRef.current,
+    // Use captureStream-based export instead of removed renderFrames
+    const blob = await engineRef.current.exportVideoBlob(
       duration,
-      analysisResult.motionPlan,
       style,
-      analysisResult.emotionSegments,
       fps,
-      (progress, message) => {
-        setState(prev => ({ ...prev, progress, message }));
+      (progress) => {
+        setState(prev => ({ ...prev, progress, message: `Export ${Math.round(progress * 100)}%` }));
       }
     );
+
+    const frames = [blob]; // Wrap in array for compatibility
 
     setState(prev => ({ ...prev, isRendering: false, message: 'Rendu terminé!' }));
 

@@ -117,6 +117,8 @@ export function GriotStudio() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GriotAnimationEngine | null>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const pendingScenesRef = useRef<any>(null);
+  const concatenatedAudioRef = useRef<{ url: string; blob: Blob } | null>(null);
 
   // State
   const [step, setStep] = useState<StudioStep>('create');
@@ -173,13 +175,13 @@ export function GriotStudio() {
         if (!engineRef.current) {
           engineRef.current = new GriotAnimationEngine(canvasRef.current);
         }
-        const pending = (window as any).__griotPendingScenes;
+        const pending = pendingScenesRef.current;
         if (pending && engineRef.current) {
           try {
             await engineRef.current.loadScenes(pending.scenes);
             if (pending.narratorUrl) await engineRef.current.loadNarratorAvatar(pending.narratorUrl);
             if (pending.audioUrl) engineRef.current.setAudio(pending.audioUrl);
-            delete (window as any).__griotPendingScenes;
+            pendingScenesRef.current = null;
           } catch (err) {
             console.error('[GriotStudio] Failed to load scenes:', err);
           }
@@ -340,7 +342,7 @@ export function GriotStudio() {
         return sceneData;
       }).filter(s => s.imageUrl || s.videoUrl);
 
-      (window as any).__griotPendingScenes = {
+      pendingScenesRef.current = {
         scenes: scenesWithTiming,
         narratorUrl: narratorPreviewUrl,
         audioUrl: result.audioUrl,
@@ -349,14 +351,15 @@ export function GriotStudio() {
 
       setTranscribedStory(editableScenes.map(s => s.text).join(' '));
 
-      // Concatenate per-scene TTS audios into narration (overrides original recording)
+      // Concatenate per-scene TTS audios into narration (centralized, single concatenation)
       if (result.scenes.some(s => s.audioBase64)) {
         try {
           const concatenated = await concatenateSceneAudios(result.scenes);
           if (concatenated) {
+            concatenatedAudioRef.current = concatenated;
             setNarrationAudioUrl(concatenated.url);
             setAudioBlob(concatenated.blob);
-            console.log('[GriotStudio] Concatenated per-scene audios into narration');
+            console.log('[GriotStudio] Concatenated per-scene audios (centralized)');
           }
         } catch (e) {
           console.warn('[GriotStudio] Failed to concatenate scene audios:', e);
@@ -401,7 +404,7 @@ export function GriotStudio() {
         return data;
       }).filter(s => s.imageUrl || s.videoUrl);
 
-      (window as any).__griotPendingScenes = {
+      pendingScenesRef.current = {
         scenes: scenesWithTiming,
         narratorUrl: narratorPreviewUrl,
         audioUrl: narrationAudioUrl,

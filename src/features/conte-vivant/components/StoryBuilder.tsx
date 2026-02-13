@@ -212,13 +212,19 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
       setIsBatchGenerating(true);
       setBatchProgress({ current: 0, total: allSegments.length });
 
-      for (let i = 0; i < allSegments.length; i++) {
-        setBatchProgress({ current: i + 1, total: allSegments.length });
-        const result = await generateTTSForSegment(allSegments[i].seg.text_content, allSegments[i].seg);
-        if (result) {
-          allSegments[i].setter(result);
+      // OPTIMIZED: Generate all TTS in parallel instead of sequentially
+      const ttsPromises = allSegments.map((item, i) =>
+        generateTTSForSegment(item.seg.text_content, item.seg).then(result => {
+          setBatchProgress(prev => ({ ...prev, current: prev.current + 1 }));
+          return { index: i, result };
+        })
+      );
+      const ttsResults = await Promise.allSettled(ttsPromises);
+      ttsResults.forEach(r => {
+        if (r.status === 'fulfilled' && r.value.result) {
+          allSegments[r.value.index].setter(r.value.result);
         }
-      }
+      });
       setIsBatchGenerating(false);
       toast.success('🎙️ Toutes les voix ont été générées');
 
@@ -241,8 +247,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
       <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10">
         <div className="w-12 h-20 rounded-md overflow-hidden bg-white/5 flex-shrink-0 relative">
           {hasMedia ? (
-            isVideo ? <video src={seg.media_url} className="w-full h-full object-cover" muted playsInline />
-              : <img src={seg.media_url} alt="" className="w-full h-full object-cover" />
+            <img src={seg.media_url} alt="" className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">—</div>
           )}
