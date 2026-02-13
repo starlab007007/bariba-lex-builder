@@ -2033,7 +2033,7 @@ export type Database = {
           action_buttons: Json | null
           audio_narration_ba_url: string | null
           audio_narration_url: string | null
-          audio_url: string
+          audio_url: string | null
           comments_count: number | null
           comprehension_score: number | null
           created_at: string | null
@@ -2064,7 +2064,7 @@ export type Database = {
           action_buttons?: Json | null
           audio_narration_ba_url?: string | null
           audio_narration_url?: string | null
-          audio_url: string
+          audio_url?: string | null
           comments_count?: number | null
           comprehension_score?: number | null
           created_at?: string | null
@@ -2095,7 +2095,7 @@ export type Database = {
           action_buttons?: Json | null
           audio_narration_ba_url?: string | null
           audio_narration_url?: string | null
-          audio_url?: string
+          audio_url?: string | null
           comments_count?: number | null
           comprehension_score?: number | null
           created_at?: string | null

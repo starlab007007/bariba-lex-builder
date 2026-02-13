@@ -1,0 +1,1 @@
+ALTER TABLE public.tamtam_posts ALTER COLUMN audio_url DROP NOT NULL;
