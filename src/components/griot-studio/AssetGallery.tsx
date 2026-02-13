@@ -81,7 +81,8 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         .from('anime_scene_library')
         .select('id, image_url, scene_type, character_type, emotion, description_fr, description_en, action, time_of_day, asset_type, video_url, video_duration')
         .eq('style', 'african')
-        .order('scene_type');
+        .order('scene_type')
+        .range(0, 99);
       if (error) throw error;
       return (data || []) as LibraryAsset[];
     },

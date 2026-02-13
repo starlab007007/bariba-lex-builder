@@ -27,7 +27,7 @@ import type { TrimInfo } from '@/components/tamtam/creator/AudioLibrary';
 import type { AudioTrack } from '@/types/audio';
 import type { StoryScene } from './hooks/useAnimeStoryGenerator';
 import { VinylRecorder } from './VinylRecorder';
-import { concatenateSceneAudios } from '@/utils/concatenateSceneAudios';
+// concatenateSceneAudios removed — now centralized in GriotStudio.tsx
 
 type AudioMode = 'voice_only' | 'music_only' | 'voice_and_music';
 
@@ -93,17 +93,8 @@ export function PublishStep({
   const previewSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const [scenesConcatenatedUrl, setScenesConcatenatedUrl] = useState<string | null>(null);
 
-  // Concatenate per-scene audios (priority over original narration)
-  useEffect(() => {
-    if (scenes.some(s => s.audioBase64)) {
-      concatenateSceneAudios(scenes).then(result => {
-        if (result) {
-          setScenesConcatenatedUrl(result.url);
-          console.log('[PublishStep] Concatenated per-scene audios as fallback');
-        }
-      }).catch(e => console.warn('[PublishStep] Scene audio concat failed:', e));
-    }
-  }, [scenes, narrationAudioUrl, audioUrl]);
+  // Per-scene audio concatenation is now centralized in GriotStudio.tsx
+  // narrationAudioUrl already contains the concatenated result if applicable
 
   // Effective narration URL: concatenated scenes (generated voices) > local recording > original narration > global audio
   const effectiveNarrationUrl = scenesConcatenatedUrl || localNarrationUrl || narrationAudioUrl || audioUrl;

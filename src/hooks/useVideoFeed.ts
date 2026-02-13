@@ -110,9 +110,11 @@ export function useVideoFeed(): UseVideoFeedReturn {
     }
   }, []);
 
+  const loadMoreDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   const loadMore = useCallback(async () => {
     if (!hasMore || isFetchingRef.current) return;
-    await fetchVideos(false);
+    clearTimeout(loadMoreDebounceRef.current);
+    loadMoreDebounceRef.current = setTimeout(() => fetchVideos(false), 300);
   }, [hasMore, fetchVideos]);
 
   useEffect(() => {
@@ -128,11 +130,28 @@ export function useVideoFeed(): UseVideoFeedReturn {
           schema: 'public',
           table: 'videos'
         },
-        (payload) => {
+        async (payload) => {
           console.log('New video added:', payload);
-          // Add new video to top of list instead of full refetch
           const v = payload.new as any;
           if (v.is_public) {
+            // Fetch profile info for the new video
+            let authorName = v.template_name || 'Créateur FITILA';
+            let authorUsername = '@fitila_user';
+            let authorAvatar: string | undefined;
+            if (v.user_id) {
+              try {
+                const { data: profile } = await supabase
+                  .from('tamtam_profiles')
+                  .select('display_name, username, avatar_url')
+                  .eq('user_id', v.user_id)
+                  .single();
+                if (profile) {
+                  authorName = profile.display_name || authorName;
+                  authorUsername = profile.username ? `@${profile.username}` : authorUsername;
+                  authorAvatar = profile.avatar_url || undefined;
+                }
+              } catch {}
+            }
             const newVideo: FeedVideo = {
               id: v.id,
               videoUrl: v.video_url,
@@ -149,9 +168,9 @@ export function useVideoFeed(): UseVideoFeedReturn {
               metadata: v.metadata || null,
               author: {
                 id: v.user_id,
-                name: v.template_name || 'Créateur FITILA',
-                username: '@fitila_user',
-                avatarUrl: undefined
+                name: authorName,
+                username: authorUsername,
+                avatarUrl: authorAvatar
               }
             };
             setVideos(prev => [newVideo, ...prev]);

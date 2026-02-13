@@ -8,7 +8,6 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { concatenateSceneAudios } from '@/utils/concatenateSceneAudios';
 import { GriotAnimationEngine, ANIMATION_STYLES, AnimationStyle } from '@/engines/GriotAnimationEngine';
 import type { StoryScene } from './hooks/useAnimeStoryGenerator';
 
@@ -89,18 +88,8 @@ export function StoryPreviewPlayer({
         // Load audio — per-scene generated voices take priority over original narration
         let effectiveAudioUrl: string | undefined = undefined;
         
-        // First: concatenate per-scene audios if they exist (generated voices)
-        if (scenes.some(s => s.audioBase64)) {
-          try {
-            const concatenated = await concatenateSceneAudios(scenes);
-            if (concatenated) {
-              effectiveAudioUrl = concatenated.url;
-              console.log('[StoryPreviewPlayer] Using concatenated per-scene audios');
-            }
-          } catch (e) {
-            console.warn('[StoryPreviewPlayer] Scene audio concat failed:', e);
-          }
-        }
+        // Use narration URL directly (already concatenated in GriotStudio)
+        // No redundant concatenation here
         
         // Fallback: use original narration or global audio if no per-scene audios
         if (!effectiveAudioUrl) {
@@ -331,17 +320,7 @@ export function StoryPreviewPlayer({
                     : "border-amber-500/30 hover:border-amber-500/50"
                 )}
               >
-                {scene.videoUrl ? (
-                  <video
-                    src={scene.videoUrl}
-                    poster={scene.imageUrl}
-                    muted
-                    loop
-                    playsInline
-                    autoPlay
-                    className="w-full h-full object-cover"
-                  />
-                ) : scene.imageUrl ? (
+              {scene.imageUrl ? (
                   <img 
                     src={scene.imageUrl} 
                     alt={`Scène ${i + 1}`}
