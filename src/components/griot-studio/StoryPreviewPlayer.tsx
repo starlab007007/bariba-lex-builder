@@ -86,11 +86,11 @@ export function StoryPreviewPlayer({
           await engineRef.current.loadNarratorAvatar(narratorAvatarUrl);
         }
         
-        // Load audio — prioritize narration (user's recorded voice) over TTS, then per-scene audios
-        let effectiveAudioUrl = narrationAudioUrl || audioUrl;
+        // Load audio — per-scene generated voices take priority over original narration
+        let effectiveAudioUrl: string | undefined = undefined;
         
-        // Fallback: concatenate per-scene audios if no global audio
-        if (!effectiveAudioUrl && scenes.some(s => s.audioBase64)) {
+        // First: concatenate per-scene audios if they exist (generated voices)
+        if (scenes.some(s => s.audioBase64)) {
           try {
             const concatenated = await concatenateSceneAudios(scenes);
             if (concatenated) {
@@ -100,6 +100,11 @@ export function StoryPreviewPlayer({
           } catch (e) {
             console.warn('[StoryPreviewPlayer] Scene audio concat failed:', e);
           }
+        }
+        
+        // Fallback: use original narration or global audio if no per-scene audios
+        if (!effectiveAudioUrl) {
+          effectiveAudioUrl = narrationAudioUrl || audioUrl;
         }
         
         if (effectiveAudioUrl) {
