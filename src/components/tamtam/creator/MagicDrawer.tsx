@@ -59,11 +59,9 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
     { id: 'inspiring' as const, label: 'Idées', icon: <Lightbulb className="w-4 h-4" /> },
   ];
 
-  // EARLY RETURN AFTER ALL HOOKS
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
+      {isOpen && (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -336,6 +334,7 @@ export const MagicDrawer: React.FC<MagicDrawerProps> = ({
           </div>
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 };

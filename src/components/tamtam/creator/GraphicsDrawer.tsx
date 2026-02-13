@@ -77,11 +77,9 @@ export const GraphicsDrawer: React.FC<GraphicsDrawerProps> = ({
     }
   };
 
-  // EARLY RETURN AFTER ALL HOOKS
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
+      {isOpen && (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -195,6 +193,7 @@ export const GraphicsDrawer: React.FC<GraphicsDrawerProps> = ({
           </div>
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 };
