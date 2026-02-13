@@ -19,6 +19,8 @@ export interface StoryScene {
   imageBase64?: string;
   imageUrl?: string;
   videoUrl?: string;
+  audioBase64?: string;
+  audioUrl?: string;
 }
 
 export interface GenerationState {
@@ -220,9 +222,15 @@ export function useAnimeStoryGenerator() {
         return { ...scene, imageUrl: makeScenePlaceholderDataUrl(scene) };
       });
 
-      // No TTS generation — user's recorded narration is used directly
+      // Attach per-scene TTS audio from SceneEditor if available
+      const scenesWithAudio = scenesWithUrls.map((scene, i) => ({
+        ...scene,
+        audioBase64: editedScenes[i]?.audioBase64,
+        audioUrl: editedScenes[i]?.audioUrl,
+      }));
+
       const generationResult: GenerationResult = {
-        scenes: scenesWithUrls,
+        scenes: scenesWithAudio,
         totalDuration
       };
 
