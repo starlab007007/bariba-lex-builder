@@ -10,6 +10,12 @@ import { supabase } from '@/integrations/supabase/client';
 import type { AnimeStyleName } from '../AnimeStyleSelector';
 import type { EditableScene } from '../SceneEditor';
 
+export interface StitchedClip {
+  videoUrl: string;
+  startTime: number;
+  endTime: number;
+}
+
 export interface StoryScene {
   sceneNumber: number;
   text: string;
@@ -19,6 +25,8 @@ export interface StoryScene {
   imageBase64?: string;
   imageUrl?: string;
   videoUrl?: string;
+  videoDuration?: number;
+  stitchedClips?: StitchedClip[];
   audioBase64?: string;
   audioUrl?: string;
 }

@@ -1,7 +1,6 @@
 /**
- * Griot Animation Engine v6.1
- * Enhanced for anime slideshow with narrator avatar overlay
- * Supports multiple scene images with Ken Burns + transitions
+ * Griot Animation Engine v7.0
+ * Enhanced: cinematic motion (ease curves, composite movements, breathing), 30fps, video ping-pong looping
  */
 
 export interface FocusPoint {
@@ -16,6 +15,10 @@ export interface MotionPlan {
   startPoint: { x: number; y: number };
   endPoint: { x: number; y: number };
   focusPoints: FocusPoint[];
+  // v7: composite motion
+  secondaryDirection?: 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' | 'none';
+  secondaryIntensity?: number;
+  breathingAmplitude?: number;
 }
 
 export interface EmotionSegment {
@@ -38,88 +41,46 @@ export interface AnimationStyle {
   vfxConfig: VFXConfig;
 }
 
-// Extended styles for anime
 export const ANIMATION_STYLES: Record<string, AnimationStyle> = {
   traditional: {
     name: 'traditional',
     filter: 'sepia(0.3) contrast(1.1) saturate(1.1)',
-    vfxConfig: {
-      flareRange: [1, 100],
-      leakOpacity: 0.3,
-      particleCount: 20,
-      glowColor: '#FFD700'
-    }
+    vfxConfig: { flareRange: [1, 100], leakOpacity: 0.3, particleCount: 20, glowColor: '#FFD700' }
   },
   watercolor: {
     name: 'watercolor',
     filter: 'blur(0.3px) saturate(1.3) brightness(1.05)',
-    vfxConfig: {
-      flareRange: [100, 200],
-      leakOpacity: 0.4,
-      particleCount: 15,
-      glowColor: '#87CEEB'
-    }
+    vfxConfig: { flareRange: [100, 200], leakOpacity: 0.4, particleCount: 15, glowColor: '#87CEEB' }
   },
   cutout: {
     name: 'cutout',
     filter: 'contrast(1.4) saturate(0.9)',
-    vfxConfig: {
-      flareRange: [200, 300],
-      leakOpacity: 0.25,
-      particleCount: 10,
-      glowColor: '#8B4513'
-    }
+    vfxConfig: { flareRange: [200, 300], leakOpacity: 0.25, particleCount: 10, glowColor: '#8B4513' }
   },
   fairytale: {
     name: 'fairytale',
     filter: 'brightness(1.1) hue-rotate(10deg) saturate(1.2)',
-    vfxConfig: {
-      flareRange: [300, 400],
-      leakOpacity: 0.5,
-      particleCount: 30,
-      glowColor: '#FF69B4'
-    }
+    vfxConfig: { flareRange: [300, 400], leakOpacity: 0.5, particleCount: 30, glowColor: '#FF69B4' }
   },
-  // Anime styles
   manga: {
     name: 'manga',
     filter: 'contrast(1.3) grayscale(0.1)',
-    vfxConfig: {
-      flareRange: [1, 50],
-      leakOpacity: 0.2,
-      particleCount: 10,
-      glowColor: '#FFFFFF'
-    }
+    vfxConfig: { flareRange: [1, 50], leakOpacity: 0.2, particleCount: 10, glowColor: '#FFFFFF' }
   },
   chibi: {
     name: 'chibi',
     filter: 'brightness(1.1) saturate(1.3)',
-    vfxConfig: {
-      flareRange: [300, 400],
-      leakOpacity: 0.4,
-      particleCount: 25,
-      glowColor: '#FFB6C1'
-    }
+    vfxConfig: { flareRange: [300, 400], leakOpacity: 0.4, particleCount: 25, glowColor: '#FFB6C1' }
   },
   fantasy: {
     name: 'fantasy',
     filter: 'brightness(1.05) saturate(1.2) hue-rotate(5deg)',
-    vfxConfig: {
-      flareRange: [200, 350],
-      leakOpacity: 0.45,
-      particleCount: 35,
-      glowColor: '#9370DB'
-    }
+    vfxConfig: { flareRange: [200, 350], leakOpacity: 0.45, particleCount: 35, glowColor: '#9370DB' }
   },
   african: {
     name: 'african',
     filter: 'sepia(0.2) saturate(1.3) contrast(1.1)',
-    vfxConfig: {
-      flareRange: [1, 100],
-      leakOpacity: 0.35,
-      particleCount: 20,
-      glowColor: '#FF8C00'
-    }
+    vfxConfig: { flareRange: [1, 100], leakOpacity: 0.35, particleCount: 20, glowColor: '#FF8C00' }
   }
 };
 
@@ -143,17 +104,24 @@ interface Particle {
   angle: number;
 }
 
-// Media source can be image or video
 type SceneMediaSource = HTMLImageElement | HTMLVideoElement;
 
-// Scene for slideshow mode
 export interface AnimatedScene {
   image: SceneMediaSource;
-  video?: HTMLVideoElement; // if source is video, also stored here for lifecycle management
+  video?: HTMLVideoElement;
   startTime: number;
   endTime: number;
   emotion: string;
   motionPlan: MotionPlan;
+}
+
+// ─── Easing functions ───────────────────────────────────────────────
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function easeInOutQuad(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
 export class GriotAnimationEngine {
@@ -166,7 +134,6 @@ export class GriotAnimationEngine {
   private animationId: number | null = null;
   private startTime: number = 0;
 
-  // Slideshow mode
   private scenes: AnimatedScene[] = [];
   private narratorAvatar: HTMLImageElement | null = null;
   private audioElement: HTMLAudioElement | null = null;
@@ -180,48 +147,29 @@ export class GriotAnimationEngine {
     this.height = canvas.height;
   }
 
-  /**
-   * Set narrator avatar image
-   */
   setNarratorAvatar(image: HTMLImageElement | null): void {
     this.narratorAvatar = image;
   }
 
-  /**
-   * Load narrator avatar from URL
-   */
   async loadNarratorAvatar(url: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => {
-        this.narratorAvatar = img;
-        resolve();
-      };
+      img.onload = () => { this.narratorAvatar = img; resolve(); };
       img.onerror = reject;
       img.src = url;
     });
   }
 
-  /**
-   * Set audio for playback sync
-   */
   setAudio(audioUrl: string): void {
     this.audioElement = new Audio(audioUrl);
     this.audioElement.preload = 'auto';
   }
 
-  /**
-   * Check if URL points to a video file
-   */
   private isVideoUrl(url: string): boolean {
     const lower = url.toLowerCase();
     return lower.includes('.mp4') || lower.includes('.webm') || lower.includes('.mov') || lower.includes('.ogg');
   }
 
-  /**
-   * Load scenes for slideshow mode
-   * Supports both image and video assets
-   */
   async loadScenes(sceneData: Array<{
     imageUrl: string;
     videoUrl?: string;
@@ -229,55 +177,40 @@ export class GriotAnimationEngine {
     endTime: number;
     emotion: string;
   }>): Promise<void> {
-    // Cleanup previous video elements
     this.disposeSceneVideos();
     this.scenes = [];
     
     for (const scene of sceneData) {
-      const motionPlan = this.generateMotionPlan(scene.emotion);
-      
-      // Determine best media source: prefer videoUrl, fallback to imageUrl
+      const motionPlan = this.generateCinematicMotionPlan(scene.emotion);
       const mediaUrl = scene.videoUrl || scene.imageUrl;
       
       if (mediaUrl && this.isVideoUrl(mediaUrl)) {
-        // Load as video element
         try {
           const videoEl = await this.loadVideo(mediaUrl);
           this.scenes.push({
-            image: videoEl,
-            video: videoEl,
-            startTime: scene.startTime,
-            endTime: scene.endTime,
-            emotion: scene.emotion,
-            motionPlan
+            image: videoEl, video: videoEl,
+            startTime: scene.startTime, endTime: scene.endTime,
+            emotion: scene.emotion, motionPlan
           });
           console.log(`[GriotEngine] Scene loaded as VIDEO: ${mediaUrl.substring(mediaUrl.lastIndexOf('/') + 1)}`);
         } catch (err) {
           console.warn(`[GriotEngine] Video load failed, trying as image:`, err);
-          // Fallback: try loading as image (some servers serve video thumbnails)
           try {
             const img = await this.loadImage(scene.imageUrl);
             this.scenes.push({
-              image: img,
-              startTime: scene.startTime,
-              endTime: scene.endTime,
-              emotion: scene.emotion,
-              motionPlan
+              image: img, startTime: scene.startTime, endTime: scene.endTime,
+              emotion: scene.emotion, motionPlan
             });
           } catch {
             console.error(`[GriotEngine] Scene ${scene.startTime}s: both video and image load failed`);
           }
         }
       } else if (mediaUrl) {
-        // Load as image
         try {
           const img = await this.loadImage(mediaUrl);
           this.scenes.push({
-            image: img,
-            startTime: scene.startTime,
-            endTime: scene.endTime,
-            emotion: scene.emotion,
-            motionPlan
+            image: img, startTime: scene.startTime, endTime: scene.endTime,
+            emotion: scene.emotion, motionPlan
           });
         } catch (err) {
           console.warn(`[GriotEngine] Image load failed for scene at ${scene.startTime}s:`, err);
@@ -285,7 +218,7 @@ export class GriotAnimationEngine {
       }
     }
     
-    console.log(`[GriotEngine] Loaded ${this.scenes.length} scenes for slideshow (${this.scenes.filter(s => !!s.video).length} videos)`);
+    console.log(`[GriotEngine] Loaded ${this.scenes.length} scenes (${this.scenes.filter(s => !!s.video).length} videos)`);
   }
 
   private async loadImage(url: string): Promise<HTMLImageElement> {
@@ -298,9 +231,6 @@ export class GriotAnimationEngine {
     });
   }
 
-  /**
-   * Load a video element for canvas rendering
-   */
   private async loadVideo(url: string): Promise<HTMLVideoElement> {
     return new Promise((resolve, reject) => {
       const video = document.createElement('video');
@@ -314,7 +244,6 @@ export class GriotAnimationEngine {
       const onReady = () => {
         video.removeEventListener('canplaythrough', onReady);
         video.removeEventListener('error', onError);
-        // Start playing so drawImage can capture frames
         video.play().catch(() => {});
         console.log(`[GriotEngine] Video ready: ${video.videoWidth}x${video.videoHeight}, ${video.duration.toFixed(1)}s`);
         resolve(video);
@@ -328,15 +257,11 @@ export class GriotAnimationEngine {
       
       video.addEventListener('canplaythrough', onReady);
       video.addEventListener('error', onError);
-      
-      // Force load
       video.load();
       
-      // Timeout after 15s
       setTimeout(() => {
         video.removeEventListener('canplaythrough', onReady);
         video.removeEventListener('error', onError);
-        // If we have some data, resolve anyway
         if (video.readyState >= 2) {
           video.play().catch(() => {});
           resolve(video);
@@ -347,9 +272,6 @@ export class GriotAnimationEngine {
     });
   }
 
-  /**
-   * Cleanup video elements from scenes
-   */
   private disposeSceneVideos(): void {
     for (const scene of this.scenes) {
       if (scene.video) {
@@ -361,68 +283,77 @@ export class GriotAnimationEngine {
   }
 
   /**
-   * Generate motion plan based on emotion
+   * DÉFI 2: Cinematic motion plan with composite movements, emotion-driven intensity, breathing
    */
-  private generateMotionPlan(emotion: string): MotionPlan {
-    const directions: MotionPlan['direction'][] = ['zoom-in', 'zoom-out', 'pan-left', 'pan-right', 'pan-up', 'pan-down'];
-    
-    // Emotion-based motion selection
+  private generateCinematicMotionPlan(emotion: string): MotionPlan {
     let direction: MotionPlan['direction'];
     let intensity: number;
-    
+    let secondaryDirection: MotionPlan['secondaryDirection'] = 'none';
+    let secondaryIntensity = 0;
+    let breathingAmplitude = 0.003; // subtle default breathing
+
     switch (emotion) {
       case 'joy':
       case 'excitement':
         direction = 'zoom-in';
         intensity = 0.6;
+        secondaryDirection = 'pan-right';
+        secondaryIntensity = 0.3;
+        breathingAmplitude = 0.005;
         break;
       case 'sadness':
         direction = 'zoom-out';
-        intensity = 0.3;
+        intensity = 0.25;
+        secondaryDirection = 'pan-down';
+        secondaryIntensity = 0.15;
+        breathingAmplitude = 0.002;
         break;
       case 'wonder':
         direction = 'pan-up';
         intensity = 0.4;
+        secondaryDirection = 'pan-right';
+        secondaryIntensity = 0.2;
+        breathingAmplitude = 0.004;
         break;
       case 'fear':
       case 'tension':
-        direction = directions[Math.floor(Math.random() * 2) + 2]; // pan-left or pan-right
+        direction = Math.random() > 0.5 ? 'pan-left' : 'pan-right';
         intensity = 0.7;
+        secondaryDirection = 'pan-up';
+        secondaryIntensity = 0.25;
+        breathingAmplitude = 0.006;
         break;
       case 'peace':
         direction = 'pan-down';
-        intensity = 0.2;
+        intensity = 0.15;
+        secondaryDirection = 'none';
+        secondaryIntensity = 0;
+        breathingAmplitude = 0.002;
         break;
       default:
-        direction = directions[Math.floor(Math.random() * directions.length)];
-        intensity = 0.4;
+        direction = ['zoom-in', 'zoom-out', 'pan-left', 'pan-right', 'pan-up', 'pan-down'][Math.floor(Math.random() * 6)] as MotionPlan['direction'];
+        intensity = 0.35;
+        breathingAmplitude = 0.003;
     }
     
     return {
-      direction,
-      intensity,
+      direction, intensity,
       startPoint: { x: 0.5, y: 0.5 },
       endPoint: { x: 0.5, y: 0.4 },
-      focusPoints: [
-        { x: 0.5, y: 0.5, weight: 1 },
-        { x: 0.5, y: 0.4, weight: 1 }
-      ]
+      focusPoints: [{ x: 0.5, y: 0.5, weight: 1 }, { x: 0.5, y: 0.4, weight: 1 }],
+      secondaryDirection, secondaryIntensity,
+      breathingAmplitude,
     };
   }
 
-  /**
-   * Preload lens flare assets for a style
-   */
   async preloadFlares(style: AnimationStyle): Promise<void> {
     const [start, end] = style.vfxConfig.flareRange;
     const flaresToLoad = Math.min(10, end - start + 1);
-    
     const promises: Promise<void>[] = [];
     for (let i = 0; i < flaresToLoad; i++) {
       const index = start + Math.floor((end - start) * (i / flaresToLoad));
       promises.push(this.loadFlare(index));
     }
-    
     await Promise.allSettled(promises);
     console.log(`[GriotEngine] Loaded ${this.flareImages.size} flares for ${style.name}`);
   }
@@ -430,18 +361,12 @@ export class GriotAnimationEngine {
   private async loadFlare(index: number): Promise<void> {
     return new Promise((resolve) => {
       const img = new Image();
-      img.onload = () => {
-        this.flareImages.set(index, img);
-        resolve();
-      };
+      img.onload = () => { this.flareImages.set(index, img); resolve(); };
       img.onerror = () => resolve();
       img.src = `/assets/envato/lens-flare/flare-${index.toString().padStart(3, '0')}.png`;
     });
   }
 
-  /**
-   * Initialize particles for the scene
-   */
   initParticles(count: number, glowColor: string): void {
     this.particles = [];
     for (let i = 0; i < count; i++) {
@@ -456,22 +381,13 @@ export class GriotAnimationEngine {
     }
   }
 
-  /**
-   * Interpolate between focus points based on progress
-   */
   private interpolateFocusPoint(focusPoints: FocusPoint[], progress: number): { x: number; y: number } {
     if (focusPoints.length === 0) return { x: 0.5, y: 0.5 };
     if (focusPoints.length === 1) return { x: focusPoints[0].x, y: focusPoints[0].y };
-
-    const index = Math.min(
-      Math.floor(progress * (focusPoints.length - 1)),
-      focusPoints.length - 2
-    );
+    const index = Math.min(Math.floor(progress * (focusPoints.length - 1)), focusPoints.length - 2);
     const localProgress = (progress * (focusPoints.length - 1)) - index;
-    
     const p1 = focusPoints[index];
     const p2 = focusPoints[index + 1];
-    
     return {
       x: p1.x + (p2.x - p1.x) * localProgress,
       y: p1.y + (p2.y - p1.y) * localProgress
@@ -479,7 +395,7 @@ export class GriotAnimationEngine {
   }
 
   /**
-   * Draw the animated image/video with Ken Burns effect
+   * DÉFI 2: Draw animated image/video with cinematic Ken Burns (ease curves + composite + breathing)
    */
   drawAnimatedImage(
     source: SceneMediaSource,
@@ -487,7 +403,9 @@ export class GriotAnimationEngine {
     duration: number,
     motionPlan: MotionPlan
   ): void {
-    const progress = Math.min(time / duration, 1);
+    const rawProgress = Math.min(time / duration, 1);
+    // Apply cinematic ease-in-out curve
+    const progress = easeInOutCubic(rawProgress);
     const focus = this.interpolateFocusPoint(motionPlan.focusPoints, progress);
     
     const zoomIntensity = motionPlan.intensity;
@@ -495,6 +413,7 @@ export class GriotAnimationEngine {
     let offsetX = 0;
     let offsetY = 0;
 
+    // Primary motion with eased progress
     switch (motionPlan.direction) {
       case 'zoom-in':
         scale = 1 + (progress * zoomIntensity * 0.3);
@@ -524,11 +443,29 @@ export class GriotAnimationEngine {
         break;
     }
 
+    // Composite secondary motion (e.g. zoom-in + pan-right simultaneously)
+    const secDir = motionPlan.secondaryDirection;
+    const secInt = motionPlan.secondaryIntensity || 0;
+    if (secDir && secDir !== 'none' && secInt > 0) {
+      const secProgress = easeInOutQuad(rawProgress);
+      switch (secDir) {
+        case 'pan-left':  offsetX -= secProgress * this.width * secInt * 0.15; break;
+        case 'pan-right': offsetX += secProgress * this.width * secInt * 0.15; break;
+        case 'pan-up':    offsetY -= secProgress * this.height * secInt * 0.15; break;
+        case 'pan-down':  offsetY += secProgress * this.height * secInt * 0.15; break;
+      }
+    }
+
+    // Breathing micro-animation (sinusoidal oscillation)
+    const breathAmp = motionPlan.breathingAmplitude || 0.003;
+    const breathCycle = Math.sin(time * 1.2) * breathAmp;
+    scale *= (1 + breathCycle);
+    offsetY += Math.sin(time * 0.8) * this.height * breathAmp * 0.5;
+
     this.ctx.save();
     this.ctx.translate(this.width / 2 + offsetX, this.height / 2 + offsetY);
     this.ctx.scale(scale, scale);
     
-    // Get dimensions from either image or video
     const srcWidth = source instanceof HTMLVideoElement ? (source.videoWidth || this.width) : source.width;
     const srcHeight = source instanceof HTMLVideoElement ? (source.videoHeight || this.height) : source.height;
     
@@ -548,59 +485,40 @@ export class GriotAnimationEngine {
     this.ctx.restore();
   }
 
-  /**
-   * Draw narrator avatar in top right corner
-   */
   drawNarratorAvatar(time: number): void {
     if (!this.narratorAvatar) return;
-    
     const size = Math.min(80, this.width * 0.15);
     const margin = 16;
     const x = this.width - size - margin;
     const y = margin;
     
     this.ctx.save();
-    
-    // Animated golden border
     this.ctx.beginPath();
     this.ctx.arc(x + size / 2, y + size / 2, size / 2 + 4, 0, Math.PI * 2);
-    
-    // Rotating gradient
     const gradient = this.ctx.createConicGradient(time * 0.5, x + size / 2, y + size / 2);
     gradient.addColorStop(0, '#FFD700');
     gradient.addColorStop(0.25, '#FFA500');
     gradient.addColorStop(0.5, '#FFD700');
     gradient.addColorStop(0.75, '#FFCC00');
     gradient.addColorStop(1, '#FFD700');
-    
     this.ctx.fillStyle = gradient;
     this.ctx.fill();
     
-    // Inner shadow
     this.ctx.beginPath();
     this.ctx.arc(x + size / 2, y + size / 2, size / 2 + 1, 0, Math.PI * 2);
     this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
     this.ctx.fill();
     
-    // Clip to circle and draw avatar
     this.ctx.beginPath();
     this.ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
     this.ctx.clip();
     
-    // Draw avatar image (center crop)
     const imgSize = Math.min(this.narratorAvatar.width, this.narratorAvatar.height);
     const imgOffsetX = (this.narratorAvatar.width - imgSize) / 2;
     const imgOffsetY = (this.narratorAvatar.height - imgSize) / 2;
-    
-    this.ctx.drawImage(
-      this.narratorAvatar,
-      imgOffsetX, imgOffsetY, imgSize, imgSize,
-      x, y, size, size
-    );
-    
+    this.ctx.drawImage(this.narratorAvatar, imgOffsetX, imgOffsetY, imgSize, imgSize, x, y, size, size);
     this.ctx.restore();
     
-    // Label
     this.ctx.save();
     this.ctx.font = `${Math.max(10, size * 0.12)}px system-ui, sans-serif`;
     this.ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
@@ -609,54 +527,69 @@ export class GriotAnimationEngine {
     this.ctx.restore();
   }
 
-  /**
-   * Get current scene index based on time
-   */
   private getCurrentSceneIndex(time: number): number {
     for (let i = 0; i < this.scenes.length; i++) {
-      if (time >= this.scenes[i].startTime && time < this.scenes[i].endTime) {
-        return i;
-      }
+      if (time >= this.scenes[i].startTime && time < this.scenes[i].endTime) return i;
     }
     return this.scenes.length - 1;
   }
 
   /**
-   * Get transition progress between scenes
+   * DÉFI 2: Longer crossfade (0.8s) with ease curve
    */
-  private getTransitionProgress(time: number, transitionDuration: number = 0.5): { from: number; to: number; progress: number } {
+  private getTransitionProgress(time: number, transitionDuration: number = 0.8): { from: number; to: number; progress: number } {
     const currentIndex = this.getCurrentSceneIndex(time);
-    
     if (currentIndex >= this.scenes.length - 1) {
       return { from: currentIndex, to: currentIndex, progress: 0 };
     }
-    
     const currentScene = this.scenes[currentIndex];
     const timeInScene = time - currentScene.startTime;
     const sceneDuration = currentScene.endTime - currentScene.startTime;
     const transitionStart = sceneDuration - transitionDuration;
     
     if (timeInScene >= transitionStart) {
-      const progress = (timeInScene - transitionStart) / transitionDuration;
-      return { from: currentIndex, to: currentIndex + 1, progress: Math.min(1, progress) };
+      const rawProgress = (timeInScene - transitionStart) / transitionDuration;
+      // Apply ease curve to transition
+      return { from: currentIndex, to: currentIndex + 1, progress: easeInOutQuad(Math.min(1, rawProgress)) };
     }
-    
     return { from: currentIndex, to: currentIndex, progress: 0 };
   }
 
   /**
-   * Draw current scene with transition
-   * Manages video element playback state for active/inactive scenes
+   * DÉFI 3: Handle video looping with ping-pong for natural rebouclage
+   */
+  private handleVideoLooping(video: HTMLVideoElement, sceneLocalTime: number): void {
+    if (!video || !isFinite(video.duration) || video.duration <= 0) return;
+    
+    const videoDur = video.duration;
+    const loopCycleDuration = videoDur * 2; // forward + reverse = one full ping-pong cycle
+    const cycleTime = sceneLocalTime % loopCycleDuration;
+    
+    if (cycleTime <= videoDur) {
+      // Forward playback
+      if (video.playbackRate !== 1) video.playbackRate = 1;
+      const targetTime = cycleTime;
+      if (Math.abs(video.currentTime - targetTime) > 0.5) {
+        video.currentTime = targetTime;
+      }
+    } else {
+      // Reverse playback (ping-pong): simulate by seeking backwards
+      const reverseTime = loopCycleDuration - cycleTime;
+      video.currentTime = Math.max(0, reverseTime);
+    }
+  }
+
+  /**
+   * Draw current scene with transition + video ping-pong looping
    */
   private drawCurrentScene(time: number, duration: number): void {
     if (this.scenes.length === 0) return;
     
     const { from, to, progress } = this.getTransitionProgress(time);
     const scene = this.scenes[from];
-    
     if (!scene) return;
     
-    // Ensure active scene's video is playing, pause others
+    // Manage video playback state
     this.scenes.forEach((s, i) => {
       if (s.video) {
         if (i === from || (progress > 0 && i === to)) {
@@ -670,34 +603,39 @@ export class GriotAnimationEngine {
     const sceneLocalTime = time - scene.startTime;
     const sceneDuration = scene.endTime - scene.startTime;
     
-    // Draw current scene
+    // DÉFI 3: Ping-pong looping for videos shorter than scene duration
+    if (scene.video && isFinite(scene.video.duration) && sceneDuration > scene.video.duration) {
+      this.handleVideoLooping(scene.video, sceneLocalTime);
+    }
+    
     this.drawAnimatedImage(scene.image, sceneLocalTime, sceneDuration, scene.motionPlan);
     
-    // Draw transition to next scene
+    // Crossfade transition with eased alpha
     if (progress > 0 && this.scenes[to]) {
       const nextScene = this.scenes[to];
       this.ctx.save();
       this.ctx.globalAlpha = progress;
+      
+      // Also handle looping for next scene video if needed
+      if (nextScene.video && isFinite(nextScene.video.duration)) {
+        const nextLocalTime = time - nextScene.startTime;
+        const nextDuration = nextScene.endTime - nextScene.startTime;
+        if (nextDuration > nextScene.video.duration) {
+          this.handleVideoLooping(nextScene.video, Math.max(0, nextLocalTime));
+        }
+      }
+      
       this.drawAnimatedImage(nextScene.image, 0, nextScene.endTime - nextScene.startTime, nextScene.motionPlan);
       this.ctx.restore();
     }
   }
 
-  /**
-   * Draw particles
-   */
   drawParticles(time: number, glowColor: string): void {
     this.particles.forEach((p, i) => {
       p.y -= p.speed;
       p.x += Math.sin(p.angle + time * 0.5) * 0.3;
-      
-      if (p.y < -10) {
-        p.y = this.height + 10;
-        p.x = Math.random() * this.width;
-      }
-      
+      if (p.y < -10) { p.y = this.height + 10; p.x = Math.random() * this.width; }
       const pulse = Math.sin(time * 2 + i) * 0.2 + 0.8;
-      
       this.ctx.beginPath();
       this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       this.ctx.fillStyle = glowColor;
@@ -707,24 +645,16 @@ export class GriotAnimationEngine {
     });
   }
 
-  /**
-   * Draw lens flare effect
-   */
   drawLensFlare(time: number, emotion: string, intensity: number): void {
     const emotionVFX = EMOTION_VFX_MAP[emotion] || EMOTION_VFX_MAP.wonder;
     const flareKeys = Array.from(this.flareImages.keys());
-    
     if (flareKeys.length === 0) return;
-    
     const flareIndex = flareKeys[Math.floor(time) % flareKeys.length];
     const flare = this.flareImages.get(flareIndex);
-    
     if (!flare) return;
-    
     const x = this.width * (0.6 + Math.sin(time * 0.3) * 0.2);
     const y = this.height * (0.2 + Math.cos(time * 0.2) * 0.1);
     const size = this.width * (0.3 + Math.sin(time * emotionVFX.pulseSpeed) * 0.1);
-    
     this.ctx.save();
     this.ctx.globalCompositeOperation = 'screen';
     this.ctx.globalAlpha = intensity * emotionVFX.flareIntensity * 0.6;
@@ -732,9 +662,6 @@ export class GriotAnimationEngine {
     this.ctx.restore();
   }
 
-  /**
-   * Draw vignette effect
-   */
   drawVignette(intensity: number = 0.4): void {
     const gradient = this.ctx.createRadialGradient(
       this.width / 2, this.height / 2, this.width * 0.3,
@@ -742,14 +669,10 @@ export class GriotAnimationEngine {
     );
     gradient.addColorStop(0, 'rgba(0,0,0,0)');
     gradient.addColorStop(1, `rgba(0,0,0,${intensity})`);
-    
     this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.width, this.height);
   }
 
-  /**
-   * Get current emotion based on time and segments
-   */
   getCurrentEmotion(time: number, segments: EmotionSegment[]): { emotion: string; intensity: number } {
     for (const segment of segments) {
       if (time >= segment.startTime && time < segment.endTime) {
@@ -759,9 +682,6 @@ export class GriotAnimationEngine {
     return { emotion: 'wonder', intensity: 0.7 };
   }
 
-  /**
-   * Start slideshow preview with multiple scenes
-   */
   startSlideshowPreview(
     duration: number,
     style: AnimationStyle,
@@ -775,17 +695,12 @@ export class GriotAnimationEngine {
       return;
     }
 
-    // Build emotion segments from scenes
     const emotionSegments: EmotionSegment[] = this.scenes.map(scene => ({
-      startTime: scene.startTime,
-      endTime: scene.endTime,
-      emotion: scene.emotion,
-      intensity: 0.7
+      startTime: scene.startTime, endTime: scene.endTime,
+      emotion: scene.emotion, intensity: 0.7
     }));
-
     this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
 
-    // Start audio if available
     if (this.audioElement) {
       this.audioElement.currentTime = 0;
       this.audioElement.play().catch(e => console.warn('Audio playback failed:', e));
@@ -798,31 +713,19 @@ export class GriotAnimationEngine {
       
       this.ctx.clearRect(0, 0, this.width, this.height);
       this.ctx.filter = 'none';
-      
       const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
       
-      // Draw current scene with transitions
       this.drawCurrentScene(time, duration);
-      
-      // Draw VFX
       this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
       this.drawLensFlare(time, emotion, intensity);
       this.drawVignette(0.3);
-      
-      // Draw narrator avatar overlay
       this.drawNarratorAvatar(time);
-      
       onProgress?.(progress);
-      
       this.animationId = requestAnimationFrame(animate);
     };
-    
     animate();
   }
 
-  /**
-   * Start real-time animation preview (single image mode)
-   */
   startPreview(
     image: SceneMediaSource,
     duration: number,
@@ -833,183 +736,118 @@ export class GriotAnimationEngine {
   ): void {
     this.stopPreview();
     this.startTime = performance.now();
-    
     this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
 
     const animate = () => {
       const elapsed = (performance.now() - this.startTime) / 1000;
       const time = elapsed % duration;
       const progress = time / duration;
-      
       this.ctx.clearRect(0, 0, this.width, this.height);
       this.ctx.filter = 'none';
-      
       const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
-      
       this.drawAnimatedImage(image, time, duration, motionPlan);
       this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
       this.drawLensFlare(time, emotion, intensity);
       this.drawVignette(0.3);
       this.drawNarratorAvatar(time);
-      
       onProgress?.(progress);
-      
       this.animationId = requestAnimationFrame(animate);
     };
-    
     animate();
   }
 
-  /**
-   * Stop preview animation
-   */
   stopPreview(): void {
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
-    if (this.audioElement) {
-      this.audioElement.pause();
-    }
-    // Pause all scene videos
-    this.scenes.forEach(s => {
-      if (s.video && !s.video.paused) s.video.pause();
-    });
+    if (this.audioElement) this.audioElement.pause();
+    this.scenes.forEach(s => { if (s.video && !s.video.paused) s.video.pause(); });
   }
 
-  /**
-   * Render video frames for export
-   */
   async renderFrames(
-    image: SceneMediaSource,
-    duration: number,
-    motionPlan: MotionPlan,
-    style: AnimationStyle,
-    emotionSegments: EmotionSegment[],
-    fps: number = 24,
-    onProgress?: (progress: number, message: string) => void
+    image: SceneMediaSource, duration: number, motionPlan: MotionPlan,
+    style: AnimationStyle, emotionSegments: EmotionSegment[],
+    fps: number = 30, onProgress?: (progress: number, message: string) => void
   ): Promise<Blob[]> {
     const frames: Blob[] = [];
     const totalFrames = Math.floor(duration * fps);
-    
     this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
-
     for (let frame = 0; frame < totalFrames; frame++) {
       const time = frame / fps;
       const progress = frame / totalFrames;
-      
       this.ctx.clearRect(0, 0, this.width, this.height);
       this.ctx.filter = 'none';
-      
       const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
-      
       this.drawAnimatedImage(image, time, duration, motionPlan);
       this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
       this.drawLensFlare(time, emotion, intensity);
       this.drawVignette(0.3);
       this.drawNarratorAvatar(time);
-      
-      const blob = await new Promise<Blob>((resolve) => {
-        this.canvas.toBlob((b) => resolve(b!), 'image/png');
-      });
+      const blob = await new Promise<Blob>((resolve) => { this.canvas.toBlob((b) => resolve(b!), 'image/png'); });
       frames.push(blob);
-      
       onProgress?.(progress, `Rendu frame ${frame + 1}/${totalFrames}`);
     }
-    
     return frames;
   }
 
-  /**
-   * Render slideshow frames for export
-   */
   async renderSlideshowFrames(
-    duration: number,
-    style: AnimationStyle,
-    fps: number = 24,
-    onProgress?: (progress: number, message: string) => void
+    duration: number, style: AnimationStyle,
+    fps: number = 30, onProgress?: (progress: number, message: string) => void
   ): Promise<Blob[]> {
     const frames: Blob[] = [];
     const totalFrames = Math.floor(duration * fps);
-    
     const emotionSegments: EmotionSegment[] = this.scenes.map(scene => ({
-      startTime: scene.startTime,
-      endTime: scene.endTime,
-      emotion: scene.emotion,
-      intensity: 0.7
+      startTime: scene.startTime, endTime: scene.endTime,
+      emotion: scene.emotion, intensity: 0.7
     }));
-    
     this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
-
     for (let frame = 0; frame < totalFrames; frame++) {
       const time = frame / fps;
       const progress = frame / totalFrames;
-      
       this.ctx.clearRect(0, 0, this.width, this.height);
       this.ctx.filter = 'none';
-      
       const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
-      
       this.drawCurrentScene(time, duration);
       this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
       this.drawLensFlare(time, emotion, intensity);
       this.drawVignette(0.3);
       this.drawNarratorAvatar(time);
-      
-      const blob = await new Promise<Blob>((resolve) => {
-        this.canvas.toBlob((b) => resolve(b!), 'image/png');
-      });
+      const blob = await new Promise<Blob>((resolve) => { this.canvas.toBlob((b) => resolve(b!), 'image/png'); });
       frames.push(blob);
-      
       onProgress?.(progress, `Rendu frame ${frame + 1}/${totalFrames}`);
     }
-    
     return frames;
   }
 
   /**
-   * Export video blob using MediaRecorder
-   * Captures canvas stream and mixes with audio
+   * Export video blob — now at 30fps
    */
   async exportVideoBlob(
-    duration: number,
-    style: AnimationStyle,
-    fps: number = 24,
-    onProgress?: (progress: number) => void
+    duration: number, style: AnimationStyle,
+    fps: number = 30, onProgress?: (progress: number) => void
   ): Promise<Blob> {
     return new Promise(async (resolve, reject) => {
       try {
-        // Stop any current preview
         this.stopPreview();
-        
-        // Get canvas stream
         const stream = this.canvas.captureStream(fps);
         
-        // Try to add audio track
         if (this.audioElement) {
           try {
             const audioContext = new AudioContext();
-            // Clone audio element for capture
             const audioClone = this.audioElement.cloneNode() as HTMLAudioElement;
             audioClone.currentTime = 0;
-            
             const source = audioContext.createMediaElementSource(audioClone);
             const destination = audioContext.createMediaStreamDestination();
             source.connect(destination);
-            
             const audioTrack = destination.stream.getAudioTracks()[0];
-            if (audioTrack) {
-              stream.addTrack(audioTrack);
-            }
-            
-            // Start audio playback
+            if (audioTrack) stream.addTrack(audioTrack);
             await audioClone.play().catch(() => {});
           } catch (audioError) {
             console.warn('[GriotEngine] Could not add audio to export:', audioError);
           }
         }
         
-        // Determine best supported format
         const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')
           ? 'video/mp4;codecs=avc1,mp4a.40.2'
           : MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
@@ -1017,40 +855,23 @@ export class GriotAnimationEngine {
             : 'video/webm';
         
         const chunks: Blob[] = [];
-        const recorder = new MediaRecorder(stream, { 
-          mimeType,
-          videoBitsPerSecond: 5000000 // 5 Mbps
-        });
+        const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5000000 });
         
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            chunks.push(e.data);
-          }
-        };
-        
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
         recorder.onstop = () => {
           const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
           resolve(blob);
         };
+        recorder.onerror = () => reject(new Error('MediaRecorder error'));
         
-        recorder.onerror = (e) => {
-          reject(new Error('MediaRecorder error'));
-        };
-        
-        // Start recording
         recorder.start(100);
         
-        // Build emotion segments
         const emotionSegments: EmotionSegment[] = this.scenes.map(scene => ({
-          startTime: scene.startTime,
-          endTime: scene.endTime,
-          emotion: scene.emotion,
-          intensity: 0.7
+          startTime: scene.startTime, endTime: scene.endTime,
+          emotion: scene.emotion, intensity: 0.7
         }));
-        
         this.initParticles(style.vfxConfig.particleCount, style.vfxConfig.glowColor);
         
-        // Animate for duration
         const startTime = performance.now();
         const durationMs = duration * 1000;
         
@@ -1058,69 +879,38 @@ export class GriotAnimationEngine {
           const elapsed = performance.now() - startTime;
           const time = (elapsed / 1000) % duration;
           const progress = Math.min(elapsed / durationMs, 1);
-          
           this.ctx.clearRect(0, 0, this.width, this.height);
           this.ctx.filter = 'none';
-          
           const { emotion, intensity } = this.getCurrentEmotion(time, emotionSegments);
-          
           this.drawCurrentScene(time, duration);
           this.drawParticles(time, EMOTION_VFX_MAP[emotion]?.glowColor || style.vfxConfig.glowColor);
           this.drawLensFlare(time, emotion, intensity);
           this.drawVignette(0.3);
           this.drawNarratorAvatar(time);
-          
           onProgress?.(progress);
-          
           if (elapsed < durationMs) {
             requestAnimationFrame(animate);
           } else {
-            // Stop recording after a small delay to ensure final frame is captured
-            setTimeout(() => {
-              recorder.stop();
-            }, 200);
+            setTimeout(() => recorder.stop(), 200);
           }
         };
-        
         animate();
-        
       } catch (error) {
         reject(error);
       }
     });
   }
 
-  /**
-   * Generate thumbnail at specific time
-   */
   async generateThumbnail(atTime: number = 1): Promise<Blob | null> {
     if (this.scenes.length === 0) return null;
-    
-    // Draw frame at specified time
     this.ctx.clearRect(0, 0, this.width, this.height);
-    
-    const emotionSegments: EmotionSegment[] = this.scenes.map(scene => ({
-      startTime: scene.startTime,
-      endTime: scene.endTime,
-      emotion: scene.emotion,
-      intensity: 0.7
-    }));
-    
-    const { emotion, intensity } = this.getCurrentEmotion(atTime, emotionSegments);
-    
     this.drawCurrentScene(atTime, atTime + 1);
     this.drawNarratorAvatar(atTime);
-    
     return new Promise((resolve) => {
-      this.canvas.toBlob((blob) => {
-        resolve(blob);
-      }, 'image/jpeg', 0.85);
+      this.canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.85);
     });
   }
 
-  /**
-   * Dispose resources
-   */
   dispose(): void {
     this.stopPreview();
     this.disposeSceneVideos();
@@ -1132,25 +922,14 @@ export class GriotAnimationEngine {
   }
 }
 
-/**
- * Create default motion plan from analysis
- */
 export function createDefaultMotionPlan(): MotionPlan {
   return {
-    direction: 'zoom-in',
-    intensity: 0.5,
-    startPoint: { x: 0.5, y: 0.5 },
-    endPoint: { x: 0.5, y: 0.4 },
-    focusPoints: [
-      { x: 0.5, y: 0.5, weight: 1 },
-      { x: 0.5, y: 0.4, weight: 1 }
-    ]
+    direction: 'zoom-in', intensity: 0.5,
+    startPoint: { x: 0.5, y: 0.5 }, endPoint: { x: 0.5, y: 0.4 },
+    focusPoints: [{ x: 0.5, y: 0.5, weight: 1 }, { x: 0.5, y: 0.4, weight: 1 }]
   };
 }
 
-/**
- * Create default emotion segments
- */
 export function createDefaultEmotionSegments(duration: number): EmotionSegment[] {
   const third = duration / 3;
   return [
