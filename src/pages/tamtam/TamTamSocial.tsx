@@ -636,7 +636,14 @@ const VideoFeedCard: React.FC<{
       </AnimatePresence>
 
       {/* Video/Media - FULLSCREEN */}
-      {videoUrl ? (
+      {post.media_type === 'photo' && post.media_url ? (
+        <img 
+          src={post.media_url} 
+          alt="Post photo" 
+          onLoad={() => setIsLoaded(true)}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+        />
+      ) : videoUrl ? (
         <video 
           ref={videoRef} 
           src={videoUrl} 
@@ -657,7 +664,7 @@ const VideoFeedCard: React.FC<{
       )}
       
       {/* Loading state */}
-      {!isLoaded && videoUrl && !isInteractive && (
+      {!isLoaded && (videoUrl || post.media_type === 'photo') && !isInteractive && (
         <div className="absolute inset-0 bg-black flex items-center justify-center">
           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full" />
         </div>
