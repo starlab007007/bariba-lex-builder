@@ -10,21 +10,22 @@ interface AREffectsLayerProps {
   className?: string;
 }
 
-// Generate random particles for animations
+// Generate random particles for animations - distributed across full screen
 const generateParticles = (count: number, seed: number = 0) => {
   return Array.from({ length: count }, (_, i) => ({
     id: `${seed}-${i}`,
     x: Math.random() * 100,
-    delay: Math.random() * 2,
+    y: Math.random() * 100,
+    delay: Math.random() * 4,
     duration: 2 + Math.random() * 3,
-    size: 0.5 + Math.random() * 1,
+    size: 0.8 + Math.random() * 1.2,
   }));
 };
 
 // ============= ANIMATION COMPONENTS =============
 
 const SparklesAnimation: React.FC = () => {
-  const particles = useMemo(() => generateParticles(20, 1), []);
+  const particles = useMemo(() => generateParticles(40, 1), []);
   
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -32,19 +33,20 @@ const SparklesAnimation: React.FC = () => {
         <motion.div
           key={p.id}
           className="absolute text-yellow-300"
-          style={{ left: `${p.x}%`, fontSize: `${p.size * 20}px` }}
-          initial={{ y: '100%', opacity: 0, scale: 0 }}
+          style={{ left: `${p.x}%`, top: `${p.y}%`, fontSize: `${p.size * 28}px` }}
+          initial={{ opacity: 0, scale: 0 }}
           animate={{
-            y: [null, '-100%'],
-            opacity: [0, 1, 1, 0],
-            scale: [0, 1, 1, 0],
-            rotate: [0, 180],
+            x: [0, 15, -15, 10, -10, 0],
+            y: [0, -30, 20, -20, 10, 0],
+            opacity: [0, 1, 0.8, 1, 0.6, 0],
+            scale: [0, 1, 0.8, 1, 0.6, 0],
+            rotate: [0, 180, 360],
           }}
           transition={{
-            duration: p.duration,
+            duration: p.duration + 1,
             delay: p.delay,
             repeat: Infinity,
-            ease: 'easeOut',
+            ease: 'easeInOut',
           }}
         >
           ✨
@@ -55,7 +57,7 @@ const SparklesAnimation: React.FC = () => {
 };
 
 const FloatingHeartsAnimation: React.FC = () => {
-  const hearts = useMemo(() => generateParticles(15, 2), []);
+  const hearts = useMemo(() => generateParticles(35, 2), []);
   const heartEmojis = ['❤️', '💕', '💗', '💖', '💓'];
   
   return (
@@ -64,19 +66,19 @@ const FloatingHeartsAnimation: React.FC = () => {
         <motion.div
           key={p.id}
           className="absolute"
-          style={{ left: `${p.x}%`, fontSize: `${p.size * 24}px` }}
-          initial={{ y: '110%', opacity: 0 }}
+          style={{ left: `${p.x}%`, top: `${p.y}%`, fontSize: `${p.size * 32}px` }}
+          initial={{ opacity: 0 }}
           animate={{
-            y: [null, '-10%'],
-            x: [0, 20, -20, 10, -10, 0],
-            opacity: [0, 1, 1, 1, 0],
-            scale: [0.5, 1, 1, 1, 0.5],
+            x: [0, 25, -25, 15, -15, 0],
+            y: [0, -40, 20, -30, 10, 0],
+            opacity: [0, 1, 0.8, 1, 0.6, 0],
+            scale: [0.5, 1.2, 0.9, 1.1, 0.8, 0.5],
           }}
           transition={{
             duration: p.duration + 2,
             delay: p.delay,
             repeat: Infinity,
-            ease: 'easeOut',
+            ease: 'easeInOut',
           }}
         >
           {heartEmojis[i % heartEmojis.length]}
@@ -87,7 +89,7 @@ const FloatingHeartsAnimation: React.FC = () => {
 };
 
 const RainAnimation: React.FC = () => {
-  const drops = useMemo(() => generateParticles(40, 3), []);
+  const drops = useMemo(() => generateParticles(60, 3), []);
   
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -97,11 +99,12 @@ const RainAnimation: React.FC = () => {
           className="absolute w-0.5 bg-gradient-to-b from-transparent via-blue-400/60 to-blue-300/80 rounded-full"
           style={{
             left: `${p.x}%`,
-            height: `${20 + p.size * 30}px`,
+            top: `${p.y}%`,
+            height: `${25 + p.size * 35}px`,
           }}
-          initial={{ y: '-10%', opacity: 0 }}
+          initial={{ opacity: 0 }}
           animate={{
-            y: ['-10%', '110%'],
+            y: [0, 500],
             opacity: [0, 0.7, 0.7, 0],
           }}
           transition={{
@@ -117,7 +120,7 @@ const RainAnimation: React.FC = () => {
 };
 
 const ConfettiAnimation: React.FC = () => {
-  const confetti = useMemo(() => generateParticles(30, 4), []);
+  const confetti = useMemo(() => generateParticles(50, 4), []);
   const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6bd6', '#a855f7'];
   
   return (
@@ -125,23 +128,24 @@ const ConfettiAnimation: React.FC = () => {
       {confetti.map((p, i) => (
         <motion.div
           key={p.id}
-          className="absolute w-2 h-3 rounded-sm"
+          className="absolute w-3 h-4 rounded-sm"
           style={{
             left: `${p.x}%`,
+            top: `${p.y}%`,
             backgroundColor: colors[i % colors.length],
           }}
-          initial={{ y: '-5%', rotate: 0, opacity: 0 }}
+          initial={{ opacity: 0, rotate: 0 }}
           animate={{
-            y: ['-5%', '110%'],
-            x: [0, 30, -30, 20, -20, 0],
+            x: [0, 40, -40, 25, -25, 0],
+            y: [0, 60, -30, 50, -20, 0],
             rotate: [0, 360, 720, 1080],
-            opacity: [0, 1, 1, 1, 0],
+            opacity: [0, 1, 0.8, 1, 0.6, 0],
           }}
           transition={{
             duration: 3 + p.size,
             delay: p.delay,
             repeat: Infinity,
-            ease: 'easeIn',
+            ease: 'easeInOut',
           }}
         />
       ))}
@@ -150,7 +154,7 @@ const ConfettiAnimation: React.FC = () => {
 };
 
 const SnowAnimation: React.FC = () => {
-  const flakes = useMemo(() => generateParticles(35, 5), []);
+  const flakes = useMemo(() => generateParticles(50, 5), []);
   
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -158,11 +162,11 @@ const SnowAnimation: React.FC = () => {
         <motion.div
           key={p.id}
           className="absolute text-white/80"
-          style={{ left: `${p.x}%`, fontSize: `${p.size * 16}px` }}
-          initial={{ y: '-5%', opacity: 0 }}
+          style={{ left: `${p.x}%`, top: `${p.y}%`, fontSize: `${p.size * 22}px` }}
+          initial={{ opacity: 0 }}
           animate={{
-            y: ['-5%', '110%'],
-            x: [0, 15, -15, 10, -10, 5, 0],
+            y: [0, 300],
+            x: [0, 20, -20, 15, -15, 8, 0],
             opacity: [0, 0.8, 0.8, 0.8, 0],
             rotate: [0, 180],
           }}
@@ -181,7 +185,7 @@ const SnowAnimation: React.FC = () => {
 };
 
 const BubblesAnimation: React.FC = () => {
-  const bubbles = useMemo(() => generateParticles(20, 6), []);
+  const bubbles = useMemo(() => generateParticles(35, 6), []);
   
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -191,15 +195,16 @@ const BubblesAnimation: React.FC = () => {
           className="absolute rounded-full border border-white/30 bg-white/5"
           style={{
             left: `${p.x}%`,
-            width: `${p.size * 30}px`,
-            height: `${p.size * 30}px`,
+            top: `${p.y}%`,
+            width: `${p.size * 38}px`,
+            height: `${p.size * 38}px`,
           }}
-          initial={{ y: '110%', opacity: 0, scale: 0 }}
+          initial={{ opacity: 0, scale: 0 }}
           animate={{
-            y: [null, '-10%'],
-            x: [0, 10, -10, 5, -5, 0],
-            opacity: [0, 0.6, 0.6, 0.6, 0],
-            scale: [0.3, 1, 1, 1, 0.5],
+            x: [0, 15, -15, 8, -8, 0],
+            y: [0, -60, -30, -80, -50, -100],
+            opacity: [0, 0.6, 0.5, 0.6, 0.3, 0],
+            scale: [0.3, 1, 0.9, 1, 0.8, 0.5],
           }}
           transition={{
             duration: 4 + p.size * 2,
@@ -214,28 +219,28 @@ const BubblesAnimation: React.FC = () => {
 };
 
 const FirefliesAnimation: React.FC = () => {
-  const flies = useMemo(() => generateParticles(25, 7), []);
+  const flies = useMemo(() => generateParticles(40, 7), []);
   
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {flies.map((p) => (
         <motion.div
           key={p.id}
-          className="absolute w-2 h-2 rounded-full bg-yellow-300"
+          className="absolute w-3 h-3 rounded-full bg-yellow-300"
           style={{
             left: `${p.x}%`,
-            top: `${20 + Math.random() * 60}%`,
-            boxShadow: '0 0 10px #fde047, 0 0 20px #fde047',
+            top: `${p.y}%`,
+            boxShadow: '0 0 14px #fde047, 0 0 28px #fde047',
           }}
           animate={{
-            x: [0, 30, -20, 40, -30, 20, 0],
-            y: [0, -20, 30, -10, 20, -30, 0],
+            x: [0, 50, -40, 60, -50, 30, 0],
+            y: [0, -40, 50, -30, 40, -50, 0],
             opacity: [0.2, 1, 0.3, 1, 0.5, 1, 0.2],
-            scale: [0.8, 1.2, 0.9, 1.1, 0.8],
+            scale: [0.8, 1.4, 0.9, 1.3, 0.8],
           }}
           transition={{
             duration: 5 + p.size * 3,
-            delay: p.delay * 2,
+            delay: p.delay,
             repeat: Infinity,
             ease: 'easeInOut',
           }}
