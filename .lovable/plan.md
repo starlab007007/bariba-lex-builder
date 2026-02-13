@@ -1,92 +1,87 @@
 
-# Plan : Integrer les audios par scene dans le rendu final
+
+# Correction : Voix generees par scene absentes du rendu final
 
 ## Diagnostic
 
-Les audios generes par scene dans le `SceneEditor` (via Inworld TTS) sont stockes sur chaque objet `scene.audioBase64` / `scene.audioUrl`, mais **jamais utilises** dans le pipeline de rendu :
+Le probleme se trouve dans **3 fichiers** avec la meme logique defaillante :
 
-| Composant | Probleme |
-|-----------|----------|
-| `StoryPreviewPlayer.tsx` (ligne 89) | Utilise uniquement `narrationAudioUrl \|\| audioUrl` (props globales). Ignore `scene.audioUrl` |
-| `PublishStep.tsx` (ligne 95) | `effectiveNarrationUrl = localNarrationUrl \|\| narrationAudioUrl \|\| audioUrl`. Ignore les audios par scene |
-| `GriotStudio.tsx` (ligne 882) | Passe `generationResult.audioUrl` (global) mais pas les audios individuels des scenes |
+### Cause racine
 
-**Resultat** : Quand l'utilisateur genere des voix par scene dans l'editeur, elles ne sont jamais lues ni dans la preview ni dans la video finale.
+Quand l'utilisateur enregistre sa voix (etape 1), `narrationAudioUrl` est defini. Ensuite, dans l'editeur de scenes, il genere des voix Inworld par scene (`scene.audioBase64`). Mais le code actuel **ignore les audios par scene si `narrationAudioUrl` existe deja** :
+
+**GriotStudio.tsx (ligne 353)** :
+```text
+if (!narrationAudioUrl && !result.audioUrl && result.scenes.some(s => s.audioBase64))
+```
+La condition `!narrationAudioUrl` est FAUSSE (car l'enregistrement original existe), donc la concatenation ne se fait jamais.
+
+**PublishStep.tsx (ligne 98)** :
+```text
+if (!narrationAudioUrl && !audioUrl && scenes.some(s => s.audioBase64))
+```
+Meme probleme : la concatenation est bloquee par la narration originale.
+
+**PublishStep.tsx (ligne 109)** :
+```text
+effectiveNarrationUrl = localNarrationUrl || narrationAudioUrl || audioUrl || scenesConcatenatedUrl
+```
+La narration originale est TOUJOURS prioritaire sur les voix generees par scene, qui arrivent en dernier.
+
+**StoryPreviewPlayer.tsx (ligne 93)** :
+Meme logique de fallback qui ignore les audios par scene.
+
+### Resultat
+Les voix Inworld generees par scene ne sont jamais utilisees car l'enregistrement vocal original du narrateur prend toujours la priorite.
 
 ## Solution
 
-Concatener les audios par scene en un seul blob audio avant de les passer au preview et au rendu final. Cela se fait dans `GriotStudio.tsx` au moment de la transition vers l'etape preview/finalize.
+Inverser la priorite : **si des voix ont ete generees par scene, elles doivent remplacer la narration originale**.
 
-### 1. `src/components/griot-studio/GriotStudio.tsx` - Agreger les audios
+### 1. `src/components/griot-studio/GriotStudio.tsx`
 
-Apres `generateFromScenes`, verifier si les scenes contiennent des `audioBase64` individuels. Si oui, les concatener en un seul fichier audio (via Web Audio API `decodeAudioData` + `OfflineAudioContext`) et stocker le resultat dans `narrationAudioUrl`.
-
-```text
-Logique :
-1. Filtrer les scenes qui ont un audioBase64
-2. Decoder chaque base64 en AudioBuffer
-3. Creer un OfflineAudioContext de la duree totale
-4. Positionner chaque buffer a son offset temporel (cumul des durees)
-5. Rendre le resultat en un seul blob audio
-6. Stocker dans narrationAudioUrl
-```
-
-### 2. `src/components/griot-studio/GriotStudio.tsx` - Fonction utilitaire
-
-Creer une fonction `concatenateSceneAudios(scenes: StoryScene[])` qui :
-- Prend les scenes avec `audioBase64` et `durationSeconds`
-- Retourne un `{ blob: Blob, url: string }` ou `null` si aucun audio
-
-### 3. `src/components/griot-studio/StoryPreviewPlayer.tsx` - Fallback par scene
-
-Ajouter un fallback : si `narrationAudioUrl` et `audioUrl` sont vides, verifier si les scenes individuelles ont des `audioUrl` et les jouer en sequence (un audio par scene, declenche au changement de scene).
-
-### 4. `src/components/griot-studio/PublishStep.tsx` - Fallback par scene
-
-Meme logique : si `effectiveNarrationUrl` est vide, concatener les audios des scenes pour le mixage final. Utiliser la meme technique Web Audio API deja en place dans le composant.
-
-## Approche technique detaillee
-
-### Concatenation audio (fonction partagee)
+Modifier la condition de concatenation (ligne 353) pour ignorer `narrationAudioUrl` quand des audios par scene existent :
 
 ```text
-async function concatenateSceneAudios(scenes): Promise<Blob | null>
-  1. scenes.filter(s => s.audioBase64)
-  2. Si aucun => return null
-  3. Decoder chaque base64 en ArrayBuffer puis AudioBuffer
-  4. Calculer duree totale = somme des durees de chaque buffer
-  5. OfflineAudioContext(1, sampleRate * dureeTotale, sampleRate)
-  6. Pour chaque scene : createBufferSource, positionner a l'offset cumule
-  7. startRendering() => AudioBuffer final
-  8. Encoder en WAV blob
-  9. return blob
+Avant : if (!narrationAudioUrl && !result.audioUrl && result.scenes.some(s => s.audioBase64))
+Apres : if (result.scenes.some(s => s.audioBase64))
 ```
 
-### Integration dans GriotStudio
+Toujours concatener les audios par scene et stocker le resultat dans `narrationAudioUrl`, ecrasant l'enregistrement original.
 
-Apres la generation des scenes (quand `generationResult` est disponible et qu'il n'y a pas de `audioUrl` global), lancer la concatenation et stocker le resultat :
+### 2. `src/components/griot-studio/PublishStep.tsx`
+
+**Condition useEffect (ligne 98)** : Retirer la condition bloquante pour toujours tenter la concatenation si des scenes ont de l'audio :
 
 ```text
-if (!generationResult.audioUrl && scenes.some(s => s.audioBase64)) {
-  const blob = await concatenateSceneAudios(scenes);
-  if (blob) {
-    setNarrationAudioUrl(URL.createObjectURL(blob));
-    setAudioBlob(blob);
-  }
-}
+Avant : if (!narrationAudioUrl && !audioUrl && scenes.some(s => s.audioBase64))
+Apres : if (scenes.some(s => s.audioBase64))
 ```
+
+**Priorite effectiveNarrationUrl (ligne 109)** : Placer `scenesConcatenatedUrl` AVANT `narrationAudioUrl` pour que les voix generees par scene soient prioritaires :
+
+```text
+Avant : localNarrationUrl || narrationAudioUrl || audioUrl || scenesConcatenatedUrl
+Apres : scenesConcatenatedUrl || localNarrationUrl || narrationAudioUrl || audioUrl
+```
+
+Logique : si des voix par scene ont ete generees (concatenees), elles priment. Sinon, on tombe sur la narration originale.
+
+### 3. `src/components/griot-studio/StoryPreviewPlayer.tsx`
+
+Meme correction pour la preview : toujours tenter la concatenation si des scenes ont `audioBase64`, et donner la priorite au resultat concatene.
 
 ## Resume des fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/components/griot-studio/GriotStudio.tsx` | Ajouter concatenation des audios par scene apres generation, stocker dans `narrationAudioUrl` |
-| `src/components/griot-studio/StoryPreviewPlayer.tsx` | Ajouter fallback lecture sequentielle des audios par scene |
-| `src/components/griot-studio/PublishStep.tsx` | Ajouter fallback concatenation des audios par scene pour le mixage final |
+| `src/components/griot-studio/GriotStudio.tsx` | Retirer la condition `!narrationAudioUrl` pour toujours concatener les audios par scene |
+| `src/components/griot-studio/PublishStep.tsx` | Retirer la condition bloquante + inverser la priorite audio |
+| `src/components/griot-studio/StoryPreviewPlayer.tsx` | Meme correction de priorite pour la preview |
 
 ## Impact
 
-- Les voix narratives generees par scene seront entendues dans la preview
-- Les voix narratives generees par scene seront integrees dans la video finale exportee
-- Compatible avec le systeme existant (si un audio global existe, il est prioritaire)
-- Aucune modification des edge functions necessaire
+- Les voix Inworld generees par scene seront dans la preview ET le rendu final
+- Si aucune voix par scene n'est generee ("Sans voix"), la narration originale est utilisee (comportement actuel preserve)
+- Si l'utilisateur enregistre une nouvelle voix dans PublishStep (VinylRecorder), `localNarrationUrl` reste prioritaire
+
