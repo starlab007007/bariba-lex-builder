@@ -93,9 +93,9 @@ export function PublishStep({
   const previewSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const [scenesConcatenatedUrl, setScenesConcatenatedUrl] = useState<string | null>(null);
 
-  // On mount: if no global narration, try concatenating per-scene audios
+  // Concatenate per-scene audios (priority over original narration)
   useEffect(() => {
-    if (!narrationAudioUrl && !audioUrl && scenes.some(s => s.audioBase64)) {
+    if (scenes.some(s => s.audioBase64)) {
       concatenateSceneAudios(scenes).then(result => {
         if (result) {
           setScenesConcatenatedUrl(result.url);
@@ -105,8 +105,8 @@ export function PublishStep({
     }
   }, [scenes, narrationAudioUrl, audioUrl]);
 
-  // Effective narration URL: local recording > prop narrationAudioUrl > prop audioUrl > concatenated scenes
-  const effectiveNarrationUrl = localNarrationUrl || narrationAudioUrl || audioUrl || scenesConcatenatedUrl;
+  // Effective narration URL: concatenated scenes (generated voices) > local recording > original narration > global audio
+  const effectiveNarrationUrl = scenesConcatenatedUrl || localNarrationUrl || narrationAudioUrl || audioUrl;
   const hasNarration = !!effectiveNarrationUrl;
 
   // Handle music track selection with trim info

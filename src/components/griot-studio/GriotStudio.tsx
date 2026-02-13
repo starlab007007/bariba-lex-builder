@@ -349,8 +349,8 @@ export function GriotStudio() {
 
       setTranscribedStory(editableScenes.map(s => s.text).join(' '));
 
-      // Concatenate per-scene TTS audios into a single narration if no global audio
-      if (!narrationAudioUrl && !result.audioUrl && result.scenes.some(s => s.audioBase64)) {
+      // Concatenate per-scene TTS audios into narration (overrides original recording)
+      if (result.scenes.some(s => s.audioBase64)) {
         try {
           const concatenated = await concatenateSceneAudios(result.scenes);
           if (concatenated) {
