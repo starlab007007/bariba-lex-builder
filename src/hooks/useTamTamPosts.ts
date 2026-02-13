@@ -219,7 +219,7 @@ export const useTamTamPosts = () => {
   }, []);
 
   const createPost = useCallback(async (postData: {
-    audio_url: string;
+    audio_url?: string;
     media_type?: string;
     media_url?: string;
     thumbnail_url?: string;
@@ -279,7 +279,7 @@ export const useTamTamPosts = () => {
 
       const insertData = {
         user_id: userData.user.id,
-        audio_url: postData.audio_url,
+        audio_url: postData.audio_url || null,
         media_type: postData.media_type || 'audio',
         media_url: postData.media_url || null,
         thumbnail_url: postData.thumbnail_url || postData.cover_url || null, // ✅ Support cover_url
