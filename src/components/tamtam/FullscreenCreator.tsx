@@ -3010,7 +3010,7 @@ export default function FullscreenCreator({
         </AnimatePresence>
 
         {/* ===== TOP BAR ===== */}
-        <div className="absolute top-0 left-0 right-0 z-30 safe-area-top">
+        <div className="absolute top-0 left-0 right-0 z-[60] safe-area-top">
           <div className="flex items-center justify-between px-4 pt-3 pb-2">
             {hasCapture ? (
               <button
