@@ -1,108 +1,45 @@
 
-# Finalisation du module Dictionnaire
 
-## Objectif
-Rendre la page dictionnaire intuitive, responsive, scrollable, avec mode clavier par defaut, un formulaire "Proposer un mot" adapte a tous les ecrans, les soumissions sauvegardees en base de donnees, et un systeme de recompenses pour les contributeurs.
+# Correction des suggestions et de l'audio dans le dictionnaire
 
----
+## Probleme 1 : Les suggestions affichent toujours les mots bariba
 
-## Modifications prevues
+Dans `BaribaKeyboardInput.tsx`, la liste de suggestions (ligne 243) affiche toujours `entry.word` (mot bariba) comme texte principal, meme quand on est en mode Francais vers Bariba. 
 
-### 1. Mode clavier par defaut
+**Correction** : Quand `currentLang === 'fr'`, inverser l'affichage :
+- Texte principal = `entry.definition` (le mot/definition en francais)
+- Texte secondaire = `entry.word` (le mot bariba comme resultat)
 
-Dans `TamTamDictionary.tsx`, changer l'etat initial de `inputMode` de `'voice'` a `'keyboard'` :
+Quand `currentLang === 'ba'`, garder l'affichage actuel :
+- Texte principal = `entry.word` (mot bariba)
+- Texte secondaire = `entry.definition` (definition francaise)
 
-```text
-const [inputMode, setInputMode] = useState<InputMode>('keyboard');
-```
+**Fichier** : `src/components/tamtam/BaribaKeyboardInput.tsx` -- lignes 242-253
 
-Supprimer egalement l'annonce vocale automatique au chargement (le `useEffect` qui appelle `speakCurrentLang` au montage) pour ne pas deranger l'utilisateur qui arrive en mode clavier.
+## Probleme 2 : L'audio ne doit etre que pour le francais
 
-### 2. Rendre la page scrollable et responsive
+Dans `VocalDictionaryResult.tsx`, les boutons audio sont presents sur :
+- Le mot bariba (ligne 75) -- A SUPPRIMER
+- La definition francaise (ligne 125) -- A GARDER
+- L'exemple bariba (ligne 148) -- A SUPPRIMER
+- L'exemple francais (ligne 172) -- A GARDER
+- Le bouton "Ecouter tout" (ligne 185) -- Modifier pour ne lire que le francais
 
-**KuaishouLayout.tsx** : Le layout actuel utilise `min-h-screen` sans gestion du scroll interne. Modifier pour utiliser `h-[100dvh] flex flex-col` sur le conteneur principal et `flex-1 overflow-y-auto` sur le `<main>`.
+**Fichier** : `src/components/tamtam/VocalDictionaryResult.tsx`
 
-**TamTamDictionary.tsx** : Ajouter `pb-8` au conteneur de contenu principal et s'assurer que le contenu (input, resultats, historique) est dans un conteneur scrollable avec des paddings adaptatifs (`px-3 sm:px-4`).
+## Probleme 3 : Lecture auto apres selection
 
-### 3. Ameliorer le modal "Proposer un mot"
+Dans `TamTamDictionary.tsx` ligne 108, `handleSelectWord` appelle `speakCurrentLang(entry.word)` qui lit le mot bariba. Il faut lire la definition francaise a la place.
 
-**NewWordSubmission.tsx** : Rendre le modal bottom-sheet responsive :
-- Utiliser `max-h-[85vh]` au lieu de `max-h-[90vh]` pour laisser de l'espace
-- Ajouter `safe-area-inset` en bas du formulaire
-- Rendre les champs plus compacts sur mobile avec `py-2.5` au lieu de `py-3`
-- Le bouton "Proposer un mot" doit etre `w-full` pour occuper toute la largeur
-- Ajouter une indication du nombre de mots deja proposes par l'utilisateur
-
-### 4. Sauvegarder les mots proposes en base
-
-Le hook `useVocalFeedback.ts` insere deja dans la table `word_submissions` -- cette partie fonctionne. Verifier que les politiques RLS permettent l'insertion par les utilisateurs authentifies.
-
-### 5. Systeme de recompenses pour les contributeurs
-
-**Nouvelle table** : `user_contributions` pour tracker les points
-
-```text
-CREATE TABLE public.user_contributions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL,
-  action_type TEXT NOT NULL,  -- 'word_submission', 'feedback', 'word_approved'
-  points INTEGER NOT NULL DEFAULT 0,
-  reference_id UUID,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- RLS: users can read their own contributions
--- RLS: system can insert (via trigger)
-```
-
-**Trigger automatique** : Quand une ligne est inseree dans `word_submissions`, un trigger ajoute automatiquement des points dans `user_contributions` :
-- Proposition de mot : +10 points
-- Avec audio : +5 points bonus
-- Avec exemple : +3 points bonus
-
-**Affichage dans le dictionnaire** : Ajouter une section en haut de la page montrant le niveau du contributeur :
-- 0-49 points : Debutant
-- 50-199 points : Contributeur
-- 200-499 points : Expert
-- 500+ points : Maitre du dictionnaire
-
-### 6. Afficher les contributions de l'utilisateur
-
-Ajouter un petit badge/compteur dans le header de la page dictionnaire montrant les points et le niveau actuel de l'utilisateur. Cliquer dessus affiche un mini-resume de ses contributions.
+**Fichier** : `src/pages/tamtam/TamTamDictionary.tsx` -- ligne 108
 
 ---
 
-## Details techniques
-
-### Fichiers modifies
+## Resume des modifications
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/pages/tamtam/TamTamDictionary.tsx` | Mode clavier par defaut, suppression annonce auto, ajout badge contributeur, responsive padding, scroll |
-| `src/components/tamtam/KuaishouLayout.tsx` | `h-[100dvh] flex flex-col` + `flex-1 overflow-y-auto` sur main |
-| `src/components/tamtam/NewWordSubmission.tsx` | Modal responsive, max-height ajuste, safe-area, bouton full-width, afficher compteur submissions |
+| `src/components/tamtam/BaribaKeyboardInput.tsx` | Afficher definition francaise comme texte principal en mode fr, mot bariba en secondaire |
+| `src/components/tamtam/VocalDictionaryResult.tsx` | Supprimer boutons audio sur mot bariba et exemple bariba, garder uniquement sur francais |
+| `src/pages/tamtam/TamTamDictionary.tsx` | Lire la definition francaise au lieu du mot bariba apres selection |
 
-### Fichiers crees
-
-| Fichier | Description |
-|---------|-------------|
-| `src/hooks/useContributionPoints.ts` | Hook pour lire les points et le niveau de l'utilisateur depuis `user_contributions` |
-
-### Migration SQL
-
-Creation de la table `user_contributions` + trigger sur `word_submissions` pour attribuer des points automatiquement + politiques RLS.
-
-### Scroll architecture
-
-```text
-KuaishouLayout (h-[100dvh], flex flex-col)
-  +-- KuaishouHeader (flex-shrink-0)
-  +-- main (flex-1, overflow-y-auto)
-  |     +-- Toggles mode/direction
-  |     +-- Zone input (vocal ou clavier)
-  |     +-- Bouton "Proposer un mot"
-  |     +-- Resultat selectionne
-  |     +-- Historique
-  |     +-- Badge contributeur
-  +-- KuaishouBottomNav (flex-shrink-0)
-```
