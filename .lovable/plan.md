@@ -1,105 +1,62 @@
 
 
-# Correction: Integrer les effets Magic IA dans le rendu final (photos et videos)
+# Correction : Les effets Magic IA ne s'affichent pas dans le rendu final
 
 ## Probleme identifie
 
-Les effets selectionnes dans Magic IA (filtres, AR effects comme sparkles/coeurs/pluie, stickers, cadrage, defis) ne sont PAS integres dans le rendu final publie dans le feed. Voici pourquoi :
+Le bug est un **probleme de mapping entre les identifiants des effets et les noms d'animation** dans le compositor canvas.
 
-**Photos** : La fonction `capturePhotoFromVideo` applique le filtre CSS et les stickers emoji sur le canvas, mais les effets AR (sparkles, coeurs, pluie, confetti, neige, bulles, lucioles) sont des elements HTML/DOM superposes — ils ne sont jamais dessines sur le canvas de capture.
+Voici ce qui se passe :
 
-**Videos** : Le `MediaRecorder` enregistre directement le flux camera brut (`streamRef.current`). Aucun filtre, aucun effet AR, aucun sticker n'est integre dans l'enregistrement. Un commentaire dans le code dit "effects applied at export" mais cette etape d'export n'existe pas.
+1. Quand vous selectionnez "Coeurs" dans Magic IA, l'effet a l'ID `hearts` et le champ animation `floating-hearts`
+2. Le code filtre les effets et passe les **IDs** (`hearts`) au compositor
+3. Le compositor fait un `switch` sur le nom recu et cherche `floating-hearts` -- il ne trouve jamais `hearts`
+4. Resultat : l'effet n'est jamais dessine sur le canvas final
 
-**Cadrage/Graphics** : Appliques en CSS sur le container, jamais bakes dans le fichier final.
+Ce probleme affecte **tous les effets dont l'ID differe du nom d'animation**. Actuellement, `hearts` / `floating-hearts` est le cas le plus visible, mais le probleme structurel affecte potentiellement tout le pipeline.
 
-## Solution technique
+De plus, le code de filtrage ne transmet que les IDs bruts au lieu des noms d'animation, ce qui casse systematiquement le rendu.
 
-### Principe : Canvas compositing
+## Solution
 
-Creer un canvas de composition qui combine toutes les couches visuelles en une seule image/flux avant capture. Au lieu de capturer le flux camera brut, on capture le canvas composite qui contient :
+### 1. Corriger le mapping ID vers animation (`FullscreenCreator.tsx`)
+
+Dans les 3 endroits ou `overlayArEffects` est calcule (photo, video, et filtre CSS), remplacer le filtre qui retourne les IDs par un filtre qui retourne les **noms d'animation** :
 
 ```text
-Couche 1: Video camera (avec filtre CSS traduit en canvas filter)
-Couche 2: Graphics/cadrage (bordures, vignette)  
-Couche 3: AR Effects (particules dessinees sur canvas)
-Couche 4: Stickers (emoji positionnes)
-Couche 5: Text overlays
+AVANT (bugge) :
+  overlayArEffects = effects.arEffects.filter(arId => {
+    const ar = AR_EFFECTS.find(e => e.id === arId);
+    return ar?.type === 'overlay' && ar?.animation;
+  });
+  // Retourne ['hearts'] -- le compositor ne reconnait pas 'hearts'
+
+APRES (corrige) :
+  overlayArEffects = effects.arEffects
+    .map(arId => AR_EFFECTS.find(e => e.id === arId))
+    .filter(ar => ar?.type === 'overlay' && ar?.animation)
+    .map(ar => ar!.animation!);
+  // Retourne ['floating-hearts'] -- le compositor reconnait et dessine
 ```
 
-### Etape 1 : Creer un utilitaire `CanvasCompositor`
+### 2. Appliquer cette correction dans 3 endroits
 
-Nouveau fichier `src/utils/CanvasCompositor.ts` :
-
-- Fonction `compositeFrame(ctx, video, effects, canvasW, canvasH)` qui dessine toutes les couches sur un canvas
-- Traduit les effets AR (sparkles, hearts, rain...) en primitives canvas (cercles, lignes, formes animees) au lieu de s'appuyer sur le DOM React
-- Dessine les stickers, le filtre, les bordures de cadrage
-
-### Etape 2 : Modifier `capturePhotoFromVideo` pour utiliser le compositor
-
-Dans `FullscreenCreator.tsx`, la fonction `capturePhotoFromVideo` recevra les `arEffects` actifs et appellera les fonctions de dessin canvas correspondantes apres le filtre et avant les stickers :
-
-- Sparkles : petits cercles dores a positions aleatoires
-- Coeurs flottants : formes coeur en bezier
-- Pluie : lignes diagonales semi-transparentes
-- Confetti : rectangles colores a rotation aleatoire
-- Neige : cercles blancs de tailles variees
-- Bulles : cercles avec reflet
-- Lucioles : points lumineux avec halo
-
-### Etape 3 : Modifier `startRecording` pour capturer depuis le canvas composite
-
-Au lieu d'enregistrer depuis `streamRef.current`, on :
-
-1. Active un canvas de composition (`liveCanvasRef`) meme sans template
-2. Lance une boucle `requestAnimationFrame` qui dessine le flux camera + tous les effets sur ce canvas
-3. Capture le flux depuis `liveCanvasRef.captureStream(30)` pour le MediaRecorder
-4. Ajoute les pistes audio du flux camera original
-
-### Etape 4 : Gerer les graphics/cadrage dans le canvas
-
-Les styles de cadrage (bordures arrondies, vignette, aspect ratio) sont traduits en operations canvas equivalentes lors de la composition.
+| Emplacement | Ligne approximative | Usage |
+|-------------|-------------------|-------|
+| `capturePhotoFromVideo()` | ~276-279 | Capture photo statique |
+| `startRecording()` bloc composite | ~1410-1413 | Enregistrement video |
+| Tout autre endroit calculant `overlayArEffects` | A verifier | Coherence |
 
 ## Fichiers modifies
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/utils/CanvasCompositor.ts` | **Nouveau** - Fonctions de dessin canvas pour chaque type d'effet AR |
-| `src/components/tamtam/FullscreenCreator.tsx` | Modifier `capturePhotoFromVideo` pour dessiner les AR effects sur le canvas |
-| `src/components/tamtam/FullscreenCreator.tsx` | Modifier `startRecording` pour enregistrer depuis le canvas composite au lieu du flux brut |
-| `src/components/tamtam/FullscreenCreator.tsx` | Ajouter une boucle de composition continue quand des effets sont actifs |
-
-## Detail technique du CanvasCompositor
-
-```text
-drawAREffect(ctx, effectId, width, height, time):
-  - "sparkles"       -> 40 cercles dores, tailles 2-6px, positions aleatoires, opacite pulsante
-  - "floating-hearts" -> 25 coeurs rouges/roses, mouvement ascendant
-  - "rain"           -> 60 lignes diagonales bleues, mouvement descendant
-  - "confetti"       -> 35 rectangles multicolores, rotation + chute
-  - "snow"           -> 45 cercles blancs, chute lente + derive laterale
-  - "bubbles"        -> 20 cercles avec reflet, mouvement ascendant
-  - "fireflies"      -> 30 points jaunes lumineux avec halo, mouvement aleatoire
-
-drawGraphicsFrame(ctx, graphicsId, width, height):
-  - Bordures arrondies, vignette, aspect ratio clip
-```
-
-## Flux de capture modifie
-
-```text
-AVANT (actuel):
-  Camera -> flux brut -> MediaRecorder -> video sans effets
-
-APRES (corrige):
-  Camera -> Canvas composite (video + filtre + AR + stickers + cadrage)
-         -> captureStream(30) -> MediaRecorder -> video avec TOUS les effets
-```
+| `src/components/tamtam/FullscreenCreator.tsx` | Corriger le mapping `overlayArEffects` pour passer les noms d'animation au lieu des IDs dans `capturePhotoFromVideo` et `startRecording` |
 
 ## Impact
 
-- Toutes les photos capturees contiendront les effets AR visibles
-- Toutes les videos enregistrees auront les filtres, AR effects, stickers et cadrage bakes
-- Le rendu dans le feed correspondra exactement a ce que l'utilisateur voit pendant la capture
-- Les performances restent bonnes grace au dessin canvas direct (pas de capture DOM)
-- Pas de changement pour les templates premium (Griot, Chronicle) qui ont leur propre pipeline
+- Tous les effets AR overlay (coeurs, etincelles, pluie, confetti, neige, bulles, lucioles) seront correctement dessines dans les photos et videos capturees
+- Le rendu final dans le feed correspondra exactement a la preview en temps reel
+- Aucun changement de comportement pour les effets de type "face" (filtre CSS) qui fonctionnent deja correctement
+- Correction simple et ciblee, pas de risque de regression
 
