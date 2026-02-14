@@ -1,98 +1,116 @@
 
-# Correction : Animations Magic IA non fluides/naturelles dans l'enregistrement
+# Corrections de l'editeur video, musique, et brouillons
 
-## Diagnostic
+## 4 problemes a corriger
 
-Le probleme vient d'une **divergence majeure entre les animations DOM (preview) et les animations Canvas (enregistrement)**. Ce sont deux systemes completement differents qui produisent des resultats visuellement incompatibles :
+---
 
-| Aspect | Preview (DOM/Framer Motion) | Enregistrement (Canvas) |
-|--------|---------------------------|------------------------|
-| **Coeurs** | 35 particules, emoji coeur, trajectoires multi-points (6 keyframes x/y), scale 0.5-1.2, easing `easeInOut` | 25 particules, bezier geometrique, mouvement lineaire ascendant simple |
-| **Sparkles** | 40 particules, emoji etoile, rotation 0-360, 6 keyframes de position | 40 particules, cercles jaunes, leger drift sin/cos |
-| **Confetti** | 50 particules, rectangles colores, rotation jusqu'a 1080deg, 6 keyframes | 35 particules, rectangles, chute lineaire simple |
-| **Neige** | 50 flocons emoji, derive laterale multi-points, rotation 180deg | 45 cercles blancs, chute lineaire + derive basique |
-| **Bulles** | 35 bulles CSS, mouvement ascendant multi-points, scale pulse | 20 cercles, ascension lineaire |
-| **Lucioles** | 40 points, trajectoire 7 keyframes x/y, scale 0.8-1.4, glow CSS | 30 points, drift sin/cos basique |
-| **Pluie** | 60 gouttes, gradient CSS, chute rapide | 60 lignes, chute lineaire |
+## 1. Timeline video adaptee a la duree reelle
 
-**Resultat** : l'utilisateur voit des animations riches et fluides en preview, mais l'enregistrement produit des effets "comprimes", rigides et mecaniques.
+**Probleme** : La MiniTimeline ne s'adapte pas visuellement a la duree de la video capturee.
 
-## Solution
+**Solution** : La `totalDuration` est deja calculee dynamiquement depuis les segments (`segments.reduce(...)`), et le segment est cree dans `finishCapture` avec `duration`, `startTime: 0`, `endTime: duration`. Le calcul est correct. Le probleme est que la video enregistree utilise `lengthSec` (le timer max) au lieu de la duree reelle d'enregistrement.
 
-Reecrire le `CanvasCompositor.ts` pour reproduire fidelement le comportement des animations DOM :
+**Correction dans `FullscreenCreator.tsx`** :
+- Dans le handler video (ligne ~1713), quand `stopRecordingToBlob()` retourne le blob, calculer la duree reelle de la video via un element `<video>` temporaire au lieu de passer `lengthSec`
+- Passer cette duree reelle a `finishCapture(blob, "video", realDuration)` pour que le segment ait la bonne longueur
+- Meme chose pour les imports album : extraire la duree reelle du fichier video importe
 
-### 1. Aligner les nombres de particules avec le DOM
+---
 
-Utiliser les memes quantites que les composants React (35 coeurs au lieu de 25, 50 confetti au lieu de 35, etc.)
+## 2. Timeline visible uniquement pour les videos
 
-### 2. Implementer une interpolation multi-keyframes
+**Probleme** : La MiniTimeline s'affiche aussi pour les photos et bursts.
 
-Au lieu de simples formules sin/cos, reproduire les trajectoires multi-points de Framer Motion avec une fonction d'interpolation par keyframes :
+**Solution dans `FullscreenCreator.tsx`** :
+- Modifier la condition d'affichage (ligne ~3412) de :
+```
+{hasCapture && segments.length > 0 && (
+```
+a :
+```
+{hasCapture && segments.length > 0 && capturedType === "video" && (
+```
+- Cela masque la timeline pour les photos, bursts et textes
 
+---
+
+## 3. Musique dans le rendu final
+
+**Probleme** : La musique selectionnee est transmise via `selectedAudioTrack` dans le payload `onPublish`, mais elle n'est pas mixee dans le fichier video/photo final. Le feed recoit juste l'URL de la musique mais ne la joue pas.
+
+**Solution** :
+- **Pour les videos** : Dans la fonction `publish()`, avant d'appeler `onPublish`, mixer l'audio de la musique selectionnee dans le blob video en utilisant le Web Audio API + MediaRecorder (similar au pipeline Griot)
+- **Pour les photos/bursts** : Passer le `musicUrl` et `musicTrimStart`/`musicTrimDuration` dans le payload pour que le feed puisse jouer la musique en arriere-plan lors de l'affichage
+- Ajouter un etat `musicTrimStart` et `musicTrimDuration` pour stocker la portion de musique choisie via le MusicTrimmer
+- Connecter le `MusicTrimmer` dans `AudioLibrary` pour que `onTrimChange` remonte les valeurs au `FullscreenCreator`
+
+**Fichiers modifies** :
+- `FullscreenCreator.tsx` : ajouter etats de trim, mixer musique dans le blob video avant publication
+- Creer `src/utils/AudioMixer.ts` : utilitaire pour mixer un audio dans un blob video via Web Audio API
+
+---
+
+## 4. Gestion de la fermeture et brouillons
+
+**Probleme** : Quand on ferme le createur pendant une creation, pas de confirmation de perte de donnees. Et quand on revient, l'ancien contenu peut encore etre visible.
+
+**Solution dans `FullscreenCreator.tsx`** :
+- Ajouter un etat `showDiscardConfirm` (boolean)
+- Quand l'utilisateur clique X (fermer) et qu'il y a une capture en cours (`hasCapture === true` ou `isRecording`), afficher une modale de confirmation : "Vous allez perdre votre creation. Continuer ?"
+  - "Oui, quitter" : appeler `retake()` puis `onClose()`  
+  - "Annuler" : fermer la modale
+- Reinitialiser TOUS les etats dans un `useEffect` qui se declenche quand `open` passe de `false` a `true`, pour garantir une creation vierge a chaque ouverture
+
+**Fichiers modifies** :
+- `FullscreenCreator.tsx` : ajouter la modale de confirmation et le reset a l'ouverture
+
+---
+
+## Resume des fichiers
+
+| Fichier | Modifications |
+|---------|--------------|
+| `src/components/tamtam/FullscreenCreator.tsx` | 1. Duree video reelle au lieu de lengthSec. 2. Timeline video uniquement. 3. Etats trim musique + mixage audio. 4. Modale discard + reset a l'ouverture |
+| `src/utils/AudioMixer.ts` | **Nouveau** - Utilitaire pour mixer une piste audio dans un blob video via Web Audio API |
+
+## Details techniques
+
+### Calcul duree reelle video
 ```text
-Exemple pour les coeurs (DOM) :
-  x: [0, 25, -25, 15, -15, 0]  (6 etapes)
-  y: [0, -40, 20, -30, 10, 0]
-  scale: [0.5, 1.2, 0.9, 1.1, 0.8, 0.5]
-  opacity: [0, 1, 0.8, 1, 0.6, 0]
-
--> Canvas : interpoler lineairement entre ces keyframes 
-   en fonction du temps normalise (t = 0..1)
+const b = await stopRecordingToBlob();
+const realDuration = await getVideoDuration(b); // via <video> temporaire
+await finishCapture(b, "video", realDuration);
 ```
 
-### 3. Appliquer un easing `easeInOut` au lieu de lineaire
-
-Ajouter une fonction easeInOut pour que le mouvement soit naturel et non mecanique.
-
-### 4. Enrichir le rendu visuel
-
-- Coeurs : dessiner des coeurs plus grands, avec des couleurs variees (rouge, rose, magenta)
-- Sparkles : ajouter la croix scintillante + rotation + taille pulsante
-- Neige : ajouter la derive laterale multi-points, taille plus grande
-- Bulles : augmenter la taille, ajouter le reflet lumineux
-- Lucioles : trajectoires complexes 7 points, halo plus large, pulsation scale
-
-### 5. Harmoniser les durees et delais
-
-Les durations/delays du canvas doivent correspondre aux valeurs DOM pour un rythme identique.
-
-## Fichiers modifies
-
-| Fichier | Modification |
-|---------|-------------|
-| `src/utils/CanvasCompositor.ts` | Reecrire toutes les fonctions `drawAREffect` pour reproduire les animations DOM avec interpolation multi-keyframes, easing, et memes parametres visuels |
-
-## Detail technique
-
-### Nouvelle fonction utilitaire : `interpolateKeyframes`
-
+### Mixage audio dans video
 ```text
-interpolateKeyframes(keyframes: number[], t: number): number
-  - t est normalise entre 0 et 1
-  - interpole lineairement entre les valeurs du tableau
-  - ex: interpolateKeyframes([0, 25, -25, 15, 0], 0.3) 
-    -> interpole entre 25 et -25
-
-easeInOut(t: number): number
-  - formule cubique standard pour mouvement naturel
+1. Decoder le blob video en pistes audio/video
+2. Decoder la musique selectionnee (portion trimmed)
+3. Mixer les deux AudioBuffers
+4. Re-encoder via MediaRecorder avec canvas + audio context
+5. Retourner le nouveau blob
 ```
 
-### Parametres alignes sur le DOM
-
+### Modale de confirmation
 ```text
-sparkles:       40 particules, duration 3-4s, rotation 0->360, 6 keyframes x/y
-floating-hearts: 35 particules, duration 4-5s, scale [0.5,1.2,0.9,1.1,0.8,0.5]
-rain:           60 gouttes, duration 0.8-1.2s, chute rapide lineaire
-confetti:       50 particules, duration 3-4s, rotation 0->1080deg, 6 keyframes
-snow:           50 flocons, duration 4-6s, derive laterale 7 keyframes x
-bubbles:        35 bulles, duration 4-6s, montee multi-points, scale pulse
-fireflies:      40 lucioles, duration 5-8s, 7 keyframes x/y, scale [0.8,1.4]
+"Quitter la creation ?"
+"Votre contenu en cours sera perdu."
+[Annuler]  [Quitter]
 ```
 
-## Impact
-
-- Les animations dans l'enregistrement video seront visuellement identiques a la preview
-- Les photos capturees auront des effets naturels et expressifs
-- Le rendu dans le feed sera fluide et dynamique, exactement comme pendant la creation
-- Aucun changement sur la preview DOM (elle reste inchangee)
-- Performance preservee : l'interpolation multi-keyframes est tres legere en calcul
+### Reset a l'ouverture
+```text
+useEffect(() => {
+  if (open) {
+    // Reset ALL state to initial values
+    setHasCapture(false);
+    setCapturedBlob(null);
+    setSegments([]);
+    setCaption('');
+    setMusicTrack(null);
+    setSelectedAudioTrack(null);
+    // ... tous les autres etats
+  }
+}, [open]);
+```
