@@ -72,12 +72,6 @@ export function VocalDictionaryResult({
             <div className="flex items-center gap-3">
               <span className="text-3xl">🇧🇯</span>
               <h2 className="text-2xl font-bold text-white">{entry.word}</h2>
-              <AudioButton 
-                text={entry.word} 
-                fieldId="word-ba" 
-                lang="ba"
-                className="bg-white/20 hover:bg-white/30 text-white"
-              />
             </div>
             
             {/* Phonétique */}
@@ -141,15 +135,10 @@ export function VocalDictionaryResult({
                 <MessageCircle className="w-5 h-5 text-amber-600" />
               </div>
               <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
+                <div className="mb-1">
                   <span className="text-sm text-amber-700 font-medium flex items-center gap-2">
                     <span>🇧🇯</span> Exemple en bariba
                   </span>
-                  <AudioButton 
-                    text={entry.example_bariba} 
-                    fieldId="example-ba" 
-                    lang="ba"
-                  />
                 </div>
                 <p className="text-amber-900 text-lg italic">"{entry.example_bariba}"</p>
               </div>
@@ -184,10 +173,9 @@ export function VocalDictionaryResult({
         {/* Bouton écouter tout */}
         <button
           onClick={async () => {
-            await speakText(entry.word, 'all-word', 'ba');
             await speakText(entry.definition, 'all-def', 'fr');
-            if (entry.example_bariba) {
-              await speakText(entry.example_bariba, 'all-ex-ba', 'ba');
+            if (entry.example_francais) {
+              await speakText(entry.example_francais, 'all-ex-fr', 'fr');
             }
           }}
           disabled={isSpeaking}
