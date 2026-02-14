@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Globe, MoreVertical, Edit, Trash2, Eye, Heart, MessageCircle, Play } from 'lucide-react';
+import { Lock, Globe, MoreVertical, Edit, Trash2, Eye, Heart, MessageCircle, Play, Loader2 } from 'lucide-react';
 import { MyPost } from '@/hooks/useMyPosts';
 import {
   DropdownMenu,
@@ -32,6 +32,7 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
   onViewPost,
 }) => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filteredPosts = posts.filter(p => {
     if (filter === 'public') return p.is_public;
@@ -39,10 +40,15 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
     return true;
   });
 
-  const handleDeleteClick = (postId: string) => {
+  const handleDeleteClick = async (postId: string) => {
     if (deleteConfirm === postId) {
-      onDelete(postId);
-      setDeleteConfirm(null);
+      setDeletingId(postId);
+      try {
+        await onDelete(postId);
+      } finally {
+        setDeletingId(null);
+        setDeleteConfirm(null);
+      }
     } else {
       setDeleteConfirm(postId);
       setTimeout(() => setDeleteConfirm(null), 3000);
@@ -130,10 +136,15 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => handleDeleteClick(post.id)}
+                      disabled={deletingId === post.id}
                       className="text-destructive focus:text-destructive"
                     >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      {deleteConfirm === post.id ? 'Confirmer ?' : 'Supprimer'}
+                      {deletingId === post.id ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-2" />
+                      )}
+                      {deletingId === post.id ? 'Suppression...' : deleteConfirm === post.id ? 'Confirmer ?' : 'Supprimer'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Volume2, Loader2, LogOut, Mic, Clock, Eye, Heart, 
   Grid3X3, Users, Camera, X, Check 
@@ -57,6 +57,7 @@ const settingsItems = [
 
 export default function TamTamProfile() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, updateProfile } = useTamTamProfile();
   const { followersCount, followingCount, followers } = useTamTamFollows();
@@ -121,6 +122,14 @@ export default function TamTamProfile() {
   useEffect(() => {
     announceAction(t('screenProfile'));
   }, [announceAction, t]);
+
+  // Auto-open settings modal from query param
+  useEffect(() => {
+    if (searchParams.get('settings') === '1') {
+      setShowEditProfile(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Avatar upload handlers
   const handleAvatarClick = () => {
@@ -372,6 +381,9 @@ export default function TamTamProfile() {
         followersCount={followersCount}
         followingCount={followingCount}
         likesCount={myPosts.reduce((acc, p) => acc + p.likes_count, 0)}
+        onFollowersClick={() => setShowFollowers(true)}
+        onFollowingClick={() => setShowFollowing(true)}
+        onLikesClick={() => setActiveTab('stats')}
       />
 
       {/* Stats Grid */}

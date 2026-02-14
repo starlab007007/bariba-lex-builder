@@ -117,11 +117,12 @@ export function usePostInteractions(postId: string | null, authorId: string | nu
       console.error('Share error:', err);
     }
 
-    // Also trigger native share
+    // Also trigger native share with post-specific URL
+    const postUrl = `${window.location.origin}/fitila/social?video=${postId}`;
     if (navigator.share) {
-      navigator.share({ title: 'FITILA', url: `${window.location.origin}/fitila?video=${postId}` }).catch(() => {});
+      navigator.share({ title: 'FITILA', text: 'Découvre cette publication sur FITILA !', url: postUrl }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(`${window.location.origin}/fitila?video=${postId}`).catch(() => {});
+      navigator.clipboard.writeText(postUrl).catch(() => {});
     }
   }, [currentUserId, postId]);
 

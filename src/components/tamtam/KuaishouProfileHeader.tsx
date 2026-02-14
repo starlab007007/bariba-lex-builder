@@ -18,6 +18,9 @@ interface KuaishouProfileHeaderProps {
   followingCount?: number;
   likesCount?: number;
   showBackButton?: boolean;
+  onFollowersClick?: () => void;
+  onFollowingClick?: () => void;
+  onLikesClick?: () => void;
 }
 
 // Format number with K notation
@@ -43,6 +46,9 @@ export const KuaishouProfileHeader: React.FC<KuaishouProfileHeaderProps> = ({
   followingCount = 0,
   likesCount = 0,
   showBackButton = true,
+  onFollowersClick,
+  onFollowingClick,
+  onLikesClick,
 }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -118,33 +124,36 @@ export const KuaishouProfileHeader: React.FC<KuaishouProfileHeaderProps> = ({
 
           {/* Stats horizontal (Kuaishou style) */}
           <div className="flex-1 flex justify-around pt-2">
-            <motion.div
+            <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               className="text-center"
+              onClick={onFollowersClick}
             >
               <p className="text-xl sm:text-2xl font-bold text-white">{formatCount(followersCount)}</p>
               <p className="text-xs text-white/70">Followers</p>
-            </motion.div>
-            <motion.div
+            </motion.button>
+            <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
               className="text-center"
+              onClick={onFollowingClick}
             >
               <p className="text-xl sm:text-2xl font-bold text-white">{formatCount(followingCount)}</p>
               <p className="text-xs text-white/70">Follow</p>
-            </motion.div>
-            <motion.div
+            </motion.button>
+            <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="text-center"
+              onClick={onLikesClick}
             >
               <p className="text-xl sm:text-2xl font-bold text-white">{formatCount(likesCount)}</p>
               <p className="text-xs text-white/70">Likes</p>
-            </motion.div>
+            </motion.button>
           </div>
         </div>
 
