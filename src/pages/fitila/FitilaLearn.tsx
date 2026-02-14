@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles } from 'lucide-react';
+import { ArrowLeft, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles, GraduationCap, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useSideMenu } from '@/pages/fitila/FitilaApp';
@@ -8,9 +8,10 @@ import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useLearningProgress } from '@/hooks/useLearningProgress';
 import { THEMES, EXERCISES, buildOptions, getCorrectAnswer, getQuestion, shuffleArray, type Exercise } from '@/data/learningExercises';
 import { LEVELS, BADGES } from '@/data/learningConfig';
+import { FOUNDATION_LESSONS, type FoundationLesson, type FoundationQuiz } from '@/data/learningFoundations';
 import { Progress } from '@/components/ui/progress';
 
-type ViewType = 'language-selection' | 'dashboard' | 'lesson' | 'lesson-complete';
+type ViewType = 'language-selection' | 'dashboard' | 'lesson' | 'lesson-complete' | 'foundation-lesson' | 'foundation-quiz';
 
 export default function FitilaLearn() {
   const navigate = useNavigate();
@@ -32,6 +33,13 @@ export default function FitilaLearn() {
   const [currentOptions, setCurrentOptions] = useState<string[]>([]);
   const [showLevelUp, setShowLevelUp] = useState(false);
 
+  // Foundation state
+  const [currentFoundation, setCurrentFoundation] = useState<FoundationLesson | null>(null);
+  const [foundationQuizIndex, setFoundationQuizIndex] = useState(0);
+  const [foundationQuizScore, setFoundationQuizScore] = useState(0);
+  const [foundationQuizAnswer, setFoundationQuizAnswer] = useState<number | null>(null);
+  const [showFoundations, setShowFoundations] = useState(true);
+
   const currentLevel = getCurrentLevel();
   const nextLevel = getNextLevel();
   const progressToNext = nextLevel
@@ -47,7 +55,9 @@ export default function FitilaLearn() {
   };
 
   const handleBack = () => {
-    if (currentView === 'lesson' || currentView === 'lesson-complete') {
+    if (currentView === 'foundation-quiz') {
+      setCurrentView('foundation-lesson');
+    } else if (currentView === 'foundation-lesson' || currentView === 'lesson' || currentView === 'lesson-complete') {
       setCurrentView('dashboard');
     } else if (currentView === 'dashboard') {
       navigate('/fitila/social');
@@ -70,6 +80,40 @@ export default function FitilaLearn() {
     setCurrentOptions(buildOptions(shuffled[0], direction));
     setCurrentView('lesson');
     triggerFeedback('click');
+  };
+
+  const startFoundation = (lesson: FoundationLesson) => {
+    setCurrentFoundation(lesson);
+    setCurrentView('foundation-lesson');
+    triggerFeedback('click');
+  };
+
+  const startFoundationQuiz = () => {
+    setFoundationQuizIndex(0);
+    setFoundationQuizScore(0);
+    setFoundationQuizAnswer(null);
+    setCurrentView('foundation-quiz');
+    triggerFeedback('click');
+  };
+
+  const handleFoundationAnswer = (idx: number) => {
+    if (foundationQuizAnswer !== null || !currentFoundation) return;
+    setFoundationQuizAnswer(idx);
+    const correct = idx === currentFoundation.quiz[foundationQuizIndex].correctIndex;
+    if (correct) setFoundationQuizScore(s => s + 1);
+    triggerFeedback(correct ? 'success' : 'error');
+  };
+
+  const nextFoundationQuestion = () => {
+    if (!currentFoundation) return;
+    if (foundationQuizIndex < currentFoundation.quiz.length - 1) {
+      setFoundationQuizIndex(i => i + 1);
+      setFoundationQuizAnswer(null);
+    } else {
+      completeLesson(currentFoundation.id, foundationQuizScore, currentFoundation.quiz.length);
+      setCurrentView('lesson-complete');
+      setCurrentThemeId(currentFoundation.id);
+    }
   };
 
   const handleAnswer = (answer: string) => {
@@ -108,7 +152,6 @@ export default function FitilaLearn() {
 
   const currentTheme = THEMES.find(t => t.id === currentThemeId);
 
-  // Theme gradient buttons colors
   const themeButtonGradients: Record<string, string> = {
     salutations: 'from-violet-400 to-purple-500',
     famille: 'from-pink-400 to-rose-500',
@@ -122,7 +165,6 @@ export default function FitilaLearn() {
     proverbes: 'from-amber-500 to-orange-600',
   };
 
-  // Theme icon bg colors
   const themeIconBgs: Record<string, string> = {
     salutations: 'bg-blue-100',
     famille: 'bg-pink-100',
@@ -189,7 +231,6 @@ export default function FitilaLearn() {
                   <p className="text-gray-400 text-sm">A win yenu debu</p>
                 </div>
                 <div className="space-y-4">
-                  {/* French option */}
                   <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('french')} className="w-full bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 rounded-3xl p-8 text-left text-white transition-all shadow-lg hover:shadow-xl">
                     <div className="text-6xl mb-4">🇫🇷</div>
                     <h2 className="text-2xl font-bold mb-1">Je parle Français</h2>
@@ -202,7 +243,6 @@ export default function FitilaLearn() {
                       <p>✓ Culture bariba</p>
                     </div>
                   </motion.button>
-                  {/* Bariba option */}
                   <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('bariba')} className="w-full bg-gradient-to-br from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 rounded-3xl p-8 text-left text-white transition-all shadow-lg hover:shadow-xl">
                     <div className="text-6xl mb-4">🌍</div>
                     <h2 className="text-2xl font-bold mb-1">Ń nɛɛ Bariba</h2>
@@ -308,6 +348,43 @@ export default function FitilaLearn() {
                 </div>
               )}
 
+              {/* ═══ FOUNDATIONS SECTION ═══ */}
+              <div className="bg-white rounded-3xl shadow-xl p-6">
+                <button onClick={() => setShowFoundations(!showFoundations)} className="w-full flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5 text-indigo-500" />
+                    {getText('foundations')}
+                  </h3>
+                  <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showFoundations ? 'rotate-180' : ''}`} />
+                </button>
+                {showFoundations && (
+                  <>
+                    <p className="text-gray-500 text-xs mb-4">{getText('foundationsSub')}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {FOUNDATION_LESSONS.map((fl, idx) => (
+                        <motion.button
+                          key={fl.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.04 }}
+                          onClick={() => startFoundation(fl)}
+                          className="border-2 border-gray-100 rounded-2xl p-4 text-left hover:border-indigo-200 hover:shadow-lg transition-all group"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shadow-sm" style={{ backgroundColor: fl.color + '18' }}>
+                              {fl.icon}
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-gray-300 ml-auto group-hover:text-indigo-400 transition-colors" />
+                          </div>
+                          <h4 className="font-bold text-gray-800 text-xs leading-tight">{fl.title[langKey]}</h4>
+                          <p className="text-[10px] text-gray-400 mt-1">{fl.sections.length} {getText('sections')} • {fl.quiz.length} {getText('quiz')}</p>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
               {/* Learning Themes */}
               <div className="bg-white rounded-3xl shadow-xl p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2">
@@ -352,25 +429,203 @@ export default function FitilaLearn() {
             </motion.div>
           )}
 
-          {/* ═══ LESSON ═══ */}
-          {currentView === 'lesson' && config && exercises.length > 0 && (
-            <motion.div key="lesson" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="px-4 pb-6 space-y-4">
+          {/* ═══ FOUNDATION LESSON ═══ */}
+          {currentView === 'foundation-lesson' && currentFoundation && config && (
+            <motion.div key="foundation" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="px-4 pb-6 space-y-4">
+              {/* Title */}
+              <div className="bg-white rounded-2xl shadow-md p-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-3xl" style={{ backgroundColor: currentFoundation.color + '18' }}>
+                    {currentFoundation.icon}
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-800">{currentFoundation.title[langKey]}</h2>
+                    <p className="text-xs text-gray-500">{currentFoundation.sections.length} {getText('sections')}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sections */}
+              {currentFoundation.sections.map((section, sIdx) => (
+                <motion.div
+                  key={sIdx}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: sIdx * 0.08 }}
+                  className="bg-white rounded-2xl shadow-md p-5 space-y-3"
+                >
+                  <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ backgroundColor: currentFoundation.color }}>
+                      {sIdx + 1}
+                    </span>
+                    {section.title[langKey]}
+                  </h3>
+
+                  <p className="text-gray-600 text-sm leading-relaxed">{section.content[langKey]}</p>
+
+                  {/* Table */}
+                  {section.table && (
+                    <div className="overflow-x-auto -mx-2">
+                      <table className="w-full text-xs border-collapse min-w-[320px]">
+                        <thead>
+                          <tr>
+                            {section.table.headers.map((h, i) => (
+                              <th key={i} className="text-left px-2 py-2 font-bold text-gray-700 border-b-2" style={{ borderColor: currentFoundation.color + '40' }}>
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {section.table.rows.map((row, rIdx) => (
+                            <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-gray-50/50' : ''}>
+                              {row.map((cell, cIdx) => (
+                                <td key={cIdx} className="px-2 py-1.5 text-gray-600 border-b border-gray-100">
+                                  {cell}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Examples */}
+                  {section.examples && section.examples.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {userLanguage === 'french' ? 'Exemples' : 'Yirɑnu'}
+                      </p>
+                      {section.examples.map((ex, eIdx) => (
+                        <div key={eIdx} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-800 text-sm">{ex.bariba}</p>
+                              <p className="text-gray-500 text-xs">{ex.french}</p>
+                            </div>
+                            {ex.french && (
+                              <motion.button whileTap={{ scale: 0.85 }} onClick={() => speakFrench(ex.french)} className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                <Volume2 className="w-3.5 h-3.5 text-blue-500" />
+                              </motion.button>
+                            )}
+                          </div>
+                          {ex.note && <p className="text-[10px] text-indigo-500 mt-1 italic">💡 {ex.note}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tip */}
+                  {section.tip && (
+                    <div className="bg-amber-50 rounded-xl p-3 border border-amber-200">
+                      <p className="text-amber-800 text-xs">{section.tip[langKey]}</p>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+
+              {/* Start Quiz button */}
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={startFoundationQuiz}
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-4 rounded-2xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+              >
+                <GraduationCap className="w-5 h-5" />
+                {getText('quiz')} ({currentFoundation.quiz.length} {userLanguage === 'french' ? 'questions' : 'kasuurenu'})
+              </motion.button>
+            </motion.div>
+          )}
+
+          {/* ═══ FOUNDATION QUIZ ═══ */}
+          {currentView === 'foundation-quiz' && currentFoundation && config && (
+            <motion.div key="fquiz" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="px-4 pb-6 space-y-4">
               {/* Progress */}
               <div className="bg-white rounded-2xl shadow-md p-4">
                 <div className="flex justify-between mb-2 text-xs font-semibold">
-                  <span className="text-gray-500">
-                    {userLanguage === 'french' ? 'Question' : 'Kasuu'} {exerciseIndex + 1} / {exercises.length}
-                  </span>
-                  <span className="text-green-600">
-                    {getText('score')}: {score} / {exercises.length}
-                  </span>
+                  <span className="text-gray-500">{getText('quiz')} {foundationQuizIndex + 1} / {currentFoundation.quiz.length}</span>
+                  <span className="text-green-600">{getText('score')}: {foundationQuizScore} / {currentFoundation.quiz.length}</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                  <div className="bg-gradient-to-r from-indigo-400 to-purple-500 h-full rounded-full transition-all duration-300" style={{ width: `${((foundationQuizIndex + 1) / currentFoundation.quiz.length) * 100}%` }} />
+                </div>
+              </div>
+
+              {/* Question */}
+              {(() => {
+                const q = currentFoundation.quiz[foundationQuizIndex];
+                return (
+                  <>
+                    <div className="bg-white rounded-3xl shadow-xl p-6 text-center">
+                      <p className="text-gray-800 font-bold text-xl">{q.question[langKey]}</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {q.options.map((opt, idx) => {
+                        let styles = 'bg-white border-gray-200 hover:border-indigo-300 hover:shadow-md';
+                        if (foundationQuizAnswer !== null) {
+                          if (idx === q.correctIndex) styles = 'bg-green-50 border-green-400 shadow-md';
+                          else if (idx === foundationQuizAnswer) styles = 'bg-red-50 border-red-400 shadow-md';
+                          else styles = 'bg-white border-gray-100 opacity-50';
+                        }
+                        return (
+                          <motion.button
+                            key={idx}
+                            whileTap={foundationQuizAnswer === null ? { scale: 0.98 } : {}}
+                            onClick={() => handleFoundationAnswer(idx)}
+                            disabled={foundationQuizAnswer !== null}
+                            className={`w-full p-4 rounded-2xl border-2 ${styles} transition-all text-left flex items-center justify-between shadow-sm`}
+                          >
+                            <span className="text-gray-800 text-sm font-medium">{opt}</span>
+                            {foundationQuizAnswer !== null && idx === q.correctIndex && <Check className="w-5 h-5 text-green-500" />}
+                            {foundationQuizAnswer === idx && idx !== q.correctIndex && <X className="w-5 h-5 text-red-500" />}
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Feedback & explanation */}
+                    <AnimatePresence>
+                      {foundationQuizAnswer !== null && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+                          <div className={`p-4 rounded-2xl ${foundationQuizAnswer === q.correctIndex ? 'bg-green-50 border-2 border-green-300' : 'bg-red-50 border-2 border-red-300'}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              {foundationQuizAnswer === q.correctIndex ? <Check className="w-5 h-5 text-green-600" /> : <X className="w-5 h-5 text-red-600" />}
+                              <span className={`font-bold text-sm ${foundationQuizAnswer === q.correctIndex ? 'text-green-700' : 'text-red-700'}`}>
+                                {foundationQuizAnswer === q.correctIndex ? getText('correctAnswer') : getText('wrongAnswer')}
+                              </span>
+                            </div>
+                            <p className="text-gray-600 text-xs">{q.explanation[langKey]}</p>
+                          </div>
+                          <motion.button
+                            whileTap={{ scale: 0.97 }}
+                            onClick={nextFoundationQuestion}
+                            className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3.5 rounded-xl font-bold text-sm shadow-md"
+                          >
+                            {foundationQuizIndex < currentFoundation.quiz.length - 1 ? getText('nextQuestion') : getText('complete')}
+                          </motion.button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
+                );
+              })()}
+            </motion.div>
+          )}
+
+          {/* ═══ LESSON (QCM) ═══ */}
+          {currentView === 'lesson' && config && exercises.length > 0 && (
+            <motion.div key="lesson" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="px-4 pb-6 space-y-4">
+              <div className="bg-white rounded-2xl shadow-md p-4">
+                <div className="flex justify-between mb-2 text-xs font-semibold">
+                  <span className="text-gray-500">{userLanguage === 'french' ? 'Question' : 'Kasuu'} {exerciseIndex + 1} / {exercises.length}</span>
+                  <span className="text-green-600">{getText('score')}: {score} / {exercises.length}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
                   <div className="bg-gradient-to-r from-green-400 to-blue-500 h-full rounded-full transition-all duration-300" style={{ width: `${((exerciseIndex + 1) / exercises.length) * 100}%` }} />
                 </div>
               </div>
 
-              {/* Direction indicator */}
               <div className="flex items-center justify-center gap-3 text-sm">
                 <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-xs font-semibold">
                   {direction === 'fr_to_bariba' ? '🇫🇷 Français' : '🌍 Bariba'}
@@ -381,7 +636,6 @@ export default function FitilaLearn() {
                 </span>
               </div>
 
-              {/* Question */}
               <div className="bg-white rounded-3xl shadow-xl p-6 text-center">
                 <p className="text-gray-400 text-xs mb-3">{getText('translateTo')}</p>
                 <div className="flex items-center justify-center gap-3 mb-2">
@@ -397,7 +651,6 @@ export default function FitilaLearn() {
                 )}
               </div>
 
-              {/* Options */}
               <div className="space-y-3">
                 {currentOptions.map((option, idx) => {
                   const correct = getCorrectAnswer(exercises[exerciseIndex], direction);
@@ -430,7 +683,6 @@ export default function FitilaLearn() {
                 })}
               </div>
 
-              {/* Feedback */}
               <AnimatePresence>
                 {selectedAnswer !== null && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`p-4 rounded-2xl ${isCorrect ? 'bg-green-50 border-2 border-green-300' : 'bg-red-50 border-2 border-red-300'}`}>
@@ -462,23 +714,30 @@ export default function FitilaLearn() {
                 {currentTheme && (
                   <p className="text-gray-500 text-sm mb-6">{currentTheme.name[langKey]}</p>
                 )}
+                {currentFoundation && !currentTheme && (
+                  <p className="text-gray-500 text-sm mb-6">{currentFoundation.title[langKey]}</p>
+                )}
 
                 <div className="grid grid-cols-3 gap-3 mb-6">
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3">
-                    <div className="text-blue-700 font-bold text-xl">{score}/{exercises.length}</div>
+                    <div className="text-blue-700 font-bold text-xl">{currentFoundation && !currentTheme ? `${foundationQuizScore}/${currentFoundation.quiz.length}` : `${score}/${exercises.length}`}</div>
                     <div className="text-blue-500 text-[10px] font-medium">{getText('score')}</div>
                   </div>
                   <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-3">
-                    <div className="text-orange-700 font-bold text-xl">+{currentTheme?.xpPerLesson || 50}</div>
+                    <div className="text-orange-700 font-bold text-xl">+50</div>
                     <div className="text-orange-500 text-[10px] font-medium">{getText('xpEarned')}</div>
                   </div>
                   <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3">
-                    <div className="text-green-700 font-bold text-xl">{Math.round((score / exercises.length) * 100)}%</div>
+                    <div className="text-green-700 font-bold text-xl">
+                      {currentFoundation && !currentTheme
+                        ? `${Math.round((foundationQuizScore / currentFoundation.quiz.length) * 100)}%`
+                        : `${Math.round((score / exercises.length) * 100)}%`
+                      }
+                    </div>
                     <div className="text-green-500 text-[10px] font-medium">{getText('precision')}</div>
                   </div>
                 </div>
 
-                {/* New badges */}
                 {newBadges.length > 0 && (
                   <div className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200">
                     <p className="text-yellow-700 text-xs font-semibold mb-2">🏆 {getText('earnedBadges')}</p>
@@ -494,11 +753,8 @@ export default function FitilaLearn() {
                 )}
 
                 <div className="space-y-3">
-                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setCurrentView('dashboard'); clearNewBadges(); }} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all">
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setCurrentView('dashboard'); setCurrentFoundation(null); clearNewBadges(); }} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all">
                     {getText('backToDashboard')}
-                  </motion.button>
-                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => { if (currentThemeId) startLesson(currentThemeId); clearNewBadges(); }} className="w-full py-3.5 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm hover:bg-gray-200 transition-all">
-                    {getText('retry')}
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.97 }} onClick={() => { shareProgress(); triggerFeedback('click'); }} className="w-full py-3.5 rounded-xl border-2 border-gray-100 text-gray-500 text-sm flex items-center justify-center gap-2 hover:border-gray-200 transition-all">
                     <Share2 className="w-4 h-4" />
