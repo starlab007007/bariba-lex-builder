@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface UsePostInteractionsResult {
   isLiked: boolean;
@@ -34,7 +35,6 @@ export function usePostInteractions(postId: string | null, authorId: string | nu
     if (!currentUserId || !postId) return;
 
     const loadStates = async () => {
-      // Parallel queries
       const [likeRes, bookmarkRes, likesCountRes, sharesCountRes] = await Promise.all([
         supabase.from('tamtam_reactions').select('id').eq('post_id', postId).eq('user_id', currentUserId).maybeSingle(),
         supabase.from('tamtam_bookmarks').select('id').eq('post_id', postId).eq('user_id', currentUserId).maybeSingle(),
@@ -64,9 +64,12 @@ export function usePostInteractions(postId: string | null, authorId: string | nu
   }, [currentUserId, authorId]);
 
   const toggleLike = useCallback(async () => {
-    if (!currentUserId || !postId) return;
+    if (!currentUserId) {
+      toast({ title: '🔐 Connexion requise', description: 'Connectez-vous pour aimer cette publication', variant: 'destructive' });
+      return;
+    }
+    if (!postId) return;
 
-    // Optimistic update
     const wasLiked = isLiked;
     setIsLiked(!wasLiked);
     setLikesCount(prev => wasLiked ? prev - 1 : prev + 1);
@@ -77,18 +80,20 @@ export function usePostInteractions(postId: string | null, authorId: string | nu
       } else {
         await supabase.from('tamtam_reactions').insert({ post_id: postId, user_id: currentUserId, reaction_type: 'like' });
       }
-      // Update likes_count on the post
       const { count } = await supabase.from('tamtam_reactions').select('id', { count: 'exact', head: true }).eq('post_id', postId);
       await supabase.from('tamtam_posts').update({ likes_count: count || 0 }).eq('id', postId);
     } catch {
-      // Revert on error
       setIsLiked(wasLiked);
       setLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
     }
   }, [currentUserId, postId, isLiked]);
 
   const toggleBookmark = useCallback(async () => {
-    if (!currentUserId || !postId) return;
+    if (!currentUserId) {
+      toast({ title: '🔐 Connexion requise', description: 'Connectez-vous pour sauvegarder cette publication', variant: 'destructive' });
+      return;
+    }
+    if (!postId) return;
 
     const wasBookmarked = isBookmarked;
     setIsBookmarked(!wasBookmarked);
@@ -105,20 +110,30 @@ export function usePostInteractions(postId: string | null, authorId: string | nu
   }, [currentUserId, postId, isBookmarked]);
 
   const sharePost = useCallback(async (shareMethod: string = 'link') => {
-    if (!currentUserId || !postId) return;
+    // Native share always works (no auth needed for copying link)
+    const postUrl = `${window.location.origin}/fitila/social?video=${postId}`;
+    
+    if (!currentUserId) {
+      toast({ title: '🔐 Connexion requise', description: 'Connectez-vous pour partager cette publication', variant: 'destructive' });
+      // Still allow native share/copy
+      if (navigator.share) {
+        navigator.share({ title: 'FITILA', text: 'Découvre cette publication sur FITILA !', url: postUrl }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(postUrl).catch(() => {});
+      }
+      return;
+    }
+    if (!postId) return;
 
     try {
       await supabase.from('tamtam_shares').insert({ post_id: postId, user_id: currentUserId, shared_to: shareMethod });
       setSharesCount(prev => prev + 1);
-      // Update shares_count on the post
       const { count } = await supabase.from('tamtam_shares').select('id', { count: 'exact', head: true }).eq('post_id', postId);
       await supabase.from('tamtam_posts').update({ shares_count: count || 0 }).eq('id', postId);
     } catch (err) {
       console.error('Share error:', err);
     }
 
-    // Also trigger native share with post-specific URL
-    const postUrl = `${window.location.origin}/fitila/social?video=${postId}`;
     if (navigator.share) {
       navigator.share({ title: 'FITILA', text: 'Découvre cette publication sur FITILA !', url: postUrl }).catch(() => {});
     } else {
@@ -127,7 +142,11 @@ export function usePostInteractions(postId: string | null, authorId: string | nu
   }, [currentUserId, postId]);
 
   const toggleFollow = useCallback(async () => {
-    if (!currentUserId || !authorId || currentUserId === authorId) return;
+    if (!currentUserId) {
+      toast({ title: '🔐 Connexion requise', description: 'Connectez-vous pour suivre cet utilisateur', variant: 'destructive' });
+      return;
+    }
+    if (!authorId || currentUserId === authorId) return;
 
     const wasFollowing = isFollowing;
     setIsFollowing(!wasFollowing);
