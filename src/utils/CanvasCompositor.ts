@@ -1,5 +1,23 @@
 // src/utils/CanvasCompositor.ts
 // Canvas-based compositor for baking AR effects, filters, stickers, and graphics into captures
+// V2: Multi-keyframe interpolation aligned with DOM/Framer Motion animations
+
+// ============= EASING & INTERPOLATION =============
+
+function easeInOut(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function interpolateKeyframes(keyframes: number[], t: number): number {
+  const clamped = Math.max(0, Math.min(1, t));
+  const count = keyframes.length - 1;
+  const raw = clamped * count;
+  const index = Math.floor(raw);
+  if (index >= count) return keyframes[count];
+  const localT = raw - index;
+  const eased = easeInOut(localT);
+  return keyframes[index] + (keyframes[index + 1] - keyframes[index]) * eased;
+}
 
 // ============= PARTICLE STATE (seeded for deterministic positions) =============
 
@@ -9,7 +27,6 @@ interface Particle {
 }
 
 function generateParticles(count: number, seed: number): Particle[] {
-  // Simple seeded random for reproducible particles
   let s = seed;
   const rand = () => { s = (s * 16807 + 0) % 2147483647; return (s & 0x7fffffff) / 0x7fffffff; };
   return Array.from({ length: count }, () => ({
@@ -19,7 +36,6 @@ function generateParticles(count: number, seed: number): Particle[] {
   }));
 }
 
-// Cache particles per effect
 const particleCache: Record<string, Particle[]> = {};
 function getParticles(effectId: string, count: number, seed: number): Particle[] {
   if (!particleCache[effectId]) particleCache[effectId] = generateParticles(count, seed);
@@ -49,27 +65,39 @@ export function drawAREffect(
 ) {
   switch (effectId) {
     case 'sparkles': {
+      // 40 particles, duration 3-4s, 6-keyframe trajectories, rotation 0->360
       const particles = getParticles('sparkles', 40, 101);
+      const xKF = [0, 15, -20, 10, -10, 0];
+      const yKF = [0, -15, 10, -20, 5, 0];
+      const scaleKF = [0.6, 1.3, 0.8, 1.1, 0.9, 0.6];
+      const opacityKF = [0, 1, 0.7, 1, 0.5, 0];
+
       particles.forEach(p => {
-        const t = ((time + p.delay) % p.duration) / p.duration;
-        const pulse = 0.3 + Math.abs(Math.sin(t * Math.PI * 2)) * 0.7;
-        const px = (p.x + Math.sin(time * 0.5 + p.delay) * 0.03) * width;
-        const py = (p.y + Math.cos(time * 0.7 + p.delay) * 0.03) * height;
-        const r = p.size * 3 * pulse;
+        const dur = 3 + p.speed * 0.5; // 3-4s
+        const t = ((time + p.delay) % dur) / dur;
+        const px = p.x * width + interpolateKeyframes(xKF, t);
+        const py = p.y * height + interpolateKeyframes(yKF, t);
+        const scale = interpolateKeyframes(scaleKF, t);
+        const alpha = interpolateKeyframes(opacityKF, t);
+        const rot = easeInOut(t) * 360 * Math.PI / 180;
+        const r = p.size * 3.5 * scale;
+
         ctx.save();
-        ctx.globalAlpha = pulse * 0.9;
+        ctx.globalAlpha = alpha * 0.9;
+        ctx.translate(px, py);
+        ctx.rotate(rot);
         ctx.fillStyle = '#FFD700';
         ctx.shadowColor = '#FFD700';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 12;
         ctx.beginPath();
-        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.fill();
         // Cross sparkle
         ctx.strokeStyle = '#FFF8DC';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(px - r * 1.5, py); ctx.lineTo(px + r * 1.5, py);
-        ctx.moveTo(px, py - r * 1.5); ctx.lineTo(px, py + r * 1.5);
+        ctx.moveTo(-r * 1.8, 0); ctx.lineTo(r * 1.8, 0);
+        ctx.moveTo(0, -r * 1.8); ctx.lineTo(0, r * 1.8);
         ctx.stroke();
         ctx.restore();
       });
@@ -77,37 +105,54 @@ export function drawAREffect(
     }
 
     case 'floating-hearts': {
-      const particles = getParticles('hearts', 25, 202);
+      // 35 particles, duration 4-5s, multi-keyframe trajectories
+      const particles = getParticles('hearts', 35, 202);
       const colors = ['#ff4444', '#ff6b9d', '#ff1493', '#ff69b4', '#e91e63'];
+      const xKF = [0, 25, -25, 15, -15, 0];
+      const yKF = [0, -40, 20, -30, 10, 0];
+      const scaleKF = [0.5, 1.2, 0.9, 1.1, 0.8, 0.5];
+      const opacityKF = [0, 1, 0.8, 1, 0.6, 0];
+
       particles.forEach((p, i) => {
-        const cycle = (time * p.speed * 0.3 + p.delay) % 5;
-        const progress = cycle / 5;
-        const px = (p.x + Math.sin(time * 0.4 + p.delay) * 0.05) * width;
-        const py = (1 - progress) * height * 1.2 - height * 0.1;
-        const alpha = progress < 0.1 ? progress * 10 : progress > 0.85 ? (1 - progress) / 0.15 : 1;
+        const dur = 4 + p.speed * 0.5; // 4-5s
+        const t = ((time + p.delay) % dur) / dur;
+        const baseX = p.x * width;
+        const baseY = (1 - t) * height * 1.1; // float upward
+        const px = baseX + interpolateKeyframes(xKF, t);
+        const py = baseY + interpolateKeyframes(yKF, t);
+        const scale = interpolateKeyframes(scaleKF, t);
+        const alpha = interpolateKeyframes(opacityKF, t);
+
         ctx.save();
-        ctx.globalAlpha = alpha * 0.8;
+        ctx.globalAlpha = alpha * 0.85;
         ctx.fillStyle = colors[i % colors.length];
-        drawHeart(ctx, px, py, p.size * 10);
+        drawHeart(ctx, px, py, p.size * 14 * scale);
         ctx.restore();
       });
       break;
     }
 
     case 'rain': {
+      // 60 drops, duration 0.8-1.2s, fast linear fall
       const particles = getParticles('rain', 60, 303);
       ctx.save();
       particles.forEach(p => {
-        const cycle = (time * p.speed * 2 + p.delay) % 1;
-        const px = p.x * width + cycle * 30;
-        const py = cycle * height * 1.3 - height * 0.1;
-        const len = 20 + p.size * 25;
-        ctx.globalAlpha = 0.5;
-        ctx.strokeStyle = 'rgba(100,180,255,0.6)';
-        ctx.lineWidth = 1.5;
+        const dur = 0.8 + p.speed * 0.2; // 0.8-1.2s
+        const t = ((time + p.delay) % dur) / dur;
+        const px = p.x * width + t * 25;
+        const py = t * height * 1.3 - height * 0.1;
+        const len = 22 + p.size * 28;
+        const alpha = t < 0.05 ? t * 20 : t > 0.9 ? (1 - t) * 10 : 0.6;
+
+        ctx.globalAlpha = alpha;
+        const grad = ctx.createLinearGradient(px, py, px + 6, py + len);
+        grad.addColorStop(0, 'rgba(100,180,255,0.1)');
+        grad.addColorStop(1, 'rgba(100,180,255,0.7)');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(px, py);
-        ctx.lineTo(px + 8, py + len);
+        ctx.lineTo(px + 6, py + len);
         ctx.stroke();
       });
       ctx.restore();
@@ -115,42 +160,58 @@ export function drawAREffect(
     }
 
     case 'confetti': {
-      const particles = getParticles('confetti', 35, 404);
+      // 50 particles, duration 3-4s, rotation 0->1080deg, 6 keyframes
+      const particles = getParticles('confetti', 50, 404);
       const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6bd6', '#a855f7'];
+      const xKF = [0, 30, -20, 25, -15, 5];
+      const yKF = [0, 0.15, 0.35, 0.55, 0.78, 1.0];
+      const opacityKF = [0, 1, 1, 0.9, 0.7, 0];
+
       particles.forEach((p, i) => {
-        const cycle = (time * p.speed * 0.5 + p.delay) % 4;
-        const progress = cycle / 4;
-        const px = (p.x + Math.sin(time + p.delay) * 0.08) * width;
-        const py = progress * height * 1.4 - height * 0.2;
-        const rot = (time * 90 + p.rotation!) * Math.PI / 180;
-        const alpha = progress < 0.1 ? progress * 10 : progress > 0.8 ? (1 - progress) / 0.2 : 1;
+        const dur = 3 + p.speed * 0.5; // 3-4s
+        const t = ((time + p.delay) % dur) / dur;
+        const baseX = p.x * width;
+        const px = baseX + interpolateKeyframes(xKF, t);
+        const py = interpolateKeyframes(yKF, t) * height * 1.2 - height * 0.1;
+        const rot = easeInOut(t) * 1080 * Math.PI / 180;
+        const alpha = interpolateKeyframes(opacityKF, t);
+        const scaleW = 4 + Math.sin(rot * 2) * 2; // wobble width
+
         ctx.save();
         ctx.globalAlpha = alpha * 0.9;
         ctx.translate(px, py);
         ctx.rotate(rot);
         ctx.fillStyle = colors[i % colors.length];
-        ctx.fillRect(-4, -6, 8, 12);
+        ctx.fillRect(-scaleW, -7, scaleW * 2, 14);
         ctx.restore();
       });
       break;
     }
 
     case 'snow': {
-      const particles = getParticles('snow', 45, 505);
+      // 50 flakes, duration 4-6s, lateral drift 7 keyframes
+      const particles = getParticles('snow', 50, 505);
+      const xDriftKF = [0, 15, -10, 20, -15, 8, -5];
+      const opacityKF = [0, 0.8, 1, 0.9, 1, 0.7, 0];
+
       particles.forEach(p => {
-        const cycle = (time * p.speed * 0.2 + p.delay) % 6;
-        const progress = cycle / 6;
-        const drift = Math.sin(time * 0.5 + p.delay * 3) * 30;
+        const dur = 4 + p.speed * 1.0; // 4-6s
+        const t = ((time + p.delay) % dur) / dur;
+        const drift = interpolateKeyframes(xDriftKF, t);
         const px = p.x * width + drift;
-        const py = progress * height * 1.3 - height * 0.1;
-        const alpha = progress < 0.1 ? progress * 10 : progress > 0.85 ? (1 - progress) / 0.15 : 1;
+        const py = t * height * 1.3 - height * 0.1;
+        const alpha = interpolateKeyframes(opacityKF, t);
+        const rotAngle = easeInOut(t) * 180 * Math.PI / 180;
+
         ctx.save();
-        ctx.globalAlpha = alpha * 0.8;
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.translate(px, py);
+        ctx.rotate(rotAngle);
         ctx.fillStyle = 'white';
         ctx.shadowColor = 'white';
-        ctx.shadowBlur = 4;
+        ctx.shadowBlur = 6;
         ctx.beginPath();
-        ctx.arc(px, py, p.size * 4, 0, Math.PI * 2);
+        ctx.arc(0, 0, p.size * 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       });
@@ -158,26 +219,33 @@ export function drawAREffect(
     }
 
     case 'bubbles': {
-      const particles = getParticles('bubbles', 20, 606);
+      // 35 bubbles, duration 4-6s, multi-keyframe rise, scale pulse
+      const particles = getParticles('bubbles', 35, 606);
+      const xKF = [0, 10, -15, 8, -10, 5, 0];
+      const scaleKF = [0.7, 1.0, 1.15, 0.95, 1.1, 1.0, 0.7];
+      const opacityKF = [0, 0.5, 0.6, 0.5, 0.55, 0.4, 0];
+
       particles.forEach(p => {
-        const cycle = (time * p.speed * 0.25 + p.delay) % 5;
-        const progress = cycle / 5;
-        const px = (p.x + Math.sin(time * 0.3 + p.delay) * 0.04) * width;
-        const py = (1 - progress) * height * 1.2 - height * 0.1;
-        const r = p.size * 15;
-        const alpha = progress < 0.1 ? progress * 10 : progress > 0.8 ? (1 - progress) / 0.2 : 1;
+        const dur = 4 + p.speed * 1.0; // 4-6s
+        const t = ((time + p.delay) % dur) / dur;
+        const px = p.x * width + interpolateKeyframes(xKF, t);
+        const py = (1 - t) * height * 1.2 - height * 0.1;
+        const scale = interpolateKeyframes(scaleKF, t);
+        const r = p.size * 18 * scale;
+        const alpha = interpolateKeyframes(opacityKF, t);
+
         ctx.save();
-        ctx.globalAlpha = alpha * 0.5;
-        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(px, py, r, 0, Math.PI * 2);
         ctx.stroke();
         // Highlight
-        ctx.globalAlpha = alpha * 0.3;
+        ctx.globalAlpha = alpha * 0.6;
         ctx.fillStyle = 'white';
         ctx.beginPath();
-        ctx.arc(px - r * 0.3, py - r * 0.3, r * 0.25, 0, Math.PI * 2);
+        ctx.arc(px - r * 0.3, py - r * 0.3, r * 0.22, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       });
@@ -185,18 +253,28 @@ export function drawAREffect(
     }
 
     case 'fireflies': {
-      const particles = getParticles('fireflies', 30, 707);
+      // 40 fireflies, duration 5-8s, 7 keyframes x/y, scale pulse
+      const particles = getParticles('fireflies', 40, 707);
+      const xKF = [0, 30, -20, 40, -10, 25, 0];
+      const yKF = [0, -20, 15, -30, 10, -15, 0];
+      const scaleKF = [0.8, 1.2, 0.9, 1.4, 1.0, 1.3, 0.8];
+      const opacityKF = [0.2, 0.9, 0.4, 1.0, 0.5, 0.8, 0.2];
+
       particles.forEach(p => {
-        const pulse = 0.2 + Math.abs(Math.sin(time * 2 + p.delay * 5)) * 0.8;
-        const px = (p.x + Math.sin(time * 0.6 + p.delay * 2) * 0.06) * width;
-        const py = (p.y + Math.cos(time * 0.5 + p.delay * 3) * 0.06) * height;
+        const dur = 5 + p.speed * 1.5; // 5-8s
+        const t = ((time + p.delay) % dur) / dur;
+        const px = p.x * width + interpolateKeyframes(xKF, t);
+        const py = p.y * height + interpolateKeyframes(yKF, t);
+        const scale = interpolateKeyframes(scaleKF, t);
+        const alpha = interpolateKeyframes(opacityKF, t);
+
         ctx.save();
-        ctx.globalAlpha = pulse * 0.9;
+        ctx.globalAlpha = alpha;
         ctx.fillStyle = '#fde047';
         ctx.shadowColor = '#fde047';
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 25 * scale;
         ctx.beginPath();
-        ctx.arc(px, py, p.size * 3, 0, Math.PI * 2);
+        ctx.arc(px, py, p.size * 3.5 * scale, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       });
@@ -239,10 +317,11 @@ export function drawGraphicsFrame(
   if (overlayId === 'bokeh') {
     ctx.save();
     ctx.globalAlpha = 0.15;
-    for (let i = 0; i < 12; i++) {
-      const bx = Math.random() * width;
-      const by = Math.random() * height;
-      const br = 20 + Math.random() * 40;
+    const bokehParticles = getParticles('bokeh_overlay', 12, 999);
+    for (const bp of bokehParticles) {
+      const bx = bp.x * width;
+      const by = bp.y * height;
+      const br = 20 + bp.size * 30;
       const grad = ctx.createRadialGradient(bx, by, 0, bx, by, br);
       grad.addColorStop(0, 'rgba(255,255,255,0.3)');
       grad.addColorStop(1, 'transparent');
@@ -345,10 +424,6 @@ export interface CompositeOptions {
   templateGradient?: string;
 }
 
-/**
- * Draw a complete composited frame onto the provided canvas context.
- * Used for both photo capture and video recording (via requestAnimationFrame loop).
- */
 export function compositeFrame(
   ctx: CanvasRenderingContext2D,
   video: HTMLVideoElement,
