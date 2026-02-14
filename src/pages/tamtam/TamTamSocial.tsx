@@ -684,10 +684,10 @@ const VideoFeedCard: React.FC<{
         </div>
       )}
 
-      {/* Author info - bottom left with @username */}
+      {/* Author info - bottom left with @username, date & time */}
       <div 
-        className="absolute bottom-0 left-0 right-14 sm:right-16 px-3 sm:px-4"
-        style={{ paddingBottom: 'max(3.5rem, calc(env(safe-area-inset-bottom) + 3.5rem))' }}
+        className="absolute bottom-0 left-0 right-16 sm:right-20 px-3 sm:px-4"
+        style={{ paddingBottom: 'max(5rem, calc(env(safe-area-inset-bottom) + 5rem))' }}
       >
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -695,20 +695,20 @@ const VideoFeedCard: React.FC<{
           className="z-20 relative" 
           onClick={handleProfileClick}
         >
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border border-white/20">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 border-white/30 shadow-lg flex-shrink-0">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-white/10 flex items-center justify-center">
-                  <span className="text-xs">👤</span>
+                  <span className="text-sm">👤</span>
                 </div>
               )}
             </div>
-            <div className="flex flex-col">
-              <span className="text-white/90 text-xs sm:text-sm font-semibold drop-shadow-md">{authorUsername}</span>
-              <span className="text-white/50 text-[10px]">
-                {post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+            <div className="flex flex-col min-w-0">
+              <span className="text-white text-sm sm:text-base font-bold drop-shadow-lg truncate">{authorUsername}</span>
+              <span className="text-white/60 text-xs sm:text-sm drop-shadow-md">
+                {post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + new Date(post.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
               </span>
             </div>
           </div>
