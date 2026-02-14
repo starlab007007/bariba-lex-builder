@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { useWebSpeechSTT } from '@/hooks/useWebSpeechSTT';
+import { useFrenchSTT } from '@/hooks/useFrenchSTT';
 import { useAudioLevel } from '@/hooks/useAudioLevel';
 import { useToast } from '@/hooks/use-toast';
 
@@ -95,6 +96,7 @@ export function TamTamMicButton({
   const audioRecorder = useAudioRecorder();
   const unifiedAudio = useUnifiedAudio();
   const webSpeechSTT = useWebSpeechSTT();
+  const frenchSTT = useFrenchSTT();
   const audioLevel = useAudioLevel(15);
   
   const isRecording = externalIsRecording !== undefined ? externalIsRecording : internalRecording;
@@ -219,18 +221,41 @@ export function TamTamMicButton({
             setStatusText('📝 Transcription...');
             
             if (sourceLang === 'fr') {
-              // === FRENCH STT ===
-              // Get transcript from Web Speech API (use ref to avoid stale value)
-              transcription = webSpeechSTT.transcript || collectedTranscriptRef.current || undefined;
+              // === FRENCH STT: Mistral Voxtral Mini (priority) + Web Speech fallback ===
               
-              console.log('[TamTamMicButton] 🇫🇷 French transcription result:', {
-                fromState: webSpeechSTT.transcript,
-                fromRef: collectedTranscriptRef.current,
-                final: transcription
-              });
+              // Try Mistral Voxtral Mini first via transcribe-audio edge function
+              if (audioBase64) {
+                console.log('[TamTamMicButton] 🇫🇷 Sending audio to Mistral Voxtral Mini...');
+                try {
+                  // Convert base64 to Blob for transcribeAudioBlob
+                  const byteChars = atob(audioBase64);
+                  const byteNumbers = new Array(byteChars.length);
+                  for (let i = 0; i < byteChars.length; i++) {
+                    byteNumbers[i] = byteChars.charCodeAt(i);
+                  }
+                  const byteArray = new Uint8Array(byteNumbers);
+                  const audioBlob = new Blob([byteArray], { type: 'audio/webm' });
+                  
+                  const mistralResult = await frenchSTT.transcribeAudioBlob(audioBlob);
+                  if (mistralResult && mistralResult.trim()) {
+                    transcription = mistralResult.trim();
+                    console.log('[TamTamMicButton] ✅ Mistral transcription:', transcription);
+                  }
+                } catch (e) {
+                  console.warn('[TamTamMicButton] Mistral STT failed, trying Web Speech fallback:', e);
+                }
+              }
+              
+              // Fallback: Web Speech API result
+              if (!transcription) {
+                transcription = webSpeechSTT.transcript || collectedTranscriptRef.current || undefined;
+                console.log('[TamTamMicButton] 🔄 Web Speech fallback:', transcription);
+              }
+              
+              console.log('[TamTamMicButton] 🇫🇷 Final French transcription:', transcription);
               
               if (!transcription) {
-                console.warn('[TamTamMicButton] ⚠️ No French transcription from Web Speech API');
+                console.warn('[TamTamMicButton] ⚠️ No French transcription');
                 setShowRetry(true);
                 toast({
                   title: "⚠️ Aucune parole détectée",
@@ -238,7 +263,6 @@ export function TamTamMicButton({
                   variant: "destructive"
                 });
               } else {
-                console.log('[TamTamMicButton] ✅ French transcription:', transcription);
                 toast({
                   title: "✅ Transcription réussie",
                   description: transcription.substring(0, 50) + (transcription.length > 50 ? '...' : '')

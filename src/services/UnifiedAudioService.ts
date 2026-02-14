@@ -257,12 +257,17 @@ class UnifiedAudioServiceClass {
     this.stop();
 
     if (lang === 'ba') {
-      // Essayer Bariba TTS d'abord
+      // Essayer Bariba TTS d'abord (HuggingFace)
       try {
         const { data, error } = await supabase.functions.invoke('bariba-tts', {
           body: { text, speakingRate: 1.0 }
         });
 
+        if (!error && data?.audio) {
+          await this.playBase64Audio(data.audio);
+          return;
+        }
+        // Fallback: try audioContent field name
         if (!error && data?.audioContent) {
           await this.playBase64Audio(data.audioContent);
           return;
@@ -270,10 +275,32 @@ class UnifiedAudioServiceClass {
       } catch (e) {
         console.warn('[UnifiedAudioService] Bariba TTS failed, falling back to French:', e);
       }
+      // Fallback vers Web Speech API (français)
+      return this.speakWithWebAPI(text, 'fr-FR');
+    }
+
+    // === FRENCH TTS: Inworld TTS-1.5 Mini via french-tts edge function ===
+    try {
+      console.log('[UnifiedAudioService] 🇫🇷 French TTS via Inworld (french-tts)...');
+      const { data, error } = await supabase.functions.invoke('french-tts', {
+        body: { text, voice: 'announcer', returnAudio: true }
+      });
+
+      if (!error && data?.audioBase64) {
+        await this.playBase64Audio(data.audioBase64);
+        return;
+      }
+      if (!error && data?.audio) {
+        await this.playBase64Audio(data.audio);
+        return;
+      }
+      console.warn('[UnifiedAudioService] french-tts returned no audio, falling back to Web Speech');
+    } catch (e) {
+      console.warn('[UnifiedAudioService] French TTS (Inworld) failed, falling back to Web Speech:', e);
     }
 
     // Fallback vers Web Speech API (français)
-    return this.speakWithWebAPI(text, lang === 'ba' ? 'fr-FR' : 'fr-FR');
+    return this.speakWithWebAPI(text, 'fr-FR');
   }
 
   private async speakWithWebAPI(text: string, lang: string): Promise<void> {
