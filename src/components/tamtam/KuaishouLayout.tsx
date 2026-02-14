@@ -31,19 +31,21 @@ export const KuaishouLayout: React.FC<KuaishouLayoutProps> = ({
   onBackClick,
 }) => {
   return (
-    <div className="min-h-screen kuaishou-bg">
+    <div className="h-[100dvh] flex flex-col kuaishou-bg">
       {/* Header */}
       {!fullScreen && (
-        <KuaishouHeader
-          titleFr={titleFr}
-          titleBa={titleBa}
-          emoji={emoji}
-          showBack={showBack}
-          showMenu={showMenu}
-          showVoiceHelp={showVoiceHelp}
-          transparent={transparentHeader}
-          onBackClick={onBackClick}
-        />
+        <div className="flex-shrink-0">
+          <KuaishouHeader
+            titleFr={titleFr}
+            titleBa={titleBa}
+            emoji={emoji}
+            showBack={showBack}
+            showMenu={showMenu}
+            showVoiceHelp={showVoiceHelp}
+            transparent={transparentHeader}
+            onBackClick={onBackClick}
+          />
+        </div>
       )}
 
       {/* Main content */}
@@ -52,13 +54,17 @@ export const KuaishouLayout: React.FC<KuaishouLayoutProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.2 }}
-        className={`${!fullScreen ? 'pb-24' : ''}`}
+        className={`flex-1 overflow-y-auto ${!fullScreen ? 'pb-4' : ''}`}
       >
         {children}
       </motion.main>
 
       {/* Bottom navigation */}
-      {showNav && !fullScreen && <KuaishouBottomNav />}
+      {showNav && !fullScreen && (
+        <div className="flex-shrink-0">
+          <KuaishouBottomNav />
+        </div>
+      )}
     </div>
   );
 };
