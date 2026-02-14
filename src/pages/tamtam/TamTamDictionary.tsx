@@ -180,16 +180,13 @@ export default function TamTamDictionary() {
               : (currentLang === 'ba' ? "Ìkọ̀wé" : "Clavier")}
           </button>
           
-          {/* Toggle direction */}
+          {/* Toggle vocal */}
           <button
-            onClick={toggleDirection}
+            onClick={() => { setInputMode('voice'); triggerFeedback('click'); }}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl kuaishou-btn-secondary"
           >
-            {searchDirection === 'ba-fr' ? (
-              <>🇧🇯 → 🇫🇷</>
-            ) : (
-              <>🇫🇷 → 🇧🇯</>
-            )}
+            <Mic className="w-5 h-5" />
+            {currentLang === 'ba' ? "Ohùn" : "Vocal"}
           </button>
         </div>
         
