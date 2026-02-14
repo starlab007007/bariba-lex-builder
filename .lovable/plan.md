@@ -1,116 +1,115 @@
 
-# Corrections de l'editeur video, musique, et brouillons
+# Correction : Preview sans effets superposés + Indicateur de publication
 
-## 4 problemes a corriger
+## Problèmes identifiés
 
----
+### 1. Effets Magic IA toujours visibles après capture
+L'`AREffectsLayer` (coeurs, étincelles, pluie, etc.) et la `StickerLayer` s'affichent **en permanence**, même après la capture. Comme les effets sont déjà "cuits" dans le blob vidéo/photo par le `CanvasCompositor`, ils apparaissent **en double** lors de la prévisualisation.
 
-## 1. Timeline video adaptee a la duree reelle
+De plus, le canvas preview draw loop ré-applique le `cssFilter` (filtres face AR) sur la vidéo prévisualisée, ce qui double aussi l'effet des filtres visuels.
 
-**Probleme** : La MiniTimeline ne s'adapte pas visuellement a la duree de la video capturee.
-
-**Solution** : La `totalDuration` est deja calculee dynamiquement depuis les segments (`segments.reduce(...)`), et le segment est cree dans `finishCapture` avec `duration`, `startTime: 0`, `endTime: duration`. Le calcul est correct. Le probleme est que la video enregistree utilise `lengthSec` (le timer max) au lieu de la duree reelle d'enregistrement.
-
-**Correction dans `FullscreenCreator.tsx`** :
-- Dans le handler video (ligne ~1713), quand `stopRecordingToBlob()` retourne le blob, calculer la duree reelle de la video via un element `<video>` temporaire au lieu de passer `lengthSec`
-- Passer cette duree reelle a `finishCapture(blob, "video", realDuration)` pour que le segment ait la bonne longueur
-- Meme chose pour les imports album : extraire la duree reelle du fichier video importe
+### 2. Pas d'indicateur de publication en cours
+Le bouton "Publier" dans le `showPublish` overlay n'utilise pas l'état `isPublishing` existant. Il reste cliquable pendant toute la durée de la publication, sans feedback visuel.
 
 ---
 
-## 2. Timeline visible uniquement pour les videos
+## Solution
 
-**Probleme** : La MiniTimeline s'affiche aussi pour les photos et bursts.
+### Correction 1 : Masquer les effets DOM après capture
 
-**Solution dans `FullscreenCreator.tsx`** :
-- Modifier la condition d'affichage (ligne ~3412) de :
+Dans `FullscreenCreator.tsx`, conditionner l'affichage des couches d'effets :
+
+**AREffectsLayer** (ligne ~3093) :
 ```
-{hasCapture && segments.length > 0 && (
+// AVANT
+<AREffectsLayer activeEffects={effects.arEffects} />
+
+// APRES
+{!hasCapture && <AREffectsLayer activeEffects={effects.arEffects} />}
 ```
-a :
+
+**StickerLayer** (ligne ~3098-3104) :
 ```
-{hasCapture && segments.length > 0 && capturedType === "video" && (
+// AVANT
+<StickerLayer stickers={effects.stickers} ... isEditing={true} ... />
+
+// APRES  
+<StickerLayer stickers={effects.stickers} ... isEditing={!hasCapture} ... />
 ```
-- Cela masque la timeline pour les photos, bursts et textes
+Note : la StickerLayer en mode `isEditing={false}` ne rend rien, donc elle disparait visuellement après capture.
+
+**ShotTipOverlay** (ligne ~3096) :
+```
+{!hasCapture && <ShotTipOverlay tipId={effects.shotTipId} />}
+```
+
+### Correction 2 : Ne plus ré-appliquer le cssFilter sur le preview
+
+Dans le preview canvas draw loop (ligne ~1332), quand `hasCapture` est vrai, le filtre CSS est déjà baked dans le blob. Ne pas le ré-appliquer :
+
+```
+// AVANT
+ctx.filter = cssFilter && cssFilter !== "none" ? cssFilter : "none";
+
+// APRES
+ctx.filter = "none"; // Effects already baked into the captured blob
+```
+
+### Correction 3 : Indicateur animé de publication
+
+Modifier le bouton "Publier" (ligne ~2880-2886) pour utiliser l'état `isPublishing` existant :
+
+```
+<button
+  onClick={publish}
+  disabled={isPublishing}
+  className="mt-4 w-full h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-500 
+             text-white font-semibold flex items-center justify-center gap-2 
+             disabled:opacity-60 disabled:cursor-not-allowed"
+>
+  {isPublishing ? (
+    <>
+      <Loader2 className="h-5 w-5 animate-spin" />
+      Publication en cours...
+    </>
+  ) : (
+    <>
+      <Send className="h-5 w-5" />
+      Publier
+    </>
+  )}
+</button>
+```
+
+Ajouter `setIsPublishing(true)` au début de `publish()` et `setIsPublishing(false)` dans le `finally` block.
+
+Également ajouter un overlay de progression animé sous le bouton quand `isPublishing` ou `isProcessingTemplate` est actif :
+
+```
+{(isPublishing || isProcessingTemplate) && (
+  <div className="mt-3 flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
+    <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+      <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full animate-pulse" 
+           style={{ width: processingProgress ? processingProgress.percent + '%' : '60%' }} />
+    </div>
+    <span className="text-xs text-white/60">
+      {processingProgress?.message_fr || "Préparation de la publication..."}
+    </span>
+  </div>
+)}
+```
 
 ---
 
-## 3. Musique dans le rendu final
-
-**Probleme** : La musique selectionnee est transmise via `selectedAudioTrack` dans le payload `onPublish`, mais elle n'est pas mixee dans le fichier video/photo final. Le feed recoit juste l'URL de la musique mais ne la joue pas.
-
-**Solution** :
-- **Pour les videos** : Dans la fonction `publish()`, avant d'appeler `onPublish`, mixer l'audio de la musique selectionnee dans le blob video en utilisant le Web Audio API + MediaRecorder (similar au pipeline Griot)
-- **Pour les photos/bursts** : Passer le `musicUrl` et `musicTrimStart`/`musicTrimDuration` dans le payload pour que le feed puisse jouer la musique en arriere-plan lors de l'affichage
-- Ajouter un etat `musicTrimStart` et `musicTrimDuration` pour stocker la portion de musique choisie via le MusicTrimmer
-- Connecter le `MusicTrimmer` dans `AudioLibrary` pour que `onTrimChange` remonte les valeurs au `FullscreenCreator`
-
-**Fichiers modifies** :
-- `FullscreenCreator.tsx` : ajouter etats de trim, mixer musique dans le blob video avant publication
-- Creer `src/utils/AudioMixer.ts` : utilitaire pour mixer un audio dans un blob video via Web Audio API
-
----
-
-## 4. Gestion de la fermeture et brouillons
-
-**Probleme** : Quand on ferme le createur pendant une creation, pas de confirmation de perte de donnees. Et quand on revient, l'ancien contenu peut encore etre visible.
-
-**Solution dans `FullscreenCreator.tsx`** :
-- Ajouter un etat `showDiscardConfirm` (boolean)
-- Quand l'utilisateur clique X (fermer) et qu'il y a une capture en cours (`hasCapture === true` ou `isRecording`), afficher une modale de confirmation : "Vous allez perdre votre creation. Continuer ?"
-  - "Oui, quitter" : appeler `retake()` puis `onClose()`  
-  - "Annuler" : fermer la modale
-- Reinitialiser TOUS les etats dans un `useEffect` qui se declenche quand `open` passe de `false` a `true`, pour garantir une creation vierge a chaque ouverture
-
-**Fichiers modifies** :
-- `FullscreenCreator.tsx` : ajouter la modale de confirmation et le reset a l'ouverture
-
----
-
-## Resume des fichiers
+## Fichiers modifiés
 
 | Fichier | Modifications |
 |---------|--------------|
-| `src/components/tamtam/FullscreenCreator.tsx` | 1. Duree video reelle au lieu de lengthSec. 2. Timeline video uniquement. 3. Etats trim musique + mixage audio. 4. Modale discard + reset a l'ouverture |
-| `src/utils/AudioMixer.ts` | **Nouveau** - Utilitaire pour mixer une piste audio dans un blob video via Web Audio API |
+| `src/components/tamtam/FullscreenCreator.tsx` | 1. Conditionner AREffectsLayer, StickerLayer, ShotTipOverlay sur `!hasCapture`. 2. Supprimer cssFilter dans le preview draw loop. 3. Ajouter isPublishing au bouton publier avec spinner + barre de progression. 4. Wrapper publish() avec setIsPublishing. |
 
-## Details techniques
+## Impact
 
-### Calcul duree reelle video
-```text
-const b = await stopRecordingToBlob();
-const realDuration = await getVideoDuration(b); // via <video> temporaire
-await finishCapture(b, "video", realDuration);
-```
-
-### Mixage audio dans video
-```text
-1. Decoder le blob video en pistes audio/video
-2. Decoder la musique selectionnee (portion trimmed)
-3. Mixer les deux AudioBuffers
-4. Re-encoder via MediaRecorder avec canvas + audio context
-5. Retourner le nouveau blob
-```
-
-### Modale de confirmation
-```text
-"Quitter la creation ?"
-"Votre contenu en cours sera perdu."
-[Annuler]  [Quitter]
-```
-
-### Reset a l'ouverture
-```text
-useEffect(() => {
-  if (open) {
-    // Reset ALL state to initial values
-    setHasCapture(false);
-    setCapturedBlob(null);
-    setSegments([]);
-    setCaption('');
-    setMusicTrack(null);
-    setSelectedAudioTrack(null);
-    // ... tous les autres etats
-  }
-}, [open]);
-```
+- La prévisualisation après capture montre le produit final tel qu'il sera publié, sans effets superposés en double
+- La musique (si sélectionnée) continue d'être mixée dans le blob avant publication
+- Le bouton "Publier" donne un feedback visuel clair avec un spinner animé et une barre de progression
+- Le bouton est désactivé pendant la publication pour éviter les doubles clics
