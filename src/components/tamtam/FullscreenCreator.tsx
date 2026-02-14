@@ -80,6 +80,7 @@ import DraggableTextOverlay, { DraggablePreviewOverlay } from "./creator/Draggab
 import OptimizedExportScreen from "./creator/OptimizedExportScreen";
 import CameraResolutionIndicator from "./creator/CameraResolutionIndicator";
 import { useDevicePerformance, getKEngineQualitySettings } from "@/hooks/useDevicePerformance";
+import { compositeFrame, drawAREffect, drawGraphicsFrame, drawStickers, type CompositeOptions } from "@/utils/CanvasCompositor";
 
 // ✅ NEW: Integrated template components
 import UnifiedTemplateSelector from "./creator/UnifiedTemplateSelector";
@@ -245,8 +246,6 @@ async function capturePhotoFromVideo(
   ratio: CanvasRatio,
   effects: CaptureEffects
 ): Promise<Blob> {
-  const w = videoEl.videoWidth || 1080;
-  const h = videoEl.videoHeight || 1920;
   const target = (() => {
     if (ratio === "1:1") return { tw: 1080, th: 1080 };
     if (ratio === "16:9") return { tw: 1920, th: 1080 };
@@ -259,55 +258,38 @@ async function capturePhotoFromVideo(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No canvas context");
 
-  const srcAR = w / h;
-  const dstAR = target.tw / target.th;
-  let sx = 0,
-    sy = 0,
-    sw = w,
-    sh = h;
-  if (srcAR > dstAR) {
-    sw = Math.round(h * dstAR);
-    sx = Math.round((w - sw) / 2);
-  } else {
-    sh = Math.round(w / dstAR);
-    sy = Math.round((h - sh) / 2);
-  }
-
-  // Apply filter
+  // Build filter CSS
   const filter = VIDEO_FILTERS.find((f) => f.id === effects.filterId);
+  let filterCss = 'none';
   if (filter && filter.id !== "none") {
-    ctx.filter = scaleCssFilter(filter.cssFilter, effects.filterIntensity);
+    filterCss = scaleCssFilter(filter.cssFilter, effects.filterIntensity);
   }
+  // Add face AR filter CSS
+  effects.arEffects.forEach((arId) => {
+    const ar = AR_EFFECTS.find((e) => e.id === arId);
+    if (ar?.type === "face" && ar.cssFilter) {
+      filterCss = filterCss === "none" ? ar.cssFilter : `${filterCss} ${ar.cssFilter}`;
+    }
+  });
 
-  ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, target.tw, target.th);
+  // Get overlay AR effects (sparkles, hearts, rain, etc.)
+  const overlayArEffects = effects.arEffects.filter(arId => {
+    const ar = AR_EFFECTS.find(e => e.id === arId);
+    return ar?.type === 'overlay' && ar?.animation;
+  });
 
-  // Apply template overlay gradient
   const template = getTemplateById(effects.templateId);
-  if (template?.overlayGradient) {
-    ctx.save();
-    const gradient = ctx.createLinearGradient(0, 0, 0, target.th);
-    gradient.addColorStop(0, "rgba(0,0,0,0.3)");
-    gradient.addColorStop(0.5, "rgba(0,0,0,0)");
-    gradient.addColorStop(1, "rgba(0,0,0,0.4)");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, target.tw, target.th);
-    ctx.restore();
-  }
 
-  // Draw stickers (emoji text)
-  for (const sticker of effects.stickers) {
-    ctx.save();
-    const x = (sticker.position.x / 100) * target.tw;
-    const y = (sticker.position.y / 100) * target.th;
-    ctx.translate(x, y);
-    ctx.rotate((sticker.rotation * Math.PI) / 180);
-    ctx.scale(sticker.scale, sticker.scale);
-    ctx.font = "60px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(sticker.content, 0, 0);
-    ctx.restore();
-  }
+  // Use compositor to draw everything
+  compositeFrame(ctx, videoEl, {
+    filterCss,
+    arEffects: overlayArEffects,
+    stickers: effects.stickers,
+    frameId: effects.frameId,
+    borderId: effects.borderId,
+    overlayId: effects.overlayId,
+    templateGradient: template?.overlayGradient,
+  }, target.tw, target.th, performance.now() / 1000);
 
   const blob: Blob = await new Promise((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Photo blob failed"))), "image/jpeg", 0.92);
@@ -527,7 +509,8 @@ export default function FullscreenCreator({
   const albumInputRef = useRef<HTMLInputElement | null>(null);
 
   // Burst
-  const burstIntervalRef = useRef<number | null>(null);
+   const burstIntervalRef = useRef<number | null>(null);
+  const compositorRafRef = useRef<number | null>(null);
   const [burstPhotos, setBurstPhotos] = useState<Blob[]>([]);
   const [burstCount, setBurstCount] = useState(0);
 
@@ -917,6 +900,12 @@ export default function FullscreenCreator({
       if (burstIntervalRef.current) {
         window.clearInterval(burstIntervalRef.current);
         burstIntervalRef.current = null;
+      }
+
+      // Stop compositor loop
+      if (compositorRafRef.current) {
+        cancelAnimationFrame(compositorRafRef.current);
+        compositorRafRef.current = null;
       }
 
       // Clear K-Engine (legacy)
@@ -1359,7 +1348,7 @@ export default function FullscreenCreator({
   // ✅ Track if capture needs K-Engine post-processing (for native quality capture)
   const [captureNeedsKEngine, setCaptureNeedsKEngine] = useState(false);
 
-  // Recording - ✅ NATIVE HD QUALITY: Always capture from native stream, effects applied at export
+  // Recording - ✅ COMPOSITE CANVAS: Bake ALL effects (filters, AR, stickers, graphics) into recording
   const startRecording = async () => {
     setError(null);
     if (!streamRef.current) await startStream();
@@ -1377,8 +1366,6 @@ export default function FullscreenCreator({
     try {
       chunksRef.current = [];
 
-      // ✅ NATIVE QUALITY: Always capture the native HD stream
-      // K-Engine effects will be applied during export (not baked-in at capture)
       let recordStream = streamRef.current;
       
       // Track if we need K-Engine post-processing
@@ -1386,12 +1373,76 @@ export default function FullscreenCreator({
       setCaptureNeedsKEngine(!!needsKEnginePostProcess);
       
       if (needsKEnginePostProcess) {
-        console.log('[FullscreenCreator] Recording NATIVE HD stream (effects applied at export)');
+        console.log('[FullscreenCreator] Recording NATIVE HD stream (K-Engine effects applied at export)');
       }
       
       // Legacy templates: still bake effects (backward compatibility)
       const legacyActive = !!activeTemplateAny && !isTemplateManifest(activeTemplateAny) && activeMeta.id !== "none";
-      if (legacyActive && liveCanvasRef.current) {
+      
+      // ✅ NEW: Check if we have Magic IA effects to bake in
+      const hasEffectsToBake = !needsKEnginePostProcess && !legacyActive && (
+        effects.arEffects.length > 0 ||
+        effects.stickers.length > 0 ||
+        (effects.filterId && effects.filterId !== 'none') ||
+        effects.frameId ||
+        effects.borderId ||
+        effects.overlayId
+      );
+
+      if (hasEffectsToBake && videoRef.current) {
+        // ✅ COMPOSITE RECORDING: Set up canvas compositor loop
+        const compCanvas = liveCanvasRef.current || document.createElement('canvas');
+        if (!liveCanvasRef.current) {
+          // Attach to DOM for captureStream
+          compCanvas.style.display = 'none';
+          document.body.appendChild(compCanvas);
+        }
+        
+        const video = videoRef.current;
+        const vw = video.videoWidth || 1080;
+        const vh = video.videoHeight || 1920;
+        compCanvas.width = vw;
+        compCanvas.height = vh;
+        const compCtx = compCanvas.getContext('2d');
+        
+        if (compCtx) {
+          // Get overlay AR effects
+          const overlayArEffects = effects.arEffects.filter(arId => {
+            const ar = AR_EFFECTS.find(e => e.id === arId);
+            return ar?.type === 'overlay' && ar?.animation;
+          });
+          
+          const template = getTemplateById(effects.templateId);
+          
+          // Start compositor loop
+          const startTime = performance.now();
+          const drawLoop = () => {
+            const time = (performance.now() - startTime) / 1000;
+            compositeFrame(compCtx, video, {
+              filterCss: cssFilter !== 'none' ? cssFilter : undefined,
+              arEffects: overlayArEffects,
+              stickers: effects.stickers,
+              frameId: effects.frameId,
+              borderId: effects.borderId,
+              overlayId: effects.overlayId,
+              templateGradient: template?.overlayGradient,
+            }, vw, vh, time);
+            compositorRafRef.current = requestAnimationFrame(drawLoop);
+          };
+          compositorRafRef.current = requestAnimationFrame(drawLoop);
+          
+          // Capture from composite canvas
+          try {
+            const canvasStream = compCanvas.captureStream(30);
+            const audioTracks = streamRef.current.getAudioTracks();
+            audioTracks.forEach((track) => canvasStream.addTrack(track));
+            recordStream = canvasStream;
+            console.log('[FullscreenCreator] Recording from COMPOSITE canvas (all effects baked in)');
+          } catch (e) {
+            console.warn('[FullscreenCreator] Canvas captureStream failed, falling back to raw stream', e);
+          }
+        }
+      } else if (legacyActive && liveCanvasRef.current) {
         try {
           const canvasStream = liveCanvasRef.current.captureStream(30);
           const audioTracks = streamRef.current.getAudioTracks();
@@ -1423,6 +1474,12 @@ export default function FullscreenCreator({
   };
 
   const stopRecordingToBlob = async (): Promise<Blob> => {
+    // ✅ Stop compositor loop
+    if (compositorRafRef.current) {
+      cancelAnimationFrame(compositorRafRef.current);
+      compositorRafRef.current = null;
+    }
+    
     const rec = recorderRef.current;
     if (!rec) throw new Error("Recorder not initialized");
     if (rec.state === "inactive") throw new Error("Recorder already stopped");
