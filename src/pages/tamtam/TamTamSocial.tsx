@@ -692,19 +692,26 @@ const VideoFeedCard: React.FC<{
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 z-20 relative" 
+          className="z-20 relative" 
           onClick={handleProfileClick}
         >
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border border-white/20">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-white/10 flex items-center justify-center">
-                <span className="text-xs">👤</span>
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border border-white/20">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-white/10 flex items-center justify-center">
+                  <span className="text-xs">👤</span>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white/90 text-xs sm:text-sm font-semibold drop-shadow-md">{authorUsername}</span>
+              <span className="text-white/50 text-[10px]">
+                {post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+              </span>
+            </div>
           </div>
-          <span className="text-white/90 text-xs sm:text-sm font-semibold drop-shadow-md">{authorUsername}</span>
         </motion.div>
       </div>
 
@@ -732,9 +739,10 @@ const VideoFeedCard: React.FC<{
             <motion.button 
               whileTap={{ scale: 0.8 }}
               onClick={(e) => { e.stopPropagation(); handleFollow(); }}
-              className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shadow-md z-30"
+              className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-red-500 shadow-md z-30"
             >
               <Plus className="w-3 h-3 text-white" strokeWidth={3} />
+              <span className="text-white text-[8px] font-bold">Suivre</span>
             </motion.button>
           )}
         </div>

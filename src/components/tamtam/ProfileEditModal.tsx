@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Loader2, User, MapPin, Phone } from 'lucide-react';
+import { X, Save, Loader2, User, MapPin, Phone, Lock, Eye, EyeOff } from 'lucide-react';
 import { TamTamProfile } from '@/hooks/useTamTamProfile';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -22,6 +24,10 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
   const [location, setLocation] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [saving, setSaving] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (profile && isOpen) {
@@ -40,6 +46,22 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     });
     setSaving(false);
     if (!result.error) onClose();
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast({ title: "Mot de passe trop court", description: "Minimum 6 caractères", variant: "destructive" });
+      return;
+    }
+    setSavingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSavingPassword(false);
+    if (error) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "✅ Mot de passe modifié" });
+      setNewPassword('');
+    }
   };
 
   return (
@@ -108,6 +130,40 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
                   placeholder="+229 XX XX XX XX"
                   className="rounded-xl border-[hsl(var(--kuaishou-border))] focus:border-[hsl(var(--kuaishou-orange))] focus:ring-[hsl(var(--kuaishou-orange)/0.2)]"
                 />
+              </div>
+
+              {/* Password change */}
+              <div className="space-y-2 pt-2 border-t border-[hsl(var(--kuaishou-border))]">
+                <Label className="flex items-center gap-2 text-sm text-[hsl(var(--kuaishou-text-muted))]">
+                  <Lock className="w-4 h-4" /> Nouveau mot de passe
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimum 6 caractères"
+                    className="rounded-xl border-[hsl(var(--kuaishou-border))] focus:border-[hsl(var(--kuaishou-orange))] focus:ring-[hsl(var(--kuaishou-orange)/0.2)] pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--kuaishou-text-muted))]"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {newPassword && (
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleChangePassword}
+                    disabled={savingPassword}
+                    className="w-full py-2 bg-[hsl(var(--kuaishou-text))] text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    {savingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                    Changer le mot de passe
+                  </motion.button>
+                )}
               </div>
             </div>
 
