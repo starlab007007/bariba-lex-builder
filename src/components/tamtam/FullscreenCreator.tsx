@@ -81,6 +81,7 @@ import OptimizedExportScreen from "./creator/OptimizedExportScreen";
 import CameraResolutionIndicator from "./creator/CameraResolutionIndicator";
 import { useDevicePerformance, getKEngineQualitySettings } from "@/hooks/useDevicePerformance";
 import { compositeFrame, drawAREffect, drawGraphicsFrame, drawStickers, type CompositeOptions } from "@/utils/CanvasCompositor";
+import { getVideoDuration, mixMusicIntoVideo } from "@/utils/AudioMixer";
 
 // ✅ NEW: Integrated template components
 import UnifiedTemplateSelector from "./creator/UnifiedTemplateSelector";
@@ -143,6 +144,8 @@ export type CreatorOutputPayload = {
   // ✅ Selected audio track for publication
   selectedAudioTrack?: AudioTrack;
   musicUrl?: string;
+  musicTrimStart?: number;
+  musicTrimDuration?: number;
 };
 
 type TopTab = "15s" | "30s" | "45s" | "60s" | "story" | "album" | "template";
@@ -481,6 +484,11 @@ export default function FullscreenCreator({
   const [musicTrack, setMusicTrack] = useState<string | null>(null);
   const [showAudioLibrary, setShowAudioLibrary] = useState(false);
   const [selectedAudioTrack, setSelectedAudioTrack] = useState<AudioTrack | null>(null);
+  const [musicTrimStart, setMusicTrimStart] = useState(0);
+  const [musicTrimDuration, setMusicTrimDuration] = useState(0);
+
+  // Discard confirmation
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   // Sticker picker
   const [showStickerPicker, setShowStickerPicker] = useState(false);
@@ -619,6 +627,35 @@ export default function FullscreenCreator({
     () => segments.reduce((sum, seg) => sum + (seg.endTime - seg.startTime), 0),
     [segments]
   );
+
+  // ✅ Reset ALL state when creator opens fresh
+  useEffect(() => {
+    if (open) {
+      setHasCapture(false);
+      setCapturedBlob(null);
+      setCapturedType("video");
+      setPreviewUrl("");
+      setSegments([]);
+      setActiveSegmentId(null);
+      setCurrentTime(0);
+      setUndoStack([]);
+      setRedoStack([]);
+      setCaption("");
+      setMusicTrack(null);
+      setSelectedAudioTrack(null);
+      setMusicTrimStart(0);
+      setMusicTrimDuration(0);
+      setShowDiscardConfirm(false);
+      setError(null);
+      setToast(null);
+      setDrawer("none");
+      setShowPublish(false);
+      setIsRecording(false);
+      setRecordingElapsed(0);
+      setTextOverlays([]);
+      setShowAudioLibrary(false);
+    }
+  }, [open]);
 
   // Clean toast
   useEffect(() => {
@@ -1712,7 +1749,15 @@ export default function FullscreenCreator({
         } else {
           const b = await stopRecordingToBlob();
           stopStream();
-          await finishCapture(b, "video", lengthSec);
+          // Calculate real video duration instead of using lengthSec
+          let realDuration: number = lengthSec;
+          try {
+            realDuration = await getVideoDuration(b);
+          } catch (e) {
+            console.warn('[FullscreenCreator] Could not get real duration, using elapsed:', e);
+            realDuration = (recordingElapsed || lengthSec) as number;
+          }
+          await finishCapture(b, "video", realDuration);
         }
       } catch (e: any) {
         setError(e?.message || "Erreur vidéo");
@@ -1880,7 +1925,17 @@ export default function FullscreenCreator({
 
     const isVideo = file.type.startsWith("video/");
     stopStream();
-    await finishCapture(file as Blob, isVideo ? "video" : "photo", isVideo ? lengthSec : 5);
+    
+    // For album videos, extract real duration
+    let albumDuration = isVideo ? lengthSec : 5;
+    if (isVideo) {
+      try {
+        albumDuration = await getVideoDuration(file as Blob);
+      } catch {
+        albumDuration = lengthSec;
+      }
+    }
+    await finishCapture(file as Blob, isVideo ? "video" : "photo", albumDuration);
 
     if (albumInputRef.current) albumInputRef.current.value = "";
   };
@@ -2034,6 +2089,31 @@ export default function FullscreenCreator({
       const exportJob = isKEngineActive ? await kEngine.exportJob() : undefined;
       const engineSnapshot = isKEngineActive ? kEngine.getState() : undefined;
 
+      // ✅ Mix music into video if a music track is selected
+      if (selectedAudioTrack && capturedType === "video" && finalSegments[0]?.blob) {
+        const musicUrl = selectedAudioTrack.source?.url || selectedAudioTrack.source?.path;
+        if (musicUrl) {
+          try {
+            setToast("🎵 Mixage musique...");
+            const mixedBlob = await mixMusicIntoVideo({
+              videoBlob: finalSegments[0].blob,
+              musicSource: musicUrl,
+              musicTrimStart: musicTrimStart,
+              musicTrimDuration: musicTrimDuration || undefined,
+              musicVolume: 0.5,
+              videoVolume: 1.0,
+            });
+            if (mixedBlob.size > 0) {
+              finalSegments = finalSegments.map((seg, i) =>
+                i === 0 ? { ...seg, blob: mixedBlob } : seg
+              );
+            }
+          } catch (e) {
+            console.warn('[FullscreenCreator] Music mix failed, publishing without music:', e);
+          }
+        }
+      }
+
       if (onPublish) {
         await onPublish({
           segments: finalSegments,
@@ -2049,6 +2129,8 @@ export default function FullscreenCreator({
           // ✅ Include selected audio track for publication
           selectedAudioTrack: selectedAudioTrack || undefined,
           musicUrl: selectedAudioTrack?.source?.path || selectedAudioTrack?.source?.url || undefined,
+          musicTrimStart,
+          musicTrimDuration: musicTrimDuration || undefined,
         });
       }
 
@@ -3078,7 +3160,13 @@ export default function FullscreenCreator({
               </button>
             ) : (
               <button
-                onClick={() => onClose?.()}
+                onClick={() => {
+                  if (hasCapture || isRecording) {
+                    setShowDiscardConfirm(true);
+                  } else {
+                    onClose?.();
+                  }
+                }}
                 className="h-11 w-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
               >
                 <X className="h-5 w-5" />
@@ -3108,7 +3196,9 @@ export default function FullscreenCreator({
 
             {hasCapture ? (
               <button
-                onClick={() => onClose?.()}
+                onClick={() => {
+                  setShowDiscardConfirm(true);
+                }}
                 className="h-11 w-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
               >
                 <X className="h-5 w-5" />
@@ -3409,7 +3499,7 @@ export default function FullscreenCreator({
         )}
 
         {/* ===== MINI TIMELINE (only after capture) ===== */}
-        {hasCapture && segments.length > 0 && (
+        {hasCapture && segments.length > 0 && capturedType === "video" && (
           <div className="absolute left-4 right-4 bottom-[140px] z-20">
             <MiniTimeline
               segments={segments}
@@ -4020,6 +4110,48 @@ export default function FullscreenCreator({
                 <X className="w-5 h-5" />
               </button>
               <NewsStudio />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ===== DISCARD CONFIRMATION MODAL ===== */}
+        <AnimatePresence>
+          {showDiscardConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center"
+              onClick={() => setShowDiscardConfirm(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 mx-6 max-w-sm w-full"
+              >
+                <h3 className="text-white text-lg font-semibold mb-2">Quitter la création ?</h3>
+                <p className="text-white/60 text-sm mb-6">Votre contenu en cours sera perdu.</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDiscardConfirm(false)}
+                    className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium border border-white/10"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDiscardConfirm(false);
+                      retake();
+                      onClose?.();
+                    }}
+                    className="flex-1 py-3 rounded-xl bg-red-500/90 text-white font-medium"
+                  >
+                    Quitter
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
