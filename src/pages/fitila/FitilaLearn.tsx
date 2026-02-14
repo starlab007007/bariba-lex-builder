@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles, GraduationCap, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles, GraduationCap, ChevronRight, LogIn, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useSideMenu } from '@/pages/fitila/FitilaApp';
@@ -10,6 +10,9 @@ import { THEMES, EXERCISES, buildOptions, getCorrectAnswer, getQuestion, shuffle
 import { LEVELS, BADGES } from '@/data/learningConfig';
 import { FOUNDATION_LESSONS, type FoundationLesson, type FoundationQuiz } from '@/data/learningFoundations';
 import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTamTamProfile } from '@/hooks/useTamTamProfile';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 type ViewType = 'language-selection' | 'dashboard' | 'lesson' | 'lesson-complete' | 'foundation-lesson' | 'foundation-quiz';
 
@@ -17,6 +20,8 @@ export default function FitilaLearn() {
   const navigate = useNavigate();
   const { currentLang } = useFitilaLanguage();
   const { open: openMenu } = useSideMenu();
+  const { user } = useAuth();
+  const { profile: tamtamProfile } = useTamTamProfile();
   const progress = useLearningProgress();
   const { userLanguage, selectLanguage, config, langKey, profile, getCurrentLevel, getNextLevel, getText, getLevelName, shareProgress, completeLesson, newBadges, clearNewBadges } = progress;
 
@@ -267,12 +272,23 @@ export default function FitilaLearn() {
               <div className="bg-white rounded-3xl shadow-xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center text-4xl shadow-md">
-                      {currentLevel.icon}
-                    </div>
+                    {user && tamtamProfile?.avatar_url ? (
+                      <Avatar className="w-16 h-16 border-3 border-white shadow-lg">
+                        <AvatarImage src={tamtamProfile.avatar_url} className="object-cover" />
+                        <AvatarFallback className="bg-gradient-to-br from-green-100 to-green-200 text-2xl">
+                          {tamtamProfile.display_name?.[0]?.toUpperCase() || currentLevel.icon}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center text-4xl shadow-md">
+                        {currentLevel.icon}
+                      </div>
+                    )}
                     <div>
                       <h2 className="text-xl font-bold text-gray-800">
-                        {userLanguage === 'french' ? 'Apprenant' : 'Debutɔm'}
+                        {user && tamtamProfile?.display_name
+                          ? tamtamProfile.display_name
+                          : (userLanguage === 'french' ? 'Apprenant' : 'Debutɔm')}
                       </h2>
                       <p className={`text-sm font-semibold ${currentLevel.color}`}>
                         {getLevelName(currentLevel)} - {getText('level')} {currentLevel.level}
@@ -330,6 +346,38 @@ export default function FitilaLearn() {
                 </div>
               </div>
 
+              {/* Login recommendation banner */}
+              {!user && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <LogIn className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-amber-800 font-semibold text-sm">
+                      {userLanguage === 'french'
+                        ? 'Connectez-vous pour sauvegarder votre progression'
+                        : 'A doo kɑ win taaruru mɑɑ'}
+                    </p>
+                    <p className="text-amber-600 text-xs mt-0.5">
+                      {userLanguage === 'french'
+                        ? 'Votre évolution sera conservée entre vos sessions'
+                        : 'Win deburu kɑ tɑɑ sɔɔ wɑ̃ɑ'}
+                    </p>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => navigate('/fitila/auth')}
+                    className="bg-amber-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md flex-shrink-0"
+                  >
+                    {userLanguage === 'french' ? 'Connexion' : 'Doo'}
+                  </motion.button>
+                </motion.div>
+              )}
+
               {/* Badges */}
               {profile.badges.length > 0 && (
                 <div className="bg-white rounded-3xl shadow-xl p-6">
@@ -361,25 +409,41 @@ export default function FitilaLearn() {
                   <>
                     <p className="text-gray-500 text-xs mb-4">{getText('foundationsSub')}</p>
                     <div className="grid grid-cols-2 gap-3">
-                      {FOUNDATION_LESSONS.map((fl, idx) => (
-                        <motion.button
-                          key={fl.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.04 }}
-                          onClick={() => startFoundation(fl)}
-                          className="border-2 border-gray-100 rounded-2xl p-4 text-left hover:border-indigo-200 hover:shadow-lg transition-all group"
-                        >
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shadow-sm" style={{ backgroundColor: fl.color + '18' }}>
-                              {fl.icon}
+                      {FOUNDATION_LESSONS.map((fl, idx) => {
+                        const isComingSoon = fl.id === 'nombres';
+                        return (
+                          <motion.button
+                            key={fl.id}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.04 }}
+                            onClick={() => !isComingSoon && startFoundation(fl)}
+                            disabled={isComingSoon}
+                            className={`border-2 rounded-2xl p-4 text-left transition-all group relative overflow-hidden ${
+                              isComingSoon
+                                ? 'border-gray-200 opacity-60 cursor-not-allowed'
+                                : 'border-gray-100 hover:border-indigo-200 hover:shadow-lg'
+                            }`}
+                          >
+                            {isComingSoon && (
+                              <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center rounded-2xl">
+                                <Lock className="w-5 h-5 text-gray-400 mb-1" />
+                                <span className="text-gray-500 text-xs font-bold">
+                                  {userLanguage === 'french' ? 'À venir' : 'Kɑ nɑɑ'}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shadow-sm" style={{ backgroundColor: fl.color + '18' }}>
+                                {fl.icon}
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-gray-300 ml-auto group-hover:text-indigo-400 transition-colors" />
                             </div>
-                            <ChevronRight className="w-4 h-4 text-gray-300 ml-auto group-hover:text-indigo-400 transition-colors" />
-                          </div>
-                          <h4 className="font-bold text-gray-800 text-xs leading-tight">{fl.title[langKey]}</h4>
-                          <p className="text-[10px] text-gray-400 mt-1">{fl.sections.length} {getText('sections')} • {fl.quiz.length} {getText('quiz')}</p>
-                        </motion.button>
-                      ))}
+                            <h4 className="font-bold text-gray-800 text-xs leading-tight">{fl.title[langKey]}</h4>
+                            <p className="text-[10px] text-gray-400 mt-1">{fl.sections.length} {getText('sections')} • {fl.quiz.length} {getText('quiz')}</p>
+                          </motion.button>
+                        );
+                      })}
                     </div>
                   </>
                 )}
