@@ -45,8 +45,8 @@ export function VocalDictionaryResult({
       disabled={isSpeaking}
       className={`flex items-center justify-center p-2 rounded-full transition-all ${
         speakingField === fieldId 
-          ? 'bg-tamtam-primary text-white animate-pulse' 
-          : 'bg-tamtam-bg hover:bg-tamtam-primary/20 text-tamtam-text-muted hover:text-tamtam-primary'
+          ? 'bg-indigo-500 text-white animate-pulse' 
+          : 'bg-gray-100 hover:bg-indigo-100 text-gray-500 hover:text-indigo-600'
       } ${className}`}
     >
       {speakingField === fieldId ? (
@@ -62,10 +62,10 @@ export function VocalDictionaryResult({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-tamtam-surface rounded-3xl shadow-tamtam-soft overflow-hidden"
+      className="bg-white rounded-3xl shadow-lg overflow-hidden"
     >
       {/* En-tête avec le mot */}
-      <div className="bg-gradient-to-r from-tamtam-primary to-tamtam-primary/80 p-6">
+      <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             {/* Mot bariba */}
@@ -106,14 +106,14 @@ export function VocalDictionaryResult({
       {/* Corps avec définition et exemples */}
       <div className="p-6 space-y-4">
         {/* Définition (français) */}
-        <div className="bg-tamtam-bg rounded-2xl p-4">
+        <div className="bg-gray-50 rounded-2xl p-4">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
               <BookOpen className="w-5 h-5 text-blue-600" />
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-tamtam-text-muted font-medium flex items-center gap-2">
+                <span className="text-sm text-gray-500 font-medium flex items-center gap-2">
                   <span>🇫🇷</span> Définition
                 </span>
                 <AudioButton 
@@ -122,7 +122,7 @@ export function VocalDictionaryResult({
                   lang="fr"
                 />
               </div>
-              <p className="text-tamtam-text text-lg">{entry.definition}</p>
+              <p className="text-gray-800 text-lg">{entry.definition}</p>
             </div>
           </div>
         </div>
@@ -179,7 +179,7 @@ export function VocalDictionaryResult({
             }
           }}
           disabled={isSpeaking}
-          className="w-full py-4 bg-gradient-to-r from-tamtam-primary to-tamtam-primary/80 text-white rounded-2xl font-semibold flex items-center justify-center gap-3 hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-3 hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {isSpeaking ? (
             <>

@@ -213,11 +213,11 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-tamtam-surface rounded-t-3xl sm:rounded-3xl overflow-hidden max-h-[85vh] flex flex-col"
+              className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden max-h-[85vh] flex flex-col"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-tamtam-bg bg-gradient-to-r from-green-500 to-emerald-500">
+              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-r from-green-500 to-emerald-500">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <BookPlus className="w-5 h-5" />
                   {currentLang === 'ba' ? 'Ɔ̀rɔ̀ tuntun' : 'Nouveau mot'}
@@ -239,10 +239,10 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                     className="flex flex-col items-center justify-center py-12 text-center"
                   >
                     <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
-                    <h4 className="text-xl font-bold text-tamtam-text mb-2">
+                    <h4 className="text-xl font-bold text-gray-800 mb-2">
                       {currentLang === 'ba' ? 'Ó ṣeun!' : 'Merci !'}
                     </h4>
-                    <p className="text-tamtam-text-muted">
+                    <p className="text-gray-500">
                       {currentLang === 'ba' 
                         ? 'Ɔ̀rɔ̀ rẹ ti wọ́lé. A ó ṣàyẹ̀wò rẹ̀.'
                         : 'Votre mot a été soumis pour validation.'}
@@ -252,7 +252,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                   <>
                     {/* Word input */}
                     <div>
-                      <label className="text-sm font-medium text-tamtam-text-muted mb-2 block">
+                      <label className="text-sm font-medium text-gray-500 mb-2 block">
                         {currentLang === 'ba' ? 'Ɔ̀rɔ̀ Bàátɔ̀nú *' : 'Mot bariba *'}
                       </label>
                       <div className="flex gap-2">
@@ -261,7 +261,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                           value={word}
                           onChange={(e) => setWord(e.target.value)}
                           placeholder={currentLang === 'ba' ? 'Kọ ɔ̀rɔ̀ náà...' : 'Tapez le mot...'}
-                          className="flex-1 p-3 bg-tamtam-bg rounded-xl text-tamtam-text placeholder:text-tamtam-text-muted/50 focus:outline-none focus:ring-2 focus:ring-tamtam-primary/50"
+                          className="flex-1 p-3 bg-gray-50 rounded-xl text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                         />
                         <MicButton field="word" />
                       </div>
@@ -275,7 +275,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
 
                     {/* Phonetic input */}
                     <div>
-                      <label className="text-sm font-medium text-tamtam-text-muted mb-2 block">
+                      <label className="text-sm font-medium text-gray-500 mb-2 block">
                         {currentLang === 'ba' ? 'Ìró (àyàn)' : 'Phonétique (optionnel)'}
                       </label>
                       <input
@@ -283,13 +283,13 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                         value={phonetic}
                         onChange={(e) => setPhonetic(e.target.value)}
                         placeholder="[...]"
-                        className="w-full p-3 bg-tamtam-bg rounded-xl text-tamtam-text placeholder:text-tamtam-text-muted/50 focus:outline-none focus:ring-2 focus:ring-tamtam-primary/50"
+                        className="w-full p-3 bg-gray-50 rounded-xl text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                       />
                     </div>
 
                     {/* Part of speech */}
                     <div>
-                      <label className="text-sm font-medium text-tamtam-text-muted mb-2 block">
+                      <label className="text-sm font-medium text-gray-500 mb-2 block">
                         {currentLang === 'ba' ? 'Ìrísí ɔ̀rɔ̀' : 'Catégorie grammaticale'}
                       </label>
                       <div className="flex flex-wrap gap-2">
@@ -299,8 +299,8 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                             onClick={() => setPartOfSpeech(opt.value)}
                             className={`px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                               partOfSpeech === opt.value
-                                ? 'bg-tamtam-primary text-white'
-                                : 'bg-tamtam-bg text-tamtam-text-muted hover:bg-tamtam-primary/20'
+                                ? 'bg-indigo-500 text-white'
+                                : 'bg-gray-100 text-gray-500 hover:bg-indigo-50'
                             }`}
                           >
                             {currentLang === 'ba' ? opt.labelBa : opt.label}
@@ -311,7 +311,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
 
                     {/* Definition input */}
                     <div>
-                      <label className="text-sm font-medium text-tamtam-text-muted mb-2 block">
+                      <label className="text-sm font-medium text-gray-500 mb-2 block">
                         {currentLang === 'ba' ? 'Ìtúmọ̀ (Fàránsé) *' : 'Définition (français) *'}
                       </label>
                       <div className="flex gap-2">
@@ -319,7 +319,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                           value={definition}
                           onChange={(e) => setDefinition(e.target.value)}
                           placeholder={currentLang === 'ba' ? 'Kọ ìtúmọ̀ sí Fàránsé...' : 'Écrivez la définition...'}
-                          className="flex-1 p-3 bg-tamtam-bg rounded-xl text-tamtam-text placeholder:text-tamtam-text-muted/50 resize-none focus:outline-none focus:ring-2 focus:ring-tamtam-primary/50"
+                          className="flex-1 p-3 bg-gray-50 rounded-xl text-gray-800 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
                           rows={2}
                         />
                         <MicButton field="definition" />
@@ -334,7 +334,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
 
                     {/* Example bariba */}
                     <div>
-                      <label className="text-sm font-medium text-tamtam-text-muted mb-2 block">
+                      <label className="text-sm font-medium text-gray-500 mb-2 block">
                         {currentLang === 'ba' ? 'Àpẹẹrẹ Bàátɔ̀nú' : 'Exemple en bariba'}
                       </label>
                       <div className="flex gap-2">
@@ -342,7 +342,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                           value={exampleBariba}
                           onChange={(e) => setExampleBariba(e.target.value)}
                           placeholder={currentLang === 'ba' ? 'Kọ gbólóhùn kan...' : 'Écrivez une phrase exemple...'}
-                          className="flex-1 p-3 bg-tamtam-bg rounded-xl text-tamtam-text placeholder:text-tamtam-text-muted/50 resize-none focus:outline-none focus:ring-2 focus:ring-tamtam-primary/50"
+                          className="flex-1 p-3 bg-gray-50 rounded-xl text-gray-800 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
                           rows={2}
                         />
                         <MicButton field="example" />
@@ -357,14 +357,14 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
 
                     {/* Example français */}
                     <div>
-                      <label className="text-sm font-medium text-tamtam-text-muted mb-2 block">
+                      <label className="text-sm font-medium text-gray-500 mb-2 block">
                         {currentLang === 'ba' ? 'Ìtumọ̀ àpẹẹrẹ' : 'Traduction de l\'exemple'}
                       </label>
                       <textarea
                         value={exampleFrancais}
                         onChange={(e) => setExampleFrancais(e.target.value)}
                         placeholder={currentLang === 'ba' ? 'Túmọ̀ gbólóhùn náà sí Fàránsé...' : 'Traduisez l\'exemple en français...'}
-                        className="w-full p-3 bg-tamtam-bg rounded-xl text-tamtam-text placeholder:text-tamtam-text-muted/50 resize-none focus:outline-none focus:ring-2 focus:ring-tamtam-primary/50"
+                        className="w-full p-3 bg-gray-50 rounded-xl text-gray-800 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
                         rows={2}
                       />
                     </div>
@@ -374,14 +374,14 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
 
               {/* Footer */}
               {!submitted && (
-                <div className="p-4 border-t border-tamtam-bg">
+                <div className="p-4 border-t border-gray-100">
                   {isSubmitting ? (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2 text-tamtam-primary">
+                      <div className="flex items-center justify-center gap-2 text-indigo-500">
                         <Loader2 className="w-5 h-5 animate-spin" />
                         <span>{currentLang === 'ba' ? 'Ń fi ránṣẹ́...' : 'Envoi en cours...'}</span>
                       </div>
-                      <div className="h-2 bg-tamtam-bg rounded-full overflow-hidden">
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all"
                           style={{ width: `${uploadProgress}%` }}
