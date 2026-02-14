@@ -43,6 +43,7 @@ const TemplateTest = lazy(() => import("./pages/TemplateTest"));
 const SystemValidation = lazy(() => import("./pages/SystemValidation"));
 const AssetsDashboard = lazy(() => import("./pages/AssetsDashboard"));
 const GriotStudioPage = lazy(() => import("./pages/GriotStudioPage"));
+const FitilaLearn = lazy(() => import("./pages/fitila/FitilaLearn"));
 
 // Loading fallback - minimal spinner
 const PageLoader = () => (
@@ -104,6 +105,7 @@ const App = () => (
                 <Route path="sos" element={<TamTamSOS />} />
                 <Route path="profile" element={<TamTamProfile />} />
                 <Route path="dictionary" element={<TamTamDictionary />} />
+                <Route path="learn" element={<FitilaLearn />} />
                 <Route path="user/:userId" element={<TamTamPublicProfile />} />
                 <Route path="profile/:userId" element={<TamTamPublicProfile />} />
               </Route>

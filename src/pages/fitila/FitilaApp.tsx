@@ -47,7 +47,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { icon: User, label: 'Profil', labelBa: 'Èmi', path: '/fitila/profile', emoji: '👤' },
   ];
 
-  // Outils : Dictionnaire + Traducteur
+  // Outils : Dictionnaire + Traducteur + Apprendre
   const toolsItems = [
     { 
       emoji: '📖', 
@@ -64,6 +64,14 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
       path: '/fitila/translator', 
       gradient: 'from-blue-500 to-cyan-400',
       desc: 'Voix & Texte'
+    },
+    { 
+      emoji: '📚', 
+      label: 'Apprendre', 
+      labelBa: 'Kíkọ́', 
+      path: '/fitila/learn', 
+      gradient: 'from-amber-500 to-orange-400',
+      desc: 'Langues locales'
     },
   ];
 
