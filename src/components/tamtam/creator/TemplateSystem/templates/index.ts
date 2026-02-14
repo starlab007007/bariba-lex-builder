@@ -119,7 +119,6 @@ import { concertLiveTemplate } from './concertLive';
 
 export const allTemplates: Template[] = [
   griotAnimePremiumTemplate,
-  villageChronicleTemplate,
 ];
 
 // ============================================================================

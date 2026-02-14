@@ -1201,7 +1201,7 @@ export default function TamTamSocial() {
 
       <CreateMenu isOpen={showCreateMenu} onClose={() => setShowCreateMenu(false)} currentFeed={feedMode} onSelectPatrimoine={() => { setCreatePostType('patrimoine'); setShowCreatePost(true); }} onSelectMaVoix={() => { setCreatePostType('mavoix'); setShowCreatePost(true); }} onSelectCreateur={() => setShowCreator(true)} currentLang={currentLang} />
 
-      <TamTamCreatePost isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onSubmit={handleCreatePost} />
+      <TamTamCreatePost isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onSubmit={handleCreatePost} initialCategory={createPostType === 'patrimoine' ? 'patrimoine' : createPostType === 'mavoix' ? 'village_voice' : undefined} />
 
       <FullscreenCreator open={showCreator} onClose={() => setShowCreator(false)} onPublish={handleCreatorComplete} />
 
