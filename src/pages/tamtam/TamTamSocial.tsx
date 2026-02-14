@@ -897,10 +897,12 @@ export default function TamTamSocial() {
   const handleCreatePost = useCallback(async (data: any) => {
     try {
       // Ne pas utiliser d'audio par défaut - uniquement l'audio enregistré par l'utilisateur
+      // Map category correctly to topic
+      const topic = data.category === 'village_voice' ? 'mavoix' : (data.category || createPostType);
       const postData = {
         ...data,
         audio_url: data.audio_url || null,
-        topic: createPostType,
+        topic,
       };
       
       await createPost(postData);
@@ -1050,9 +1052,7 @@ export default function TamTamSocial() {
     
     switch (feedMode) {
       case 'patrimoine':
-        // Patrimoine: audio posts with culture topics OR template-based culture content
-        // ✅ FIX: Include ALL audio posts, not just those with specific topics
-        const patrimoineFromPosts = allPosts.filter(p => {
+        return allPosts.filter(p => {
           const post = p as any;
           const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
           return hasAudio && (
@@ -1061,24 +1061,12 @@ export default function TamTamSocial() {
             post.template_id?.includes('conte') ||
             post.template_id?.includes('chant') ||
             post.template_id?.includes('proverbe') ||
-            (post.culture_score && post.culture_score > 0) ||
-            post.media_type === 'audio' ||
-            !post.topic // Default audio posts go to patrimoine
+            (post.culture_score && post.culture_score > 0)
           );
         });
-        // If no specific patrimoine posts, show all audio posts
-        if (patrimoineFromPosts.length === 0) {
-          return allPosts.filter(p => {
-            const post = p as any;
-            return post.audio_url && post.audio_url.trim().length > 0;
-          });
-        }
-        return patrimoineFromPosts;
         
       case 'mavoix':
-        // Ma Voix: village voice, announcements, questions, polls
-        // ✅ FIX: Include ALL audio posts that have specific "mavoix" topics
-        const mavoixFromPosts = allPosts.filter(p => {
+        return allPosts.filter(p => {
           const post = p as any;
           const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
           return hasAudio && (
@@ -1090,21 +1078,13 @@ export default function TamTamSocial() {
             post.template_id?.includes('merci')
           );
         });
-        // If no specific mavoix posts, show all audio posts as fallback
-        if (mavoixFromPosts.length === 0) {
-          return allPosts.filter(p => {
-            const post = p as any;
-            return post.audio_url && post.audio_url.trim().length > 0;
-          });
-        }
-        return mavoixFromPosts;
         
       case 'creation':
-        // ✅ FIX: Combine videos from BOTH tamtam_posts AND videos table
         const creationFromPosts = allPosts.filter(p => {
           const post = p as any;
           return (post.media_type === 'video' || post.media_type === 'photo') && 
-                 post.media_url && post.media_url.trim().length > 0;
+                 post.media_url && post.media_url.trim().length > 0 &&
+                 post.topic !== 'patrimoine' && post.topic !== 'mavoix';
         });
         
         // Merge both sources, videos table first (newest template videos)
@@ -1209,7 +1189,10 @@ export default function TamTamSocial() {
         if (!commentsModal.postId) return;
         try {
           const { data: userData } = await supabase.auth.getUser();
-          if (!userData?.user) return;
+          if (!userData?.user) {
+            toast({ title: '🔐 Connexion requise', description: 'Connectez-vous pour commenter cette publication', variant: 'destructive' });
+            return;
+          }
           const audioBlob = await fetch(`data:audio/webm;base64,${audioBase64}`).then(r => r.blob());
           const audioUrl = await uploadMediaToStorage(audioBlob, 'audio', userData.user.id);
           await addComment(commentsModal.postId, { audio_url: audioUrl, duration_seconds: duration });
