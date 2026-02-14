@@ -1,77 +1,121 @@
 
-# Masquer Chronicle et supprimer les etapes intermediaires repetitives
+# Isoler les feeds, corriger les topics, et ajouter les gardes d'authentification
 
-## 1. Masquer Village Chronicle de la creation
+## Probleme 1 : Les publications ne sont pas correctement isolees dans leurs feeds respectifs
 
-Le bouton mini-carte "Chronicle" apparait dans l'interface camera (`FullscreenCreator.tsx`, lignes 3732-3753) aux cotes de Griot et Conte. Il faut le supprimer pour ne garder que **Griot** et **Conte**.
+### Diagnostic
+- **Publications Patrimoine/Voix du Village** : `TamTamCreatePost.handleSubmit` envoie `category: selectedTemplate.category` (soit `'patrimoine'` ou `'village_voice'`). Mais dans `TamTamSocial.handleCreatePost`, le `topic` est ecrase par `createPostType` qui vaut `'patrimoine'` ou `'mavoix'` (pas `'village_voice'`).
+- **Filtrage patrimoine** (lignes 1055-1076) : Le fallback montre TOUS les posts audio quand aucun post specifique n'est trouve, melangeant les feeds.
+- **Filtrage mavoix** (lignes 1081-1100) : Meme fallback problematique, montre tous les posts audio.
+- **Feed creation** (lignes 1104-1118) : Inclut tous les posts video/photo sans verifier le `topic`, ce qui pourrait inclure des posts patrimoine avec media.
+- **Videos table** : Tous les videos de la table `videos` sont mappes avec `topic: 'creation'` en dur (ligne 1028), ce qui est correct pour cette table.
 
-**Fichiers concernes :**
-- `src/components/tamtam/FullscreenCreator.tsx` : Supprimer le bloc du bouton Village Chronicle (lignes 3732-3753)
-- `src/components/tamtam/creator/TemplateSystem/templates/index.ts` : Retirer `villageChronicleTemplate` de `allTemplates`
-- `src/components/tamtam/creator/UnifiedTemplateCatalog.tsx` : Retirer `VillageChronicleTemplate` de `PREMIUM_TEMPLATES`
+### Corrections
+**Fichier `src/pages/tamtam/TamTamSocial.tsx` :**
+- Dans `handleCreatePost` : mapper correctement `topic` depuis les donnees du template. Si `data.category === 'village_voice'`, mettre `topic: 'mavoix'`. Si `data.category === 'patrimoine'`, mettre `topic: 'patrimoine'`.
+- Supprimer les fallbacks dans `getCurrentPosts` qui montrent TOUS les posts audio quand aucun post specifique n'est trouve. Si un feed est vide, il doit rester vide (l'ecran "Aucun contenu" s'affiche deja).
+- Dans le filtre `creation` : exclure les posts dont le `topic` est `'patrimoine'` ou `'mavoix'`.
 
-## 2. Supprimer la repetition dans le menu "+" (Patrimoine et Voix du Village)
+## Probleme 2 : Pas de garde d'authentification sur les interactions
 
-Actuellement quand on clique sur "+" puis "Patrimoine", cela ouvre `TamTamCreatePost` qui affiche d'abord une etape "category" avec encore "Patrimoine" et "Voix du Village". C'est une repetition inutile.
+### Diagnostic
+- `usePostInteractions` : `toggleLike`, `toggleBookmark`, `sharePost`, `toggleFollow` font un `return` silencieux si `!currentUserId`. Aucun message d'erreur.
+- Commentaires : Le modal de commentaires verifie `userData?.user` mais sans message clair.
+- Publication : `useTamTamPosts.createPost` a deja un message "Connexion requise", c'est bon.
 
-**Correction :** Passer la categorie deja selectee a `TamTamCreatePost` pour qu'il saute directement a l'etape "templates" (la grille des sous-categories).
+### Corrections
+**Fichier `src/hooks/usePostInteractions.ts` :**
+- Importer `useToast` et ajouter un message d'erreur clair dans chaque action quand l'utilisateur n'est pas connecte :
+  - `toggleLike` : "Connectez-vous pour aimer cette publication"
+  - `toggleBookmark` : "Connectez-vous pour sauvegarder cette publication"
+  - `sharePost` : le partage natif (copier le lien) peut rester sans auth, mais l'enregistrement en DB necessite auth : "Connectez-vous pour partager"
+  - `toggleFollow` : "Connectez-vous pour suivre cet utilisateur"
 
-**Fichiers concernes :**
-- `src/components/tamtam/TamTamCreatePost.tsx` :
-  - Ajouter une prop optionnelle `initialCategory?: 'patrimoine' | 'village_voice'`
-  - Si `initialCategory` est fourni, demarrer directement a l'etape `templates` avec `mainCategory` pre-rempli
-  - Modifier `goBack` pour fermer le modal au lieu de revenir a l'etape `category` quand la categorie etait pre-selectionnee
+**Fichier `src/pages/tamtam/TamTamSocial.tsx` :**
+- Dans le handler de commentaires (ligne 1208-1221) : ajouter un message clair "Connectez-vous pour commenter" avant le `return` si `!userData?.user`.
+- Dans `handleCreatePost` : le guard existe deja dans `createPost`, mais ajouter un toast visible "Connectez-vous pour publier" au niveau du Social aussi.
+- Dans `CreateMenu` : avant d'ouvrir la creation, verifier l'auth et afficher un message si non connecte.
 
-- `src/pages/tamtam/TamTamSocial.tsx` :
-  - Passer `initialCategory={createPostType === 'patrimoine' ? 'patrimoine' : 'village_voice'}` a `TamTamCreatePost`
+## Probleme 3 : Chaque publication a son auteur
 
-- `src/pages/tamtam/TamTamHome.tsx` :
-  - Meme modification : passer `initialCategory` a `TamTamCreatePost`
+### Diagnostic
+- `useTamTamPosts.createPost` assigne deja `user_id: userData.user.id` (ligne 281).
+- `useVideoPublish` assigne `user_id: userId` (ligne 113).
+- Les profils sont joints via `tamtam_profiles` dans les requetes de fetch.
+- Ceci est deja correct.
+
+## Resume des fichiers a modifier
+
+1. **`src/pages/tamtam/TamTamSocial.tsx`** :
+   - Corriger le mapping `topic` dans `handleCreatePost` pour utiliser `data.category`
+   - Supprimer les fallbacks dans `getCurrentPosts` (patrimoine et mavoix)
+   - Filtrer les posts creation pour exclure `topic === 'patrimoine'` et `topic === 'mavoix'`
+   - Ajouter garde auth avant ouverture des menus de creation
+   - Ajouter message d'erreur auth dans le handler de commentaires
+
+2. **`src/hooks/usePostInteractions.ts`** :
+   - Importer `useToast`
+   - Ajouter des messages toast clairs pour chaque action quand l'utilisateur n'est pas connecte (like, bookmark, share, follow)
 
 ## Details techniques
 
-### FullscreenCreator.tsx - Suppression du bouton Chronicle
-
-Supprimer les lignes 3732-3753 (le bloc `motion.button` pour Village Chronicle).
-
-### TamTamCreatePost.tsx - Saut de l'etape category
-
+### getCurrentPosts corrige (TamTamSocial.tsx)
 ```text
-// Nouvelle prop
-interface TamTamCreatePostProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (postData: any) => Promise<void>;
-  onOpenPoll?: () => void;
-  initialCategory?: 'patrimoine' | 'village_voice';  // NOUVEAU
-}
+case 'patrimoine':
+  return allPosts.filter(p => {
+    const post = p as any;
+    const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
+    return hasAudio && (
+      post.topic === 'patrimoine' || 
+      post.topic === 'culture' || 
+      post.template_id?.includes('conte') ||
+      post.template_id?.includes('chant') ||
+      post.template_id?.includes('proverbe') ||
+      (post.culture_score && post.culture_score > 0)
+    );
+  });
 
-// useEffect a l'ouverture
-useEffect(() => {
-  if (isOpen && initialCategory) {
-    setMainCategory(initialCategory);
-    setStep('templates');
-  }
-  if (!isOpen) resetState();
-}, [isOpen, initialCategory]);
+case 'mavoix':
+  return allPosts.filter(p => {
+    const post = p as any;
+    const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
+    return hasAudio && (
+      post.topic === 'mavoix' || 
+      post.topic === 'annonce' ||
+      post.topic === 'village_voice' ||
+      post.template_id?.includes('annonce') ||
+      post.template_id?.includes('question') ||
+      post.template_id?.includes('merci')
+    );
+  });
 
-// goBack modifie
-const goBack = () => {
-  if (step === 'templates') {
-    if (initialCategory) onClose();  // Fermer au lieu de revenir
-    else setStep('category');
-  } else if (step === 'record') { setStep('templates'); setRecordingTime(0); }
-  else if (step === 'preview') { setStep('record'); setPlaybackProgress(0); }
-};
+case 'creation':
+  const creationFromPosts = allPosts.filter(p => {
+    const post = p as any;
+    return (post.media_type === 'video' || post.media_type === 'photo') && 
+           post.media_url && post.media_url.trim().length > 0 &&
+           post.topic !== 'patrimoine' && post.topic !== 'mavoix';
+  });
+  // ... merge with videosAsVideoCards
 ```
 
-### TamTamSocial.tsx et TamTamHome.tsx - Passage de la prop
-
+### usePostInteractions.ts - gardes auth
 ```text
-<TamTamCreatePost
-  isOpen={showCreatePost}
-  onClose={() => setShowCreatePost(false)}
-  onSubmit={handleCreatePost}
-  initialCategory={createPostType === 'patrimoine' ? 'patrimoine' : 'village_voice'}
-/>
+const toggleLike = useCallback(async () => {
+  if (!currentUserId) {
+    toast({ title: '🔐 Connexion requise', description: 'Connectez-vous pour aimer cette publication', variant: 'destructive' });
+    return;
+  }
+  if (!postId) return;
+  // ... reste du code
+}, [...]);
+```
+
+### handleCreatePost corrige (TamTamSocial.tsx)
+```text
+const postData = {
+  ...data,
+  audio_url: data.audio_url || null,
+  topic: data.category === 'village_voice' ? 'mavoix' : (data.category || createPostType),
+};
 ```
