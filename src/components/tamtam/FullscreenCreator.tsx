@@ -273,10 +273,10 @@ async function capturePhotoFromVideo(
   });
 
   // Get overlay AR effects (sparkles, hearts, rain, etc.)
-  const overlayArEffects = effects.arEffects.filter(arId => {
-    const ar = AR_EFFECTS.find(e => e.id === arId);
-    return ar?.type === 'overlay' && ar?.animation;
-  });
+  const overlayArEffects = effects.arEffects
+    .map(arId => AR_EFFECTS.find(e => e.id === arId))
+    .filter(ar => ar?.type === 'overlay' && ar?.animation)
+    .map(ar => ar!.animation!);
 
   const template = getTemplateById(effects.templateId);
 
@@ -1407,10 +1407,10 @@ export default function FullscreenCreator({
         
         if (compCtx) {
           // Get overlay AR effects
-          const overlayArEffects = effects.arEffects.filter(arId => {
-            const ar = AR_EFFECTS.find(e => e.id === arId);
-            return ar?.type === 'overlay' && ar?.animation;
-          });
+          const overlayArEffects = effects.arEffects
+            .map(arId => AR_EFFECTS.find(e => e.id === arId))
+            .filter(ar => ar?.type === 'overlay' && ar?.animation)
+            .map(ar => ar!.animation!);
           
           const template = getTemplateById(effects.templateId);
           
