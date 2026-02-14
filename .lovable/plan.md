@@ -1,171 +1,108 @@
 
-# Corrections et finalisations de la page Profil et du Feed
+# Finalisation du module Dictionnaire
 
-## 7 points a corriger
-
----
-
-## 1. Bouton "Supprimer" dans le menu contextuel des posts ne fonctionne pas
-
-**Diagnostic** : Dans `MyPostsGrid.tsx`, la fonction `handleDeleteClick` utilise un systeme de double-clic (confirmation) qui fonctionne correctement dans le code, mais le `onDelete` recu en props attend un `Promise<boolean>` tandis que `handleDeleteClick` n'attend pas le resultat. De plus, dans `TamTamProfile.tsx` le `handleDeletePost` est asynchrone et retourne un `Promise<boolean>`.
-
-**Correction** : Modifier `handleDeleteClick` dans `MyPostsGrid.tsx` pour appeler `onDelete` correctement et attendre la completion. Ajouter un indicateur de chargement pendant la suppression.
-
-**Fichier** : `src/components/tamtam/MyPostsGrid.tsx` - lignes 42-49
+## Objectif
+Rendre la page dictionnaire intuitive, responsive, scrollable, avec mode clavier par defaut, un formulaire "Proposer un mot" adapte a tous les ecrans, les soumissions sauvegardees en base de donnees, et un systeme de recompenses pour les contributeurs.
 
 ---
 
-## 2. Afficher la photo de profil dans le menu lateral (bouton "Profil")
+## Modifications prevues
 
-**Diagnostic** : Dans `FitilaApp.tsx`, le menu lateral affiche "Profil" avec un simple emoji generique. Il faut charger le profil utilisateur et afficher son avatar.
+### 1. Mode clavier par defaut
 
-**Correction** : Dans `SideMenuDrawer` de `FitilaApp.tsx`, utiliser le hook `useTamTamProfile` pour recuperer l'avatar de l'utilisateur et l'afficher a cote du label "Profil" dans la navigation.
+Dans `TamTamDictionary.tsx`, changer l'etat initial de `inputMode` de `'voice'` a `'keyboard'` :
 
-**Fichier** : `src/pages/fitila/FitilaApp.tsx` - modifier l'affichage du nav item "Profil" pour utiliser l'avatar reel
+```text
+const [inputMode, setInputMode] = useState<InputMode>('keyboard');
+```
 
----
+Supprimer egalement l'annonce vocale automatique au chargement (le `useEffect` qui appelle `speakCurrentLang` au montage) pour ne pas deranger l'utilisateur qui arrive en mode clavier.
 
-## 3. Remonter l'avatar et le nom d'utilisateur dans le feed + ajouter date de publication
+### 2. Rendre la page scrollable et responsive
 
-**Diagnostic** : Dans `VideoFeedCard` de `TamTamSocial.tsx`, l'avatar et le `@username` en bas a gauche sont positionnes avec `paddingBottom: 'max(3.5rem, ...)'` mais peuvent etre coupes sur certains ecrans. Il manque aussi la date de publication.
+**KuaishouLayout.tsx** : Le layout actuel utilise `min-h-screen` sans gestion du scroll interne. Modifier pour utiliser `h-[100dvh] flex flex-col` sur le conteneur principal et `flex-1 overflow-y-auto` sur le `<main>`.
 
-**Corrections** :
-- Augmenter legerement la position de l'avatar et du nom d'utilisateur
-- Ajouter une ligne sous le nom avec la date de publication formatee
+**TamTamDictionary.tsx** : Ajouter `pb-8` au conteneur de contenu principal et s'assurer que le contenu (input, resultats, historique) est dans un conteneur scrollable avec des paddings adaptatifs (`px-3 sm:px-4`).
 
-**Fichier** : `src/pages/tamtam/TamTamSocial.tsx` - zone bottom-left du VideoFeedCard (lignes 687-709)
+### 3. Ameliorer le modal "Proposer un mot"
 
----
+**NewWordSubmission.tsx** : Rendre le modal bottom-sheet responsive :
+- Utiliser `max-h-[85vh]` au lieu de `max-h-[90vh]` pour laisser de l'espace
+- Ajouter `safe-area-inset` en bas du formulaire
+- Rendre les champs plus compacts sur mobile avec `py-2.5` au lieu de `py-3`
+- Le bouton "Proposer un mot" doit etre `w-full` pour occuper toute la largeur
+- Ajouter une indication du nombre de mots deja proposes par l'utilisateur
 
-## 4. Ajouter le mot "Suivre" a cote du "+" et masquer apres follow
+### 4. Sauvegarder les mots proposes en base
 
-**Diagnostic** : Dans `VideoFeedCard`, le bouton follow en bas de l'avatar (lignes 731-739) affiche seulement un "+" sans texte. Quand l'utilisateur est suivi, le bouton disparait deja (`!isFollowing && ...`), ce qui est correct.
+Le hook `useVocalFeedback.ts` insere deja dans la table `word_submissions` -- cette partie fonctionne. Verifier que les politiques RLS permettent l'insertion par les utilisateurs authentifies.
 
-**Correction** : Ajouter le texte "Suivre" a cote du signe "+" sous l'avatar dans la sidebar droite. Elargir legerement le bouton pour accueillir le texte.
+### 5. Systeme de recompenses pour les contributeurs
 
-**Fichier** : `src/pages/tamtam/TamTamSocial.tsx` - lignes 731-739
+**Nouvelle table** : `user_contributions` pour tracker les points
 
----
+```text
+CREATE TABLE public.user_contributions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  action_type TEXT NOT NULL,  -- 'word_submission', 'feedback', 'word_approved'
+  points INTEGER NOT NULL DEFAULT 0,
+  reference_id UUID,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-## 5. Le partage doit partager uniquement la publication
+-- RLS: users can read their own contributions
+-- RLS: system can insert (via trigger)
+```
 
-**Diagnostic** : La fonction `sharePost` du hook `usePostInteractions` utilise `navigator.share` avec le titre et l'URL de la page. C'est correct mais il faut s'assurer que le partage inclut le lien direct vers la publication et pas une page generique.
+**Trigger automatique** : Quand une ligne est inseree dans `word_submissions`, un trigger ajoute automatiquement des points dans `user_contributions` :
+- Proposition de mot : +10 points
+- Avec audio : +5 points bonus
+- Avec exemple : +3 points bonus
 
-**Correction** : Modifier la fonction `sharePost` dans `usePostInteractions.ts` pour generer une URL specifique a la publication (`/fitila/social?video=POST_ID`) et partager cette URL. Aussi permettre le partage interne (dans le feed de l'utilisateur).
+**Affichage dans le dictionnaire** : Ajouter une section en haut de la page montrant le niveau du contributeur :
+- 0-49 points : Debutant
+- 50-199 points : Contributeur
+- 200-499 points : Expert
+- 500+ points : Maitre du dictionnaire
 
-**Fichier** : `src/hooks/usePostInteractions.ts`
+### 6. Afficher les contributions de l'utilisateur
 
----
-
-## 6. Permettre de voir la liste des followers, likes, et follows en cliquant sur les compteurs
-
-**Diagnostic** : Dans `KuaishouProfileHeader.tsx`, les compteurs (Followers, Follow, Likes) sont affiches mais ne sont pas cliquables. L'utilisateur ne peut pas voir qui l'a suivi, ou qui il suit.
-
-**Correction** : Ajouter des callbacks `onFollowersClick`, `onFollowingClick`, `onLikesClick` au composant `KuaishouProfileHeader` et les connecter dans `TamTamProfile.tsx` pour ouvrir les modals `TamTamFollowersList` existants.
-
-**Fichiers** : 
-- `src/components/tamtam/KuaishouProfileHeader.tsx` - rendre les compteurs cliquables
-- `src/pages/tamtam/TamTamProfile.tsx` - connecter les callbacks
-
----
-
-## 7. Bouton Parametres pour gerer le compte (nom, mot de passe, numero)
-
-**Diagnostic** : Le bouton "Parametres" dans le menu lateral navigue vers `/fitila/settings` mais cette page n'existe probablement pas. Le `ProfileEditModal` existant ne gere que nom, localisation et telephone, pas le mot de passe.
-
-**Correction** : Enrichir le `ProfileEditModal` avec la possibilite de changer le mot de passe (via `supabase.auth.updateUser`). Aussi, faire en sorte que le bouton "Modifier" sur la page profil ouvre ce modal enrichi avec tous les parametres de gestion du compte. Le bouton "Parametres" du menu lateral naviguera vers la page profil et ouvrira automatiquement le modal.
-
-**Fichiers** :
-- `src/components/tamtam/ProfileEditModal.tsx` - ajouter champ mot de passe
-- `src/pages/tamtam/TamTamProfile.tsx` - gerer l'ouverture automatique via query param
-
----
-
-## Resume des modifications
-
-| Fichier | Modifications |
-|---------|--------------|
-| `src/components/tamtam/MyPostsGrid.tsx` | Fix suppression : attendre le resultat de onDelete, indicateur de chargement |
-| `src/pages/fitila/FitilaApp.tsx` | Afficher l'avatar reel dans le menu lateral |
-| `src/pages/tamtam/TamTamSocial.tsx` | Remonter avatar+username, ajouter date, texte "Suivre" sur bouton follow |
-| `src/hooks/usePostInteractions.ts` | Partage avec URL specifique au post |
-| `src/components/tamtam/KuaishouProfileHeader.tsx` | Rendre compteurs Followers/Follow/Likes cliquables |
-| `src/pages/tamtam/TamTamProfile.tsx` | Connecter les clics sur compteurs, gerer ouverture settings |
-| `src/components/tamtam/ProfileEditModal.tsx` | Ajouter changement de mot de passe |
+Ajouter un petit badge/compteur dans le header de la page dictionnaire montrant les points et le niveau actuel de l'utilisateur. Cliquer dessus affiche un mini-resume de ses contributions.
 
 ---
 
 ## Details techniques
 
-### Fix suppression (MyPostsGrid)
+### Fichiers modifies
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/pages/tamtam/TamTamDictionary.tsx` | Mode clavier par defaut, suppression annonce auto, ajout badge contributeur, responsive padding, scroll |
+| `src/components/tamtam/KuaishouLayout.tsx` | `h-[100dvh] flex flex-col` + `flex-1 overflow-y-auto` sur main |
+| `src/components/tamtam/NewWordSubmission.tsx` | Modal responsive, max-height ajuste, safe-area, bouton full-width, afficher compteur submissions |
+
+### Fichiers crees
+
+| Fichier | Description |
+|---------|-------------|
+| `src/hooks/useContributionPoints.ts` | Hook pour lire les points et le niveau de l'utilisateur depuis `user_contributions` |
+
+### Migration SQL
+
+Creation de la table `user_contributions` + trigger sur `word_submissions` pour attribuer des points automatiquement + politiques RLS.
+
+### Scroll architecture
+
 ```text
-// Ajouter un etat de chargement
-const [deletingId, setDeletingId] = useState<string | null>(null);
-
-handleDeleteClick = async (postId) => {
-  if (deleteConfirm === postId) {
-    setDeletingId(postId);
-    await onDelete(postId);
-    setDeletingId(null);
-    setDeleteConfirm(null);
-  } else {
-    setDeleteConfirm(postId);
-    setTimeout(() => setDeleteConfirm(null), 3000);
-  }
-}
-```
-
-### Avatar dans le menu lateral (FitilaApp)
-```text
-// Importer useTamTamProfile dans SideMenuDrawer
-const { profile } = useTamTamProfile();
-
-// Remplacer l'emoji generique par l'avatar
-{profile?.avatar_url ? (
-  <img src={profile.avatar_url} className="w-7 h-7 rounded-full object-cover" />
-) : (
-  <span>👤</span>
-)}
-```
-
-### Date de publication dans le feed
-```text
-// Sous le @username dans VideoFeedCard
-<span className="text-white/50 text-[10px]">
-  {formatPublicationDate(post.created_at)}
-</span>
-```
-
-### Bouton Suivre avec texte
-```text
-// Remplacer le petit bouton "+" par un badge plus visible
-<motion.button className="absolute -bottom-2 left-1/2 -translate-x-1/2 
-  flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-red-500 text-white text-[9px]">
-  <Plus className="w-3 h-3" /> Suivre
-</motion.button>
-```
-
-### Compteurs cliquables dans le header
-```text
-// KuaishouProfileHeader - ajouter props
-onFollowersClick?: () => void;
-onFollowingClick?: () => void;
-onLikesClick?: () => void;
-
-// Wrapper chaque stat dans un bouton
-<button onClick={onFollowersClick}>
-  <p>{formatCount(followersCount)}</p>
-  <p>Followers</p>
-</button>
-```
-
-### Changement de mot de passe
-```text
-// ProfileEditModal - nouvelle section
-const handleChangePassword = async () => {
-  const { error } = await supabase.auth.updateUser({ 
-    password: newPassword 
-  });
-  if (!error) toast("Mot de passe modifie");
-};
+KuaishouLayout (h-[100dvh], flex flex-col)
+  +-- KuaishouHeader (flex-shrink-0)
+  +-- main (flex-1, overflow-y-auto)
+  |     +-- Toggles mode/direction
+  |     +-- Zone input (vocal ou clavier)
+  |     +-- Bouton "Proposer un mot"
+  |     +-- Resultat selectionne
+  |     +-- Historique
+  |     +-- Badge contributeur
+  +-- KuaishouBottomNav (flex-shrink-0)
 ```
