@@ -296,7 +296,7 @@ async function capturePhotoFromVideo(
   }, target.tw, target.th, performance.now() / 1000);
 
   const blob: Blob = await new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Photo blob failed"))), "image/jpeg", 0.92);
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Photo blob failed"))), "image/jpeg", 0.95);
   });
   return blob;
 }
@@ -575,6 +575,8 @@ export default function FullscreenCreator({
   const [templateSegments, setTemplateSegments] = useState<{ id: string; blob: Blob; duration: number }[]>([]);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState(false);
+  const [publishProgress, setPublishProgress] = useState<{ percent: number; message: string } | null>(null);
   
   // ============= RADIO VILLAGE MODE (AUDIO-FIRST TEMPLATES) =============
   const [isRadioVillageMode, setIsRadioVillageMode] = useState(false);
@@ -687,6 +689,14 @@ export default function FullscreenCreator({
     }, 200);
     return () => window.clearInterval(t);
   }, [isRecording]);
+
+  // ✅ Auto-stop recording when timer reaches selected duration
+  useEffect(() => {
+    if (isRecording && mode === "video" && recordingElapsed >= lengthSec) {
+      console.log(`[FullscreenCreator] Auto-stop: recordingElapsed (${recordingElapsed}s) >= lengthSec (${lengthSec}s)`);
+      onPressCapture();
+    }
+  }, [recordingElapsed, lengthSec, isRecording, mode]);
 
   // -------- K-Engine subscribe lifecycle --------
   useEffect(() => {
@@ -1490,7 +1500,7 @@ export default function FullscreenCreator({
         } catch {}
       }
 
-      const rec = new MediaRecorder(recordStream, { mimeType });
+      const rec = new MediaRecorder(recordStream, { mimeType, videoBitsPerSecond: 8_000_000 });
       recorderRef.current = rec;
 
       rec.ondataavailable = (ev) => {
@@ -1965,6 +1975,7 @@ export default function FullscreenCreator({
     });
     
     setIsPublishing(true);
+    setPublishProgress({ percent: 5, message: "Préparation du contenu..." });
     try {
       setError(null);
       
@@ -1994,6 +2005,7 @@ export default function FullscreenCreator({
       const challenge = effects.challengeId ? CHALLENGES.find((c) => c.id === effects.challengeId) : null;
       const finalCaption = challenge ? `${caption} ${challenge.hashtag}`.trim() : caption;
 
+      setPublishProgress({ percent: 10, message: "Validation du contenu..." });
       let finalSegments = [...segments];
 
       // ✅ BLOCK B: If K-Engine active, render the final output with template effects at NATIVE resolution
@@ -2096,6 +2108,7 @@ export default function FullscreenCreator({
         const musicUrl = selectedAudioTrack.source?.url || selectedAudioTrack.source?.path;
         if (musicUrl) {
           try {
+            setPublishProgress({ percent: 30, message: "🎵 Mixage musique..." });
             setToast("🎵 Mixage musique...");
             const mixedBlob = await mixMusicIntoVideo({
               videoBlob: finalSegments[0].blob,
@@ -2115,6 +2128,7 @@ export default function FullscreenCreator({
           }
         }
       }
+      setPublishProgress({ percent: 70, message: "Envoi en cours..." });
 
       if (onPublish) {
         await onPublish({
@@ -2136,10 +2150,18 @@ export default function FullscreenCreator({
         });
       }
 
-      setToast("Publié ✓");
-      onClose?.();
+      setPublishProgress({ percent: 100, message: "Publié ! 🎉" });
+      setPublishSuccess(true);
+      
+      // Show success screen for 2.5 seconds then close
+      setTimeout(() => {
+        setPublishSuccess(false);
+        setPublishProgress(null);
+        onClose?.();
+      }, 2500);
     } catch (e: any) {
       setError(e?.message || "Erreur publication");
+      setPublishProgress(null);
     } finally {
       setIsPublishing(false);
     }
@@ -2902,13 +2924,50 @@ export default function FullscreenCreator({
                   {(isPublishing || isProcessingTemplate) && (
                     <div className="mt-3 flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
                       <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full animate-pulse" 
-                             style={{ width: processingProgress ? `${processingProgress.percent}%` : '60%' }} />
+                        <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full transition-all duration-500 ease-out" 
+                             style={{ width: `${publishProgress?.percent ?? (processingProgress ? processingProgress.percent : 60)}%` }} />
                       </div>
                       <span className="text-xs text-white/60">
-                        {processingProgress?.message_fr || "Préparation de la publication..."}
+                        {publishProgress?.message || processingProgress?.message_fr || "Préparation de la publication..."}
+                      </span>
+                      <span className="text-xs text-white/40">
+                        {publishProgress?.percent ?? processingProgress?.percent ?? 0}%
                       </span>
                     </div>
+                  )}
+
+                  {/* ✅ Success celebration overlay */}
+                  {publishSuccess && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm"
+                    >
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                        className="text-7xl mb-4"
+                      >
+                        🎉
+                      </motion.div>
+                      <motion.h2
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-2xl font-bold text-white mb-2"
+                      >
+                        Publication réussie !
+                      </motion.h2>
+                      <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="text-white/60 text-sm"
+                      >
+                        Ta création est maintenant visible 🌟
+                      </motion.p>
+                    </motion.div>
                   )}
 
                   {isKEngineActive && (
