@@ -72,7 +72,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
   const [sourceLanguage, setSourceLanguage] = useState<SourceLanguage>('french');
   const [targetLanguage, setTargetLanguage] = useState<SourceLanguage>('bariba');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentMode, setCurrentMode] = useState<InputMode>('audio');
+  const [currentMode, setCurrentMode] = useState<InputMode>('text');
   const [lastResult, setLastResult] = useState<TranslationResult | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
