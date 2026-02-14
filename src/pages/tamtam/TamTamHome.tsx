@@ -359,7 +359,7 @@ export default function TamTamHome() {
         currentLang={currentLang}
       />
 
-      <TamTamCreatePost isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onSubmit={handleCreatePost} />
+      <TamTamCreatePost isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onSubmit={handleCreatePost} initialCategory={createPostType === 'patrimoine' ? 'patrimoine' : createPostType === 'mavoix' ? 'village_voice' : undefined} />
 
       <FullscreenCreator open={showCreator} onClose={() => setShowCreator(false)} onPublish={handleCreatorComplete} />
     </div>

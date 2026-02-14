@@ -14,6 +14,7 @@ interface TamTamCreatePostProps {
   onClose: () => void;
   onSubmit: (postData: any) => Promise<void>;
   onOpenPoll?: () => void;
+  initialCategory?: 'patrimoine' | 'village_voice';
 }
 
 interface Template {
@@ -178,7 +179,7 @@ const AudioWaveform: React.FC<{ isActive: boolean; barCount?: number }> = ({ isA
 );
 
 // MAIN COMPONENT
-export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onClose, onSubmit }) => {
+export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onClose, onSubmit, initialCategory }) => {
   const [step, setStep] = useState<'category' | 'templates' | 'record' | 'preview'>('category');
   const [mainCategory, setMainCategory] = useState<'patrimoine' | 'village_voice' | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -201,7 +202,13 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  useEffect(() => { if (!isOpen) resetState(); }, [isOpen]);
+  useEffect(() => {
+    if (isOpen && initialCategory) {
+      setMainCategory(initialCategory);
+      setStep('templates');
+    }
+    if (!isOpen) resetState();
+  }, [isOpen, initialCategory]);
 
   const playAudioPrompt = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -262,7 +269,7 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
   };
 
   const resetState = () => { setStep('category'); setMainCategory(null); setSelectedTemplate(null); setAudioBase64(null); setAudioDuration(0); setRecordingTime(0); setIsRecording(false); setIsPlayingPreview(false); setPlaybackProgress(0); if (audioPreviewRef.current) { audioPreviewRef.current.pause(); audioPreviewRef.current = null; } };
-  const goBack = () => { if (step === 'templates') setStep('category'); else if (step === 'record') { setStep('templates'); setRecordingTime(0); } else if (step === 'preview') { setStep('record'); setPlaybackProgress(0); } };
+  const goBack = () => { if (step === 'templates') { if (initialCategory) onClose(); else setStep('category'); } else if (step === 'record') { setStep('templates'); setRecordingTime(0); } else if (step === 'preview') { setStep('record'); setPlaybackProgress(0); } };
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 
   if (!isOpen) return null;

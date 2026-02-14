@@ -52,7 +52,6 @@ const CATEGORIES = [
 const PREMIUM_TEMPLATES: Template[] = [
   GriotDigitalTemplate as unknown as Template,
   BeatMakerAITemplate as unknown as Template,
-  VillageChronicleTemplate as unknown as Template,
 ].filter(t => t && t.id);
 
 // Merge all templates

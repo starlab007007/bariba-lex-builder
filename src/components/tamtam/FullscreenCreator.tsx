@@ -3729,28 +3729,6 @@ export default function FullscreenCreator({
                     <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Conte</span>
                   </motion.button>
 
-                  {/* Village Chronicle */}
-                  <motion.button
-                    onClick={() => {
-                      if (navigator.vibrate) navigator.vibrate(50);
-                      setShowNewsStudioMode(true);
-                      setToast('📺 Chronicle activé');
-                    }}
-                    animate={{ 
-                      rotate: [-1, 1, -1],
-                      boxShadow: [
-                        '0 0 8px rgba(59, 130, 246, 0.3)',
-                        '0 0 16px rgba(249, 115, 22, 0.5)',
-                        '0 0 8px rgba(59, 130, 246, 0.3)'
-                      ]
-                    }}
-                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut', delay: 0.5 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="w-14 h-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/25 flex flex-col items-center justify-center gap-1 relative overflow-hidden"
-                  >
-                    <span className="text-2xl">📺</span>
-                    <span className="text-[8px] font-semibold text-white/90 leading-tight text-center">Chronicle</span>
-                  </motion.button>
                 </div>
                 
                 {/* Hidden Album input - still accessible */}
