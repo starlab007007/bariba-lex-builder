@@ -374,9 +374,9 @@ export default function TamTamTranslator() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex flex-col">
+    <div className="h-[100dvh] bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex flex-col overflow-hidden">
       {/* Header style Apprendre */}
-      <div className="sticky top-0 z-40 px-4 pt-4 pb-2">
+      <div className="flex-shrink-0 z-40 px-4 pt-4 pb-2">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -391,7 +391,7 @@ export default function TamTamTranslator() {
         </div>
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Sub-header with language toggle */}
         <div className="px-4 py-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
           <div className="flex items-center justify-between">
@@ -627,7 +627,7 @@ export default function TamTamTranslator() {
         </AnimatePresence>
 
         {/* Input Area */}
-        <div className="sticky bottom-0 border-t border-gray-200 px-4 py-3 bg-white/90 backdrop-blur-md">
+        <div className="flex-shrink-0 border-t border-gray-200 px-4 py-3 bg-white/95 backdrop-blur-md z-50" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
           {/* Clear button */}
           {messages.length > 0 && (
             <div className="flex justify-center mb-2">
@@ -678,7 +678,7 @@ export default function TamTamTranslator() {
                 <TamTamMicButton
                   size="lg"
                   onRecordingComplete={handleVoiceResult}
-                  autoTranscribe={false}
+                  autoTranscribe={true}
                   sourceLang={translator.sourceLanguage === 'bariba' ? 'ba' : 'fr'}
                   disabled={translator.isProcessing}
                 />

@@ -154,7 +154,13 @@ export function TamTamMicButton({
           
           // Start Web Speech API (uses browser's native microphone access, separate from our stream)
           webSpeechSTT.resetTranscript();
-          webSpeechSTT.startListening();
+          try {
+            webSpeechSTT.startListening();
+          } catch (err: any) {
+            if (err?.name !== 'InvalidStateError') {
+              console.error('[TamTamMicButton] Web Speech start error:', err);
+            }
+          }
           
         } else {
           // === BARIBA: Audio recording ONLY (Web Speech doesn't support Bariba) ===
