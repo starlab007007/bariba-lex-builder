@@ -190,7 +190,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
       {/* Trigger button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-2xl font-medium shadow-lg hover:shadow-xl transition-all"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-2xl font-medium shadow-lg hover:shadow-xl transition-all"
       >
         <Plus className="w-5 h-5" />
         <span>
@@ -213,7 +213,8 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-tamtam-surface rounded-t-3xl sm:rounded-3xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="w-full max-w-md bg-tamtam-surface rounded-t-3xl sm:rounded-3xl overflow-hidden max-h-[85vh] flex flex-col"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-tamtam-bg bg-gradient-to-r from-green-500 to-emerald-500">

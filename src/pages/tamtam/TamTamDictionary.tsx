@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Keyboard, Volume2, Loader2, Search, BookOpen, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { NewWordSubmission } from '@/components/tamtam/NewWordSubmission';
 import { KuaishouLayout } from '@/components/tamtam/KuaishouLayout';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { useContributionPoints, getLevel } from '@/hooks/useContributionPoints';
 
 type InputMode = 'voice' | 'keyboard';
 type SearchDirection = 'ba-fr' | 'fr-ba';
@@ -20,8 +21,9 @@ export default function TamTamDictionary() {
   const { t, currentLang } = useTamTamLanguage();
   const { speakCurrentLang, isSpeaking } = useUnifiedAudio();
   const { getSuggestions, searchInDefinitions, findExactMatch, isLoading: isLoadingDict, totalEntries } = usePhoneticSuggestions();
+  const { totalPoints, level, submissionCount, isLoading: isLoadingContrib } = useContributionPoints();
   
-  const [inputMode, setInputMode] = useState<InputMode>('voice');
+  const [inputMode, setInputMode] = useState<InputMode>('keyboard');
   const [searchDirection, setSearchDirection] = useState<SearchDirection>('ba-fr');
   const [keyboardLang, setKeyboardLang] = useState<SearchLanguage>('ba');
   const [selectedEntry, setSelectedEntry] = useState<PhoneticEntry | null>(null);
@@ -30,16 +32,7 @@ export default function TamTamDictionary() {
   const [searchHistory, setSearchHistory] = useState<PhoneticEntry[]>([]);
   const [notFoundWord, setNotFoundWord] = useState<string>('');
 
-  // Annoncer la page au chargement
-  useEffect(() => {
-    const announce = async () => {
-      const message = currentLang === 'ba' 
-        ? "Gbɛ́-sɔ́ɔ̀rù. Sọ tàbí kọ ɔ̀rɔ̀ láti rí ìtúmọ̀."
-        : "Dictionnaire. Parlez ou tapez un mot pour obtenir sa traduction.";
-      await speakCurrentLang(message);
-    };
-    announce();
-  }, []);
+  // No auto-announce in keyboard mode
 
   // Traitement de la commande vocale
   const handleVoiceCommand = async (result: {
@@ -170,7 +163,7 @@ export default function TamTamDictionary() {
       showNav={false}
     >
       {/* Toggles mode et direction */}
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-3 sm:px-4 pt-4 pb-2">
         <div className="flex gap-2">
           {/* Toggle mode */}
           <button
@@ -201,15 +194,20 @@ export default function TamTamDictionary() {
         </div>
         
         {/* Word count badge */}
-        <div className="mt-3 text-center">
+        <div className="mt-3 flex items-center justify-center gap-3">
           <span className="text-white/50 text-sm">
             {totalEntries > 0 ? `${totalEntries.toLocaleString()} mots` : 'Chargement...'}
           </span>
+          {!isLoadingContrib && totalPoints > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/70 text-xs">
+              {getLevel(totalPoints).emoji} {totalPoints} pts · {level}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Contenu principal */}
-      <div className="px-4 -mt-4">
+      <div className="px-3 sm:px-4 -mt-4 pb-8">
         {/* Zone d'entrée - updated styling */}
         <motion.div
           layout
