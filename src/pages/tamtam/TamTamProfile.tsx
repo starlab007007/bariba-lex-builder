@@ -41,6 +41,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { ContributorBadgeCard } from '@/components/fitila/ContributorBadgeCard';
 
 const badges = [
   { icon: '⭐', color: 'bg-yellow-100' },
@@ -513,6 +514,9 @@ export default function TamTamProfile() {
                 </div>
               </div>
             </motion.div>
+
+            {/* Contributor Badge */}
+            <ContributorBadgeCard lang={currentLang === 'ba' ? 'ba' : 'fr'} compact />
 
             {/* Badges */}
             <motion.div
