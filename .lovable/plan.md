@@ -1,74 +1,52 @@
 
 
-# Corriger le pipeline audio vocal du Dictionnaire
+# Corriger le traducteur : responsivite, audio, et barre du bas
 
 ## Problemes identifies
 
-1. **STT Francais** : Le mode vocal utilise uniquement Web Speech API (navigateur) au lieu de Mistral Voxtral Mini pour transcrire le francais. L'audio est enregistre mais seul le transcript Web Speech est utilise.
+1. **Champs du bas caches** : Le layout utilise `min-h-screen` avec `sticky bottom-0`, ce qui fait que sur les petits ecrans les champs de saisie et le micro sont partiellement caches ou coupes.
 
-2. **STT Bariba** : Le pipeline Bariba STT (HuggingFace) fonctionne via `transcribeWithTranslation`, mais le resultat n'est pas toujours correctement exploite.
+2. **Envoi audio echoue** : Le `TamTamMicButton` est appele avec `autoTranscribe={false}` (ligne 681), donc il retourne juste l'audio brut sans transcription. Ensuite `handleVoiceResult` verifie `result.transcription` pour le francais, qui est toujours vide. L'audio est enregistre mais jamais transcrit ni envoye. De plus, `useWebSpeechSTT` provoque une erreur `InvalidStateError` car `recognition.start()` est appele alors que la reconnaissance est deja en cours.
 
-3. **TTS Francais** : `UnifiedAudioService.speak()` utilise Web Speech API pour le francais au lieu d'appeler le edge function `french-tts` (Inworld TTS-1.5 Mini). De plus, il verifie `data.audioContent` alors que le edge function retourne `data.audio`.
+3. **Barre de navigation du bas** : La barre "Home / Featured / + / Message / Me" (`KuaishouBottomNav`) est rendue en `fixed bottom-0 z-50` et apparait sur certains etats de navigation. Elle masque les champs de saisie du traducteur.
 
-4. **TTS Bariba** : `UnifiedAudioService.speak()` verifie `data.audioContent` pour le bariba, mais le edge function `bariba-tts` retourne `data.audio` -- le champ ne correspond pas.
+## Corrections prevues
 
-5. **Envoi automatique** : Les resultats vocaux doivent etre automatiquement envoyes pour recherche apres transcription.
+### 1. Layout responsif (TamTamTranslator.tsx)
 
-## Plan de corrections
+- Remplacer `min-h-screen` par `h-[100dvh]` pour verrouiller la hauteur a l'ecran (pattern standard FITILA)
+- La structure sera : header (sticky/fixed) + zone de messages (flex-1 overflow-y-auto) + zone de saisie (flex-shrink-0) en bas
+- Supprimer `sticky bottom-0` de la zone de saisie et la rendre partie du flux flex pour qu'elle reste toujours visible
+- La zone de messages scrollera independamment
 
-### 1. Corriger UnifiedAudioService.ts - TTS (parole)
+### 2. Activer autoTranscribe et corriger le pipeline audio (TamTamTranslator.tsx + TamTamMicButton.tsx)
 
-**Probleme** : La methode `speak()` pour le francais utilise directement Web Speech API au lieu d'Inworld TTS-1.5 Mini.
+- Passer `autoTranscribe={true}` sur le `TamTamMicButton` dans le traducteur pour que la transcription se fasse automatiquement (Mistral pour le francais, HuggingFace pour le bariba)
+- Dans `handleVoiceResult` : utiliser `result.transcription` qui sera desormais rempli automatiquement par le mic button
+- Corriger l'erreur `InvalidStateError` dans `TamTamMicButton` : ajouter un garde `try/catch` specifique autour de `webSpeechSTT.startListening()` pour ignorer les erreurs `InvalidStateError` quand la reconnaissance est deja en cours
 
-**Correction** :
-- Pour le francais : appeler le edge function `french-tts` avec `returnAudio: true`, decoder le `audioBase64` recu, et jouer l'audio. Fallback vers Web Speech API si echec.
-- Pour le bariba : corriger la verification du champ de reponse de `data.audioContent` vers `data.audio` (qui est le vrai nom retourne par le edge function `bariba-tts`).
+### 3. Supprimer la barre de navigation du bas (TamTamTranslator.tsx)
 
-### 2. Corriger TamTamMicButton.tsx - STT Francais avec Mistral
-
-**Probleme** : Pour le francais, le composant utilise uniquement `webSpeechSTT` (navigateur). L'audio enregistre n'est pas envoye a Mistral Voxtral Mini.
-
-**Correction** :
-- Apres l'arret de l'enregistrement en mode francais, envoyer l'audio blob au edge function `transcribe-audio` via `useFrenchSTT.transcribeAudioBlob()` (deja implemente mais pas utilise).
-- Utiliser le resultat Mistral en priorite, et garder Web Speech API comme fallback seulement si Mistral echoue.
-- Supprimer la dependance principale sur `webSpeechSTT` pour le francais.
-
-### 3. Corriger TamTamMicButton.tsx - Envoi automatique
-
-**Probleme** : L'envoi du resultat vocal n'est pas toujours automatique.
-
-**Correction** :
-- S'assurer que `onRecordingComplete` est appele systematiquement avec les donnees de transcription, que ce soit pour le francais (Mistral) ou le bariba (HuggingFace).
-
-### 4. Corriger TamTamDictionary.tsx - TTS de la reponse
-
-**Probleme** : `speakCurrentLang` passe par `UnifiedAudioService` qui n'utilise pas Inworld pour le francais.
-
-**Correction** :
-- Remplacer `useUnifiedAudio` par `useBilingualAudio` dans le dictionnaire pour beneficier de `useFrenchTTS` (qui appelle deja le edge function `french-tts` avec Inworld) et de `useBaribaTTS` pour le bariba.
-- Ou alternativement, corriger `UnifiedAudioService.speak()` pour qu'il appelle `french-tts` avec `returnAudio: true` (solution choisie car elle corrige le probleme globalement).
-
-### 5. Ajouter l'import de useFrenchSTT dans TamTamMicButton
-
-Pour pouvoir appeler `transcribeAudioBlob` (Mistral Voxtral Mini) directement depuis le bouton micro.
+- Cacher la `KuaishouBottomNav` quand on est sur la page traducteur. Comme ce composant est `fixed bottom-0`, on va le masquer en ajoutant une detection de route dans `KuaishouBottomNav.tsx` lui-meme, OU plus simplement, puisque ce composant n'est PAS rendu dans FitilaApp mais uniquement dans KuaishouLayout (qui n'est pas utilise par le traducteur), le probleme vient peut-etre d'un autre rendu. Alternative : ajouter un `z-index` plus eleve sur la zone de saisie du traducteur pour la placer au-dessus de tout bottom nav residuel, et s'assurer que le traducteur occupe tout l'ecran.
 
 ## Details techniques
 
 **Fichiers modifies :**
 
-- `src/services/UnifiedAudioService.ts` : Corriger `speak()` pour utiliser Inworld TTS via `french-tts` edge function (francais) et corriger le champ `audioContent` -> `audio` (bariba)
-- `src/components/tamtam/TamTamMicButton.tsx` : Integrer `transcribeAudioBlob` de `useFrenchSTT` pour le STT francais via Mistral, au lieu de compter uniquement sur Web Speech API
-- `src/pages/tamtam/TamTamDictionary.tsx` : Ajustements mineurs si necessaire pour l'envoi automatique
+- `src/pages/tamtam/TamTamTranslator.tsx` :
+  - Layout : `h-[100dvh]` + structure flex sans scroll global
+  - `autoTranscribe={true}` sur le TamTamMicButton
+  - Zone de saisie : `flex-shrink-0` au lieu de `sticky bottom-0`, z-index eleve
+  
+- `src/components/tamtam/TamTamMicButton.tsx` :
+  - Ajouter garde contre `InvalidStateError` dans la section de demarrage du Web Speech API (ligne ~157)
 
-**Flux corriges :**
-
-Francais :
-```
-Utilisateur parle -> Enregistrement audio -> Audio blob envoye a Mistral Voxtral Mini (transcribe-audio) -> Transcription recue -> Recherche automatique dans le dictionnaire -> Resultat lu par Inworld TTS-1.5 Mini (french-tts)
-```
-
-Bariba :
-```
-Utilisateur parle -> Enregistrement audio -> Audio base64 envoye a bariba-stt (HuggingFace) -> Transcription recue -> Recherche automatique dans le dictionnaire -> Reponse en bariba lue par bariba-tts (HuggingFace)
+**Structure cible du layout :**
+```text
+div (h-[100dvh], flex flex-col)
+  |-- Header (flex-shrink-0)
+  |-- Sub-header langues (flex-shrink-0)
+  |-- Zone messages (flex-1, overflow-y-auto)
+  |-- Zone saisie (flex-shrink-0, z-50, bg-white)
 ```
 
