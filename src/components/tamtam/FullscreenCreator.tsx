@@ -41,6 +41,7 @@ import {
   Check,
   Video,
   Images,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -1328,8 +1329,8 @@ export default function FullscreenCreator({
               ctx.setTransform(1, 0, 0, 1, 0, 0);
               ctx.clearRect(0, 0, cw, ch);
 
-              // Apply CSS filter from effects
-              ctx.filter = cssFilter && cssFilter !== "none" ? cssFilter : "none";
+              // Apply CSS filter from effects (skip if previewing captured blob - already baked in)
+              ctx.filter = hasCapture ? "none" : (cssFilter && cssFilter !== "none" ? cssFilter : "none");
 
               const vw = video.videoWidth;
               const vh = video.videoHeight;
@@ -1963,6 +1964,7 @@ export default function FullscreenCreator({
       capturedType
     });
     
+    setIsPublishing(true);
     try {
       setError(null);
       
@@ -2138,6 +2140,8 @@ export default function FullscreenCreator({
       onClose?.();
     } catch (e: any) {
       setError(e?.message || "Erreur publication");
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -2879,11 +2883,33 @@ export default function FullscreenCreator({
 
                   <button
                     onClick={publish}
-                    className="mt-4 w-full h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold flex items-center justify-center gap-2"
+                    disabled={isPublishing}
+                    className="mt-4 w-full h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <Send className="h-5 w-5" />
-                    Publier
+                    {isPublishing ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Publication en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-5 w-5" />
+                        Publier
+                      </>
+                    )}
                   </button>
+
+                  {(isPublishing || isProcessingTemplate) && (
+                    <div className="mt-3 flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
+                      <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full animate-pulse" 
+                             style={{ width: processingProgress ? `${processingProgress.percent}%` : '60%' }} />
+                      </div>
+                      <span className="text-xs text-white/60">
+                        {processingProgress?.message_fr || "Préparation de la publication..."}
+                      </span>
+                    </div>
+                  )}
 
                   {isKEngineActive && (
                     <div className="mt-3 text-xs text-white/60 bg-white/5 border border-white/10 rounded-xl p-3">
@@ -3089,17 +3115,17 @@ export default function FullscreenCreator({
           </div>
         )}
 
-        {/* AR Effects Layer */}
-        <AREffectsLayer activeEffects={effects.arEffects} />
+        {/* AR Effects Layer - hidden after capture (effects already baked into blob) */}
+        {!hasCapture && <AREffectsLayer activeEffects={effects.arEffects} />}
 
-        {/* Shot Tip Overlay */}
-        <ShotTipOverlay tipId={effects.shotTipId} />
+        {/* Shot Tip Overlay - hidden after capture */}
+        {!hasCapture && <ShotTipOverlay tipId={effects.shotTipId} />}
 
-        {/* Stickers Layer */}
+        {/* Stickers Layer - isEditing=false after capture hides them (already baked) */}
         <StickerLayer
           stickers={effects.stickers}
           onStickersChange={(stickers) => updateEffects({ stickers })}
-          isEditing={true}
+          isEditing={!hasCapture}
           containerRef={containerRef}
         />
 
