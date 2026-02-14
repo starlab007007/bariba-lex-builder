@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Plus, MessageCircle, ChevronDown, UserPlus, UserCheck, Clock } from 'lucide-react';
+import { Plus, MessageCircle, ChevronDown, UserPlus, UserCheck, Clock, Settings } from 'lucide-react';
 
 interface KuaishouActionButtonsProps {
   isOwnProfile: boolean;
   // For own profile
   onBroadcast?: () => void;
   onOpenMessages?: () => void;
+  onEditProfile?: () => void;
   // For other profiles
   isFollowing?: boolean;
   friendStatus?: 'none' | 'pending' | 'accepted';
@@ -19,6 +20,7 @@ export const KuaishouActionButtons: React.FC<KuaishouActionButtonsProps> = ({
   isOwnProfile,
   onBroadcast,
   onOpenMessages,
+  onEditProfile,
   isFollowing = false,
   friendStatus = 'none',
   onFollow,
@@ -54,6 +56,16 @@ export const KuaishouActionButtons: React.FC<KuaishouActionButtonsProps> = ({
               <MessageCircle className="w-5 h-5 text-[hsl(var(--kuaishou-text))]" />
             </div>
             <span className="text-[10px] text-[hsl(var(--kuaishou-text-muted))]">Messages</span>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={onEditProfile}
+            className="flex flex-col items-center gap-1"
+          >
+            <div className="w-11 h-11 rounded-full bg-[hsl(var(--kuaishou-gray-light))] flex items-center justify-center">
+              <Settings className="w-5 h-5 text-[hsl(var(--kuaishou-text))]" />
+            </div>
+            <span className="text-[10px] text-[hsl(var(--kuaishou-text-muted))]">Modifier</span>
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}

@@ -71,7 +71,7 @@ export const KuaishouProfileHeader: React.FC<KuaishouProfileHeaderProps> = ({
         </motion.button>
       )}
       
-      <div className="px-4 py-6 pb-8 pt-16">
+      <div className="px-3 sm:px-4 py-4 sm:py-6 pb-6 sm:pb-8 pt-14 sm:pt-16">
         {/* Top section: Avatar + Stats horizontal */}
         <div className="flex items-start gap-4">
           {/* Avatar with camera button */}
@@ -86,7 +86,7 @@ export const KuaishouProfileHeader: React.FC<KuaishouProfileHeaderProps> = ({
               disabled={!isOwnProfile || isUploading}
               className="relative group focus:outline-none"
             >
-              <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-3 border-white shadow-xl">
+              <Avatar className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 border-3 border-white shadow-xl">
                 <AvatarImage src={avatarUrl || undefined} className="object-cover" />
                 <AvatarFallback className="bg-gradient-to-br from-[hsl(var(--kuaishou-orange))] to-[hsl(var(--kuaishou-primary-dark))] text-white text-2xl font-bold">
                   {displayName?.[0]?.toUpperCase() || username?.[0]?.toUpperCase() || '?'}

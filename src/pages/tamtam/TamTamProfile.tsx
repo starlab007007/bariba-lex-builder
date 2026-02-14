@@ -23,6 +23,8 @@ import { MyPostsGrid } from '@/components/tamtam/MyPostsGrid';
 import { PostEditModal } from '@/components/tamtam/PostEditModal';
 import { MyCommunities } from '@/components/tamtam/MyCommunities';
 import { BroadcastModal } from '@/components/tamtam/BroadcastModal';
+import { ProfileEditModal } from '@/components/tamtam/ProfileEditModal';
+import { MyPostViewerOverlay } from '@/components/tamtam/MyPostViewerOverlay';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 // Hooks & contexts
@@ -75,6 +77,9 @@ export default function TamTamProfile() {
   const [postFilter, setPostFilter] = useState<'all' | 'public' | 'private'>('all');
   const [editingPost, setEditingPost] = useState<MyPost | null>(null);
   const [playingPostId, setPlayingPostId] = useState<string | null>(null);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
   
   // Avatar upload state
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -296,9 +301,10 @@ export default function TamTamProfile() {
 
   return (
     <div 
-      className="min-h-screen pb-32"
+      className="h-[100dvh] flex flex-col"
       style={{ background: 'linear-gradient(180deg, hsl(207 60% 97%) 0%, hsl(0 0% 100%) 50%)' }}
     >
+    <div className="flex-1 overflow-y-auto pb-40 scroll-smooth">
       {/* Hidden file input for avatar */}
       <input
         ref={fileInputRef}
@@ -385,6 +391,7 @@ export default function TamTamProfile() {
         isOwnProfile={true}
         onBroadcast={() => setShowBroadcast(true)}
         onOpenMessages={() => handleOpenMessages()}
+        onEditProfile={() => setShowEditProfile(true)}
       />
 
       {/* Bio Audio Player */}
@@ -401,6 +408,7 @@ export default function TamTamProfile() {
       <KuaishouProfileTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        postsCount={myPosts.length}
       />
 
       {/* Tab Content */}
@@ -427,6 +435,10 @@ export default function TamTamProfile() {
                 onDelete={handleDeletePost}
                 onToggleVisibility={handleToggleVisibility}
                 onPlay={handlePlayPost}
+                onViewPost={(index) => {
+                  setViewerIndex(index);
+                  setViewerOpen(true);
+                }}
               />
             )}
           </>
@@ -566,6 +578,9 @@ export default function TamTamProfile() {
         )}
       </div>
 
+      {/* End scroll wrapper */}
+      </div>
+
       {/* Modals */}
       <TamTamFollowersList
         userId={user?.id || ''}
@@ -609,6 +624,36 @@ export default function TamTamProfile() {
         isOpen={showBroadcast}
         onClose={() => setShowBroadcast(false)}
         followers={followersForBroadcast}
+      />
+
+      <ProfileEditModal
+        isOpen={showEditProfile}
+        onClose={() => setShowEditProfile(false)}
+        profile={profile}
+        onSave={async (updates) => {
+          const result = await updateProfile(updates);
+          if (!result.error) {
+            toast({ title: "✅ Profil mis à jour" });
+          }
+          return result;
+        }}
+      />
+
+      <MyPostViewerOverlay
+        posts={myPosts.filter(p => {
+          if (postFilter === 'public') return p.is_public;
+          if (postFilter === 'private') return !p.is_public;
+          return true;
+        })}
+        initialIndex={viewerIndex}
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        onEdit={handleEditPost}
+        onDelete={async (postId) => {
+          await handleDeletePost(postId);
+          if (myPosts.length <= 1) setViewerOpen(false);
+        }}
+        onToggleVisibility={handleToggleVisibility}
       />
     </div>
   );
