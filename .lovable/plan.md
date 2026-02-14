@@ -1,137 +1,137 @@
 
-# Finalisation des interactions sociales (Like, Commentaire, Favoris, Partage, Follow, Profil)
+# Optimisation et finalisation de la page Profil
 
-## Diagnostic
-
-Les boutons d'action (coeur, commentaire, favoris, partage, follow, profil auteur) sont presents visuellement mais ne sont pas connectes de bout en bout a la base de donnees. Voici l'etat actuel :
-
-| Bouton | Etat actuel | Probleme |
-|--------|------------|----------|
-| Coeur (Like) | `addReaction` existe dans `useTamTamPosts` mais l'etat local (`isLiked`) n'est pas synchronise avec la DB | Le coeur se reinitialise a chaque scroll |
-| Commentaire | `fetchComments` et `addComment` existent | Modal de commentaire ne permet pas d'ajouter de commentaire (onAddComment est vide `async () => {}`) |
-| Favoris (Bookmark) | Seulement un `useState` local | Aucun appel a `tamtam_bookmarks` |
-| Partage | Seulement `navigator.share` | Aucun enregistrement dans `tamtam_shares` |
-| Follow (+) | Seulement un `useState` local | Aucun appel a `tamtam_follows` |
-| Profil auteur | Navigate vers `/fitila/profile/:id` | Route incorrecte, devrait etre `/fitila/user/:id` |
-
-Les tables `tamtam_reactions`, `tamtam_bookmarks`, `tamtam_shares`, `tamtam_follows`, `tamtam_comments` existent deja avec des politiques RLS correctes.
+## Objectif
+Rendre la page profil completement fonctionnelle, responsive, scrollable, avec edition des informations personnelles, visualisation des publications en plein ecran, et toutes les actions (supprimer, modifier, rendre prive) accessibles directement.
 
 ---
 
-## Plan de correction
+## Problemes identifies
 
-### 1. Creer un hook centralise `usePostInteractions`
+1. **Pas de formulaire d'edition du profil** : Il n'existe aucun moyen de modifier le nom, la bio texte, la localisation ou le numero de telephone
+2. **Scroll coupe en bas** : `pb-32` est present mais le contenu peut se retrouver masque par la barre de navigation
+3. **Publications non visualisables** : Cliquer sur un post ne fait que jouer l'audio -- pas de visualisation plein ecran des videos/photos
+4. **Responsive insuffisant** : Certains elements (grille de posts, header) ne s'adaptent pas bien aux petits ecrans
+5. **Onglet Tabs manque le compteur de posts** : Le `postsCount` n'est pas passe au composant `KuaishouProfileTabs`
 
-**Nouveau fichier** : `src/hooks/usePostInteractions.ts`
+---
 
-Ce hook gere toutes les interactions pour un post donne :
-- **Like** : Verifie si l'utilisateur a deja like via `tamtam_reactions`, toggle le like
-- **Bookmark** : Verifie si le post est enregistre via `tamtam_bookmarks`, toggle le bookmark
-- **Share** : Enregistre dans `tamtam_shares` + `navigator.share`
-- **Follow** : Verifie si l'utilisateur suit l'auteur via `tamtam_follows`, toggle le follow
+## Plan de corrections
 
+### 1. Creer un modal d'edition du profil
+
+**Nouveau fichier** : `src/components/tamtam/ProfileEditModal.tsx`
+
+Ce modal permettra de modifier :
+- Nom d'affichage (`display_name`)
+- Localisation (`location`)
+- Numero de telephone (`phone_number`)
+
+Il s'ouvrira via un bouton "Modifier le profil" ajoute dans les `KuaishouActionButtons` (en remplacement ou a cote du bouton "Plus").
+
+Le modal utilisera `updateProfile()` du hook `useTamTamProfile` pour sauvegarder.
+
+### 2. Ajouter la visualisation plein ecran des posts
+
+**Nouveau composant** : `src/components/tamtam/MyPostViewerOverlay.tsx`
+
+Quand l'utilisateur clique sur un post dans `MyPostsGrid`, un overlay plein ecran s'ouvre montrant :
+- La video/photo en grand (si `media_url` existe)
+- Un lecteur audio si c'est uniquement audio
+- Les stats (likes, commentaires)
+- Les boutons d'action (modifier, supprimer, rendre prive/public)
+- Navigation verticale (swipe up/down) entre les posts
+
+### 3. Optimiser le scroll et le responsive
+
+**Modifications dans `TamTamProfile.tsx`** :
+- Ajouter `overflow-y-auto` sur le conteneur principal
+- Ajuster `pb-32` a `pb-40` pour eviter que le contenu soit cache par la barre de navigation
+- Rendre la grille de posts responsive : `grid-cols-2 sm:grid-cols-3`
+
+**Modifications dans `KuaishouProfileHeader.tsx`** :
+- Ajuster les tailles d'avatar pour les tres petits ecrans
+- Reduire les paddings sur mobile
+
+### 4. Passer le compteur de posts aux tabs
+
+**Modification dans `TamTamProfile.tsx`** :
 ```text
-usePostInteractions(postId, authorId) => {
-  isLiked, likesCount, toggleLike,
-  isBookmarked, toggleBookmark,
-  sharesCount, sharePost,
-  isFollowing, toggleFollow
-}
+<KuaishouProfileTabs
+  activeTab={activeTab}
+  onTabChange={setActiveTab}
+  postsCount={myPosts.length}   // <-- ajouter cette ligne
+/>
 ```
 
-### 2. Modifier `VideoFeedCard` dans `TamTamSocial.tsx`
+### 5. Connecter le bouton "Modifier le profil"
 
-- Remplacer les `useState` locaux (`isLiked`, `isSaved`, `isFollowing`) par le hook `usePostInteractions`
-- Connecter chaque bouton aux fonctions du hook
-- Les compteurs se mettent a jour en temps reel depuis la DB
+**Modification dans `TamTamProfile.tsx`** :
+- Ajouter l'etat `showEditProfile`
+- Ajouter le bouton dans la section action buttons
+- Integrer le `ProfileEditModal`
 
-### 3. Corriger la modal de commentaires
+### 6. Ameliorer MyPostsGrid pour le tap mobile
 
-Dans `TamTamSocial.tsx` ligne 1213 :
-```text
-// AVANT
-onAddComment={async () => {}}
-
-// APRES  
-onAddComment={async (commentData) => {
-  await addComment(commentsModal.postId, commentData);
-  // Refresh comments
-  const updated = await fetchComments(commentsModal.postId);
-  setCommentsModal(prev => ({ ...prev, comments: updated }));
-}}
-```
-
-### 4. Corriger la navigation vers le profil auteur
-
-Dans `VideoFeedCard` et `AudioFeedCard` :
-```text
-// AVANT
-navigate(`/fitila/profile/${authorId}`)
-
-// APRES
-navigate(`/fitila/user/${authorId}`)
-```
-
-### 5. Ajouter la route `/fitila/profile/:userId`
-
-Dans `App.tsx`, ajouter une route supplementaire pour gerer les deux formats d'URL :
-```text
-<Route path="profile/:userId" element={<TamTamPublicProfile />} />
-```
-
-### 6. Enrichir le profil public (`TamTamPublicProfile.tsx`)
-
-- Rendre les posts cliquables pour visualiser la video/photo en plein ecran
-- Ajouter un mini-lecteur video/audio dans un overlay quand on clique sur un post
-- Afficher les videos du user depuis la table `videos` en plus de `tamtam_posts`
-
-### 7. Appliquer les memes corrections dans `TamTamVideoFeed.tsx`
-
-Le composant `TamTamVideoFeed.tsx` a aussi des boutons non connectes. Appliquer le meme hook `usePostInteractions`.
+**Modification dans `MyPostsGrid.tsx`** :
+- Rendre le tap sur un post (pas seulement hover) plus intuitif sur mobile
+- L'overlay de hover doit aussi fonctionner au tap (via `active:opacity-100`)
+- Le bouton play doit ouvrir le viewer overlay au lieu de juste jouer l'audio
 
 ---
 
 ## Details techniques
 
-### Hook `usePostInteractions`
+### ProfileEditModal
 
 ```text
-// Charge l'etat initial depuis la DB
-useEffect => {
-  // Check like: SELECT FROM tamtam_reactions WHERE post_id AND user_id
-  // Check bookmark: SELECT FROM tamtam_bookmarks WHERE post_id AND user_id
-  // Check follow: SELECT FROM tamtam_follows WHERE follower_id AND following_id
-  // Count likes: SELECT count FROM tamtam_reactions WHERE post_id
-  // Count shares: SELECT count FROM tamtam_shares WHERE post_id
-}
+Props:
+  - isOpen: boolean
+  - onClose: () => void
+  - profile: TamTamProfile
+  - onSave: (updates) => Promise<void>
 
-toggleLike => {
-  if liked: DELETE FROM tamtam_reactions
-  else: INSERT INTO tamtam_reactions
-}
+Champs editables:
+  - display_name (input text)
+  - location (input text)  
+  - phone_number (input tel)
 
-toggleBookmark => {
-  if bookmarked: DELETE FROM tamtam_bookmarks
-  else: INSERT INTO tamtam_bookmarks
-}
-
-sharePost => {
-  INSERT INTO tamtam_shares
-  navigator.share || clipboard
-}
-
-toggleFollow => {
-  if following: DELETE FROM tamtam_follows
-  else: INSERT INTO tamtam_follows
-}
+Style: Bottom sheet sur mobile, modal centre sur desktop
+Animation: slide-up avec framer-motion
 ```
 
-### Visualisation des posts dans le profil public
+### MyPostViewerOverlay
 
-Quand on clique sur un post dans la grille du profil :
-- Ouvrir un overlay fullscreen avec la video/photo
-- Boutons d'action (like, comment, share) dans l'overlay
-- Swipe vertical pour naviguer entre les posts du meme auteur
+```text
+Props:
+  - posts: MyPost[]
+  - initialIndex: number
+  - isOpen: boolean
+  - onClose: () => void
+  - onEdit: (post) => void
+  - onDelete: (postId) => void
+  - onToggleVisibility: (postId, isPublic) => void
+
+Contenu:
+  - Video/photo plein ecran avec controles
+  - Bouton X pour fermer
+  - Boutons flottants: modifier, supprimer, prive/public
+  - Swipe vertical pour naviguer
+  - Stats en bas (likes, commentaires, duree)
+```
+
+### Responsive adjustments
+
+```text
+// MyPostsGrid: grille adaptative
+grid-cols-2 sm:grid-cols-3
+
+// KuaishouProfileHeader: avatar plus petit sur mobile
+Avatar: w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24
+
+// Conteneur principal
+overflow-y-auto pb-40 scroll-smooth
+```
 
 ---
 
@@ -139,9 +139,8 @@ Quand on clique sur un post dans la grille du profil :
 
 | Fichier | Action |
 |---------|--------|
-| `src/hooks/usePostInteractions.ts` | **Nouveau** - Hook centralise pour like, bookmark, share, follow |
-| `src/pages/tamtam/TamTamSocial.tsx` | Modifier VideoFeedCard et AudioFeedCard pour utiliser le hook, corriger onAddComment, corriger navigation profil |
-| `src/components/tamtam/TamTamVideoFeed.tsx` | Connecter les boutons au hook usePostInteractions |
-| `src/pages/tamtam/TamTamPublicProfile.tsx` | Ajouter visualisation des posts, charger videos depuis table `videos` |
-| `src/App.tsx` | Ajouter route `profile/:userId` |
-| `src/components/feed/VideoFeedCard.tsx` | Corriger navigation profil vers `/fitila/user/` |
+| `src/components/tamtam/ProfileEditModal.tsx` | **Nouveau** - Modal edition profil |
+| `src/components/tamtam/MyPostViewerOverlay.tsx` | **Nouveau** - Viewer plein ecran pour les posts propres |
+| `src/pages/tamtam/TamTamProfile.tsx` | Integrer les 2 nouveaux composants, ajouter postsCount aux tabs, ameliorer scroll/responsive, ajouter bouton edit profil |
+| `src/components/tamtam/MyPostsGrid.tsx` | Responsive grid, tap mobile, callback pour ouvrir le viewer |
+| `src/components/tamtam/KuaishouProfileHeader.tsx` | Responsive avatar sizes |
