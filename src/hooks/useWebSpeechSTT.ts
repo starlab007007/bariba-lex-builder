@@ -197,9 +197,13 @@ export const useWebSpeechSTT = (): UseWebSpeechSTTReturn => {
         recognitionRef.current.continuous = true;
         recognitionRef.current.start();
       }
-    } catch (err) {
-      console.error('[useWebSpeechSTT] Error starting recognition:', err);
-      setError('Impossible de démarrer la reconnaissance vocale');
+    } catch (err: any) {
+      if (err?.name === 'InvalidStateError') {
+        console.warn('[useWebSpeechSTT] Recognition already started, ignoring InvalidStateError');
+      } else {
+        console.error('[useWebSpeechSTT] Error starting recognition:', err);
+        setError('Impossible de démarrer la reconnaissance vocale');
+      }
     }
   }, [isSupported]);
 
