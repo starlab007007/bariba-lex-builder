@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Keyboard, Volume2, Loader2, Search, BookOpen, Plus } from 'lucide-react';
+import { Mic, Keyboard, Volume2, Loader2, Search, BookOpen, Plus, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
@@ -9,7 +9,6 @@ import { BaribaKeyboardInput, SearchLanguage } from '@/components/tamtam/BaribaK
 import { VocalDictionaryResult } from '@/components/tamtam/VocalDictionaryResult';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { NewWordSubmission } from '@/components/tamtam/NewWordSubmission';
-import { KuaishouLayout } from '@/components/tamtam/KuaishouLayout';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useContributionPoints, getLevel } from '@/hooks/useContributionPoints';
 
@@ -32,9 +31,7 @@ export default function TamTamDictionary() {
   const [searchHistory, setSearchHistory] = useState<PhoneticEntry[]>([]);
   const [notFoundWord, setNotFoundWord] = useState<string>('');
 
-  // No auto-announce in keyboard mode
-
-  // Traitement de la commande vocale
+  // Gestion de la commande vocale
   const handleVoiceCommand = async (result: {
     audioBase64: string;
     transcription?: string;
@@ -56,18 +53,15 @@ export default function TamTamDictionary() {
       
       console.log('[TamTamDictionary] Voice query:', query, 'Lang:', result.sourceLang);
       
-      // Rechercher dans le dictionnaire selon la direction
       let foundEntry: PhoneticEntry | null = null;
       
       if (result.sourceLang === 'ba') {
-        // Recherche bariba -> français
         foundEntry = findExactMatch(query);
         if (!foundEntry) {
           const suggestions = getSuggestions(query, 1);
           foundEntry = suggestions[0] || null;
         }
       } else {
-        // Recherche français -> bariba
         const results = searchInDefinitions(query, 1);
         foundEntry = results[0] || null;
       }
@@ -77,7 +71,6 @@ export default function TamTamDictionary() {
         addToHistory(foundEntry);
         triggerFeedback('success');
         
-        // Lecture automatique du résultat
         const announcement = currentLang === 'ba'
           ? `${foundEntry.word}. Ìtúmọ̀: ${foundEntry.definition}`
           : `${foundEntry.word}. Définition: ${foundEntry.definition}`;
@@ -97,24 +90,19 @@ export default function TamTamDictionary() {
     }
   };
 
-  // Sélection d'un mot depuis le clavier
   const handleSelectWord = async (entry: PhoneticEntry) => {
     setSelectedEntry(entry);
     setNotFoundWord('');
     addToHistory(entry);
     triggerFeedback('success');
-    
-    // Lecture automatique
     await speakCurrentLang(entry.definition);
   };
   
-  // Sync keyboard language with search direction
   const handleKeyboardLangChange = (lang: SearchLanguage) => {
     setKeyboardLang(lang);
     setSearchDirection(lang === 'ba' ? 'ba-fr' : 'fr-ba');
   };
 
-  // Ajouter à l'historique
   const addToHistory = (entry: PhoneticEntry) => {
     setSearchHistory(prev => {
       const filtered = prev.filter(e => e.word !== entry.word);
@@ -122,7 +110,6 @@ export default function TamTamDictionary() {
     });
   };
 
-  // Basculer le mode d'entrée
   const toggleInputMode = () => {
     const newMode = inputMode === 'voice' ? 'keyboard' : 'voice';
     setInputMode(newMode);
@@ -134,7 +121,6 @@ export default function TamTamDictionary() {
     speakCurrentLang(modeAnnounce);
   };
 
-  // Basculer la direction de recherche
   const toggleDirection = () => {
     const newDir = searchDirection === 'ba-fr' ? 'fr-ba' : 'ba-fr';
     setSearchDirection(newDir);
@@ -147,43 +133,53 @@ export default function TamTamDictionary() {
     speakCurrentLang(dirAnnounce);
   };
   
-  // Clear selected entry
   const handleCloseResult = () => {
     setSelectedEntry(null);
     setNotFoundWord('');
   };
 
   return (
-    <KuaishouLayout
-      titleFr="Dictionnaire"
-      titleBa="Gbɛ́-sɔ́ɔ̀rù"
-      emoji="📖"
-      showBack={true}
-      showMenu={false}
-      showNav={false}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      {/* Header style Apprendre */}
+      <div className="sticky top-0 z-40 px-4 pt-4 pb-2">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 bg-white shadow-md rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">📖</span>
+            <h1 className="text-xl font-bold text-gray-800">
+              {currentLang === 'ba' ? 'Gbɛ́-sɔ́ɔ̀rù' : 'Dictionnaire'}
+            </h1>
+          </div>
+        </div>
+      </div>
+
       {/* Toggles mode et direction */}
-      <div className="px-3 sm:px-4 pt-4 pb-2">
+      <div className="px-4 pt-2 pb-2">
         <div className="flex gap-2">
-          {/* Toggle mode */}
           <button
             onClick={toggleInputMode}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${
-              inputMode === 'voice' 
-                ? 'kuaishou-btn-primary' 
-                : 'kuaishou-btn-secondary'
+              inputMode === 'keyboard' 
+                ? 'bg-white shadow-md text-gray-800' 
+                : 'bg-white/60 text-gray-500 hover:bg-white/80'
             }`}
           >
-            {inputMode === 'voice' ? <Mic className="w-5 h-5" /> : <Keyboard className="w-5 h-5" />}
-            {inputMode === 'voice' 
-              ? (currentLang === 'ba' ? "Ohùn" : "Vocal")
-              : (currentLang === 'ba' ? "Ìkọ̀wé" : "Clavier")}
+            <Keyboard className="w-5 h-5" />
+            {currentLang === 'ba' ? "Ìkọ̀wé" : "Clavier"}
           </button>
           
-          {/* Toggle vocal */}
           <button
             onClick={() => { setInputMode('voice'); triggerFeedback('click'); }}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl kuaishou-btn-secondary"
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${
+              inputMode === 'voice' 
+                ? 'bg-white shadow-md text-gray-800' 
+                : 'bg-white/60 text-gray-500 hover:bg-white/80'
+            }`}
           >
             <Mic className="w-5 h-5" />
             {currentLang === 'ba' ? "Ohùn" : "Vocal"}
@@ -192,11 +188,11 @@ export default function TamTamDictionary() {
         
         {/* Word count badge */}
         <div className="mt-3 flex items-center justify-center gap-3">
-          <span className="text-white/50 text-sm">
+          <span className="text-gray-500 text-sm">
             {totalEntries > 0 ? `${totalEntries.toLocaleString()} mots` : 'Chargement...'}
           </span>
           {!isLoadingContrib && totalPoints > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/70 text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white shadow-sm text-gray-600 text-xs">
               {getLevel(totalPoints).emoji} {totalPoints} pts · {level}
             </span>
           )}
@@ -204,16 +200,15 @@ export default function TamTamDictionary() {
       </div>
 
       {/* Contenu principal */}
-      <div className="px-3 sm:px-4 -mt-4 pb-8">
-        {/* Zone d'entrée - updated styling */}
+      <div className="px-4 pb-8">
+        {/* Zone d'entrée */}
         <motion.div
           layout
-          className="kuaishou-card p-4 mb-4"
+          className="bg-white rounded-3xl shadow-md p-4 mb-4"
         >
           {inputMode === 'voice' ? (
-            /* Mode vocal */
             <div className="flex flex-col items-center py-6">
-              <p className="text-tamtam-text-muted mb-4 text-center">
+              <p className="text-gray-500 mb-4 text-center">
                 {currentLang === 'ba' 
                   ? "Tẹ̀ bọ́tìn náà kí o sọ ɔ̀rɔ̀" 
                   : "Appuyez et dites un mot"}
@@ -232,7 +227,7 @@ export default function TamTamDictionary() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="mt-4 flex items-center gap-2 text-tamtam-primary"
+                  className="mt-4 flex items-center gap-2 text-indigo-600"
                 >
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>{currentLang === 'ba' ? "Ń wá..." : "Recherche..."}</span>
@@ -240,15 +235,14 @@ export default function TamTamDictionary() {
               )}
               
               {lastQuery && !isProcessing && (
-                <p className="mt-4 text-sm text-tamtam-text-muted">
+                <p className="mt-4 text-sm text-gray-500">
                   Recherche: "{lastQuery}"
                 </p>
               )}
             </div>
           ) : (
-            /* Mode clavier */
             <div>
-              <p className="text-tamtam-text-muted mb-3 text-sm">
+              <p className="text-gray-500 mb-3 text-sm">
                 {searchDirection === 'ba-fr'
                   ? (currentLang === 'ba' ? "Kọ ɔ̀rɔ̀ Bàátɔ̀nú" : "Tapez un mot bariba")
                   : (currentLang === 'ba' ? "Kọ ɔ̀rɔ̀ Fàránsé" : "Tapez un mot français")}
@@ -295,9 +289,9 @@ export default function TamTamDictionary() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-tamtam-surface rounded-3xl shadow-tamtam-soft p-4"
+            className="bg-white rounded-3xl shadow-md p-4"
           >
-            <h3 className="text-sm font-medium text-tamtam-text-muted mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
               <Search className="w-4 h-4" />
               {currentLang === 'ba' ? "Àwọn ìwádìí tó ṣẹ̀ṣẹ̀" : "Recherches récentes"}
             </h3>
@@ -307,14 +301,14 @@ export default function TamTamDictionary() {
                 <button
                   key={`${entry.word}-${index}`}
                   onClick={() => handleSelectWord(entry)}
-                  className="w-full flex items-center gap-3 p-3 bg-tamtam-bg rounded-xl hover:bg-tamtam-primary/10 transition-colors"
+                  className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-indigo-50 transition-colors"
                 >
                   <span className="text-lg">📖</span>
                   <div className="flex-1 text-left">
-                    <p className="font-medium text-tamtam-text">{entry.word}</p>
-                    <p className="text-sm text-tamtam-text-muted line-clamp-1">{entry.definition}</p>
+                    <p className="font-medium text-gray-800">{entry.word}</p>
+                    <p className="text-sm text-gray-500 line-clamp-1">{entry.definition}</p>
                   </div>
-                  <Volume2 className="w-4 h-4 text-tamtam-text-muted" />
+                  <Volume2 className="w-4 h-4 text-gray-400" />
                 </button>
               ))}
             </div>
@@ -324,13 +318,13 @@ export default function TamTamDictionary() {
         {/* État de chargement initial */}
         {isLoadingDict && (
           <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-tamtam-primary animate-spin mb-4" />
-            <p className="text-tamtam-text-muted">
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-4" />
+            <p className="text-gray-500">
               {currentLang === 'ba' ? "Ń gbé gbɛ́-sɔ́ɔ̀rù..." : "Chargement du dictionnaire..."}
             </p>
           </div>
         )}
       </div>
-    </KuaishouLayout>
+    </div>
   );
 }
