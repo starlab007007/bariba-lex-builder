@@ -113,44 +113,44 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 w-[300px] z-[101] bg-[hsl(var(--kuaishou-white))] overflow-y-auto"
+            className="fixed left-0 top-0 bottom-0 w-[300px] z-[101] bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 overflow-y-auto"
           >
             {/* Header with avatar */}
-            <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--kuaishou-border))]">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <div className="flex items-center gap-3">
-                <Avatar className="w-12 h-12 border-2 border-[hsl(var(--kuaishou-orange))]">
+                <Avatar className="w-12 h-12 border-2 border-indigo-400">
                   <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-[hsl(var(--kuaishou-orange))] text-white font-bold">
+                  <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold">
                     {profile?.display_name?.[0] || profile?.username?.[0] || '?'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold text-[hsl(var(--kuaishou-text))]">
+                  <p className="font-semibold text-gray-800">
                     {profile?.display_name || profile?.username || 'Utilisateur'}
                   </p>
-                  <p className="text-xs text-[hsl(var(--kuaishou-text-muted))]">FITILA ID</p>
+                  <p className="text-xs text-gray-500">FITILA ID</p>
                 </div>
               </div>
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={onClose}
-                className="w-9 h-9 rounded-full bg-[hsl(var(--kuaishou-gray-light))] flex items-center justify-center"
+                className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center"
               >
-                <X className="w-5 h-5 text-[hsl(var(--kuaishou-text))]" />
+                <X className="w-5 h-5 text-gray-600" />
               </motion.button>
             </div>
 
             {/* Quick actions */}
-            <div className="flex gap-3 p-4 border-b border-[hsl(var(--kuaishou-border))]">
+            <div className="flex gap-3 p-4 border-b border-gray-200">
               {quickActions.map((action, index) => (
                 <motion.button
                   key={index}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => action.path && handleNavigate(action.path)}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[hsl(var(--kuaishou-gray-light))] hover:bg-[hsl(var(--kuaishou-border))] transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white shadow-sm hover:shadow-md transition-all"
                 >
                   {action.icon}
-                  <span className="text-sm font-medium text-[hsl(var(--kuaishou-text))]">
+                  <span className="text-sm font-medium text-gray-800">
                     {currentLang === 'ba' && action.labelBa ? action.labelBa : action.label}
                   </span>
                 </motion.button>
@@ -161,21 +161,21 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => handleNavigate('/fitila/notifications')}
-              className="w-full flex items-center justify-between p-4 border-b border-[hsl(var(--kuaishou-border))] hover:bg-[hsl(var(--kuaishou-gray-light))] transition-colors"
+              className="w-full flex items-center justify-between p-4 border-b border-gray-200 hover:bg-white/60 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-[hsl(var(--kuaishou-text-muted))]" />
-                <span className="text-sm font-medium text-[hsl(var(--kuaishou-text))]">
+                <Bell className="w-5 h-5 text-gray-500" />
+                <span className="text-sm font-medium text-gray-800">
                   {currentLang === 'ba' ? 'Ìròyìn ètò' : 'Message système'}
                 </span>
               </div>
-              <ChevronRight className="w-5 h-5 text-[hsl(var(--kuaishou-text-muted))]" />
+              <ChevronRight className="w-5 h-5 text-gray-400" />
             </motion.button>
 
             {/* Menu sections */}
             {sections.map((section, sectionIndex) => (
-              <div key={sectionIndex} className="p-4 border-b border-[hsl(var(--kuaishou-border))]">
-                <p className="text-xs font-semibold text-[hsl(var(--kuaishou-text-muted))] uppercase tracking-wider mb-3">
+              <div key={sectionIndex} className="p-4 border-b border-gray-200">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   {currentLang === 'ba' && section.titleBa ? section.titleBa : section.title}
                 </p>
                 <div className="grid grid-cols-3 gap-3">
@@ -184,12 +184,12 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
                       key={itemIndex}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => item.path && handleNavigate(item.path)}
-                      className="flex flex-col items-center gap-2 py-3 rounded-xl hover:bg-[hsl(var(--kuaishou-gray-light))] transition-colors"
+                      className="flex flex-col items-center gap-2 py-3 rounded-xl hover:bg-white/60 transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-full bg-[hsl(var(--kuaishou-gray-light))] flex items-center justify-center text-[hsl(var(--kuaishou-text))]">
+                      <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-700">
                         {item.icon}
                       </div>
-                      <span className="text-[11px] text-[hsl(var(--kuaishou-text))] text-center leading-tight">
+                      <span className="text-[11px] text-gray-700 text-center leading-tight">
                         {currentLang === 'ba' && item.labelBa ? item.labelBa : item.label}
                       </span>
                     </motion.button>
@@ -199,8 +199,8 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
             ))}
 
             {/* Language toggle */}
-            <div className="p-4 border-b border-[hsl(var(--kuaishou-border))]">
-              <p className="text-xs font-semibold text-[hsl(var(--kuaishou-text-muted))] uppercase tracking-wider mb-3">
+            <div className="p-4 border-b border-gray-200">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 {currentLang === 'ba' ? 'Èdè' : 'Langue'}
               </p>
               <div className="flex gap-2">
@@ -209,8 +209,8 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
                   onClick={() => setLanguage('fr')}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     currentLang === 'fr'
-                      ? 'bg-[hsl(var(--kuaishou-orange))] text-white'
-                      : 'bg-[hsl(var(--kuaishou-gray-light))] text-[hsl(var(--kuaishou-text))]'
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md'
+                      : 'bg-white text-gray-700 shadow-sm'
                   }`}
                 >
                   🇫🇷 Français
@@ -220,8 +220,8 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
                   onClick={() => setLanguage('ba')}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     currentLang === 'ba'
-                      ? 'bg-[hsl(var(--kuaishou-orange))] text-white'
-                      : 'bg-[hsl(var(--kuaishou-gray-light))] text-[hsl(var(--kuaishou-text))]'
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md'
+                      : 'bg-white text-gray-700 shadow-sm'
                   }`}
                 >
                   🇧🇯 Bariba
