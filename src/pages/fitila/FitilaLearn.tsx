@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles, GraduationCap, ChevronRight, LogIn, Lock } from 'lucide-react';
+import { ArrowLeft, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles, GraduationCap, ChevronRight, LogIn, Lock, MessageSquarePlus, AlertTriangle } from 'lucide-react';
+import { ContributionModal } from '@/components/fitila/ContributionModal';
 import { useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useSideMenu } from '@/pages/fitila/FitilaApp';
@@ -44,7 +45,7 @@ export default function FitilaLearn() {
   const [foundationQuizScore, setFoundationQuizScore] = useState(0);
   const [foundationQuizAnswer, setFoundationQuizAnswer] = useState<number | null>(null);
   const [showFoundations, setShowFoundations] = useState(true);
-
+  const [contributionCtx, setContributionCtx] = useState<{ lessonId: string; lessonTitle: string; sectionIndex?: number; quizIndex?: number; type: 'correction' | 'suggestion' } | null>(null);
   const currentLevel = getCurrentLevel();
   const nextLevel = getNextLevel();
   const progressToNext = nextLevel
@@ -586,6 +587,26 @@ export default function FitilaLearn() {
                       <p className="text-amber-800 text-xs">{section.tip[langKey]}</p>
                     </div>
                   )}
+
+                  {/* Contribute / Correct buttons */}
+                  {user && (
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => setContributionCtx({ lessonId: currentFoundation.id, lessonTitle: currentFoundation.title[langKey], sectionIndex: sIdx, type: 'correction' })}
+                        className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg hover:bg-amber-100 transition-colors"
+                      >
+                        <AlertTriangle className="w-3 h-3" />
+                        {userLanguage === 'french' ? 'Corriger' : 'Gbɛgbɛru'}
+                      </button>
+                      <button
+                        onClick={() => setContributionCtx({ lessonId: currentFoundation.id, lessonTitle: currentFoundation.title[langKey], sectionIndex: sIdx, type: 'suggestion' })}
+                        className="flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <MessageSquarePlus className="w-3 h-3" />
+                        {userLanguage === 'french' ? 'Suggérer' : 'Sɔmburu'}
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               ))}
 
@@ -661,13 +682,24 @@ export default function FitilaLearn() {
                             </div>
                             <p className="text-gray-600 text-xs">{q.explanation[langKey]}</p>
                           </div>
-                          <motion.button
-                            whileTap={{ scale: 0.97 }}
-                            onClick={nextFoundationQuestion}
-                            className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3.5 rounded-xl font-bold text-sm shadow-md"
-                          >
-                            {foundationQuizIndex < currentFoundation.quiz.length - 1 ? getText('nextQuestion') : getText('complete')}
-                          </motion.button>
+                          <div className="flex gap-2">
+                            <motion.button
+                              whileTap={{ scale: 0.97 }}
+                              onClick={nextFoundationQuestion}
+                              className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3.5 rounded-xl font-bold text-sm shadow-md"
+                            >
+                              {foundationQuizIndex < currentFoundation.quiz.length - 1 ? getText('nextQuestion') : getText('complete')}
+                            </motion.button>
+                            {user && (
+                              <button
+                                onClick={() => setContributionCtx({ lessonId: currentFoundation.id, lessonTitle: currentFoundation.title[langKey], quizIndex: foundationQuizIndex, type: 'correction' })}
+                                className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-200"
+                                title={userLanguage === 'french' ? 'Signaler une erreur' : 'Gbɛgbɛru yira'}
+                              >
+                                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                              </button>
+                            )}
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -830,6 +862,14 @@ export default function FitilaLearn() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Contribution Modal */}
+      <ContributionModal
+        isOpen={!!contributionCtx}
+        onClose={() => setContributionCtx(null)}
+        context={contributionCtx || { lessonId: '', lessonTitle: '', type: 'suggestion' }}
+        lang={userLanguage || 'french'}
+      />
     </div>
   );
 }
