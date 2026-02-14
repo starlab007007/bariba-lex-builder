@@ -4,6 +4,7 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, RefreshCw, UserPlus, Clock } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
+import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { useVideoFeed } from '@/hooks/useVideoFeed';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
@@ -332,16 +333,12 @@ const AudioFeedCard: React.FC<{
   post: any;
   isActive: boolean;
   category: 'patrimoine' | 'mavoix';
-  onLike: () => void;
   onComment: () => void;
-  onShare: () => void;
-  onFollow: () => void;
-}> = ({ post, isActive, category, onLike, onComment, onShare, onFollow }) => {
+}> = ({ post, isActive, category, onComment }) => {
   const template = getTemplateById(post.template_id, category);
+  const authorId = post.user_id || post.profile?.user_id;
+  const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow } = usePostInteractions(post.id, authorId);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -378,8 +375,8 @@ const AudioFeedCard: React.FC<{
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-  const handleLike = () => { setIsLiked(!isLiked); onLike(); triggerFeedback('notification'); };
-  const handleFollow = () => { setIsFollowing(!isFollowing); onFollow(); triggerFeedback('success'); };
+  const handleLike = () => { toggleLike(); triggerFeedback('notification'); };
+  const handleFollow = () => { toggleFollow(); triggerFeedback('success'); };
 
   return (
     <div className="h-screen w-full snap-start snap-always relative overflow-hidden">
@@ -481,7 +478,7 @@ const AudioFeedCard: React.FC<{
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/30'}`}>
             <Heart className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[10px] mt-0.5 font-medium">{post.reactions_count || 0}</span>
+          <span className="text-white text-[10px] mt-0.5 font-medium">{likesCount}</span>
         </motion.button>
         
         {/* Répondre (Comment) */}
@@ -501,19 +498,19 @@ const AudioFeedCard: React.FC<{
         </motion.button>
         
         {/* Partager */}
-        <motion.button whileTap={{ scale: 0.85 }} onClick={onShare} className="flex flex-col items-center">
+        <motion.button whileTap={{ scale: 0.85 }} onClick={() => { sharePost(); triggerFeedback('send'); }} className="flex flex-col items-center">
           <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
             <Share2 className="w-6 h-6 text-white" />
           </div>
-          <span className="text-white text-[10px] mt-0.5">Partager</span>
+          <span className="text-white text-[10px] mt-0.5">{sharesCount || 'Partager'}</span>
         </motion.button>
         
         {/* Sauver */}
-        <motion.button whileTap={{ scale: 0.85 }} onClick={() => { setIsSaved(!isSaved); triggerFeedback('success'); }} className="flex flex-col items-center">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isSaved ? 'bg-amber-500' : 'bg-black/30'}`}>
-            <Bookmark className={`w-6 h-6 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
+        <motion.button whileTap={{ scale: 0.85 }} onClick={() => { toggleBookmark(); triggerFeedback('success'); }} className="flex flex-col items-center">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isBookmarked ? 'bg-amber-500' : 'bg-black/30'}`}>
+            <Bookmark className={`w-6 h-6 ${isBookmarked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[10px] mt-0.5">{isSaved ? 'Sauvé' : 'Sauver'}</span>
+          <span className="text-white text-[10px] mt-0.5">{isBookmarked ? 'Sauvé' : 'Sauver'}</span>
         </motion.button>
       </div>
 
@@ -541,17 +538,12 @@ const AudioFeedCard: React.FC<{
 const VideoFeedCard: React.FC<{
   post: any;
   isActive: boolean;
-  onLike: () => void;
   onComment: () => void;
-  onShare: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
   onPlayInteractive?: (storyId: string) => void;
-}> = ({ post, isActive, onLike, onComment, onShare, isMuted, onToggleMute, onPlayInteractive }) => {
+}> = ({ post, isActive, onComment, isMuted, onToggleMute, onPlayInteractive }) => {
   const isInteractive = post.template_id === 'conte-vivant' || post.metadata?.is_interactive;
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
@@ -565,12 +557,12 @@ const VideoFeedCard: React.FC<{
   const authorUsername = post.profile?.username 
     ? `@${post.profile.username}` 
     : post.author?.username || '@fitila_user';
-  const likesCount = post.likes_count || post.likesCount || post.reactions_count || 0;
   const commentsCount = post.comments_count || post.commentsCount || 0;
-  const sharesCount = post.shares_count || post.sharesCount || 0;
   const avatarUrl = post.profile?.avatar_url || post.author?.avatarUrl;
   const authorId = post.profile?.user_id || post.author?.id || post.user_id;
   const feelingEmoji = post.feeling_emoji;
+
+  const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow } = usePostInteractions(post.id, authorId);
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -601,13 +593,13 @@ const VideoFeedCard: React.FC<{
   }, [isPlaying]);
 
   const handleProfileClick = useCallback(() => {
-    if (authorId) navigate(`/fitila/profile/${authorId}`);
+    if (authorId) navigate(`/fitila/user/${authorId}`);
   }, [authorId, navigate]);
 
   const handleFollow = useCallback(() => {
-    setIsFollowing(prev => !prev);
+    toggleFollow();
     triggerFeedback('success');
-  }, []);
+  }, [toggleFollow]);
 
   return (
     <div className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative bg-black overflow-hidden">
@@ -750,11 +742,11 @@ const VideoFeedCard: React.FC<{
         {/* Like */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
-          onClick={() => { setIsLiked(!isLiked); onLike(); triggerFeedback('notification'); }} 
+          onClick={() => { toggleLike(); triggerFeedback('notification'); }} 
           className="flex flex-col items-center"
         >
           <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
-          <span className="text-white/80 text-[10px] font-medium mt-0.5 drop-shadow-md">{likesCount + (isLiked ? 1 : 0)}</span>
+          <span className="text-white/80 text-[10px] font-medium mt-0.5 drop-shadow-md">{likesCount}</span>
         </motion.button>
         
         {/* Comment */}
@@ -770,16 +762,16 @@ const VideoFeedCard: React.FC<{
         {/* Bookmark */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
-          onClick={() => { setIsSaved(!isSaved); triggerFeedback('success'); }}
+          onClick={() => { toggleBookmark(); triggerFeedback('success'); }}
           className="flex flex-col items-center"
         >
-          <Bookmark className={`w-5 h-5 sm:w-6 sm:h-6 ${isSaved ? 'text-amber-400 fill-amber-400' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
+          <Bookmark className={`w-5 h-5 sm:w-6 sm:h-6 ${isBookmarked ? 'text-amber-400 fill-amber-400' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
         </motion.button>
         
         {/* Share */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
-          onClick={onShare} 
+          onClick={() => { sharePost(); triggerFeedback('send'); }} 
           className="flex flex-col items-center"
         >
           <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-lg" strokeWidth={1.5} />
@@ -799,7 +791,7 @@ export default function TamTamSocial() {
   const location = useLocation();
   const { currentLang } = useTamTamLanguage();
   const { toast } = useToast();
-  const { posts, isLoading, createPost, addReaction, fetchComments, fetchPosts } = useTamTamPosts();
+  const { posts, isLoading, createPost, addReaction, addComment, fetchComments, fetchPosts } = useTamTamPosts();
   // ✅ FIX: Also fetch videos from the videos table (Village Chronicle, Griot Digital, etc.)
   const { videos: videoFeedItems, isLoading: isVideosLoading, refetch: refetchVideos } = useVideoFeed();
   const sideMenu = useSideMenu();
@@ -1156,9 +1148,7 @@ export default function TamTamSocial() {
                       key={post.id} 
                       post={post} 
                       isActive={i === currentPostIndex} 
-                      onLike={() => addReaction(post.id, 'like')} 
                       onComment={() => handleOpenComments(post.id)} 
-                      onShare={() => handleShare(post.id)}
                       isMuted={isMuted}
                       onToggleMute={() => setIsMuted(prev => !prev)}
                       onPlayInteractive={handlePlayInteractiveStory}
@@ -1178,10 +1168,7 @@ export default function TamTamSocial() {
                       post={post} 
                       isActive={i === currentPostIndex} 
                       category={feedMode === 'patrimoine' ? 'patrimoine' : 'mavoix'} 
-                      onLike={() => addReaction(post.id, 'like')} 
                       onComment={() => handleOpenComments(post.id)} 
-                      onShare={() => handleShare(post.id)}
-                      onFollow={() => triggerFeedback('success')}
                     />
                   );
                 })
@@ -1210,7 +1197,20 @@ export default function TamTamSocial() {
 
       <FullscreenCreator open={showCreator} onClose={() => setShowCreator(false)} onPublish={handleCreatorComplete} />
 
-      <TamTamCommentsModal isOpen={commentsModal.isOpen} onClose={() => setCommentsModal(prev => ({ ...prev, isOpen: false }))} comments={commentsModal.comments} onAddComment={async () => {}} isLoading={commentsModal.isLoading} />
+      <TamTamCommentsModal isOpen={commentsModal.isOpen} onClose={() => setCommentsModal(prev => ({ ...prev, isOpen: false }))} comments={commentsModal.comments} onAddComment={async (audioBase64: string, duration: number) => {
+        if (!commentsModal.postId) return;
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          if (!userData?.user) return;
+          const audioBlob = await fetch(`data:audio/webm;base64,${audioBase64}`).then(r => r.blob());
+          const audioUrl = await uploadMediaToStorage(audioBlob, 'audio', userData.user.id);
+          await addComment(commentsModal.postId, { audio_url: audioUrl, duration_seconds: duration });
+          const comments = await fetchComments(commentsModal.postId);
+          setCommentsModal(prev => ({ ...prev, comments }));
+        } catch (err) {
+          console.error('Comment error:', err);
+        }
+      }} isLoading={commentsModal.isLoading} />
 
       {/* Interactive Story Player Overlay */}
       {interactiveStory && (
