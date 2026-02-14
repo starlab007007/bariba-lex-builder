@@ -7,10 +7,16 @@ import {
   Pause,
   BadgeCheck,
   Loader2,
-  MoreVertical
+  MoreVertical,
+  X,
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 
-// Kuaishou-style components
 import { KuaishouProfileHeader } from '@/components/tamtam/KuaishouProfileHeader';
 import { KuaishouStatsGrid } from '@/components/tamtam/KuaishouStatsGrid';
 import { KuaishouActionButtons } from '@/components/tamtam/KuaishouActionButtons';
@@ -18,12 +24,123 @@ import { KuaishouBioPlayer } from '@/components/tamtam/KuaishouBioPlayer';
 import { KuaishouProfileTabs } from '@/components/tamtam/KuaishouProfileTabs';
 
 import { usePublicProfile } from '@/hooks/usePublicProfile';
+import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { TamTamPrivateMessages } from '@/components/tamtam/TamTamPrivateMessages';
 import BlockReportMenu from '@/components/tamtam/BlockReportMenu';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+// Post Viewer Overlay - fullscreen video/photo viewer with interactions
+const PostViewerOverlay: React.FC<{
+  posts: any[];
+  initialIndex: number;
+  onClose: () => void;
+}> = ({ posts, initialIndex, onClose }) => {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const post = posts[currentIndex];
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+
+  const authorId = post?.user_id;
+  const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost } = usePostInteractions(post?.id, authorId);
+
+  if (!post) return null;
+
+  const isVideo = post.media_type === 'video' || post.media_url?.includes('.mp4') || post.media_url?.includes('.webm');
+
+  const goNext = () => {
+    if (currentIndex < posts.length - 1) setCurrentIndex(currentIndex + 1);
+  };
+  const goPrev = () => {
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+  };
+
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (isPlaying) { videoRef.current.pause(); } else { videoRef.current.play().catch(() => {}); }
+    setIsPlaying(!isPlaying);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+    >
+      {/* Close */}
+      <motion.button
+        whileTap={{ scale: 0.9 }}
+        onClick={onClose}
+        className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/50 flex items-center justify-center"
+      >
+        <X className="w-6 h-6 text-white" />
+      </motion.button>
+
+      {/* Counter */}
+      <div className="absolute top-4 left-4 z-50 text-white/70 text-sm">
+        {currentIndex + 1} / {posts.length}
+      </div>
+
+      {/* Media */}
+      <div className="absolute inset-0" onClick={isVideo ? togglePlay : undefined}>
+        {isVideo ? (
+          <video
+            ref={videoRef}
+            src={post.media_url}
+            poster={post.thumbnail_url || undefined}
+            autoPlay
+            loop
+            playsInline
+            className="w-full h-full object-contain"
+          />
+        ) : post.media_url ? (
+          <img src={post.media_url} alt="" className="w-full h-full object-contain" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Play className="w-16 h-16 text-white/30" />
+          </div>
+        )}
+      </div>
+
+      {/* Navigation */}
+      {currentIndex > 0 && (
+        <motion.button whileTap={{ scale: 0.9 }} onClick={goPrev} className="absolute top-1/2 -translate-y-1/2 left-2 z-50 w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
+          <ChevronUp className="w-6 h-6 text-white rotate-[-90deg]" />
+        </motion.button>
+      )}
+      {currentIndex < posts.length - 1 && (
+        <motion.button whileTap={{ scale: 0.9 }} onClick={goNext} className="absolute top-1/2 -translate-y-1/2 right-14 z-50 w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
+          <ChevronDown className="w-6 h-6 text-white rotate-[-90deg]" />
+        </motion.button>
+      )}
+
+      {/* Action buttons */}
+      <div className="absolute right-3 bottom-32 flex flex-col items-center gap-4 z-50">
+        <motion.button whileTap={{ scale: 0.85 }} onClick={() => { toggleLike(); triggerFeedback('notification'); }} className="flex flex-col items-center">
+          <Heart className={`w-7 h-7 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'}`} />
+          <span className="text-white text-xs mt-1">{likesCount}</span>
+        </motion.button>
+        <motion.button whileTap={{ scale: 0.85 }} onClick={() => { toggleBookmark(); triggerFeedback('success'); }} className="flex flex-col items-center">
+          <Bookmark className={`w-7 h-7 ${isBookmarked ? 'text-amber-400 fill-amber-400' : 'text-white'}`} />
+        </motion.button>
+        <motion.button whileTap={{ scale: 0.85 }} onClick={() => { sharePost(); triggerFeedback('send'); }} className="flex flex-col items-center">
+          <Share2 className="w-7 h-7 text-white" />
+          <span className="text-white text-xs mt-1">{sharesCount}</span>
+        </motion.button>
+      </div>
+
+      {/* Caption */}
+      {post.transcript_fr && (
+        <div className="absolute bottom-8 left-4 right-20 z-50">
+          <p className="text-white text-sm bg-black/40 rounded-xl px-4 py-2 line-clamp-3">{post.transcript_fr}</p>
+        </div>
+      )}
+    </motion.div>
+  );
+};
 
 export default function TamTamPublicProfile() {
   const { userId } = useParams<{ userId: string }>();
@@ -34,6 +151,7 @@ export default function TamTamPublicProfile() {
   const [showMessages, setShowMessages] = useState(false);
   const [isPlayingBio, setIsPlayingBio] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleBack = () => {
@@ -125,7 +243,6 @@ export default function TamTamPublicProfile() {
             </h1>
           </div>
 
-          {/* Block/Report Menu */}
           {!isOwnProfile && (
             <BlockReportMenu
               userId={userId!}
@@ -155,7 +272,6 @@ export default function TamTamPublicProfile() {
         likesCount={posts.reduce((acc, p) => acc + (p.likes_count || 0), 0)}
       />
 
-      {/* Stats Grid */}
       <KuaishouStatsGrid
         postsCount={profile.posts_count || 0}
         followersCount={profile.followers_count || 0}
@@ -163,7 +279,6 @@ export default function TamTamPublicProfile() {
         friendsCount={profile.friends_count || 0}
       />
 
-      {/* Action Buttons */}
       <KuaishouActionButtons
         isOwnProfile={false}
         isFollowing={isFollowing}
@@ -173,14 +288,12 @@ export default function TamTamPublicProfile() {
         onMessage={handleMessage}
       />
 
-      {/* Bio Audio Player */}
       <KuaishouBioPlayer
         bioAudioUrl={profile.bio_audio_url}
         bioTranscript={profile.bio_transcript_fr}
         isOwnProfile={false}
       />
 
-      {/* Tabs */}
       <KuaishouProfileTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -196,15 +309,16 @@ export default function TamTamPublicProfile() {
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-1">
-                {posts.map(post => (
+                {posts.map((post, index) => (
                   <motion.div
                     key={post.id}
                     whileTap={{ scale: 0.98 }}
-                    className="aspect-square bg-muted rounded-lg overflow-hidden relative group"
+                    onClick={() => setViewerIndex(index)}
+                    className="aspect-square bg-muted rounded-lg overflow-hidden relative group cursor-pointer"
                   >
                     {post.media_url ? (
                       <img 
-                        src={post.media_url} 
+                        src={post.thumbnail_url || post.media_url} 
                         alt="" 
                         className="w-full h-full object-cover"
                       />
@@ -215,9 +329,23 @@ export default function TamTamPublicProfile() {
                     )}
                     
                     {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Play className="w-8 h-8 text-white" fill="white" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                      <div className="flex items-center gap-1 text-white text-xs">
+                        <Heart className="w-4 h-4" />
+                        <span>{post.likes_count || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-white text-xs">
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{post.comments_count || 0}</span>
+                      </div>
                     </div>
+
+                    {/* Video indicator */}
+                    {(post.media_type === 'video' || post.media_url?.includes('.mp4')) && (
+                      <div className="absolute top-1 right-1">
+                        <Play className="w-4 h-4 text-white drop-shadow-lg" fill="white" />
+                      </div>
+                    )}
 
                     <div className="absolute bottom-1 left-1 text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded">
                       {format(new Date(post.created_at), 'd MMM', { locale: fr })}
@@ -241,6 +369,17 @@ export default function TamTamPublicProfile() {
           </div>
         )}
       </div>
+
+      {/* Post Viewer Overlay */}
+      <AnimatePresence>
+        {viewerIndex !== null && (
+          <PostViewerOverlay
+            posts={posts}
+            initialIndex={viewerIndex}
+            onClose={() => setViewerIndex(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Private Messages Modal */}
       <TamTamPrivateMessages

@@ -6,6 +6,8 @@ import {
   MessageCircle, RefreshCw, Sparkles, TrendingUp, Loader2
 } from 'lucide-react';
 import { useVideoFeed } from '@/hooks/useVideoFeed';
+import { usePostInteractions } from '@/hooks/usePostInteractions';
+import { useNavigate } from 'react-router-dom';
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -77,21 +79,20 @@ const ActionButton: React.FC<{
 const VideoCard: React.FC<{
   post: VideoPost;
   isActive: boolean;
-  onLike: () => void;
   onComment: () => void;
-  onShare: () => void;
-  onSave: () => void;
   onRespond: () => void;
-}> = ({ post, isActive, onLike, onComment, onShare, onSave, onRespond }) => {
+}> = ({ post, isActive, onComment, onRespond }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false); // Audio autoplay (Kuaishou-style)
+  const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showOptions, setShowOptions] = useState(false);
-  const [isLiked, setIsLiked] = useState(post.isLiked || false);
-  const [isSaved, setIsSaved] = useState(post.isSaved || false);
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const lastTapRef = useRef<number>(0);
+  const navigate = useNavigate();
+
+  const authorId = (post.author as any)?.id || (post as any).user_id;
+  const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow } = usePostInteractions(post.id, authorId);
 
   const topicIcon = post.topicEmoji || TOPIC_ICONS[post.topic || 'default'] || TOPIC_ICONS.default;
 
@@ -130,9 +131,8 @@ const VideoCard: React.FC<{
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
       if (!isLiked) {
-        setIsLiked(true);
+        toggleLike();
         setShowLikeAnimation(true);
-        onLike();
         setTimeout(() => setShowLikeAnimation(false), 1000);
       }
     } else {
@@ -142,12 +142,15 @@ const VideoCard: React.FC<{
   };
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
+    toggleLike();
     if (!isLiked) {
       setShowLikeAnimation(true);
       setTimeout(() => setShowLikeAnimation(false), 800);
     }
-    onLike();
+  };
+
+  const handleProfileClick = () => {
+    if (authorId) navigate(`/fitila/user/${authorId}`);
   };
 
   return (
@@ -197,7 +200,7 @@ const VideoCard: React.FC<{
 
       {/* Author info */}
       <div className="absolute bottom-36 left-5 right-24 z-10">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={handleProfileClick}>
           {post.author.avatarUrl ? (
             <img src={post.author.avatarUrl} alt={post.author.name} className="w-14 h-14 rounded-full border-2 border-white object-cover shadow-lg" />
           ) : (
@@ -224,12 +227,12 @@ const VideoCard: React.FC<{
 
       {/* Action buttons */}
       <div className="absolute right-4 bottom-40 flex flex-col gap-6 z-10">
-        <ActionButton icon={Heart} label={String(post.likes + (isLiked ? 1 : 0))} isActive={isLiked} onClick={handleLike} />
+        <ActionButton icon={Heart} label={String(likesCount)} isActive={isLiked} onClick={handleLike} />
         <ActionButton icon={MessageCircle} label={String(post.comments)} onClick={onComment} />
         <ActionButton icon={Mic} label="Répondre" onClick={onRespond} />
         <ActionButton icon={RefreshCw} label="Remix" onClick={() => {}} />
-        <ActionButton icon={Share2} label="Partager" onClick={onShare} />
-        <ActionButton icon={Bookmark} label="" isActive={isSaved} onClick={() => { setIsSaved(!isSaved); onSave(); }} />
+        <ActionButton icon={Share2} label={String(sharesCount || 'Partager')} onClick={() => sharePost()} />
+        <ActionButton icon={Bookmark} label="" isActive={isBookmarked} onClick={() => toggleBookmark()} />
         <ActionButton icon={MoreHorizontal} label="" onClick={() => setShowOptions(true)} />
       </div>
 
@@ -422,10 +425,7 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
               key={video.id}
               post={video}
               isActive={index === currentIndex}
-              onLike={() => onLike(video.id)}
               onComment={() => onComment(video.id)}
-              onShare={() => onShare(video.id)}
-              onSave={() => onSave(video.id)}
               onRespond={() => onRespond(video.id)}
             />
           ))}

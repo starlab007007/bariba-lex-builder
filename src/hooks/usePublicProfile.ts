@@ -20,9 +20,11 @@ interface PublicProfile {
 
 interface UserPost {
   id: string;
+  user_id: string | null;
   audio_url: string;
   media_type: string | null;
   media_url: string | null;
+  thumbnail_url: string | null;
   transcript_fr: string | null;
   transcript_ba: string | null;
   likes_count: number;
@@ -58,7 +60,7 @@ export function usePublicProfile(userId: string | undefined) {
       // Fetch user posts
       const { data: postsData, error: postsError } = await supabase
         .from('tamtam_posts')
-        .select('id, audio_url, media_type, media_url, transcript_fr, transcript_ba, likes_count, comments_count, created_at')
+        .select('id, user_id, audio_url, media_type, media_url, thumbnail_url, transcript_fr, transcript_ba, likes_count, comments_count, created_at')
         .eq('user_id', userId)
         .eq('is_public', true)
         .order('created_at', { ascending: false })

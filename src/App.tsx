@@ -105,6 +105,7 @@ const App = () => (
                 <Route path="profile" element={<TamTamProfile />} />
                 <Route path="dictionary" element={<TamTamDictionary />} />
                 <Route path="user/:userId" element={<TamTamPublicProfile />} />
+                <Route path="profile/:userId" element={<TamTamPublicProfile />} />
               </Route>
 
               {/* Legacy /tamtam routes redirect to /fitila */}
