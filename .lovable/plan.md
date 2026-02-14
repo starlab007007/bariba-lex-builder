@@ -1,146 +1,171 @@
 
-# Optimisation et finalisation de la page Profil
+# Corrections et finalisations de la page Profil et du Feed
 
-## Objectif
-Rendre la page profil completement fonctionnelle, responsive, scrollable, avec edition des informations personnelles, visualisation des publications en plein ecran, et toutes les actions (supprimer, modifier, rendre prive) accessibles directement.
-
----
-
-## Problemes identifies
-
-1. **Pas de formulaire d'edition du profil** : Il n'existe aucun moyen de modifier le nom, la bio texte, la localisation ou le numero de telephone
-2. **Scroll coupe en bas** : `pb-32` est present mais le contenu peut se retrouver masque par la barre de navigation
-3. **Publications non visualisables** : Cliquer sur un post ne fait que jouer l'audio -- pas de visualisation plein ecran des videos/photos
-4. **Responsive insuffisant** : Certains elements (grille de posts, header) ne s'adaptent pas bien aux petits ecrans
-5. **Onglet Tabs manque le compteur de posts** : Le `postsCount` n'est pas passe au composant `KuaishouProfileTabs`
+## 7 points a corriger
 
 ---
 
-## Plan de corrections
+## 1. Bouton "Supprimer" dans le menu contextuel des posts ne fonctionne pas
 
-### 1. Creer un modal d'edition du profil
+**Diagnostic** : Dans `MyPostsGrid.tsx`, la fonction `handleDeleteClick` utilise un systeme de double-clic (confirmation) qui fonctionne correctement dans le code, mais le `onDelete` recu en props attend un `Promise<boolean>` tandis que `handleDeleteClick` n'attend pas le resultat. De plus, dans `TamTamProfile.tsx` le `handleDeletePost` est asynchrone et retourne un `Promise<boolean>`.
 
-**Nouveau fichier** : `src/components/tamtam/ProfileEditModal.tsx`
+**Correction** : Modifier `handleDeleteClick` dans `MyPostsGrid.tsx` pour appeler `onDelete` correctement et attendre la completion. Ajouter un indicateur de chargement pendant la suppression.
 
-Ce modal permettra de modifier :
-- Nom d'affichage (`display_name`)
-- Localisation (`location`)
-- Numero de telephone (`phone_number`)
+**Fichier** : `src/components/tamtam/MyPostsGrid.tsx` - lignes 42-49
 
-Il s'ouvrira via un bouton "Modifier le profil" ajoute dans les `KuaishouActionButtons` (en remplacement ou a cote du bouton "Plus").
+---
 
-Le modal utilisera `updateProfile()` du hook `useTamTamProfile` pour sauvegarder.
+## 2. Afficher la photo de profil dans le menu lateral (bouton "Profil")
 
-### 2. Ajouter la visualisation plein ecran des posts
+**Diagnostic** : Dans `FitilaApp.tsx`, le menu lateral affiche "Profil" avec un simple emoji generique. Il faut charger le profil utilisateur et afficher son avatar.
 
-**Nouveau composant** : `src/components/tamtam/MyPostViewerOverlay.tsx`
+**Correction** : Dans `SideMenuDrawer` de `FitilaApp.tsx`, utiliser le hook `useTamTamProfile` pour recuperer l'avatar de l'utilisateur et l'afficher a cote du label "Profil" dans la navigation.
 
-Quand l'utilisateur clique sur un post dans `MyPostsGrid`, un overlay plein ecran s'ouvre montrant :
-- La video/photo en grand (si `media_url` existe)
-- Un lecteur audio si c'est uniquement audio
-- Les stats (likes, commentaires)
-- Les boutons d'action (modifier, supprimer, rendre prive/public)
-- Navigation verticale (swipe up/down) entre les posts
+**Fichier** : `src/pages/fitila/FitilaApp.tsx` - modifier l'affichage du nav item "Profil" pour utiliser l'avatar reel
 
-### 3. Optimiser le scroll et le responsive
+---
 
-**Modifications dans `TamTamProfile.tsx`** :
-- Ajouter `overflow-y-auto` sur le conteneur principal
-- Ajuster `pb-32` a `pb-40` pour eviter que le contenu soit cache par la barre de navigation
-- Rendre la grille de posts responsive : `grid-cols-2 sm:grid-cols-3`
+## 3. Remonter l'avatar et le nom d'utilisateur dans le feed + ajouter date de publication
 
-**Modifications dans `KuaishouProfileHeader.tsx`** :
-- Ajuster les tailles d'avatar pour les tres petits ecrans
-- Reduire les paddings sur mobile
+**Diagnostic** : Dans `VideoFeedCard` de `TamTamSocial.tsx`, l'avatar et le `@username` en bas a gauche sont positionnes avec `paddingBottom: 'max(3.5rem, ...)'` mais peuvent etre coupes sur certains ecrans. Il manque aussi la date de publication.
 
-### 4. Passer le compteur de posts aux tabs
+**Corrections** :
+- Augmenter legerement la position de l'avatar et du nom d'utilisateur
+- Ajouter une ligne sous le nom avec la date de publication formatee
 
-**Modification dans `TamTamProfile.tsx`** :
-```text
-<KuaishouProfileTabs
-  activeTab={activeTab}
-  onTabChange={setActiveTab}
-  postsCount={myPosts.length}   // <-- ajouter cette ligne
-/>
-```
+**Fichier** : `src/pages/tamtam/TamTamSocial.tsx` - zone bottom-left du VideoFeedCard (lignes 687-709)
 
-### 5. Connecter le bouton "Modifier le profil"
+---
 
-**Modification dans `TamTamProfile.tsx`** :
-- Ajouter l'etat `showEditProfile`
-- Ajouter le bouton dans la section action buttons
-- Integrer le `ProfileEditModal`
+## 4. Ajouter le mot "Suivre" a cote du "+" et masquer apres follow
 
-### 6. Ameliorer MyPostsGrid pour le tap mobile
+**Diagnostic** : Dans `VideoFeedCard`, le bouton follow en bas de l'avatar (lignes 731-739) affiche seulement un "+" sans texte. Quand l'utilisateur est suivi, le bouton disparait deja (`!isFollowing && ...`), ce qui est correct.
 
-**Modification dans `MyPostsGrid.tsx`** :
-- Rendre le tap sur un post (pas seulement hover) plus intuitif sur mobile
-- L'overlay de hover doit aussi fonctionner au tap (via `active:opacity-100`)
-- Le bouton play doit ouvrir le viewer overlay au lieu de juste jouer l'audio
+**Correction** : Ajouter le texte "Suivre" a cote du signe "+" sous l'avatar dans la sidebar droite. Elargir legerement le bouton pour accueillir le texte.
+
+**Fichier** : `src/pages/tamtam/TamTamSocial.tsx` - lignes 731-739
+
+---
+
+## 5. Le partage doit partager uniquement la publication
+
+**Diagnostic** : La fonction `sharePost` du hook `usePostInteractions` utilise `navigator.share` avec le titre et l'URL de la page. C'est correct mais il faut s'assurer que le partage inclut le lien direct vers la publication et pas une page generique.
+
+**Correction** : Modifier la fonction `sharePost` dans `usePostInteractions.ts` pour generer une URL specifique a la publication (`/fitila/social?video=POST_ID`) et partager cette URL. Aussi permettre le partage interne (dans le feed de l'utilisateur).
+
+**Fichier** : `src/hooks/usePostInteractions.ts`
+
+---
+
+## 6. Permettre de voir la liste des followers, likes, et follows en cliquant sur les compteurs
+
+**Diagnostic** : Dans `KuaishouProfileHeader.tsx`, les compteurs (Followers, Follow, Likes) sont affiches mais ne sont pas cliquables. L'utilisateur ne peut pas voir qui l'a suivi, ou qui il suit.
+
+**Correction** : Ajouter des callbacks `onFollowersClick`, `onFollowingClick`, `onLikesClick` au composant `KuaishouProfileHeader` et les connecter dans `TamTamProfile.tsx` pour ouvrir les modals `TamTamFollowersList` existants.
+
+**Fichiers** : 
+- `src/components/tamtam/KuaishouProfileHeader.tsx` - rendre les compteurs cliquables
+- `src/pages/tamtam/TamTamProfile.tsx` - connecter les callbacks
+
+---
+
+## 7. Bouton Parametres pour gerer le compte (nom, mot de passe, numero)
+
+**Diagnostic** : Le bouton "Parametres" dans le menu lateral navigue vers `/fitila/settings` mais cette page n'existe probablement pas. Le `ProfileEditModal` existant ne gere que nom, localisation et telephone, pas le mot de passe.
+
+**Correction** : Enrichir le `ProfileEditModal` avec la possibilite de changer le mot de passe (via `supabase.auth.updateUser`). Aussi, faire en sorte que le bouton "Modifier" sur la page profil ouvre ce modal enrichi avec tous les parametres de gestion du compte. Le bouton "Parametres" du menu lateral naviguera vers la page profil et ouvrira automatiquement le modal.
+
+**Fichiers** :
+- `src/components/tamtam/ProfileEditModal.tsx` - ajouter champ mot de passe
+- `src/pages/tamtam/TamTamProfile.tsx` - gerer l'ouverture automatique via query param
+
+---
+
+## Resume des modifications
+
+| Fichier | Modifications |
+|---------|--------------|
+| `src/components/tamtam/MyPostsGrid.tsx` | Fix suppression : attendre le resultat de onDelete, indicateur de chargement |
+| `src/pages/fitila/FitilaApp.tsx` | Afficher l'avatar reel dans le menu lateral |
+| `src/pages/tamtam/TamTamSocial.tsx` | Remonter avatar+username, ajouter date, texte "Suivre" sur bouton follow |
+| `src/hooks/usePostInteractions.ts` | Partage avec URL specifique au post |
+| `src/components/tamtam/KuaishouProfileHeader.tsx` | Rendre compteurs Followers/Follow/Likes cliquables |
+| `src/pages/tamtam/TamTamProfile.tsx` | Connecter les clics sur compteurs, gerer ouverture settings |
+| `src/components/tamtam/ProfileEditModal.tsx` | Ajouter changement de mot de passe |
 
 ---
 
 ## Details techniques
 
-### ProfileEditModal
-
+### Fix suppression (MyPostsGrid)
 ```text
-Props:
-  - isOpen: boolean
-  - onClose: () => void
-  - profile: TamTamProfile
-  - onSave: (updates) => Promise<void>
+// Ajouter un etat de chargement
+const [deletingId, setDeletingId] = useState<string | null>(null);
 
-Champs editables:
-  - display_name (input text)
-  - location (input text)  
-  - phone_number (input tel)
-
-Style: Bottom sheet sur mobile, modal centre sur desktop
-Animation: slide-up avec framer-motion
+handleDeleteClick = async (postId) => {
+  if (deleteConfirm === postId) {
+    setDeletingId(postId);
+    await onDelete(postId);
+    setDeletingId(null);
+    setDeleteConfirm(null);
+  } else {
+    setDeleteConfirm(postId);
+    setTimeout(() => setDeleteConfirm(null), 3000);
+  }
+}
 ```
 
-### MyPostViewerOverlay
-
+### Avatar dans le menu lateral (FitilaApp)
 ```text
-Props:
-  - posts: MyPost[]
-  - initialIndex: number
-  - isOpen: boolean
-  - onClose: () => void
-  - onEdit: (post) => void
-  - onDelete: (postId) => void
-  - onToggleVisibility: (postId, isPublic) => void
+// Importer useTamTamProfile dans SideMenuDrawer
+const { profile } = useTamTamProfile();
 
-Contenu:
-  - Video/photo plein ecran avec controles
-  - Bouton X pour fermer
-  - Boutons flottants: modifier, supprimer, prive/public
-  - Swipe vertical pour naviguer
-  - Stats en bas (likes, commentaires, duree)
+// Remplacer l'emoji generique par l'avatar
+{profile?.avatar_url ? (
+  <img src={profile.avatar_url} className="w-7 h-7 rounded-full object-cover" />
+) : (
+  <span>👤</span>
+)}
 ```
 
-### Responsive adjustments
-
+### Date de publication dans le feed
 ```text
-// MyPostsGrid: grille adaptative
-grid-cols-2 sm:grid-cols-3
-
-// KuaishouProfileHeader: avatar plus petit sur mobile
-Avatar: w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24
-
-// Conteneur principal
-overflow-y-auto pb-40 scroll-smooth
+// Sous le @username dans VideoFeedCard
+<span className="text-white/50 text-[10px]">
+  {formatPublicationDate(post.created_at)}
+</span>
 ```
 
----
+### Bouton Suivre avec texte
+```text
+// Remplacer le petit bouton "+" par un badge plus visible
+<motion.button className="absolute -bottom-2 left-1/2 -translate-x-1/2 
+  flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-red-500 text-white text-[9px]">
+  <Plus className="w-3 h-3" /> Suivre
+</motion.button>
+```
 
-## Fichiers modifies/crees
+### Compteurs cliquables dans le header
+```text
+// KuaishouProfileHeader - ajouter props
+onFollowersClick?: () => void;
+onFollowingClick?: () => void;
+onLikesClick?: () => void;
 
-| Fichier | Action |
-|---------|--------|
-| `src/components/tamtam/ProfileEditModal.tsx` | **Nouveau** - Modal edition profil |
-| `src/components/tamtam/MyPostViewerOverlay.tsx` | **Nouveau** - Viewer plein ecran pour les posts propres |
-| `src/pages/tamtam/TamTamProfile.tsx` | Integrer les 2 nouveaux composants, ajouter postsCount aux tabs, ameliorer scroll/responsive, ajouter bouton edit profil |
-| `src/components/tamtam/MyPostsGrid.tsx` | Responsive grid, tap mobile, callback pour ouvrir le viewer |
-| `src/components/tamtam/KuaishouProfileHeader.tsx` | Responsive avatar sizes |
+// Wrapper chaque stat dans un bouton
+<button onClick={onFollowersClick}>
+  <p>{formatCount(followersCount)}</p>
+  <p>Followers</p>
+</button>
+```
+
+### Changement de mot de passe
+```text
+// ProfileEditModal - nouvelle section
+const handleChangePassword = async () => {
+  const { error } = await supabase.auth.updateUser({ 
+    password: newPassword 
+  });
+  if (!error) toast("Mot de passe modifie");
+};
+```
