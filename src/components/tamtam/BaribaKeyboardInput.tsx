@@ -240,8 +240,10 @@ export function BaribaKeyboardInput({
                     whileTap={{ scale: 0.98 }}
                   >
                     <div className="flex items-center gap-2 w-full">
-                      <span className="font-bold text-tamtam-text text-lg">{entry.word}</span>
-                      {entry.phonetic && entry.phonetic !== entry.word && (
+                      <span className="font-bold text-tamtam-text text-lg">
+                        {currentLang === 'fr' ? entry.definition : entry.word}
+                      </span>
+                      {currentLang === 'ba' && entry.phonetic && entry.phonetic !== entry.word && (
                         <span className="text-sm text-tamtam-primary/70">[{entry.phonetic}]</span>
                       )}
                       <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-tamtam-bg text-tamtam-text-muted">
@@ -249,7 +251,7 @@ export function BaribaKeyboardInput({
                       </span>
                     </div>
                     <p className="text-sm text-tamtam-text-muted line-clamp-1 mt-1">
-                      {entry.definition}
+                      {currentLang === 'fr' ? entry.word : entry.definition}
                     </p>
                   </motion.button>
                 ))}

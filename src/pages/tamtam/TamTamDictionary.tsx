@@ -105,7 +105,7 @@ export default function TamTamDictionary() {
     triggerFeedback('success');
     
     // Lecture automatique
-    await speakCurrentLang(entry.word);
+    await speakCurrentLang(entry.definition);
   };
   
   // Sync keyboard language with search direction
