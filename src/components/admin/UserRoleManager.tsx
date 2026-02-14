@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Shield, ShieldOff, Loader2, Search } from 'lucide-react';
+import { Shield, ShieldOff, Loader2, Search, PenTool } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().trim().email({ message: "Email invalide" }).max(255);
@@ -32,6 +32,7 @@ interface UserWithRole {
   id: string;
   email: string;
   isAdmin: boolean;
+  isEditor: boolean;
   created_at: string;
 }
 
@@ -70,6 +71,7 @@ export default function UserRoleManager() {
         id: user.id,
         email: user.email || 'Email non disponible',
         isAdmin: rolesData?.some((role) => role.user_id === user.id && role.role === 'admin') || false,
+        isEditor: rolesData?.some((role) => role.user_id === user.id && role.role === 'editor') || false,
         created_at: user.created_at,
       }));
 
@@ -102,29 +104,27 @@ export default function UserRoleManager() {
     }
   };
 
-  const handleGrantAdmin = async (userId: string, email: string) => {
-    if (!validateAndSearchEmail() && searchEmail) return;
-
+  const handleGrantRole = async (userId: string, email: string, role: 'admin' | 'editor') => {
     try {
       setActionLoading(userId);
 
       const { error } = await supabase
         .from('user_roles')
-        .insert({ user_id: userId, role: 'admin' });
+        .insert({ user_id: userId, role });
 
       if (error) throw error;
 
       toast({
         title: 'Succès',
-        description: `Rôle admin attribué à ${email}`,
+        description: `Rôle ${role} attribué à ${email}`,
       });
 
       await loadUsers();
     } catch (error: any) {
-      console.error('Error granting admin:', error);
+      console.error('Error granting role:', error);
       toast({
         title: 'Erreur',
-        description: error.message || 'Impossible d\'attribuer le rôle admin',
+        description: error.message || `Impossible d'attribuer le rôle ${role}`,
         variant: 'destructive',
       });
     } finally {
@@ -132,7 +132,7 @@ export default function UserRoleManager() {
     }
   };
 
-  const handleRevokeAdmin = async () => {
+  const handleRevokeRole = async (role: 'admin' | 'editor') => {
     if (!selectedUser) return;
 
     try {
@@ -142,21 +142,21 @@ export default function UserRoleManager() {
         .from('user_roles')
         .delete()
         .eq('user_id', selectedUser.id)
-        .eq('role', 'admin');
+        .eq('role', role);
 
       if (error) throw error;
 
       toast({
         title: 'Succès',
-        description: `Rôle admin révoqué pour ${selectedUser.email}`,
+        description: `Rôle ${role} révoqué pour ${selectedUser.email}`,
       });
 
       await loadUsers();
     } catch (error: any) {
-      console.error('Error revoking admin:', error);
+      console.error('Error revoking role:', error);
       toast({
         title: 'Erreur',
-        description: error.message || 'Impossible de révoquer le rôle admin',
+        description: error.message || `Impossible de révoquer le rôle ${role}`,
         variant: 'destructive',
       });
     } finally {
@@ -166,8 +166,11 @@ export default function UserRoleManager() {
     }
   };
 
-  const openRevokeDialog = (user: UserWithRole) => {
+  const [revokeRole, setRevokeRole] = useState<'admin' | 'editor'>('admin');
+
+  const openRevokeDialog = (user: UserWithRole, role: 'admin' | 'editor') => {
     setSelectedUser(user);
+    setRevokeRole(role);
     setShowRevokeDialog(true);
   };
 
@@ -240,52 +243,87 @@ export default function UserRoleManager() {
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.email}</TableCell>
                         <TableCell>
-                          {user.isAdmin ? (
-                            <Badge variant="default" className="gap-1">
-                              <Shield className="h-3 w-3" />
-                              Admin
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">Utilisateur</Badge>
-                          )}
+                          <div className="flex gap-1 flex-wrap">
+                            {user.isAdmin && (
+                              <Badge variant="default" className="gap-1">
+                                <Shield className="h-3 w-3" />
+                                Admin
+                              </Badge>
+                            )}
+                            {user.isEditor && (
+                              <Badge variant="outline" className="gap-1 border-blue-300 text-blue-700 bg-blue-50">
+                                <PenTool className="h-3 w-3" />
+                                Éditeur
+                              </Badge>
+                            )}
+                            {!user.isAdmin && !user.isEditor && (
+                              <Badge variant="secondary">Utilisateur</Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {new Date(user.created_at).toLocaleDateString('fr-FR')}
                         </TableCell>
                         <TableCell className="text-right">
-                          {user.isAdmin ? (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => openRevokeDialog(user)}
-                              disabled={actionLoading === user.id}
-                            >
-                              {actionLoading === user.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <ShieldOff className="mr-2 h-4 w-4" />
-                                  Révoquer
-                                </>
-                              )}
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleGrantAdmin(user.id, user.email)}
-                              disabled={actionLoading === user.id}
-                            >
-                              {actionLoading === user.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  Attribuer Admin
-                                </>
-                              )}
-                            </Button>
-                          )}
+                          <div className="flex gap-2 justify-end flex-wrap">
+                            {/* Admin toggle */}
+                            {user.isAdmin ? (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => openRevokeDialog(user, 'admin')}
+                                disabled={actionLoading === user.id}
+                              >
+                                {actionLoading === user.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <ShieldOff className="mr-1 h-4 w-4" />
+                                    Admin
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGrantRole(user.id, user.email, 'admin')}
+                                disabled={actionLoading === user.id}
+                              >
+                                <Shield className="mr-1 h-4 w-4" />
+                                Admin
+                              </Button>
+                            )}
+                            {/* Editor toggle */}
+                            {user.isEditor ? (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => openRevokeDialog(user, 'editor')}
+                                disabled={actionLoading === user.id}
+                              >
+                                {actionLoading === user.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <PenTool className="mr-1 h-4 w-4" />
+                                    Éditeur
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                                onClick={() => handleGrantRole(user.id, user.email, 'editor')}
+                                disabled={actionLoading === user.id}
+                              >
+                                <PenTool className="mr-1 h-4 w-4" />
+                                Éditeur
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -303,7 +341,7 @@ export default function UserRoleManager() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la révocation</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir révoquer les privilèges d'administrateur pour{' '}
+              Êtes-vous sûr de vouloir révoquer le rôle <span className="font-semibold">{revokeRole}</span> pour{' '}
               <span className="font-semibold">{selectedUser?.email}</span> ?
               Cette action peut être annulée en réattribuant le rôle.
             </AlertDialogDescription>
@@ -311,7 +349,7 @@ export default function UserRoleManager() {
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleRevokeAdmin}
+              onClick={() => handleRevokeRole(revokeRole)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Révoquer

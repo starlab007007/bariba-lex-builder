@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles, GraduationCap, ChevronRight, LogIn, Lock, MessageSquarePlus, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles, GraduationCap, ChevronRight, LogIn, Lock, MessageSquarePlus, AlertTriangle, PenTool } from 'lucide-react';
 import { ContributionModal } from '@/components/fitila/ContributionModal';
+import { EditorToolbar } from '@/components/fitila/EditorToolbar';
 import { useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useSideMenu } from '@/pages/fitila/FitilaApp';
@@ -13,7 +14,10 @@ import { FOUNDATION_LESSONS, type FoundationLesson, type FoundationQuiz } from '
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTamTamProfile } from '@/hooks/useTamTamProfile';
+import { useEditorRole } from '@/hooks/useEditorRole';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 type ViewType = 'language-selection' | 'dashboard' | 'lesson' | 'lesson-complete' | 'foundation-lesson' | 'foundation-quiz';
 
@@ -23,6 +27,8 @@ export default function FitilaLearn() {
   const { open: openMenu } = useSideMenu();
   const { user } = useAuth();
   const { profile: tamtamProfile } = useTamTamProfile();
+  const { isEditor } = useEditorRole();
+  const { toast } = useToast();
   const progress = useLearningProgress();
   const { userLanguage, selectLanguage, config, langKey, profile, getCurrentLevel, getNextLevel, getText, getLevelName, shareProgress, completeLesson, newBadges, clearNewBadges } = progress;
 
@@ -46,6 +52,11 @@ export default function FitilaLearn() {
   const [foundationQuizAnswer, setFoundationQuizAnswer] = useState<number | null>(null);
   const [showFoundations, setShowFoundations] = useState(true);
   const [contributionCtx, setContributionCtx] = useState<{ lessonId: string; lessonTitle: string; sectionIndex?: number; quizIndex?: number; type: 'correction' | 'suggestion' } | null>(null);
+
+  // Editor inline editing state
+  const [editingSection, setEditingSection] = useState<number | null>(null);
+  const [editValues, setEditValues] = useState<{ contentFr: string; contentBr: string; titleFr: string; titleBr: string }>({ contentFr: '', contentBr: '', titleFr: '', titleBr: '' });
+
   const currentLevel = getCurrentLevel();
   const nextLevel = getNextLevel();
   const progressToNext = nextLevel
@@ -153,6 +164,88 @@ export default function FitilaLearn() {
       u.rate = 0.85;
       speechSynthesis.speak(u);
       triggerFeedback('click');
+    }
+  };
+
+  // ═══ EDITOR FUNCTIONS ═══
+  const startEditSection = (sIdx: number) => {
+    if (!currentFoundation) return;
+    const section = currentFoundation.sections[sIdx];
+    setEditingSection(sIdx);
+    setEditValues({
+      contentFr: section.content.fr,
+      contentBr: section.content.br,
+      titleFr: section.title.fr,
+      titleBr: section.title.br,
+    });
+  };
+
+  const saveEditSection = async () => {
+    if (!currentFoundation || editingSection === null || !user) return;
+    const section = currentFoundation.sections[editingSection];
+    
+    try {
+      await supabase.from('learning_content_edits').insert({
+        editor_id: user.id,
+        lesson_id: currentFoundation.id,
+        section_index: editingSection,
+        edit_type: 'edit',
+        field_name: 'section_content',
+        old_value: JSON.stringify({ title: section.title, content: section.content }),
+        new_value: JSON.stringify({ title: { fr: editValues.titleFr, br: editValues.titleBr }, content: { fr: editValues.contentFr, br: editValues.contentBr } }),
+      });
+
+      // Apply locally
+      section.title.fr = editValues.titleFr;
+      section.title.br = editValues.titleBr;
+      section.content.fr = editValues.contentFr;
+      section.content.br = editValues.contentBr;
+
+      setEditingSection(null);
+      toast({ title: '✅', description: userLanguage === 'french' ? 'Section modifiée' : 'Gbɛsiru mɑɑru' });
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const deleteSection = async (sIdx: number) => {
+    if (!currentFoundation || !user) return;
+    const section = currentFoundation.sections[sIdx];
+
+    try {
+      await supabase.from('learning_content_edits').insert({
+        editor_id: user.id,
+        lesson_id: currentFoundation.id,
+        section_index: sIdx,
+        edit_type: 'delete',
+        field_name: 'section',
+        old_value: JSON.stringify({ title: section.title, content: section.content }),
+      });
+
+      currentFoundation.sections.splice(sIdx, 1);
+      setCurrentFoundation({ ...currentFoundation });
+      toast({ title: '🗑️', description: userLanguage === 'french' ? 'Section supprimée' : 'Bɔru mɑɑru' });
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const validateSection = async (sIdx: number) => {
+    if (!currentFoundation || !user) return;
+
+    try {
+      await supabase.from('learning_content_edits').insert({
+        editor_id: user.id,
+        lesson_id: currentFoundation.id,
+        section_index: sIdx,
+        edit_type: 'validate',
+        field_name: 'section',
+        new_value: 'validated',
+      });
+
+      toast({ title: '✅', description: userLanguage === 'french' ? 'Section validée' : 'Sɛnbu mɑɑru' });
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
     }
   };
 
@@ -503,10 +596,16 @@ export default function FitilaLearn() {
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-3xl" style={{ backgroundColor: currentFoundation.color + '18' }}>
                     {currentFoundation.icon}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h2 className="text-lg font-bold text-gray-800">{currentFoundation.title[langKey]}</h2>
                     <p className="text-xs text-gray-500">{currentFoundation.sections.length} {getText('sections')}</p>
                   </div>
+                  {isEditor && (
+                    <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-[10px] font-bold">
+                      <PenTool className="w-3 h-3" />
+                      {userLanguage === 'french' ? 'Mode éditeur' : 'Gbɛsiru'}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -519,14 +618,47 @@ export default function FitilaLearn() {
                   transition={{ delay: sIdx * 0.08 }}
                   className="bg-white rounded-2xl shadow-md p-5 space-y-3"
                 >
-                  <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ backgroundColor: currentFoundation.color }}>
-                      {sIdx + 1}
-                    </span>
-                    {section.title[langKey]}
-                  </h3>
+                  {/* Section header with editor toolbar */}
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ backgroundColor: currentFoundation.color }}>
+                        {sIdx + 1}
+                      </span>
+                      {editingSection === sIdx ? (
+                        <input
+                          value={editValues[langKey === 'fr' ? 'titleFr' : 'titleBr']}
+                          onChange={(e) => setEditValues(v => ({ ...v, [langKey === 'fr' ? 'titleFr' : 'titleBr']: e.target.value }))}
+                          className="border-b-2 border-blue-400 bg-transparent outline-none text-base font-bold flex-1"
+                        />
+                      ) : (
+                        section.title[langKey]
+                      )}
+                    </h3>
+                    {isEditor && (
+                      <EditorToolbar
+                        onEdit={() => startEditSection(sIdx)}
+                        onDelete={() => deleteSection(sIdx)}
+                        onValidate={() => validateSection(sIdx)}
+                        isEditing={editingSection === sIdx}
+                        onSave={saveEditSection}
+                        onCancel={() => setEditingSection(null)}
+                        lang={userLanguage || 'french'}
+                        compact
+                      />
+                    )}
+                  </div>
 
-                  <p className="text-gray-600 text-sm leading-relaxed">{section.content[langKey]}</p>
+                  {/* Content - editable or static */}
+                  {editingSection === sIdx ? (
+                    <textarea
+                      value={editValues[langKey === 'fr' ? 'contentFr' : 'contentBr']}
+                      onChange={(e) => setEditValues(v => ({ ...v, [langKey === 'fr' ? 'contentFr' : 'contentBr']: e.target.value }))}
+                      className="w-full text-gray-600 text-sm leading-relaxed border-2 border-blue-200 rounded-xl p-3 bg-blue-50/30 min-h-[100px] outline-none focus:border-blue-400"
+                      rows={5}
+                    />
+                  ) : (
+                    <p className="text-gray-600 text-sm leading-relaxed">{section.content[langKey]}</p>
+                  )}
 
                   {/* Table */}
                   {section.table && (
@@ -588,8 +720,8 @@ export default function FitilaLearn() {
                     </div>
                   )}
 
-                  {/* Contribute / Correct buttons */}
-                  {user && (
+                  {/* Contribute / Correct buttons (for non-editors) */}
+                  {user && !isEditor && (
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => setContributionCtx({ lessonId: currentFoundation.id, lessonTitle: currentFoundation.title[langKey], sectionIndex: sIdx, type: 'correction' })}

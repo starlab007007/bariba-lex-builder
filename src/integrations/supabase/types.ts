@@ -831,6 +831,48 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_content_edits: {
+        Row: {
+          created_at: string
+          edit_type: string
+          editor_id: string
+          field_name: string
+          id: string
+          lesson_id: string
+          new_value: string | null
+          old_value: string | null
+          quiz_index: number | null
+          section_index: number | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          edit_type: string
+          editor_id: string
+          field_name: string
+          id?: string
+          lesson_id: string
+          new_value?: string | null
+          old_value?: string | null
+          quiz_index?: number | null
+          section_index?: number | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          edit_type?: string
+          editor_id?: string
+          field_name?: string
+          id?: string
+          lesson_id?: string
+          new_value?: string | null
+          old_value?: string | null
+          quiz_index?: number | null
+          section_index?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
       model_performance: {
         Row: {
           id: string
