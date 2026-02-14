@@ -18,6 +18,7 @@ interface MyPostsGridProps {
   onDelete: (postId: string) => void;
   onToggleVisibility: (postId: string, isPublic: boolean) => void;
   onPlay: (post: MyPost) => void;
+  onViewPost?: (index: number) => void;
 }
 
 export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
@@ -28,6 +29,7 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
   onDelete,
   onToggleVisibility,
   onPlay,
+  onViewPost,
 }) => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
@@ -50,7 +52,7 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
   return (
     <div className="space-y-4">
       {/* Posts grid */}
-      <div className="grid grid-cols-3 gap-1 px-1">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 px-1">
         <AnimatePresence mode="popLayout">
           {filteredPosts.map((post, index) => (
             <motion.div
@@ -59,7 +61,7 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ delay: index * 0.03 }}
-              className="relative aspect-square bg-muted rounded-lg overflow-hidden group"
+              className="relative aspect-square bg-muted rounded-lg overflow-hidden group cursor-pointer"
             >
               {/* Thumbnail or placeholder */}
               {post.thumbnail_url || post.media_url ? (
@@ -74,11 +76,13 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
                 </div>
               )}
 
-              {/* Overlay on hover */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+              {/* Overlay on hover/tap */}
+              <div
+                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity flex items-center justify-center gap-3"
+                onClick={() => onViewPost ? onViewPost(filteredPosts.indexOf(post)) : onPlay(post)}
+              >
                 <motion.button
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => onPlay(post)}
                   className="p-2 bg-white/20 backdrop-blur-sm rounded-full"
                 >
                   <Play className="w-5 h-5 text-white" fill="white" />
