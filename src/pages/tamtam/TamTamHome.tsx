@@ -6,6 +6,7 @@ import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useTamTamPosts } from '@/hooks/useTamTamPosts';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { supabase } from '@/integrations/supabase/client';
 import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { useToast } from '@/hooks/use-toast';
@@ -307,10 +308,31 @@ export default function TamTamHome() {
 
   const handleCreatePost = useCallback(async (data: any) => {
     try {
+      const topic = data.category === 'village_voice' ? 'mavoix' : (data.category || createPostType);
+      
+      // Upload audio base64 to storage if present
+      let audioUrl = data.audio_url || null;
+      if (!audioUrl && data.audio_base64) {
+        try {
+          const response = await fetch(data.audio_base64);
+          const blob = await response.blob();
+          const fileName = `posts/audio_${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('tamtam-audio')
+            .upload(fileName, blob, { contentType: blob.type || 'audio/webm' });
+          if (!uploadError && uploadData) {
+            const { data: urlData } = supabase.storage.from('tamtam-audio').getPublicUrl(uploadData.path);
+            audioUrl = urlData.publicUrl;
+          }
+        } catch (uploadErr) {
+          console.error('[TamTamHome] Audio base64 upload failed:', uploadErr);
+        }
+      }
+      
       const postData = {
         ...data,
-        audio_url: data.audio_url || DEFAULT_AUDIO_URL,
-        topic: createPostType,
+        audio_url: audioUrl,
+        topic,
       };
       await createPost(postData);
       toast({ title: "✅ Publié!" });
