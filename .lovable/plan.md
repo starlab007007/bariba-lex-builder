@@ -1,82 +1,66 @@
 
 
-# Corriger l'audio dans les feeds Patrimoine et Voix du Village
+# Corriger la lecture audio dans les feeds Patrimoine et Voix du Village
 
-## Problemes diagnostiques
+## Problemes identifies
 
-### 1. La duree d'enregistrement n'est pas stockee correctement
-Dans `TamTamCreatePost`, le callback `mediaRecorder.onstop` capture une valeur perimee de `recordingTime` a cause d'une closure JavaScript. Le `recordingTime` est un etat React mis a jour de maniere asynchrone, mais `onstop` capture l'ancienne valeur au moment ou il est defini. Resultat : `duration_seconds = null` en base de donnees pour tous les posts audio.
+### 1. Pas d'audio enregistre sur les anciens posts
+4 des 6 posts en base ont `audio_url: NULL` (crees avant la correction d'upload). Ces posts ne pourront jamais jouer d'audio. Il faut ameliorer l'experience utilisateur pour ces cas.
 
-### 2. La duree affichee dans le feed est fausse
-`AudioFeedCard` utilise `post.duration_seconds || 60` comme duree. Comme `duration_seconds` est null, il affiche toujours "1:00". Le composant ne lit jamais la vraie duree depuis l'element `<audio>` du navigateur.
+### 2. Template matching incorrect
+La fonction `getTemplateById` fait une correspondance exacte (`t.id === id`), mais les `template_id` en base sont des sous-categories comme `annonce_reunion`, `proverbe_travail`, `conte_animaux`. Les templates visuels ont des ids simples comme `conte`, `annonce`, `proverbe`. Resultat : tous les posts affichent le template par defaut au lieu du bon visuel.
 
-### 3. L'autoplay est bloque par le navigateur
-Le composant tente de lancer l'audio automatiquement quand la carte devient active (`isActive`), mais les navigateurs mobiles bloquent l'autoplay sans geste utilisateur. L'erreur est avalee silencieusement par `.catch(() => {})`, donc l'utilisateur voit le vinyle tourner mais n'entend rien.
+### 3. Preload audio insuffisant
+L'element `<audio>` utilise `preload="metadata"` meme quand la carte est active. Sur mobile, cela peut retarder significativement la lecture car l'audio n'est pas telecharge a l'avance.
 
-### 4. L'apercu audio dans TamTamCreatePost ne montre pas la vraie duree
-Apres l'enregistrement, `audioDuration` est 0 ou incorrect a cause de la closure perimee, donc l'apercu affiche "0:00".
+### 4. Attribut `loop` empeche la fin de lecture
+L'audio a l'attribut `loop`, ce qui empeche l'evenement `onEnded` de se declencher. Le progres ne se reinitialise jamais et l'utilisateur ne sait pas quand l'audio est termine.
 
-## Corrections prevues
+### 5. Affichage de duree "0:00"
+Quand `audioDuration` est 0 (pas encore charge), l'affichage montre "0:00" au lieu de "--:--" ou un indicateur de chargement.
 
-### Fichier 1 : `src/components/tamtam/TamTamCreatePost.tsx`
+## Corrections
 
-**Corriger la capture de la duree** : Utiliser un `useRef` pour stocker la duree d'enregistrement en temps reel, plutot que de dependre de l'etat React dans le callback `onstop`.
+### Fichier : `src/pages/tamtam/TamTamSocial.tsx`
 
+**A. Corriger `getTemplateById` (ligne 69-73)**
+Utiliser `startsWith` au lieu de l'egalite exacte pour matcher les sous-categories :
 ```text
-// Ajouter un ref pour la duree
-const recordingTimeRef = useRef(0);
-
-// Dans le timer d'enregistrement, mettre a jour le ref ET le state
-useEffect(() => {
-  if (isRecording) {
-    interval = setInterval(() => {
-      setRecordingTime(t => {
-        const newTime = Math.min(t + 0.1, maxRecordingTime);
-        recordingTimeRef.current = newTime;
-        return newTime;
-      });
-    }, 100);
+const getTemplateById = (id, category) => {
+  if (!id) return defaultTemplate;
+  const found = diskTemplates.find(t => id === t.id || id.startsWith(t.id));
+  // aussi chercher par sous-categorie
+  if (!found) {
+    // Chercher si l'id contient un mot-cle de template
+    const byKeyword = diskTemplates.find(t => id.includes(t.id));
+    if (byKeyword) return byKeyword;
   }
-}, [isRecording]);
-
-// Dans onstop, utiliser le ref
-mediaRecorder.onstop = () => {
-  const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    setAudioBase64(reader.result as string);
-    setAudioDuration(Math.round(recordingTimeRef.current));
-    setStep('preview');
-  };
-  reader.readAsDataURL(blob);
-  stream.getTracks().forEach(track => track.stop());
+  return found || (category === 'patrimoine' ? diskTemplates[0] : diskTemplates[3]);
 };
 ```
 
-### Fichier 2 : `src/pages/tamtam/TamTamSocial.tsx` (AudioFeedCard)
+**B. Supprimer `loop` de l'element audio (ligne 421)**
+Retirer l'attribut `loop` pour permettre a `onEnded` de fonctionner correctement et reinitialiser le progres.
 
-**A. Utiliser la duree reelle de l'element audio** : Ajouter un state `audioDuration` qui se met a jour via l'evenement `loadedmetadata` de l'element `<audio>`, au lieu de dependre de `post.duration_seconds`.
-
+**C. Changer `preload` dynamiquement (ligne 421)**
+Utiliser `preload="auto"` quand la carte est active pour charger l'audio immediatement, et `preload="none"` sinon :
 ```text
-const [audioDuration, setAudioDuration] = useState(post.duration_seconds || 0);
-
-// Dans un useEffect
-const audio = audioRef.current;
-const onMeta = () => setAudioDuration(audio.duration);
-audio.addEventListener('loadedmetadata', onMeta);
+<audio ref={audioRef} src={post.audio_url} preload={isActive ? "auto" : "none"} />
 ```
 
-**B. Supprimer l'autoplay et exiger un geste utilisateur** : Ne plus lancer `.play()` automatiquement quand `isActive` change. A la place, afficher clairement le bouton Play pour que l'utilisateur touche l'ecran. Cela respecte les politiques des navigateurs mobiles et garantit que l'audio se joue.
-
+**D. Afficher "--:--" quand la duree est inconnue (ligne 507)**
+Remplacer "0:00" par "--:--" quand `audioDuration` est 0 ou pas encore charge :
 ```text
-// Supprimer l'autoplay dans useEffect
-// L'audio ne demarre que quand l'utilisateur appuie sur Play
+<span>{audioDuration > 0 ? formatTime(audioDuration) : '--:--'}</span>
 ```
 
-**C. Afficher la duree correctement** : Utiliser `audioDuration` (depuis l'element audio) dans `formatTime` au lieu de la valeur statique de la base.
+**E. Ameliorer l'experience pour les posts sans audio (lignes 461-466)**
+Desactiver visuellement les boutons play/skip quand `hasAudio` est false. Ajouter une opacite reduite sur les controles.
 
-## Resume des fichiers modifies
+## Resume
 
-1. **`src/components/tamtam/TamTamCreatePost.tsx`** : Corriger la capture de duree avec un ref
-2. **`src/pages/tamtam/TamTamSocial.tsx`** : Corriger AudioFeedCard (duree reelle, suppression autoplay, affichage)
+- **1 fichier modifie** : `src/pages/tamtam/TamTamSocial.tsx`
+- Les posts avec audio existant joueront correctement (preload auto, pas de loop, duree reelle)
+- Les templates visuels correspondront aux vrais types de contenu
+- Les posts sans audio auront une UI claire et non-trompeuse
 
