@@ -1,71 +1,81 @@
 
-# Isoler les feeds, corriger les topics, et ajouter les gardes d'authentification
 
-## Probleme 1 : Les publications ne sont pas correctement isolees dans leurs feeds respectifs
+# Corriger la visibilite des publications Patrimoine et Voix du Village
 
-### Diagnostic
-- **Publications Patrimoine/Voix du Village** : `TamTamCreatePost.handleSubmit` envoie `category: selectedTemplate.category` (soit `'patrimoine'` ou `'village_voice'`). Mais dans `TamTamSocial.handleCreatePost`, le `topic` est ecrase par `createPostType` qui vaut `'patrimoine'` ou `'mavoix'` (pas `'village_voice'`).
-- **Filtrage patrimoine** (lignes 1055-1076) : Le fallback montre TOUS les posts audio quand aucun post specifique n'est trouve, melangeant les feeds.
-- **Filtrage mavoix** (lignes 1081-1100) : Meme fallback problematique, montre tous les posts audio.
-- **Feed creation** (lignes 1104-1118) : Inclut tous les posts video/photo sans verifier le `topic`, ce qui pourrait inclure des posts patrimoine avec media.
-- **Videos table** : Tous les videos de la table `videos` sont mappes avec `topic: 'creation'` en dur (ligne 1028), ce qui est correct pour cette table.
+## Diagnostic
 
-### Corrections
-**Fichier `src/pages/tamtam/TamTamSocial.tsx` :**
-- Dans `handleCreatePost` : mapper correctement `topic` depuis les donnees du template. Si `data.category === 'village_voice'`, mettre `topic: 'mavoix'`. Si `data.category === 'patrimoine'`, mettre `topic: 'patrimoine'`.
-- Supprimer les fallbacks dans `getCurrentPosts` qui montrent TOUS les posts audio quand aucun post specifique n'est trouve. Si un feed est vide, il doit rester vide (l'ecran "Aucun contenu" s'affiche deja).
-- Dans le filtre `creation` : exclure les posts dont le `topic` est `'patrimoine'` ou `'mavoix'`.
+L'analyse de la base de donnees montre que les publications Patrimoine et Voix du Village existent bien avec les bons topics (`patrimoine`, `mavoix`), mais leur `audio_url` est **NULL**. Le probleme vient de deux endroits :
 
-## Probleme 2 : Pas de garde d'authentification sur les interactions
+### Cause 1 : L'audio n'est pas uploade vers le stockage
 
-### Diagnostic
-- `usePostInteractions` : `toggleLike`, `toggleBookmark`, `sharePost`, `toggleFollow` font un `return` silencieux si `!currentUserId`. Aucun message d'erreur.
-- Commentaires : Le modal de commentaires verifie `userData?.user` mais sans message clair.
-- Publication : `useTamTamPosts.createPost` a deja un message "Connexion requise", c'est bon.
+Le flux de creation dans `TamTamCreatePost` enregistre l'audio en base64 (`audio_base64`) mais ne l'uploade jamais vers le stockage cloud. Quand le formulaire est soumis :
+- `TamTamCreatePost.handleSubmit` envoie `audio_base64` (pas `audio_url`)
+- `TamTamSocial.handleCreatePost` lit `data.audio_url` (qui est `undefined`)
+- `useTamTamPosts.createPost` stocke `audio_url: null` en base
 
-### Corrections
-**Fichier `src/hooks/usePostInteractions.ts` :**
-- Importer `useToast` et ajouter un message d'erreur clair dans chaque action quand l'utilisateur n'est pas connecte :
-  - `toggleLike` : "Connectez-vous pour aimer cette publication"
-  - `toggleBookmark` : "Connectez-vous pour sauvegarder cette publication"
-  - `sharePost` : le partage natif (copier le lien) peut rester sans auth, mais l'enregistrement en DB necessite auth : "Connectez-vous pour partager"
-  - `toggleFollow` : "Connectez-vous pour suivre cet utilisateur"
+### Cause 2 : Les filtres de feed exigent un audio non-vide
 
-**Fichier `src/pages/tamtam/TamTamSocial.tsx` :**
-- Dans le handler de commentaires (ligne 1208-1221) : ajouter un message clair "Connectez-vous pour commenter" avant le `return` si `!userData?.user`.
-- Dans `handleCreatePost` : le guard existe deja dans `createPost`, mais ajouter un toast visible "Connectez-vous pour publier" au niveau du Social aussi.
-- Dans `CreateMenu` : avant d'ouvrir la creation, verifier l'auth et afficher un message si non connecte.
+Les filtres `patrimoine` et `mavoix` dans `getCurrentPosts` verifient tous les deux :
+```text
+const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
+return hasAudio && (post.topic === 'patrimoine' || ...);
+```
+Comme `audio_url` est NULL, les posts sont systematiquement filtres.
 
-## Probleme 3 : Chaque publication a son auteur
+## Corrections
 
-### Diagnostic
-- `useTamTamPosts.createPost` assigne deja `user_id: userData.user.id` (ligne 281).
-- `useVideoPublish` assigne `user_id: userId` (ligne 113).
-- Les profils sont joints via `tamtam_profiles` dans les requetes de fetch.
-- Ceci est deja correct.
+### 1. Uploader l'audio base64 vers le stockage (TamTamSocial.tsx)
 
-## Resume des fichiers a modifier
+Dans `handleCreatePost`, avant d'appeler `createPost`, convertir le `audio_base64` en Blob, l'uploader vers le bucket `tamtam-audio`, et passer l'URL publique resultante comme `audio_url`.
 
-1. **`src/pages/tamtam/TamTamSocial.tsx`** :
-   - Corriger le mapping `topic` dans `handleCreatePost` pour utiliser `data.category`
-   - Supprimer les fallbacks dans `getCurrentPosts` (patrimoine et mavoix)
-   - Filtrer les posts creation pour exclure `topic === 'patrimoine'` et `topic === 'mavoix'`
-   - Ajouter garde auth avant ouverture des menus de creation
-   - Ajouter message d'erreur auth dans le handler de commentaires
+### 2. Relaxer les filtres de feed (TamTamSocial.tsx)
 
-2. **`src/hooks/usePostInteractions.ts`** :
-   - Importer `useToast`
-   - Ajouter des messages toast clairs pour chaque action quand l'utilisateur n'est pas connecte (like, bookmark, share, follow)
+Modifier les filtres `patrimoine` et `mavoix` pour ne plus exiger `hasAudio`. Un post avec le bon `topic` doit apparaitre dans son feed meme s'il n'a pas d'audio (cas d'erreur d'upload ou de contenu texte). L'audio reste le contenu principal mais n'est plus bloquant pour l'affichage.
 
-## Details techniques
+### 3. Corriger les posts existants deja en base (optionnel)
 
-### getCurrentPosts corrige (TamTamSocial.tsx)
+Les 4 posts existants avec `audio_url: null` resteront visibles grace au filtre relaxe. Si l'utilisateur re-publie, l'audio sera correctement uploade.
+
+## Fichiers a modifier
+
+### `src/pages/tamtam/TamTamSocial.tsx`
+
+**handleCreatePost** : Ajouter la logique d'upload audio base64 vers le stockage :
+
+```text
+const handleCreatePost = useCallback(async (data: any) => {
+  try {
+    const topic = data.category === 'village_voice' ? 'mavoix' : (data.category || createPostType);
+    
+    // Upload audio base64 to storage if present
+    let audioUrl = data.audio_url || null;
+    if (!audioUrl && data.audio_base64) {
+      const response = await fetch(data.audio_base64);
+      const blob = await response.blob();
+      const fileName = `posts/audio_${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('tamtam-audio')
+        .upload(fileName, blob, { contentType: 'audio/webm' });
+      if (!uploadError && uploadData) {
+        const { data: urlData } = supabase.storage.from('tamtam-audio').getPublicUrl(uploadData.path);
+        audioUrl = urlData.publicUrl;
+      }
+    }
+    
+    const postData = { ...data, audio_url: audioUrl, topic };
+    await createPost(postData);
+    // ... rest unchanged
+  }
+}, [...]);
+```
+
+**getCurrentPosts** : Supprimer la condition `hasAudio` obligatoire :
+
 ```text
 case 'patrimoine':
   return allPosts.filter(p => {
     const post = p as any;
-    const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
-    return hasAudio && (
+    return (
       post.topic === 'patrimoine' || 
       post.topic === 'culture' || 
       post.template_id?.includes('conte') ||
@@ -78,8 +88,7 @@ case 'patrimoine':
 case 'mavoix':
   return allPosts.filter(p => {
     const post = p as any;
-    const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
-    return hasAudio && (
+    return (
       post.topic === 'mavoix' || 
       post.topic === 'annonce' ||
       post.topic === 'village_voice' ||
@@ -88,34 +97,14 @@ case 'mavoix':
       post.template_id?.includes('merci')
     );
   });
-
-case 'creation':
-  const creationFromPosts = allPosts.filter(p => {
-    const post = p as any;
-    return (post.media_type === 'video' || post.media_type === 'photo') && 
-           post.media_url && post.media_url.trim().length > 0 &&
-           post.topic !== 'patrimoine' && post.topic !== 'mavoix';
-  });
-  // ... merge with videosAsVideoCards
 ```
 
-### usePostInteractions.ts - gardes auth
-```text
-const toggleLike = useCallback(async () => {
-  if (!currentUserId) {
-    toast({ title: '🔐 Connexion requise', description: 'Connectez-vous pour aimer cette publication', variant: 'destructive' });
-    return;
-  }
-  if (!postId) return;
-  // ... reste du code
-}, [...]);
-```
+### `src/pages/tamtam/TamTamHome.tsx`
 
-### handleCreatePost corrige (TamTamSocial.tsx)
-```text
-const postData = {
-  ...data,
-  audio_url: data.audio_url || null,
-  topic: data.category === 'village_voice' ? 'mavoix' : (data.category || createPostType),
-};
-```
+Meme correction d'upload audio base64 dans le `handleCreatePost` de cette page.
+
+## Resume
+
+- **2 fichiers modifies** : `TamTamSocial.tsx` et `TamTamHome.tsx`
+- Les publications existantes deviendront visibles immediatement grace au filtre relaxe
+- Les nouvelles publications auront leur audio correctement uploade et stocke
