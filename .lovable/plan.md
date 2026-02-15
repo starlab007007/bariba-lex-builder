@@ -1,110 +1,96 @@
 
 
-# Corriger la visibilite des publications Patrimoine et Voix du Village
+# Corriger le feed audio (Patrimoine et Voix du Village) -- Toutes les fonctionnalites
 
-## Diagnostic
+## Problemes identifies
 
-L'analyse de la base de donnees montre que les publications Patrimoine et Voix du Village existent bien avec les bons topics (`patrimoine`, `mavoix`), mais leur `audio_url` est **NULL**. Le probleme vient de deux endroits :
+1. **Pas de son / audio impossible a jouer** : Les 4 posts existants ont `audio_url: NULL` (crees avant l'ajout de la logique d'upload). L'element `<audio>` n'a pas de source et ne peut rien jouer.
 
-### Cause 1 : L'audio n'est pas uploade vers le stockage
+2. **Like, Sauvegarder, Suivre ne persistent pas** : Le composant `AudioFeedCard` utilise un etat local (`useState`) pour toutes les interactions. Rien n'est envoye a la base de donnees. Le hook `usePostInteractions` (qui gere la persistance) n'est pas utilise.
 
-Le flux de creation dans `TamTamCreatePost` enregistre l'audio en base64 (`audio_base64`) mais ne l'uploade jamais vers le stockage cloud. Quand le formulaire est soumis :
-- `TamTamCreatePost.handleSubmit` envoie `audio_base64` (pas `audio_url`)
-- `TamTamSocial.handleCreatePost` lit `data.audio_url` (qui est `undefined`)
-- `useTamTamPosts.createPost` stocke `audio_url: null` en base
+3. **Partager et Liker ne sont pas connectes** : Le parent (`TamTamSocial`) passe seulement `onComment` a `AudioFeedCard`, mais les props `onLike` et `onShare` sont requises par l'interface mais jamais fournies.
 
-### Cause 2 : Les filtres de feed exigent un audio non-vide
+4. **Pas de profil auteur** : L'avatar est un emoji statique `👤`, pas de nom d'utilisateur, pas de navigation vers le profil de l'auteur. Le `VideoFeedCard` affiche le vrai avatar, le `@username` et la date.
 
-Les filtres `patrimoine` et `mavoix` dans `getCurrentPosts` verifient tous les deux :
-```text
-const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
-return hasAudio && (post.topic === 'patrimoine' || ...);
-```
-Comme `audio_url` est NULL, les posts sont systematiquement filtres.
+5. **Pas de gestion de l'absence d'audio** : Si `audio_url` est null, aucun message n'indique que l'audio est manquant.
 
 ## Corrections
 
-### 1. Uploader l'audio base64 vers le stockage (TamTamSocial.tsx)
+### 1. Refondre `AudioFeedCard` (src/components/feed/AudioFeedCard.tsx)
 
-Dans `handleCreatePost`, avant d'appeler `createPost`, convertir le `audio_base64` en Blob, l'uploader vers le bucket `tamtam-audio`, et passer l'URL publique resultante comme `audio_url`.
+Aligner sur le meme modele que `VideoFeedCard` :
 
-### 2. Relaxer les filtres de feed (TamTamSocial.tsx)
+- **Integrer `usePostInteractions`** : Remplacer tous les `useState` locaux (isLiked, isSaved, isFollowing) par le hook `usePostInteractions(post.id, authorId)` qui gere la persistance en base de donnees et les gardes d'authentification.
 
-Modifier les filtres `patrimoine` et `mavoix` pour ne plus exiger `hasAudio`. Un post avec le bon `topic` doit apparaitre dans son feed meme s'il n'a pas d'audio (cas d'erreur d'upload ou de contenu texte). L'audio reste le contenu principal mais n'est plus bloquant pour l'affichage.
+- **Afficher les informations de l'auteur** : Extraire `profile.display_name`, `profile.username`, `profile.avatar_url` du post (meme logique que VideoFeedCard). Afficher le vrai avatar, le `@username` et la date en bas a gauche.
 
-### 3. Corriger les posts existants deja en base (optionnel)
+- **Navigation vers le profil** : Cliquer sur l'avatar ou le nom navigue vers `/fitila/profile/{authorId}`.
 
-Les 4 posts existants avec `audio_url: null` resteront visibles grace au filtre relaxe. Si l'utilisateur re-publie, l'audio sera correctement uploade.
+- **Supprimer les props `onLike` et `onShare`** de l'interface : Les gerer en interne via `usePostInteractions` (comme le fait deja partiellement le composant). Garder uniquement `onComment` comme callback externe.
+
+- **Gestion audio manquant** : Si `audio_url` est null ou vide, afficher un indicateur visuel ("Audio non disponible") et desactiver les controles de lecture.
+
+### 2. Mettre a jour l'appel dans `TamTamSocial.tsx` (ligne 1172-1178)
+
+Supprimer les props `onLike` et `onShare` qui ne sont plus necessaires (geres en interne par `usePostInteractions`).
+
+## Details techniques
+
+### AudioFeedCard.tsx -- Nouveautes principales
+
+```text
+// Imports ajoutes
+import { usePostInteractions } from '@/hooks/usePostInteractions';
+import { useNavigate } from 'react-router-dom';
+
+// Extraction des donnees auteur (meme logique que VideoFeedCard)
+const authorName = post.profile?.display_name || 'Utilisateur';
+const authorUsername = post.profile?.username ? `@${post.profile.username}` : '@fitila_user';
+const avatarUrl = post.profile?.avatar_url;
+const authorId = post.profile?.user_id || post.user_id;
+
+// Hook d'interactions persistantes
+const {
+  isLiked, likesCount, toggleLike,
+  isBookmarked, toggleBookmark,
+  sharesCount, sharePost,
+  isFollowing, toggleFollow,
+} = usePostInteractions(post.id, authorId);
+
+// Navigation vers profil
+const handleProfileClick = () => {
+  if (authorId) navigate(`/fitila/profile/${authorId}`);
+};
+
+// Gestion audio manquant
+const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
+```
+
+### Interface simplifiee
+
+```text
+interface AudioFeedCardProps {
+  post: any;
+  isActive: boolean;
+  onComment: () => void;
+  category: 'patrimoine' | 'mavoix';
+}
+```
+
+### Section auteur (en bas a gauche, remplace le simple emoji)
+
+Affichera le vrai avatar, `@username`, et la date de publication -- meme disposition que VideoFeedCard.
+
+### Section sidebar droite
+
+Les boutons Like, Comment, Partager, Sauvegarder utiliseront les fonctions de `usePostInteractions` (`toggleLike`, `toggleBookmark`, `sharePost`, `toggleFollow`) au lieu de l'etat local.
+
+### Audio manquant
+
+Si `hasAudio` est false, le disque vinyle affichera un petit badge "Pas d'audio" et les boutons play/skip seront desactives.
 
 ## Fichiers a modifier
 
-### `src/pages/tamtam/TamTamSocial.tsx`
+1. **`src/components/feed/AudioFeedCard.tsx`** : Refonte complete (interactions, auteur, gestion audio)
+2. **`src/pages/tamtam/TamTamSocial.tsx`** : Supprimer `onLike`/`onShare` de l'appel AudioFeedCard (lignes 1172-1178)
 
-**handleCreatePost** : Ajouter la logique d'upload audio base64 vers le stockage :
-
-```text
-const handleCreatePost = useCallback(async (data: any) => {
-  try {
-    const topic = data.category === 'village_voice' ? 'mavoix' : (data.category || createPostType);
-    
-    // Upload audio base64 to storage if present
-    let audioUrl = data.audio_url || null;
-    if (!audioUrl && data.audio_base64) {
-      const response = await fetch(data.audio_base64);
-      const blob = await response.blob();
-      const fileName = `posts/audio_${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('tamtam-audio')
-        .upload(fileName, blob, { contentType: 'audio/webm' });
-      if (!uploadError && uploadData) {
-        const { data: urlData } = supabase.storage.from('tamtam-audio').getPublicUrl(uploadData.path);
-        audioUrl = urlData.publicUrl;
-      }
-    }
-    
-    const postData = { ...data, audio_url: audioUrl, topic };
-    await createPost(postData);
-    // ... rest unchanged
-  }
-}, [...]);
-```
-
-**getCurrentPosts** : Supprimer la condition `hasAudio` obligatoire :
-
-```text
-case 'patrimoine':
-  return allPosts.filter(p => {
-    const post = p as any;
-    return (
-      post.topic === 'patrimoine' || 
-      post.topic === 'culture' || 
-      post.template_id?.includes('conte') ||
-      post.template_id?.includes('chant') ||
-      post.template_id?.includes('proverbe') ||
-      (post.culture_score && post.culture_score > 0)
-    );
-  });
-
-case 'mavoix':
-  return allPosts.filter(p => {
-    const post = p as any;
-    return (
-      post.topic === 'mavoix' || 
-      post.topic === 'annonce' ||
-      post.topic === 'village_voice' ||
-      post.template_id?.includes('annonce') ||
-      post.template_id?.includes('question') ||
-      post.template_id?.includes('merci')
-    );
-  });
-```
-
-### `src/pages/tamtam/TamTamHome.tsx`
-
-Meme correction d'upload audio base64 dans le `handleCreatePost` de cette page.
-
-## Resume
-
-- **2 fichiers modifies** : `TamTamSocial.tsx` et `TamTamHome.tsx`
-- Les publications existantes deviendront visibles immediatement grace au filtre relaxe
-- Les nouvelles publications auront leur audio correctement uploade et stocke
