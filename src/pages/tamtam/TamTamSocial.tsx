@@ -67,8 +67,13 @@ const diskTemplates: DiskTemplate[] = [
 ];
 
 const getTemplateById = (id: string | undefined, category: 'patrimoine' | 'mavoix'): DiskTemplate => {
-  const found = diskTemplates.find(t => t.id === id);
+  if (!id) return category === 'patrimoine' ? diskTemplates[0] : diskTemplates[3];
+  // Exact match first, then prefix match (e.g. 'conte_animaux' starts with 'conte')
+  const found = diskTemplates.find(t => t.id === id || id.startsWith(t.id));
   if (found) return found;
+  // Keyword match as fallback
+  const byKeyword = diskTemplates.find(t => id.includes(t.id));
+  if (byKeyword) return byKeyword;
   return category === 'patrimoine' ? diskTemplates[0] : diskTemplates[3];
 };
 
@@ -418,7 +423,7 @@ const AudioFeedCard: React.FC<{
     <div className="h-screen w-full snap-start snap-always relative overflow-hidden">
       {/* Audio element */}
       {hasAudio && (
-        <audio ref={audioRef} src={post.audio_url} loop preload="metadata" />
+        <audio ref={audioRef} src={post.audio_url} preload={isActive ? 'auto' : 'none'} />
       )}
       
       {/* Background */}
@@ -497,14 +502,14 @@ const AudioFeedCard: React.FC<{
         )}
 
         {/* Controls */}
-        <div className="flex items-center gap-3 mb-2">
+        <div className={`flex items-center gap-3 mb-2 ${!hasAudio ? 'opacity-40 pointer-events-none' : ''}`}>
           <span className="text-white/60 text-xs w-10 text-right">{formatTime(currentTime)}</span>
           <motion.button whileTap={{ scale: 0.9 }} onClick={skipBack} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipBack className="w-4 h-4 text-white" /></motion.button>
           <motion.button whileTap={{ scale: 0.9 }} onClick={togglePlay} className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-xl">
             {isPlaying ? <Pause className="w-7 h-7 text-gray-800" /> : <Play className="w-7 h-7 text-gray-800 ml-1" />}
           </motion.button>
           <motion.button whileTap={{ scale: 0.9 }} onClick={skipForward} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipForward className="w-4 h-4 text-white" /></motion.button>
-          <span className="text-white/60 text-xs w-10">{formatTime(audioDuration)}</span>
+          <span className="text-white/60 text-xs w-10">{audioDuration > 0 ? formatTime(audioDuration) : '--:--'}</span>
         </div>
 
         {/* Speed & Volume */}

@@ -30,8 +30,11 @@ const diskTemplates: DiskTemplate[] = [
 ];
 
 const getTemplateById = (id: string | undefined, category: 'patrimoine' | 'mavoix'): DiskTemplate => {
-  const found = diskTemplates.find(t => t.id === id);
+  if (!id) return category === 'patrimoine' ? diskTemplates[0] : diskTemplates[3];
+  const found = diskTemplates.find(t => t.id === id || id.startsWith(t.id));
   if (found) return found;
+  const byKeyword = diskTemplates.find(t => id.includes(t.id));
+  if (byKeyword) return byKeyword;
   return category === 'patrimoine' ? diskTemplates[0] : diskTemplates[3];
 };
 
