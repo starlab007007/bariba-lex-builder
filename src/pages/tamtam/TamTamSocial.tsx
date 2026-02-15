@@ -335,9 +335,11 @@ const AudioFeedCard: React.FC<{
   category: 'patrimoine' | 'mavoix';
   onComment: () => void;
 }> = ({ post, isActive, category, onComment }) => {
+  const navigate = useNavigate();
   const template = getTemplateById(post.template_id, category);
   const authorId = post.user_id || post.profile?.user_id;
-  const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow } = usePostInteractions(post.id, authorId);
+  const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow, currentUserId } = usePostInteractions(post.id, authorId);
+  const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -345,6 +347,7 @@ const AudioFeedCard: React.FC<{
   const duration = post.duration_seconds || 60;
 
   useEffect(() => {
+    if (!hasAudio) return;
     if (isActive && audioRef.current) {
       audioRef.current.play().catch(() => {});
       setIsPlaying(true);
@@ -352,7 +355,7 @@ const AudioFeedCard: React.FC<{
       audioRef.current.pause();
       setIsPlaying(false);
     }
-  }, [isActive]);
+  }, [isActive, hasAudio]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -366,11 +369,10 @@ const AudioFeedCard: React.FC<{
   }, []);
 
   const togglePlay = () => {
-    if (audioRef.current) {
-      isPlaying ? audioRef.current.pause() : audioRef.current.play();
-      setIsPlaying(!isPlaying);
-      triggerFeedback('click');
-    }
+    if (!hasAudio || !audioRef.current) return;
+    isPlaying ? audioRef.current.pause() : audioRef.current.play();
+    setIsPlaying(!isPlaying);
+    triggerFeedback('click');
   };
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -380,8 +382,8 @@ const AudioFeedCard: React.FC<{
 
   return (
     <div className="h-screen w-full snap-start snap-always relative overflow-hidden">
-      {/* Audio uniquement si l'utilisateur a enregistré/sélectionné un audio */}
-      {post.audio_url && (
+      {/* Audio element */}
+      {hasAudio && (
         <audio ref={audioRef} src={post.audio_url} loop preload="metadata" />
       )}
       
@@ -421,6 +423,13 @@ const AudioFeedCard: React.FC<{
             <div className="w-full h-full bg-gradient-to-r from-gray-400 to-gray-300 rounded-full shadow" />
             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow" />
           </motion.div>
+
+          {/* No audio badge */}
+          {!hasAudio && (
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm">
+              <span className="text-white/80 text-xs font-medium">🔇 Pas d'audio</span>
+            </div>
+          )}
         </div>
 
         {/* Waveform */}
@@ -514,17 +523,25 @@ const AudioFeedCard: React.FC<{
         </motion.button>
       </div>
 
-      {/* Author avatar bottom left */}
-      <div className="absolute left-4 bottom-24">
-        <div className="relative">
-          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center border-2 border-white shadow-lg">
-            <span className="text-lg">👤</span>
+      {/* Author info bottom left */}
+      <div className="absolute left-4 bottom-24 flex items-end gap-3">
+        <div className="relative cursor-pointer" onClick={() => authorId && navigate(`/fitila/profile/${authorId}`)}>
+          <div className="w-12 h-12 rounded-full border-2 border-white shadow-lg overflow-hidden bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center">
+            {post.profile?.avatar_url ? (
+              <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-lg">👤</span>
+            )}
           </div>
-          {!isFollowing && (
-            <motion.button whileTap={{ scale: 0.9 }} onClick={handleFollow} className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#FF7A00] flex items-center justify-center">
+          {!isFollowing && authorId && currentUserId !== authorId && (
+            <motion.button whileTap={{ scale: 0.9 }} onClick={(e) => { e.stopPropagation(); handleFollow(); }} className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#FF7A00] flex items-center justify-center">
               <Plus className="w-3 h-3 text-white" strokeWidth={3} />
             </motion.button>
           )}
+        </div>
+        <div className="mb-1 cursor-pointer" onClick={() => authorId && navigate(`/fitila/profile/${authorId}`)}>
+          <p className="text-white text-sm font-bold leading-tight">{post.profile?.display_name || 'Utilisateur'}</p>
+          <p className="text-white/60 text-xs">{post.profile?.username ? `@${post.profile.username}` : '@fitila_user'}</p>
         </div>
       </div>
     </div>
