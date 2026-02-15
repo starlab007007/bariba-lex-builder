@@ -194,11 +194,19 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordingTimeRef = useRef(0);
   const maxRecordingTime = 120;
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    if (isRecording) interval = setInterval(() => setRecordingTime(t => Math.min(t + 0.1, maxRecordingTime)), 100);
+    if (isRecording) {
+      recordingTimeRef.current = 0;
+      interval = setInterval(() => setRecordingTime(t => {
+        const newTime = Math.min(t + 0.1, maxRecordingTime);
+        recordingTimeRef.current = newTime;
+        return newTime;
+      }), 100);
+    }
     return () => clearInterval(interval);
   }, [isRecording]);
 
@@ -232,7 +240,11 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const reader = new FileReader();
-        reader.onloadend = () => { setAudioBase64(reader.result as string); setAudioDuration(recordingTime); setStep('preview'); };
+        reader.onloadend = () => {
+          setAudioBase64(reader.result as string);
+          setAudioDuration(Math.round(recordingTimeRef.current));
+          setStep('preview');
+        };
         reader.readAsDataURL(blob);
         stream.getTracks().forEach(track => track.stop());
       };
