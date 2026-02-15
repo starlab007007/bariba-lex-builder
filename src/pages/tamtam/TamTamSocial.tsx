@@ -343,36 +343,70 @@ const AudioFeedCard: React.FC<{
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(post.duration_seconds || 0);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const duration = post.duration_seconds || 60;
 
+  // Pause audio when card becomes inactive (NO autoplay - requires user gesture)
   useEffect(() => {
-    if (!hasAudio) return;
-    if (isActive && audioRef.current) {
-      audioRef.current.play().catch(() => {});
-      setIsPlaying(true);
-    } else if (audioRef.current) {
+    if (!isActive && audioRef.current && isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     }
-  }, [isActive, hasAudio]);
+  }, [isActive, isPlaying]);
 
+  // Listen for real duration from audio element metadata
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const update = () => {
-      setProgress((audio.currentTime / audio.duration) * 100 || 0);
-      setCurrentTime(audio.currentTime);
+    const onMeta = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setAudioDuration(audio.duration);
+      }
     };
+    const update = () => {
+      const dur = audio.duration;
+      if (dur && isFinite(dur)) {
+        setProgress((audio.currentTime / dur) * 100);
+        setCurrentTime(audio.currentTime);
+      }
+    };
+    const onEnded = () => {
+      setIsPlaying(false);
+      setProgress(0);
+      setCurrentTime(0);
+    };
+    audio.addEventListener('loadedmetadata', onMeta);
     audio.addEventListener('timeupdate', update);
-    return () => audio.removeEventListener('timeupdate', update);
-  }, []);
+    audio.addEventListener('ended', onEnded);
+    // If metadata already loaded
+    if (audio.duration && isFinite(audio.duration)) {
+      setAudioDuration(audio.duration);
+    }
+    return () => {
+      audio.removeEventListener('loadedmetadata', onMeta);
+      audio.removeEventListener('timeupdate', update);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, [hasAudio]);
 
   const togglePlay = () => {
     if (!hasAudio || !audioRef.current) return;
-    isPlaying ? audioRef.current.pause() : audioRef.current.play();
-    setIsPlaying(!isPlaying);
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().then(() => setIsPlaying(true)).catch((err) => {
+        console.warn('Audio play failed:', err);
+      });
+    }
     triggerFeedback('click');
+  };
+
+  const skipBack = () => {
+    if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+  };
+  const skipForward = () => {
+    if (audioRef.current) audioRef.current.currentTime = Math.min(audioRef.current.duration || 0, audioRef.current.currentTime + 10);
   };
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -465,12 +499,12 @@ const AudioFeedCard: React.FC<{
         {/* Controls */}
         <div className="flex items-center gap-3 mb-2">
           <span className="text-white/60 text-xs w-10 text-right">{formatTime(currentTime)}</span>
-          <motion.button whileTap={{ scale: 0.9 }} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipBack className="w-4 h-4 text-white" /></motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={skipBack} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipBack className="w-4 h-4 text-white" /></motion.button>
           <motion.button whileTap={{ scale: 0.9 }} onClick={togglePlay} className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-xl">
             {isPlaying ? <Pause className="w-7 h-7 text-gray-800" /> : <Play className="w-7 h-7 text-gray-800 ml-1" />}
           </motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipForward className="w-4 h-4 text-white" /></motion.button>
-          <span className="text-white/60 text-xs w-10">{formatTime(duration)}</span>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={skipForward} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipForward className="w-4 h-4 text-white" /></motion.button>
+          <span className="text-white/60 text-xs w-10">{formatTime(audioDuration)}</span>
         </div>
 
         {/* Speed & Volume */}
