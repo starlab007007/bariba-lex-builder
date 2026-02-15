@@ -893,15 +893,35 @@ export default function TamTamSocial() {
     else { navigator.clipboard.writeText(window.location.href); toast({ title: "🔗 Lien copié!" }); }
   }, [toast]);
 
-  // IMPORTANT: Fonction de création avec audio_url par défaut
+  // IMPORTANT: Fonction de création avec upload audio base64
   const handleCreatePost = useCallback(async (data: any) => {
     try {
-      // Ne pas utiliser d'audio par défaut - uniquement l'audio enregistré par l'utilisateur
-      // Map category correctly to topic
       const topic = data.category === 'village_voice' ? 'mavoix' : (data.category || createPostType);
+      
+      // Upload audio base64 to storage if present
+      let audioUrl = data.audio_url || null;
+      if (!audioUrl && data.audio_base64) {
+        try {
+          const response = await fetch(data.audio_base64);
+          const blob = await response.blob();
+          const fileName = `posts/audio_${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('tamtam-audio')
+            .upload(fileName, blob, { contentType: blob.type || 'audio/webm' });
+          if (!uploadError && uploadData) {
+            const { data: urlData } = supabase.storage.from('tamtam-audio').getPublicUrl(uploadData.path);
+            audioUrl = urlData.publicUrl;
+          } else {
+            console.error('[TamTamSocial] Audio upload error:', uploadError);
+          }
+        } catch (uploadErr) {
+          console.error('[TamTamSocial] Audio base64 upload failed:', uploadErr);
+        }
+      }
+      
       const postData = {
         ...data,
-        audio_url: data.audio_url || null,
+        audio_url: audioUrl,
         topic,
       };
       
@@ -1054,8 +1074,7 @@ export default function TamTamSocial() {
       case 'patrimoine':
         return allPosts.filter(p => {
           const post = p as any;
-          const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
-          return hasAudio && (
+          return (
             post.topic === 'patrimoine' || 
             post.topic === 'culture' || 
             post.template_id?.includes('conte') ||
@@ -1068,8 +1087,7 @@ export default function TamTamSocial() {
       case 'mavoix':
         return allPosts.filter(p => {
           const post = p as any;
-          const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
-          return hasAudio && (
+          return (
             post.topic === 'mavoix' || 
             post.topic === 'annonce' ||
             post.topic === 'village_voice' ||
