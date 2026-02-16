@@ -1,66 +1,81 @@
 
+# Corriger la lecture audio sur iOS Safari et les interactions du feed
 
-# Corriger la lecture audio dans les feeds Patrimoine et Voix du Village
+## Diagnostic
 
-## Problemes identifies
+### Cause principale : Incompatibilite MIME type sur iOS Safari
+Le fichier `audioMimeUtils.ts` existe dans le projet avec toute la logique necessaire pour detecter le bon format audio selon le navigateur, mais il n'est **jamais utilise** dans `TamTamCreatePost.tsx`.
 
-### 1. Pas d'audio enregistre sur les anciens posts
-4 des 6 posts en base ont `audio_url: NULL` (crees avant la correction d'upload). Ces posts ne pourront jamais jouer d'audio. Il faut ameliorer l'experience utilisateur pour ces cas.
+Voici ce qui se passe :
+1. L'enregistrement dans `TamTamCreatePost` utilise `new MediaRecorder(stream)` sans specifier de MIME type
+2. Sur iOS Safari, le MediaRecorder enregistre en `audio/mp4` par defaut
+3. Mais le blob est force a `{ type: 'audio/webm' }` (ligne 241)
+4. Le fichier est uploade avec l'extension `.webm` et le contentType `audio/webm`
+5. Quand iOS Safari essaie de lire ce fichier `.webm`, il echoue car Safari ne supporte pas le format WebM audio
 
-### 2. Template matching incorrect
-La fonction `getTemplateById` fait une correspondance exacte (`t.id === id`), mais les `template_id` en base sont des sous-categories comme `annonce_reunion`, `proverbe_travail`, `conte_animaux`. Les templates visuels ont des ids simples comme `conte`, `annonce`, `proverbe`. Resultat : tous les posts affichent le template par defaut au lieu du bon visuel.
+Les 3 fichiers audio existants en base ont tous ete uploades en `.webm` avec le MIME `audio/webm` -- ils sont donc injouables sur Safari/iOS.
 
-### 3. Preload audio insuffisant
-L'element `<audio>` utilise `preload="metadata"` meme quand la carte est active. Sur mobile, cela peut retarder significativement la lecture car l'audio n'est pas telecharge a l'avance.
-
-### 4. Attribut `loop` empeche la fin de lecture
-L'audio a l'attribut `loop`, ce qui empeche l'evenement `onEnded` de se declencher. Le progres ne se reinitialise jamais et l'utilisateur ne sait pas quand l'audio est termine.
-
-### 5. Affichage de duree "0:00"
-Quand `audioDuration` est 0 (pas encore charge), l'affichage montre "0:00" au lieu de "--:--" ou un indicateur de chargement.
+### Probleme secondaire : Le bouton Suivre
+Le bouton "Suivre" fonctionne techniquement (via `usePostInteractions`), mais necessite que l'utilisateur soit connecte. Si non connecte, un toast s'affiche. Ce hook est deja correctement implemente.
 
 ## Corrections
 
-### Fichier : `src/pages/tamtam/TamTamSocial.tsx`
+### Fichier 1 : `src/components/tamtam/TamTamCreatePost.tsx`
 
-**A. Corriger `getTemplateById` (ligne 69-73)**
-Utiliser `startsWith` au lieu de l'egalite exacte pour matcher les sous-categories :
+**A. Importer et utiliser les utilitaires MIME audio existants**
+
+Ajouter l'import de `getSupportedAudioMimeType` et `getAudioBlobType` depuis `@/lib/audioMimeUtils`. Utiliser le bon MIME type pour le MediaRecorder et le Blob :
+
+- `new MediaRecorder(stream, { mimeType: getSupportedAudioMimeType() })` au lieu de `new MediaRecorder(stream)`
+- `new Blob(chunks, { type: getAudioBlobType() })` au lieu de `new Blob(chunks, { type: 'audio/webm' })`
+
+### Fichier 2 : `src/pages/tamtam/TamTamSocial.tsx` (handleCreatePost)
+
+**A. Utiliser le bon MIME type et la bonne extension lors de l'upload**
+
+Actuellement l'upload force l'extension `.webm`. Il faut :
+- Detecter le type du blob (qui sera `audio/mp4` sur iOS ou `audio/webm` sur Chrome)
+- Utiliser la bonne extension (`.mp4` ou `.webm`) dans le nom de fichier
+- Passer le vrai `contentType` du blob
+
+### Fichier 3 : `src/pages/tamtam/TamTamHome.tsx` (handleCreatePost)
+
+Meme correction que pour TamTamSocial : extension et contentType dynamiques.
+
+## Details techniques
+
+### TamTamCreatePost.tsx
+
 ```text
-const getTemplateById = (id, category) => {
-  if (!id) return defaultTemplate;
-  const found = diskTemplates.find(t => id === t.id || id.startsWith(t.id));
-  // aussi chercher par sous-categorie
-  if (!found) {
-    // Chercher si l'id contient un mot-cle de template
-    const byKeyword = diskTemplates.find(t => id.includes(t.id));
-    if (byKeyword) return byKeyword;
-  }
-  return found || (category === 'patrimoine' ? diskTemplates[0] : diskTemplates[3]);
-};
+// Ajouter l'import
+import { getSupportedAudioMimeType, getAudioBlobType } from '@/lib/audioMimeUtils';
+
+// Dans startRecording :
+const mimeType = getSupportedAudioMimeType();
+const mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+// Dans onstop :
+const blobType = getAudioBlobType();
+const blob = new Blob(chunksRef.current, { type: blobType });
 ```
 
-**B. Supprimer `loop` de l'element audio (ligne 421)**
-Retirer l'attribut `loop` pour permettre a `onEnded` de fonctionner correctement et reinitialiser le progres.
+### TamTamSocial.tsx (handleCreatePost, lignes 958-976)
 
-**C. Changer `preload` dynamiquement (ligne 421)**
-Utiliser `preload="auto"` quand la carte est active pour charger l'audio immediatement, et `preload="none"` sinon :
 ```text
-<audio ref={audioRef} src={post.audio_url} preload={isActive ? "auto" : "none"} />
+// Determiner l'extension depuis le type du blob
+const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+const fileName = `posts/audio_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+// Upload avec le vrai contentType
+.upload(fileName, blob, { contentType: blob.type || 'audio/webm' });
 ```
 
-**D. Afficher "--:--" quand la duree est inconnue (ligne 507)**
-Remplacer "0:00" par "--:--" quand `audioDuration` est 0 ou pas encore charge :
-```text
-<span>{audioDuration > 0 ? formatTime(audioDuration) : '--:--'}</span>
-```
+### TamTamHome.tsx (handleCreatePost, lignes 314-329)
 
-**E. Ameliorer l'experience pour les posts sans audio (lignes 461-466)**
-Desactiver visuellement les boutons play/skip quand `hasAudio` est false. Ajouter une opacite reduite sur les controles.
+Meme correction : extension dynamique basee sur le type du blob.
 
 ## Resume
 
-- **1 fichier modifie** : `src/pages/tamtam/TamTamSocial.tsx`
-- Les posts avec audio existant joueront correctement (preload auto, pas de loop, duree reelle)
-- Les templates visuels correspondront aux vrais types de contenu
-- Les posts sans audio auront une UI claire et non-trompeuse
-
+- **3 fichiers modifies**
+- **Cause racine** : Le MIME type `audio/webm` est incompatible avec iOS Safari. Le projet a deja les utilitaires necessaires (`audioMimeUtils.ts`) mais ne les utilise pas dans le flux d'enregistrement
+- **Resultat** : Les nouveaux enregistrements seront en `audio/mp4` sur iOS et `audio/webm` sur Chrome, et seront jouables sur tous les navigateurs
+- **Note** : Les 3 anciens fichiers `.webm` deja uploades resteront injouables sur Safari. Ils fonctionneront sur Chrome/Firefox
