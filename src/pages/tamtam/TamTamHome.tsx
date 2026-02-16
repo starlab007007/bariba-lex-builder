@@ -316,7 +316,8 @@ export default function TamTamHome() {
         try {
           const response = await fetch(data.audio_base64);
           const blob = await response.blob();
-          const fileName = `posts/audio_${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
+          const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+          const fileName = `posts/audio_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('tamtam-audio')
             .upload(fileName, blob, { contentType: blob.type || 'audio/webm' });
