@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { getSupportedAudioMimeType, getAudioBlobType } from '@/lib/audioMimeUtils';
 import { 
   X, Mic, Check, Loader2, Volume2, Play, Pause,
   ChevronLeft, RotateCcw, Send, Globe, Users as UsersIcon
@@ -233,12 +234,13 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mimeType = getSupportedAudioMimeType();
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, { type: getAudioBlobType() });
         const reader = new FileReader();
         reader.onloadend = () => {
           setAudioBase64(reader.result as string);
