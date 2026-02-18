@@ -139,10 +139,10 @@ export default function TamTamDictionary() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
-      {/* Header style Apprendre */}
-      <div className="sticky top-0 z-40 px-4 pt-4 pb-2">
-        <div className="flex items-center gap-3">
+    <div className="h-full flex flex-col bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 overflow-hidden">
+      {/* Header + toggles fixes */}
+      <div className="flex-shrink-0 z-40 px-4 pt-4 pb-2 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+        <div className="flex items-center gap-3 mb-3">
           <button
             onClick={() => navigate(-1)}
             className="w-10 h-10 bg-white shadow-md rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
@@ -156,10 +156,8 @@ export default function TamTamDictionary() {
             </h1>
           </div>
         </div>
-      </div>
 
-      {/* Toggles mode et direction */}
-      <div className="px-4 pt-2 pb-2">
+        {/* Toggles mode */}
         <div className="flex gap-2">
           <button
             onClick={toggleInputMode}
@@ -187,7 +185,7 @@ export default function TamTamDictionary() {
         </div>
         
         {/* Word count badge */}
-        <div className="mt-3 flex items-center justify-center gap-3">
+        <div className="mt-2 flex items-center justify-center gap-3">
           <span className="text-gray-500 text-sm">
             {totalEntries > 0 ? `${totalEntries.toLocaleString()} mots` : 'Chargement...'}
           </span>
@@ -199,8 +197,8 @@ export default function TamTamDictionary() {
         </div>
       </div>
 
-      {/* Contenu principal */}
-      <div className="px-4 pb-8">
+      {/* Contenu principal scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
         {/* Zone d'entrée */}
         <motion.div
           layout

@@ -208,15 +208,15 @@ export function BaribaKeyboardInput({
         )}
       </AnimatePresence>
 
-      {/* Liste des suggestions */}
+      {/* Liste des suggestions - inline pour permettre le scroll de la page */}
       <AnimatePresence>
         {showSuggestions && suggestions.length > 0 && (
           <motion.div
             ref={suggestionsRef}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden max-h-80 overflow-y-auto"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-2 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden"
           >
             {isLoading ? (
               <div className="p-4 text-center text-gray-500">
@@ -265,10 +265,10 @@ export function BaribaKeyboardInput({
       <AnimatePresence>
         {showSuggestions && query.length >= 1 && suggestions.length === 0 && !isLoading && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg p-4 text-center"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-2 bg-white rounded-2xl shadow-lg p-4 text-center"
           >
             <p className="text-gray-500">Aucun mot trouvé pour "{query}"</p>
             <p className="text-xs text-gray-400 mt-1">Essayez une autre orthographe</p>
