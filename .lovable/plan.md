@@ -1,189 +1,140 @@
 
-# Live Transcription Synchronisée + Finalisation Complète des Feeds Audio
+# Diagnostic & Correction du Service Bariba STT (HuggingFace Space)
 
-## Vision Innovante : Style "Karaoké Patrimonial"
+## Problèmes Identifiés (Diagnostic)
 
-Transformer les feeds Patrimoine et Voix du Village en expérience immersive avec :
-- Transcription en temps réel synchronisée mot par mot avec l'audio (style karaoké)
-- Tous les boutons d'interaction fonctionnels (Suivre, Mute, Vitesse, Nav)
-- Badge de type de patrimoine/voix conforme à la sélection de l'auteur
+### Problème 1 : Authentification rejetée systématiquement
+Les logs de l'edge function montrent :
+```
+⚠️ Unauthenticated STT request rejected (x3)
+```
+Le composant `VoiceDictation.tsx` envoie un health check avec `audio: 'test'` **sans token JWT** (l'utilisateur n'est pas forcément connecté lors du chargement). Cela bloque même la vérification initiale.
+
+### Problème 2 : Format audio incompatible avec l'API Gradio
+L'edge function envoie l'audio en base64 inline (`data:audio/webm;base64,...`) directement dans le champ `data[]`. Mais selon l'API du Space HuggingFace, le paramètre `audio` est de type **filepath** (FileData). L'API Gradio v4 requiert :
+1. **Upload du fichier** via `POST /upload` → obtenir un `path` temporaire
+2. **Appel predict** avec ce `path` dans les données
+
+### Problème 3 : La méthode de polling SSE est instable
+L'implémentation actuelle utilise queue/join + polling toutes les 800ms sur 30 tentatives. Le Space `baatonum_asr_stt_api_v001_improve` expose une API REST directe `/call/predict` avec event streaming qui est plus fiable.
+
+### Problème 4 : Pas de transcription automatique dans le Dictionnaire
+Le dictionnaire vocal utilise `useUnifiedAudio` → `transcribeWithTranslation` → `bariba-stt`, mais l'audio capté par `TamTamMicButton` en mode bariba passe par ce chemin qui échoue à cause des problèmes ci-dessus. Résultat : le champ de recherche ne se remplit jamais.
+
+### Problème 5 : Même blocage pour le Traducteur vocal
+Dans `TamTamTranslator.tsx`, la voix bariba utilise `translator.translateFromAudio(audioBase64)` → `baribaSTT.transcribe()` → `bariba-stt` edge function. Même chemin défaillant.
 
 ---
 
-## Analyse de l'existant
+## Solution : Refonte complète de l'edge function `bariba-stt`
 
-### Ce qui existe déjà
-- `TamTamSocial.tsx` : Composant `AudioFeedCard` interne (lignes ~300-587) avec disque vinyle, contrôles audio, interactions via `usePostInteractions`
-- `src/components/feed/AudioFeedCard.tsx` : Version standalone du composant (non connectée aux interactions réelles)
-- `KaraokeSubtitles` : Composant déjà créé pour le feed vidéo, basé sur framer-motion avec glassmorphism
-- `post.transcript_fr` : Champ de transcription déjà disponible sur les posts
-- Speed (`1x`) et Volume (`Volume2`) : Boutons UI présents MAIS non fonctionnels (pas de handler)
-- Bouton Suivre : Présent et connecté à `usePostInteractions`, mais la navigation vers post suivant/précédent est absente
+### Nouvelle stratégie d'appel Gradio v4
 
-### Ce qui manque
-1. **Live Transcription** : Le texte `transcript_fr` est affiché statiquement (80 chars tronqués). Il n'y a pas de synchronisation mot-par-mot avec `currentTime`
-2. **Vitesse (Speed)** : Le bouton `1x` n'a pas de handler — `audioRef.playbackRate` non modifié
-3. **Mute** : Bouton Volume2 non connecté — `audioRef.muted` non géré
-4. **Navigation Post** : Boutons Next/Previous pour passer au post suivant/précédent dans le feed absents du card
-5. **Titre du type** : Le badge de catégorie (ex : "Conte", "Annonce") est absent en haut du card
-6. **Segmentation texte** : La transcription n'est pas découpée en mots avec timestamps estimés
+L'API du Space expose deux endpoints REST stables :
+- `POST /gradio_api/call/transcribe` → déclenche le traitement, retourne `{ event_id }`
+- `GET /gradio_api/call/transcribe/{event_id}` → stream SSE jusqu'à `process_completed`
 
----
-
-## Architecture de la Solution
-
-### Technique de synchronisation sans timestamps
-
-Mistral Voxtral renvoie du texte brut (pas de `word_timestamps` en mode simple). La technique utilisée est l'**estimation proportionnelle** :
-
-```text
-Durée audio totale = 60s
-Texte = "Il était une fois un lion dans la savane..."
-Nombre de mots = 12
-→ Chaque mot dure ~60/12 = 5s
-→ Mot 1 actif de t=0 à t=5s, Mot 2 de t=5s à t=10s, etc.
+**Étape 1 - Upload du fichier audio :**
+```
+POST https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space/gradio_api/upload
+Authorization: Bearer {HF_TOKEN}
+Content-Type: multipart/form-data
+Body: fichier audio (webm/wav/mp4)
+→ Retourne: [{"path": "tmp/abc123.webm", ...}]
 ```
 
-Cette technique est rapide, sans appel réseau supplémentaire, et donne un effet karaoké convaincant.
-
-Pour les posts avec `transcript_fr` stocké, on parse le texte au chargement de la card.
-
----
-
-## Changements Techniques
-
-### Fichier 1 : `src/pages/tamtam/TamTamSocial.tsx` — Composant `AudioFeedCard` interne (lignes ~300-587)
-
-**A. Nouveaux états à ajouter**
-
-```text
-const [playbackRate, setPlaybackRate] = useState(1);
-const [isMuted, setIsMuted] = useState(false);
-const [activeWordIndex, setActiveWordIndex] = useState(-1);
+**Étape 2 - Appel transcribe avec le path :**
+```
+POST /gradio_api/call/transcribe
+Body: { "data": [{"path": "tmp/abc123.webm"}, true, "Auto"] }
+→ Retourne: { "event_id": "xyz" }
 ```
 
-**B. Parsing de la transcription en mots**
-
-```text
-const words = useMemo(() => {
-  if (!post.transcript_fr) return [];
-  return post.transcript_fr.trim().split(/\s+/);
-}, [post.transcript_fr]);
+**Étape 3 - Récupérer le résultat :**
 ```
-
-**C. Synchronisation mots → currentTime**
-
-Dans le `useEffect` de `timeupdate`, calculer l'index du mot actif :
-```text
-const wordDuration = audioDuration / words.length;
-const wordIndex = Math.floor(currentTime / wordDuration);
-setActiveWordIndex(wordIndex);
-```
-
-**D. Contrôle de vitesse (Speed)**
-
-Cycles : 1x → 1.5x → 2x → 0.75x → 1x
-
-```text
-const cycleSpeed = () => {
-  const speeds = [1, 1.5, 2, 0.75];
-  const next = speeds[(speeds.indexOf(playbackRate) + 1) % speeds.length];
-  setPlaybackRate(next);
-  if (audioRef.current) audioRef.current.playbackRate = next;
-};
-```
-
-**E. Mute/Unmute**
-
-```text
-const toggleMute = () => {
-  setIsMuted(m => !m);
-  if (audioRef.current) audioRef.current.muted = !isMuted;
-};
-```
-
-**F. Navigation Post Suivant/Précédent**
-
-Ajouter des props `onNext` et `onPrevious` au composant, appelées depuis le feed parent qui gère `activeIndex`. Des flèches discrètes en haut du card :
-
-```text
-<button onClick={onPrevious}>↑ Post précédent</button>
-<button onClick={onNext}>↓ Post suivant</button>
-```
-
-**G. Badge type de patrimoine/voix en haut**
-
-```text
-// En haut à droite : badge template
-<div className="badge-template">
-  <span>{template.emoji}</span>
-  <span>{template.name}</span>   // ex: "Conte", "Proverbe", "Annonce"
-</div>
-```
-
-**H. Composant Live Transcription (karaoké)**
-
-Un bloc glassmorphism en bas du card, au-dessus des contrôles, affichant les mots un par un avec le mot actif en surbrillance animée :
-
-```text
-// Affiche 5 mots autour du mot actif, mot courant en blanc/gras/scale
-// Les autres mots en blanc/50
-// Animation framer-motion scale + glow sur le mot actif
+GET /gradio_api/call/transcribe/{event_id}
+Accept: text/event-stream
+→ SSE avec: data: {"msg":"process_completed", "output":{"data":["texte bariba transcrit", ...]}}
 ```
 
 ---
 
-## Interface Visuelle Complète
+## Fichiers à Modifier
 
-```text
-┌─────────────────────────────┐
-│ [↑] [Badge: 🦁 Conte]  [🔔] │  ← Top bar: nav prev, badge type, notif
-│                             │
-│     🎴 Disque Vinyle        │  ← Disque animé (rotation si playing)
-│                             │
-│ ──── Waveform bars ────     │
-│  Titre du post              │
-│  @auteur · Communauté       │
-│  [+ Suivre] ou [✓ Abonné]  │
-│                             │
-│  ┌ glassmorphism ─────── ┐  │  ← LIVE TRANSCRIPTION KARAOKÉ
-│  │ ...il était **UNE**   │  │     Mot actif = blanc gras + glow
-│  │ fois un lion...       │  │     Autres = blanc/50
-│  └───────────────────────┘  │
-│                             │
-│  ⏪  ▶/⏸  ⏩   0:12 / 1:45 │  ← Contrôles + durée
-│  [1x] [🔊/🔇]              │  ← Speed + Mute FONCTIONNELS
-│                             │
-│                  [♥] Like   │  ← Sidebar droite
-│                  [🎙] Reply │
-│                  [↺] Remix  │
-│                  [↗] Share  │
-│                  [🔖] Save  │
-│                             │
-│ [Avatar] @auteur            │
-│          Nom Affiché        │
-│             [↓ Post suivant]│  ← Nav next bas gauche
-└─────────────────────────────┘
+### 1. `supabase/functions/bariba-stt/index.ts` — Refonte complète
+
+**Changements :**
+- Supprimer l'ancienne logique `callGradioSTT` avec queue/join et polling
+- Implémenter la nouvelle chaîne : **base64 → Blob → Upload → Predict → Stream SSE**
+- Permettre le health check **sans authentification** (déjà géré mais bugué)
+- Améliorer l'extraction du résultat : le Space retourne un dict JSON `{"transcription": "...", "confidence": ..., ...}` ou simplement un string
+
+**Nouvelle fonction principale :**
+```typescript
+async function transcribeWithGradioAPI(
+  audioBase64: string,
+  audioMimeType: string,
+  robustMode: boolean,
+  speakerType: string,
+  hfToken: string
+): Promise<string>
+
+// Étapes :
+// 1. Convertir base64 → Uint8Array
+// 2. Upload vers /gradio_api/upload (multipart)
+// 3. POST /gradio_api/call/transcribe avec {path, robust_mode, speaker_type}
+// 4. GET /gradio_api/call/transcribe/{event_id} → lire SSE jusqu'à process_completed
+// 5. Extraire le texte de output.data[0]
 ```
 
+**Détection du format audio depuis le préfixe base64 :**
+```typescript
+// "data:audio/webm;base64,..." → mime="audio/webm", ext="webm"
+// "data:audio/mp4;base64,..." → mime="audio/mp4", ext="mp4"
+// Sinon défaut : "audio/webm", ext="webm"
+```
+
+### 2. `src/hooks/useBaribaSTT.ts` — Amélioration du feedback
+
+**Changements :**
+- Ajouter un `speakerType` par défaut configurable
+- Ajouter un état `isWakingUp` pour afficher "Réveil du service..." quand le Space est froid (cold start ~30s)
+- Mieux gérer les erreurs 503 (Space en veille) vs erreurs réelles
+
+### 3. `src/pages/tamtam/TamTamDictionary.tsx` — Connexion STT pour la recherche vocale
+
+**Changements :**
+- Dans `handleVoiceCommand`, si `result.sourceLang === 'ba'` et `!result.transcription`, utiliser directement `useBaribaSTT` avec l'`audioBase64` pour obtenir la transcription Bariba
+- Afficher un indicateur de progression STT dans l'interface du dictionnaire
+
+### 4. `src/pages/tamtam/TamTamTranslator.tsx` — Feedback visuel STT
+
+**Changements :**
+- Afficher "🎤 Transcription Bariba en cours..." dans l'interface du traducteur pendant le STT
+- Si la transcription réussit, afficher le texte bariba transcrit dans la zone source avant la traduction
+
 ---
 
-## Fichiers Modifiés
+## Résumé des Corrections
 
-| Fichier | Changement |
-|---|---|
-| `src/pages/tamtam/TamTamSocial.tsx` | Refactor `AudioFeedCard` interne : karaoké, speed, mute, nav, badge type |
-| `src/components/feed/AudioFeedCard.tsx` | Même corrections appliquées pour cohérence (standalone card) |
-
----
-
-## Résumé des Fonctionnalités
-
-| Fonctionnalité | Avant | Après |
+| Problème | Avant | Après |
 |---|---|---|
-| Transcription | Texte statique 80 chars | Karaoké mot-par-mot synchronisé |
-| Speed | Bouton `1x` décoratif | Cycle 1x → 1.5x → 2x → 0.75x fonctionnel |
-| Mute | Icône décorative | Toggle mute réel sur l'audio |
-| Navigation | Scroll manuel uniquement | Boutons ↑ ↓ pour naviguer entre posts |
-| Badge type | Absent | Badge emoji + nom en haut (Conte, Proverbe, Annonce...) |
-| Suivre | Connecté mais sans feedback visuel fort | Animation + état persistant via `usePostInteractions` |
+| Health check | Rejeté (non authentifié) | Autorisé sans auth (audio courts) |
+| Format audio | base64 inline dans data[] | Upload multipart → filepath |
+| Appel API | Queue/join + polling 30x | Upload + Call + Stream SSE direct |
+| Cold start | Pas de gestion | Timeout étendu 60s + message "réveil..." |
+| Dictionnaire vocal | Pas de transcription bariba | STT bariba → recherche automatique |
+| Traducteur vocal | STT bariba défaillant | STT bariba → texte source affiché |
+
+---
+
+## Comportement Attendu
+
+1. Utilisateur appuie sur le micro dans le **Dictionnaire** en mode Bariba
+2. L'enregistrement démarre → s'arrête → audio envoyé à `bariba-stt`
+3. L'edge function uploade l'audio sur le Space HuggingFace via multipart
+4. Le Space transcrit en Bariba (ex: "mère" → "yaari") 
+5. La transcription remplit automatiquement le champ de recherche du dictionnaire
+6. La définition correspondante s'affiche
+
+Même flux pour le **Traducteur** : voix bariba → texte bariba → traduction française.
