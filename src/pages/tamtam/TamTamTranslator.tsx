@@ -27,6 +27,7 @@ import { useLanguageDetection } from '@/hooks/useLanguageDetection';
 import { useTranslationHistory, TranslationHistoryItem } from '@/hooks/useTranslationHistory';
 import { PhotoTranslator } from '@/components/tamtam/PhotoTranslator';
 import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 import { OfflineIndicator } from '@/components/tamtam/OfflineIndicator';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,6 +59,7 @@ export default function TamTamTranslator() {
   const translator = useSmartTranslator();
   const { detectLanguage } = useLanguageDetection();
   const historyManager = useTranslationHistory();
+  const { transcribe: transcribeBariba, isTranscribing: isSTTTranscribing, isWakingUp: isSTTWakingUp } = useBaribaSTT();
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [textInput, setTextInput] = useState('');
@@ -69,6 +71,7 @@ export default function TamTamTranslator() {
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
   const [conversationMode, setConversationMode] = useState(true);
   const [detectedLang, setDetectedLang] = useState<'bariba' | 'french' | null>(null);
+  const [baribaTranscribedText, setBaribaTranscribedText] = useState<string>('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -150,7 +153,18 @@ export default function TamTamTranslator() {
     sourceLang: 'ba' | 'fr';
   }) => {
     if (result.sourceLang === 'ba' && result.audioBase64) {
-      await translator.translateFromAudio(result.audioBase64);
+      // Transcription Bariba directe via STT avant traduction
+      setBaribaTranscribedText('');
+      console.log('[TamTamTranslator] Bariba voice → STT transcription');
+      const sttResult = await transcribeBariba(result.audioBase64, { robustMode: true, speakerType: 'Auto' });
+      if (sttResult?.transcription) {
+        setBaribaTranscribedText(sttResult.transcription);
+        // Traduire le texte bariba transcrit
+        await translator.translateFromText(sttResult.transcription);
+      } else {
+        // Fallback : essayer translateFromAudio (pipeline existant)
+        await translator.translateFromAudio(result.audioBase64);
+      }
     } else if (result.sourceLang === 'fr') {
       if (result.transcription) {
         await translator.translateFromText(result.transcription);
