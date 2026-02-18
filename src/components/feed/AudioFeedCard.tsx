@@ -1,6 +1,6 @@
 /**
  * AudioFeedCard - Memoized audio card component for feed
- * FEATURES: Karaoke sync + Speed control + Mute + Navigation + Badge type
+ * FEATURES: Karaoke sync (phrase défilante sous disque) + Speed + Mute + Navigation + Follow réel
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Bookmark, Play, Pause, SkipBack, SkipForward, Plus, Clock, Mic, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { usePostInteractions } from '@/hooks/usePostInteractions';
 
 interface DiskTemplate {
   id: string;
@@ -47,34 +48,39 @@ const formatPublicationDate = (dateString: string | null): string => {
 
 const SPEED_CYCLE = [1, 1.5, 2, 0.75] as const;
 
-// ── Karaoke word display ──
+// ── Phrase défilante karaoké synchronisée ──
 const KaraokeDisplay: React.FC<{ words: string[]; activeIndex: number; isPlaying: boolean }> = ({ words, activeIndex, isPlaying }) => {
   if (words.length === 0) return null;
 
-  // Au repos : afficher tous les mots (jusqu'à 25). En lecture : fenêtre glissante autour du mot actif
-  const showAll = !isPlaying || activeIndex < 0;
-  const windowStart = showAll ? 0 : Math.max(0, activeIndex - 3);
-  const windowEnd = showAll ? Math.min(words.length - 1, 24) : Math.min(words.length - 1, windowStart + 8);
+  const center = isPlaying && activeIndex >= 0 ? activeIndex : 0;
+  const windowStart = Math.max(0, center - 2);
+  const windowEnd = Math.min(words.length - 1, windowStart + 6);
   const visibleWords = words.slice(windowStart, windowEnd + 1);
   const relativeActive = activeIndex - windowStart;
 
   return (
-    <div className="w-full max-w-xs rounded-2xl px-4 py-3 mb-3"
-      style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)' }}
+    <div
+      className="w-full rounded-2xl px-4 py-3"
+      style={{
+        background: 'rgba(0,0,0,0.40)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255,255,255,0.15)',
+      }}
     >
-      <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-1 min-h-[2.5rem]">
+      {/* Phrase défilante sur une ligne */}
+      <div className="flex items-center justify-center gap-x-1.5 overflow-hidden min-h-[1.4rem]">
         {visibleWords.map((word, i) => {
-          const isCurrent = !showAll && i === relativeActive;
-          const isPast = !showAll && i < relativeActive;
+          const isCurrent = isPlaying && i === relativeActive;
+          const isPast = isPlaying && i < relativeActive;
           return (
             <motion.span
               key={`${windowStart + i}-${word}`}
-              animate={isCurrent ? { scale: [1, 1.15, 1.1], opacity: 1 } : {}}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="text-sm leading-snug transition-all duration-200"
+              animate={isCurrent ? { scale: [1, 1.18, 1.12] } : { scale: 1 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="text-sm leading-none whitespace-nowrap flex-shrink-0"
               style={{
-                color: isCurrent ? '#FFFFFF' : isPast ? 'rgba(255,255,255,0.45)' : showAll ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.60)',
-                textShadow: isCurrent ? '0 0 18px rgba(255,200,100,0.9), 0 0 32px rgba(255,140,66,0.6)' : 'none',
+                color: isCurrent ? '#FFFFFF' : isPast ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.65)',
+                textShadow: isCurrent ? '0 0 16px rgba(255,200,80,1), 0 0 30px rgba(255,140,40,0.7)' : 'none',
                 fontWeight: isCurrent ? 800 : isPast ? 400 : 500,
               }}
             >
@@ -82,22 +88,30 @@ const KaraokeDisplay: React.FC<{ words: string[]; activeIndex: number; isPlaying
             </motion.span>
           );
         })}
-        {showAll && words.length > 25 && (
-          <span className="text-white/40 text-xs">…</span>
+      </div>
+
+      {/* Barre de progression + indicateur live */}
+      <div className="flex items-center gap-2 mt-2">
+        <div className="flex-1 h-0.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.15)' }}>
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: 'rgba(255,255,255,0.7)' }}
+            animate={{ width: words.length > 0 ? `${((activeIndex + 1) / words.length) * 100}%` : '0%' }}
+            transition={{ duration: 0.15 }}
+          />
+        </div>
+        {isPlaying && activeIndex >= 0 && (
+          <div className="flex items-center gap-0.5">
+            {[0, 1, 2].map(i => (
+              <motion.div key={i} className="w-0.5 h-2.5 rounded-full"
+                style={{ background: 'rgba(255,255,255,0.7)' }}
+                animate={{ scaleY: [0.4, 1, 0.4] }}
+                transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.12 }}
+              />
+            ))}
+          </div>
         )}
       </div>
-      {/* Indicateur live — uniquement en lecture */}
-      {isPlaying && activeIndex >= 0 && (
-        <div className="flex items-center justify-center gap-1 mt-1.5">
-          {[0, 1, 2].map(i => (
-            <motion.div key={i} className="w-1 h-1 rounded-full bg-white/60"
-              animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
-              transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.15 }}
-            />
-          ))}
-          <span className="text-white/40 text-[9px] ml-1 font-medium tracking-wide">EN DIRECT</span>
-        </div>
-      )}
     </div>
   );
 };
@@ -116,7 +130,7 @@ interface AudioFeedCardProps {
 }
 
 const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
-  post, isActive, onLike, onComment, onShare, category,
+  post, isActive, onComment, category,
   onNext, onPrevious, hasPrevious, hasNext,
 }) => {
   const navigate = useNavigate();
@@ -124,17 +138,18 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(post.duration_seconds || 0);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [isMuted, setIsMuted] = useState(false);
   const [activeWordIndex, setActiveWordIndex] = useState(-1);
+  const [isSaved, setIsSaved] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const template = getTemplateById(post.template_id, category);
-  const totalLikes = (post.reactions?.like || 0) + (post.reactions?.love || 0) + (post.reactions?.laugh || 0);
   const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
+  const authorId = post.user_id || post.profile?.user_id;
+
+  // Vrai hook d'interactions (like, follow, bookmark, share)
+  const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow, currentUserId } = usePostInteractions(post.id, authorId);
 
   const words = useMemo(() => {
     if (!post.transcript_fr) return [];
@@ -228,11 +243,12 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
     triggerFeedback('click');
   }, [isMuted]);
 
-  const handleFollow = useCallback(() => { setIsFollowing(true); triggerFeedback('success'); }, []);
-  const handleLike = useCallback(() => { setIsLiked(prev => !prev); onLike(); triggerFeedback('notification'); }, [onLike]);
+  const handleFollow = useCallback(() => { toggleFollow(); triggerFeedback('success'); }, [toggleFollow]);
+  const handleLike = useCallback(() => { toggleLike(); triggerFeedback('notification'); }, [toggleLike]);
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const speedLabel = playbackRate === 1 ? '1x' : playbackRate === 0.75 ? '¾x' : `${playbackRate}x`;
+  const totalLikes = likesCount;
 
   return (
     <div className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative overflow-hidden">
@@ -254,7 +270,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
         ))}
       </div>
 
-      {/* ── TOP BAR: Navigation + Badge type ── */}
+      {/* ── TOP BAR: Navigation ── */}
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-12 pb-2 z-10"
         style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%)' }}
       >
@@ -277,9 +293,11 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
         </motion.button>
       </div>
 
-      {/* Center vinyl disc */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative">
+      {/* ── CENTER: Disque + Karaoké (juste dessous) ── */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-5 pt-16 pb-28">
+
+        {/* Disque vinyle */}
+        <div className="relative mb-3">
           {isPlaying && (
             <motion.div className="absolute -inset-6 rounded-full"
               style={{ background: `radial-gradient(circle, ${template.accentColor}30 0%, transparent 70%)` }}
@@ -288,47 +306,52 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
             />
           )}
           <motion.div
-            className={`w-52 h-52 rounded-full bg-gradient-to-br ${template.gradient} shadow-2xl flex items-center justify-center border-4 border-white/30`}
+            className={`w-44 h-44 rounded-full bg-gradient-to-br ${template.gradient} shadow-2xl flex items-center justify-center border-4 border-white/30`}
             animate={isPlaying ? { rotate: 360 } : {}}
             transition={isPlaying ? { duration: 3, repeat: Infinity, ease: 'linear' } : {}}
           >
-            <div className="w-44 h-44 rounded-full border-2 border-white/10 flex items-center justify-center">
-              <div className="w-36 h-36 rounded-full border border-white/10 flex items-center justify-center">
-                <div className="w-20 h-20 rounded-full bg-black/40 flex items-center justify-center shadow-inner">
-                  <span className="text-4xl">{template.emoji}</span>
+            <div className="w-36 h-36 rounded-full border-2 border-white/10 flex items-center justify-center">
+              <div className="w-28 h-28 rounded-full border border-white/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-black/40 flex items-center justify-center shadow-inner">
+                  <span className="text-3xl">{template.emoji}</span>
                 </div>
               </div>
             </div>
           </motion.div>
         </div>
-      </div>
 
-      {/* Bottom content */}
-      <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center px-4 pb-32">
+        {/* ── KARAOKE — phrase défilante juste sous le disque ── */}
+        <div className="w-full max-w-xs mb-3">
+          {words.length > 0 ? (
+            <KaraokeDisplay words={words} activeIndex={activeWordIndex} isPlaying={isPlaying} />
+          ) : post.transcript_fr ? (
+            <div className="rounded-2xl px-4 py-3"
+              style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.15)' }}
+            >
+              <p className="text-white/70 text-center text-xs leading-relaxed">"{post.transcript_fr.slice(0, 100)}…"</p>
+            </div>
+          ) : null}
+        </div>
+
         {/* Follow + Author */}
         <div className="flex items-center gap-3 mb-3">
           <span className="text-white/70 text-sm font-medium">{post.profile?.display_name || 'Utilisateur'}</span>
-          {!isFollowing && (
+          {(!isFollowing && authorId && currentUserId !== authorId) && (
             <motion.button whileTap={{ scale: 0.9 }} onClick={handleFollow}
-              className="px-3 py-1 rounded-full text-white text-xs font-bold"
-              style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)' }}
+              className="px-3 py-1 rounded-full text-xs font-bold"
+              style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)', color: 'white' }}
             >+ Suivre</motion.button>
+          )}
+          {isFollowing && (
+            <motion.button whileTap={{ scale: 0.9 }} onClick={handleFollow}
+              className="px-3 py-1 rounded-full text-xs font-bold"
+              style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)' }}
+            >✓ Abonné</motion.button>
           )}
         </div>
 
-        {/* ── KARAOKE ── */}
-        {words.length > 0 ? (
-          <KaraokeDisplay words={words} activeIndex={activeWordIndex} isPlaying={isPlaying} />
-        ) : post.transcript_fr ? (
-          <div className="w-full max-w-xs rounded-xl px-4 py-2.5 mb-3"
-            style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(10px)' }}
-          >
-            <p className="text-white/80 text-center text-xs leading-relaxed">"{post.transcript_fr.slice(0, 90)}..."</p>
-          </div>
-        ) : null}
-
         {/* Play controls */}
-        <div className="flex items-center justify-center gap-5 mb-3">
+        <div className="flex items-center justify-center gap-5 mb-2">
           <span className="text-white/60 text-xs tabular-nums w-9 text-right">{formatTime(currentTime)}</span>
           <motion.button whileTap={{ scale: 0.9 }} onClick={skipBack}
             className="w-11 h-11 rounded-full flex items-center justify-center"
@@ -354,7 +377,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
         </div>
 
         {/* Progress bar */}
-        <div className="w-full max-w-xs h-1 bg-white/20 rounded-full overflow-hidden mb-3">
+        <div className="w-full max-w-xs h-1 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,255,255,0.2)' }}>
           <motion.div className="h-full bg-white rounded-full" style={{ width: `${progress}%` }} />
         </div>
 
@@ -382,7 +405,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
 
       {/* Publication time */}
       {post.created_at && (
-        <div className="absolute top-4 right-16 flex items-center gap-1 px-2 py-1 rounded-full"
+        <div className="absolute top-14 right-14 flex items-center gap-1 px-2 py-1 rounded-full"
           style={{ background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(8px)' }}
         >
           <Clock className="w-3 h-3 text-white/50" />
@@ -396,7 +419,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/30'}`}>
             <Heart className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[10px] mt-0.5">{totalLikes + (isLiked ? 1 : 0)}</span>
+          <span className="text-white text-[10px] mt-0.5">{totalLikes}</span>
         </motion.button>
 
         <motion.button whileTap={{ scale: 0.85 }} onClick={onComment} className="flex flex-col items-center">
@@ -406,7 +429,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
           <span className="text-white text-[10px] mt-0.5">{post.comments_count || 0}</span>
         </motion.button>
 
-        <motion.button whileTap={{ scale: 0.85 }} onClick={onShare} className="flex flex-col items-center">
+        <motion.button whileTap={{ scale: 0.85 }} onClick={() => { sharePost(); triggerFeedback('send'); }} className="flex flex-col items-center">
           <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
             <Share2 className="w-6 h-6 text-white" />
           </div>
@@ -414,25 +437,29 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
         </motion.button>
 
         <motion.button whileTap={{ scale: 0.85 }}
-          onClick={() => { setIsSaved(!isSaved); triggerFeedback('success'); }}
+          onClick={() => { toggleBookmark(); triggerFeedback('success'); }}
           className="flex flex-col items-center"
         >
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isSaved ? 'bg-amber-500' : 'bg-black/30'}`}>
-            <Bookmark className={`w-6 h-6 ${isSaved ? 'text-white fill-white' : 'text-white'}`} />
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isBookmarked ? 'bg-amber-500' : 'bg-black/30'}`}>
+            <Bookmark className={`w-6 h-6 ${isBookmarked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[10px] mt-0.5">{isSaved ? 'Sauvé' : 'Sauver'}</span>
+          <span className="text-white text-[10px] mt-0.5">{isBookmarked ? 'Sauvé' : 'Sauver'}</span>
         </motion.button>
       </div>
 
       {/* Author avatar bottom left */}
       <div className="absolute left-4 bottom-36">
-        <div className="relative">
-          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center border-2 border-white shadow-lg">
-            <span className="text-lg">👤</span>
+        <div className="relative cursor-pointer" onClick={() => authorId && navigate(`/fitila/profile/${authorId}`)}>
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center border-2 border-white shadow-lg overflow-hidden">
+            {post.profile?.avatar_url
+              ? <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              : <span className="text-lg">👤</span>
+            }
           </div>
-          {!isFollowing && (
-            <motion.button whileTap={{ scale: 0.9 }} onClick={handleFollow}
-              className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#FF7A00] flex items-center justify-center"
+          {!isFollowing && authorId && currentUserId !== authorId && (
+            <motion.button whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); handleFollow(); }}
+              className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center"
             >
               <Plus className="w-3 h-3 text-white" strokeWidth={3} />
             </motion.button>
