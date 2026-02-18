@@ -331,27 +331,110 @@ const BottomTabBar: React.FC<{
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// AUDIO FEED CARD - AVEC TOUS LES BOUTONS
+// KARAOKE WORD DISPLAY - Karaoké patrimonial synchronisé mot-par-mot
 // ═══════════════════════════════════════════════════════════════════════════════
+
+const KaraokeDisplay: React.FC<{
+  words: string[];
+  activeIndex: number;
+  isPlaying: boolean;
+}> = ({ words, activeIndex, isPlaying }) => {
+  if (words.length === 0) return null;
+
+  // Show a window of 7 words around the active one
+  const windowStart = Math.max(0, activeIndex - 2);
+  const windowEnd = Math.min(words.length - 1, windowStart + 6);
+  const visibleWords = words.slice(windowStart, windowEnd + 1);
+  const relativeActive = activeIndex - windowStart;
+
+  return (
+    <div
+      className="w-full max-w-xs rounded-2xl px-4 py-3 mb-3"
+      style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)' }}
+    >
+      <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-1 min-h-[2.5rem]">
+        {visibleWords.map((word, i) => {
+          const isCurrent = i === relativeActive && isPlaying;
+          const isPast = i < relativeActive;
+          return (
+            <motion.span
+              key={`${windowStart + i}-${word}`}
+              animate={isCurrent ? { scale: [1, 1.15, 1.1], opacity: 1 } : {}}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="text-sm font-semibold leading-snug transition-all duration-200"
+              style={{
+                color: isCurrent
+                  ? '#FFFFFF'
+                  : isPast
+                  ? 'rgba(255,255,255,0.45)'
+                  : 'rgba(255,255,255,0.65)',
+                textShadow: isCurrent
+                  ? '0 0 18px rgba(255,200,100,0.9), 0 0 32px rgba(255,140,66,0.6)'
+                  : 'none',
+                fontWeight: isCurrent ? 800 : isPast ? 400 : 500,
+              }}
+            >
+              {word}
+            </motion.span>
+          );
+        })}
+      </div>
+      {/* Live indicator */}
+      {isPlaying && (
+        <div className="flex items-center justify-center gap-1 mt-1.5">
+          {[0, 1, 2].map(i => (
+            <motion.div
+              key={i}
+              className="w-1 h-1 rounded-full bg-white/60"
+              animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+              transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.15 }}
+            />
+          ))}
+          <span className="text-white/40 text-[9px] ml-1 font-medium tracking-wide">EN DIRECT</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUDIO FEED CARD - AVEC TOUS LES BOUTONS + KARAOKÉ + SPEED/MUTE + NAV
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SPEED_CYCLE = [1, 1.5, 2, 0.75] as const;
 
 const AudioFeedCard: React.FC<{
   post: any;
   isActive: boolean;
   category: 'patrimoine' | 'mavoix';
   onComment: () => void;
-}> = ({ post, isActive, category, onComment }) => {
+  onNext?: () => void;
+  onPrevious?: () => void;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
+}> = ({ post, isActive, category, onComment, onNext, onPrevious, hasPrevious, hasNext }) => {
   const navigate = useNavigate();
   const template = getTemplateById(post.template_id, category);
   const authorId = post.user_id || post.profile?.user_id;
   const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow, currentUserId } = usePostInteractions(post.id, authorId);
   const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(post.duration_seconds || 0);
+  const [playbackRate, setPlaybackRate] = useState<number>(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [activeWordIndex, setActiveWordIndex] = useState(-1);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Pause audio when card becomes inactive (NO autoplay - requires user gesture)
+  // Parse transcript into words for karaoke
+  const words = useMemo(() => {
+    if (!post.transcript_fr) return [];
+    return post.transcript_fr.trim().split(/\s+/).filter(Boolean);
+  }, [post.transcript_fr]);
+
+  // Pause audio when card becomes inactive
   useEffect(() => {
     if (!isActive && audioRef.current && isPlaying) {
       audioRef.current.pause();
@@ -359,40 +442,60 @@ const AudioFeedCard: React.FC<{
     }
   }, [isActive, isPlaying]);
 
-  // Listen for real duration from audio element metadata
+  // Reset state when post changes
+  useEffect(() => {
+    setIsPlaying(false);
+    setProgress(0);
+    setCurrentTime(0);
+    setActiveWordIndex(-1);
+    setPlaybackRate(1);
+    setIsMuted(false);
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.playbackRate = 1;
+      audioRef.current.muted = false;
+    }
+  }, [post.id]);
+
+  // Audio event listeners + karaoke sync
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
     const onMeta = () => {
-      if (audio.duration && isFinite(audio.duration)) {
-        setAudioDuration(audio.duration);
-      }
+      if (audio.duration && isFinite(audio.duration)) setAudioDuration(audio.duration);
     };
-    const update = () => {
+    const onUpdate = () => {
       const dur = audio.duration;
-      if (dur && isFinite(dur)) {
-        setProgress((audio.currentTime / dur) * 100);
-        setCurrentTime(audio.currentTime);
+      if (!dur || !isFinite(dur)) return;
+      const ct = audio.currentTime;
+      setProgress((ct / dur) * 100);
+      setCurrentTime(ct);
+      // Karaoke sync: proportional estimation
+      if (words.length > 0) {
+        const wordDuration = dur / words.length;
+        const idx = Math.min(Math.floor(ct / wordDuration), words.length - 1);
+        setActiveWordIndex(idx);
       }
     };
     const onEnded = () => {
       setIsPlaying(false);
       setProgress(0);
       setCurrentTime(0);
+      setActiveWordIndex(-1);
     };
+
     audio.addEventListener('loadedmetadata', onMeta);
-    audio.addEventListener('timeupdate', update);
+    audio.addEventListener('timeupdate', onUpdate);
     audio.addEventListener('ended', onEnded);
-    // If metadata already loaded
-    if (audio.duration && isFinite(audio.duration)) {
-      setAudioDuration(audio.duration);
-    }
+    if (audio.duration && isFinite(audio.duration)) setAudioDuration(audio.duration);
+
     return () => {
       audio.removeEventListener('loadedmetadata', onMeta);
-      audio.removeEventListener('timeupdate', update);
+      audio.removeEventListener('timeupdate', onUpdate);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [hasAudio]);
+  }, [hasAudio, words]);
 
   const togglePlay = () => {
     if (!hasAudio || !audioRef.current) return;
@@ -400,9 +503,7 @@ const AudioFeedCard: React.FC<{
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch((err) => {
-        console.warn('Audio play failed:', err);
-      });
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(err => console.warn('Audio play failed:', err));
     }
     triggerFeedback('click');
   };
@@ -414,10 +515,26 @@ const AudioFeedCard: React.FC<{
     if (audioRef.current) audioRef.current.currentTime = Math.min(audioRef.current.duration || 0, audioRef.current.currentTime + 10);
   };
 
-  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const cycleSpeed = () => {
+    const idx = SPEED_CYCLE.indexOf(playbackRate as any);
+    const next = SPEED_CYCLE[(idx + 1) % SPEED_CYCLE.length];
+    setPlaybackRate(next);
+    if (audioRef.current) audioRef.current.playbackRate = next;
+    triggerFeedback('click');
+  };
 
+  const toggleMuteHandler = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    if (audioRef.current) audioRef.current.muted = newMuted;
+    triggerFeedback('click');
+  };
+
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const handleLike = () => { toggleLike(); triggerFeedback('notification'); };
   const handleFollow = () => { toggleFollow(); triggerFeedback('success'); };
+
+  const speedLabel = playbackRate === 1 ? '1x' : playbackRate === 0.75 ? '¾x' : `${playbackRate}x`;
 
   return (
     <div className="h-screen w-full snap-start snap-always relative overflow-hidden">
@@ -425,45 +542,100 @@ const AudioFeedCard: React.FC<{
       {hasAudio && (
         <audio ref={audioRef} src={post.audio_url} preload={isActive ? 'auto' : 'none'} />
       )}
-      
+
       {/* Background */}
       <div className={`absolute inset-0 bg-gradient-to-br ${template.bgGradient}`} />
-      
+
       {/* Decorative emojis */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {template.decorEmojis.map((e, i) => (
-          <motion.span key={i} className="absolute text-5xl opacity-20" style={{ left: `${5 + i * 30}%`, top: `${5 + (i % 2) * 80}%` }} animate={{ y: [0, -15, 0], rotate: [0, 5, -5, 0] }} transition={{ repeat: Infinity, duration: 4 + i, delay: i * 0.3 }}>{e}</motion.span>
+          <motion.span key={i} className="absolute text-5xl opacity-20"
+            style={{ left: `${5 + i * 30}%`, top: `${5 + (i % 2) * 80}%` }}
+            animate={{ y: [0, -15, 0], rotate: [0, 5, -5, 0] }}
+            transition={{ repeat: Infinity, duration: 4 + i, delay: i * 0.3 }}
+          >{e}</motion.span>
         ))}
       </div>
 
+      {/* ── TOP BAR: Navigation + Badge type + Date ── */}
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-12 pb-2 z-10"
+        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%)' }}
+      >
+        {/* Nav précédent */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={onPrevious}
+          disabled={!hasPrevious}
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: hasPrevious ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.07)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 11L3 7l4-4M11 7H3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity={hasPrevious ? 1 : 0.35}/>
+          </svg>
+        </motion.button>
+
+        {/* Badge type patrimoine/voix */}
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+          style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)' }}
+        >
+          <span className="text-base leading-none">{template.emoji}</span>
+          <span className="text-white text-xs font-bold tracking-wide">{template.name}</span>
+        </motion.div>
+
+        {/* Nav suivant */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={onNext}
+          disabled={!hasNext}
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: hasNext ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.07)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 3l4 4-4 4M3 7h8" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity={hasNext ? 1 : 0.35}/>
+          </svg>
+        </motion.button>
+      </div>
+
       {/* Main content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 pt-20 pb-24">
-        
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 pt-20 pb-28">
+
         {/* Vinyl Disk */}
-        <div className="relative mb-4">
+        <div className="relative mb-3">
           {isPlaying && (
-            <motion.div className="absolute -inset-6 rounded-full" style={{ background: `radial-gradient(circle, ${template.accentColor}30 0%, transparent 70%)` }} animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }} transition={{ repeat: Infinity, duration: 1.5 }} />
+            <motion.div className="absolute -inset-6 rounded-full"
+              style={{ background: `radial-gradient(circle, ${template.accentColor}30 0%, transparent 70%)` }}
+              animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+            />
           )}
-          
-          <motion.div className="relative w-44 h-44" animate={isPlaying ? { rotate: 360 } : { rotate: 0 }} transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}>
+
+          <motion.div className="relative w-40 h-40"
+            animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
+            transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
+          >
             <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${template.gradient} shadow-2xl`}>
               {[...Array(10)].map((_, i) => (<div key={i} className="absolute rounded-full border border-black/10" style={{ inset: `${10 + i * 7}%` }} />))}
-              <div className="absolute inset-[32%] rounded-full bg-white/90 shadow-inner flex items-center justify-center"><span className="text-4xl">{template.emoji}</span></div>
+              <div className="absolute inset-[32%] rounded-full bg-white/90 shadow-inner flex items-center justify-center"><span className="text-3xl">{template.emoji}</span></div>
               <div className="absolute inset-0 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 50%)' }} />
             </div>
             <svg className="absolute inset-0 w-full h-full -rotate-90">
               <circle cx="50%" cy="50%" r="47%" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="5" />
-              <circle cx="50%" cy="50%" r="47%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${progress * 2.95} 295`} />
+              <circle cx="50%" cy="50%" r="47%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${progress * 2.64} 264`} />
             </svg>
           </motion.div>
 
           {/* Tonearm */}
-          <motion.div className="absolute -right-2 top-2 w-14 h-1.5 origin-right" animate={{ rotate: isPlaying ? -28 : -45 }} transition={{ type: 'spring', stiffness: 100 }}>
+          <motion.div className="absolute -right-2 top-2 w-12 h-1.5 origin-right"
+            animate={{ rotate: isPlaying ? -28 : -45 }}
+            transition={{ type: 'spring', stiffness: 100 }}
+          >
             <div className="w-full h-full bg-gradient-to-r from-gray-400 to-gray-300 rounded-full shadow" />
             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow" />
           </motion.div>
 
-          {/* No audio badge */}
           {!hasAudio && (
             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm">
               <span className="text-white/80 text-xs font-medium">🔇 Pas d'audio</span>
@@ -472,88 +644,134 @@ const AudioFeedCard: React.FC<{
         </div>
 
         {/* Waveform */}
-        <div className="flex justify-center gap-0.5 mb-3 h-5">
-          {[...Array(30)].map((_, i) => (
-            <motion.div key={i} className="w-1 rounded-full bg-white/50" animate={isPlaying ? { height: [3, Math.random() * 20 + 4, 3] } : { height: 3 }} transition={{ repeat: Infinity, duration: 0.35 + Math.random() * 0.25, delay: i * 0.015 }} />
+        <div className="flex justify-center gap-0.5 mb-2 h-4">
+          {[...Array(28)].map((_, i) => (
+            <motion.div key={i} className="w-0.5 rounded-full bg-white/50"
+              animate={isPlaying ? { height: [2, Math.random() * 16 + 3, 2] } : { height: 2 }}
+              transition={{ repeat: Infinity, duration: 0.35 + Math.random() * 0.25, delay: i * 0.015 }}
+            />
           ))}
         </div>
 
         {/* Title & Author */}
-        <h2 className="text-white text-lg font-bold text-center mb-1 px-4">{post.title || post.transcript_fr?.slice(0, 35) || template.name}</h2>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-white/60 text-sm">📍 {post.profile?.display_name || 'Utilisateur'} • {post.location_name || 'Communauté'}</span>
+        <h2 className="text-white text-base font-bold text-center mb-0.5 px-2 line-clamp-2">
+          {post.title || post.transcript_fr?.slice(0, 40) || template.name}
+        </h2>
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="text-white/60 text-xs">📍 {post.profile?.display_name || 'Utilisateur'} · {post.location_name || 'Communauté'}</span>
         </div>
-        {/* Date/heure de publication */}
         <div className="flex items-center gap-1 mb-2">
           <Clock className="w-3 h-3 text-white/40" />
-          <span className="text-white/40 text-xs">{formatPublicationDate(post.created_at)}</span>
+          <span className="text-white/40 text-[11px]">{formatPublicationDate(post.created_at)}</span>
         </div>
 
         {/* Follow button */}
-        <motion.button whileTap={{ scale: 0.95 }} onClick={handleFollow} className={`px-4 py-1.5 rounded-full text-sm font-bold mb-3 ${isFollowing ? 'bg-white/20 text-white border border-white/30' : 'bg-white text-gray-900'}`}>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={handleFollow}
+          className="px-4 py-1 rounded-full text-xs font-bold mb-3 transition-all"
+          style={{
+            background: isFollowing ? 'rgba(255,255,255,0.15)' : 'white',
+            color: isFollowing ? 'white' : '#111',
+            border: isFollowing ? '1px solid rgba(255,255,255,0.3)' : 'none',
+          }}
+        >
           {isFollowing ? '✓ Abonné' : '+ Suivre'}
         </motion.button>
 
-        {/* Transcript */}
-        {post.transcript_fr && (
-          <div className="max-w-xs rounded-xl p-3 mb-3" style={{ background: 'rgba(0,0,0,0.25)' }}>
-            <p className="text-white/85 text-center text-sm leading-relaxed">"{post.transcript_fr.slice(0, 80)}..."</p>
+        {/* ── KARAOKE TRANSCRIPTION ── */}
+        {words.length > 0 ? (
+          <KaraokeDisplay words={words} activeIndex={activeWordIndex} isPlaying={isPlaying} />
+        ) : post.transcript_fr ? (
+          <div className="max-w-xs rounded-xl px-4 py-2.5 mb-3"
+            style={{ background: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(10px)' }}
+          >
+            <p className="text-white/80 text-center text-xs leading-relaxed">"{post.transcript_fr.slice(0, 90)}..."</p>
           </div>
-        )}
+        ) : null}
 
         {/* Controls */}
         <div className={`flex items-center gap-3 mb-2 ${!hasAudio ? 'opacity-40 pointer-events-none' : ''}`}>
-          <span className="text-white/60 text-xs w-10 text-right">{formatTime(currentTime)}</span>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={skipBack} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipBack className="w-4 h-4 text-white" /></motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={togglePlay} className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-xl">
-            {isPlaying ? <Pause className="w-7 h-7 text-gray-800" /> : <Play className="w-7 h-7 text-gray-800 ml-1" />}
+          <span className="text-white/60 text-xs w-9 text-right tabular-nums">{formatTime(currentTime)}</span>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={skipBack}
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.15)' }}
+          >
+            <SkipBack className="w-4 h-4 text-white" />
           </motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={skipForward} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><SkipForward className="w-4 h-4 text-white" /></motion.button>
-          <span className="text-white/60 text-xs w-10">{audioDuration > 0 ? formatTime(audioDuration) : '--:--'}</span>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={togglePlay}
+            className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-xl"
+          >
+            {isPlaying ? <Pause className="w-6 h-6 text-gray-800" /> : <Play className="w-6 h-6 text-gray-800 ml-1" />}
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={skipForward}
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.15)' }}
+          >
+            <SkipForward className="w-4 h-4 text-white" />
+          </motion.button>
+          <span className="text-white/60 text-xs w-9 tabular-nums">{audioDuration > 0 ? formatTime(audioDuration) : '--:--'}</span>
         </div>
 
-        {/* Speed & Volume */}
-        <div className="flex items-center gap-2">
-          <motion.button whileTap={{ scale: 0.95 }} className="px-3 py-1 rounded-full bg-white/15 text-white text-xs font-medium">1x</motion.button>
-          <motion.button whileTap={{ scale: 0.95 }} className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center"><Volume2 className="w-4 h-4 text-white" /></motion.button>
+        {/* Speed & Mute — NOW FUNCTIONAL */}
+        <div className={`flex items-center gap-2 ${!hasAudio ? 'opacity-40 pointer-events-none' : ''}`}>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={cycleSpeed}
+            className="px-3 py-1.5 rounded-full text-white text-xs font-bold transition-all"
+            style={{
+              background: playbackRate !== 1 ? 'rgba(255,200,80,0.3)' : 'rgba(255,255,255,0.15)',
+              border: playbackRate !== 1 ? '1px solid rgba(255,200,80,0.5)' : '1px solid transparent',
+              color: playbackRate !== 1 ? '#FFD166' : 'white',
+            }}
+          >
+            {speedLabel}
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleMuteHandler}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
+            style={{
+              background: isMuted ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.15)',
+              border: isMuted ? '1px solid rgba(239,68,68,0.5)' : '1px solid transparent',
+            }}
+          >
+            {isMuted
+              ? <VolumeX className="w-4 h-4 text-red-400" />
+              : <Volume2 className="w-4 h-4 text-white" />
+            }
+          </motion.button>
         </div>
       </div>
 
-      {/* RIGHT SIDE ACTIONS - TOUS LES BOUTONS */}
+      {/* RIGHT SIDE ACTIONS */}
       <div className="absolute right-3 bottom-24 flex flex-col items-center gap-3">
-        {/* Like */}
         <motion.button whileTap={{ scale: 0.85 }} onClick={handleLike} className="flex flex-col items-center">
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/30'}`}>
             <Heart className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
           <span className="text-white text-[10px] mt-0.5 font-medium">{likesCount}</span>
         </motion.button>
-        
-        {/* Répondre (Comment) */}
+
         <motion.button whileTap={{ scale: 0.85 }} onClick={onComment} className="flex flex-col items-center">
           <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
             <Mic className="w-6 h-6 text-white" />
           </div>
           <span className="text-white text-[10px] mt-0.5">Répondre</span>
         </motion.button>
-        
-        {/* Remix */}
+
         <motion.button whileTap={{ scale: 0.85 }} className="flex flex-col items-center">
           <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
             <RefreshCw className="w-6 h-6 text-white" />
           </div>
           <span className="text-white text-[10px] mt-0.5">Remix</span>
         </motion.button>
-        
-        {/* Partager */}
+
         <motion.button whileTap={{ scale: 0.85 }} onClick={() => { sharePost(); triggerFeedback('send'); }} className="flex flex-col items-center">
           <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
             <Share2 className="w-6 h-6 text-white" />
           </div>
           <span className="text-white text-[10px] mt-0.5">{sharesCount || 'Partager'}</span>
         </motion.button>
-        
-        {/* Sauver */}
+
         <motion.button whileTap={{ scale: 0.85 }} onClick={() => { toggleBookmark(); triggerFeedback('success'); }} className="flex flex-col items-center">
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isBookmarked ? 'bg-amber-500' : 'bg-black/30'}`}>
             <Bookmark className={`w-6 h-6 ${isBookmarked ? 'text-white fill-white' : 'text-white'}`} />
@@ -565,15 +783,17 @@ const AudioFeedCard: React.FC<{
       {/* Author info bottom left */}
       <div className="absolute left-4 bottom-24 flex items-end gap-3">
         <div className="relative cursor-pointer" onClick={() => authorId && navigate(`/fitila/profile/${authorId}`)}>
-          <div className="w-12 h-12 rounded-full border-2 border-white shadow-lg overflow-hidden bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center">
-            {post.profile?.avatar_url ? (
-              <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-lg">👤</span>
-            )}
+          <div className="w-11 h-11 rounded-full border-2 border-white shadow-lg overflow-hidden bg-gradient-to-br from-[#FF7A00] to-[#FF5500] flex items-center justify-center">
+            {post.profile?.avatar_url
+              ? <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              : <span className="text-base">👤</span>
+            }
           </div>
           {!isFollowing && authorId && currentUserId !== authorId && (
-            <motion.button whileTap={{ scale: 0.9 }} onClick={(e) => { e.stopPropagation(); handleFollow(); }} className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#FF7A00] flex items-center justify-center">
+            <motion.button whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); handleFollow(); }}
+              className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#FF7A00] flex items-center justify-center"
+            >
               <Plus className="w-3 h-3 text-white" strokeWidth={3} />
             </motion.button>
           )}
@@ -1225,13 +1445,28 @@ export default function TamTamSocial() {
                   if (!shouldRender) {
                     return <div key={post.id} className="h-[100dvh] snap-start snap-always" />;
                   }
+                  const totalPosts = getCurrentPosts.length;
                   return (
-                    <AudioFeedCard 
-                      key={post.id} 
-                      post={post} 
-                      isActive={i === currentPostIndex} 
-                      category={feedMode === 'patrimoine' ? 'patrimoine' : 'mavoix'} 
-                      onComment={() => handleOpenComments(post.id)} 
+                    <AudioFeedCard
+                      key={post.id}
+                      post={post}
+                      isActive={i === currentPostIndex}
+                      category={feedMode === 'patrimoine' ? 'patrimoine' : 'mavoix'}
+                      onComment={() => handleOpenComments(post.id)}
+                      hasPrevious={i > 0}
+                      hasNext={i < totalPosts - 1}
+                      onPrevious={() => {
+                        if (i > 0) {
+                          const container = document.querySelector('.snap-y.snap-mandatory');
+                          if (container) container.scrollTo({ top: (i - 1) * window.innerHeight, behavior: 'smooth' });
+                        }
+                      }}
+                      onNext={() => {
+                        if (i < totalPosts - 1) {
+                          const container = document.querySelector('.snap-y.snap-mandatory');
+                          if (container) container.scrollTo({ top: (i + 1) * window.innerHeight, behavior: 'smooth' });
+                        }
+                      }}
                     />
                   );
                 })
