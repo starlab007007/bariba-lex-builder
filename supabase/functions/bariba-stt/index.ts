@@ -1,10 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+const SPACE_URL = 'https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space';
 
 interface STTRequest {
   audio: string;
@@ -13,256 +14,283 @@ interface STTRequest {
 }
 
 /**
- * Authenticates the request and returns user info
- * @param req - The incoming request
- * @returns User object if authenticated, null otherwise
+ * Détecte le type MIME et l'extension depuis le préfixe base64 ou utilise des valeurs par défaut.
  */
-async function authenticateRequest(req: Request): Promise<{ userId: string | null; isAuthenticated: boolean }> {
-  const authHeader = req.headers.get('Authorization');
-  
-  if (!authHeader) {
-    return { userId: null, isAuthenticated: false };
-  }
-
-  try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
-
-    const { data: { user }, error } = await supabaseClient.auth.getUser();
-    
-    if (error || !user) {
-      return { userId: null, isAuthenticated: false };
-    }
-
-    return { userId: user.id, isAuthenticated: true };
-  } catch (e) {
-    console.error('Auth error:', e);
-    return { userId: null, isAuthenticated: false };
-  }
-}
-
-const SPACE_URL = 'https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space';
-
-// Check if the HuggingFace Space is awake
-async function wakeUpSpace(hfToken: string): Promise<boolean> {
-  try {
-    console.log('🔄 Checking if HuggingFace Space is awake...');
-    const response = await fetch(`${SPACE_URL}/`, {
-      headers: { 'Authorization': `Bearer ${hfToken}` },
-      signal: AbortSignal.timeout(5000) // 5 second timeout
-    });
-    console.log(`   Space status: ${response.status}`);
-    return response.ok;
-  } catch (e: unknown) {
-    console.log(`   Space wake-up check failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
-    return false;
-  }
-}
-
-async function pollForResult(
-  spaceUrl: string,
-  apiPrefix: string,
-  sessionHash: string,
-  hfToken: string,
-  maxAttempts = 30 // Increased from 15 for more reliability
-): Promise<any> {
-  const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
-  console.log(`📡 Polling: ${pollUrl}`);
-  
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      const response = await fetch(pollUrl, {
-        headers: { 
-          'Authorization': `Bearer ${hfToken}`,
-          'Accept': 'text/event-stream'
-        },
-        signal: AbortSignal.timeout(10000) // 10 second timeout per poll
-      });
-      
-      if (response.ok) {
-        const text = await response.text();
-        console.log(`   Poll ${attempt + 1}: ${text.substring(0, 300)}`);
-        
-        // Parse SSE events
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.substring(6));
-              
-              // Check for process_completed with error
-              if (data.msg === 'process_completed' && data.output?.error) {
-                console.error(`❌ HuggingFace error: ${data.output.error}`);
-                throw new Error(`HuggingFace Space error: ${data.output.error}`);
-              }
-              
-              // Check for complete event with data
-              if (data.msg === 'process_completed' && data.output?.data) {
-                console.log(`✅ Got result: ${JSON.stringify(data.output).substring(0, 200)}`);
-                return data.output;
-              }
-              
-              // Direct data response
-              if (data.data && Array.isArray(data.data)) {
-                return data;
-              }
-            } catch (parseError: unknown) {
-              const errMsg = parseError instanceof Error ? parseError.message : '';
-              if (errMsg.includes('HuggingFace')) throw parseError;
-              // Continue parsing for other errors
-            }
-          }
-        }
-      }
-      
-      // Wait before next poll (increased to 800ms for more stability)
-      await new Promise(r => setTimeout(r, 800));
-    } catch (pollError: unknown) {
-      const errMsg = pollError instanceof Error ? pollError.message : 'Unknown';
-      console.log(`   Poll error: ${errMsg}`);
-      if (errMsg.includes('HuggingFace')) throw pollError;
+function detectAudioFormat(audioBase64: string): { mime: string; ext: string; pureBase64: string } {
+  if (audioBase64.startsWith('data:')) {
+    const match = audioBase64.match(/^data:(audio\/[^;]+);base64,(.+)$/s);
+    if (match) {
+      const mime = match[1];
+      const pureBase64 = match[2];
+      const ext = mime.split('/')[1]?.split(';')[0] || 'webm';
+      return { mime, ext, pureBase64 };
     }
   }
-  
-  return null;
+  // Pas de préfixe data: → audio brut en base64
+  return { mime: 'audio/webm', ext: 'webm', pureBase64: audioBase64 };
 }
 
-async function callGradioSTT(
-  spaceUrl: string,
-  apiPrefix: string,
-  audioData: string,
+/**
+ * Convertit une chaîne base64 en Uint8Array
+ */
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
+ * ÉTAPE 1 : Upload du fichier audio vers le Space HuggingFace via multipart
+ * Retourne le path temporaire retourné par Gradio
+ */
+async function uploadAudioFile(
+  audioBytes: Uint8Array,
+  mime: string,
+  ext: string,
+  hfToken: string
+): Promise<string> {
+  console.log(`📤 Uploading audio file to HuggingFace Space (${audioBytes.length} bytes, ${mime})`);
+
+  const formData = new FormData();
+  const blob = new Blob([audioBytes], { type: mime });
+  formData.append('files', blob, `audio.${ext}`);
+
+  const uploadResponse = await fetch(`${SPACE_URL}/gradio_api/upload`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${hfToken}`,
+    },
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
+
+  console.log(`   Upload status: ${uploadResponse.status}`);
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    console.error(`   Upload failed: ${errorText.substring(0, 300)}`);
+    throw new Error(`Upload failed (${uploadResponse.status}): ${errorText.substring(0, 200)}`);
+  }
+
+  const uploadResult = await uploadResponse.json();
+  console.log(`   Upload result: ${JSON.stringify(uploadResult).substring(0, 300)}`);
+
+  // Le Space retourne soit un tableau de paths, soit un objet avec path
+  let filePath: string | null = null;
+
+  if (Array.isArray(uploadResult) && uploadResult.length > 0) {
+    // Format: [{"path": "...", "url": "...", ...}] ou ["path/to/file"]
+    const first = uploadResult[0];
+    filePath = typeof first === 'string' ? first : (first?.path || first?.name || null);
+  } else if (uploadResult?.path) {
+    filePath = uploadResult.path;
+  } else if (typeof uploadResult === 'string') {
+    filePath = uploadResult;
+  }
+
+  if (!filePath) {
+    throw new Error(`Upload response missing file path: ${JSON.stringify(uploadResult).substring(0, 200)}`);
+  }
+
+  console.log(`   ✅ File uploaded to path: ${filePath}`);
+  return filePath;
+}
+
+/**
+ * ÉTAPE 2 : Appel de l'endpoint /gradio_api/call/transcribe avec le filepath
+ * Retourne l'event_id pour la récupération SSE
+ */
+async function callTranscribeEndpoint(
+  filePath: string,
   robustMode: boolean,
   speakerType: string,
   hfToken: string
-): Promise<any> {
-  const sessionHash = Math.random().toString(36).substring(7);
-  
-  // Format audio data for Gradio
-  const audioInput = audioData.startsWith('data:') 
-    ? audioData 
-    : `data:audio/webm;base64,${audioData}`;
-  
-  // Data array: [audio, robustMode, speakerType]
-  const data = [audioInput, robustMode, speakerType];
-  
-  // Method 1: Queue-based API (Gradio 4.x+)
-  console.log(`🔄 Trying queue/join with session: ${sessionHash}`);
-  try {
-    const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        data, 
-        fn_index: 0, 
-        session_hash: sessionHash 
-      }),
-      signal: AbortSignal.timeout(15000) // 15 second timeout
-    });
+): Promise<string> {
+  console.log(`🎯 Calling transcribe endpoint with path: ${filePath}`);
+
+  // Format FileData pour Gradio v4 : { "path": "...", "meta": { "_type": "gradio.FileData" } }
+  const fileData = {
+    path: filePath,
+    meta: { _type: 'gradio.FileData' }
+  };
+
+  const requestBody = {
+    data: [fileData, robustMode, speakerType]
+  };
+
+  console.log(`   Request body: ${JSON.stringify(requestBody).substring(0, 300)}`);
+
+  const response = await fetch(`${SPACE_URL}/gradio_api/call/transcribe`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${hfToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+    signal: AbortSignal.timeout(30000),
+  });
+
+  console.log(`   Transcribe call status: ${response.status}`);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`   Transcribe call failed: ${errorText.substring(0, 300)}`);
     
-    console.log(`   Join status: ${joinResponse.status}`);
-    
-    if (joinResponse.ok) {
-      const joinText = await joinResponse.text();
-      console.log(`   Join response: ${joinText.substring(0, 200)}`);
-      
-      // Poll for result with increased attempts
-      const result = await pollForResult(spaceUrl, apiPrefix, sessionHash, hfToken, 30);
-      if (result) return result;
+    if (response.status === 503) {
+      throw new Error('SPACE_SLEEPING: Le Space HuggingFace est en veille. Réessayez dans 30 secondes.');
     }
-  } catch (queueError: unknown) {
-    const errMsg = queueError instanceof Error ? queueError.message : 'Unknown';
-    console.log(`   Queue error: ${errMsg}`);
-    if (errMsg.includes('HuggingFace')) throw queueError;
+    throw new Error(`Transcribe call failed (${response.status}): ${errorText.substring(0, 200)}`);
   }
 
-  // Method 2: Direct call API
-  console.log(`🔄 Trying direct /call/predict`);
-  try {
-    const response = await fetch(`${spaceUrl}${apiPrefix}/call/predict`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ data }),
-      signal: AbortSignal.timeout(30000) // 30 second timeout
-    });
-    
-    console.log(`   Status: ${response.status}`);
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log(`   Result: ${JSON.stringify(result).substring(0, 200)}`);
-      
-      if (result.event_id) {
-        const eventUrl = `${spaceUrl}${apiPrefix}/call/predict/${result.event_id}`;
-        console.log(`   Polling event: ${eventUrl}`);
-        
-        const eventResponse = await fetch(eventUrl, {
-          headers: { 
-            'Authorization': `Bearer ${hfToken}`,
-            'Accept': 'text/event-stream'
-          },
-          signal: AbortSignal.timeout(30000)
-        });
-        
-        if (eventResponse.ok) {
-          const eventText = await eventResponse.text();
-          console.log(`   Event text: ${eventText.substring(0, 300)}`);
-          
-          const lines = eventText.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const parsed = JSON.parse(line.substring(6));
-                if (parsed.data || Array.isArray(parsed)) return parsed;
-              } catch (e) { /* continue */ }
-            }
-          }
-        }
-      }
-      
-      return result;
-    }
-  } catch (directError: unknown) {
-    const errMsg = directError instanceof Error ? directError.message : 'Unknown';
-    console.log(`   Direct call error: ${errMsg}`);
+  const result = await response.json();
+  console.log(`   Transcribe result: ${JSON.stringify(result).substring(0, 200)}`);
+
+  const eventId = result?.event_id;
+  if (!eventId) {
+    throw new Error(`No event_id in transcribe response: ${JSON.stringify(result).substring(0, 200)}`);
   }
 
-  throw new Error('All Gradio API methods failed');
+  console.log(`   ✅ Got event_id: ${eventId}`);
+  return eventId;
 }
 
-function extractTranscription(result: any): { transcription: string | null; error: string | null } {
-  console.log(`🔍 Extracting from result: ${JSON.stringify(result).substring(0, 500)}`);
-  
-  // Check for errors first
-  if (result?.error) {
-    console.error(`❌ Result contains error: ${result.error}`);
-    return { transcription: null, error: result.error };
+/**
+ * ÉTAPE 3 : Lecture du stream SSE jusqu'à process_completed
+ * Retourne le texte transcrit
+ */
+async function readSSEResult(eventId: string, hfToken: string): Promise<string> {
+  console.log(`📡 Reading SSE result for event: ${eventId}`);
+
+  const sseUrl = `${SPACE_URL}/gradio_api/call/transcribe/${eventId}`;
+
+  const response = await fetch(sseUrl, {
+    headers: {
+      'Authorization': `Bearer ${hfToken}`,
+      'Accept': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+    },
+    signal: AbortSignal.timeout(60000), // 60 secondes max pour le cold start
+  });
+
+  console.log(`   SSE status: ${response.status}`);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`SSE request failed (${response.status}): ${errorText.substring(0, 200)}`);
   }
-  
-  if (result?.data?.[0]?.error) {
-    return { transcription: null, error: result.data[0].error };
+
+  // Lire le body entier (le stream SSE se termine après process_completed)
+  const sseText = await response.text();
+  console.log(`   SSE raw (first 500 chars): ${sseText.substring(0, 500)}`);
+
+  // Parser les événements SSE
+  const lines = sseText.split('\n');
+  let lastData: string | null = null;
+
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      lastData = line.substring(6).trim();
+    }
+    
+    // Détecter process_completed et extraire
+    if (line === '' && lastData) {
+      try {
+        const parsed = JSON.parse(lastData);
+        
+        if (parsed.msg === 'process_completed') {
+          console.log(`   ✅ process_completed received`);
+          
+          // Vérifier erreur dans l'output
+          if (parsed.output?.error) {
+            throw new Error(`Model error: ${parsed.output.error}`);
+          }
+          
+          // Extraire la transcription depuis output.data
+          const data = parsed.output?.data;
+          if (Array.isArray(data)) {
+            // Le Space retourne [transcription_text, confidence, ...] ou [{ label, value }, ...]
+            const first = data[0];
+            if (typeof first === 'string') {
+              console.log(`   Transcription: "${first.substring(0, 100)}"`);
+              return first;
+            }
+            if (first?.label) return first.label;
+            if (first?.value) return first.value;
+            // Essayer d'autres positions
+            for (const item of data) {
+              if (typeof item === 'string' && item.length > 0) return item;
+            }
+          }
+          
+          // Fallback : chercher transcription directe
+          if (parsed.output?.transcription) return parsed.output.transcription;
+          if (parsed.output?.text) return parsed.output.text;
+          
+          throw new Error(`No transcription in process_completed output: ${JSON.stringify(parsed.output).substring(0, 300)}`);
+        }
+        
+        if (parsed.msg === 'process_errored') {
+          throw new Error(`Process error: ${parsed.error || 'Unknown model error'}`);
+        }
+        
+      } catch (parseErr) {
+        if (parseErr instanceof Error && (
+          parseErr.message.includes('Model error') || 
+          parseErr.message.includes('Process error') ||
+          parseErr.message.includes('No transcription')
+        )) {
+          throw parseErr;
+        }
+        // Ignorer les erreurs de parsing pour les autres lignes SSE
+      }
+      lastData = null;
+    }
   }
-  
-  // Extract transcription
-  if (typeof result === 'string') return { transcription: result, error: null };
-  if (Array.isArray(result) && typeof result[0] === 'string') return { transcription: result[0], error: null };
-  if (result?.data?.[0] && typeof result.data[0] === 'string') return { transcription: result.data[0], error: null };
-  if (result?.transcription) return { transcription: result.transcription, error: null };
-  if (result?.text) return { transcription: result.text, error: null };
-  
-  return { transcription: null, error: null };
+
+  // Si on arrive ici sans process_completed, essayer de parser la dernière donnée
+  if (lastData) {
+    try {
+      const parsed = JSON.parse(lastData);
+      if (parsed.msg === 'process_completed') {
+        const data = parsed.output?.data;
+        if (Array.isArray(data) && typeof data[0] === 'string') return data[0];
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  throw new Error('SSE stream ended without process_completed event');
+}
+
+/**
+ * Pipeline complet : base64 → Upload → Call → SSE → transcription
+ */
+async function transcribeBariba(
+  audioBase64: string,
+  robustMode: boolean,
+  speakerType: string,
+  hfToken: string
+): Promise<string> {
+  // 1. Détecter le format
+  const { mime, ext, pureBase64 } = detectAudioFormat(audioBase64);
+  console.log(`🎵 Audio format: ${mime} (.${ext}), base64 length: ${pureBase64.length}`);
+
+  // 2. Convertir en bytes
+  const audioBytes = base64ToUint8Array(pureBase64);
+  console.log(`   Bytes: ${audioBytes.length}`);
+
+  // 3. Upload vers le Space
+  const filePath = await uploadAudioFile(audioBytes, mime, ext, hfToken);
+
+  // 4. Appel transcribe → event_id
+  const eventId = await callTranscribeEndpoint(filePath, robustMode, speakerType, hfToken);
+
+  // 5. Lire SSE → transcription
+  const transcription = await readSSEResult(eventId, hfToken);
+
+  return transcription;
 }
 
 serve(async (req: Request) => {
@@ -271,72 +299,29 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { audio, robustMode = true, speakerType = 'Auto' }: STTRequest = await req.json();
+    const body = await req.json() as STTRequest;
+    const { audio, robustMode = true, speakerType = 'Auto' } = body;
 
-    // Allow health check without authentication
-    if (audio === 'test' || audio.length < 20) {
-      console.log(`🏥 Health check request detected (audio="${audio.substring(0, 10)}")`);
+    // Health check sans authentification
+    if (!audio || audio === 'test' || audio.length < 20) {
+      console.log(`🏥 Health check`);
       return new Response(
         JSON.stringify({ 
           status: 'ok',
           service: 'bariba-stt',
-          message: 'Service is available',
+          message: 'Service disponible',
           isHealthCheck: true
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Authenticate for actual STT requests
-    const { isAuthenticated, userId } = await authenticateRequest(req);
-    
-    if (!isAuthenticated) {
-      console.log('⚠️ Unauthenticated STT request rejected');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Authentication required', 
-          details: 'Please log in to use the speech-to-text service.' 
-        }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    console.log(`🔐 Authenticated STT request from user: ${userId}`);
-    
-    if (!audio) {
-      return new Response(
-        JSON.stringify({ error: 'Audio data required', details: 'Aucune donnée audio reçue' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check minimum audio length
-    const minAudioLength = 100;
-    console.log(`📏 Audio received: ${audio.length} chars (min: ${minAudioLength})`);
-    console.log(`📏 Audio preview (first 100 chars): ${audio.substring(0, 100)}`);
-    
-    if (audio.length < minAudioLength) {
-      console.log(`⚠️ Audio too short: ${audio.length} chars (min: ${minAudioLength})`);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Audio too short', 
-          details: 'L\'enregistrement est trop court. Parlez plus longtemps (au moins 2 secondes).',
-          audioLength: audio.length,
-          suggestion: 'Maintenez le bouton micro et parlez pendant au moins 2 secondes avant de relâcher.'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check maximum audio length to avoid timeouts
-    const maxAudioLength = 300000;
-    if (audio.length > maxAudioLength) {
-      console.log(`⚠️ Audio too large: ${audio.length} chars (max: ${maxAudioLength})`);
+    // Vérification longueur max
+    if (audio.length > 500000) {
       return new Response(
         JSON.stringify({ 
           error: 'Audio too large', 
-          details: 'L\'enregistrement est trop long. Limitez à 30 secondes maximum.',
-          audioLength: audio.length
+          details: 'L\'enregistrement est trop long. Limitez à 30 secondes maximum.'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -345,7 +330,7 @@ serve(async (req: Request) => {
     const HF_TOKEN = Deno.env.get('HUGGING_FACE_API_TOKEN');
     if (!HF_TOKEN) {
       return new Response(
-        JSON.stringify({ error: 'HuggingFace token not configured', details: 'Configuration serveur manquante' }),
+        JSON.stringify({ error: 'Configuration serveur manquante', details: 'HuggingFace token non configuré' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -353,106 +338,62 @@ serve(async (req: Request) => {
     console.log(`🎤 Bariba STT: audio=${audio.length} chars, robust=${robustMode}, speaker=${speakerType}`);
     const startTime = Date.now();
 
-    // Try to wake up the space first
-    const isAwake = await wakeUpSpace(HF_TOKEN);
-    if (!isAwake) {
-      console.log('⚠️ HuggingFace Space may be sleeping, attempting anyway...');
-    }
-
-    // Get API prefix from config
-    let apiPrefix = '/gradio_api';
     try {
-      const configResponse = await fetch(`${SPACE_URL}/config`, {
-        headers: { 'Authorization': `Bearer ${HF_TOKEN}` },
-        signal: AbortSignal.timeout(5000)
-      });
-      if (configResponse.ok) {
-        const config = await configResponse.json();
-        apiPrefix = config.api_prefix || '/gradio_api';
-        console.log(`📋 Gradio ${config.version}, prefix: ${apiPrefix}`);
-      }
-    } catch (e) {
-      console.log(`   Config fetch failed, using default prefix`);
-    }
-
-    try {
-      const result = await callGradioSTT(
-        SPACE_URL,
-        apiPrefix,
-        audio,
-        robustMode,
-        speakerType,
-        HF_TOKEN
-      );
-
-      const { transcription, error: extractError } = extractTranscription(result);
+      const transcription = await transcribeBariba(audio, robustMode, speakerType, HF_TOKEN);
       const duration = Date.now() - startTime;
 
-      // Check for extraction error
-      if (extractError) {
-        console.error(`❌ HuggingFace model returned error: ${extractError}`);
+      if (!transcription || transcription.trim().length === 0) {
         return new Response(
           JSON.stringify({
-            error: 'HuggingFace model error',
-            details: extractError,
+            error: 'Aucune transcription',
+            details: 'Le modèle n\'a pas retourné de texte. Parlez plus fort et plus longtemps (3-5 secondes).',
             duration,
-            suggestion: 'Le modèle ASR Bariba a rencontré un problème. Essayez avec un enregistrement plus long et clair.'
+            suggestion: 'Maintenez le bouton et parlez clairement.'
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      if (transcription) {
-        console.log(`✅ STT Success in ${duration}ms: "${transcription.substring(0, 50)}"`);
+      console.log(`✅ STT Success in ${duration}ms: "${transcription.substring(0, 80)}"`);
 
-        return new Response(
-          JSON.stringify({
-            transcription,
-            confidence: 90,
-            duration,
-            language: 'bariba'
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // No transcription but no error either
-      console.warn(`⚠️ No transcription returned after ${duration}ms`);
-      
       return new Response(
         JSON.stringify({
-          error: 'No transcription returned',
-          details: 'Le modèle HuggingFace n\'a pas retourné de transcription. L\'audio peut être trop court ou inaudible.',
+          transcription: transcription.trim(),
+          confidence: 90,
           duration,
-          suggestion: 'Parlez plus fort et plus longtemps (3-5 secondes minimum).'
+          language: 'bariba'
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-      
-    } catch (e: unknown) {
+
+    } catch (err: unknown) {
       const duration = Date.now() - startTime;
-      const errMsg = e instanceof Error ? e.message : 'Unknown error';
-      console.error(`❌ API error after ${duration}ms: ${errMsg}`);
-      
-      // Check if it's a HuggingFace-specific error
-      const isHFError = errMsg.includes('HuggingFace');
-      
+      const errMsg = err instanceof Error ? err.message : 'Erreur inconnue';
+      console.error(`❌ STT Error after ${duration}ms: ${errMsg}`);
+
+      const isSleeping = errMsg.includes('SPACE_SLEEPING') || errMsg.includes('503');
+      const isModelError = errMsg.includes('Model error') || errMsg.includes('model error');
+
       return new Response(
         JSON.stringify({
-          error: isHFError ? 'HuggingFace model error' : 'Bariba STT service unavailable',
-          details: errMsg || 'HuggingFace Space API not responding.',
+          error: isSleeping ? 'Service en veille' : (isModelError ? 'Erreur du modèle' : 'Service STT Bariba indisponible'),
+          details: isSleeping
+            ? 'Le service HuggingFace se réveille. Réessayez dans 30 secondes.'
+            : errMsg,
           duration,
-          suggestion: isHFError 
-            ? 'Le modèle Bariba a retourné une erreur. Réessayez avec un audio plus clair.'
-            : 'Le service est temporairement indisponible. Réessayez dans quelques secondes.'
+          isWakingUp: isSleeping,
+          suggestion: isSleeping
+            ? 'Attendez 30 secondes puis réessayez.'
+            : 'Réenregistrez avec un son plus clair.'
         }),
-        { status: isHFError ? 400 : 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: isSleeping ? 503 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
   } catch (error: unknown) {
     console.error('Fatal error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'STT failed', suggestion: 'Une erreur inattendue s\'est produite. Réessayez.' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Erreur STT', suggestion: 'Réessayez.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -14,12 +14,14 @@ export interface BaribaSTTResult {
 export interface UseBaribaSTTReturn {
   transcribe: (audioBase64: string, options?: { robustMode?: boolean; speakerType?: SpeakerType }) => Promise<BaribaSTTResult | null>;
   isTranscribing: boolean;
+  isWakingUp: boolean;
   error: string | null;
   lastResult: BaribaSTTResult | null;
 }
 
 export const useBaribaSTT = (): UseBaribaSTTReturn => {
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<BaribaSTTResult | null>(null);
   const { toast } = useToast();
@@ -29,6 +31,7 @@ export const useBaribaSTT = (): UseBaribaSTTReturn => {
     options?: { robustMode?: boolean; speakerType?: SpeakerType }
   ): Promise<BaribaSTTResult | null> => {
     setIsTranscribing(true);
+    setIsWakingUp(false);
     setError(null);
 
     const startTime = Date.now();
@@ -37,6 +40,12 @@ export const useBaribaSTT = (): UseBaribaSTTReturn => {
       robustMode: options?.robustMode ?? true,
       speakerType: options?.speakerType ?? 'Auto'
     });
+
+    // Timeout pour détecter le cold start (>8s = probablement en réveil)
+    const wakeUpTimer = setTimeout(() => {
+      setIsWakingUp(true);
+      console.log('[useBaribaSTT] Service taking long → likely waking up...');
+    }, 8000);
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke('bariba-stt', {
@@ -47,17 +56,31 @@ export const useBaribaSTT = (): UseBaribaSTTReturn => {
         }
       });
 
+      clearTimeout(wakeUpTimer);
       const elapsed = Date.now() - startTime;
+      setIsWakingUp(false);
+
       console.log('[useBaribaSTT] Response received in', elapsed, 'ms:', { 
         hasData: !!data, 
         hasError: !!fnError,
         dataKeys: data ? Object.keys(data) : [],
-        fnError 
       });
 
       if (fnError) {
-        console.error('[useBaribaSTT] Function invocation error:', fnError.message, fnError);
-        throw new Error(`Edge Function error: ${fnError.message}`);
+        console.error('[useBaribaSTT] Function invocation error:', fnError.message);
+        throw new Error(`Erreur du service: ${fnError.message}`);
+      }
+
+      // Gérer le Service en veille (503)
+      if (data?.isWakingUp || data?.error?.includes('veille') || data?.error?.includes('503')) {
+        const wakeMsg = 'Le service Bariba se réveille. Réessayez dans 30 secondes.';
+        setError(wakeMsg);
+        toast({
+          title: "⏳ Service en réveil",
+          description: wakeMsg,
+          variant: "destructive"
+        });
+        return null;
       }
 
       if (data?.error) {
@@ -68,7 +91,7 @@ export const useBaribaSTT = (): UseBaribaSTTReturn => {
       
       if (!data?.transcription) {
         console.warn('[useBaribaSTT] No transcription in response:', data);
-        throw new Error('Aucune transcription reçue du service');
+        throw new Error(data?.details || 'Aucune transcription reçue du service');
       }
 
       const result: BaribaSTTResult = {
@@ -78,23 +101,29 @@ export const useBaribaSTT = (): UseBaribaSTTReturn => {
         speakerType: options?.speakerType || 'Auto'
       };
       
-      console.log('[useBaribaSTT] Success:', result.transcription.substring(0, 50));
+      console.log('[useBaribaSTT] Success:', result.transcription.substring(0, 80));
 
       setLastResult(result);
       
       toast({
-        title: "🎤 Transcription Bariba",
-        description: `Transcrit en ${result.duration}ms avec ${result.confidence}% de confiance`
+        title: "🎤 Transcription Bariba réussie",
+        description: `"${result.transcription.substring(0, 50)}${result.transcription.length > 50 ? '...' : ''}" (${result.duration}ms)`
       });
 
       return result;
 
     } catch (err: any) {
+      clearTimeout(wakeUpTimer);
+      setIsWakingUp(false);
+
       const errorMessage = err.message || 'Erreur de transcription Bariba';
       setError(errorMessage);
       
+      const isSleeping = errorMessage.includes('veille') || errorMessage.includes('503') || errorMessage.includes('sleeping');
+      const isAudioError = errorMessage.includes('audio') || errorMessage.includes('format') || errorMessage.includes('court');
+
       toast({
-        title: "Erreur de transcription",
+        title: isSleeping ? "⏳ Service en réveil" : (isAudioError ? "⚠️ Problème audio" : "❌ Transcription échouée"),
         description: errorMessage,
         variant: "destructive"
       });
@@ -108,6 +137,7 @@ export const useBaribaSTT = (): UseBaribaSTTReturn => {
   return {
     transcribe,
     isTranscribing,
+    isWakingUp,
     error,
     lastResult
   };

@@ -25,7 +25,7 @@ export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
   const [baribaSTTStatus, setBaribaSTTStatus] = useState<ServiceStatus>('checking');
   const [lastError, setLastError] = useState<string | null>(null);
   
-  const { transcribe: transcribeBariba, isTranscribing: isTranscribingBariba, error: baribaError } = useBaribaSTT();
+  const { transcribe: transcribeBariba, isTranscribing: isTranscribingBariba, isWakingUp: isBaribaWakingUp, error: baribaError } = useBaribaSTT();
   const { 
     startListening, 
     stopListening, 
@@ -154,19 +154,25 @@ export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
                   Vérification...
                 </Badge>
               )}
-              {baribaSTTStatus === 'available' && (
+              {baribaSTTStatus === 'available' && !isBaribaWakingUp && (
                 <Badge variant="default" className="flex items-center gap-1 bg-green-500/20 text-green-700 border-green-500/30">
                   <CheckCircle2 className="h-3 w-3" />
                   STT Bariba disponible
                 </Badge>
               )}
-              {baribaSTTStatus === 'unavailable' && (
+              {isBaribaWakingUp && (
+                <Badge variant="secondary" className="flex items-center gap-1 bg-orange-500/20 text-orange-700 border-orange-500/30">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Réveil en cours (~30s)...
+                </Badge>
+              )}
+              {baribaSTTStatus === 'unavailable' && !isBaribaWakingUp && (
                 <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-500/20 text-yellow-700 border-yellow-500/30">
                   <AlertTriangle className="h-3 w-3" />
                   STT en veille
                 </Badge>
               )}
-              {baribaSTTStatus === 'error' && (
+              {baribaSTTStatus === 'error' && !isBaribaWakingUp && (
                 <Badge variant="destructive" className="flex items-center gap-1">
                   <XCircle className="h-3 w-3" />
                   STT indisponible

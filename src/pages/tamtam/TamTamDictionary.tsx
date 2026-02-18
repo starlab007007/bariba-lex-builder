@@ -11,6 +11,7 @@ import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
 import { NewWordSubmission } from '@/components/tamtam/NewWordSubmission';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useContributionPoints, getLevel } from '@/hooks/useContributionPoints';
+import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 
 type InputMode = 'voice' | 'keyboard';
 type SearchDirection = 'ba-fr' | 'fr-ba';
@@ -21,6 +22,7 @@ export default function TamTamDictionary() {
   const { speakCurrentLang, isSpeaking } = useUnifiedAudio();
   const { getSuggestions, searchInDefinitions, findExactMatch, isLoading: isLoadingDict, totalEntries } = usePhoneticSuggestions();
   const { totalPoints, level, submissionCount, isLoading: isLoadingContrib } = useContributionPoints();
+  const { transcribe: transcribeBariba, isTranscribing: isSTTLoading, isWakingUp: isSTTWakingUp } = useBaribaSTT();
   
   const [inputMode, setInputMode] = useState<InputMode>('keyboard');
   const [searchDirection, setSearchDirection] = useState<SearchDirection>('ba-fr');
@@ -30,8 +32,9 @@ export default function TamTamDictionary() {
   const [lastQuery, setLastQuery] = useState<string>('');
   const [searchHistory, setSearchHistory] = useState<PhoneticEntry[]>([]);
   const [notFoundWord, setNotFoundWord] = useState<string>('');
+  const [sttStatusMsg, setSttStatusMsg] = useState<string>('');
 
-  // Gestion de la commande vocale
+  // Gestion de la commande vocale avec transcription Bariba directe
   const handleVoiceCommand = async (result: {
     audioBase64: string;
     transcription?: string;
@@ -39,14 +42,30 @@ export default function TamTamDictionary() {
     sourceLang: 'ba' | 'fr';
   }) => {
     setIsProcessing(true);
+    setSttStatusMsg('');
     triggerFeedback('send');
     
     try {
-      const query = result.transcription?.toLowerCase().trim() || '';
+      let query = result.transcription?.toLowerCase().trim() || '';
+
+      // Si Bariba et pas de transcription → appel STT direct
+      if (result.sourceLang === 'ba' && !query && result.audioBase64) {
+        setSttStatusMsg(isSTTWakingUp ? '⏳ Réveil du service Bariba...' : '🎤 Transcription Bariba en cours...');
+        console.log('[TamTamDictionary] No transcription for Bariba audio → calling STT');
+        const sttResult = await transcribeBariba(result.audioBase64, { robustMode: true, speakerType: 'Auto' });
+        if (sttResult?.transcription) {
+          query = sttResult.transcription.toLowerCase().trim();
+          setSttStatusMsg(`✅ Transcrit : "${sttResult.transcription}"`);
+          console.log('[TamTamDictionary] STT result:', query);
+        } else {
+          setSttStatusMsg('❌ Transcription échouée - réessayez');
+        }
+      }
+
       setLastQuery(query);
       
       if (!query) {
-        const errorMsg = currentLang === 'ba' ? "Kò gbọ́ ɔ̀rɔ̀ kan" : "Aucun mot détecté";
+        const errorMsg = currentLang === 'ba' ? "Kò gbọ́ ɔ̀rɔ̀ kan" : "Aucun mot détecté - parlez en Bariba";
         await speakCurrentLang(errorMsg);
         return;
       }
@@ -70,6 +89,7 @@ export default function TamTamDictionary() {
         setSelectedEntry(foundEntry);
         addToHistory(foundEntry);
         triggerFeedback('success');
+        setSttStatusMsg('');
         
         const announcement = currentLang === 'ba'
           ? `${foundEntry.word}. Ìtúmọ̀: ${foundEntry.definition}`
@@ -85,6 +105,7 @@ export default function TamTamDictionary() {
     } catch (error) {
       console.error('[TamTamDictionary] Error:', error);
       triggerFeedback('error');
+      setSttStatusMsg('');
     } finally {
       setIsProcessing(false);
     }
@@ -221,18 +242,49 @@ export default function TamTamDictionary() {
                 disabled={isProcessing}
               />
               
-              {isProcessing && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="mt-4 flex items-center gap-2 text-indigo-600"
-                >
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{currentLang === 'ba' ? "Ń wá..." : "Recherche..."}</span>
-                </motion.div>
-              )}
+              {/* Indicateur STT Bariba */}
+              <AnimatePresence>
+                {(isProcessing || isSTTLoading) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="mt-4 flex flex-col items-center gap-2"
+                  >
+                    <div className="flex items-center gap-2 text-indigo-600">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm font-medium">
+                        {isSTTWakingUp
+                          ? '⏳ Réveil du service Bariba...'
+                          : isSTTLoading
+                          ? '🎤 Transcription Bariba en cours...'
+                          : (currentLang === 'ba' ? "Ń wá..." : "Recherche...")}
+                      </span>
+                    </div>
+                    {isSTTWakingUp && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Première utilisation (~30s) - patientez
+                      </p>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Statut STT après transcription */}
+              <AnimatePresence>
+                {sttStatusMsg && !isProcessing && !isSTTLoading && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="mt-3 px-3 py-2 bg-indigo-50 rounded-xl text-sm text-indigo-700 text-center"
+                  >
+                    {sttStatusMsg}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
-              {lastQuery && !isProcessing && (
+              {lastQuery && !isProcessing && !isSTTLoading && (
                 <p className="mt-4 text-sm text-gray-500">
                   Recherche: "{lastQuery}"
                 </p>
