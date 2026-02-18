@@ -179,9 +179,17 @@ const AudioWaveform: React.FC<{ isActive: boolean; barCount?: number }> = ({ isA
   </div>
 );
 
+// VOICE OPTIONS
+const INWORLD_VOICES = [
+  { id: 'narrator', name: 'Timothy', gender: 'M', description: 'Ton grave, narratif', emoji: '🎙️' },
+  { id: 'announcer', name: 'Mark', gender: 'M', description: 'Ton neutre, clair', emoji: '📢' },
+  { id: 'female', name: 'Sarah', gender: 'F', description: 'Ton doux, chaleureux', emoji: '🌸' },
+  { id: 'alloy', name: 'Alex', gender: 'F', description: 'Ton dynamique, expressif', emoji: '⚡' },
+];
+
 // MAIN COMPONENT
 export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onClose, onSubmit, initialCategory }) => {
-  const [step, setStep] = useState<'category' | 'templates' | 'record' | 'preview'>('category');
+  const [step, setStep] = useState<'category' | 'templates' | 'record' | 'transcribing' | 'voice_select' | 'generating' | 'preview'>('category');
   const [mainCategory, setMainCategory] = useState<'patrimoine' | 'village_voice' | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
@@ -191,6 +199,10 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
   const [recordingTime, setRecordingTime] = useState(0);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(0);
+  const [transcribedText, setTranscribedText] = useState<string>('');
+  const [selectedVoice, setSelectedVoice] = useState<string>('narrator');
+  const [originalAudioBlob, setOriginalAudioBlob] = useState<Blob | null>(null);
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -202,11 +214,18 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
     let interval: ReturnType<typeof setInterval>;
     if (isRecording) {
       recordingTimeRef.current = 0;
-      interval = setInterval(() => setRecordingTime(t => {
-        const newTime = Math.min(t + 0.1, maxRecordingTime);
-        recordingTimeRef.current = newTime;
-        return newTime;
-      }), 100);
+      interval = setInterval(() => {
+        setRecordingTime(t => {
+          const newTime = Math.min(t + 0.1, maxRecordingTime);
+          recordingTimeRef.current = newTime;
+          if (newTime >= maxRecordingTime && mediaRecorderRef.current) {
+            clearInterval(interval);
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+          }
+          return newTime;
+        });
+      }, 100);
     }
     return () => clearInterval(interval);
   }, [isRecording]);
@@ -231,6 +250,91 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
   const getFilteredTemplates = () => mainCategory === 'patrimoine' ? patrimoineTemplates : villageVoiceTemplates;
   const handleTemplateSelect = (template: Template) => { setSelectedTemplate(template); playAudioPrompt(template.audioPromptFr); setStep('record'); };
 
+  const transcribeAndProceed = async (blob: Blob, duration: number) => {
+    setAudioDuration(duration);
+    setOriginalAudioBlob(blob);
+    setStep('transcribing');
+    setTranscriptionError(null);
+
+    try {
+      const formData = new FormData();
+      const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+      formData.append('file', blob, `recording.${ext}`);
+
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/transcribe-audio`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${SUPABASE_KEY}` },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.success && data.text?.trim()) {
+        setTranscribedText(data.text.trim());
+        setStep('voice_select');
+      } else {
+        // No transcription → keep original audio, go to preview
+        const reader = new FileReader();
+        reader.onloadend = () => { setAudioBase64(reader.result as string); setStep('preview'); };
+        reader.readAsDataURL(blob);
+      }
+    } catch (err) {
+      console.error('[TamTam] Transcription error:', err);
+      // Fallback: use original audio
+      const reader = new FileReader();
+      reader.onloadend = () => { setAudioBase64(reader.result as string); setStep('preview'); };
+      reader.readAsDataURL(blob);
+    }
+  };
+
+  const generateTTSAudio = async (voice: string) => {
+    if (!transcribedText) return;
+    setSelectedVoice(voice);
+    setStep('generating');
+
+    try {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/french-tts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: transcribedText, voice, returnAudio: true }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.audioBase64) {
+        const dataUrl = `data:${data.audioFormat || 'audio/mpeg'};base64,${data.audioBase64}`;
+        setAudioBase64(dataUrl);
+        setStep('preview');
+      } else {
+        // Fallback: use original blob
+        if (originalAudioBlob) {
+          const reader = new FileReader();
+          reader.onloadend = () => { setAudioBase64(reader.result as string); setStep('preview'); };
+          reader.readAsDataURL(originalAudioBlob);
+        }
+      }
+    } catch (err) {
+      console.error('[TamTam] TTS error:', err);
+      if (originalAudioBlob) {
+        const reader = new FileReader();
+        reader.onloadend = () => { setAudioBase64(reader.result as string); setStep('preview'); };
+        reader.readAsDataURL(originalAudioBlob);
+      }
+    }
+  };
+
+  const useOriginalAudio = () => {
+    if (!originalAudioBlob) return;
+    const reader = new FileReader();
+    reader.onloadend = () => { setAudioBase64(reader.result as string); setStep('preview'); };
+    reader.readAsDataURL(originalAudioBlob);
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -241,14 +345,8 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: getAudioBlobType() });
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setAudioBase64(reader.result as string);
-          setAudioDuration(Math.round(recordingTimeRef.current));
-          setStep('preview');
-        };
-        reader.readAsDataURL(blob);
         stream.getTracks().forEach(track => track.stop());
+        transcribeAndProceed(blob, Math.round(recordingTimeRef.current));
       };
       mediaRecorder.start();
       setIsRecording(true);
@@ -282,9 +380,31 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
     } catch (err: any) { console.error(err); } finally { setIsSubmitting(false); }
   };
 
-  const resetState = () => { setStep('category'); setMainCategory(null); setSelectedTemplate(null); setAudioBase64(null); setAudioDuration(0); setRecordingTime(0); setIsRecording(false); setIsPlayingPreview(false); setPlaybackProgress(0); if (audioPreviewRef.current) { audioPreviewRef.current.pause(); audioPreviewRef.current = null; } };
-  const goBack = () => { if (step === 'templates') { if (initialCategory) onClose(); else setStep('category'); } else if (step === 'record') { setStep('templates'); setRecordingTime(0); } else if (step === 'preview') { setStep('record'); setPlaybackProgress(0); } };
+  const resetState = () => {
+    setStep('category'); setMainCategory(null); setSelectedTemplate(null); setAudioBase64(null);
+    setAudioDuration(0); setRecordingTime(0); setIsRecording(false); setIsPlayingPreview(false);
+    setPlaybackProgress(0); setTranscribedText(''); setSelectedVoice('narrator');
+    setOriginalAudioBlob(null); setTranscriptionError(null);
+    if (audioPreviewRef.current) { audioPreviewRef.current.pause(); audioPreviewRef.current = null; }
+  };
+
+  const goBack = () => {
+    if (step === 'templates') { if (initialCategory) onClose(); else setStep('category'); }
+    else if (step === 'record') { setStep('templates'); setRecordingTime(0); }
+    else if (step === 'voice_select') { setStep('record'); setTranscribedText(''); setOriginalAudioBlob(null); }
+    else if (step === 'preview') { if (transcribedText) setStep('voice_select'); else { setStep('record'); setPlaybackProgress(0); } }
+  };
+
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+
+  const getStepTitle = () => {
+    const titles: Record<string, string> = {
+      category: '🎙️ Nouveau message', templates: 'Choisissez le type',
+      record: '🎤 Enregistrer', transcribing: '📝 Transcription...',
+      voice_select: '🎭 Choisir une voix', generating: '🔊 Génération audio...', preview: '✅ Aperçu',
+    };
+    return titles[step] || '';
+  };
 
   if (!isOpen) return null;
 
@@ -296,18 +416,30 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
         {/* HEADER */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            {step !== 'category' && <motion.button whileTap={{ scale: 0.9 }} onClick={goBack} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"><ChevronLeft className="w-5 h-5 text-white" /></motion.button>}
-            <h3 className="text-lg font-semibold text-white">{step === 'category' ? '🎙️ Nouveau message' : step === 'templates' ? 'Choisissez le type' : step === 'record' ? '🎤 Enregistrer' : '✅ Aperçu'}</h3>
+            {step !== 'category' && step !== 'transcribing' && step !== 'generating' && (
+              <motion.button whileTap={{ scale: 0.9 }} onClick={goBack} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                <ChevronLeft className="w-5 h-5 text-white" />
+              </motion.button>
+            )}
+            <h3 className="text-lg font-semibold text-white">{getStepTitle()}</h3>
           </div>
           <div className="flex items-center gap-2">
-            {selectedTemplate && step !== 'category' && step !== 'templates' && <motion.button whileTap={{ scale: 0.9 }} onClick={() => playAudioPrompt(selectedTemplate.audioPromptFr)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"><Volume2 className="w-5 h-5 text-white" /></motion.button>}
-            <motion.button whileTap={{ scale: 0.9 }} onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"><X className="w-5 h-5 text-white" /></motion.button>
+            {selectedTemplate && step === 'record' && (
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => playAudioPrompt(selectedTemplate.audioPromptFr)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                <Volume2 className="w-5 h-5 text-white" />
+              </motion.button>
+            )}
+            <motion.button whileTap={{ scale: 0.9 }} onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+              <X className="w-5 h-5 text-white" />
+            </motion.button>
           </div>
         </div>
 
         {/* CONTENT */}
         <div className="flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
+
+            {/* CATEGORY */}
             {step === 'category' && (
               <motion.div key="category" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="p-5 space-y-4">
                 <p className="text-center text-white/60 text-sm">Touchez pour choisir</p>
@@ -319,49 +451,180 @@ export const TamTamCreatePost: React.FC<TamTamCreatePostProps> = ({ isOpen, onCl
                 </motion.button>
               </motion.div>
             )}
+
+            {/* TEMPLATES */}
             {step === 'templates' && (
               <motion.div key="templates" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="p-4">
                 <div className="grid grid-cols-3 gap-2.5">
                   {getFilteredTemplates().map((template, index) => (
                     <motion.button key={template.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.02 }} whileTap={{ scale: 0.95 }} onClick={() => handleTemplateSelect(template)} className={`aspect-square rounded-xl bg-gradient-to-br ${template.gradient} p-2 flex flex-col items-center justify-center shadow-lg border border-white/20 relative overflow-hidden`}>
-                      <span className="text-2xl mb-1 drop-shadow-md">{template.emoji}</span><span className="text-white font-medium text-[10px] text-center leading-tight drop-shadow-sm">{template.titleFr}</span>
+                      <span className="text-2xl mb-1 drop-shadow-md">{template.emoji}</span>
+                      <span className="text-white font-medium text-[10px] text-center leading-tight drop-shadow-sm">{template.titleFr}</span>
                       {template.urgency === 'critical' && <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-ping" />}
                     </motion.button>
                   ))}
                 </div>
               </motion.div>
             )}
+
+            {/* RECORD */}
             {step === 'record' && selectedTemplate && (
               <motion.div key="record" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col items-center py-6 px-5">
                 <VinylPlayer template={selectedTemplate} isPlaying={false} isRecording={isRecording} progress={(recordingTime / maxRecordingTime) * 100} size={180} />
-                <div className="text-center mt-4 mb-2"><h3 className="text-xl font-bold text-white">{selectedTemplate.titleFr}</h3><p className="text-white/60 text-sm">{selectedTemplate.titleBa}</p></div>
+                <div className="text-center mt-4 mb-2">
+                  <h3 className="text-xl font-bold text-white">{selectedTemplate.titleFr}</h3>
+                  <p className="text-white/60 text-sm">{selectedTemplate.titleBa}</p>
+                </div>
                 <div className="flex gap-2 mb-3">{selectedTemplate.visualEmojis.map((emoji, i) => <motion.span key={i} className="text-xl" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>{emoji}</motion.span>)}</div>
                 <AudioWaveform isActive={isRecording} barCount={28} />
-                <div className="text-center my-3"><span className="text-3xl font-mono text-white font-bold">{formatTime(recordingTime)}</span><span className="text-white/40 text-base ml-2">/ {formatTime(maxRecordingTime)}</span></div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 mb-6 max-w-xs border border-white/10"><p className="text-white/80 text-sm text-center">{selectedTemplate.audioPromptFr}</p></div>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={isRecording ? stopRecording : startRecording} className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl ${isRecording ? 'bg-red-500' : 'bg-white'}`}>{isRecording ? <div className="w-8 h-8 bg-white rounded-sm" /> : <Mic className="w-10 h-10 text-gray-800" />}</motion.button>
-                <p className="text-white/50 text-xs mt-3">{isRecording ? 'Touchez pour arrêter' : 'Touchez pour enregistrer'}</p>
+                <div className="text-center my-3">
+                  <span className="text-3xl font-mono text-white font-bold">{formatTime(recordingTime)}</span>
+                  <span className="text-white/40 text-base ml-2">/ {formatTime(maxRecordingTime)}</span>
+                </div>
+                {isRecording && recordingTime >= maxRecordingTime - 10 && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-red-500/20 border border-red-500/40 rounded-xl px-4 py-2 mb-3">
+                    <p className="text-red-300 text-xs text-center">⏱️ Arrêt dans {Math.ceil(maxRecordingTime - recordingTime)}s</p>
+                  </motion.div>
+                )}
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 mb-6 max-w-xs border border-white/10">
+                  <p className="text-white/80 text-sm text-center">{selectedTemplate.audioPromptFr}</p>
+                </div>
+                <motion.button whileTap={{ scale: 0.95 }} onClick={isRecording ? stopRecording : startRecording} className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl ${isRecording ? 'bg-red-500' : 'bg-white'}`}>
+                  {isRecording ? <div className="w-8 h-8 bg-white rounded-sm" /> : <Mic className="w-10 h-10 text-gray-800" />}
+                </motion.button>
+                <p className="text-white/50 text-xs mt-3">{isRecording ? '🤖 Transcription auto à l\'arrêt' : 'Touchez pour enregistrer'}</p>
               </motion.div>
             )}
+
+            {/* TRANSCRIBING */}
+            {step === 'transcribing' && (
+              <motion.div key="transcribing" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col items-center justify-center py-16 px-5 gap-6">
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: 'linear' }} className="w-20 h-20 rounded-full border-4 border-white/20 border-t-purple-400 flex items-center justify-center">
+                  <span className="text-2xl">🎙️</span>
+                </motion.div>
+                <div className="text-center">
+                  <h3 className="text-xl font-bold text-white mb-2">Transcription en cours...</h3>
+                  <p className="text-white/60 text-sm">Mistral Voxtral analyse votre narration</p>
+                </div>
+                <div className="flex gap-1.5">
+                  {[0,1,2].map(i => <motion.div key={i} className="w-2 h-2 bg-purple-400 rounded-full" animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.2 }} />)}
+                </div>
+              </motion.div>
+            )}
+
+            {/* VOICE SELECT */}
+            {step === 'voice_select' && selectedTemplate && (
+              <motion.div key="voice_select" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col py-5 px-5 gap-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/15">
+                  <p className="text-white/50 text-xs uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <span>📝</span> Texte transcrit
+                  </p>
+                  <p className="text-white text-sm leading-relaxed">{transcribedText}</p>
+                </div>
+                <div>
+                  <p className="text-white/70 text-sm mb-3 font-medium">🎭 Choisir une voix Inworld TTS</p>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {INWORLD_VOICES.map(voice => (
+                      <motion.button
+                        key={voice.id}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => generateTTSAudio(voice.id)}
+                        className={`p-3.5 rounded-xl border text-left transition-all bg-white/10 border-white/15 hover:border-white/30 hover:bg-white/15`}
+                      >
+                        <div className="flex items-start justify-between mb-1.5">
+                          <span className="text-xl">{voice.emoji}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${voice.gender === 'M' ? 'bg-blue-500/30 text-blue-300' : 'bg-pink-500/30 text-pink-300'}`}>
+                            {voice.gender}
+                          </span>
+                        </div>
+                        <p className="text-white font-semibold text-sm">{voice.name}</p>
+                        <p className="text-white/50 text-xs mt-0.5">{voice.description}</p>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={useOriginalAudio}
+                  className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 text-sm flex items-center justify-center gap-2"
+                >
+                  <Mic className="w-4 h-4" />
+                  Utiliser ma voix originale
+                </motion.button>
+              </motion.div>
+            )}
+
+            {/* GENERATING */}
+            {step === 'generating' && (
+              <motion.div key="generating" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col items-center justify-center py-16 px-5 gap-6">
+                <motion.div animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} className="text-6xl">🔊</motion.div>
+                <div className="text-center">
+                  <h3 className="text-xl font-bold text-white mb-2">Génération de la voix...</h3>
+                  <p className="text-white/60 text-sm">Inworld TTS-1.5 Mini crée votre narration</p>
+                  {INWORLD_VOICES.find(v => v.id === selectedVoice) && (
+                    <p className="text-white/40 text-xs mt-1">Voix : {INWORLD_VOICES.find(v => v.id === selectedVoice)?.name} {INWORLD_VOICES.find(v => v.id === selectedVoice)?.emoji}</p>
+                  )}
+                </div>
+                <div className="flex gap-1.5">
+                  {[0,1,2,3,4].map(i => (
+                    <motion.div key={i} className="w-1.5 h-8 bg-white/40 rounded-full" animate={{ scaleY: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.1 }} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* PREVIEW */}
             {step === 'preview' && selectedTemplate && (
               <motion.div key="preview" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="flex flex-col items-center py-6 px-5">
                 <VinylPlayer template={selectedTemplate} isPlaying={isPlayingPreview} progress={playbackProgress} size={200} showControls={true} onPlayPause={handlePlayPreview} />
-                <div className="text-center mt-4 mb-2"><h3 className="text-xl font-bold text-white">{selectedTemplate.titleFr}</h3><p className="text-white/60 text-sm">{selectedTemplate.titleBa}</p></div>
-                <div className="flex gap-2 mb-4">{selectedTemplate.visualEmojis.map((emoji, i) => <span key={i} className="text-xl">{emoji}</span>)}</div>
-                <div className={`w-full max-w-xs rounded-xl bg-gradient-to-r ${selectedTemplate.gradient} p-3.5 border border-white/20`}>
-                  <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><Mic className="w-5 h-5 text-white" /></div><div className="flex-1"><p className="text-white font-semibold text-sm">Audio enregistré</p><p className="text-white/70 text-xs">{formatTime(audioDuration)}</p></div><div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center"><Check className="w-5 h-5 text-white" /></div></div>
+                <div className="text-center mt-4 mb-2">
+                  <h3 className="text-xl font-bold text-white">{selectedTemplate.titleFr}</h3>
+                  <p className="text-white/60 text-sm">{selectedTemplate.titleBa}</p>
                 </div>
-                <div className="mt-4"><span className={`px-4 py-1.5 rounded-full text-sm font-medium border flex items-center gap-2 ${selectedTemplate.visibility === 'public' ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'}`}>{selectedTemplate.visibility === 'public' ? <Globe className="w-4 h-4" /> : <UsersIcon className="w-4 h-4" />}{selectedTemplate.visibility === 'public' ? 'Public' : 'Village'}</span></div>
+                <div className="flex gap-2 mb-4">{selectedTemplate.visualEmojis.map((emoji, i) => <span key={i} className="text-xl">{emoji}</span>)}</div>
+                {transcribedText && (
+                  <div className="w-full max-w-xs bg-white/10 rounded-xl p-3 mb-3 border border-white/10">
+                    <p className="text-white/50 text-xs mb-1">🤖 Narration IA • {INWORLD_VOICES.find(v => v.id === selectedVoice)?.name}</p>
+                    <p className="text-white/80 text-xs leading-relaxed line-clamp-3">{transcribedText}</p>
+                  </div>
+                )}
+                <div className={`w-full max-w-xs rounded-xl bg-gradient-to-r ${selectedTemplate.gradient} p-3.5 border border-white/20`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                      {transcribedText ? <span className="text-lg">{INWORLD_VOICES.find(v => v.id === selectedVoice)?.emoji || '🔊'}</span> : <Mic className="w-5 h-5 text-white" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-semibold text-sm">{transcribedText ? `Voix ${INWORLD_VOICES.find(v => v.id === selectedVoice)?.name}` : 'Audio enregistré'}</p>
+                      <p className="text-white/70 text-xs">{formatTime(audioDuration)}</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center"><Check className="w-5 h-5 text-white" /></div>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className={`px-4 py-1.5 rounded-full text-sm font-medium border flex items-center gap-2 ${selectedTemplate.visibility === 'public' ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'}`}>
+                    {selectedTemplate.visibility === 'public' ? <Globe className="w-4 h-4" /> : <UsersIcon className="w-4 h-4" />}
+                    {selectedTemplate.visibility === 'public' ? 'Public' : 'Village'}
+                  </span>
+                </div>
               </motion.div>
             )}
+
           </AnimatePresence>
         </div>
 
         {/* FOOTER */}
         {step === 'preview' && (
           <div className="p-4 border-t border-white/10 flex gap-3">
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setStep('record'); setRecordingTime(0); setAudioBase64(null); setPlaybackProgress(0); }} className="py-3 px-5 rounded-xl bg-white/10 backdrop-blur-sm text-white font-medium flex items-center gap-2 border border-white/20"><RotateCcw className="w-4 h-4" />Refaire</motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={handleSubmit} disabled={isSubmitting} className={`flex-1 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-white shadow-lg border border-white/20 ${selectedTemplate?.category === 'patrimoine' ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}>{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4" /> Envoyer</>}</motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => {
+              setStep('record'); setRecordingTime(0); setAudioBase64(null); setPlaybackProgress(0);
+              setTranscribedText(''); setOriginalAudioBlob(null);
+              if (audioPreviewRef.current) { audioPreviewRef.current.pause(); audioPreviewRef.current = null; }
+            }} className="py-3 px-5 rounded-xl bg-white/10 backdrop-blur-sm text-white font-medium flex items-center gap-2 border border-white/20">
+              <RotateCcw className="w-4 h-4" />Refaire
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={handleSubmit} disabled={isSubmitting} className={`flex-1 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-white shadow-lg border border-white/20 ${selectedTemplate?.category === 'patrimoine' ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}>
+              {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4" /> Envoyer</>}
+            </motion.button>
           </div>
         )}
       </motion.div>
