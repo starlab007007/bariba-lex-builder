@@ -331,7 +331,7 @@ const BottomTabBar: React.FC<{
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// KARAOKE WORD DISPLAY - Karaoké patrimonial synchronisé mot-par-mot
+// KARAOKE PHRASE DISPLAY - Phrase défilante synchronisée sous le disque
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const KaraokeDisplay: React.FC<{
@@ -341,64 +341,71 @@ const KaraokeDisplay: React.FC<{
 }> = ({ words, activeIndex, isPlaying }) => {
   if (words.length === 0) return null;
 
-  // Au repos : afficher tous les mots. En lecture : fenêtre glissante de 9 mots autour du mot actif
-  const showAll = !isPlaying || activeIndex < 0;
-  const windowStart = showAll ? 0 : Math.max(0, activeIndex - 3);
-  const windowEnd = showAll ? Math.min(words.length - 1, 24) : Math.min(words.length - 1, windowStart + 8);
+  // Fenêtre de 7 mots centrée sur le mot actif (ou début si pas encore en lecture)
+  const center = isPlaying && activeIndex >= 0 ? activeIndex : 0;
+  const windowStart = Math.max(0, center - 2);
+  const windowEnd = Math.min(words.length - 1, windowStart + 6);
   const visibleWords = words.slice(windowStart, windowEnd + 1);
   const relativeActive = activeIndex - windowStart;
 
   return (
     <div
-      className="w-full max-w-xs rounded-2xl px-4 py-3 mb-3"
-      style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)' }}
+      className="w-full rounded-2xl px-4 py-3"
+      style={{
+        background: 'rgba(0,0,0,0.40)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255,255,255,0.15)',
+      }}
     >
-      <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-1 min-h-[2.5rem]">
+      {/* Phrase défilante sur une ligne */}
+      <div className="flex items-center justify-center gap-x-1.5 overflow-hidden">
         {visibleWords.map((word, i) => {
-          const isCurrent = !showAll && i === relativeActive;
-          const isPast = !showAll && i < relativeActive;
+          const isCurrent = isPlaying && i === relativeActive;
+          const isPast = isPlaying && i < relativeActive;
           return (
             <motion.span
               key={`${windowStart + i}-${word}`}
-              animate={isCurrent ? { scale: [1, 1.15, 1.1], opacity: 1 } : {}}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="text-sm leading-snug transition-all duration-200"
+              animate={isCurrent ? { scale: [1, 1.18, 1.12] } : { scale: 1 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="text-sm leading-none whitespace-nowrap flex-shrink-0"
               style={{
                 color: isCurrent
                   ? '#FFFFFF'
                   : isPast
-                  ? 'rgba(255,255,255,0.45)'
-                  : showAll
-                  ? 'rgba(255,255,255,0.80)'
-                  : 'rgba(255,255,255,0.60)',
+                  ? 'rgba(255,255,255,0.35)'
+                  : 'rgba(255,255,255,0.65)',
                 textShadow: isCurrent
-                  ? '0 0 18px rgba(255,200,100,0.9), 0 0 32px rgba(255,140,66,0.6)'
+                  ? '0 0 16px rgba(255,200,80,1), 0 0 30px rgba(255,140,40,0.7)'
                   : 'none',
-                fontWeight: isCurrent ? 800 : isPast ? 400 : showAll ? 500 : 500,
+                fontWeight: isCurrent ? 800 : isPast ? 400 : 500,
               }}
             >
               {word}
             </motion.span>
           );
         })}
-        {showAll && words.length > 25 && (
-          <span className="text-white/40 text-xs">…</span>
+      </div>
+
+      {/* Barre de progression + indicateur live */}
+      <div className="flex items-center gap-2 mt-2">
+        <div className="flex-1 h-0.5 rounded-full bg-white/15 overflow-hidden">
+          <motion.div
+            className="h-full rounded-full bg-white/70"
+            animate={{ width: words.length > 0 ? `${((activeIndex + 1) / words.length) * 100}%` : '0%' }}
+            transition={{ duration: 0.15 }}
+          />
+        </div>
+        {isPlaying && activeIndex >= 0 && (
+          <div className="flex items-center gap-0.5">
+            {[0, 1, 2].map(i => (
+              <motion.div key={i} className="w-0.5 h-2.5 rounded-full bg-white/70"
+                animate={{ scaleY: [0.4, 1, 0.4] }}
+                transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.12 }}
+              />
+            ))}
+          </div>
         )}
       </div>
-      {/* Live indicator — uniquement en lecture */}
-      {isPlaying && activeIndex >= 0 && (
-        <div className="flex items-center justify-center gap-1 mt-1.5">
-          {[0, 1, 2].map(i => (
-            <motion.div
-              key={i}
-              className="w-1 h-1 rounded-full bg-white/60"
-              animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
-              transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.15 }}
-            />
-          ))}
-          <span className="text-white/40 text-[9px] ml-1 font-medium tracking-wide">EN DIRECT</span>
-        </div>
-      )}
     </div>
   );
 };
@@ -598,7 +605,7 @@ const AudioFeedCard: React.FC<{
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6 pt-20 pb-28">
 
         {/* Vinyl Disk */}
-        <div className="relative mb-3">
+        <div className="relative mb-2">
           {isPlaying && (
             <motion.div className="absolute -inset-6 rounded-full"
               style={{ background: `radial-gradient(circle, ${template.accentColor}30 0%, transparent 70%)` }}
@@ -606,7 +613,6 @@ const AudioFeedCard: React.FC<{
               transition={{ repeat: Infinity, duration: 1.5 }}
             />
           )}
-
           <motion.div className="relative w-40 h-40"
             animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
             transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
@@ -621,8 +627,6 @@ const AudioFeedCard: React.FC<{
               <circle cx="50%" cy="50%" r="47%" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${progress * 2.64} 264`} />
             </svg>
           </motion.div>
-
-          {/* Tonearm */}
           <motion.div className="absolute -right-2 top-2 w-12 h-1.5 origin-right"
             animate={{ rotate: isPlaying ? -28 : -45 }}
             transition={{ type: 'spring', stiffness: 100 }}
@@ -630,7 +634,6 @@ const AudioFeedCard: React.FC<{
             <div className="w-full h-full bg-gradient-to-r from-gray-400 to-gray-300 rounded-full shadow" />
             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow" />
           </motion.div>
-
           {!hasAudio && (
             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm">
               <span className="text-white/80 text-xs font-medium">🔇 Pas d'audio</span>
@@ -648,40 +651,18 @@ const AudioFeedCard: React.FC<{
           ))}
         </div>
 
-        {/* Title & Author */}
-        <h2 className="text-white text-base font-bold text-center mb-0.5 px-2 line-clamp-2">
-          {post.title || post.transcript_fr?.slice(0, 40) || template.name}
-        </h2>
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className="text-white/60 text-xs">📍 {post.profile?.display_name || 'Utilisateur'} · {post.location_name || 'Communauté'}</span>
+        {/* ── KARAOKE TRANSCRIPTION — juste sous le disque ── */}
+        <div className="w-full max-w-xs mb-2">
+          {words.length > 0 ? (
+            <KaraokeDisplay words={words} activeIndex={activeWordIndex} isPlaying={isPlaying} />
+          ) : post.transcript_fr ? (
+            <div className="rounded-2xl px-4 py-3"
+              style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.15)' }}
+            >
+              <p className="text-white/70 text-center text-xs leading-relaxed">"{post.transcript_fr.slice(0, 100)}…"</p>
+            </div>
+          ) : null}
         </div>
-        <div className="flex items-center gap-1 mb-2">
-          <Clock className="w-3 h-3 text-white/40" />
-          <span className="text-white/40 text-[11px]">{formatPublicationDate(post.created_at)}</span>
-        </div>
-
-        {/* Follow button */}
-        <motion.button whileTap={{ scale: 0.95 }} onClick={handleFollow}
-          className="px-4 py-1 rounded-full text-xs font-bold mb-3 transition-all"
-          style={{
-            background: isFollowing ? 'rgba(255,255,255,0.15)' : 'white',
-            color: isFollowing ? 'white' : '#111',
-            border: isFollowing ? '1px solid rgba(255,255,255,0.3)' : 'none',
-          }}
-        >
-          {isFollowing ? '✓ Abonné' : '+ Suivre'}
-        </motion.button>
-
-        {/* ── KARAOKE TRANSCRIPTION ── */}
-        {words.length > 0 ? (
-          <KaraokeDisplay words={words} activeIndex={activeWordIndex} isPlaying={isPlaying} />
-        ) : post.transcript_fr ? (
-          <div className="max-w-xs rounded-xl px-4 py-2.5 mb-3"
-            style={{ background: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(10px)' }}
-          >
-            <p className="text-white/80 text-center text-xs leading-relaxed">"{post.transcript_fr.slice(0, 90)}..."</p>
-          </div>
-        ) : null}
 
         {/* Controls */}
         <div className={`flex items-center gap-3 mb-2 ${!hasAudio ? 'opacity-40 pointer-events-none' : ''}`}>
