@@ -338,71 +338,97 @@ const KaraokeDisplay: React.FC<{
   words: string[];
   activeIndex: number;
   isPlaying: boolean;
-}> = ({ words, activeIndex, isPlaying }) => {
-  if (words.length === 0) return null;
+  liveText?: string; // Texte transcrit en direct
+  fallbackTitle?: string; // Titre du post comme fallback
+}> = ({ words, activeIndex, isPlaying, liveText, fallbackTitle }) => {
+  // Toujours visible : soit mots karaoké, soit texte live, soit titre du post
+  const hasWords = words.length > 0;
+  const displayText = liveText || fallbackTitle || '';
 
-  // Fenêtre de 7 mots centrée sur le mot actif (ou début si pas encore en lecture)
+  // Fenêtre de 7 mots centrée sur le mot actif
   const center = isPlaying && activeIndex >= 0 ? activeIndex : 0;
   const windowStart = Math.max(0, center - 2);
   const windowEnd = Math.min(words.length - 1, windowStart + 6);
-  const visibleWords = words.slice(windowStart, windowEnd + 1);
+  const visibleWords = hasWords ? words.slice(windowStart, windowEnd + 1) : [];
   const relativeActive = activeIndex - windowStart;
 
   return (
     <div
       className="w-full rounded-2xl px-4 py-3"
       style={{
-        background: 'rgba(0,0,0,0.40)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.15)',
+        background: 'rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(24px)',
+        border: '1px solid rgba(255,255,255,0.18)',
+        minHeight: 56,
       }}
     >
-      {/* Phrase défilante sur une ligne */}
-      <div className="flex items-center justify-center gap-x-1.5 overflow-hidden">
-        {visibleWords.map((word, i) => {
-          const isCurrent = isPlaying && i === relativeActive;
-          const isPast = isPlaying && i < relativeActive;
-          return (
-            <motion.span
-              key={`${windowStart + i}-${word}`}
-              animate={isCurrent ? { scale: [1, 1.18, 1.12] } : { scale: 1 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-              className="text-sm leading-none whitespace-nowrap flex-shrink-0"
-              style={{
-                color: isCurrent
-                  ? '#FFFFFF'
-                  : isPast
-                  ? 'rgba(255,255,255,0.35)'
-                  : 'rgba(255,255,255,0.65)',
-                textShadow: isCurrent
-                  ? '0 0 16px rgba(255,200,80,1), 0 0 30px rgba(255,140,40,0.7)'
-                  : 'none',
-                fontWeight: isCurrent ? 800 : isPast ? 400 : 500,
-              }}
-            >
-              {word}
-            </motion.span>
-          );
-        })}
-      </div>
+      {/* Phrase défilante karaoké (mots synchronisés) */}
+      {hasWords ? (
+        <div className="flex items-center justify-center gap-x-1.5 overflow-hidden flex-wrap">
+          {visibleWords.map((word, i) => {
+            const isCurrent = isPlaying && i === relativeActive;
+            const isPast = isPlaying && i < relativeActive;
+            return (
+              <motion.span
+                key={`${windowStart + i}-${word}`}
+                animate={isCurrent ? { scale: [1, 1.18, 1.12] } : { scale: 1 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="text-sm leading-relaxed whitespace-nowrap flex-shrink-0"
+                style={{
+                  color: isCurrent ? '#FFFFFF' : isPast ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.70)',
+                  textShadow: isCurrent ? '0 0 16px rgba(255,200,80,1), 0 0 30px rgba(255,140,40,0.7)' : 'none',
+                  fontWeight: isCurrent ? 800 : isPast ? 400 : 500,
+                }}
+              >
+                {word}
+              </motion.span>
+            );
+          })}
+        </div>
+      ) : (
+        /* Texte live transcrit OU titre du post en défilement doux */
+        <div className="overflow-hidden">
+          <motion.p
+            key={displayText}
+            initial={{ opacity: 0.6 }}
+            animate={{ opacity: 1 }}
+            className="text-center text-sm leading-relaxed"
+            style={{
+              color: isPlaying && liveText ? '#FFFFFF' : 'rgba(255,255,255,0.75)',
+              fontWeight: isPlaying && liveText ? 600 : 400,
+              fontStyle: isPlaying && liveText ? 'normal' : 'italic',
+              textShadow: isPlaying && liveText ? '0 0 12px rgba(255,200,80,0.8)' : 'none',
+            }}
+          >
+            {isPlaying && liveText
+              ? liveText
+              : displayText
+              ? `"${displayText.slice(0, 80)}${displayText.length > 80 ? '…' : ''}"`
+              : '🎙️ En attente de narration…'}
+          </motion.p>
+        </div>
+      )}
 
-      {/* Barre de progression + indicateur live */}
+      {/* Barre de progression + indicateur EN DIRECT */}
       <div className="flex items-center gap-2 mt-2">
         <div className="flex-1 h-0.5 rounded-full bg-white/15 overflow-hidden">
           <motion.div
             className="h-full rounded-full bg-white/70"
-            animate={{ width: words.length > 0 ? `${((activeIndex + 1) / words.length) * 100}%` : '0%' }}
-            transition={{ duration: 0.15 }}
+            animate={{ width: hasWords && words.length > 0 ? `${((activeIndex + 1) / words.length) * 100}%` : isPlaying ? '100%' : '0%' }}
+            transition={{ duration: hasWords ? 0.15 : 3, ease: hasWords ? 'linear' : 'easeInOut', repeat: !hasWords && isPlaying ? Infinity : 0, repeatType: 'mirror' }}
           />
         </div>
-        {isPlaying && activeIndex >= 0 && (
-          <div className="flex items-center gap-0.5">
+        {isPlaying && (
+          <div className="flex items-center gap-1">
             {[0, 1, 2].map(i => (
               <motion.div key={i} className="w-0.5 h-2.5 rounded-full bg-white/70"
                 animate={{ scaleY: [0.4, 1, 0.4] }}
                 transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.12 }}
               />
             ))}
+            {liveText && (
+              <span className="text-[9px] text-red-300 font-bold ml-1 animate-pulse">EN DIRECT</span>
+            )}
           </div>
         )}
       </div>
@@ -439,21 +465,60 @@ const AudioFeedCard: React.FC<{
   const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [isMuted, setIsMuted] = useState(false);
   const [activeWordIndex, setActiveWordIndex] = useState(-1);
+  const [liveTranscript, setLiveTranscript] = useState('');
   const audioRef = useRef<HTMLAudioElement>(null);
+  const recognitionRef = useRef<any>(null);
 
-  // Parse transcript into words for karaoke
+  // Parse transcript into words for karaoke (stored transcript)
   const words = useMemo(() => {
     if (!post.transcript_fr) return [];
     return post.transcript_fr.trim().split(/\s+/).filter(Boolean);
   }, [post.transcript_fr]);
+
+  // Titre du post comme texte de fallback visible
+  const fallbackTitle = post.title || post.transcript_fr || '';
+
+  // Démarrer la reconnaissance vocale en direct
+  const startLiveSpeechRecognition = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'fr-FR';
+      recognition.maxAlternatives = 1;
+      recognition.onresult = (event: any) => {
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript;
+          if (event.results[i].isFinal) final += t + ' ';
+          else interim += t;
+        }
+        setLiveTranscript((final || interim).trim());
+      };
+      recognition.onerror = () => {};
+      recognition.start();
+      recognitionRef.current = recognition;
+    } catch (e) {}
+  }, []);
+
+  const stopLiveSpeechRecognition = useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+      recognitionRef.current = null;
+    }
+  }, []);
 
   // Pause audio when card becomes inactive
   useEffect(() => {
     if (!isActive && audioRef.current && isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
+      stopLiveSpeechRecognition();
     }
-  }, [isActive, isPlaying]);
+  }, [isActive, isPlaying, stopLiveSpeechRecognition]);
 
   // Reset state when post changes
   useEffect(() => {
@@ -463,12 +528,14 @@ const AudioFeedCard: React.FC<{
     setActiveWordIndex(-1);
     setPlaybackRate(1);
     setIsMuted(false);
+    setLiveTranscript('');
+    stopLiveSpeechRecognition();
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.playbackRate = 1;
       audioRef.current.muted = false;
     }
-  }, [post.id]);
+  }, [post.id, stopLiveSpeechRecognition]);
 
   // Audio event listeners + karaoke sync
   useEffect(() => {
@@ -484,7 +551,6 @@ const AudioFeedCard: React.FC<{
       const ct = audio.currentTime;
       setProgress((ct / dur) * 100);
       setCurrentTime(ct);
-      // Karaoke sync: proportional estimation
       if (words.length > 0) {
         const wordDuration = dur / words.length;
         const idx = Math.min(Math.floor(ct / wordDuration), words.length - 1);
@@ -496,6 +562,7 @@ const AudioFeedCard: React.FC<{
       setProgress(0);
       setCurrentTime(0);
       setActiveWordIndex(-1);
+      stopLiveSpeechRecognition();
     };
 
     audio.addEventListener('loadedmetadata', onMeta);
@@ -508,18 +575,28 @@ const AudioFeedCard: React.FC<{
       audio.removeEventListener('timeupdate', onUpdate);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [hasAudio, words]);
+  }, [hasAudio, words, stopLiveSpeechRecognition]);
 
   const togglePlay = () => {
     if (!hasAudio || !audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
+      stopLiveSpeechRecognition();
     } else {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(err => console.warn('Audio play failed:', err));
+      audioRef.current.play()
+        .then(() => {
+          setIsPlaying(true);
+          // Démarrer transcription en direct si pas de transcript stocké
+          if (words.length === 0) {
+            startLiveSpeechRecognition();
+          }
+        })
+        .catch(err => console.warn('Audio play failed:', err));
     }
     triggerFeedback('click');
   };
+
 
   const skipBack = () => {
     if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
@@ -651,18 +728,17 @@ const AudioFeedCard: React.FC<{
           ))}
         </div>
 
-        {/* ── KARAOKE TRANSCRIPTION — juste sous le disque ── */}
+        {/* ── KARAOKE TRANSCRIPTION — toujours visible sous le disque ── */}
         <div className="w-full max-w-xs mb-2">
-          {words.length > 0 ? (
-            <KaraokeDisplay words={words} activeIndex={activeWordIndex} isPlaying={isPlaying} />
-          ) : post.transcript_fr ? (
-            <div className="rounded-2xl px-4 py-3"
-              style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.15)' }}
-            >
-              <p className="text-white/70 text-center text-xs leading-relaxed">"{post.transcript_fr.slice(0, 100)}…"</p>
-            </div>
-          ) : null}
+          <KaraokeDisplay
+            words={words}
+            activeIndex={activeWordIndex}
+            isPlaying={isPlaying}
+            liveText={words.length === 0 ? liveTranscript : undefined}
+            fallbackTitle={words.length === 0 && !liveTranscript ? fallbackTitle : undefined}
+          />
         </div>
+
 
         {/* Controls */}
         <div className={`flex items-center gap-3 mb-2 ${!hasAudio ? 'opacity-40 pointer-events-none' : ''}`}>

@@ -48,59 +48,88 @@ const formatPublicationDate = (dateString: string | null): string => {
 
 const SPEED_CYCLE = [1, 1.5, 2, 0.75] as const;
 
-// ── Phrase défilante karaoké synchronisée ──
-const KaraokeDisplay: React.FC<{ words: string[]; activeIndex: number; isPlaying: boolean }> = ({ words, activeIndex, isPlaying }) => {
-  if (words.length === 0) return null;
+// ── Phrase défilante karaoké synchronisée — toujours visible ──
+const KaraokeDisplay: React.FC<{
+  words: string[];
+  activeIndex: number;
+  isPlaying: boolean;
+  liveText?: string;
+  fallbackTitle?: string;
+}> = ({ words, activeIndex, isPlaying, liveText, fallbackTitle }) => {
+  const hasWords = words.length > 0;
+  const displayText = liveText || fallbackTitle || '';
 
   const center = isPlaying && activeIndex >= 0 ? activeIndex : 0;
   const windowStart = Math.max(0, center - 2);
   const windowEnd = Math.min(words.length - 1, windowStart + 6);
-  const visibleWords = words.slice(windowStart, windowEnd + 1);
+  const visibleWords = hasWords ? words.slice(windowStart, windowEnd + 1) : [];
   const relativeActive = activeIndex - windowStart;
 
   return (
     <div
       className="w-full rounded-2xl px-4 py-3"
       style={{
-        background: 'rgba(0,0,0,0.40)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.15)',
+        background: 'rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(24px)',
+        border: '1px solid rgba(255,255,255,0.18)',
+        minHeight: 56,
       }}
     >
-      {/* Phrase défilante sur une ligne */}
-      <div className="flex items-center justify-center gap-x-1.5 overflow-hidden min-h-[1.4rem]">
-        {visibleWords.map((word, i) => {
-          const isCurrent = isPlaying && i === relativeActive;
-          const isPast = isPlaying && i < relativeActive;
-          return (
-            <motion.span
-              key={`${windowStart + i}-${word}`}
-              animate={isCurrent ? { scale: [1, 1.18, 1.12] } : { scale: 1 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-              className="text-sm leading-none whitespace-nowrap flex-shrink-0"
-              style={{
-                color: isCurrent ? '#FFFFFF' : isPast ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.65)',
-                textShadow: isCurrent ? '0 0 16px rgba(255,200,80,1), 0 0 30px rgba(255,140,40,0.7)' : 'none',
-                fontWeight: isCurrent ? 800 : isPast ? 400 : 500,
-              }}
-            >
-              {word}
-            </motion.span>
-          );
-        })}
-      </div>
+      {hasWords ? (
+        <div className="flex items-center justify-center gap-x-1.5 overflow-hidden flex-wrap min-h-[1.4rem]">
+          {visibleWords.map((word, i) => {
+            const isCurrent = isPlaying && i === relativeActive;
+            const isPast = isPlaying && i < relativeActive;
+            return (
+              <motion.span
+                key={`${windowStart + i}-${word}`}
+                animate={isCurrent ? { scale: [1, 1.18, 1.12] } : { scale: 1 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="text-sm leading-relaxed whitespace-nowrap flex-shrink-0"
+                style={{
+                  color: isCurrent ? '#FFFFFF' : isPast ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.70)',
+                  textShadow: isCurrent ? '0 0 16px rgba(255,200,80,1), 0 0 30px rgba(255,140,40,0.7)' : 'none',
+                  fontWeight: isCurrent ? 800 : isPast ? 400 : 500,
+                }}
+              >
+                {word}
+              </motion.span>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="overflow-hidden min-h-[1.4rem]">
+          <motion.p
+            key={displayText}
+            initial={{ opacity: 0.6 }}
+            animate={{ opacity: 1 }}
+            className="text-center text-sm leading-relaxed"
+            style={{
+              color: isPlaying && liveText ? '#FFFFFF' : 'rgba(255,255,255,0.80)',
+              fontWeight: isPlaying && liveText ? 600 : 400,
+              fontStyle: liveText ? 'normal' : 'italic',
+              textShadow: isPlaying && liveText ? '0 0 12px rgba(255,200,80,0.8)' : 'none',
+            }}
+          >
+            {isPlaying && liveText
+              ? liveText
+              : displayText
+              ? `"${displayText.slice(0, 80)}${displayText.length > 80 ? '…' : ''}"`
+              : '🎙️ En attente de narration…'}
+          </motion.p>
+        </div>
+      )}
 
-      {/* Barre de progression + indicateur live */}
       <div className="flex items-center gap-2 mt-2">
         <div className="flex-1 h-0.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.15)' }}>
           <motion.div
             className="h-full rounded-full"
             style={{ background: 'rgba(255,255,255,0.7)' }}
-            animate={{ width: words.length > 0 ? `${((activeIndex + 1) / words.length) * 100}%` : '0%' }}
-            transition={{ duration: 0.15 }}
+            animate={{ width: hasWords && words.length > 0 ? `${((activeIndex + 1) / words.length) * 100}%` : isPlaying ? '100%' : '0%' }}
+            transition={{ duration: hasWords ? 0.15 : 3, ease: hasWords ? 'linear' : 'easeInOut', repeat: !hasWords && isPlaying ? Infinity : 0, repeatType: 'mirror' }}
           />
         </div>
-        {isPlaying && activeIndex >= 0 && (
+        {isPlaying && (
           <div className="flex items-center gap-0.5">
             {[0, 1, 2].map(i => (
               <motion.div key={i} className="w-0.5 h-2.5 rounded-full"
@@ -109,6 +138,9 @@ const KaraokeDisplay: React.FC<{ words: string[]; activeIndex: number; isPlaying
                 transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.12 }}
               />
             ))}
+            {liveText && (
+              <span className="text-[9px] text-red-300 font-bold ml-1 animate-pulse">EN DIRECT</span>
+            )}
           </div>
         )}
       </div>
@@ -142,13 +174,14 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [activeWordIndex, setActiveWordIndex] = useState(-1);
   const [isSaved, setIsSaved] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
   const audioRef = useRef<HTMLAudioElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const template = getTemplateById(post.template_id, category);
   const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
   const authorId = post.user_id || post.profile?.user_id;
 
-  // Vrai hook d'interactions (like, follow, bookmark, share)
   const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow, currentUserId } = usePostInteractions(post.id, authorId);
 
   const words = useMemo(() => {
@@ -156,14 +189,46 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
     return post.transcript_fr.trim().split(/\s+/).filter(Boolean);
   }, [post.transcript_fr]);
 
+  // Titre comme fallback visible
+  const fallbackTitle = post.title || post.transcript_fr || '';
+
+  const startSpeechRec = useCallback(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    try {
+      const rec = new SR();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'fr-FR';
+      rec.onresult = (e: any) => {
+        let text = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          text += e.results[i][0].transcript + (e.results[i].isFinal ? ' ' : '');
+        }
+        setLiveTranscript(text.trim());
+      };
+      rec.onerror = () => {};
+      rec.start();
+      recognitionRef.current = rec;
+    } catch (_) {}
+  }, []);
+
+  const stopSpeechRec = useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (_) {}
+      recognitionRef.current = null;
+    }
+  }, []);
+
   // Auto-play/pause based on isActive
   useEffect(() => {
     if (!audioRef.current) return;
     if (!isActive && isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
+      stopSpeechRec();
     }
-  }, [isActive, isPlaying]);
+  }, [isActive, isPlaying, stopSpeechRec]);
 
   // Reset on post change
   useEffect(() => {
@@ -173,7 +238,9 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
     setActiveWordIndex(-1);
     setPlaybackRate(1);
     setIsMuted(false);
-  }, [post.id]);
+    setLiveTranscript('');
+    stopSpeechRec();
+  }, [post.id, stopSpeechRec]);
 
   // Audio events + karaoke sync
   useEffect(() => {
@@ -194,7 +261,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
         setActiveWordIndex(Math.min(Math.floor(ct / wordDuration), words.length - 1));
       }
     };
-    const onEnded = () => { setIsPlaying(false); setProgress(0); setCurrentTime(0); setActiveWordIndex(-1); };
+    const onEnded = () => { setIsPlaying(false); setProgress(0); setCurrentTime(0); setActiveWordIndex(-1); stopSpeechRec(); };
 
     audio.addEventListener('loadedmetadata', onMeta);
     audio.addEventListener('timeupdate', onUpdate);
@@ -206,20 +273,31 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
       audio.removeEventListener('timeupdate', onUpdate);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [hasAudio, words]);
+  }, [hasAudio, words, stopSpeechRec]);
 
   // Cleanup on unmount
   useEffect(() => {
     const audio = audioRef.current;
-    return () => { if (audio) { audio.pause(); audio.src = ''; } };
-  }, []);
+    return () => { if (audio) { audio.pause(); audio.src = ''; } stopSpeechRec(); };
+  }, [stopSpeechRec]);
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return;
-    if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); }
-    else { audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {}); }
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      stopSpeechRec();
+    } else {
+      audioRef.current.play()
+        .then(() => {
+          setIsPlaying(true);
+          if (words.length === 0) startSpeechRec();
+        })
+        .catch(() => {});
+    }
     triggerFeedback('click');
-  }, [isPlaying]);
+  }, [isPlaying, words.length, startSpeechRec, stopSpeechRec]);
+
 
   const skipBack = useCallback(() => {
     if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
@@ -320,18 +398,17 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
           </motion.div>
         </div>
 
-        {/* ── KARAOKE — phrase défilante juste sous le disque ── */}
+        {/* ── KARAOKE — phrase défilante toujours visible sous le disque ── */}
         <div className="w-full max-w-xs mb-3">
-          {words.length > 0 ? (
-            <KaraokeDisplay words={words} activeIndex={activeWordIndex} isPlaying={isPlaying} />
-          ) : post.transcript_fr ? (
-            <div className="rounded-2xl px-4 py-3"
-              style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.15)' }}
-            >
-              <p className="text-white/70 text-center text-xs leading-relaxed">"{post.transcript_fr.slice(0, 100)}…"</p>
-            </div>
-          ) : null}
+          <KaraokeDisplay
+            words={words}
+            activeIndex={activeWordIndex}
+            isPlaying={isPlaying}
+            liveText={words.length === 0 ? liveTranscript : undefined}
+            fallbackTitle={words.length === 0 && !liveTranscript ? fallbackTitle : undefined}
+          />
         </div>
+
 
         {/* Follow + Author */}
         <div className="flex items-center gap-3 mb-3">
