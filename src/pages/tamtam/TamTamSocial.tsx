@@ -341,9 +341,10 @@ const KaraokeDisplay: React.FC<{
 }> = ({ words, activeIndex, isPlaying }) => {
   if (words.length === 0) return null;
 
-  // Show a window of 7 words around the active one
-  const windowStart = Math.max(0, activeIndex - 2);
-  const windowEnd = Math.min(words.length - 1, windowStart + 6);
+  // Au repos : afficher tous les mots. En lecture : fenêtre glissante de 9 mots autour du mot actif
+  const showAll = !isPlaying || activeIndex < 0;
+  const windowStart = showAll ? 0 : Math.max(0, activeIndex - 3);
+  const windowEnd = showAll ? Math.min(words.length - 1, 24) : Math.min(words.length - 1, windowStart + 8);
   const visibleWords = words.slice(windowStart, windowEnd + 1);
   const relativeActive = activeIndex - windowStart;
 
@@ -354,33 +355,38 @@ const KaraokeDisplay: React.FC<{
     >
       <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-1 min-h-[2.5rem]">
         {visibleWords.map((word, i) => {
-          const isCurrent = i === relativeActive && isPlaying;
-          const isPast = i < relativeActive;
+          const isCurrent = !showAll && i === relativeActive;
+          const isPast = !showAll && i < relativeActive;
           return (
             <motion.span
               key={`${windowStart + i}-${word}`}
               animate={isCurrent ? { scale: [1, 1.15, 1.1], opacity: 1 } : {}}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="text-sm font-semibold leading-snug transition-all duration-200"
+              className="text-sm leading-snug transition-all duration-200"
               style={{
                 color: isCurrent
                   ? '#FFFFFF'
                   : isPast
                   ? 'rgba(255,255,255,0.45)'
-                  : 'rgba(255,255,255,0.65)',
+                  : showAll
+                  ? 'rgba(255,255,255,0.80)'
+                  : 'rgba(255,255,255,0.60)',
                 textShadow: isCurrent
                   ? '0 0 18px rgba(255,200,100,0.9), 0 0 32px rgba(255,140,66,0.6)'
                   : 'none',
-                fontWeight: isCurrent ? 800 : isPast ? 400 : 500,
+                fontWeight: isCurrent ? 800 : isPast ? 400 : showAll ? 500 : 500,
               }}
             >
               {word}
             </motion.span>
           );
         })}
+        {showAll && words.length > 25 && (
+          <span className="text-white/40 text-xs">…</span>
+        )}
       </div>
-      {/* Live indicator */}
-      {isPlaying && (
+      {/* Live indicator — uniquement en lecture */}
+      {isPlaying && activeIndex >= 0 && (
         <div className="flex items-center justify-center gap-1 mt-1.5">
           {[0, 1, 2].map(i => (
             <motion.div
@@ -573,17 +579,6 @@ const AudioFeedCard: React.FC<{
             <path d="M7 11L3 7l4-4M11 7H3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity={hasPrevious ? 1 : 0.35}/>
           </svg>
         </motion.button>
-
-        {/* Badge type patrimoine/voix */}
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-          style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)' }}
-        >
-          <span className="text-base leading-none">{template.emoji}</span>
-          <span className="text-white text-xs font-bold tracking-wide">{template.name}</span>
-        </motion.div>
 
         {/* Nav suivant */}
         <motion.button
