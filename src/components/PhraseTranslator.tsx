@@ -156,6 +156,8 @@ export const PhraseTranslator = () => {
     }
 
     setIsTranslatingLocal(true);
+    const textToTranslate = sourceText.trim();
+    setSourceText("");
     const startTime = performance.now();
     
     try {
@@ -164,7 +166,7 @@ export const PhraseTranslator = () => {
       const targetLang = direction === "french-to-bariba" ? 'bariba' : 'french';
       
       // 1. Vérifier d'abord le cache
-      const cached = await getCachedTranslation(sourceText, sourceLang, targetLang);
+      const cached = await getCachedTranslation(textToTranslate, sourceLang, targetLang);
       if (cached) {
         translation = cached.target_text;
         setUsedCache(true);
@@ -180,9 +182,9 @@ export const PhraseTranslator = () => {
         
         let result;
         if (direction === "french-to-bariba") {
-          result = await translateFrenchToBariba(sourceText);
+          result = await translateFrenchToBariba(textToTranslate);
         } else {
-          result = await translateBaribaToFrench(sourceText);
+          result = await translateBaribaToFrench(textToTranslate);
         }
         
         translation = result.translation;
@@ -193,7 +195,7 @@ export const PhraseTranslator = () => {
         setTranslationDuration(result.duration);
         
         // Sauvegarder dans le cache
-        await cacheTranslation(sourceText, translation, sourceLang, targetLang, result.confidence);
+        await cacheTranslation(textToTranslate, translation, sourceLang, targetLang, result.confidence);
         
         // Display toast based on method used
         toast({
