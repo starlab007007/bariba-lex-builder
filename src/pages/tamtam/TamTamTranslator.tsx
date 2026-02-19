@@ -26,7 +26,7 @@ import { useSmartTranslator, InputMode } from '@/hooks/useSmartTranslator';
 import { useLanguageDetection } from '@/hooks/useLanguageDetection';
 import { useTranslationHistory, TranslationHistoryItem } from '@/hooks/useTranslationHistory';
 import { PhotoTranslator } from '@/components/tamtam/PhotoTranslator';
-import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { VoiceLangPanel } from '@/components/tamtam/VoiceLangPanel';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 import { OfflineIndicator } from '@/components/tamtam/OfflineIndicator';
 import { Button } from '@/components/ui/button';
@@ -72,6 +72,8 @@ export default function TamTamTranslator() {
   const [conversationMode, setConversationMode] = useState(true);
   const [detectedLang, setDetectedLang] = useState<'bariba' | 'french' | null>(null);
   const [baribaTranscribedText, setBaribaTranscribedText] = useState<string>('');
+  const [voicePanelSuccess, setVoicePanelSuccess] = useState(false);
+  const [voicePanelError, setVoicePanelError] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -149,25 +151,28 @@ export default function TamTamTranslator() {
   const handleVoiceResult = async (result: {
     audioBase64: string;
     transcription?: string;
-    translation?: string;
     sourceLang: 'ba' | 'fr';
   }) => {
+    setVoicePanelSuccess(false);
+    setVoicePanelError('');
+
     if (result.sourceLang === 'ba' && result.audioBase64) {
-      // Transcription Bariba directe via STT avant traduction
       setBaribaTranscribedText('');
-      console.log('[TamTamTranslator] Bariba voice → STT transcription');
       const sttResult = await transcribeBariba(result.audioBase64, { robustMode: true, speakerType: 'Auto' });
       if (sttResult?.transcription) {
         setBaribaTranscribedText(sttResult.transcription);
-        // Traduire le texte bariba transcrit
         await translator.translateFromText(sttResult.transcription);
+        setVoicePanelSuccess(true);
       } else {
-        // Fallback : essayer translateFromAudio (pipeline existant)
+        setVoicePanelError('Transcription échouée — réessayez');
         await translator.translateFromAudio(result.audioBase64);
       }
     } else if (result.sourceLang === 'fr') {
       if (result.transcription) {
         await translator.translateFromText(result.transcription);
+        setVoicePanelSuccess(true);
+      } else {
+        setVoicePanelError('Aucun texte détecté — réessayez');
       }
     }
   };
@@ -684,17 +689,29 @@ export default function TamTamTranslator() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex flex-col items-center"
+                className="w-full"
               >
-                <p className="text-xs text-gray-400 mb-2">
-                  Parlez - la langue sera détectée automatiquement
-                </p>
-                <TamTamMicButton
-                  size="lg"
-                  onRecordingComplete={handleVoiceResult}
-                  autoTranscribe={false}
-                  sourceLang={translator.sourceLanguage === 'bariba' ? 'ba' : 'fr'}
+                <VoiceLangPanel
+                  defaultLang={translator.sourceLanguage === 'bariba' ? 'ba' : 'fr'}
+                  onResult={handleVoiceResult}
+                  onLangChange={(l) => {
+                    const tLang = l === 'ba' ? 'bariba' : 'french';
+                    if (tLang !== translator.sourceLanguage) {
+                      translator.swapLanguages();
+                    }
+                  }}
+                  isProcessingExternal={translator.isProcessing || isSTTTranscribing}
+                  isWakingUp={isSTTWakingUp}
+                  lastTranscription={baribaTranscribedText || undefined}
+                  lastError={voicePanelError || undefined}
+                  showSuccess={voicePanelSuccess}
+                  onSpeakAgain={() => {
+                    setVoicePanelSuccess(false);
+                    setVoicePanelError('');
+                    setBaribaTranscribedText('');
+                  }}
                   disabled={translator.isProcessing}
+                  uiLang="fr"
                 />
               </motion.div>
             )}

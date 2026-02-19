@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Keyboard, Volume2, Loader2, Search, BookOpen, Plus, ArrowLeft } from 'lucide-react';
+import { Keyboard, Volume2, Loader2, Search, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSuggestions';
 import { BaribaKeyboardInput, SearchLanguage } from '@/components/tamtam/BaribaKeyboardInput';
 import { VocalDictionaryResult } from '@/components/tamtam/VocalDictionaryResult';
-import { TamTamMicButton } from '@/components/tamtam/TamTamMicButton';
+import { VoiceLangPanel } from '@/components/tamtam/VoiceLangPanel';
 import { NewWordSubmission } from '@/components/tamtam/NewWordSubmission';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useContributionPoints, getLevel } from '@/hooks/useContributionPoints';
@@ -33,16 +33,19 @@ export default function TamTamDictionary() {
   const [searchHistory, setSearchHistory] = useState<PhoneticEntry[]>([]);
   const [notFoundWord, setNotFoundWord] = useState<string>('');
   const [sttStatusMsg, setSttStatusMsg] = useState<string>('');
+  const [voiceLang, setVoiceLang] = useState<'ba' | 'fr'>('ba');
+  const [panelSuccess, setPanelSuccess] = useState(false);
+  const [panelError, setPanelError] = useState('');
 
   // Gestion de la commande vocale avec transcription Bariba directe
   const handleVoiceCommand = async (result: {
     audioBase64: string;
     transcription?: string;
-    translation?: string;
     sourceLang: 'ba' | 'fr';
   }) => {
     setIsProcessing(true);
-    setSttStatusMsg('');
+    setPanelSuccess(false);
+    setPanelError('');
     triggerFeedback('send');
     
     try {
@@ -50,27 +53,23 @@ export default function TamTamDictionary() {
 
       // Si Bariba et pas de transcription → appel STT direct
       if (result.sourceLang === 'ba' && !query && result.audioBase64) {
-        setSttStatusMsg(isSTTWakingUp ? '⏳ Réveil du service Bariba...' : '🎤 Transcription Bariba en cours...');
         console.log('[TamTamDictionary] No transcription for Bariba audio → calling STT');
         const sttResult = await transcribeBariba(result.audioBase64, { robustMode: true, speakerType: 'Auto' });
         if (sttResult?.transcription) {
           query = sttResult.transcription.toLowerCase().trim();
-          setSttStatusMsg(`✅ Transcrit : "${sttResult.transcription}"`);
           console.log('[TamTamDictionary] STT result:', query);
         } else {
-          setSttStatusMsg('❌ Transcription échouée - réessayez');
+          setPanelError(currentLang === 'ba' ? 'Àìsí ɔ̀rɔ̀ — gbìyànjú mọ̀' : 'Transcription échouée — réessayez');
+          return;
         }
       }
 
       setLastQuery(query);
       
       if (!query) {
-        const errorMsg = currentLang === 'ba' ? "Kò gbọ́ ɔ̀rɔ̀ kan" : "Aucun mot détecté - parlez en Bariba";
-        await speakCurrentLang(errorMsg);
+        setPanelError(currentLang === 'ba' ? "Kò gbọ́ ɔ̀rɔ̀ kan" : "Aucun mot détecté");
         return;
       }
-      
-      console.log('[TamTamDictionary] Voice query:', query, 'Lang:', result.sourceLang);
       
       let foundEntry: PhoneticEntry | null = null;
       
@@ -88,15 +87,15 @@ export default function TamTamDictionary() {
       if (foundEntry) {
         setSelectedEntry(foundEntry);
         addToHistory(foundEntry);
+        setPanelSuccess(true);
         triggerFeedback('success');
-        setSttStatusMsg('');
-        
         const announcement = currentLang === 'ba'
           ? `${foundEntry.word}. Ìtúmọ̀: ${foundEntry.definition}`
           : `${foundEntry.word}. Définition: ${foundEntry.definition}`;
         await speakCurrentLang(announcement);
       } else {
         setNotFoundWord(query);
+        setPanelSuccess(true); // still signal "done" so panel shows speak-again
         const notFoundMsg = currentLang === 'ba' 
           ? `Kò rí ɔ̀rɔ̀ "${query}"` 
           : `Mot "${query}" non trouvé`;
@@ -105,7 +104,7 @@ export default function TamTamDictionary() {
     } catch (error) {
       console.error('[TamTamDictionary] Error:', error);
       triggerFeedback('error');
-      setSttStatusMsg('');
+      setPanelError(currentLang === 'ba' ? 'Àṣìṣe — gbìyànjú mọ̀' : 'Erreur — réessayez');
     } finally {
       setIsProcessing(false);
     }
@@ -178,33 +177,33 @@ export default function TamTamDictionary() {
           </div>
         </div>
 
-        {/* Toggles mode */}
+        {/* Mode toggle — Clavier / Vocal */}
         <div className="flex gap-2">
           <button
-            onClick={toggleInputMode}
+            onClick={() => { setInputMode('keyboard'); triggerFeedback('click'); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${
-              inputMode === 'keyboard' 
-                ? 'bg-white shadow-md text-gray-800' 
+              inputMode === 'keyboard'
+                ? 'bg-white shadow-md text-gray-800'
                 : 'bg-white/60 text-gray-500 hover:bg-white/80'
             }`}
           >
             <Keyboard className="w-5 h-5" />
             {currentLang === 'ba' ? "Ìkọ̀wé" : "Clavier"}
           </button>
-          
+
           <button
             onClick={() => { setInputMode('voice'); triggerFeedback('click'); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${
-              inputMode === 'voice' 
-                ? 'bg-white shadow-md text-gray-800' 
+              inputMode === 'voice'
+                ? 'bg-white shadow-md text-gray-800'
                 : 'bg-white/60 text-gray-500 hover:bg-white/80'
             }`}
           >
-            <Mic className="w-5 h-5" />
+            <span className="text-lg">🎤</span>
             {currentLang === 'ba' ? "Ohùn" : "Vocal"}
           </button>
         </div>
-        
+
         {/* Word count badge */}
         <div className="mt-2 flex items-center justify-center gap-3">
           <span className="text-gray-500 text-sm">
@@ -221,75 +220,27 @@ export default function TamTamDictionary() {
       {/* Contenu principal scrollable */}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         {/* Zone d'entrée */}
-        <motion.div
-          layout
-          className="bg-white rounded-3xl shadow-md p-4 mb-4"
-        >
+        <motion.div layout className="bg-white rounded-3xl shadow-md p-4 mb-4">
           {inputMode === 'voice' ? (
-            <div className="flex flex-col items-center py-6">
-              <p className="text-gray-500 mb-4 text-center">
-                {currentLang === 'ba' 
-                  ? "Tẹ̀ bọ́tìn náà kí o sọ ɔ̀rɔ̀" 
-                  : "Appuyez et dites un mot"}
-              </p>
-              
-              <TamTamMicButton
-                size="lg"
-                onRecordingComplete={handleVoiceCommand}
-                autoTranscribe={false}
-                autoTranslate={false}
-                sourceLang={searchDirection === 'ba-fr' ? 'ba' : 'fr'}
-                disabled={isProcessing}
-              />
-              
-              {/* Indicateur STT Bariba */}
-              <AnimatePresence>
-                {(isProcessing || isSTTLoading) && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="mt-4 flex flex-col items-center gap-2"
-                  >
-                    <div className="flex items-center gap-2 text-indigo-600">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm font-medium">
-                        {isSTTWakingUp
-                          ? '⏳ Réveil du service Bariba...'
-                          : isSTTLoading
-                          ? '🎤 Transcription Bariba en cours...'
-                          : (currentLang === 'ba' ? "Ń wá..." : "Recherche...")}
-                      </span>
-                    </div>
-                    {isSTTWakingUp && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        Première utilisation (~30s) - patientez
-                      </p>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Statut STT après transcription */}
-              <AnimatePresence>
-                {sttStatusMsg && !isProcessing && !isSTTLoading && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="mt-3 px-3 py-2 bg-indigo-50 rounded-xl text-sm text-indigo-700 text-center"
-                  >
-                    {sttStatusMsg}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              
-              {lastQuery && !isProcessing && !isSTTLoading && (
-                <p className="mt-4 text-sm text-gray-500">
-                  Recherche: "{lastQuery}"
-                </p>
-              )}
-            </div>
+            <VoiceLangPanel
+              defaultLang={voiceLang}
+              onResult={handleVoiceCommand}
+              onLangChange={(l) => {
+                setVoiceLang(l);
+                setSearchDirection(l === 'ba' ? 'ba-fr' : 'fr-ba');
+              }}
+              isProcessingExternal={isProcessing || isSTTLoading}
+              isWakingUp={isSTTWakingUp}
+              lastTranscription={lastQuery || undefined}
+              lastError={panelError || undefined}
+              showSuccess={panelSuccess}
+              onSpeakAgain={() => {
+                setPanelSuccess(false);
+                setPanelError('');
+              }}
+              uiLang={currentLang as 'ba' | 'fr'}
+              disabled={false}
+            />
           ) : (
             <div>
               <p className="text-gray-500 mb-3 text-sm">
@@ -297,11 +248,10 @@ export default function TamTamDictionary() {
                   ? (currentLang === 'ba' ? "Kọ ɔ̀rɔ̀ Bàátɔ̀nú" : "Tapez un mot bariba")
                   : (currentLang === 'ba' ? "Kọ ɔ̀rɔ̀ Fàránsé" : "Tapez un mot français")}
               </p>
-              
               <BaribaKeyboardInput
                 onSelectWord={handleSelectWord}
-                placeholder={searchDirection === 'ba-fr' 
-                  ? "Tapez un mot bariba..." 
+                placeholder={searchDirection === 'ba-fr'
+                  ? "Tapez un mot bariba..."
                   : "Tapez un mot français..."}
                 language={keyboardLang}
                 onLanguageChange={handleKeyboardLangChange}
