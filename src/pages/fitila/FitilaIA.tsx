@@ -205,7 +205,7 @@ export default function FitilaIA() {
   const isBusy = isProcessing || isTranscribing;
 
   return (
-    <div className="flex flex-col h-full w-full bg-gradient-to-b from-indigo-50 via-white to-pink-50">
+    <div className="flex flex-col h-[100dvh] w-full bg-gradient-to-b from-indigo-50 via-white to-pink-50">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white/80 backdrop-blur-md z-10 shadow-sm">
         <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
