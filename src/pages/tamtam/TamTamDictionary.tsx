@@ -236,7 +236,7 @@ export default function TamTamDictionary() {
               <TamTamMicButton
                 size="lg"
                 onRecordingComplete={handleVoiceCommand}
-                autoTranscribe={true}
+                autoTranscribe={false}
                 autoTranslate={false}
                 sourceLang={searchDirection === 'ba-fr' ? 'ba' : 'fr'}
                 disabled={isProcessing}

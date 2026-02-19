@@ -692,7 +692,7 @@ export default function TamTamTranslator() {
                 <TamTamMicButton
                   size="lg"
                   onRecordingComplete={handleVoiceResult}
-                  autoTranscribe={true}
+                  autoTranscribe={false}
                   sourceLang={translator.sourceLanguage === 'bariba' ? 'ba' : 'fr'}
                   disabled={translator.isProcessing}
                 />

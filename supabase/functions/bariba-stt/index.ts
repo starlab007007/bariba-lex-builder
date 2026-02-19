@@ -183,58 +183,103 @@ async function readSSEResult(eventId: string, hfToken: string): Promise<string> 
   }
 
   // Lire le body entier du stream SSE
-  const sseText = await response.text();
-  console.log(`   SSE raw (first 500 chars): ${sseText.substring(0, 500)}`);
+  const sseRaw = await response.text();
+  // CRITIQUE : normaliser CRLF → LF pour éviter les \r résiduels qui cassent line === ''
+  const sseText = sseRaw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  console.log(`   SSE raw length: ${sseRaw.length} chars`);
+  console.log(`   SSE raw (first 800 chars): ${sseRaw.substring(0, 800)}`);
 
-  // Parser les événements SSE ligne par ligne
-  // Le Space retourne deux formats possibles :
-  // Format A (Gradio standard) : event: process_completed \n data: {"msg":"process_completed","output":{"data":[...]}}
-  // Format B (ce Space) : event: complete \n data: [{"transcription":"...","raw_model_output":"...",...}]
+  /**
+   * Parser SSE robuste supportant 3 formats :
+   * Format A (Gradio standard) : data seule contient {"msg":"process_completed","output":{"data":["texte"]}}
+   * Format B (event + data)    : event: complete \n data: [{"transcription":"..."}]
+   * Format C (event: process_completed) : event: process_completed \n data: {...}
+   */
   const lines = sseText.split('\n');
   let currentEvent: string | null = null;
   let lastData: string | null = null;
 
   for (const line of lines) {
-    if (line.startsWith('event: ')) {
-      currentEvent = line.substring(7).trim();
-    } else if (line.startsWith('data: ')) {
-      lastData = line.substring(6).trim();
-    } else if (line === '' && lastData) {
-      // Fin d'un bloc SSE — traiter selon le type d'événement
+    const trimmedLine = line.trim(); // trim pour gérer les \r résiduels éventuels
+
+    if (trimmedLine.startsWith('event: ')) {
+      currentEvent = trimmedLine.substring(7).trim();
+    } else if (trimmedLine.startsWith('data: ')) {
+      lastData = trimmedLine.substring(6).trim();
+      
+      // Format A : détecter process_completed directement dans la data sans attendre une ligne vide
+      // (certains serveurs n'envoient pas de ligne vide finale)
       try {
         const parsed = JSON.parse(lastData);
-
-        // Format B : event: complete, data: [{"transcription": "...", ...}]
-        if (currentEvent === 'complete') {
-          console.log(`   ✅ event:complete received`);
-          // Le data est un tableau d'objets de résultat
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const result = parsed[0];
-            if (result?.transcription) {
-              console.log(`   Transcription (format B): "${result.transcription.substring(0, 100)}"`);
-              return result.transcription;
-            }
-            if (result?.raw_model_output) return result.raw_model_output;
-            // Chercher un string dans le tableau
-            for (const item of parsed) {
-              if (typeof item === 'string' && item.length > 0) return item;
-            }
-          }
-          // data est directement un string
-          if (typeof parsed === 'string' && parsed.length > 0) return parsed;
-        }
-
-        // Format A : event: process_completed, data: {"msg":"process_completed","output":{...}}
-        if (parsed.msg === 'process_completed' || currentEvent === 'process_completed') {
-          console.log(`   ✅ process_completed received`);
+        
+        if (parsed.msg === 'process_completed') {
+          console.log(`   ✅ process_completed detected inline (format A)`);
           if (parsed.output?.error) {
             throw new Error(`Model error: ${parsed.output.error}`);
           }
           const data = parsed.output?.data;
           if (Array.isArray(data)) {
             const first = data[0];
-            if (typeof first === 'string') {
-              console.log(`   Transcription (format A): "${first.substring(0, 100)}"`);
+            if (typeof first === 'string' && first.length > 0) {
+              console.log(`   Transcription (A-inline): "${first.substring(0, 100)}"`);
+              return first;
+            }
+            if (first?.transcription) return first.transcription;
+            if (first?.label) return first.label;
+            if (first?.value) return first.value;
+            for (const item of data) {
+              if (typeof item === 'string' && item.length > 0) return item;
+            }
+          }
+          if (parsed.output?.transcription) return parsed.output.transcription;
+          if (parsed.output?.text) return parsed.output.text;
+        }
+        
+        if (parsed.msg === 'process_errored') {
+          throw new Error(`Process error: ${parsed.error || 'Unknown model error'}`);
+        }
+      } catch (inlineErr) {
+        if (inlineErr instanceof Error && (
+          inlineErr.message.startsWith('Model error') ||
+          inlineErr.message.startsWith('Process error')
+        )) throw inlineErr;
+        // Sinon c'est une erreur de parsing normale (pas encore un JSON complet)
+      }
+
+    } else if (trimmedLine === '' && lastData) {
+      // Fin d'un bloc SSE délimité par ligne vide
+      try {
+        const parsed = JSON.parse(lastData);
+
+        // Format B : event: complete, data: [{"transcription": "...", ...}]
+        if (currentEvent === 'complete') {
+          console.log(`   ✅ event:complete received (format B)`);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const result = parsed[0];
+            if (result?.transcription) {
+              console.log(`   Transcription (B): "${result.transcription.substring(0, 100)}"`);
+              return result.transcription;
+            }
+            if (result?.raw_model_output) return result.raw_model_output;
+            for (const item of parsed) {
+              if (typeof item === 'string' && item.length > 0) return item;
+            }
+          }
+          if (typeof parsed === 'string' && parsed.length > 0) return parsed;
+        }
+
+        // Format C : event: process_completed, data: {...}
+        if (currentEvent === 'process_completed' || parsed.msg === 'process_completed') {
+          console.log(`   ✅ process_completed block received (format C)`);
+          if (parsed.output?.error) {
+            throw new Error(`Model error: ${parsed.output.error}`);
+          }
+          const data = parsed.output?.data;
+          if (Array.isArray(data)) {
+            const first = data[0];
+            if (typeof first === 'string' && first.length > 0) {
+              console.log(`   Transcription (C): "${first.substring(0, 100)}"`);
               return first;
             }
             if (first?.transcription) return first.transcription;
@@ -255,20 +300,19 @@ async function readSSEResult(eventId: string, hfToken: string): Promise<string> 
 
       } catch (parseErr) {
         if (parseErr instanceof Error && (
-          parseErr.message.includes('Model error') ||
-          parseErr.message.includes('Process error') ||
-          parseErr.message.includes('No transcription')
+          parseErr.message.startsWith('Model error') ||
+          parseErr.message.startsWith('Process error') ||
+          parseErr.message.startsWith('No transcription')
         )) {
           throw parseErr;
         }
-        // Ignorer les erreurs de parsing pour les blocs non-finaux
       }
       currentEvent = null;
       lastData = null;
     }
   }
 
-  // Dernier recours : si le stream s'est terminé sans bloc vide final, parser lastData
+  // Dernier recours : parser lastData restante (stream sans ligne vide finale)
   if (lastData) {
     try {
       const parsed = JSON.parse(lastData);
@@ -278,11 +322,13 @@ async function readSSEResult(eventId: string, hfToken: string): Promise<string> 
       if (parsed.msg === 'process_completed') {
         const data = parsed.output?.data;
         if (Array.isArray(data) && typeof data[0] === 'string') return data[0];
+        if (parsed.output?.transcription) return parsed.output.transcription;
       }
     } catch (e) { /* ignore */ }
   }
 
-  throw new Error('SSE stream ended without complete event');
+  console.error(`   ❌ SSE stream fully parsed but no transcription found. Full SSE:\n${sseText}`);
+  throw new Error('SSE stream ended without transcription result');
 }
 
 /**
