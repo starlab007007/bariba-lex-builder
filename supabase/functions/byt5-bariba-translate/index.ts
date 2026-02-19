@@ -15,7 +15,7 @@ interface TranslationRequest {
 }
 
 const SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space';
-const GLOBAL_TIMEOUT_MS = 25000;
+const GLOBAL_TIMEOUT_MS = 55000;
 
 async function pollForResult(
   spaceUrl: string,
@@ -119,19 +119,7 @@ async function callGradioTranslate(
     return !invalidPatterns.some(p => result.toLowerCase().includes(p.toLowerCase()));
   };
 
-  console.log(`🔍 Exploring API at ${spaceUrl}${apiPrefix}/info`);
-  try {
-    const infoResp = await fetch(`${spaceUrl}${apiPrefix}/info`, {
-      headers: { 'Authorization': `Bearer ${hfToken}` },
-      signal: abortSignal,
-    });
-    if (infoResp.ok) {
-      const info = await infoResp.json();
-      console.log(`📋 API Info: ${JSON.stringify(info).substring(0, 500)}`);
-    }
-  } catch (e: unknown) {
-    console.log(`   Info fetch failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
-  }
+  // Skip /info fetch to save time
 
   const data = [text, direction, mode, advanced, autocorrect];
   console.log(`📤 Sending to fn_index=2: ${JSON.stringify(data)}`);
@@ -180,7 +168,7 @@ async function callGradioTranslate(
             const responseText = await pollResponse.text();
             console.log(`   Poll ${attempt + 1}: ${responseText.substring(0, 400)}`);
             
-            const lines = responseText.split('\\n');
+            const lines = responseText.split('\n');
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
@@ -377,20 +365,7 @@ serve(async (req) => {
     console.log(`📍 Space URL: ${SPACE_URL}`);
     console.log(`   Mode: ${gradioMode}, Advanced: ${advanced}`);
 
-    let apiPrefix = '/gradio_api';
-    try {
-      const configResponse = await fetch(`${SPACE_URL}/config`, {
-        headers: { 'Authorization': `Bearer ${HF_TOKEN}` },
-        signal: abortController.signal,
-      });
-      if (configResponse.ok) {
-        const config = await configResponse.json();
-        apiPrefix = config.api_prefix || '/gradio_api';
-        console.log(`📋 Gradio v${config.version}, prefix: ${apiPrefix}`);
-      }
-    } catch (e) {
-      console.log(`   Config fetch failed, using default prefix`);
-    }
+    const apiPrefix = '/gradio_api';
 
     const result = await callGradioTranslate(
       SPACE_URL, apiPrefix, text, direction, gradioMode, advanced,
