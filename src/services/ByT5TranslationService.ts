@@ -64,33 +64,33 @@ class ByT5TranslationService {
       t.trim().length > 0 &&
       !invalidPatterns.some((p) => t.toLowerCase().includes(p.toLowerCase()));
 
-    const lovableFallback = async (reason: string): Promise<ByT5TranslationResult> => {
-      console.warn(`⚠️ ByT5 fallback → Lovable AI (${reason})`);
-      const { data: lovableData, error: lovableError } = await supabase.functions.invoke('ai-translate-lovable', {
-        body: { text, sourceLang, targetLang },
+    const knowledgeFallback = async (reason: string): Promise<ByT5TranslationResult> => {
+      console.warn(`⚠️ ByT5 fallback → Knowledge Base (${reason})`);
+      const direction = sourceLang === 'french' ? 'fr-ba' : 'ba-fr';
+      const { data: refineData, error: refineError } = await supabase.functions.invoke('refine-bariba', {
+        body: { text, type: 'translate', direction },
       });
 
-      if (lovableError) {
-        throw new Error(lovableError.message || 'Lovable AI unavailable');
+      if (refineError) {
+        throw new Error(refineError.message || 'Knowledge-based translation unavailable');
       }
 
-      if (!lovableData?.translation) {
-        throw new Error('No translation received from Lovable AI');
+      if (!refineData?.refined?.trim()) {
+        throw new Error('No translation received from knowledge base');
       }
 
       return {
-        translation: lovableData.translation,
-        confidence: lovableData.confidence || 75,
-        duration: lovableData.duration || (Date.now() - startTime),
-        method: 'lovable-ai-fallback',
-        suggestions: lovableData.suggestions,
-        modelInfo: lovableData.modelInfo,
+        translation: refineData.refined,
+        confidence: refineData.confidence || 80,
+        duration: Date.now() - startTime,
+        method: 'knowledge-based',
+        modelInfo: { name: 'Bariba Knowledge Base', version: 'refine-bariba', mode: 'translate', advanced: false },
       };
     };
 
     // Skip ByT5 if known unhealthy → fallback directly
     if (!this.isHealthy && Date.now() - this.lastHealthCheck < this.healthCheckInterval) {
-      return lovableFallback('service marked unhealthy');
+      return knowledgeFallback('service marked unhealthy');
     }
 
     // (Note) supabase.functions.invoke does not support AbortSignal; keep TIMEOUT_MS for future transport.
@@ -115,21 +115,21 @@ class ByT5TranslationService {
         console.error('❌ ByT5 Edge Function error:', error);
         this.isHealthy = false;
         this.lastHealthCheck = Date.now();
-        return lovableFallback(error.message || 'edge function error');
+        return knowledgeFallback(error.message || 'edge function error');
       }
 
       if (data?.error) {
         console.error('❌ ByT5 returned error:', data.error, data.details);
         this.isHealthy = false;
         this.lastHealthCheck = Date.now();
-        return lovableFallback(data.details || data.error || 'ByT5 returned error');
+        return knowledgeFallback(data.details || data.error || 'ByT5 returned error');
       }
 
       if (!isValid(data?.translation)) {
         console.error('❌ ByT5 returned invalid translation:', data?.translation);
         this.isHealthy = false;
         this.lastHealthCheck = Date.now();
-        return lovableFallback('invalid translation payload');
+        return knowledgeFallback('invalid translation payload');
       }
 
       this.isHealthy = true;
@@ -154,7 +154,7 @@ class ByT5TranslationService {
       console.error(`❌ ByT5TranslationService fatal error: ${errorMessage}`);
 
       // Final attempt: Lovable fallback
-      return lovableFallback(`exception: ${errorMessage}`);
+      return knowledgeFallback(`exception: ${errorMessage}`);
     }
   }
 

@@ -54,15 +54,44 @@ PAIRES DE TRADUCTION DE RÉFÉRENCE :
 `;
 
 function buildSystemPrompt(type: string, direction?: string): string {
-  const taskBlock = type === 'transcription'
-    ? `TÂCHE — RAFFINAGE DE TRANSCRIPTION BARIBA :
+  let taskBlock: string;
+  let strictRules: string;
+
+  if (type === 'translate') {
+    // Mode traduction directe — utilise UNIQUEMENT la base de connaissances
+    const dirLabel = direction === 'ba-fr' ? 'Bariba → Français' : 'Français → Bariba';
+    taskBlock = `TÂCHE — TRADUCTION DIRECTE (${dirLabel}) :
+Tu dois traduire ce texte en utilisant EXCLUSIVEMENT :
+1. Les règles grammaticales SOV ci-dessus
+2. Les expressions idiomatiques de référence
+3. Les paires de traduction de référence
+4. Le vocabulaire et la structure de la langue Bariba
+
+Si un mot n'a pas d'équivalent connu, translittère-le et marque-le entre crochets [mot].
+Retourne UNIQUEMENT la traduction, sans explication ni commentaire.`;
+    strictRules = `RÈGLES STRICTES :
+- Retourne UNIQUEMENT la traduction, rien d'autre
+- Utilise l'ordre SOV pour le Bariba
+- Utilise les pronoms corrects (U=humain, Ga/Mu=non-humain)
+- Préfère les formulations idiomatiques connues
+- Translittère entre crochets les mots sans équivalent`;
+  } else if (type === 'transcription') {
+    taskBlock = `TÂCHE — RAFFINAGE DE TRANSCRIPTION BARIBA :
 Tu reçois une transcription brute d'un modèle ASR. Améliore-la :
 1. Corrige la segmentation des mots (mots collés ou mal coupés)
 2. Normalise les diacritiques : ɔ, ɛ, ɑ, ã, ɛ̃, ĩ, ɔ̃, ũ
 3. Normalise les voyelles longues : aa, ee, oo, ɔɔ, ɛɛ
 4. Vérifie les tons marqués (accents graves et aigus)
-5. Corrige les mots mal reconnus en utilisant le vocabulaire de référence`
-    : `TÂCHE — RAFFINAGE DE TRADUCTION (${direction || 'fr-ba'}) :
+5. Corrige les mots mal reconnus en utilisant le vocabulaire de référence`;
+    strictRules = `RÈGLES STRICTES :
+- Retourne UNIQUEMENT le texte corrigé, sans explication
+- Si le texte est déjà correct, retourne-le tel quel
+- Ne traduis PAS, améliore seulement la qualité
+- Conserve le sens original
+- Préfère les formulations idiomatiques`;
+  } else {
+    // type === 'translation' — raffinage d'une traduction existante
+    taskBlock = `TÂCHE — RAFFINAGE DE TRADUCTION (${direction || 'fr-ba'}) :
 Tu reçois une traduction brute. Améliore-la :
 1. Vérifie l'ordre SOV pour le Bariba
 2. Vérifie pronoms (U=humain, Ga/Mu=non-humain) et classes nominales
@@ -71,6 +100,13 @@ Tu reçois une traduction brute. Améliore-la :
 5. Vérifie les particules TAM (koo, ra, -mɔ)
 6. Normalise les diacritiques
 ${direction === 'ba-fr' ? '7. Assure un français naturel et fluide' : '7. Utilise des formulations naturelles du Bariba'}`;
+    strictRules = `RÈGLES STRICTES :
+- Retourne UNIQUEMENT le texte corrigé, sans explication
+- Si le texte est déjà correct, retourne-le tel quel
+- Ne traduis PAS, améliore seulement la qualité
+- Conserve le sens original
+- Préfère les formulations idiomatiques`;
+  }
 
   return `Tu es un expert linguiste en langue Bariba (Baatonum), langue Niger-Congo parlée au Bénin.
 
@@ -80,12 +116,7 @@ ${REFERENCE_PAIRS}
 
 ${taskBlock}
 
-RÈGLES STRICTES :
-- Retourne UNIQUEMENT le texte corrigé, sans explication
-- Si le texte est déjà correct, retourne-le tel quel
-- Ne traduis PAS, améliore seulement la qualité
-- Conserve le sens original
-- Préfère les formulations idiomatiques`;
+${strictRules}`;
 }
 
 serve(async (req: Request) => {
@@ -132,7 +163,7 @@ serve(async (req: Request) => {
           { role: 'user', content: userPrompt },
         ],
         max_tokens: 1024,
-        temperature: 0.2,
+        temperature: type === 'translate' ? 0.1 : 0.2,
       }),
     });
 
