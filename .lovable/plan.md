@@ -1,140 +1,152 @@
 
-# Diagnostic & Correction du Service Bariba STT (HuggingFace Space)
+# Diagnostic Complet : Bariba STT (voix → texte bariba)
 
-## Problèmes Identifiés (Diagnostic)
+## Architecture actuelle (flux de données)
 
-### Problème 1 : Authentification rejetée systématiquement
-Les logs de l'edge function montrent :
-```
-⚠️ Unauthenticated STT request rejected (x3)
-```
-Le composant `VoiceDictation.tsx` envoie un health check avec `audio: 'test'` **sans token JWT** (l'utilisateur n'est pas forcément connecté lors du chargement). Cela bloque même la vérification initiale.
+Le pipeline Bariba STT implique 4 couches distinctes :
 
-### Problème 2 : Format audio incompatible avec l'API Gradio
-L'edge function envoie l'audio en base64 inline (`data:audio/webm;base64,...`) directement dans le champ `data[]`. Mais selon l'API du Space HuggingFace, le paramètre `audio` est de type **filepath** (FileData). L'API Gradio v4 requiert :
-1. **Upload du fichier** via `POST /upload` → obtenir un `path` temporaire
-2. **Appel predict** avec ce `path` dans les données
-
-### Problème 3 : La méthode de polling SSE est instable
-L'implémentation actuelle utilise queue/join + polling toutes les 800ms sur 30 tentatives. Le Space `baatonum_asr_stt_api_v001_improve` expose une API REST directe `/call/predict` avec event streaming qui est plus fiable.
-
-### Problème 4 : Pas de transcription automatique dans le Dictionnaire
-Le dictionnaire vocal utilise `useUnifiedAudio` → `transcribeWithTranslation` → `bariba-stt`, mais l'audio capté par `TamTamMicButton` en mode bariba passe par ce chemin qui échoue à cause des problèmes ci-dessus. Résultat : le champ de recherche ne se remplit jamais.
-
-### Problème 5 : Même blocage pour le Traducteur vocal
-Dans `TamTamTranslator.tsx`, la voix bariba utilise `translator.translateFromAudio(audioBase64)` → `baribaSTT.transcribe()` → `bariba-stt` edge function. Même chemin défaillant.
-
----
-
-## Solution : Refonte complète de l'edge function `bariba-stt`
-
-### Nouvelle stratégie d'appel Gradio v4
-
-L'API du Space expose deux endpoints REST stables :
-- `POST /gradio_api/call/transcribe` → déclenche le traitement, retourne `{ event_id }`
-- `GET /gradio_api/call/transcribe/{event_id}` → stream SSE jusqu'à `process_completed`
-
-**Étape 1 - Upload du fichier audio :**
-```
-POST https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space/gradio_api/upload
-Authorization: Bearer {HF_TOKEN}
-Content-Type: multipart/form-data
-Body: fichier audio (webm/wav/mp4)
-→ Retourne: [{"path": "tmp/abc123.webm", ...}]
-```
-
-**Étape 2 - Appel transcribe avec le path :**
-```
-POST /gradio_api/call/transcribe
-Body: { "data": [{"path": "tmp/abc123.webm"}, true, "Auto"] }
-→ Retourne: { "event_id": "xyz" }
-```
-
-**Étape 3 - Récupérer le résultat :**
-```
-GET /gradio_api/call/transcribe/{event_id}
-Accept: text/event-stream
-→ SSE avec: data: {"msg":"process_completed", "output":{"data":["texte bariba transcrit", ...]}}
+```text
+[Micro utilisateur]
+       ↓  (pression bouton)
+[TamTamMicButton] — enregistre en audio/webm (MediaRecorder)
+       ↓  (audioBase64)
+[TamTamDictionary / TamTamTranslator]
+       ↓  appel handleVoiceCommand / handleVoiceResult
+[useBaribaSTT.transcribe()]
+       ↓  supabase.functions.invoke('bariba-stt')
+[Edge Function bariba-stt]
+       ↓  3 étapes Gradio v4
+[HuggingFace Space zimesongbian/baatonum_asr_stt_api_v001_improve]
 ```
 
 ---
 
-## Fichiers à Modifier
+## Problèmes identifiés
 
-### 1. `supabase/functions/bariba-stt/index.ts` — Refonte complète
+### Problème 1 — Double chemin STT : conflit entre `useUnifiedAudio` et `useBaribaSTT`
 
-**Changements :**
-- Supprimer l'ancienne logique `callGradioSTT` avec queue/join et polling
-- Implémenter la nouvelle chaîne : **base64 → Blob → Upload → Predict → Stream SSE**
-- Permettre le health check **sans authentification** (déjà géré mais bugué)
-- Améliorer l'extraction du résultat : le Space retourne un dict JSON `{"transcription": "...", "confidence": ..., ...}` ou simplement un string
-
-**Nouvelle fonction principale :**
+Dans `TamTamMicButton.tsx` (ligne 304), quand `sourceLang === 'ba'` et `autoTranscribe = true`, le bouton appelle :
 ```typescript
-async function transcribeWithGradioAPI(
-  audioBase64: string,
-  audioMimeType: string,
-  robustMode: boolean,
-  speakerType: string,
-  hfToken: string
-): Promise<string>
-
-// Étapes :
-// 1. Convertir base64 → Uint8Array
-// 2. Upload vers /gradio_api/upload (multipart)
-// 3. POST /gradio_api/call/transcribe avec {path, robust_mode, speaker_type}
-// 4. GET /gradio_api/call/transcribe/{event_id} → lire SSE jusqu'à process_completed
-// 5. Extraire le texte de output.data[0]
+const result = await unifiedAudio.transcribeWithTranslation(audioBase64, sourceLang);
 ```
+Ce chemin passe par `UnifiedAudioService.transcribeAndTranslate()` → `bariba-stt`.
 
-**Détection du format audio depuis le préfixe base64 :**
+Mais dans `TamTamDictionary.tsx`, le `TamTamMicButton` est appelé avec `autoTranscribe={true}`, puis `handleVoiceCommand` vérifie si `result.transcription` est vide, et seulement ALORS appelle `useBaribaSTT`. **Problème : si `UnifiedAudioService` réussit (ou échoue silencieusement), le second appel `useBaribaSTT` ne se fait jamais car `result.transcription` est déjà défini (même vide → `''` est falsy, donc ça marchera).**
+
+En réalité le flux dans le dictionnaire est le suivant :
+1. `TamTamMicButton` → `autoTranscribe=true` → `unifiedAudio.transcribeWithTranslation()` → appel `bariba-stt` → résultat dans `result.transcription`
+2. `handleVoiceCommand` reçoit ce résultat, vérifie si vide
+3. Si vide → appelle `transcribeBariba` (useBaribaSTT) — double appel STT !
+
+Le résultat du **premier** appel (via UnifiedAudioService) si il échoue retourne `transcription: ''`, puis le deuxième appel (via useBaribaSTT) se déclenche. Mais c'est le même endpoint `bariba-stt` — **deux appels consécutifs au même service défaillant**.
+
+### Problème 2 — `TamTamMicButton` utilise `autoTranscribe=true` dans le Dictionnaire mais le Traducteur ne le fait PAS
+
+Dans `TamTamDictionary.tsx` :
+```tsx
+<TamTamMicButton autoTranscribe={true} autoTranslate={false} sourceLang="ba" />
+```
+→ `TamTamMicButton` appelle `unifiedAudio.transcribeWithTranslation()` lui-même, PUIS `handleVoiceCommand` ré-appelle potentiellement `useBaribaSTT` → **deux appels STT**.
+
+Dans `TamTamTranslator.tsx`, `handleVoiceResult` ne reçoit PAS de transcription pré-faite depuis le `TamTamMicButton` (non visible dans le code du Traducteur), et appelle directement `transcribeBariba` si `sourceLang === 'ba'`.
+
+### Problème 3 — L'edge function `bariba-stt` : `SSE stream ended without complete event`
+
+Les logs montrent que l'erreur récurrente est :
+```
+"details": "SSE stream ended without complete event"
+```
+Après analyse du code SSE dans `bariba-stt/index.ts`, le problème vient du fait que :
+- Le Space HuggingFace retourne **3 événements SSE intermédiaires** avant le final : `estimation`, `process_starts`, puis le résultat final
+- Le parser actuel cherche `event: complete` ou `msg: process_completed` en analysant les blocs délimités par une ligne vide (`''`)
+- **Si le Space retourne le SSE avec des `\r\n` (CRLF) au lieu de `\n` (LF)**, le split sur `\n` laisse des `\r` résiduels qui font échouer `line === ''` (car `line` vaut `'\r'` et non `''`)
+
+De plus, d'après les logs du TTS (qui utilise `queue/join` et réussit), le format du Space est :
+```
+data: {"msg":"estimation",...}
+
+data: {"msg":"process_starts",...}
+
+data: {"msg":"process_completed","event_id":"...","output":{"data":["texte transcrit"],...}}
+```
+Le champ `output.data[0]` est directement **un string** — format A standard de Gradio. Mais le parser cherche aussi `event: complete` (format B custom) qui n'existe peut-être pas sur ce Space.
+
+### Problème 4 — Délimiteur CRLF vs LF dans le parseur SSE
+
+Le code actuel fait :
 ```typescript
-// "data:audio/webm;base64,..." → mime="audio/webm", ext="webm"
-// "data:audio/mp4;base64,..." → mime="audio/mp4", ext="mp4"
-// Sinon défaut : "audio/webm", ext="webm"
+const lines = sseText.split('\n');
+// ...
+} else if (line === '' && lastData) {
+```
+Si le serveur renvoie `\r\n`, chaque ligne sera `"data: ...\r"` au lieu de `"data: ..."`, et les lignes vides seront `"\r"` au lieu de `""`. La condition `line === ''` ne sera **jamais** satisfaite → le parser ne trouve jamais la fin d'un bloc SSE → erreur `SSE stream ended without complete event`.
+
+### Problème 5 — `TamTamMicButton` en mode Bariba avec `autoTranscribe=true` : redondance et erreur silencieuse
+
+Quand `autoTranscribe=true` dans le Dictionnaire, `TamTamMicButton` appelle `unifiedAudio.transcribeWithTranslation()` qui lève une erreur si STT échoue — mais l'erreur est catchée en interne et retourne `transcription: ''`. Le callback `onRecordingComplete` reçoit alors `{ audioBase64, transcription: undefined }`. Puis `handleVoiceCommand` voit `!query && result.audioBase64` et refait un appel STT.
+
+---
+
+## Solution : 3 corrections ciblées
+
+### Correction 1 — Edge function `bariba-stt/index.ts` : robustification du parseur SSE
+
+**Normaliser CRLF → LF avant de splitter**, et améliorer l'extraction du résultat pour le format Gradio standard :
+
+```typescript
+// Normalisation CRLF → LF
+const sseText = (await response.text()).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+const lines = sseText.split('\n');
+
+// Dans la boucle, détecter aussi data: contenant msg:process_completed directement
+// sans attendre un événement SSE "event: xxx" précédent
 ```
 
-### 2. `src/hooks/useBaribaSTT.ts` — Amélioration du feedback
+Et ajouter la détection directe du format standard Gradio (le plus courant) où `data:` contient directement `{"msg":"process_completed",...}` sans ligne `event:` préalable.
 
-**Changements :**
-- Ajouter un `speakerType` par défaut configurable
-- Ajouter un état `isWakingUp` pour afficher "Réveil du service..." quand le Space est froid (cold start ~30s)
-- Mieux gérer les erreurs 503 (Space en veille) vs erreurs réelles
+**Ajouter aussi un timeout SSE progressif** : retry de lecture SSE jusqu'à 3 fois si le stream se termine sans résultat.
 
-### 3. `src/pages/tamtam/TamTamDictionary.tsx` — Connexion STT pour la recherche vocale
+### Correction 2 — `TamTamDictionary.tsx` : supprimer la double transcription
 
-**Changements :**
-- Dans `handleVoiceCommand`, si `result.sourceLang === 'ba'` et `!result.transcription`, utiliser directement `useBaribaSTT` avec l'`audioBase64` pour obtenir la transcription Bariba
-- Afficher un indicateur de progression STT dans l'interface du dictionnaire
+Changer `autoTranscribe={false}` dans le `TamTamMicButton` du Dictionnaire, pour que le callback reçoive uniquement `audioBase64` brut. La transcription est ensuite gérée uniquement par `handleVoiceCommand` via `useBaribaSTT` — un seul chemin, clair et traceable.
 
-### 4. `src/pages/tamtam/TamTamTranslator.tsx` — Feedback visuel STT
+```tsx
+<TamTamMicButton
+  autoTranscribe={false}   // ← était true, causait double-STT
+  autoTranslate={false}
+  sourceLang={searchDirection === 'ba-fr' ? 'ba' : 'fr'}
+  onRecordingComplete={handleVoiceCommand}
+/>
+```
 
-**Changements :**
-- Afficher "🎤 Transcription Bariba en cours..." dans l'interface du traducteur pendant le STT
-- Si la transcription réussit, afficher le texte bariba transcrit dans la zone source avant la traduction
+Pour le français, gérer la transcription française directement dans `handleVoiceCommand` via `useFrenchSTT`.
 
----
+### Correction 3 — `TamTamTranslator.tsx` : même simplification pour le mode vocal Bariba
 
-## Résumé des Corrections
-
-| Problème | Avant | Après |
-|---|---|---|
-| Health check | Rejeté (non authentifié) | Autorisé sans auth (audio courts) |
-| Format audio | base64 inline dans data[] | Upload multipart → filepath |
-| Appel API | Queue/join + polling 30x | Upload + Call + Stream SSE direct |
-| Cold start | Pas de gestion | Timeout étendu 60s + message "réveil..." |
-| Dictionnaire vocal | Pas de transcription bariba | STT bariba → recherche automatique |
-| Traducteur vocal | STT bariba défaillant | STT bariba → texte source affiché |
+S'assurer que le `TamTamMicButton` utilisé dans le Traducteur passe `autoTranscribe={false}` côté Bariba, et que `handleVoiceResult` gère tout le pipeline STT via `useBaribaSTT`.
 
 ---
 
-## Comportement Attendu
+## Fichiers à modifier
 
-1. Utilisateur appuie sur le micro dans le **Dictionnaire** en mode Bariba
-2. L'enregistrement démarre → s'arrête → audio envoyé à `bariba-stt`
-3. L'edge function uploade l'audio sur le Space HuggingFace via multipart
-4. Le Space transcrit en Bariba (ex: "mère" → "yaari") 
-5. La transcription remplit automatiquement le champ de recherche du dictionnaire
-6. La définition correspondante s'affiche
+| Fichier | Changement |
+|---|---|
+| `supabase/functions/bariba-stt/index.ts` | Fix CRLF + robustification parseur SSE + logs détaillés du SSE brut |
+| `src/pages/tamtam/TamTamDictionary.tsx` | `autoTranscribe={false}` dans TamTamMicButton + gestion transcription FR dans handleVoiceCommand |
+| `src/pages/tamtam/TamTamTranslator.tsx` | Vérifier que handleVoiceResult est le seul chemin STT Bariba |
 
-Même flux pour le **Traducteur** : voix bariba → texte bariba → traduction française.
+---
+
+## Résultat attendu
+
+```text
+Utilisateur parle en Bariba (Dictionnaire/Traducteur)
+→ TamTamMicButton collecte l'audio raw (audioBase64)
+→ handleVoiceCommand/handleVoiceResult appelle useBaribaSTT.transcribe()
+→ bariba-stt edge function :
+    1. Upload audio sur HuggingFace (multipart)
+    2. POST /gradio_api/call/transcribe → event_id
+    3. GET /gradio_api/call/transcribe/{event_id} → SSE (CRLF normalisé)
+    4. Extraction correcte de output.data[0] ou transcription
+→ Texte Bariba retourné → affiché / recherché dans le dictionnaire
+```
