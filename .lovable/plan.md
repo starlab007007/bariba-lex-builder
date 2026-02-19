@@ -1,207 +1,104 @@
 
 
-# Amelioration de la qualite des traductions et transcriptions Bariba
+# Supprimer Lovable AI du traducteur — ByT5 + Raffinement linguistique uniquement
 
 ## Objectif
 
-Creer un systeme de post-traitement intelligent qui ameliore la qualite, la naturalite et la precision des traductions (FR-BA, BA-FR) et des transcriptions (STT Bariba) avant de les afficher a l'utilisateur.
+Remplacer tous les fallbacks `ai-translate-lovable` (traduction IA generique sans connaissance Bariba) par `refine-bariba` en mode `translate` (traduction guidee par la base de connaissances linguistiques : grammaire SOV, idiomes, paires de reference).
 
-## Architecture de la solution
-
-L'approche repose sur **deux piliers** :
-
-1. **Une base de connaissances linguistiques** compilee a partir des fichiers fournis et du guide architectural, stockee dans des fichiers de donnees statiques et injectee dans les prompts IA
-2. **Une edge function de post-traitement** (`refine-bariba`) qui recoit le resultat brut des modeles existants (ByT5, Lovable AI, HuggingFace STT) et le raffine en utilisant Lovable AI (Gemini) avec un prompt systeme enrichi de toute la connaissance linguistique Bariba
-
-## Flux de donnees
+## Flux apres modification
 
 ```text
-[Modele ByT5 / Lovable AI]     [Modele STT HuggingFace]
-        |                              |
-        v                              v
-   Traduction brute              Transcription brute
-        |                              |
-        +----------- Filtre -----------+
-                       |
-                       v
-           [Edge Function: refine-bariba]
-           (Lovable AI + Connaissance linguistique)
-                       |
-                       v
-              Resultat raffine, naturel
-                       |
-                       v
-               Affichage utilisateur
+Texte utilisateur
+      |
+      v
+[ByT5 Expert (HuggingFace)]
+      |
+  Succes? --oui--> [refine-bariba type='translation'] --> Resultat raffine
+      |
+     non
+      |
+      v
+[refine-bariba type='translate'] <-- grammaire + idiomes + paires de reference
+      |
+      v
+Traduction basee sur connaissances linguistiques (method: 'knowledge-based')
 ```
 
----
+## 4 fichiers a modifier
 
-## Partie 1 : Base de connaissances linguistiques
+### 1. `supabase/functions/refine-bariba/index.ts`
 
-### Fichier a creer : `src/data/baribaLinguisticKnowledge.ts`
+**Ajout du mode `translate`** dans `buildSystemPrompt()` :
+- Nouveau cas `type === 'translate'` avec un prompt specifique :
+  - "Traduis ce texte en utilisant EXCLUSIVEMENT les regles grammaticales, idiomes et paires de reference fournis"
+  - "Si un mot n'a pas d'equivalent connu, translittere-le entre crochets"
+  - "Retourne UNIQUEMENT la traduction"
+- Temperature abaissee a 0.1 pour ce mode (au lieu de 0.2)
+- La regle "Ne traduis PAS" du prompt actuel est remplacee par "Traduis directement" quand `type === 'translate'`
 
-Ce fichier compile toute la connaissance extraite des documents fournis en un objet structurel exportable, utilisable a la fois :
-- Par l'edge function de raffinage (injecte dans le prompt systeme)
-- Par le module "Connaissances Fondamentales" (deja existant dans `learningFoundations.ts`, a enrichir)
+### 2. `supabase/functions/byt5-bariba-translate/index.ts`
 
-**Contenu du fichier :**
+- **Supprimer** la fonction `lovableFallbackTranslate()` (lignes 24-71) et le type `LovableFallbackResult` (lignes 20-22)
+- **Lignes 478-535** (ByT5 echoue) : remplacer l'appel `lovableFallbackTranslate` par un appel a `refine-bariba` en mode `translate` avec le texte original, direction, et originalInput
+- **Lignes 560-593** (ByT5 retourne du texte UI invalide) : meme remplacement
+- **Lignes 666-675** (pas de traduction valide) : ajouter le meme fallback `refine-bariba` mode `translate` au lieu de retourner 503 directement
+- Method retournee : `'knowledge-based'` au lieu de `'lovable-ai-fallback'`
+- Conserver le raffinage existant pour les resultats ByT5 valides (lignes 606-645, inchange)
 
-1. **Regles grammaticales cles** (extraites du guide architectural fourni)
-   - Ordre SOV (Sujet-Objet-Verbe)
-   - Classes nominales (humain: U/Ba, non-humain: Ga/Mu)
-   - Systeme verbal (pas de conjugaison, particules TAM: koo=futur, ra=habituel, -mo=progressif)
-   - Negation (n, kun, ku entre sujet et verbe)
-   - Postpositions (soo = dans, yen so = a cause de)
-   - Adjectifs apres le nom
-   - Tonalite (3 tons: Haut, Moyen, Bas)
+### 3. `src/hooks/useSimpleTranslation.ts`
 
-2. **Table des pronoms complete**
-   - Sujet: Na, A, U, Ga/Mu, Sa, I, Ba
-   - Objet: Man, Nun, Sun, Bee, Bu
-   - Possessif: Nen, Wunen, Win, Sun, Been, Ben
+- **Supprimer** les appels `supabase.functions.invoke('ai-translate-lovable', ...)` dans `translateFrenchToBariba` (lignes 55-68) et `translateBaribaToFrench` (lignes 113-126)
+- **Remplacer** par `supabase.functions.invoke('refine-bariba', { body: { text, type: 'translate', direction: 'fr-ba' ou 'ba-fr' } })`
+- Extraire la traduction depuis `data.refined` au lieu de `data.translation`
+- Method : `'knowledge-based'`
+- Mettre a jour les commentaires du hook
 
-3. **Expressions idiomatiques** (69 idiomes du fichier `idiomes-3.json`)
-   - Salutations, emotions, etats, verbes figes, proverbes, connecteurs
+### 4. `src/services/ByT5TranslationService.ts`
 
-4. **Corpus d'exemples de reference** (selection de ~200 paires FR-BA les plus representatives des 78K+ et 36K+ entrees)
-   - Phrases courantes, structures SOV, negations, questions, imperatives
+- **Supprimer** la fonction `lovableFallback()` (lignes 67-89) qui appelle `ai-translate-lovable`
+- **Remplacer** par une fonction `knowledgeFallback()` qui appelle `refine-bariba` en mode `translate`
+- Extraire la traduction depuis `data.refined`
+- Retourner `method: 'knowledge-based'` au lieu de `'lovable-ai-fallback'`
+- Adapter les 4 points d'appel : ligne 93 (unhealthy), ligne 118 (edge error), ligne 125 (data error), ligne 132 (invalid), ligne 157 (exception)
 
-### Fichier a enrichir : `src/data/learningFoundations.ts`
+## Details techniques
 
-Ajouter **2 nouvelles lecons** aux connaissances fondamentales :
+### Nouveau prompt `translate` dans refine-bariba
 
-- **Leon 8 : "Expressions & Idiomes"** — les 69 idiomes du fichier fourni, organises par categorie (Salutations, Emotions, Etats, Actions, Religion, Proverbes, Famille)
-- **Leon 9 : "Vocabulaire Essentiel"** — mots de base extraits du dictionnaire et du corpus (corps, famille, nourriture, nature, nombres composes, jours)
+```text
+TACHE — TRADUCTION DIRECTE ({direction}) :
+Tu dois traduire ce texte en utilisant EXCLUSIVEMENT :
+1. Les regles grammaticales SOV ci-dessus
+2. Les expressions idiomatiques de reference
+3. Les paires de traduction de reference
+4. Le vocabulaire et la structure de la langue Bariba
 
----
+Si un mot n'a pas d'equivalent connu, translittere-le et marque-le entre crochets [mot].
+Retourne UNIQUEMENT la traduction, sans explication ni commentaire.
+```
 
-## Partie 2 : Edge Function de raffinage
+### Appel refine-bariba comme fallback (pattern reutilise partout)
 
-### Fichier a creer : `supabase/functions/refine-bariba/index.ts`
-
-Cette fonction recoit un resultat brut (traduction ou transcription) et le raffine en utilisant Lovable AI avec un prompt systeme massif contenant toute la connaissance linguistique.
-
-**Input :**
 ```typescript
-{
-  text: string;           // Texte brut a raffiner
-  type: 'translation' | 'transcription';
-  direction?: 'fr-ba' | 'ba-fr';  // Pour les traductions
-  originalInput?: string; // Texte source original (pour contexte)
-}
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+const ctrl = new AbortController();
+const to = setTimeout(() => ctrl.abort(), 8000);
+const resp = await fetch(`${SUPABASE_URL}/functions/v1/refine-bariba`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ text, type: 'translate', direction }),
+  signal: ctrl.signal,
+});
+clearTimeout(to);
+const data = await resp.json();
+// data.refined = traduction
 ```
-
-**Output :**
-```typescript
-{
-  refined: string;        // Texte raffine
-  changes: string[];      // Liste des corrections appliquees
-  confidence: number;     // Score de confiance du raffinage
-}
-```
-
-**Prompt systeme :** Un prompt de ~2000 tokens contenant :
-- Les regles grammaticales SOV, pronoms, classes nominales, tons
-- Les 69 expressions idiomatiques comme exemples de reference
-- 50 paires de traduction de reference (les plus courantes)
-- Instructions specifiques : "Corrige les erreurs de pronoms (U vs Ga/Mu), verifie l'ordre SOV, remplace les calques du francais par des formulations idiomatiques Bariba, utilise les postpositions correctement, assure la coherence des classes nominales"
-- Pour les transcriptions : "Corrige les fautes de segmentation des mots, normalise les diacritiques (o vs oo, e vs ee, a vs aa), verifie les tons marques"
-
-**Logique :** Appel non-streaming a Lovable AI (Gemini 2.5 Flash) avec temperature 0.2 pour maximiser la precision.
-
----
-
-## Partie 3 : Integration dans les pipelines existants
-
-### Modification : `supabase/functions/byt5-bariba-translate/index.ts`
-
-Apres avoir obtenu la traduction brute de ByT5 (ou du fallback Lovable AI), appeler `refine-bariba` pour raffiner le resultat avant de le retourner au client.
-
-```text
-ByT5 → traduction brute → refine-bariba → traduction raffinee → retour client
-```
-
-Le raffinage est optionnel et non-bloquant : si `refine-bariba` echoue ou prend trop de temps (>5s), le resultat brut est retourne tel quel.
-
-### Modification : `supabase/functions/bariba-stt/index.ts`
-
-Apres avoir obtenu la transcription brute du Space HuggingFace, appeler `refine-bariba` pour nettoyer et normaliser le texte avant de le retourner.
-
-```text
-HF Space → transcription brute → refine-bariba → transcription nettoyee → retour client
-```
-
-### Modification : `src/hooks/useSimpleTranslation.ts`
-
-Pas de changement cote client : le raffinage se fait entierement cote serveur (edge functions). Le client recoit directement le resultat raffine.
-
----
-
-## Partie 4 : Enrichissement du module "Apprendre"
-
-### Modification : `src/data/learningFoundations.ts`
-
-Ajouter les 2 nouvelles lecons mentionnees (Expressions & Idiomes + Vocabulaire Essentiel) en suivant la structure `FoundationLesson` existante, avec :
-- Sections avec tables et exemples
-- Quiz de 3 questions par lecon
-- Textes bilingues (fr + br)
-
----
-
-## Fichiers a creer / modifier
-
-| Action | Fichier | Description |
-|---|---|---|
-| Creer | `src/data/baribaLinguisticKnowledge.ts` | Base de connaissances linguistiques compilee |
-| Creer | `supabase/functions/refine-bariba/index.ts` | Edge function de post-traitement IA |
-| Modifier | `supabase/functions/byt5-bariba-translate/index.ts` | Appeler refine-bariba apres traduction brute |
-| Modifier | `supabase/functions/bariba-stt/index.ts` | Appeler refine-bariba apres transcription brute |
-| Modifier | `src/data/learningFoundations.ts` | Ajouter 2 nouvelles lecons (Idiomes + Vocabulaire) |
-| Copier | `public/data/idiomes.json` | Copier idiomes-3.json dans le projet |
-| Copier | `public/data/corpus_reference.json` | Selection de paires de reference du corpus |
-
----
-
-## Section technique detaillee
-
-### Prompt systeme pour `refine-bariba` (resume)
-
-```
-Tu es un expert linguiste en langue Bariba (Baatonum).
-
-REGLES GRAMMATICALES BARIBA :
-- Ordre : SOV (Sujet-Objet-Verbe). Ex: "Na koko di" = Je riz mange
-- Pronoms sujet : Na(je), A(tu), U(il humain), Ga/Mu(il chose), Sa(nous), I(vous), Ba(ils)
-- Pronoms possessifs : Nen(mon), Wunen(ton), Win(son), Sun(notre), Been(votre), Ben(leur)
-- Classes nominales : -bu/-mbu(humain pl.), a-/y-(anime sg.), m-(inanime), -nu/-su(collectif)
-- Temps : rien(passe), koo(futur), ra(habituel), -mo(progressif)
-- Negation : n/kun/ku entre sujet et verbe
-- Postpositions : soo(dans), yen so(a cause de)
-- Adjectifs APRES le nom
-- "Etre" = waa, "Avoir" = mo
-
-IDIOMES DE REFERENCE :
-[69 expressions idiomatiques injectees]
-
-PAIRES DE TRADUCTION DE REFERENCE :
-[50 paires les plus courantes]
-
-TACHE :
-Reçois un texte [traduit/transcrit] et ameliore-le :
-1. Corrige l'ordre des mots (SOV)
-2. Verifie pronoms et classes nominales
-3. Remplace calques francais par formulations idiomatiques
-4. Normalise diacritiques et tons
-5. Retourne UNIQUEMENT le texte corrige, sans explication
-```
-
-### Gestion du timeout
-
-L'appel a `refine-bariba` depuis `byt5-bariba-translate` et `bariba-stt` utilise un timeout de 5 secondes. Si depasse, le resultat brut est retourne avec un flag `refined: false` dans les metadonnees.
 
 ### Impact sur la latence
 
-- Traduction actuelle : ~3-8s (ByT5) ou ~2s (Lovable AI)
-- Avec raffinage : +1-2s supplementaires
-- Total : ~4-10s — acceptable pour une meilleure qualite
+- Cas nominal (ByT5 reussit) : inchange
+- Fallback : ~1-2s (meme vitesse que l'ancien Lovable AI, mais avec prompt linguistique enrichi)
+- Plus aucun appel a `ai-translate-lovable`
 
