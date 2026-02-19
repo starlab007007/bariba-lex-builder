@@ -17,64 +17,42 @@ interface TranslationRequest {
 const SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space';
 const GLOBAL_TIMEOUT_MS = 25000; // 25 seconds for cold start
 
-type LovableFallbackResult =
-  | { ok: true; translation: string; confidence: number; model: string }
-  | { ok: false; error: string; status?: number; details?: string };
-
-async function lovableFallbackTranslate(params: {
+// Knowledge-based fallback via refine-bariba in translate mode
+async function knowledgeFallbackTranslate(params: {
   text: string;
-  sourceLang: 'french' | 'bariba';
-  targetLang: 'french' | 'bariba';
+  direction: string;
   abortSignal?: AbortSignal;
-}): Promise<LovableFallbackResult> {
-  const key = Deno.env.get('LOVABLE_API_KEY');
-  if (!key) return { ok: false, error: 'LOVABLE_API_KEY not configured' };
-
-  const from = params.sourceLang === 'french' ? 'French' : 'Bariba (Baatonum)';
-  const to = params.targetLang === 'french' ? 'French' : 'Bariba (Baatonum)';
-
-  const system = `You are a strict translation engine. Translate from ${from} to ${to}. Return ONLY the translated text. No quotes, no explanations.`;
+}): Promise<{ ok: true; translation: string; confidence: number } | { ok: false; error: string }> {
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return { ok: false, error: 'Supabase config missing' };
 
   try {
-    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 8000);
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/refine-bariba`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: params.text },
-        ],
-        max_tokens: 512,
-      }),
-      signal: params.abortSignal,
+      headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: params.text, type: 'translate', direction: params.direction }),
+      signal: ctrl.signal,
     });
+    clearTimeout(to);
 
-    if (!resp.ok) {
-      const t = await resp.text();
-      return { ok: false, error: 'Lovable AI gateway error', status: resp.status, details: t };
-    }
-
-    const json = await resp.json();
-    const content = json?.choices?.[0]?.message?.content;
-    if (!content || typeof content !== 'string') {
-      return { ok: false, error: 'Lovable AI returned empty response' };
-    }
-
-    return { ok: true, translation: content.trim(), confidence: 75, model: 'google/gemini-2.5-flash' };
+    if (!resp.ok) return { ok: false, error: `refine-bariba error ${resp.status}` };
+    const data = await resp.json();
+    if (!data?.refined?.trim()) return { ok: false, error: 'Empty refined result' };
+    return { ok: true, translation: data.refined.trim(), confidence: data.confidence || 80 };
   } catch (e: any) {
-    return { ok: false, error: e?.message || 'Lovable AI request failed' };
+    return { ok: false, error: e?.message || 'knowledge fallback failed' };
   }
 }
+
 async function pollForResult(
   spaceUrl: string,
   apiPrefix: string,
   sessionHash: string,
   hfToken: string,
-  maxAttempts = 30, // Reduced from 60
+  maxAttempts = 30,
   abortSignal?: AbortSignal
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
@@ -98,22 +76,17 @@ async function pollForResult(
         const text = await response.text();
         console.log(`   Poll ${attempt + 1}: ${text.substring(0, 400)}`);
         
-        // Parse SSE events
         const lines = text.split('\n');
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.substring(6));
               
-              // CRITICAL: Check for process_completed with success: false
               if (data.msg === 'process_completed') {
                 if (data.success === false) {
                   const errorDetail = data.output?.error || data.title || 'Model processing failed';
                   console.log(`❌ Model returned error: ${JSON.stringify(data.output)}, title: ${data.title}`);
-                  return { 
-                    success: false, 
-                    error: `HuggingFace Space error: ${errorDetail}` 
-                  };
+                  return { success: false, error: `HuggingFace Space error: ${errorDetail}` };
                 }
                 
                 if (data.output?.data) {
@@ -122,7 +95,6 @@ async function pollForResult(
                 }
               }
               
-              // Direct data response
               if (data.data && Array.isArray(data.data)) {
                 console.log(`✅ Got direct data: ${JSON.stringify(data.data).substring(0, 300)}`);
                 return { success: true, data };
@@ -134,7 +106,6 @@ async function pollForResult(
         }
       }
       
-      // Wait before next poll (faster polling, shorter wait)
       const waitTime = attempt < 5 ? 200 : attempt < 15 ? 400 : 600;
       await new Promise(r => setTimeout(r, waitTime));
     } catch (e) {
@@ -478,47 +449,17 @@ serve(async (req) => {
     if (!result.success) {
       console.error(`❌ ByT5 failed after ${duration}ms: ${result.error}`);
 
-      const fallback = await lovableFallbackTranslate({
-        text,
-        sourceLang,
-        targetLang,
-        abortSignal: abortController.signal,
-      });
+      const fallback = await knowledgeFallbackTranslate({ text, direction, abortSignal: abortController.signal });
 
       if (fallback.ok) {
-        console.log(`✅ Lovable AI fallback in ${duration}ms`);
-        
-        // Raffiner le fallback aussi
-        let finalTranslation = fallback.translation;
-        let refined = false;
-        try {
-          const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-          const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
-          if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-            const refCtrl = new AbortController();
-            const refTO = setTimeout(() => refCtrl.abort(), 5000);
-            const refResp = await fetch(`${SUPABASE_URL}/functions/v1/refine-bariba`, {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: fallback.translation, type: 'translation', direction, originalInput: text }),
-              signal: refCtrl.signal,
-            });
-            clearTimeout(refTO);
-            if (refResp.ok) {
-              const refData = await refResp.json();
-              if (refData?.refined?.trim()) { finalTranslation = refData.refined; refined = true; }
-            }
-          }
-        } catch { /* skip refine on error */ }
-
+        console.log(`✅ Knowledge-based fallback in ${duration}ms`);
         return new Response(
           JSON.stringify({
-            translation: finalTranslation,
+            translation: fallback.translation,
             confidence: fallback.confidence,
             duration,
-            method: 'lovable-ai-fallback',
-            refined,
-            modelInfo: { name: 'Lovable AI', version: fallback.model, mode: 'fallback', advanced: false },
+            method: 'knowledge-based',
+            modelInfo: { name: 'Bariba Knowledge Base', version: 'refine-bariba', mode: 'translate', advanced: false },
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
@@ -560,22 +501,17 @@ serve(async (req) => {
       if (isInvalidResponse) {
         console.error(`❌ ByT5 returned invalid UI text: "${translation}"`);
 
-        const fallback = await lovableFallbackTranslate({
-          text,
-          sourceLang,
-          targetLang,
-          abortSignal: abortController.signal,
-        });
+        const fallback = await knowledgeFallbackTranslate({ text, direction, abortSignal: abortController.signal });
 
         if (fallback.ok) {
-          console.log(`✅ Lovable AI fallback after invalid ByT5 output in ${duration}ms`);
+          console.log(`✅ Knowledge-based fallback after invalid ByT5 output in ${duration}ms`);
           return new Response(
             JSON.stringify({
               translation: fallback.translation,
               confidence: fallback.confidence,
               duration,
-              method: 'lovable-ai-fallback',
-              modelInfo: { name: 'Lovable AI', version: fallback.model, mode: 'fallback', advanced: false },
+              method: 'knowledge-based',
+              modelInfo: { name: 'Bariba Knowledge Base', version: 'refine-bariba', mode: 'translate', advanced: false },
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
           );
@@ -664,11 +600,28 @@ serve(async (req) => {
     }
 
     console.error(`❌ ByT5 no valid translation in response after ${duration}ms`);
+
+    // Last resort: knowledge-based fallback
+    const lastFallback = await knowledgeFallbackTranslate({ text, direction, abortSignal: abortController.signal });
+    if (lastFallback.ok) {
+      console.log(`✅ Knowledge-based fallback (no valid ByT5 output) in ${Date.now() - startTime}ms`);
+      return new Response(
+        JSON.stringify({
+          translation: lastFallback.translation,
+          confidence: lastFallback.confidence,
+          duration: Date.now() - startTime,
+          method: 'knowledge-based',
+          modelInfo: { name: 'Bariba Knowledge Base', version: 'refine-bariba', mode: 'translate', advanced: false },
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     return new Response(
       JSON.stringify({
         error: 'ByT5 returned no valid translation',
         details: 'Model processed but returned empty or invalid response',
-        duration,
+        duration: Date.now() - startTime,
         spaceUrl: SPACE_URL
       }),
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
