@@ -15,108 +15,87 @@ interface TranslationRequest {
 }
 
 const SPACE_URL = 'https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space';
-const GLOBAL_TIMEOUT_MS = 25000; // 25 seconds for cold start
-
-// Knowledge-based fallback via refine-bariba in translate mode
-async function knowledgeFallbackTranslate(params: {
-  text: string;
-  direction: string;
-  abortSignal?: AbortSignal;
-}): Promise<{ ok: true; translation: string; confidence: number } | { ok: false; error: string }> {
-  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return { ok: false, error: 'Supabase config missing' };
-
-  try {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 8000);
-    const resp = await fetch(`${SUPABASE_URL}/functions/v1/refine-bariba`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: params.text, type: 'translate', direction: params.direction }),
-      signal: ctrl.signal,
-    });
-    clearTimeout(to);
-
-    if (!resp.ok) return { ok: false, error: `refine-bariba error ${resp.status}` };
-    const data = await resp.json();
-    if (!data?.refined?.trim()) return { ok: false, error: 'Empty refined result' };
-    return { ok: true, translation: data.refined.trim(), confidence: data.confidence || 80 };
-  } catch (e: any) {
-    return { ok: false, error: e?.message || 'knowledge fallback failed' };
-  }
-}
+const GLOBAL_TIMEOUT_MS = 25000;
 
 async function pollForResult(
   spaceUrl: string,
   apiPrefix: string,
   sessionHash: string,
   hfToken: string,
-  maxAttempts = 30,
   abortSignal?: AbortSignal
 ): Promise<{ success: boolean; data?: any; error?: string }> {
+  const isValidTranslation = (result: string | undefined): boolean => {
+    if (!result || typeof result !== 'string' || result.trim().length === 0) return false;
+    const invalidPatterns = [
+      'Share via Link', 'share via', 'Partager', 'Loading', 'Submit',
+      'Clear', 'Button', 'Click', 'Select', 'Choose', 'Error', 'undefined'
+    ];
+    return !invalidPatterns.some(p => result.toLowerCase().includes(p.toLowerCase()));
+  };
+
   const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
   console.log(`📡 Polling: ${pollUrl}`);
-  
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+
+  for (let attempt = 0; attempt < 40; attempt++) {
     if (abortSignal?.aborted) {
       return { success: false, error: 'Request timeout' };
     }
-    
+
     try {
-      const response = await fetch(pollUrl, {
-        headers: { 
+      const pollResponse = await fetch(pollUrl, {
+        headers: {
           'Authorization': `Bearer ${hfToken}`,
           'Accept': 'text/event-stream'
         },
         signal: abortSignal,
       });
-      
-      if (response.ok) {
-        const text = await response.text();
-        console.log(`   Poll ${attempt + 1}: ${text.substring(0, 400)}`);
-        
-        const lines = text.split('\n');
+
+      if (pollResponse.ok) {
+        const responseText = await pollResponse.text();
+        console.log(`   Poll ${attempt + 1}: ${responseText.substring(0, 400)}`);
+
+        const lines = responseText.split('\n');
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
-              const data = JSON.parse(line.substring(6));
-              
-              if (data.msg === 'process_completed') {
-                if (data.success === false) {
-                  const errorDetail = data.output?.error || data.title || 'Model processing failed';
-                  console.log(`❌ Model returned error: ${JSON.stringify(data.output)}, title: ${data.title}`);
-                  return { success: false, error: `HuggingFace Space error: ${errorDetail}` };
+              const parsed = JSON.parse(line.substring(6));
+
+              if (parsed.msg === 'process_completed') {
+                if (parsed.success === false) {
+                  console.log(`   Process failed: ${JSON.stringify(parsed.output)}`);
+                  return { success: false, error: parsed.output?.error || 'Translation failed' };
                 }
-                
-                if (data.output?.data) {
-                  console.log(`✅ Got result: ${JSON.stringify(data.output).substring(0, 300)}`);
-                  return { success: true, data: data.output };
+
+                const resultData = parsed.output?.data || parsed.data;
+                if (Array.isArray(resultData)) {
+                  const translation = resultData[0];
+                  console.log(`   Got result: "${translation}"`);
+                  if (isValidTranslation(translation)) {
+                    console.log(`✅ Valid translation: "${translation}"`);
+                    return { success: true, data: { data: resultData } };
+                  }
                 }
               }
-              
-              if (data.data && Array.isArray(data.data)) {
-                console.log(`✅ Got direct data: ${JSON.stringify(data.data).substring(0, 300)}`);
-                return { success: true, data };
+
+              if (parsed.data && Array.isArray(parsed.data)) {
+                const translation = parsed.data[0];
+                if (isValidTranslation(translation)) {
+                  console.log(`✅ Direct data: "${translation}"`);
+                  return { success: true, data: parsed };
+                }
               }
-            } catch (e) {
-              // Continue parsing
-            }
+            } catch (e) { /* continue parsing */ }
           }
         }
       }
-      
-      const waitTime = attempt < 5 ? 200 : attempt < 15 ? 400 : 600;
-      await new Promise(r => setTimeout(r, waitTime));
+
+      await new Promise(r => setTimeout(r, 500));
     } catch (e) {
-      if (abortSignal?.aborted) {
-        return { success: false, error: 'Request timeout' };
-      }
-      console.log(`   Poll error: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      if (abortSignal?.aborted) return { success: false, error: 'Request timeout' };
     }
   }
-  
-  return { success: false, error: 'Polling timeout - no response received' };
+
+  return { success: false, error: 'Translation failed - no valid response from HuggingFace Space' };
 }
 
 async function callGradioTranslate(
@@ -131,7 +110,6 @@ async function callGradioTranslate(
   autocorrect: boolean = true
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   
-  // Helper to validate translation result
   const isValidTranslation = (result: string | undefined): boolean => {
     if (!result || typeof result !== 'string' || result.trim().length === 0) return false;
     const invalidPatterns = [
@@ -141,7 +119,6 @@ async function callGradioTranslate(
     return !invalidPatterns.some(p => result.toLowerCase().includes(p.toLowerCase()));
   };
 
-  // First, explore the API to understand what endpoints are available
   console.log(`🔍 Exploring API at ${spaceUrl}${apiPrefix}/info`);
   try {
     const infoResp = await fetch(`${spaceUrl}${apiPrefix}/info`, {
@@ -156,8 +133,6 @@ async function callGradioTranslate(
     console.log(`   Info fetch failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
   }
 
-  // The correct endpoint from API exploration: /translate_pipeline is fn_index=2
-  // It expects exactly 5 params: text, direction, mode, advanced, autocorrect
   const data = [text, direction, mode, advanced, autocorrect];
   console.log(`📤 Sending to fn_index=2: ${JSON.stringify(data)}`);
 
@@ -172,7 +147,7 @@ async function callGradioTranslate(
       },
       body: JSON.stringify({ 
         data: data, 
-        fn_index: 2,  // CRITICAL: translate_pipeline is at fn_index 2!
+        fn_index: 2,
         session_hash: sessionHash 
       }),
       signal: abortSignal,
@@ -184,7 +159,6 @@ async function callGradioTranslate(
       const joinText = await joinResponse.text();
       console.log(`   Join response: ${joinText.substring(0, 300)}`);
 
-      // Poll for result
       const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
       console.log(`📡 Polling: ${pollUrl}`);
       
@@ -206,7 +180,7 @@ async function callGradioTranslate(
             const responseText = await pollResponse.text();
             console.log(`   Poll ${attempt + 1}: ${responseText.substring(0, 400)}`);
             
-            const lines = responseText.split('\n');
+            const lines = responseText.split('\\n');
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
@@ -229,7 +203,6 @@ async function callGradioTranslate(
                     }
                   }
                   
-                  // Direct data response
                   if (parsed.data && Array.isArray(parsed.data)) {
                     const translation = parsed.data[0];
                     if (isValidTranslation(translation)) {
@@ -268,7 +241,6 @@ serve(async (req) => {
   const startTime = Date.now();
   const abortController = new AbortController();
   
-  // Global timeout
   const timeoutId = setTimeout(() => {
     abortController.abort();
     console.log(`⏰ Global timeout reached (${GLOBAL_TIMEOUT_MS}ms)`);
@@ -287,7 +259,7 @@ serve(async (req) => {
 
     const HF_TOKEN = Deno.env.get('HUGGING_FACE_API_TOKEN');
     
-    // API exploration mode - get Space info for debugging
+    // API exploration mode
     if (exploreApi) {
       clearTimeout(timeoutId);
       
@@ -300,7 +272,6 @@ serve(async (req) => {
 
       const exploration: any = { spaceUrl: SPACE_URL, endpoints: [] };
       
-      // Try to get Gradio config
       const configUrls = [
         `${SPACE_URL}/gradio_api/config`,
         `${SPACE_URL}/config`, 
@@ -317,7 +288,6 @@ serve(async (req) => {
             const data = await resp.json();
             exploration[url.split('/').pop() || 'config'] = data;
             
-            // Extract endpoints from config
             if (data.dependencies) {
               exploration.endpoints = data.dependencies.map((d: any, i: number) => ({
                 fn_index: i,
@@ -336,7 +306,7 @@ serve(async (req) => {
       );
     }
 
-    // Fast health check mode (avoids running an actual translation)
+    // Health check
     if (healthCheck) {
       clearTimeout(timeoutId);
 
@@ -352,7 +322,6 @@ serve(async (req) => {
       const hcTimeoutId = setTimeout(() => hcController.abort(), 4000);
 
       try {
-        // Try both config endpoints
         let healthy = false;
         for (const configPath of ['/gradio_api/config', '/config']) {
           try {
@@ -368,21 +337,15 @@ serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({
-            healthy,
-            duration: Date.now() - hcStart,
-            spaceUrl: SPACE_URL,
-          }),
+          JSON.stringify({ healthy, duration: Date.now() - hcStart, spaceUrl: SPACE_URL }),
           { status: healthy ? 200 : 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       } catch (e: unknown) {
         return new Response(
           JSON.stringify({
-            healthy: false,
-            error: 'ByT5 health check failed',
+            healthy: false, error: 'ByT5 health check failed',
             details: e instanceof Error ? e.message : 'Unknown error',
-            duration: Date.now() - hcStart,
-            spaceUrl: SPACE_URL,
+            duration: Date.now() - hcStart, spaceUrl: SPACE_URL,
           }),
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
@@ -407,7 +370,6 @@ serve(async (req) => {
       );
     }
 
-    // CRITICAL: Use exact direction format from the Space UI: "fr-ba" or "ba-fr"
     const direction = sourceLang === 'french' ? 'fr-ba' : 'ba-fr';
     const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualité maximale';
 
@@ -415,7 +377,6 @@ serve(async (req) => {
     console.log(`📍 Space URL: ${SPACE_URL}`);
     console.log(`   Mode: ${gradioMode}, Advanced: ${advanced}`);
 
-    // Get API prefix from config
     let apiPrefix = '/gradio_api';
     try {
       const configResponse = await fetch(`${SPACE_URL}/config`, {
@@ -432,15 +393,8 @@ serve(async (req) => {
     }
 
     const result = await callGradioTranslate(
-      SPACE_URL,
-      apiPrefix,
-      text,
-      direction,
-      gradioMode,
-      advanced,
-      HF_TOKEN,
-      abortController.signal,
-      true // autocorrect = true (5th required parameter)
+      SPACE_URL, apiPrefix, text, direction, gradioMode, advanced,
+      HF_TOKEN, abortController.signal, true
     );
 
     clearTimeout(timeoutId);
@@ -448,29 +402,11 @@ serve(async (req) => {
 
     if (!result.success) {
       console.error(`❌ ByT5 failed after ${duration}ms: ${result.error}`);
-
-      const fallback = await knowledgeFallbackTranslate({ text, direction, abortSignal: abortController.signal });
-
-      if (fallback.ok) {
-        console.log(`✅ Knowledge-based fallback in ${duration}ms`);
-        return new Response(
-          JSON.stringify({
-            translation: fallback.translation,
-            confidence: fallback.confidence,
-            duration,
-            method: 'knowledge-based',
-            modelInfo: { name: 'Bariba Knowledge Base', version: 'refine-bariba', mode: 'translate', advanced: false },
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
-      }
-
       return new Response(
         JSON.stringify({
           error: 'ByT5 translation service unavailable',
           details: result.error || 'HuggingFace Space API not responding',
-          duration,
-          spaceUrl: SPACE_URL,
+          duration, spaceUrl: SPACE_URL,
         }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
@@ -489,7 +425,6 @@ serve(async (req) => {
     }
 
     if (translation && typeof translation === 'string' && translation.length > 0) {
-      // CRITICAL: Validate that this is a real translation, not UI text from the Space
       const invalidPatterns = [
         'Share via Link', 'share via', 'Partager', 'Error', 'Loading',
         'Submit', 'Clear', 'Button', 'Click', 'Select', 'Choose'
@@ -500,29 +435,11 @@ serve(async (req) => {
       
       if (isInvalidResponse) {
         console.error(`❌ ByT5 returned invalid UI text: "${translation}"`);
-
-        const fallback = await knowledgeFallbackTranslate({ text, direction, abortSignal: abortController.signal });
-
-        if (fallback.ok) {
-          console.log(`✅ Knowledge-based fallback after invalid ByT5 output in ${duration}ms`);
-          return new Response(
-            JSON.stringify({
-              translation: fallback.translation,
-              confidence: fallback.confidence,
-              duration,
-              method: 'knowledge-based',
-              modelInfo: { name: 'Bariba Knowledge Base', version: 'refine-bariba', mode: 'translate', advanced: false },
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-          );
-        }
-
         return new Response(
           JSON.stringify({
             error: 'ByT5 returned invalid response (UI text instead of translation)',
             details: `Received: "${translation.substring(0, 50)}"`,
-            duration,
-            spaceUrl: SPACE_URL,
+            duration, spaceUrl: SPACE_URL,
           }),
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
@@ -531,7 +448,7 @@ serve(async (req) => {
       const hasSpecialChars = /[ɔɛɑɡãẽĩõũàèìòùâêîôûäëïöü]/.test(translation);
       const hasValidLength = translation.length >= text.length * 0.3;
       const baseConfidence = 85;
-      let confidence = Math.min(
+      const confidence = Math.min(
         95,
         baseConfidence + (hasSpecialChars ? 5 : 0) + (hasValidLength ? 5 : 0)
       );
@@ -539,55 +456,13 @@ serve(async (req) => {
       console.log(`✅ ByT5 Success in ${duration}ms: "${translation.substring(0, 150)}"`);
       if (suggestions) console.log(`   Suggestions: "${String(suggestions).substring(0, 100)}"`);
 
-      // ─── RAFFINAGE via refine-bariba (non-bloquant, timeout 5s) ───
-      let finalTranslation = translation;
-      let refined = false;
-      try {
-        const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-        const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
-        if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-          const refineController = new AbortController();
-          const refineTimeout = setTimeout(() => refineController.abort(), 5000);
-          
-          const refineResp = await fetch(`${SUPABASE_URL}/functions/v1/refine-bariba`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              text: translation,
-              type: 'translation',
-              direction,
-              originalInput: text,
-            }),
-            signal: refineController.signal,
-          });
-          
-          clearTimeout(refineTimeout);
-          
-          if (refineResp.ok) {
-            const refineData = await refineResp.json();
-            if (refineData?.refined && refineData.refined.trim().length > 0) {
-              finalTranslation = refineData.refined;
-              refined = true;
-              if (refineData.confidence) confidence = Math.max(confidence, refineData.confidence);
-              console.log(`🔧 Refined: "${finalTranslation.substring(0, 80)}" (${refineData.changes?.length || 0} changes)`);
-            }
-          }
-        }
-      } catch (refineErr) {
-        console.warn(`⚠️ Refine skipped: ${refineErr instanceof Error ? refineErr.message : 'timeout'}`);
-      }
-
       return new Response(
         JSON.stringify({ 
-          translation: finalTranslation,
+          translation,
           suggestions,
           confidence,
           duration: Date.now() - startTime,
           method: 'byt5-expert',
-          refined,
           modelInfo: {
             name: 'ByT5 Expert (Improved)',
             version: 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve',
@@ -600,29 +475,11 @@ serve(async (req) => {
     }
 
     console.error(`❌ ByT5 no valid translation in response after ${duration}ms`);
-
-    // Last resort: knowledge-based fallback
-    const lastFallback = await knowledgeFallbackTranslate({ text, direction, abortSignal: abortController.signal });
-    if (lastFallback.ok) {
-      console.log(`✅ Knowledge-based fallback (no valid ByT5 output) in ${Date.now() - startTime}ms`);
-      return new Response(
-        JSON.stringify({
-          translation: lastFallback.translation,
-          confidence: lastFallback.confidence,
-          duration: Date.now() - startTime,
-          method: 'knowledge-based',
-          modelInfo: { name: 'Bariba Knowledge Base', version: 'refine-bariba', mode: 'translate', advanced: false },
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
     return new Response(
       JSON.stringify({
         error: 'ByT5 returned no valid translation',
         details: 'Model processed but returned empty or invalid response',
-        duration: Date.now() - startTime,
-        spaceUrl: SPACE_URL
+        duration: Date.now() - startTime, spaceUrl: SPACE_URL
       }),
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

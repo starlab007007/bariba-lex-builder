@@ -9,18 +9,12 @@ interface TranslationResult {
 }
 
 /**
- * Hook de traduction simplifié utilisant uniquement:
- * 1. ByT5 (byt5-bariba-translate) comme traducteur principal
- * 2. refine-bariba en mode 'translate' comme fallback (basé sur connaissances linguistiques)
- * 
- * Aucun appel à ai-translate-lovable !
+ * Hook de traduction simplifié utilisant uniquement ByT5 (byt5-bariba-translate).
+ * Aucun fallback — si ByT5 échoue, une erreur est retournée.
  */
 export function useSimpleTranslation() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const invalidPatterns = ['Share via Link', 'share via', 'Loading', 'Submit', 'Clear', 'Button', 'Click', 'Select', 'Choose'];
-  const isValid = (t: unknown) => typeof t === 'string' && t.trim().length > 0 && !invalidPatterns.some(p => (t as string).toLowerCase().includes(p.toLowerCase()));
 
   const translateWithFallback = useCallback(async (text: string, direction: 'fr-ba' | 'ba-fr'): Promise<TranslationResult> => {
     if (!text.trim()) {
@@ -35,39 +29,21 @@ export function useSimpleTranslation() {
     const targetLang = direction === 'fr-ba' ? 'bariba' : 'french';
 
     try {
-      // 1. Essayer ByT5 d'abord
       const { data, error: byT5Error } = await supabase.functions.invoke('byt5-bariba-translate', {
         body: { text, sourceLang, targetLang }
       });
 
-      if (!byT5Error && isValid(data?.translation)) {
-        const duration = Math.round(performance.now() - startTime);
-        return {
-          translation: data.translation,
-          confidence: data.confidence || 85,
-          method: data.method || 'byt5-expert',
-          duration
-        };
+      if (byT5Error || !data?.translation || typeof data.translation !== 'string' || !data.translation.trim()) {
+        throw new Error(byT5Error?.message || data?.error || 'ByT5 n\'a pas pu traduire ce texte');
       }
 
-      console.warn('ByT5 failed, trying knowledge-based fallback...', byT5Error);
-
-      // 2. Fallback: refine-bariba en mode translate
-      const { data: refineData, error: refineError } = await supabase.functions.invoke('refine-bariba', {
-        body: { text, type: 'translate', direction }
-      });
-
-      if (!refineError && refineData?.refined?.trim()) {
-        const duration = Math.round(performance.now() - startTime);
-        return {
-          translation: refineData.refined,
-          confidence: refineData.confidence || 80,
-          method: 'knowledge-based',
-          duration
-        };
-      }
-
-      throw new Error(refineError?.message || 'Traduction échouée');
+      const duration = Math.round(performance.now() - startTime);
+      return {
+        translation: data.translation,
+        confidence: data.confidence || 85,
+        method: data.method || 'byt5-expert',
+        duration
+      };
     } catch (err: any) {
       console.error('Translation error:', err);
       setError(err.message);
