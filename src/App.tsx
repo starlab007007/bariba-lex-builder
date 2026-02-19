@@ -44,6 +44,7 @@ const SystemValidation = lazy(() => import("./pages/SystemValidation"));
 const AssetsDashboard = lazy(() => import("./pages/AssetsDashboard"));
 const GriotStudioPage = lazy(() => import("./pages/GriotStudioPage"));
 const FitilaLearn = lazy(() => import("./pages/fitila/FitilaLearn"));
+const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 
 // Loading fallback - minimal spinner
 const PageLoader = () => (
@@ -106,6 +107,7 @@ const App = () => (
                 <Route path="profile" element={<TamTamProfile />} />
                 <Route path="dictionary" element={<TamTamDictionary />} />
                 <Route path="learn" element={<FitilaLearn />} />
+                <Route path="ia" element={<FitilaIA />} />
                 <Route path="user/:userId" element={<TamTamPublicProfile />} />
                 <Route path="profile/:userId" element={<TamTamPublicProfile />} />
               </Route>
