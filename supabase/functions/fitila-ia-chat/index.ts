@@ -54,55 +54,71 @@ serve(async (req) => {
     const questionFr = translateToFrData.translatedText || translateToFrData.translation || message;
     console.log('[fitila-ia] Step 1 done, French:', questionFr.substring(0, 80));
 
-    // Step 2: Call Gemini via Lovable AI Gateway (with retry)
-    console.log('[fitila-ia] Step 2: Calling Gemini...');
-    let geminiRes: Response | null = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      geminiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-lite',
-          messages: [
-            {
-              role: 'system',
-              content: 'Tu es un assistant intelligent et bienveillant. Reponds toujours en un seul paragraphe court et clair (maximum 4 phrases). Reponds en francais. Sois direct et utile.',
-            },
-            { role: 'user', content: questionFr },
-          ],
-          max_tokens: 300,
-        }),
-      });
-      if (geminiRes.ok) break;
-      if (geminiRes.status === 429 || geminiRes.status === 402) break;
-      console.warn(`[fitila-ia] Gemini attempt ${attempt + 1} failed: ${geminiRes.status}`);
-      if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
+    // Step 2: Call AI via Lovable AI Gateway (multi-model fallback)
+    console.log('[fitila-ia] Step 2: Calling AI...');
+    const modelsToTry = [
+      'google/gemini-2.5-flash-lite',
+      'google/gemini-2.5-flash',
+      'openai/gpt-5-nano',
+    ];
+
+    let responseFr = '';
+    let aiSuccess = false;
+
+    for (const model of modelsToTry) {
+      try {
+        console.log(`[fitila-ia] Trying model: ${model}`);
+        const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              {
+                role: 'system',
+                content: 'Tu es un assistant intelligent et bienveillant. Reponds toujours en un seul paragraphe court et clair (maximum 4 phrases). Reponds en francais. Sois direct et utile.',
+              },
+              { role: 'user', content: questionFr },
+            ],
+            ...(model.startsWith('google/') ? { max_tokens: 300 } : {}),
+          }),
+        });
+
+        if (aiRes.status === 429) {
+          return new Response(JSON.stringify({ error: 'Trop de requetes, reessayez dans un moment.' }), {
+            status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (aiRes.status === 402) {
+          return new Response(JSON.stringify({ error: 'Credits insuffisants.' }), {
+            status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (!aiRes.ok) {
+          const errText = await aiRes.text();
+          console.warn(`[fitila-ia] Model ${model} failed (${aiRes.status}): ${errText.substring(0, 100)}`);
+          continue;
+        }
+
+        const aiData = await aiRes.json();
+        responseFr = aiData.choices?.[0]?.message?.content || '';
+        if (responseFr) {
+          console.log(`[fitila-ia] Step 2 done with ${model}: ${responseFr.substring(0, 80)}`);
+          aiSuccess = true;
+          break;
+        }
+      } catch (err) {
+        console.warn(`[fitila-ia] Model ${model} error:`, err);
+      }
     }
 
-    if (!geminiRes || !geminiRes.ok) {
-      const status = geminiRes?.status || 500;
-      const errText = geminiRes ? await geminiRes.text() : 'No response';
-      console.error('[fitila-ia] Step 2 failed:', status, errText);
-
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: 'Trop de requetes, reessayez dans un moment.' }), {
-          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: 'Credits insuffisants.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      throw new Error(`Service IA temporairement indisponible (${status})`);
+    if (!aiSuccess || !responseFr) {
+      throw new Error('Tous les modeles IA sont temporairement indisponibles');
     }
-
-    const geminiData = await geminiRes.json();
-    const responseFr = geminiData.choices?.[0]?.message?.content || 'Pas de reponse.';
-    console.log('[fitila-ia] Step 2 done, French response:', responseFr.substring(0, 80));
 
     // Step 3: Translate French -> Bariba via byt5-bariba-translate
     console.log('[fitila-ia] Step 3: Translating French -> Bariba...');
