@@ -423,12 +423,51 @@ serve(async (req: Request) => {
 
       console.log(`✅ STT Success in ${duration}ms: "${transcription.substring(0, 80)}"`);
 
+      // ─── RAFFINAGE via refine-bariba (non-bloquant, timeout 5s) ───
+      let finalTranscription = transcription.trim();
+      let refined = false;
+      try {
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+        const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+        if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+          const refineController = new AbortController();
+          const refineTimeout = setTimeout(() => refineController.abort(), 5000);
+          
+          const refineResp = await fetch(`${SUPABASE_URL}/functions/v1/refine-bariba`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: transcription.trim(),
+              type: 'transcription',
+            }),
+            signal: refineController.signal,
+          });
+          
+          clearTimeout(refineTimeout);
+          
+          if (refineResp.ok) {
+            const refineData = await refineResp.json();
+            if (refineData?.refined && refineData.refined.trim().length > 0) {
+              finalTranscription = refineData.refined;
+              refined = true;
+              console.log(`🔧 STT Refined: "${finalTranscription.substring(0, 80)}" (${refineData.changes?.length || 0} changes)`);
+            }
+          }
+        }
+      } catch (refineErr) {
+        console.warn(`⚠️ STT Refine skipped: ${refineErr instanceof Error ? refineErr.message : 'timeout'}`);
+      }
+
       return new Response(
         JSON.stringify({
-          transcription: transcription.trim(),
+          transcription: finalTranscription,
           confidence: 90,
-          duration,
-          language: 'bariba'
+          duration: Date.now() - startTime,
+          language: 'bariba',
+          refined,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

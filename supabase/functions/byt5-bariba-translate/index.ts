@@ -487,12 +487,37 @@ serve(async (req) => {
 
       if (fallback.ok) {
         console.log(`✅ Lovable AI fallback in ${duration}ms`);
+        
+        // Raffiner le fallback aussi
+        let finalTranslation = fallback.translation;
+        let refined = false;
+        try {
+          const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+          const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+          if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+            const refCtrl = new AbortController();
+            const refTO = setTimeout(() => refCtrl.abort(), 5000);
+            const refResp = await fetch(`${SUPABASE_URL}/functions/v1/refine-bariba`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: fallback.translation, type: 'translation', direction, originalInput: text }),
+              signal: refCtrl.signal,
+            });
+            clearTimeout(refTO);
+            if (refResp.ok) {
+              const refData = await refResp.json();
+              if (refData?.refined?.trim()) { finalTranslation = refData.refined; refined = true; }
+            }
+          }
+        } catch { /* skip refine on error */ }
+
         return new Response(
           JSON.stringify({
-            translation: fallback.translation,
+            translation: finalTranslation,
             confidence: fallback.confidence,
             duration,
             method: 'lovable-ai-fallback',
+            refined,
             modelInfo: { name: 'Lovable AI', version: fallback.model, mode: 'fallback', advanced: false },
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -570,7 +595,7 @@ serve(async (req) => {
       const hasSpecialChars = /[ɔɛɑɡãẽĩõũàèìòùâêîôûäëïöü]/.test(translation);
       const hasValidLength = translation.length >= text.length * 0.3;
       const baseConfidence = 85;
-      const confidence = Math.min(
+      let confidence = Math.min(
         95,
         baseConfidence + (hasSpecialChars ? 5 : 0) + (hasValidLength ? 5 : 0)
       );
@@ -578,13 +603,55 @@ serve(async (req) => {
       console.log(`✅ ByT5 Success in ${duration}ms: "${translation.substring(0, 150)}"`);
       if (suggestions) console.log(`   Suggestions: "${String(suggestions).substring(0, 100)}"`);
 
+      // ─── RAFFINAGE via refine-bariba (non-bloquant, timeout 5s) ───
+      let finalTranslation = translation;
+      let refined = false;
+      try {
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+        const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+        if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+          const refineController = new AbortController();
+          const refineTimeout = setTimeout(() => refineController.abort(), 5000);
+          
+          const refineResp = await fetch(`${SUPABASE_URL}/functions/v1/refine-bariba`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: translation,
+              type: 'translation',
+              direction,
+              originalInput: text,
+            }),
+            signal: refineController.signal,
+          });
+          
+          clearTimeout(refineTimeout);
+          
+          if (refineResp.ok) {
+            const refineData = await refineResp.json();
+            if (refineData?.refined && refineData.refined.trim().length > 0) {
+              finalTranslation = refineData.refined;
+              refined = true;
+              if (refineData.confidence) confidence = Math.max(confidence, refineData.confidence);
+              console.log(`🔧 Refined: "${finalTranslation.substring(0, 80)}" (${refineData.changes?.length || 0} changes)`);
+            }
+          }
+        }
+      } catch (refineErr) {
+        console.warn(`⚠️ Refine skipped: ${refineErr instanceof Error ? refineErr.message : 'timeout'}`);
+      }
+
       return new Response(
         JSON.stringify({ 
-          translation,
+          translation: finalTranslation,
           suggestions,
           confidence,
-          duration,
+          duration: Date.now() - startTime,
           method: 'byt5-expert',
+          refined,
           modelInfo: {
             name: 'ByT5 Expert (Improved)',
             version: 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve',
