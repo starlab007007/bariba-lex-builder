@@ -1,82 +1,85 @@
 
-# Fitila IA - ChatGPT Bariba
+# Refonte UI de Fitila IA - Style ChatGPT clair avec prediction de mots Bariba
 
 ## Objectif
 
-Ajouter un module "Fitila IA" a cote de "Apprendre" dans la section Outils du menu. C'est un chatbot style ChatGPT ou tout se passe en Bariba cote utilisateur, mais en arriere-plan le pipeline est :
+Transformer l'interface de Fitila IA en un design moderne style ChatGPT avec fond clair, texte anime en typing, traduction francais sous chaque reponse, prediction de mots bariba pendant la saisie, et clavier de caracteres bariba integre.
 
-```text
-Question Bariba (texte/voix)
-  -> ByT5 traduit en Francais
-    -> Gemini 2.5 Flash Lite repond en Francais (1 paragraphe max)
-      -> ByT5 traduit la reponse en Bariba
-        -> Affichage en Bariba
-```
+## Changements prevus
 
-## Architecture
+### 1. Refonte complete de `src/pages/fitila/FitilaIA.tsx`
 
-### 1. Edge Function : `fitila-ia-chat`
+**Design UI style ChatGPT clair :**
+- Fond blanc/gris clair au lieu du fond sombre actuel
+- Bulles de messages repensees : utilisateur a droite (fond orange clair), IA a gauche (fond blanc avec bordure grise)
+- Avatar IA avec icone robot, avatar utilisateur avec icone user
+- Typographie claire et lisible
 
-Nouvelle edge function qui orchestre tout le pipeline en backend :
+**Effet typing anime sur les reponses :**
+- Les reponses IA s'affichent caractere par caractere avec un effet de machine a ecrire
+- Un curseur clignotant pendant l'animation
+- Le texte est mis en forme avec des paragraphes bien separes et des sauts de ligne clairs
 
-- Recoit : `{ message: string, lang: "bariba" }` (texte en bariba)
-- Etape 1 : Appelle `byt5-bariba-translate` en interne (ba -> fr) pour traduire la question
-- Etape 2 : Appelle Lovable AI Gateway (Gemini 2.5 Flash Lite) avec un system prompt limitant les reponses a 1 paragraphe
-- Etape 3 : Appelle `byt5-bariba-translate` en interne (fr -> ba) pour traduire la reponse
-- Retourne : `{ response_ba: string, response_fr: string }` (les deux pour debug)
+**Bouton "Traduire en francais" sous chaque reponse :**
+- Un bouton discret sous chaque bulle IA en couleur differente (bleu/indigo)
+- Au clic, appel au modele ByT5 via `supabase.functions.invoke('byt5-bariba-translate')` pour traduire la reponse bariba en francais
+- La traduction francaise s'affiche juste en dessous de la bulle, dans un bloc avec fond bleu clair
+- Indicateur de chargement pendant la traduction
 
-Config dans `supabase/config.toml` : `verify_jwt = false`
+**Prediction de mots bariba dans le champ de saisie :**
+- Integration du hook `usePhoneticSuggestions` (deja existant) directement dans le champ de saisie
+- Quand l'utilisateur tape, le dernier mot en cours est utilise pour chercher des suggestions dans le dictionnaire (71 000+ mots)
+- Les suggestions s'affichent dans un panneau au-dessus du champ de saisie (style autocompletion)
+- Au clic sur un mot, il remplace le mot en cours de saisie
+- Prediction du mot suivant : apres selection d'un mot, le systeme propose des mots frequemment associes
 
-### 2. Page : `src/pages/fitila/FitilaIA.tsx`
+**Clavier bariba integre :**
+- Bouton pour afficher/masquer le clavier de caracteres speciaux bariba
+- Reutilise les caracteres de `BaribaKeyboardInput` : ɔ, ɛ, ã, ŋ, ɔ̀, ɔ́, ɛ̀, ɛ́, etc.
+- Le clavier apparait au-dessus de la zone de saisie
+- Insertion du caractere a la position du curseur
 
-Interface chat simple style ChatGPT :
+**Conservation des fonctionnalites existantes :**
+- Saisie vocale via micro (hooks `useAudioRecorder` et `useBaribaSTT`)
+- Envoi au backend `fitila-ia-chat`
+- Vidage immediat du champ apres envoi
 
-- Header avec bouton retour et titre "Fitila IA" / emoji robot
-- Zone de messages (bulles) en Bariba uniquement
-- Zone de saisie en bas : champ texte + bouton micro (reutilise les hooks existants `useBaribaSTTWithFallback` et `useAudioRecorder`)
-- Quand l'utilisateur parle en bariba : transcription bariba -> envoi au backend -> reponse bariba affichee
-- Quand l'utilisateur tape en bariba : envoi direct au backend -> reponse bariba affichee
-- Indicateur de chargement pendant le traitement
-- Reponses limitees a 1 paragraphe
+### 2. Structure des messages enrichie
 
-### 3. Integration dans le menu et le routeur
-
-**`src/pages/fitila/FitilaApp.tsx`** : Ajouter "Fitila IA" dans `toolsItems` avec emoji "🤖", gradient violet, a cote de "Apprendre"
-
-**`src/App.tsx`** : Ajouter la route lazy-loaded `fitila/ia` pointant vers `FitilaIA`
+Le type `ChatMessage` est enrichi avec :
+- `translationFr?: string` - stocke la traduction francaise locale
+- `isTranslatingFr?: boolean` - indicateur de chargement traduction
+- `isTyping?: boolean` - controle de l'animation typing
+- `displayedContent?: string` - contenu partiellement affiche pendant le typing
 
 ## Details techniques
 
-### Edge function `fitila-ia-chat/index.ts`
+### Effet typing
+- Utilisation de `useEffect` + `setInterval` avec un delai de 15-25ms par caractere
+- Le contenu complet est stocke dans `content`, le contenu affiche progressivement dans `displayedContent`
+- Le scroll suit automatiquement l'animation
 
-- Utilise `LOVABLE_API_KEY` (deja configure) pour Gemini
-- Utilise la meme logique que `byt5-bariba-translate` pour les traductions internes (appel HTTP direct au Space HuggingFace avec le meme code Gradio)
-- Plutot que de dupliquer le code Gradio, appelle directement l'edge function `byt5-bariba-translate` via fetch interne (`SUPABASE_URL + /functions/v1/byt5-bariba-translate`)
-- System prompt Gemini : "Tu es un assistant intelligent. Reponds toujours en un seul paragraphe court et clair. Reponds en francais."
-- Model : `google/gemini-2.5-flash-lite`
-- Timeout global : 120s (3 appels sequentiels)
+### Prediction de mots
+- Extraction du dernier mot en cours via `input.split(' ').pop()`
+- Appel a `getSuggestions(lastWord, 5)` du hook `usePhoneticSuggestions`
+- Remplacement du dernier mot par le mot selectionne + ajout d'un espace
 
-### Hooks reutilises cote client
+### Traduction sous les reponses
+- Appel `supabase.functions.invoke('byt5-bariba-translate', { body: { text, sourceLang: 'bariba', targetLang: 'french' } })`
+- Resultat stocke dans le state local du message, pas de nouvel appel backend
 
-- `useAudioRecorder` : enregistrement micro
-- `useBaribaSTTWithFallback` : transcription voix bariba -> texte bariba
-- Pas besoin de `useSimpleTranslation` cote client car la traduction se fait entierement en backend
-
-### UX
-
-- Interface epuree, fond clair comme le traducteur
-- Bulles de chat : utilisateur a droite (orange), IA a gauche (violet/indigo)
-- Placeholder du champ texte : "Yaa sɔ̃ɔ..." (Demandez en bariba)
-- Bouton micro a cote du champ de saisie
-- Le champ se vide immediatement apres envoi (meme pattern que le traducteur corrige)
-
-## Fichiers a creer
-
-1. `supabase/functions/fitila-ia-chat/index.ts` - Edge function pipeline complet
-2. `src/pages/fitila/FitilaIA.tsx` - Page chat
+### Clavier bariba
+- Les memes caracteres que dans `BaribaKeyboardInput` : `['ɔ', 'ɛ', 'ã', 'ŋ', 'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́', 'à', 'á', 'è', 'é', 'ì', 'í', 'ò', 'ó', 'ù', 'ú']`
+- Insertion via manipulation de `selectionStart/selectionEnd` sur l'input ref
 
 ## Fichiers a modifier
 
-1. `src/pages/fitila/FitilaApp.tsx` - Ajouter entree menu "Fitila IA"
-2. `src/App.tsx` - Ajouter route + lazy import
-3. `supabase/config.toml` - Ajouter `[functions.fitila-ia-chat]` avec `verify_jwt = false`
+1. **`src/pages/fitila/FitilaIA.tsx`** - Refonte complete de la page (seul fichier modifie)
+
+## Fichiers reutilises (non modifies)
+
+- `src/hooks/usePhoneticSuggestions.ts` - Prediction de mots bariba
+- `src/hooks/useAudioRecorder.ts` - Enregistrement vocal
+- `src/hooks/useBaribaSTT.ts` - Transcription bariba
+- `supabase/functions/fitila-ia-chat/index.ts` - Pipeline backend (inchange)
+- `supabase/functions/byt5-bariba-translate/index.ts` - Traduction ByT5 (inchange)
