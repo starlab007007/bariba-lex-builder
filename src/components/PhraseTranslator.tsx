@@ -196,17 +196,10 @@ export const PhraseTranslator = () => {
         await cacheTranslation(sourceText, translation, sourceLang, targetLang, result.confidence);
         
         // Display toast based on method used
-        if (result.method === 'byt5-expert') {
-          toast({
-            title: `🤖 ByT5 Expert`,
-            description: `Traduction en ${result.duration}ms (${result.confidence}% confiance)`
-          });
-        } else if (result.method === 'knowledge-based') {
-          toast({
-            title: `📚 Base linguistique`,
-            description: `Traduction en ${result.duration}ms (${result.confidence}% confiance)`
-          });
-        }
+        toast({
+          title: `🤖 ByT5 Expert`,
+          description: `Traduction en ${result.duration}ms (${result.confidence}% confiance)`
+        });
       }
       
       setTranslatedText(translation);
