@@ -73,6 +73,14 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
       gradient: 'from-amber-500 to-orange-400',
       desc: 'Langues locales'
     },
+    { 
+      emoji: '🤖', 
+      label: 'Fitila IA', 
+      labelBa: 'Fitila IA', 
+      path: '/fitila/ia', 
+      gradient: 'from-purple-500 to-indigo-400',
+      desc: 'ChatGPT Bariba'
+    },
   ];
 
   const handleNavigate = (path: string) => {
