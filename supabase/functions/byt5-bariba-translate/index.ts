@@ -136,6 +136,7 @@ async function callGradioTranslate(
       body: JSON.stringify({ 
         data: data, 
         fn_index: 2,
+        api_name: "/translate_pipeline",
         session_hash: sessionHash 
       }),
       signal: abortSignal,
@@ -359,7 +360,7 @@ serve(async (req) => {
     }
 
     const direction = sourceLang === 'french' ? 'fr-ba' : 'ba-fr';
-    const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualité maximale';
+    const gradioMode = mode === 'fast' ? 'Rapide' : 'Qualite maximale';
 
     console.log(`🤖 ByT5 Expert: ${direction} - "${text.substring(0, 100)}..."`);
     console.log(`📍 Space URL: ${SPACE_URL}`);
