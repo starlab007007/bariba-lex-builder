@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.video-enhance]
 verify_jwt = false
+
+[functions.refine-bariba]
+verify_jwt = false

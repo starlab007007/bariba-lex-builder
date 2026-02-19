@@ -757,4 +757,193 @@ export const FOUNDATION_LESSONS: FoundationLesson[] = [
       },
     ]
   },
+
+  // ─────────────────────────────────────────────────────────────────
+  // 11. EXPRESSIONS & IDIOMES
+  // ─────────────────────────────────────────────────────────────────
+  {
+    id: 'expressions_idiomes',
+    title: { fr: 'Expressions & Idiomes', br: 'Nɛɛrenu kɑ yenu kpɑɑrenu' },
+    icon: '💬',
+    color: '#A855F7',
+    sections: [
+      {
+        title: { fr: 'Salutations essentielles', br: 'Salutations kpɑɑrenu' },
+        content: {
+          fr: 'Les salutations sont au cœur de la culture Bariba. Ne jamais omettre de saluer quelqu\'un avant de parler !',
+          br: 'Salutations Baatɔnum kpɑɑru mɔ. Kun tɔmbu sɛ̃ɛ nɛɛ sɔ̃ɔ saluer !'
+        },
+        table: {
+          headers: ['Français', 'Bariba', 'Contexte'],
+          rows: [
+            ['Bonjour (matin)', 'Kua dɔ̃ɔ', 'Le matin'],
+            ['Bonsoir', 'Kua wɛrɛ', 'Le soir'],
+            ['Comment vas-tu ?', 'A kɛra?', 'Question de santé'],
+            ['Je vais bien', 'Na kɛra sãa sãa', 'Réponse positive'],
+            ['Bienvenue', 'Aagu wunɛ ka weru', 'Accueil'],
+            ['Merci', 'A nii koo', 'Gratitude'],
+            ['Merci beaucoup', 'A nii koo sãa sãa', 'Grande gratitude'],
+            ['Au revoir', 'Ka bɛsɛ', 'Départ'],
+            ['Bonne nuit', 'Ka kpunu sãa', 'Avant dormir'],
+            ['Comment va la famille ?', 'Yɛnu tɔmbu ba kɛra?', 'Politesse'],
+          ]
+        },
+      },
+      {
+        title: { fr: 'Émotions et états', br: 'Sũu kɑ kpindu' },
+        content: {
+          fr: 'Les expressions d\'émotions en Bariba utilisent souvent "sũu" (cœur) ou des constructions avec "man dera" (me prend).',
+          br: '"Sũu" (cœur) kɑ "man dera" (me prend) émotions yiramɔ.'
+        },
+        table: {
+          headers: ['Français', 'Bariba', 'Littéral'],
+          rows: [
+            ['Je suis content', 'Nɛn sũu doma', 'Mon cœur est doux'],
+            ['Je suis triste', 'Nɛn sũu sɛ̃rɑ', 'Mon cœur est dur'],
+            ['Je suis en colère', 'Nɛn sũu gbirima', 'Mon cœur est chaud'],
+            ['J\'ai faim', 'Gɔ̃ɔ man dera', 'La faim me prend'],
+            ['J\'ai soif', 'Nim nɔnkuru man dera', 'L\'envie d\'eau me prend'],
+            ['J\'ai peur', 'Dukua man dera', 'La peur me prend'],
+            ['Je suis fatigué', 'Na biru', 'Je suis usé'],
+            ['C\'est bien', 'Ga nɔɔra', 'C\'est bon'],
+          ]
+        },
+        tip: {
+          fr: '💡 En Bariba, les émotions sont souvent liées au "sũu" (cœur). Un cœur "doux" = content, un cœur "dur" = triste.',
+          br: '💡 Sũu (cœur) émotions mɔ. Sũu doma = content, sũu sɛ̃rɑ = triste.'
+        }
+      },
+      {
+        title: { fr: 'Proverbes et sagesse', br: 'Yenu kpɑɑrenu kɑ deburu' },
+        content: {
+          fr: 'Les proverbes (gɛsɛru) occupent une place centrale dans la culture Bariba. Ils transmettent la sagesse des anciens.',
+          br: 'Gɛsɛru Baatɔnum culture sɔɔ kpɑɑru mɔ. Tɔmbu bakɑrɑnu deburu mɔ.'
+        },
+        examples: [
+          { bariba: 'Tɔmbu ba yɛru dɔmbɔ sɔɔ, sɛ̃ɛ kun ba dera', french: 'L\'union fait la force', note: 'Quand les gens sont ensemble, la fatigue ne les prend pas' },
+          { bariba: 'Goo u gɑ̃ɑ kasuu, u ga bɛri', french: 'Qui cherche trouve', note: 'Si quelqu\'un cherche quelque chose, il le voit' },
+          { bariba: 'Teru kun bɔ dɔmbɔ sɔɔ', french: 'L\'arbre ne tombe pas d\'un seul coup', note: 'La persévérance' },
+          { bariba: 'Muna swaa nɔɔra mɔ', french: 'La patience est un chemin de fleurs', note: 'Vertu de la patience' },
+        ]
+      }
+    ],
+    quiz: [
+      {
+        question: { fr: 'Comment dit-on "Comment vas-tu ?" en Bariba ?', br: '"A kɛra?" Fãsei sɔɔ ?' },
+        options: ['Kua dɔ̃ɔ', 'A kɛra?', 'Ka bɛsɛ', 'A nii koo'],
+        correctIndex: 1,
+        explanation: { fr: '"A kɛra?" est la salutation quotidienne pour demander des nouvelles.', br: '"A kɛra?" salutation baadoma mɔ.' }
+      },
+      {
+        question: { fr: '"Nɛn sũu doma" signifie :', br: '"Nɛn sũu doma" nɛɛmɔ :' },
+        options: ['J\'ai faim', 'Je suis content', 'Je suis triste', 'J\'ai peur'],
+        correctIndex: 1,
+        explanation: { fr: 'Littéralement "Mon cœur est doux" = je suis content.', br: '"Nɛn sũu doma" = cœur doux = content.' }
+      },
+      {
+        question: { fr: 'Que signifie le proverbe "Teru kun bɔ dɔmbɔ sɔɔ" ?', br: '"Teru kun bɔ dɔmbɔ sɔɔ" nɛɛmɔ ?' },
+        options: ['L\'arbre est grand', 'L\'arbre ne tombe pas d\'un seul coup', 'L\'arbre porte des fruits', 'Plante un arbre'],
+        correctIndex: 1,
+        explanation: { fr: 'Ce proverbe enseigne la persévérance : rien ne se fait en un jour.', br: 'Gɛsɛru persévérance debumɔ.' }
+      },
+    ]
+  },
+
+  // ─────────────────────────────────────────────────────────────────
+  // 12. VOCABULAIRE THÉMATIQUE AVANCÉ
+  // ─────────────────────────────────────────────────────────────────
+  {
+    id: 'vocabulaire_avance',
+    title: { fr: 'Vocabulaire thématique', br: 'Yenu kɑ̃ɑnu sɔɔ' },
+    icon: '📚',
+    color: '#F43F5E',
+    sections: [
+      {
+        title: { fr: 'Le corps humain', br: 'Tɔmbu gbãa' },
+        content: {
+          fr: 'Les parties du corps sont parmi les mots les plus utilisés en Bariba au quotidien.',
+          br: 'Gbãa yenu baadoma sɔɔ kpɑɑru mɔ.'
+        },
+        table: {
+          headers: ['Français', 'Bariba'],
+          rows: [
+            ['Tête', 'Wiru'],
+            ['Bouche', 'Nɔɔ'],
+            ['Œil', 'Nɔni'],
+            ['Oreille', 'Turuku'],
+            ['Main', 'Nɔmu'],
+            ['Pied', 'Gɔru'],
+            ['Ventre', 'Binɛ'],
+            ['Dos', 'Kpiru'],
+            ['Cœur', 'Sũu'],
+            ['Dent', 'Yiru'],
+          ]
+        },
+      },
+      {
+        title: { fr: 'Nourriture et cuisine', br: 'Diru kɑ koru' },
+        content: {
+          fr: 'La nourriture est centrale dans la vie sociale Bariba. Connaître ces mots facilite les échanges quotidiens.',
+          br: 'Diru Baatɔnum baadoma sɔɔ kpɑɑru mɔ.'
+        },
+        table: {
+          headers: ['Français', 'Bariba'],
+          rows: [
+            ['Riz', 'Koko'],
+            ['Igname', 'Dɔkuru / Teru'],
+            ['Igname pilée', 'Sɔkura'],
+            ['Gombo', 'Abo'],
+            ['Viande', 'Nɛmu'],
+            ['Poisson', 'Swɛ̃ɛ'],
+            ['Sauce', 'Wɔri'],
+            ['Sel', 'Yɔ̃ɔ'],
+            ['Piment', 'Tukuru'],
+            ['Lait', 'Nim wɑ̃ɑru'],
+          ]
+        },
+      },
+      {
+        title: { fr: 'Jours et temps', br: 'Tɔ̃ɔnu kɑ wɑɑru' },
+        content: {
+          fr: 'Les expressions temporelles en Bariba permettent de situer les événements dans le temps.',
+          br: 'Wɑɑru yenu événements baama yiramɔ.'
+        },
+        table: {
+          headers: ['Français', 'Bariba'],
+          rows: [
+            ['Aujourd\'hui', 'Gisɔ'],
+            ['Demain', 'Yɑmɔ'],
+            ['Hier', 'Yinɑ'],
+            ['Maintenant', 'Tɛ̃'],
+            ['Matin', 'Dɔ̃ɔ yibu'],
+            ['Soir', 'Wɛrɛ'],
+            ['Nuit', 'Yɑm wɔ̃kuru'],
+            ['Toujours', 'Sɑ̃ɑ kpuro'],
+            ['Bientôt', 'Nɛn giru sɔɔ'],
+            ['Longtemps', 'Wɑɑru kpã'],
+          ]
+        },
+      }
+    ],
+    quiz: [
+      {
+        question: { fr: 'Comment dit-on "tête" en Bariba ?', br: '"Wiru" Fãsei sɔɔ ?' },
+        options: ['Nɔɔ', 'Wiru', 'Sũu', 'Nɔni'],
+        correctIndex: 1,
+        explanation: { fr: 'Wiru = tête. Nɔɔ = bouche, Sũu = cœur, Nɔni = œil.', br: 'Wiru = tête.' }
+      },
+      {
+        question: { fr: 'Quel est le mot Bariba pour "riz" ?', br: '"Riz" Baatɔnum ?' },
+        options: ['Dɔkuru', 'Swɛ̃ɛ', 'Koko', 'Nɛmu'],
+        correctIndex: 2,
+        explanation: { fr: 'Koko = riz. Dɔkuru = igname, Swɛ̃ɛ = poisson, Nɛmu = viande.', br: 'Koko = riz.' }
+      },
+      {
+        question: { fr: 'Comment dit-on "demain" ?', br: '"Yɑmɔ" Fãsei sɔɔ ?' },
+        options: ['Gisɔ', 'Yinɑ', 'Yɑmɔ', 'Tɛ̃'],
+        correctIndex: 2,
+        explanation: { fr: 'Yɑmɔ = demain. Gisɔ = aujourd\'hui, Yinɑ = hier, Tɛ̃ = maintenant.', br: 'Yɑmɔ = demain.' }
+      },
+    ]
+  },
 ];
