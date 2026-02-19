@@ -1,147 +1,207 @@
 
-# Refonte UX du Bouton Vocal — Dictionnaire & Traducteur
 
-## Diagnostic UX Actuel : les 5 problèmes
+# Amelioration de la qualite des traductions et transcriptions Bariba
 
-### Problème 1 — L'utilisateur ne sait pas en quelle langue parler AVANT d'appuyer
-Actuellement, la langue source (bariba/français) est déterminée par un toggle invisible dans le header du Traducteur (`translator.sourceLanguage`), ou par `searchDirection` dans le Dictionnaire. L'utilisateur doit naviguer ailleurs pour changer la langue, puis revenir au bouton. Il n'y a aucun indicateur visuel clair sur le bouton lui-même montrant "je vais parler en BARIBA" ou "je vais parler en FRANÇAIS".
+## Objectif
 
-### Problème 2 — Le bouton Envoyer n'existe pas encore au bon moment
-Dans le Dictionnaire, le bouton mic est "appuyer pour démarrer → appuyer pour arrêter → envoi automatique". L'utilisateur doit deviner que le deuxième appui = envoi. Il n'y a pas de bouton ENVOYER distinct qui apparaît PENDANT l'enregistrement pour signaler que l'audio sera soumis à la fin. Dans le Traducteur, même problème.
+Creer un systeme de post-traitement intelligent qui ameliore la qualite, la naturalite et la precision des traductions (FR-BA, BA-FR) et des transcriptions (STT Bariba) avant de les afficher a l'utilisateur.
 
-### Problème 3 — Pas d'invitation à reparler après un résultat
-Après qu'un mot soit trouvé dans le Dictionnaire ou une traduction complétée dans le Traducteur, l'interface ne propose pas clairement de "parler encore". L'utilisateur doit relire l'état de l'interface pour savoir s'il peut recommencer. Il n'y a pas de bouton "🎤 Parler à nouveau".
+## Architecture de la solution
 
-### Problème 4 — Sélection de langue fragmentée et peu visible
-La sélection de la langue à parler est séparée de l'action vocale (toggle en haut, bouton mic en bas). Pour les utilisateurs à faible littératie (cible FITILA), cette séparation crée de la confusion. La règle "voice-first inclusive" exige que tout soit au même endroit.
+L'approche repose sur **deux piliers** :
 
-### Problème 5 — Aucun état "prêt à recevoir" après envoi
-Une fois l'audio envoyé et la réponse reçue, le bouton revient silencieusement à son état initial sans signaler "tu peux parler à nouveau". Sur mobile, cela ressemble à une application gelée.
+1. **Une base de connaissances linguistiques** compilee a partir des fichiers fournis et du guide architectural, stockee dans des fichiers de donnees statiques et injectee dans les prompts IA
+2. **Une edge function de post-traitement** (`refine-bariba`) qui recoit le resultat brut des modeles existants (ByT5, Lovable AI, HuggingFace STT) et le raffine en utilisant Lovable AI (Gemini) avec un prompt systeme enrichi de toute la connaissance linguistique Bariba
 
----
-
-## Nouvelle Architecture UX : le "Panneau Vocal Unifié"
-
-### Concept central
-Regrouper sur une seule carte : **la sélection de langue + le bouton micro + le bouton envoyer + l'invitation à reparler**, dans une séquence visuelle claire à 3 étapes :
+## Flux de donnees
 
 ```text
-ÉTAPE 1 (repos) :      [🇧🇯 Bariba] [🇫🇷 Français]   ← choisir la langue
-                              ↓
-                         [🎤 Appuyer pour parler]
-                         
-ÉTAPE 2 (recording) :  [●●● en cours...] [⏹ ENVOYER]  ← pendant l'enregistrement
-                              ↓
-ÉTAPE 3 (résultat) :   [✅ Transcrit] [🎤 Parler encore] ← après succès
+[Modele ByT5 / Lovable AI]     [Modele STT HuggingFace]
+        |                              |
+        v                              v
+   Traduction brute              Transcription brute
+        |                              |
+        +----------- Filtre -----------+
+                       |
+                       v
+           [Edge Function: refine-bariba]
+           (Lovable AI + Connaissance linguistique)
+                       |
+                       v
+              Resultat raffine, naturel
+                       |
+                       v
+               Affichage utilisateur
 ```
 
 ---
 
-## Fichiers à Modifier
+## Partie 1 : Base de connaissances linguistiques
 
-### 1. Nouveau composant `VoiceLangPanel.tsx`
+### Fichier a creer : `src/data/baribaLinguisticKnowledge.ts`
 
-Créer `src/components/tamtam/VoiceLangPanel.tsx` — un panneau vocal autonome avec :
+Ce fichier compile toute la connaissance extraite des documents fournis en un objet structurel exportable, utilisable a la fois :
+- Par l'edge function de raffinage (injecte dans le prompt systeme)
+- Par le module "Connaissances Fondamentales" (deja existant dans `learningFoundations.ts`, a enrichir)
 
-**État REPOS :**
-- Deux gros boutons de sélection de langue : `🇧🇯 Bariba` / `🇫🇷 Français` (pill buttons, 48px min, avec highlight sur la langue active)
-- En dessous : un grand bouton micro coloré avec label en clair ("Appuyer pour parler" / "Tẹ̀ bọ́tìn...")
-- Indicateur discret de la langue qui sera parlée ("Vous parlerez en Bariba")
+**Contenu du fichier :**
 
-**État ENREGISTREMENT (après premier appui) :**
-- Visualiseur de niveau audio animé (barres verticales colorées en vert/rouge)
-- Timer visible (0:01, 0:02...) en rouge
-- Le bouton micro change de couleur (rouge pulsant)
-- Un bouton "⏹ ENVOYER" apparaît à droite du micro — gros, vert, avec label "Envoyer"
-- Message d'instruction : "Parlez... appuyez ENVOYER quand vous avez fini"
+1. **Regles grammaticales cles** (extraites du guide architectural fourni)
+   - Ordre SOV (Sujet-Objet-Verbe)
+   - Classes nominales (humain: U/Ba, non-humain: Ga/Mu)
+   - Systeme verbal (pas de conjugaison, particules TAM: koo=futur, ra=habituel, -mo=progressif)
+   - Negation (n, kun, ku entre sujet et verbe)
+   - Postpositions (soo = dans, yen so = a cause de)
+   - Adjectifs apres le nom
+   - Tonalite (3 tons: Haut, Moyen, Bas)
 
-**État TRAITEMENT (après envoi) :**
-- Spinner + message contextuel : "🎤 Transcription Bariba en cours..." ou "Réveil du service (~30s)..."
-- Barre de progression indéterminée pour signaler l'activité
+2. **Table des pronoms complete**
+   - Sujet: Na, A, U, Ga/Mu, Sa, I, Ba
+   - Objet: Man, Nun, Sun, Bee, Bu
+   - Possessif: Nen, Wunen, Win, Sun, Been, Ben
 
-**État SUCCÈS (résultat reçu) :**
-- Badge vert avec le texte transcrit entre guillemets : ✅ "yaari"
-- Un bouton "🎤 Parler encore" centré, en couleur secondaire
-- Animation d'entrée (bounce léger) pour attirer l'attention
+3. **Expressions idiomatiques** (69 idiomes du fichier `idiomes-3.json`)
+   - Salutations, emotions, etats, verbes figes, proverbes, connecteurs
 
-**État ERREUR :**
-- Badge rouge avec le message d'erreur court
-- Bouton "🔄 Réessayer" en premier plan
+4. **Corpus d'exemples de reference** (selection de ~200 paires FR-BA les plus representatives des 78K+ et 36K+ entrees)
+   - Phrases courantes, structures SOV, negations, questions, imperatives
 
-### 2. `TamTamDictionary.tsx` — Intégration du panneau
+### Fichier a enrichir : `src/data/learningFoundations.ts`
 
-**Changements :**
-- Remplacer les toggles "Clavier / Vocal" actuels dans le header par un seul bouton "Mode Vocal 🎤" / "Mode Clavier ⌨️" dans la zone d'entrée
-- En mode vocal : afficher `<VoiceLangPanel>` avec `onResult={handleVoiceCommand}`
-- Le `VoiceLangPanel` gère lui-même le changement de `sourceLang` (bariba/français), plus besoin du `searchDirection` séparé pour le mode vocal
+Ajouter **2 nouvelles lecons** aux connaissances fondamentales :
 
-### 3. `TamTamTranslator.tsx` — Intégration dans le mode audio
-
-**Changements :**
-- En mode `audio`, remplacer le `TamTamMicButton` isolé par `<VoiceLangPanel>`
-- Synchroniser la langue sélectionnée dans le panneau avec `translator.sourceLanguage` (bidirectionnel)
-- Quand l'utilisateur change la langue dans le panneau → appeler `translator.swapLanguages()` si besoin
-- Afficher la transcription bariba (`baribaTranscribedText`) directement dans le panneau en état SUCCÈS avant que la traduction n'apparaisse dans le chat
+- **Leon 8 : "Expressions & Idiomes"** — les 69 idiomes du fichier fourni, organises par categorie (Salutations, Emotions, Etats, Actions, Religion, Proverbes, Famille)
+- **Leon 9 : "Vocabulaire Essentiel"** — mots de base extraits du dictionnaire et du corpus (corps, famille, nourriture, nature, nombres composes, jours)
 
 ---
 
-## Design détaillé du `VoiceLangPanel`
+## Partie 2 : Edge Function de raffinage
 
-### Props
+### Fichier a creer : `supabase/functions/refine-bariba/index.ts`
+
+Cette fonction recoit un resultat brut (traduction ou transcription) et le raffine en utilisant Lovable AI avec un prompt systeme massif contenant toute la connaissance linguistique.
+
+**Input :**
 ```typescript
-interface VoiceLangPanelProps {
-  defaultLang?: 'ba' | 'fr';
-  onResult: (result: { audioBase64: string; transcription?: string; sourceLang: 'ba' | 'fr' }) => void;
-  onLangChange?: (lang: 'ba' | 'fr') => void;
-  isProcessingExternal?: boolean;       // le parent traite le résultat
-  isWakingUp?: boolean;                 // pour afficher "réveil du service"
-  lastTranscription?: string;           // texte transcrit à afficher en succès
-  disabled?: boolean;
-  uiLang?: 'ba' | 'fr';               // langue de l'interface elle-même (bariba ou français)
+{
+  text: string;           // Texte brut a raffiner
+  type: 'translation' | 'transcription';
+  direction?: 'fr-ba' | 'ba-fr';  // Pour les traductions
+  originalInput?: string; // Texte source original (pour contexte)
 }
 ```
 
-### Machine d'états interne
-```text
-idle → recording (premier appui sur micro)
-recording → sending (appui sur ENVOYER ou dépassement 30s auto)
-sending → success (transcription reçue)
-sending → error (erreur STT)
-success → idle (appui sur "Parler encore")
-error → idle (appui sur "Réessayer")
+**Output :**
+```typescript
+{
+  refined: string;        // Texte raffine
+  changes: string[];      // Liste des corrections appliquees
+  confidence: number;     // Score de confiance du raffinage
+}
 ```
 
-### Comportement clé
-- La sélection de langue n'est possible QU'en état `idle` (désactivée pendant enregistrement)
-- Le bouton ENVOYER n'apparaît QU'en état `recording` (pour éviter les envois accidentels)
-- En état `success`, le bouton "Parler encore" est le seul élément actionnable → focus naturel
-- Durée minimum 2s toujours enforced, avec message d'erreur inline (pas seulement un toast)
+**Prompt systeme :** Un prompt de ~2000 tokens contenant :
+- Les regles grammaticales SOV, pronoms, classes nominales, tons
+- Les 69 expressions idiomatiques comme exemples de reference
+- 50 paires de traduction de reference (les plus courantes)
+- Instructions specifiques : "Corrige les erreurs de pronoms (U vs Ga/Mu), verifie l'ordre SOV, remplace les calques du francais par des formulations idiomatiques Bariba, utilise les postpositions correctement, assure la coherence des classes nominales"
+- Pour les transcriptions : "Corrige les fautes de segmentation des mots, normalise les diacritiques (o vs oo, e vs ee, a vs aa), verifie les tons marques"
+
+**Logique :** Appel non-streaming a Lovable AI (Gemini 2.5 Flash) avec temperature 0.2 pour maximiser la precision.
 
 ---
 
-## Comportement attendu end-to-end
+## Partie 3 : Integration dans les pipelines existants
 
-**Dictionnaire (mode vocal Bariba → Français) :**
-1. Utilisateur voit le panneau avec [🇧🇯 Bariba] sélectionné par défaut
-2. Appuie sur le micro → enregistrement démarre, bouton ENVOYER apparaît
-3. Parle "yaari" → le niveau audio s'anime
-4. Appuie ENVOYER → spinner "Transcription Bariba..."
-5. Succès : ✅ "yaari" + définition trouvée s'affiche dessous
-6. Bouton "🎤 Parler encore" → retour à l'état idle, prêt pour un nouveau mot
+### Modification : `supabase/functions/byt5-bariba-translate/index.ts`
 
-**Traducteur (mode vocal Français → Bariba) :**
-1. Utilisateur sélectionne [🇫🇷 Français] dans le panneau
-2. Appuie micro → parle "comment vas-tu"
-3. Appuie ENVOYER → STT français (Web Speech / Mistral)
-4. Succès : ✅ "comment vas-tu" + traduction bariba dans le chat
-5. Bouton "🎤 Parler encore" → prêt pour le prochain énoncé
+Apres avoir obtenu la traduction brute de ByT5 (ou du fallback Lovable AI), appeler `refine-bariba` pour raffiner le resultat avant de le retourner au client.
+
+```text
+ByT5 → traduction brute → refine-bariba → traduction raffinee → retour client
+```
+
+Le raffinage est optionnel et non-bloquant : si `refine-bariba` echoue ou prend trop de temps (>5s), le resultat brut est retourne tel quel.
+
+### Modification : `supabase/functions/bariba-stt/index.ts`
+
+Apres avoir obtenu la transcription brute du Space HuggingFace, appeler `refine-bariba` pour nettoyer et normaliser le texte avant de le retourner.
+
+```text
+HF Space → transcription brute → refine-bariba → transcription nettoyee → retour client
+```
+
+### Modification : `src/hooks/useSimpleTranslation.ts`
+
+Pas de changement cote client : le raffinage se fait entierement cote serveur (edge functions). Le client recoit directement le resultat raffine.
 
 ---
 
-## Fichiers à créer / modifier
+## Partie 4 : Enrichissement du module "Apprendre"
+
+### Modification : `src/data/learningFoundations.ts`
+
+Ajouter les 2 nouvelles lecons mentionnees (Expressions & Idiomes + Vocabulaire Essentiel) en suivant la structure `FoundationLesson` existante, avec :
+- Sections avec tables et exemples
+- Quiz de 3 questions par lecon
+- Textes bilingues (fr + br)
+
+---
+
+## Fichiers a creer / modifier
 
 | Action | Fichier | Description |
 |---|---|---|
-| Créer | `src/components/tamtam/VoiceLangPanel.tsx` | Panneau vocal unifié avec machine d'états |
-| Modifier | `src/pages/tamtam/TamTamDictionary.tsx` | Intégrer VoiceLangPanel en mode vocal |
-| Modifier | `src/pages/tamtam/TamTamTranslator.tsx` | Remplacer TamTamMicButton par VoiceLangPanel en mode audio |
+| Creer | `src/data/baribaLinguisticKnowledge.ts` | Base de connaissances linguistiques compilee |
+| Creer | `supabase/functions/refine-bariba/index.ts` | Edge function de post-traitement IA |
+| Modifier | `supabase/functions/byt5-bariba-translate/index.ts` | Appeler refine-bariba apres traduction brute |
+| Modifier | `supabase/functions/bariba-stt/index.ts` | Appeler refine-bariba apres transcription brute |
+| Modifier | `src/data/learningFoundations.ts` | Ajouter 2 nouvelles lecons (Idiomes + Vocabulaire) |
+| Copier | `public/data/idiomes.json` | Copier idiomes-3.json dans le projet |
+| Copier | `public/data/corpus_reference.json` | Selection de paires de reference du corpus |
+
+---
+
+## Section technique detaillee
+
+### Prompt systeme pour `refine-bariba` (resume)
+
+```
+Tu es un expert linguiste en langue Bariba (Baatonum).
+
+REGLES GRAMMATICALES BARIBA :
+- Ordre : SOV (Sujet-Objet-Verbe). Ex: "Na koko di" = Je riz mange
+- Pronoms sujet : Na(je), A(tu), U(il humain), Ga/Mu(il chose), Sa(nous), I(vous), Ba(ils)
+- Pronoms possessifs : Nen(mon), Wunen(ton), Win(son), Sun(notre), Been(votre), Ben(leur)
+- Classes nominales : -bu/-mbu(humain pl.), a-/y-(anime sg.), m-(inanime), -nu/-su(collectif)
+- Temps : rien(passe), koo(futur), ra(habituel), -mo(progressif)
+- Negation : n/kun/ku entre sujet et verbe
+- Postpositions : soo(dans), yen so(a cause de)
+- Adjectifs APRES le nom
+- "Etre" = waa, "Avoir" = mo
+
+IDIOMES DE REFERENCE :
+[69 expressions idiomatiques injectees]
+
+PAIRES DE TRADUCTION DE REFERENCE :
+[50 paires les plus courantes]
+
+TACHE :
+Reçois un texte [traduit/transcrit] et ameliore-le :
+1. Corrige l'ordre des mots (SOV)
+2. Verifie pronoms et classes nominales
+3. Remplace calques francais par formulations idiomatiques
+4. Normalise diacritiques et tons
+5. Retourne UNIQUEMENT le texte corrige, sans explication
+```
+
+### Gestion du timeout
+
+L'appel a `refine-bariba` depuis `byt5-bariba-translate` et `bariba-stt` utilise un timeout de 5 secondes. Si depasse, le resultat brut est retourne avec un flag `refined: false` dans les metadonnees.
+
+### Impact sur la latence
+
+- Traduction actuelle : ~3-8s (ByT5) ou ~2s (Lovable AI)
+- Avec raffinage : +1-2s supplementaires
+- Total : ~4-10s — acceptable pour une meilleure qualite
+
