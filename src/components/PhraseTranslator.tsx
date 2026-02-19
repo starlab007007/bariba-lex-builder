@@ -136,21 +136,13 @@ export const PhraseTranslator = () => {
     }
   };
 
-  // Détecter automatiquement la langue et ajuster la direction
+  // Détecter la langue pour affichage (badge) - ne change PAS la direction
   useEffect(() => {
     if (!sourceText.trim() || !isInitialized) {
       setDetectedLang('mixed');
       return;
     }
-
-    const lang = detectLanguage(sourceText);
-    setDetectedLang(lang);
-
-    if (lang === 'french' && direction !== 'french-to-bariba') {
-      setDirection('french-to-bariba');
-    } else if (lang === 'bariba' && direction !== 'bariba-to-french') {
-      setDirection('bariba-to-french');
-    }
+    setDetectedLang(detectLanguage(sourceText));
   }, [sourceText, isInitialized, detectLanguage]);
 
   const translatePhrase = async () => {
@@ -209,10 +201,10 @@ export const PhraseTranslator = () => {
             title: `🤖 ByT5 Expert`,
             description: `Traduction en ${result.duration}ms (${result.confidence}% confiance)`
           });
-        } else {
+        } else if (result.method === 'knowledge-based') {
           toast({
-            title: `🧠 Lovable AI`,
-            description: `En ${result.duration}ms avec ${result.confidence}% de confiance.`
+            title: `📚 Base linguistique`,
+            description: `Traduction en ${result.duration}ms (${result.confidence}% confiance)`
           });
         }
       }
@@ -329,11 +321,29 @@ export const PhraseTranslator = () => {
           <span className="bariba-text mr-1">Bààtɔ̀nú</span> → Français
         </Button>
         
-        {/* Détection automatique de la langue */}
+      {/* Détection de langue (informatif uniquement) */}
         {detectedLang !== 'mixed' && sourceText.trim() && (
-          <Badge variant="secondary" className="text-xs">
+          <Badge 
+            variant={
+              (detectedLang === 'french' && direction === 'french-to-bariba') ||
+              (detectedLang === 'bariba' && direction === 'bariba-to-french')
+                ? 'secondary' 
+                : 'destructive'
+            } 
+            className="text-xs cursor-pointer"
+            onClick={() => {
+              if (detectedLang === 'french' && direction !== 'french-to-bariba') {
+                setDirection('french-to-bariba');
+              } else if (detectedLang === 'bariba' && direction !== 'bariba-to-french') {
+                setDirection('bariba-to-french');
+              }
+            }}
+          >
             <Languages className="h-3 w-3 mr-1" />
-            Détecté: {detectedLang === 'french' ? 'Français' : 'Bààtɔ̀nú'}
+            {detectedLang === 'french' ? 'Français détecté' : 'Bààtɔ̀nú détecté'}
+            {((detectedLang === 'french' && direction !== 'french-to-bariba') ||
+              (detectedLang === 'bariba' && direction !== 'bariba-to-french')) && 
+              ' — cliquer pour corriger'}
           </Badge>
         )}
       </div>
