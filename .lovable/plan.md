@@ -1,152 +1,147 @@
 
-# Diagnostic Complet : Bariba STT (voix → texte bariba)
+# Refonte UX du Bouton Vocal — Dictionnaire & Traducteur
 
-## Architecture actuelle (flux de données)
+## Diagnostic UX Actuel : les 5 problèmes
 
-Le pipeline Bariba STT implique 4 couches distinctes :
+### Problème 1 — L'utilisateur ne sait pas en quelle langue parler AVANT d'appuyer
+Actuellement, la langue source (bariba/français) est déterminée par un toggle invisible dans le header du Traducteur (`translator.sourceLanguage`), ou par `searchDirection` dans le Dictionnaire. L'utilisateur doit naviguer ailleurs pour changer la langue, puis revenir au bouton. Il n'y a aucun indicateur visuel clair sur le bouton lui-même montrant "je vais parler en BARIBA" ou "je vais parler en FRANÇAIS".
+
+### Problème 2 — Le bouton Envoyer n'existe pas encore au bon moment
+Dans le Dictionnaire, le bouton mic est "appuyer pour démarrer → appuyer pour arrêter → envoi automatique". L'utilisateur doit deviner que le deuxième appui = envoi. Il n'y a pas de bouton ENVOYER distinct qui apparaît PENDANT l'enregistrement pour signaler que l'audio sera soumis à la fin. Dans le Traducteur, même problème.
+
+### Problème 3 — Pas d'invitation à reparler après un résultat
+Après qu'un mot soit trouvé dans le Dictionnaire ou une traduction complétée dans le Traducteur, l'interface ne propose pas clairement de "parler encore". L'utilisateur doit relire l'état de l'interface pour savoir s'il peut recommencer. Il n'y a pas de bouton "🎤 Parler à nouveau".
+
+### Problème 4 — Sélection de langue fragmentée et peu visible
+La sélection de la langue à parler est séparée de l'action vocale (toggle en haut, bouton mic en bas). Pour les utilisateurs à faible littératie (cible FITILA), cette séparation crée de la confusion. La règle "voice-first inclusive" exige que tout soit au même endroit.
+
+### Problème 5 — Aucun état "prêt à recevoir" après envoi
+Une fois l'audio envoyé et la réponse reçue, le bouton revient silencieusement à son état initial sans signaler "tu peux parler à nouveau". Sur mobile, cela ressemble à une application gelée.
+
+---
+
+## Nouvelle Architecture UX : le "Panneau Vocal Unifié"
+
+### Concept central
+Regrouper sur une seule carte : **la sélection de langue + le bouton micro + le bouton envoyer + l'invitation à reparler**, dans une séquence visuelle claire à 3 étapes :
 
 ```text
-[Micro utilisateur]
-       ↓  (pression bouton)
-[TamTamMicButton] — enregistre en audio/webm (MediaRecorder)
-       ↓  (audioBase64)
-[TamTamDictionary / TamTamTranslator]
-       ↓  appel handleVoiceCommand / handleVoiceResult
-[useBaribaSTT.transcribe()]
-       ↓  supabase.functions.invoke('bariba-stt')
-[Edge Function bariba-stt]
-       ↓  3 étapes Gradio v4
-[HuggingFace Space zimesongbian/baatonum_asr_stt_api_v001_improve]
+ÉTAPE 1 (repos) :      [🇧🇯 Bariba] [🇫🇷 Français]   ← choisir la langue
+                              ↓
+                         [🎤 Appuyer pour parler]
+                         
+ÉTAPE 2 (recording) :  [●●● en cours...] [⏹ ENVOYER]  ← pendant l'enregistrement
+                              ↓
+ÉTAPE 3 (résultat) :   [✅ Transcrit] [🎤 Parler encore] ← après succès
 ```
 
 ---
 
-## Problèmes identifiés
+## Fichiers à Modifier
 
-### Problème 1 — Double chemin STT : conflit entre `useUnifiedAudio` et `useBaribaSTT`
+### 1. Nouveau composant `VoiceLangPanel.tsx`
 
-Dans `TamTamMicButton.tsx` (ligne 304), quand `sourceLang === 'ba'` et `autoTranscribe = true`, le bouton appelle :
+Créer `src/components/tamtam/VoiceLangPanel.tsx` — un panneau vocal autonome avec :
+
+**État REPOS :**
+- Deux gros boutons de sélection de langue : `🇧🇯 Bariba` / `🇫🇷 Français` (pill buttons, 48px min, avec highlight sur la langue active)
+- En dessous : un grand bouton micro coloré avec label en clair ("Appuyer pour parler" / "Tẹ̀ bọ́tìn...")
+- Indicateur discret de la langue qui sera parlée ("Vous parlerez en Bariba")
+
+**État ENREGISTREMENT (après premier appui) :**
+- Visualiseur de niveau audio animé (barres verticales colorées en vert/rouge)
+- Timer visible (0:01, 0:02...) en rouge
+- Le bouton micro change de couleur (rouge pulsant)
+- Un bouton "⏹ ENVOYER" apparaît à droite du micro — gros, vert, avec label "Envoyer"
+- Message d'instruction : "Parlez... appuyez ENVOYER quand vous avez fini"
+
+**État TRAITEMENT (après envoi) :**
+- Spinner + message contextuel : "🎤 Transcription Bariba en cours..." ou "Réveil du service (~30s)..."
+- Barre de progression indéterminée pour signaler l'activité
+
+**État SUCCÈS (résultat reçu) :**
+- Badge vert avec le texte transcrit entre guillemets : ✅ "yaari"
+- Un bouton "🎤 Parler encore" centré, en couleur secondaire
+- Animation d'entrée (bounce léger) pour attirer l'attention
+
+**État ERREUR :**
+- Badge rouge avec le message d'erreur court
+- Bouton "🔄 Réessayer" en premier plan
+
+### 2. `TamTamDictionary.tsx` — Intégration du panneau
+
+**Changements :**
+- Remplacer les toggles "Clavier / Vocal" actuels dans le header par un seul bouton "Mode Vocal 🎤" / "Mode Clavier ⌨️" dans la zone d'entrée
+- En mode vocal : afficher `<VoiceLangPanel>` avec `onResult={handleVoiceCommand}`
+- Le `VoiceLangPanel` gère lui-même le changement de `sourceLang` (bariba/français), plus besoin du `searchDirection` séparé pour le mode vocal
+
+### 3. `TamTamTranslator.tsx` — Intégration dans le mode audio
+
+**Changements :**
+- En mode `audio`, remplacer le `TamTamMicButton` isolé par `<VoiceLangPanel>`
+- Synchroniser la langue sélectionnée dans le panneau avec `translator.sourceLanguage` (bidirectionnel)
+- Quand l'utilisateur change la langue dans le panneau → appeler `translator.swapLanguages()` si besoin
+- Afficher la transcription bariba (`baribaTranscribedText`) directement dans le panneau en état SUCCÈS avant que la traduction n'apparaisse dans le chat
+
+---
+
+## Design détaillé du `VoiceLangPanel`
+
+### Props
 ```typescript
-const result = await unifiedAudio.transcribeWithTranslation(audioBase64, sourceLang);
-```
-Ce chemin passe par `UnifiedAudioService.transcribeAndTranslate()` → `bariba-stt`.
-
-Mais dans `TamTamDictionary.tsx`, le `TamTamMicButton` est appelé avec `autoTranscribe={true}`, puis `handleVoiceCommand` vérifie si `result.transcription` est vide, et seulement ALORS appelle `useBaribaSTT`. **Problème : si `UnifiedAudioService` réussit (ou échoue silencieusement), le second appel `useBaribaSTT` ne se fait jamais car `result.transcription` est déjà défini (même vide → `''` est falsy, donc ça marchera).**
-
-En réalité le flux dans le dictionnaire est le suivant :
-1. `TamTamMicButton` → `autoTranscribe=true` → `unifiedAudio.transcribeWithTranslation()` → appel `bariba-stt` → résultat dans `result.transcription`
-2. `handleVoiceCommand` reçoit ce résultat, vérifie si vide
-3. Si vide → appelle `transcribeBariba` (useBaribaSTT) — double appel STT !
-
-Le résultat du **premier** appel (via UnifiedAudioService) si il échoue retourne `transcription: ''`, puis le deuxième appel (via useBaribaSTT) se déclenche. Mais c'est le même endpoint `bariba-stt` — **deux appels consécutifs au même service défaillant**.
-
-### Problème 2 — `TamTamMicButton` utilise `autoTranscribe=true` dans le Dictionnaire mais le Traducteur ne le fait PAS
-
-Dans `TamTamDictionary.tsx` :
-```tsx
-<TamTamMicButton autoTranscribe={true} autoTranslate={false} sourceLang="ba" />
-```
-→ `TamTamMicButton` appelle `unifiedAudio.transcribeWithTranslation()` lui-même, PUIS `handleVoiceCommand` ré-appelle potentiellement `useBaribaSTT` → **deux appels STT**.
-
-Dans `TamTamTranslator.tsx`, `handleVoiceResult` ne reçoit PAS de transcription pré-faite depuis le `TamTamMicButton` (non visible dans le code du Traducteur), et appelle directement `transcribeBariba` si `sourceLang === 'ba'`.
-
-### Problème 3 — L'edge function `bariba-stt` : `SSE stream ended without complete event`
-
-Les logs montrent que l'erreur récurrente est :
-```
-"details": "SSE stream ended without complete event"
-```
-Après analyse du code SSE dans `bariba-stt/index.ts`, le problème vient du fait que :
-- Le Space HuggingFace retourne **3 événements SSE intermédiaires** avant le final : `estimation`, `process_starts`, puis le résultat final
-- Le parser actuel cherche `event: complete` ou `msg: process_completed` en analysant les blocs délimités par une ligne vide (`''`)
-- **Si le Space retourne le SSE avec des `\r\n` (CRLF) au lieu de `\n` (LF)**, le split sur `\n` laisse des `\r` résiduels qui font échouer `line === ''` (car `line` vaut `'\r'` et non `''`)
-
-De plus, d'après les logs du TTS (qui utilise `queue/join` et réussit), le format du Space est :
-```
-data: {"msg":"estimation",...}
-
-data: {"msg":"process_starts",...}
-
-data: {"msg":"process_completed","event_id":"...","output":{"data":["texte transcrit"],...}}
-```
-Le champ `output.data[0]` est directement **un string** — format A standard de Gradio. Mais le parser cherche aussi `event: complete` (format B custom) qui n'existe peut-être pas sur ce Space.
-
-### Problème 4 — Délimiteur CRLF vs LF dans le parseur SSE
-
-Le code actuel fait :
-```typescript
-const lines = sseText.split('\n');
-// ...
-} else if (line === '' && lastData) {
-```
-Si le serveur renvoie `\r\n`, chaque ligne sera `"data: ...\r"` au lieu de `"data: ..."`, et les lignes vides seront `"\r"` au lieu de `""`. La condition `line === ''` ne sera **jamais** satisfaite → le parser ne trouve jamais la fin d'un bloc SSE → erreur `SSE stream ended without complete event`.
-
-### Problème 5 — `TamTamMicButton` en mode Bariba avec `autoTranscribe=true` : redondance et erreur silencieuse
-
-Quand `autoTranscribe=true` dans le Dictionnaire, `TamTamMicButton` appelle `unifiedAudio.transcribeWithTranslation()` qui lève une erreur si STT échoue — mais l'erreur est catchée en interne et retourne `transcription: ''`. Le callback `onRecordingComplete` reçoit alors `{ audioBase64, transcription: undefined }`. Puis `handleVoiceCommand` voit `!query && result.audioBase64` et refait un appel STT.
-
----
-
-## Solution : 3 corrections ciblées
-
-### Correction 1 — Edge function `bariba-stt/index.ts` : robustification du parseur SSE
-
-**Normaliser CRLF → LF avant de splitter**, et améliorer l'extraction du résultat pour le format Gradio standard :
-
-```typescript
-// Normalisation CRLF → LF
-const sseText = (await response.text()).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-const lines = sseText.split('\n');
-
-// Dans la boucle, détecter aussi data: contenant msg:process_completed directement
-// sans attendre un événement SSE "event: xxx" précédent
+interface VoiceLangPanelProps {
+  defaultLang?: 'ba' | 'fr';
+  onResult: (result: { audioBase64: string; transcription?: string; sourceLang: 'ba' | 'fr' }) => void;
+  onLangChange?: (lang: 'ba' | 'fr') => void;
+  isProcessingExternal?: boolean;       // le parent traite le résultat
+  isWakingUp?: boolean;                 // pour afficher "réveil du service"
+  lastTranscription?: string;           // texte transcrit à afficher en succès
+  disabled?: boolean;
+  uiLang?: 'ba' | 'fr';               // langue de l'interface elle-même (bariba ou français)
+}
 ```
 
-Et ajouter la détection directe du format standard Gradio (le plus courant) où `data:` contient directement `{"msg":"process_completed",...}` sans ligne `event:` préalable.
-
-**Ajouter aussi un timeout SSE progressif** : retry de lecture SSE jusqu'à 3 fois si le stream se termine sans résultat.
-
-### Correction 2 — `TamTamDictionary.tsx` : supprimer la double transcription
-
-Changer `autoTranscribe={false}` dans le `TamTamMicButton` du Dictionnaire, pour que le callback reçoive uniquement `audioBase64` brut. La transcription est ensuite gérée uniquement par `handleVoiceCommand` via `useBaribaSTT` — un seul chemin, clair et traceable.
-
-```tsx
-<TamTamMicButton
-  autoTranscribe={false}   // ← était true, causait double-STT
-  autoTranslate={false}
-  sourceLang={searchDirection === 'ba-fr' ? 'ba' : 'fr'}
-  onRecordingComplete={handleVoiceCommand}
-/>
-```
-
-Pour le français, gérer la transcription française directement dans `handleVoiceCommand` via `useFrenchSTT`.
-
-### Correction 3 — `TamTamTranslator.tsx` : même simplification pour le mode vocal Bariba
-
-S'assurer que le `TamTamMicButton` utilisé dans le Traducteur passe `autoTranscribe={false}` côté Bariba, et que `handleVoiceResult` gère tout le pipeline STT via `useBaribaSTT`.
-
----
-
-## Fichiers à modifier
-
-| Fichier | Changement |
-|---|---|
-| `supabase/functions/bariba-stt/index.ts` | Fix CRLF + robustification parseur SSE + logs détaillés du SSE brut |
-| `src/pages/tamtam/TamTamDictionary.tsx` | `autoTranscribe={false}` dans TamTamMicButton + gestion transcription FR dans handleVoiceCommand |
-| `src/pages/tamtam/TamTamTranslator.tsx` | Vérifier que handleVoiceResult est le seul chemin STT Bariba |
-
----
-
-## Résultat attendu
-
+### Machine d'états interne
 ```text
-Utilisateur parle en Bariba (Dictionnaire/Traducteur)
-→ TamTamMicButton collecte l'audio raw (audioBase64)
-→ handleVoiceCommand/handleVoiceResult appelle useBaribaSTT.transcribe()
-→ bariba-stt edge function :
-    1. Upload audio sur HuggingFace (multipart)
-    2. POST /gradio_api/call/transcribe → event_id
-    3. GET /gradio_api/call/transcribe/{event_id} → SSE (CRLF normalisé)
-    4. Extraction correcte de output.data[0] ou transcription
-→ Texte Bariba retourné → affiché / recherché dans le dictionnaire
+idle → recording (premier appui sur micro)
+recording → sending (appui sur ENVOYER ou dépassement 30s auto)
+sending → success (transcription reçue)
+sending → error (erreur STT)
+success → idle (appui sur "Parler encore")
+error → idle (appui sur "Réessayer")
 ```
+
+### Comportement clé
+- La sélection de langue n'est possible QU'en état `idle` (désactivée pendant enregistrement)
+- Le bouton ENVOYER n'apparaît QU'en état `recording` (pour éviter les envois accidentels)
+- En état `success`, le bouton "Parler encore" est le seul élément actionnable → focus naturel
+- Durée minimum 2s toujours enforced, avec message d'erreur inline (pas seulement un toast)
+
+---
+
+## Comportement attendu end-to-end
+
+**Dictionnaire (mode vocal Bariba → Français) :**
+1. Utilisateur voit le panneau avec [🇧🇯 Bariba] sélectionné par défaut
+2. Appuie sur le micro → enregistrement démarre, bouton ENVOYER apparaît
+3. Parle "yaari" → le niveau audio s'anime
+4. Appuie ENVOYER → spinner "Transcription Bariba..."
+5. Succès : ✅ "yaari" + définition trouvée s'affiche dessous
+6. Bouton "🎤 Parler encore" → retour à l'état idle, prêt pour un nouveau mot
+
+**Traducteur (mode vocal Français → Bariba) :**
+1. Utilisateur sélectionne [🇫🇷 Français] dans le panneau
+2. Appuie micro → parle "comment vas-tu"
+3. Appuie ENVOYER → STT français (Web Speech / Mistral)
+4. Succès : ✅ "comment vas-tu" + traduction bariba dans le chat
+5. Bouton "🎤 Parler encore" → prêt pour le prochain énoncé
+
+---
+
+## Fichiers à créer / modifier
+
+| Action | Fichier | Description |
+|---|---|---|
+| Créer | `src/components/tamtam/VoiceLangPanel.tsx` | Panneau vocal unifié avec machine d'états |
+| Modifier | `src/pages/tamtam/TamTamDictionary.tsx` | Intégrer VoiceLangPanel en mode vocal |
+| Modifier | `src/pages/tamtam/TamTamTranslator.tsx` | Remplacer TamTamMicButton par VoiceLangPanel en mode audio |
