@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const djMixVisualTemplate: Template = {
   id: 'dj-mix-visual',
   name: 'DJ Mix Visual',
-  nameBa: 'Àwòrán DJ',
+  nameBa: 'Wéérù DJ',
   category: 'music',
   description: 'Visuel professionnel pour DJ et producteurs',
-  descriptionBa: 'Àwòrán fún DJ',
+  descriptionBa: 'Wéérù sɔmburu fún DJ',
   thumbnail: '/assets/templates/dj-mix-visual-thumb.jpg',
   duration: 45,
   isPremium: true,

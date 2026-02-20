@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const docExpressPatrimoineTemplate: Template = {
   id: 'doc-express-patrimoine',
   name: 'Doc Express Patrimoine',
-  nameBa: 'Àkọsílẹ̀ Ohun-Ìní',
+  nameBa: 'Doc Kpɑɑru Kíákíá',
   category: 'education',
   description: 'Documentation rapide du patrimoine culturel',
-  descriptionBa: 'Àkọsílẹ̀ àṣà ìbílẹ̀',
+  descriptionBa: 'Kpɑɑru kɔ̃siru kíákíá',
   thumbnail: '/assets/templates/doc-express-patrimoine-thumb.jpg',
   duration: 30,
   isPremium: false,

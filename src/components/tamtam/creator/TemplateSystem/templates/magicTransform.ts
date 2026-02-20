@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const magicTransformTemplate: Template = {
   id: 'magic-transform',
   name: 'Magic Transform',
-  nameBa: 'Ìyípadà Àjé',
+  nameBa: 'Gbɛsiru Dùùrɛ̀',
   category: 'future',
   description: 'Effets de transformation magique avec particules et lueurs',
-  descriptionBa: 'Àwọn ìṣe ìyípadà pẹ̀lú ìmọ́lẹ̀ àjé',
+  descriptionBa: 'Gbɛsiru dùùrɛ̀ pɛ wéérù',
   thumbnail: '/assets/templates/magic-transform-thumb.jpg',
   duration: 20,
   isPremium: true,

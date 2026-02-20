@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const styleCinemaLocalTemplate: Template = {
   id: 'style-cinema-local',
   name: 'Style Cinéma Local',
-  nameBa: 'Fíìmù Ilé',
+  nameBa: 'Fíìmù Yɛnu',
   category: 'storytelling',
   description: 'Style cinématographique africain avec grain de film et tons chauds',
-  descriptionBa: 'Fíìmù àṣà Áfíríkà pẹ̀lú ìmọ́lẹ̀ gbígbóná',
+  descriptionBa: 'Fíìmù kpɑɑru pɛ wéérù gbìgbóná',
   thumbnail: '/assets/templates/style-cinema-local-thumb.jpg',
   duration: 45,
   isPremium: false,

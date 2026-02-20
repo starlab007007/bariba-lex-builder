@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const histoireVraieTemplate: Template = {
   id: 'histoire-vraie',
   name: 'Histoire Vraie',
-  nameBa: 'Ìtàn Òtítọ́',
+  nameBa: 'Táárù Gbàngbàn',
   category: 'storytelling',
   description: 'Format témoignage pour histoires vraies',
-  descriptionBa: 'Ìtàn tó ṣẹlẹ̀ gan',
+  descriptionBa: 'Táárù tíí kɔ gbàngbàn',
   thumbnail: '/assets/templates/histoire-vraie-thumb.jpg',
   duration: 90,
   isPremium: true,

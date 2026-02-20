@@ -11,7 +11,7 @@ export const hologramEffectTemplate: Template = {
   nameBa: 'Hologram',
   category: 'future',
   description: 'Effet holographique science-fiction',
-  descriptionBa: 'Àwòrán hologram',
+  descriptionBa: 'Wéérù hologram',
   thumbnail: '/assets/templates/hologram-effect-thumb.jpg',
   duration: 20,
   isPremium: true,

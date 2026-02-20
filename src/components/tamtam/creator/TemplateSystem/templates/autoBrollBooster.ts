@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const autoBrollBoosterTemplate: Template = {
   id: 'auto-broll-booster',
   name: 'Auto B-Roll Booster',
-  nameBa: 'Àfikún Fídíò Aládàánídá',
+  nameBa: 'Vidéo Gbɛsiru',
   category: 'business',
   description: 'Améliore les vidéos avec des coupes et transitions style B-roll',
-  descriptionBa: 'Mú fídíò dára sí pẹ̀lú àwọn ìyípadà',
+  descriptionBa: 'Gbɛsiru vidéo pɛ wéérù nɔɔra',
   thumbnail: '/assets/templates/auto-broll-thumb.jpg',
   duration: 45,
   isPremium: true,

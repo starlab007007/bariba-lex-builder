@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const danceChallengeTemplate: Template = {
   id: 'dance-challenge',
   name: 'Dance Challenge',
-  nameBa: 'Ìpèníjà Ijó',
+  nameBa: 'Yiru Gɔnɔ',
   category: 'music',
   description: 'Format défi danse style TikTok',
-  descriptionBa: 'Ìpèníjà ijó',
+  descriptionBa: 'Yiru gɔnɔ kpuro',
   thumbnail: '/assets/templates/dance-challenge-thumb.jpg',
   duration: 15,
   isPremium: false,

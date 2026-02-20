@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const annonceCommunautaireTemplate: Template = {
   id: 'annonce-communautaire',
   name: 'Annonce Communautaire',
-  nameBa: 'Ìkéde Àwùjọ',
+  nameBa: 'Nɛɛru Tɔmbu',
   category: 'business',
   description: 'Annonces et informations communautaires',
-  descriptionBa: 'Ìròyìn fún àwùjọ',
+  descriptionBa: 'Nɛɛru fún tɔmbu yɛrenu',
   thumbnail: '/assets/templates/annonce-communautaire-thumb.jpg',
   duration: 30,
   isPremium: false,

@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const leconDuJourTemplate: Template = {
   id: 'lecon-du-jour',
   name: 'Leçon du Jour',
-  nameBa: 'Ẹ̀kọ́ Ọjọ́',
+  nameBa: 'Debu Gisɔ',
   category: 'education',
   description: 'Format éducatif pour leçons quotidiennes',
-  descriptionBa: 'Ìkẹ́kọ̀ọ́ lójoojúmọ́',
+  descriptionBa: 'Debu sɔ̃ɔ kpuro',
   thumbnail: '/assets/templates/lecon-du-jour-thumb.jpg',
   duration: 45,
   isPremium: false,

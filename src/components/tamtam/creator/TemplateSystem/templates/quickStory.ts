@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const quickStoryTemplate: Template = {
   id: 'quick-story',
   name: 'Quick Story',
-  nameBa: 'Ìtàn Kíákíá',
+  nameBa: 'Táárù Kíákíá',
   category: 'storytelling',
   description: 'Narration rapide pour contenus courts et impactants',
-  descriptionBa: 'Ìtàn kékeré tó lágbára',
+  descriptionBa: 'Táárù kíákíá tíí gbóná',
   thumbnail: '/assets/templates/quick-story-thumb.jpg',
   duration: 15,
   isPremium: false,

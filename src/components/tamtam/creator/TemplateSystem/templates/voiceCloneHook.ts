@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const voiceCloneHookTemplate: Template = {
   id: 'voice-clone-hook',
   name: 'Voice Clone Hook',
-  nameBa: 'Ohùn Kíkó',
+  nameBa: 'Nɔɔ Koru AI',
   category: 'business',
   description: 'Accroche vocale avec clonage IA pour marketing',
-  descriptionBa: 'Ohùn kíkó pẹ̀lú AI',
+  descriptionBa: 'Nɔɔ koru pɛ AI',
   thumbnail: '/assets/templates/voice-clone-hook-thumb.jpg',
   duration: 15,
   isPremium: true,

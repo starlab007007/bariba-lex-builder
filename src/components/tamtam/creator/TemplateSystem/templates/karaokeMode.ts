@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const karaokeModeTemplate: Template = {
   id: 'karaoke-mode',
   name: 'Karaoke Mode',
-  nameBa: 'Orin Karaoke',
+  nameBa: 'Wùúsú Karaoke',
   category: 'music',
   description: 'Paroles synchronisées style karaoké',
-  descriptionBa: 'Orin pẹ̀lú àkọlé',
+  descriptionBa: 'Wùúsú pɛ kɔ̃siru tɛ̀lé',
   thumbnail: '/assets/templates/karaoke-mode-thumb.jpg',
   duration: 60,
   isPremium: true,

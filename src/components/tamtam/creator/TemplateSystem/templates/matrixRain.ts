@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const matrixRainTemplate: Template = {
   id: 'matrix-rain',
   name: 'Matrix Rain',
-  nameBa: 'Ojú Omi Matrix',
+  nameBa: 'Gura Matrix',
   category: 'future',
   description: 'Effet pluie de code style Matrix avec textures dynamiques',
-  descriptionBa: 'Àwòrán kóòdù Matrix pẹ̀lú àwọ̀n aṣọ',
+  descriptionBa: 'Wéérù gura kóòdù Matrix',
   thumbnail: '/assets/templates/matrix-rain-thumb.jpg',
   duration: 20,
   isPremium: true,

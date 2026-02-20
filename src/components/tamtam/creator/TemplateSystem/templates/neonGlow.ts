@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const neonGlowTemplate: Template = {
   id: 'neon-glow',
   name: 'Neon Glow',
-  nameBa: 'Ìmọ́lẹ̀ Neon',
+  nameBa: 'Wéérù Neon',
   category: 'future',
   description: 'Esthétique néon vibrante avec effets lumineux dynamiques',
-  descriptionBa: 'Àwòrán ìmọ́lẹ̀ neon pẹ̀lú ìtànná',
+  descriptionBa: 'Wéérù neon pɛ dùùrɛ̀',
   thumbnail: '/assets/templates/neon-glow-thumb.jpg',
   duration: 30,
   isPremium: true,

@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const paroleAncienTemplate: Template = {
   id: 'parole-ancien',
   name: "Parole d'Ancien",
-  nameBa: 'Ọ̀rọ̀ Àgbà',
+  nameBa: 'Nɛɛru Kɔ̀gbɛ́',
   category: 'storytelling',
   description: 'Sagesse et conseils des anciens',
-  descriptionBa: 'Ọgbọ́n àti ìmọ̀ràn àwọn àgbà',
+  descriptionBa: 'Gbɔ̀ngbɔ̀n kɑ sɛnbu kɔ̀gbɛ́nu',
   thumbnail: '/assets/templates/parole-ancien-thumb.jpg',
   duration: 60,
   isPremium: false,

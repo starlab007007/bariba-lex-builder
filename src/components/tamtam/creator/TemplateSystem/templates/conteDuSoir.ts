@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const conteDuSoirTemplate: Template = {
   id: 'conte-du-soir',
   name: 'Conte du Soir',
-  nameBa: 'Àló Alẹ́',
+  nameBa: 'Táárù Yàkiru',
   category: 'storytelling',
   description: 'Contes traditionnels pour enfants',
-  descriptionBa: 'Àló fún àwọn ọmọdé',
+  descriptionBa: 'Táárù fún bìínu',
   thumbnail: '/assets/templates/conte-du-soir-thumb.jpg',
   duration: 120,
   isPremium: false,

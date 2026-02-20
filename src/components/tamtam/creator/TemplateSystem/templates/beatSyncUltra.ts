@@ -12,7 +12,7 @@ export const beatSyncUltraTemplate: Template = {
   nameBa: 'Dùnú Sínsín',
   category: 'music',
   description: 'Effets synchronisés au rythme pour clips musicaux énergiques',
-  descriptionBa: 'Dùnú kɔ́ɔ́ dèè kíkó sí orin',
+  descriptionBa: 'Wéérù tíí tɛ̀lé dùnú fún wùúsú',
   thumbnail: '/assets/templates/beat-sync-ultra-thumb.jpg',
   duration: 30,
   isPremium: true,

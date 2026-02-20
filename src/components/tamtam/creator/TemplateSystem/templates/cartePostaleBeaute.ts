@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const cartePostaleBeauteTemplate: Template = {
   id: 'carte-postale-beaute',
   name: 'Carte Postale Beauté',
-  nameBa: 'Káàdì Ẹwà',
+  nameBa: 'Káàdì Dùùrɛ̀',
   category: 'storytelling',
   description: 'Paysages magnifiques style carte postale',
-  descriptionBa: 'Àwòrán ẹwà ilẹ̀',
+  descriptionBa: 'Wéérù dùùrɛ̀ kpɑɑru',
   thumbnail: '/assets/templates/carte-postale-beaute-thumb.jpg',
   duration: 20,
   isPremium: false,

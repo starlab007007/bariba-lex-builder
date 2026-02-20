@@ -30,7 +30,7 @@ import { VillageChronicleTemplate } from '@/templates/VillageChronicle';
 const griotAnimePremiumTemplate: Template = {
   id: 'griot-anime',
   name: 'Griot Animé IA',
-  nameBa: 'Kɔ̀gbɛ́ Táárù Animé',
+  nameBa: 'Kɔ̀gbɛ́ Táárù Animé IA',
   category: 'storytelling',
   description: 'Crée des contes animés avec illustrations IA style anime. Dicte ton histoire et laisse l\'IA illustrer chaque scène.',
   thumbnail: '/assets/templates/griot-digital/thumbnail.svg',
@@ -53,7 +53,7 @@ const griotAnimePremiumTemplate: Template = {
 const beatMakerAIPremiumTemplate: Template = {
   id: 'beat-maker-ai',
   name: 'Beat Maker AI',
-  nameBa: 'Wùúsú Túúrú AI',
+  nameBa: 'Wùúsú Koru AI',
   category: 'music',
   description: 'Studio DAW complet pour créer des beats Afrobeat, Amapiano, Coupé-Décalé',
   thumbnail: '', // Fallback: dynamic gradient with emoji will be used
