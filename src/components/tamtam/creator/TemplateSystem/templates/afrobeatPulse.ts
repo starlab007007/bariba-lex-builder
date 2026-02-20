@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const afrobeatPulseTemplate: Template = {
   id: 'afrobeat-pulse',
   name: 'Afrobeat Pulse',
-  nameBa: 'Dùndún Afro',
+  nameBa: 'Dùnú Afro',
   category: 'music',
   description: 'Visualiseur pour musique africaine',
-  descriptionBa: 'Àfihàn orin Áfíríkà',
+  descriptionBa: 'Wéérù wùúsú Afro',
   thumbnail: '/assets/templates/afrobeat-pulse-thumb.jpg',
   duration: 30,
   isPremium: false,

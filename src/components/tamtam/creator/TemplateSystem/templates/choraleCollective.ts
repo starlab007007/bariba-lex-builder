@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const choraleCollectiveTemplate: Template = {
   id: 'chorale-collective',
   name: 'Chorale Collective',
-  nameBa: 'Ẹgbẹ́ Orin',
+  nameBa: 'Wùúsú Yɛrenu',
   category: 'music',
   description: 'Chants collectifs et chorales',
-  descriptionBa: 'Orin àpapọ̀',
+  descriptionBa: 'Wùúsú tɔmbu kpuro',
   thumbnail: '/assets/templates/chorale-collective-thumb.jpg',
   duration: 90,
   isPremium: false,

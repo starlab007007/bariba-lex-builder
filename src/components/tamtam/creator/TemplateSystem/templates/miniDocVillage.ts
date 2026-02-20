@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const miniDocVillageTemplate: Template = {
   id: 'mini-doc-village',
   name: 'Mini-Doc Village',
-  nameBa: 'Àkọsílẹ̀ Abúlé',
+  nameBa: 'Doc Kúàrà',
   category: 'storytelling',
   description: 'Format documentaire court pour histoires de village',
-  descriptionBa: 'Ìtàn abúlé kúkúrú',
+  descriptionBa: 'Doc kúàrà táárù kíákíá',
   thumbnail: '/assets/templates/mini-doc-village-thumb.jpg',
   duration: 60,
   isPremium: false,

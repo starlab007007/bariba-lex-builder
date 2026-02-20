@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const smartCaptionsTemplate: Template = {
   id: 'smart-captions',
   name: 'Smart Captions',
-  nameBa: 'Àkọlé Ọgbọ́n',
+  nameBa: 'Kɔ̃siru Nɔɔra',
   category: 'education',
   description: 'Sous-titres automatiques avec animations de texte stylées',
-  descriptionBa: 'Àkọlé aládàánídá pẹ̀lú ìgbésẹ̀ ọ̀rọ̀ dáradára',
+  descriptionBa: 'Kɔ̃siru nɛɛru tíí wɛ mɛ yira',
   thumbnail: '/assets/templates/smart-captions-thumb.jpg',
   duration: 30,
   isPremium: false,

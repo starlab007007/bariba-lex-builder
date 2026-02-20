@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const metiersTerroirTemplate: Template = {
   id: 'metiers-terroir',
   name: 'Métiers du Terroir',
-  nameBa: 'Iṣẹ́ Ìbílẹ̀',
+  nameBa: 'Sɔmburu Kpɑɑru',
   category: 'education',
   description: 'Présentation des métiers traditionnels',
-  descriptionBa: 'Ìfihàn iṣẹ́ ìbílẹ̀',
+  descriptionBa: 'Sɔmburu bɔ̀ɔ̀rɛ̀nu fíhàn',
   thumbnail: '/assets/templates/metiers-terroir-thumb.jpg',
   duration: 45,
   isPremium: false,

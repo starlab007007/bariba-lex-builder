@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const avantApresVillageTemplate: Template = {
   id: 'avant-apres-village',
   name: 'Avant/Après Village',
-  nameBa: 'Tẹ́lẹ̀/Báyìí Abúlé',
+  nameBa: 'Yinɑ/Gisɔ Kúàrà',
   category: 'storytelling',
   description: 'Comparaison avant/après du développement',
-  descriptionBa: 'Ìfiwéra ìyípadà',
+  descriptionBa: 'Gbɛ̀sìrù yinɑ kɑ gisɔ',
   thumbnail: '/assets/templates/avant-apres-village-thumb.jpg',
   duration: 30,
   isPremium: false,

@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const aiPortraitProTemplate: Template = {
   id: 'ai-portrait-pro',
   name: 'AI Portrait Pro',
-  nameBa: 'Àwòrán AI',
+  nameBa: 'Photo AI Pro',
   category: 'future',
   description: 'Amélioration portrait avec intelligence artificielle',
-  descriptionBa: 'Ìmúdára àwòrán pẹ̀lú AI',
+  descriptionBa: 'Gbɛsiru photo pɛ AI',
   thumbnail: '/assets/templates/ai-portrait-pro-thumb.jpg',
   duration: 15,
   isPremium: true,

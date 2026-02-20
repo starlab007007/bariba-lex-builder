@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const lyricVideoTemplate: Template = {
   id: 'lyric-video',
   name: 'Lyric Video',
-  nameBa: 'Fídíò Orin',
+  nameBa: 'Vidéo Wùúsú Nɛɛru',
   category: 'music',
   description: 'Vidéo paroles professionnelle',
-  descriptionBa: 'Fídíò pẹ̀lú ọ̀rọ̀ orin',
+  descriptionBa: 'Vidéo pɛ wùúsú nɛɛru',
   thumbnail: '/assets/templates/lyric-video-thumb.jpg',
   duration: 180,
   isPremium: true,

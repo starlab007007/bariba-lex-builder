@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const traductionVoixTemplate: Template = {
   id: 'traduction-voix',
   name: 'Traduction Voix',
-  nameBa: 'Ìtumọ̀ Ohùn',
+  nameBa: 'Tùnkɔ̀rù Nɔɔ',
   category: 'education',
   description: 'Traduction vocale avec sous-titres bilingues',
-  descriptionBa: 'Ìtumọ̀ pẹ̀lú àkọlé',
+  descriptionBa: 'Tùnkɔ̀rù nɔɔ pɛ kɔ̃siru',
   thumbnail: '/assets/templates/traduction-voix-thumb.jpg',
   duration: 30,
   isPremium: true,

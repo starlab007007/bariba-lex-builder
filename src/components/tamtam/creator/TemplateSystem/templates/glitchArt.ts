@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const glitchArtTemplate: Template = {
   id: 'glitch-art',
   name: 'Glitch Art',
-  nameBa: 'Àwòrán Glitch',
+  nameBa: 'Wéérù Glitch',
   category: 'future',
   description: 'Distorsions artistiques numériques avec grains et particules',
-  descriptionBa: 'Àwòrán dídárú pẹ̀lú erùpẹ̀',
+  descriptionBa: 'Wéérù gbɛsiru dùùrɛ̀',
   thumbnail: '/assets/templates/glitch-art-thumb.jpg',
   duration: 15,
   isPremium: true,

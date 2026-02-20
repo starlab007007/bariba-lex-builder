@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const radioVillageTemplate: Template = {
   id: 'radio-village',
   name: 'Radio Village Pro',
-  nameBa: 'Rédíò Abúlé',
+  nameBa: 'Rédíò Kúàrà',
   category: 'business',
   description: 'Format radio professionnel avec visuel',
-  descriptionBa: 'Ètò rédíò ọjọgbọ́n',
+  descriptionBa: 'Rédíò sɔmburu nɔɔra',
   thumbnail: '/assets/templates/radio-village-thumb.jpg',
   duration: 60,
   isPremium: true,

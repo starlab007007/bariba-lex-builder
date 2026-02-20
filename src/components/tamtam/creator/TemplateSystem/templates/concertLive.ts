@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const concertLiveTemplate: Template = {
   id: 'concert-live',
   name: 'Concert Live',
-  nameBa: 'Eré Orin Láàyè',
+  nameBa: 'Wùúsú Tɛ̃',
   category: 'music',
   description: 'Ambiance concert live avec effets scène',
-  descriptionBa: 'Ìrírí eré orin',
+  descriptionBa: 'Wùúsú tɛ̃ pɛ wéérù',
   thumbnail: '/assets/templates/concert-live-thumb.jpg',
   duration: 60,
   isPremium: true,

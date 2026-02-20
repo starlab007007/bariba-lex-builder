@@ -11,7 +11,7 @@ export const cyberpunkVibesTemplate: Template = {
   nameBa: 'Cyberpunk',
   category: 'future',
   description: 'Esthétique cyberpunk néon avec effets holographiques',
-  descriptionBa: 'Àwòrán cyberpunk pẹ̀lú ìmọ́lẹ̀ neon',
+  descriptionBa: 'Wéérù cyberpunk pɛ neon',
   thumbnail: '/assets/templates/cyberpunk-vibes-thumb.jpg',
   duration: 30,
   isPremium: true,

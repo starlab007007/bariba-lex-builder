@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const splitScreenDuoTemplate: Template = {
   id: 'split-screen-duo',
   name: 'Split Screen Duo',
-  nameBa: 'Ìpín Méjì',
+  nameBa: 'Pín Yìra Mééjì',
   category: 'music',
   description: 'Écran divisé pour duos et réactions',
-  descriptionBa: 'Ìpín fún àwọn méjì',
+  descriptionBa: 'Pín yìra fún tɔmbu mééjì',
   thumbnail: '/assets/templates/split-screen-duo-thumb.jpg',
   duration: 30,
   isPremium: false,

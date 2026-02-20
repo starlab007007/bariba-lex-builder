@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const photoSlideshowTemplate: Template = {
   id: 'photo-slideshow',
   name: 'Photo Slideshow',
-  nameBa: 'Àwòrán Yíká',
+  nameBa: 'Photo Tɛ̀lé',
   category: 'storytelling',
   description: 'Montage photo animé avec transitions',
-  descriptionBa: 'Àkópọ̀ àwòrán pẹ̀lú ìyípadà',
+  descriptionBa: 'Photo kpuro tíí tɛ̀lé gbɛsiru',
   thumbnail: '/assets/templates/photo-slideshow-thumb.jpg',
   duration: 45,
   isPremium: false,

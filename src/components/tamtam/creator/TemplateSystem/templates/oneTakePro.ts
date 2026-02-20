@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const oneTakeProTemplate: Template = {
   id: 'one-take-pro',
   name: 'One-Take Pro',
-  nameBa: 'Ìgbésẹ̀ Kan Pro',
+  nameBa: 'Dókè Dòkó Pro',
   category: 'business',
   description: 'Vidéo en plan-séquence premium avec effets dynamiques',
-  descriptionBa: 'Fídíò kan ṣoṣo pẹ̀lú àwọn ìṣe alátagbà',
+  descriptionBa: 'Vidéo dókè dòkó pɛ wéérù nɔɔra',
   thumbnail: '/assets/templates/one-take-pro-thumb.jpg',
   duration: 60,
   isPremium: true,

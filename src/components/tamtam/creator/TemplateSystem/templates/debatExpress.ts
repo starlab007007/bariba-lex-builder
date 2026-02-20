@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const debatExpressTemplate: Template = {
   id: 'debat-express',
   name: 'Débat Express',
-  nameBa: 'Àríyànjiyàn Kíákíá',
+  nameBa: 'Nɛɛ Gbaa Kíákíá',
   category: 'business',
   description: 'Format débat rapide avec indicateurs visuels',
-  descriptionBa: 'Ìjíròrò kíákíá',
+  descriptionBa: 'Nɛɛ gbaa kíákíá pɛ wéérù',
   thumbnail: '/assets/templates/debat-express-thumb.jpg',
   duration: 45,
   isPremium: false,
