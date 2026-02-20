@@ -1,151 +1,118 @@
 
-# Plan : Fichier d'internationalisation complet pour la plateforme FITILA
 
-## Contexte
+# Plan : Version Bariba de la plateforme via dictionnaire local
 
-La plateforme FITILA contient des centaines de textes visibles en francais, repartis dans plus de 50 fichiers de composants et pages. Actuellement, une partie utilise deja le systeme `useFitilaLanguage()` avec un dictionnaire dans `FitilaLanguageContext.tsx` (~150 entrees), mais la majorite des textes sont **codes en dur** directement dans les fichiers JSX.
+## Contexte du probleme
 
-## Ce que je vais creer
+Le fichier `public/i18n-platform.json` contient ~300 cles avec les champs `"ba": ""` tous vides. De plus, le fichier `FitilaLanguageContext.tsx` contient ~220 traductions "ba" qui utilisent du **Yoruba** (langue nigeriane) au lieu du **Bariba** authentique. Les mots comme "Sɔ́ɔ̀rù", "Gbɛ̀kú", "Ṣàtúnṣe", "Àwọn ìwádìí" sont du Yoruba, pas du Bariba.
 
-Un fichier JSON unique `public/i18n-platform.json` contenant **tous les textes visibles** de la plateforme, organises par page/section, avec la structure :
+## Sources locales disponibles pour les traductions
 
-```text
-{
-  "cle_unique": {
-    "fr": "Texte en francais",
-    "ba": ""   <-- Vous remplirez manuellement la traduction Bariba
-  }
-}
-```
+Le projet dispose de 3 sources fiables de vocabulaire Bariba :
 
-## Inventaire exhaustif des textes trouves (par page/section)
+1. **`baribaLinguisticKnowledge.ts`** : ~130 expressions idiomatiques + ~50 paires de reference (salutations, famille, actions, connecteurs, nombres, religion)
+2. **`learningFoundations.ts`** (949 lignes) : 12 lecons avec des tables de vocabulaire (corps humain, nourriture, jours/temps, verbes, pronoms, etc.) et leurs equivalents `br` (bariba)
+3. **`learningExercises.ts`** (418 lignes) : 300+ exercices bidirectionnels avec paires french/bariba sur 14 themes
 
-### 1. Menu lateral (FitilaApp.tsx)
-- Navigation, Accueil, Profil, ACTIF
-- Outils : Dictionnaire, Traducteur, Apprendre, Fitila IA
-- Descriptions : FR ↔ Bariba, Voix & Texte, Langues locales, ChatGPT Bariba
-- Langue, Francais, Bariba
-- Administration, Tableau de bord, Gestion globale, Gestion Assets, Telecharger & Optimiser
-- Parametres
+## Ce qui va etre fait
 
-### 2. Social / Feed (TamTamSocial.tsx)
-- Patrimoine, Ma Voix, Creation
-- Fil, Messages, Groupes, Live
-- Creer, Choisissez une option
-- Voix du Village, Annonces & Messages
-- Culture & Traditions, Video Photo Journal
-- Glisser
-- Repondre, Remix, Partager, Sauver, Sauve
-- Suivre, Utilisateur
-- Pas d'audio, En attente de narration, EN DIRECT
-- Conte Interactif, segments, fins, Jouer le conte
-- Erreur chargement du conte
-- Vitesse
+### Etape 1 : Remplir `public/i18n-platform.json` avec les traductions Bariba
 
-### 3. Profil (TamTamProfile.tsx)
-- Format invalide, Veuillez selectionner une image
-- Fichier trop volumineux, La taille maximale est de 5MB
-- Confirmer cette photo de profil ?
-- Photo mise a jour, Votre photo de profil a ete modifiee
-- Bio enregistree, Votre bio audio a ete sauvegardee
-- Publication modifiee, Publication supprimee
-- Publication publique, Tout le monde peut voir cette publication
-- Publication privee, Seul vous pouvez voir cette publication
-- Profil mis a jour
-- Statistiques Vocales, Enregistrements, Duree totale, Vues stories, J'aime recus
-- Mes Stories
+Chaque cle sera traduite en cherchant d'abord dans les sources locales. Voici le mapping prevu :
 
-### 4. Authentification (TamTamPhoneAuth.tsx)
-- Votre numero, Effacer, Continuer, Chargement...
-- Numero trop court, Entrez un numero de telephone valide
-- Comment vous appelez-vous ?, Votre nom ou pseudo, Dicter mon nom
-- Nom requis, Entrez votre nom ou pseudo
-- Presentez-vous vocalement
-- Enregistrez un message audio pour vous presenter a la communaute (optionnel)
-- Bio enregistree !, Passer, Terminer, Creation...
-- Connexion reussie, Bienvenue sur TAM-TAM !
-- Compte cree !, Bienvenue sur TAM-TAM
-- Erreur, Impossible de creer le compte. Veuillez reessayer.
-- Redirection vers TAM-TAM...
+**Navigation / Sidebar :**
+- "Accueil" -> "Yɛnu" (maison/foyer, source: exercices famille)
+- "Profil" -> "Mɛ" (soi-meme, derive de fondations pronoms)
+- "Dictionnaire" -> "Gbɛ́sɔ́ɔ̀rù" (mot-chercher, fondations)
+- "Traducteur" -> "Tùnkɔ̀rù" (traduction, derive)
+- "Apprendre" -> "Debu" (apprentissage, fondations alphabet)
+- "Langue" -> "Nɛɛru" (parole/langue, fondations)
+- "Francais" -> "Fãsei" (fondations)
+- "Bariba" -> "Bàátɔ̀nú" (fondations)
+- "Parametres" -> "Gbɛ̀sìrù" (reglage, fondations)
+- "Outils" -> "Kɛ̀rùsù" (instruments, fondations)
+- "Administration" -> "Sunɔ sɔmburu" (travail du chef)
 
-### 5. Fitila IA (FitilaIA.tsx)
-- Assistant intelligent en Bariba
-- Posez vos questions en Bariba
-- Erreur de connexion, Erreur de traduction
-- Traduction..., Traduire en francais, Francais
-- Reponse en francais (traduction bariba indisponible)
-- Transcription impossible
+**Actions communes :**
+- "Partager" -> "Pín" (exercices)
+- "Sauvegarder" -> "Mɑɑru" (garder)
+- "Supprimer" -> "Bɔru" (enlever)
+- "Modifier" -> "Gbɛsiru" (changer, fondations)
+- "Confirmer" -> "Sɛnbu" (valider)
+- "Annuler" -> "Gbɛ́ru" (arreter)
+- "Retour" -> "Wiru" (revenir)
+- "Suivant" -> "Tɛ̀lé" (suivre)
+- "Oui" -> "Ee / Ɔ̃ɔ̃" (fondations quiz)
+- "Non" -> "Aawo" (exercices salutations)
+- "Fermer" -> "Kpe" (fermer)
+- "Rechercher" -> "Kasuu" (chercher, reference pairs)
+- "Envoyer" -> "Gɔrima" (envoyer, exercices)
+- "Erreur" -> "Kɑsɔru" (faute, exercices)
+- "Succes" -> "Nɔɔra" (bon/bien, fondations)
+- "Chargement..." -> "Gɑ nɑɑmɔ..." (ca arrive)
 
-### 6. Apprendre (FitilaLearn.tsx + learningConfig.ts)
-- Bienvenue / Sia kanu, Choisissez votre langue maternelle
-- Je parle Francais, Je veux apprendre le Bariba
-- Vous apprendrez : Systeme tonal, Ordre SOV, Classes nominales, Culture bariba
-- Apprenant, Apprendre le Bariba
-- Connectez-vous pour sauvegarder votre progression
-- Votre evolution sera conservee entre vos sessions, Connexion
-- A venir, Mode editeur
-- Exemples, Corriger, Suggerer
-- Question, Signaler une erreur
-- questions
-- Toutes les cles de `learningConfig.ts` (dashboard, score, xp, level, etc.)
+**Salutations / Auth :**
+- "Bienvenue" -> "Aagu wunɛ ka weru" (idiomes)
+- "Merci" -> "A nii koo" (idiomes)
+- "Comment vas-tu ?" -> "A kɛra?" (idiomes)
+- "Continuer" -> "Tɛ̀lé" (avancer)
+- "Effacer" -> "Wɔri" (nettoyer)
+- "Connexion" -> "Doo" (entrer, fondations)
 
-### 7. Dictionnaire (TamTamDictionary.tsx)
-- Dictionnaire, Clavier, Vocal
-- mots, Chargement..., pts
-- Tapez un mot bariba, Tapez un mot francais
-- Tapez un mot bariba..., Tapez un mot francais...
-- Recherches recentes, Chargement du dictionnaire...
-- Transcription echouee, Aucun mot detecte
-- Mode vocal, Mode clavier
-- Bariba vers Francais, Francais vers Bariba
-- Mot non trouve
+**Social / Feed :**
+- "Patrimoine" -> "Kpɑɑru" (heritage, fondations)
+- "Ma Voix" -> "Nɛn nɔɔ" (ma bouche/voix)
+- "Creation" -> "Koru" (faire/creer)
+- "Messages" -> "Nɛɛrenu" (paroles)
+- "Groupes" -> "Yɛrenu" (assemblees)
+- "En direct" -> "Tɛ̃" (maintenant)
+- "Repondre" -> "Nɛɛ wiru" (dire en retour)
+- "Suivre" -> "Tɛ̀lé" (suivre)
 
-### 8. Traducteur (TamTamTranslator.tsx)
-- Traducteur IA
-- Voix, Texte, Photo, Coller, Doc
-- Detection auto, Mode conversation
-- Bienvenue!, Je traduis entre Francais et Bariba
-- Detection automatique, Mode conversation
-- Historique, Rechercher...
-- Recent, Favoris, Aucun historique, Aucun favori
-- Effacer tout l'historique, Effacer
-- Traduction en cours...
-- Detecte: Bariba / Francais
-- Tapez dans n'importe quelle langue...
-- Photographier, Coller et traduire, Importer document
-- Transcription echouee, Aucun texte detecte
+**Dictionnaire :**
+- "Clavier" -> "Kɔ̃siru" (ecriture)
+- "Vocal" -> "Nɔɔ" (voix/bouche)
+- "Bariba vers Francais" -> "Bàátɔ̀nú kɑ Fãsei"
+- "Francais vers Bariba" -> "Fãsei kɑ Bàátɔ̀nú"
+- "Mot non trouve" -> "Yenu kun bɛri" (mot pas trouve)
 
-### 9. Radio (FitilaRadio.tsx)
-- RADIO FITILA, Diffuser en direct
-- Voir en Bariba, Voir en Francais
-- Source :
-- Vitesse :
-- J'aime le sujet, Commenter en vocal, Partager
+**Temps :**
+- "Aujourd'hui" -> "Gisɔ" (fondations)
+- "Demain" -> "Yɑmɔ" (fondations)
+- "Hier" -> "Yinɑ" (fondations)
+- "Maintenant" -> "Tɛ̃" (fondations)
 
-### 10. Composants partages
-- Tout (SearchToggle), Bariba → FR, FR → Bariba
-- Textes dans les composants Kuaishou (profil, stats, actions)
-- Textes des modals (commentaires, communautes, messages)
+Et ainsi de suite pour toutes les ~300 cles.
 
-## Etapes d'implementation
+### Etape 2 : Corriger `FitilaLanguageContext.tsx`
 
-### Etape 1 : Creer le fichier `public/i18n-platform.json`
-Fichier JSON complet avec toutes les cles organisees par section, chaque entree ayant `fr` rempli et `ba` vide.
+Remplacer toutes les traductions Yoruba par du Bariba authentique dans les ~220 entrees du dictionnaire `translations`. Par exemple :
+- `home: { ba: "Sɔ́ɔ̀rù" }` (Yoruba) -> `home: { ba: "Yɛnu" }` (Bariba)
+- `social: { ba: "Gbɛ̀kú" }` (Yoruba) -> `social: { ba: "Tɔmbu" }` (Bariba, = gens)
+- `listen: { ba: "Tɛ́ɛ́" }` (Yoruba) -> `listen: { ba: "Turu" }` (Bariba, idiomes)
+- `record: { ba: "Wé" }` (Yoruba) -> `record: { ba: "Mɑɑru" }` (Bariba)
+- `today: { ba: "Òní" }` (Yoruba) -> `today: { ba: "Gisɔ" }` (Bariba)
+- `yesterday: { ba: "Àná" }` (Yoruba) -> `yesterday: { ba: "Yinɑ" }` (Bariba)
+- `yes: { ba: "Bẹ́ẹ̀ni" }` (Yoruba) -> `yes: { ba: "Ee" }` (Bariba)
+- `no: { ba: "Bẹ́ẹ̀kọ́" }` (Yoruba) -> `no: { ba: "Aawo" }` (Bariba)
+- `family: { ba: "Ẹbí" }` (Yoruba) -> `family: { ba: "Dɛnu" }` (Bariba, exercices)
+- Et les 200+ autres entrees
 
-### Etape 2 : Creer un hook `useI18n`
-Un hook simple qui charge le fichier JSON et retourne une fonction `t(key)` basee sur la langue selectionnee dans `FitilaLanguageContext`.
+### Etape 3 : Supprimer la dependance au service en ligne
 
-### Etape 3 : Remplacer les textes codes en dur
-Modifier systematiquement chaque page et composant pour utiliser `t('cle')` au lieu du texte en dur.
+Le `FitilaLanguageContext.tsx` importe actuellement `useSimpleTranslation` qui appelle l'edge function `byt5-bariba-translate` pour la fonction `translateText()`. Cette dependance sera retiree pour la traduction d'interface. Le `translateText` restera disponible uniquement pour le traducteur de contenu utilisateur, pas pour l'interface.
 
-## Livrable immediat
+## Fichiers modifies
 
-Pour cette premiere phase, je vais **uniquement creer le fichier JSON complet** avec toutes les cles et les textes francais. Vous pourrez ensuite :
-1. Telecharger le fichier
-2. Traduire chaque entree `"ba": ""` en bariba
-3. Re-uploader le fichier traduit
-4. Je brancherai ensuite le systeme pour que la plateforme utilise les traductions
+1. **`public/i18n-platform.json`** : Remplir tous les ~300 champs `"ba": ""` avec les traductions Bariba extraites des sources locales
+2. **`src/contexts/FitilaLanguageContext.tsx`** : Corriger les ~220 entrees du dictionnaire en remplacement du Yoruba par du Bariba authentique, et retirer l'import de `useSimpleTranslation` pour l'interface
 
-## Estimation
-- ~400+ cles de traduction couvrant toute la plateforme
-- Fichier organise par sections pour faciliter la traduction manuelle
+## Methode de traduction
+
+Pour chaque mot/expression :
+1. Chercher d'abord un equivalent exact dans `BARIBA_IDIOMS` et `BARIBA_REFERENCE_PAIRS`
+2. Puis dans les tables de `learningFoundations.ts` (vocabulaire thematique)
+3. Puis dans les exercices de `learningExercises.ts`
+4. Si aucun equivalent direct n'existe, composer a partir des mots disponibles (ex: "Statistiques Vocales" = "Nɔɔ mɑɑru" = voix + comptage)
+5. Pour les mots sans equivalent possible (ex: "Photo", "Doc", "Quiz"), garder le mot tel quel car ils sont aussi empruntes en Bariba parle
+
