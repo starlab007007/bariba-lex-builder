@@ -6,10 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const AI_TIMEOUT_MS = 20_000;
+
 type PhraseRow = {
   id: string;
-  french_text: string;
-  bariba_text: string;
+  french_text: string | null;
+  bariba_text: string | null;
+  is_validated?: boolean | null;
+  quality_score?: number | null;
   metadata?: Record<string, unknown> | null;
 };
 
@@ -34,45 +38,15 @@ type AiAnalysis = {
 };
 
 function normalizeText(input: string): string {
-  return (input || "")
-    .normalize("NFC")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function containsAny(text: string, patterns: RegExp[]): boolean {
-  return patterns.some((re) => re.test(text));
+  return (input || "").normalize("NFC").replace(/\s+/g, " ").trim();
 }
 
 function hasBaribaDiacritics(text: string): boolean {
   return /[ɔɛɑãɛ̃ĩɔ̃ũ̀́]/u.test(text);
 }
 
-function safeJsonExtract(text: string): unknown | null {
-  if (!text) return null;
-
-  // Remove markdown fences if present
-  const cleaned = text
-    .replace(/```json/gi, "```")
-    .replace(/```/g, "")
-    .trim();
-
-  // Try direct parse first
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    // continue
-  }
-
-  // Fallback: extract first JSON object
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-
-  try {
-    return JSON.parse(match[0]);
-  } catch {
-    return null;
-  }
+function containsAny(text: string, patterns: RegExp[]): boolean {
+  return patterns.some((re) => re.test(text));
 }
 
 function clamp01(n: number): number {
@@ -84,13 +58,55 @@ function uniqStrings(arr: string[]): string[] {
   return [...new Set(arr.map((s) => s.trim()).filter(Boolean))];
 }
 
+function safeJsonExtract(text: string): unknown | null {
+  if (!text) return null;
+
+  const cleaned = text
+    .replace(/```json/gi, "```")
+    .replace(/```/g, "")
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // continue
+  }
+
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnalysis {
   const french = normalizeText(frenchRaw).toLowerCase();
   const bariba = normalizeText(baribaRaw);
 
   const issues: RuleIssue[] = [];
   const notes: string[] = [];
-  let score = 0.9; // start optimistic and penalize
+  let score = 0.9;
 
   if (!bariba) {
     return {
@@ -107,13 +123,21 @@ function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnaly
     };
   }
 
-  // Heuristique de bruit OCR / artefacts
-  if (containsAny(bariba, [/dictionnaire bariba - français/iu, /<PARSED TEXT FOR PAGE/iu])) {
+  // Bruit OCR / dictionnaire brut / artefacts
+  if (
+    containsAny(bariba, [
+      /dictionnaire bariba - français/iu,
+      /<PARSED TEXT FOR PAGE/iu,
+      /\bacc\./iu,
+      /\binacc\./iu,
+      /\bimp\./iu,
+    ])
+  ) {
     issues.push({
-      code: "OCR_ARTIFACT",
+      code: "OCR_OR_DICTIONARY_NOISE",
       severity: "high",
-      issue: "La phrase contient du bruit d’extraction (artefact OCR / PDF).",
-      suggestion: "Supprimer les fragments de page et conserver uniquement la phrase utile.",
+      issue: "La phrase semble contenir du bruit OCR ou une entrée dictionnaire brute.",
+      suggestion: "Conserver uniquement la phrase cible, sans définitions ni marques grammaticales.",
     });
     score -= 0.35;
   }
@@ -139,7 +163,7 @@ function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnaly
     score -= 0.15;
   }
 
-  // Corrections critiques validées (règles bloquantes)
+  // Erreurs critiques connues
   if (french.includes("bonjour") && /\bKua dɔ̃ɔ\b/iu.test(bariba)) {
     issues.push({
       code: "BAD_GREETING_MORNING",
@@ -165,7 +189,7 @@ function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnaly
       code: "BAD_HOW_ARE_YOU",
       severity: "high",
       issue: `"A kɛra?" est incorrect pour "Comment vas-tu ?"`,
-      suggestion: `Utiliser "Anna wunɛn wasi?" (ou variante confirmée).`,
+      suggestion: `Utiliser "Anna wunɛn wasi?"`,
     });
     score -= 0.35;
   }
@@ -192,7 +216,7 @@ function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnaly
 
   if (french.includes("mère") && /\bNɛn yaa\b/iu.test(bariba)) {
     issues.push({
-      code: "MOTHER_CONFUSED_WITH_MEAT",
+      code: "MOTHER_CONFUSION",
       severity: "high",
       issue: `"yaa" renvoie à viande/animal, pas "mère".`,
       suggestion: `Utiliser "bii mɛro" pour "mère".`,
@@ -200,7 +224,10 @@ function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnaly
     score -= 0.4;
   }
 
-  if ((french.includes("soif") || french.includes("j'ai soif") || french.includes("j’ai soif")) && /\bn[ɔo]nkuru\b/iu.test(bariba)) {
+  if (
+    (french.includes("soif") || french.includes("j'ai soif") || french.includes("j’ai soif")) &&
+    /\bn[ɔo]nkuru\b/iu.test(bariba)
+  ) {
     issues.push({
       code: "BAD_THIRST_TERM",
       severity: "high",
@@ -210,12 +237,13 @@ function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnaly
     score -= 0.35;
   }
 
-  // wa vs mɛɛri (très important)
+  // wa vs mɛɛri
   const mentionsVoir = [
     "voir",
     "trouver",
     "obtenir",
     "j'ai vu",
+    "j’ai vu",
     "tu vois",
     "il voit",
     "as-tu vu",
@@ -223,17 +251,14 @@ function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnaly
     "je trouve",
   ].some((w) => french.includes(w));
 
-  if (mentionsVoir && /\bmɛɛri\b/iu.test(bariba)) {
-    // On pénalise seulement s'il n'y a pas "wa" et si c'est bien une traduction simple
-    if (!/\bwa\b/iu.test(bariba)) {
-      issues.push({
-        code: "WA_VS_MEERI",
-        severity: "high",
-        issue: `"mɛɛri" utilisé pour "voir/trouver/obtenir" (faux ami fréquent).`,
-        suggestion: `Utiliser "wa" pour voir/trouver/obtenir ; réserver "mɛɛri" à regarder/étudier/apprendre.`,
-      });
-      score -= 0.35;
-    }
+  if (mentionsVoir && /\bmɛɛri\b/iu.test(bariba) && !/\bwa\b/iu.test(bariba)) {
+    issues.push({
+      code: "WA_VS_MEERI",
+      severity: "high",
+      issue: `"mɛɛri" utilisé pour "voir/trouver/obtenir" (faux ami fréquent).`,
+      suggestion: `Utiliser "wa" pour voir/trouver/obtenir ; réserver "mɛɛri" à regarder/étudier/apprendre.`,
+    });
+    score -= 0.35;
   }
 
   const mentionsRegarderEtudier = ["regarder", "étudier", "apprendre"].some((w) => french.includes(w));
@@ -242,29 +267,27 @@ function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnaly
       code: "MEERI_EXPECTED",
       severity: "medium",
       issue: `Le sens "regarder/étudier/apprendre" attend plutôt "mɛɛri".`,
-      suggestion: `Vérifier si "mɛɛri" est plus approprié que "wa" selon le contexte.`,
+      suggestion: `Vérifier si "mɛɛri" est plus approprié selon le contexte.`,
     });
     score -= 0.15;
   }
 
-  // Proverbe connu
+  // Proverbe
   if (french.includes("qui cherche trouve") && /Goo u g[ɑaã̃]+ kasuu,\s*u ga bɛri/iu.test(bariba)) {
     issues.push({
-      code: "BAD_PROVERB_STRUCTURE",
+      code: "BAD_PROVERB",
       severity: "high",
-      issue: `Proverbe mal formé (emploi incorrect de "goo").`,
+      issue: "Proverbe mal formé.",
       suggestion: `Utiliser "Durɔ goo u kasuu, u ga bɛri".`,
     });
     score -= 0.35;
   }
 
-  // Vérification légère de naturalité Bariba
   if (!hasBaribaDiacritics(bariba)) {
     notes.push("Pas de diacritiques détectés — possible mais vérifier la graphie (ɔ, ɛ, etc.).");
     score -= 0.05;
   }
 
-  // Phrases très longues = risque d'exemple dictionnaire brut collé
   if (bariba.length > 260) {
     issues.push({
       code: "POSSIBLE_DICTIONARY_DUMP",
@@ -275,7 +298,6 @@ function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnaly
     score -= 0.12;
   }
 
-  // Bonus de confiance si des formes de référence sont détectées
   if (/\b(A kpuna n do\?|Bɛɛ ka yoka|Anna wunɛn wasi\?|Alaafia|bii mɛro|nim nɔru)\b/iu.test(bariba)) {
     notes.push("Forme idiomatique validée détectée.");
     score += 0.05;
@@ -296,7 +318,7 @@ Analyse la qualité de ces paires de traduction français-bariba et pour chacune
 2) Les problèmes détectés (grammaire, cohérence, sens, idiomaticité)
 3) Des suggestions d'amélioration concrètes
 
-CRITÈRES LINGUISTIQUES IMPORTANTS (à vérifier) :
+CRITÈRES LINGUISTIQUES IMPORTANTS :
 - "wa" = voir / trouver / obtenir
 - "mɛɛri" = regarder / étudier / apprendre
 - "mère" = "bii mɛro" (PAS "yaa")
@@ -306,14 +328,19 @@ CRITÈRES LINGUISTIQUES IMPORTANTS (à vérifier) :
 - "Comment vas-tu ?" = "Anna wunɛn wasi?" (PAS "A kɛra?")
 - "Je vais bien / Merci" = "Alaafia" (PAS "Na kɛra sãa sãa")
 - "J'ai soif" = "nim nɔru" (PAS "nim nɔnkuru")
-- Détecter si la traduction contient du bruit de dictionnaire / OCR (ex: "dictionnaire bariba - français", définitions collées)
+- Détecter le bruit OCR / dictionnaire (acc., inacc., imp., entêtes PDF)
 
 Important :
-- Si la phrase bariba semble être une entrée dictionnaire brute (définitions, inacc./acc./imp., bruit PDF), baisse fortement le score.
+- Si la phrase bariba semble être une entrée dictionnaire brute, baisse fortement le score.
 - Réponse STRICTEMENT en JSON (sans markdown, sans commentaire).
 
 Phrases à analyser :
-${batch.map((p, idx) => `${idx + 1}. FR: "${normalizeText(p.french_text)}" | BR: "${normalizeText(p.bariba_text)}"`).join("\n")}
+${batch
+  .map(
+    (p, idx) =>
+      `${idx + 1}. FR: "${normalizeText(p.french_text || "")}" | BR: "${normalizeText(p.bariba_text || "")}"`,
+  )
+  .join("\n")}
 
 Format de réponse attendu :
 {
@@ -330,8 +357,8 @@ Format de réponse attendu :
 
 function mergeScores(ruleScore: number, aiScore: number | null): number {
   if (aiScore === null || Number.isNaN(aiScore)) return clamp01(ruleScore);
-  // Score hybride : règles (60%) + IA (40%)
-  return clamp01(ruleScore * 0.6 + aiScore * 0.4);
+  // règles > IA (plus stable)
+  return clamp01(ruleScore * 0.65 + aiScore * 0.35);
 }
 
 serve(async (req: Request) => {
@@ -340,21 +367,41 @@ serve(async (req: Request) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization") ?? "" },
-        },
-      },
-    );
+    const body = await req.json().catch(() => ({}));
+    const runInBackground = body?.background === true;
+    const pageSize = Math.min(Math.max(Number(body?.pageSize) || 200, 50), 1000);
+    const aiBatchSize = Math.min(Math.max(Number(body?.aiBatchSize) || 10, 5), 20);
+    const maxPages = Math.min(Math.max(Number(body?.maxPages) || 50, 1), 1000);
+    const onlyUnanalyzed = body?.onlyUnanalyzed !== false; // défaut true
+    const onlyUnvalidated = body?.onlyUnvalidated === true; // optionnel
+    const includeResults = body?.includeResults === true;
 
-    // Verify admin access
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
+
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Missing SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY");
+    }
+
+    // 1) Vérifier l'utilisateur + admin (client anon)
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
     const {
       data: { user },
       error: userError,
-    } = await supabaseClient.auth.getUser();
+    } = await userClient.auth.getUser();
 
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -363,195 +410,252 @@ serve(async (req: Request) => {
       });
     }
 
-    const { data: roleData, error: roleError } = await supabaseClient
+    const { data: roleData } = await userClient
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")
       .maybeSingle();
 
-    if (roleError || !roleData) {
+    if (!roleData) {
       return new Response(JSON.stringify({ error: "Admin access required" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch training phrases (increase limit a bit; can be rerun)
-    const { data: phrases, error: phrasesError } = await supabaseClient
-      .from("training_phrases")
-      .select("id, french_text, bariba_text, metadata")
-      .limit(200);
+    // 2) Client service-role pour lecture/écriture
+    const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    if (phrasesError) throw phrasesError;
+    const processAnalysis = async () => {
+      let allResults: Array<{
+        id: string;
+        quality_score: number;
+        issues: string[];
+        suggestions: string[];
+        rule_score: number;
+        ai_score: number | null;
+        notes: string[];
+      }> = [];
 
-    if (!phrases || phrases.length === 0) {
+      let page = 0;
+      let totalFetched = 0;
+      let totalUpdated = 0;
+      let aiFailures = 0;
+      let hasMore = true;
+
+      while (hasMore && page < maxPages) {
+        let query = db
+          .from("training_phrases")
+          .select("id, french_text, bariba_text, is_validated, quality_score, metadata")
+          .range(page * pageSize, page * pageSize + pageSize - 1);
+
+        if (onlyUnvalidated) query = query.eq("is_validated", false);
+
+        const { data: phraseRows, error: phrasesError } = await query;
+        if (phrasesError) throw phrasesError;
+
+        const rows = (phraseRows || []) as PhraseRow[];
+        if (rows.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        page += 1;
+        totalFetched += rows.length;
+        console.log(`📄 analyze-phrase-quality page=${page} rows=${rows.length}`);
+
+        // Filtre local "onlyUnanalyzed"
+        const phrases = rows.filter((p) => {
+          if (!onlyUnanalyzed) return true;
+          const qa = (p.metadata as any)?.quality_analysis;
+          return !qa?.analyzed_at;
+        });
+
+        if (phrases.length === 0) {
+          continue;
+        }
+
+        const analysisResults: typeof allResults = [];
+
+        // Batches pour IA (analyse locale toujours appliquée)
+        for (let i = 0; i < phrases.length; i += aiBatchSize) {
+          const batch = phrases.slice(i, i + aiBatchSize).map((p) => ({
+            ...p,
+            french_text: normalizeText(p.french_text || ""),
+            bariba_text: normalizeText(p.bariba_text || ""),
+          }));
+
+          const localAnalyses = batch.map((p) => analyzeBaribaPairRules(p.french_text || "", p.bariba_text || ""));
+
+          let parsedAiAnalyses: AiAnalysis[] = [];
+
+          if (LOVABLE_API_KEY) {
+            const prompt = buildAnalysisPrompt(batch);
+
+            try {
+              const response = await fetchWithTimeout(
+                "https://ai.gateway.lovable.dev/v1/chat/completions",
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash",
+                    messages: [
+                      {
+                        role: "system",
+                        content:
+                          "Tu es un expert en linguistique et qualité de traductions Bariba (Baatonum). Réponds strictement en JSON valide.",
+                      },
+                      { role: "user", content: prompt },
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 1800,
+                  }),
+                },
+                AI_TIMEOUT_MS,
+              );
+
+              if (!response.ok) {
+                aiFailures += 1;
+                console.warn("AI API error:", response.status);
+              } else {
+                const aiData = await response.json();
+                const analysisText = aiData?.choices?.[0]?.message?.content ?? "";
+                const parsed = safeJsonExtract(analysisText) as { analyses?: AiAnalysis[] } | null;
+
+                if (parsed?.analyses && Array.isArray(parsed.analyses)) {
+                  parsedAiAnalyses = parsed.analyses.map((a) => ({
+                    index: Number(a.index),
+                    quality_score: clamp01(Number(a.quality_score)),
+                    issues: Array.isArray(a.issues) ? a.issues.map(String) : [],
+                    suggestions: Array.isArray(a.suggestions) ? a.suggestions.map(String) : [],
+                  }));
+                } else {
+                  aiFailures += 1;
+                  console.warn("AI response not parseable as analyses JSON");
+                }
+              }
+            } catch (err) {
+              aiFailures += 1;
+              console.warn("AI call failed:", err);
+            }
+          }
+
+          for (let j = 0; j < batch.length; j++) {
+            const phrase = batch[j];
+            const rule = localAnalyses[j];
+            const ai = parsedAiAnalyses.find((a) => a.index === j + 1);
+
+            const ruleIssuesText = rule.issues.map((x) => x.issue);
+            const ruleSuggestionsText = rule.issues.map((x) => x.suggestion);
+
+            analysisResults.push({
+              id: phrase.id,
+              quality_score: Number(mergeScores(rule.score, ai?.quality_score ?? null).toFixed(4)),
+              issues: uniqStrings([...(ai?.issues ?? []), ...ruleIssuesText]),
+              suggestions: uniqStrings([...(ai?.suggestions ?? []), ...ruleSuggestionsText]),
+              rule_score: Number(rule.score.toFixed(4)),
+              ai_score: ai?.quality_score ?? null,
+              notes: rule.notes,
+            });
+          }
+
+          await sleep(80);
+        }
+
+        // Écriture DB
+        for (const result of analysisResults) {
+          const existing = phrases.find((p) => p.id === result.id);
+          const existingMetadata =
+            existing?.metadata && typeof existing.metadata === "object" ? existing.metadata : {};
+
+          const metadata = {
+            ...existingMetadata,
+            quality_analysis: {
+              ...(existingMetadata as any)?.quality_analysis,
+              issues: result.issues,
+              suggestions: result.suggestions,
+              rule_score: result.rule_score,
+              ai_score: result.ai_score,
+              notes: result.notes,
+              analyzed_at: new Date().toISOString(),
+              analyzer_version: "bariba-v3-hybrid-rules-ai",
+            },
+            quality_analysis_run: {
+              ...(existingMetadata as any)?.quality_analysis_run,
+              last_run_at: new Date().toISOString(),
+            },
+          };
+
+          const { error: updateError } = await db
+            .from("training_phrases")
+            .update({
+              quality_score: result.quality_score,
+              metadata,
+            })
+            .eq("id", result.id);
+
+          if (updateError) {
+            console.error(`Failed to update phrase ${result.id}:`, updateError);
+          } else {
+            totalUpdated += 1;
+          }
+        }
+
+        allResults = allResults.concat(analysisResults);
+      }
+
+      const summary = {
+        fetched_rows: totalFetched,
+        analyzed: allResults.length,
+        updated: totalUpdated,
+        ai_failures: aiFailures,
+        avg_quality_score:
+          allResults.length > 0
+            ? Number(
+                (
+                  allResults.reduce((sum, r) => sum + r.quality_score, 0) / allResults.length
+                ).toFixed(4),
+              )
+            : 0,
+        low_quality_count: allResults.filter((r) => r.quality_score < 0.6).length,
+        medium_quality_count: allResults.filter((r) => r.quality_score >= 0.6 && r.quality_score < 0.8).length,
+        high_quality_count: allResults.filter((r) => r.quality_score >= 0.8).length,
+      };
+
+      return { summary, results: allResults };
+    };
+
+    if (runInBackground) {
+      // @ts-ignore Supabase Edge runtime helper
+      EdgeRuntime.waitUntil(processAnalysis());
+
       return new Response(
-        JSON.stringify({ error: "No phrases to analyze" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({
+          success: true,
+          started: true,
+          mode: "background",
+          message: "Analyse qualité démarrée en arrière-plan.",
+          config: { pageSize, aiBatchSize, maxPages, onlyUnanalyzed, onlyUnvalidated },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    console.log(`Analyzing ${phrases.length} training phrases`);
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
-    }
-
-    const analysisResults: Array<{
-      id: string;
-      quality_score: number;
-      issues: string[];
-      suggestions: string[];
-      rule_score: number;
-      ai_score: number | null;
-      notes: string[];
-    }> = [];
-
-    const batchSize = 10;
-
-    for (let i = 0; i < phrases.length; i += batchSize) {
-      const batch = (phrases.slice(i, i + batchSize) as PhraseRow[]).map((p) => ({
-        ...p,
-        french_text: normalizeText(p.french_text),
-        bariba_text: normalizeText(p.bariba_text),
-      }));
-
-      // 1) Analyse déterministe locale (règles)
-      const localAnalyses = batch.map((p) => analyzeBaribaPairRules(p.french_text, p.bariba_text));
-
-      // 2) Analyse IA (complément)
-      const prompt = buildAnalysisPrompt(batch);
-
-      let parsedAiAnalyses: AiAnalysis[] = [];
-
-      try {
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "Tu es un expert en linguistique et qualité de traductions Bariba (Baatonum). Réponds strictement en JSON valide.",
-              },
-              { role: "user", content: prompt },
-            ],
-            temperature: 0.1,
-            max_tokens: 1800,
-          }),
-        });
-
-        if (!response.ok) {
-          console.error("AI API error:", response.status);
-        } else {
-          const aiData = await response.json();
-          const analysisText = aiData?.choices?.[0]?.message?.content ?? "";
-          const parsed = safeJsonExtract(analysisText) as { analyses?: AiAnalysis[] } | null;
-
-          if (parsed?.analyses && Array.isArray(parsed.analyses)) {
-            parsedAiAnalyses = parsed.analyses.map((a) => ({
-              index: Number(a.index),
-              quality_score: clamp01(Number(a.quality_score)),
-              issues: Array.isArray(a.issues) ? a.issues.map(String) : [],
-              suggestions: Array.isArray(a.suggestions) ? a.suggestions.map(String) : [],
-            }));
-          } else {
-            console.warn("AI response did not contain parseable analyses JSON");
-          }
-        }
-      } catch (aiErr) {
-        console.error("AI call failed:", aiErr);
-      }
-
-      // 3) Fusion IA + règles
-      for (let j = 0; j < batch.length; j++) {
-        const phrase = batch[j];
-        const rule = localAnalyses[j];
-        const ai = parsedAiAnalyses.find((a) => a.index === j + 1);
-
-        const ruleIssuesText = rule.issues.map((x) => x.issue);
-        const ruleSuggestionsText = rule.issues.map((x) => x.suggestion);
-
-        const mergedIssues = uniqStrings([...(ai?.issues ?? []), ...ruleIssuesText]);
-        const mergedSuggestions = uniqStrings([...(ai?.suggestions ?? []), ...ruleSuggestionsText]);
-
-        const finalScore = mergeScores(rule.score, ai?.quality_score ?? null);
-
-        analysisResults.push({
-          id: phrase.id,
-          quality_score: finalScore,
-          issues: mergedIssues,
-          suggestions: mergedSuggestions,
-          rule_score: rule.score,
-          ai_score: ai?.quality_score ?? null,
-          notes: rule.notes,
-        });
-      }
-    }
-
-    // Update phrases with quality scores + detailed metadata
-    for (const result of analysisResults) {
-      const existing = phrases.find((p: PhraseRow) => p.id === result.id);
-      const existingMetadata =
-        existing && existing.metadata && typeof existing.metadata === "object"
-          ? existing.metadata
-          : {};
-
-      const metadata = {
-        ...existingMetadata,
-        quality_analysis: {
-          issues: result.issues,
-          suggestions: result.suggestions,
-          rule_score: result.rule_score,
-          ai_score: result.ai_score,
-          notes: result.notes,
-          analyzed_at: new Date().toISOString(),
-          analyzer_version: "bariba-v2-hybrid-rules-ai",
-        },
-      };
-
-      const { error: updateError } = await supabaseClient
-        .from("training_phrases")
-        .update({
-          quality_score: result.quality_score,
-          metadata,
-        })
-        .eq("id", result.id);
-
-      if (updateError) {
-        console.error(`Failed to update phrase ${result.id}:`, updateError);
-      }
-    }
+    const out = await processAnalysis();
 
     return new Response(
       JSON.stringify({
         success: true,
-        analyzed: analysisResults.length,
-        summary: {
-          avg_quality_score:
-            analysisResults.length > 0
-              ? Number(
-                  (
-                    analysisResults.reduce((sum, r) => sum + r.quality_score, 0) / analysisResults.length
-                  ).toFixed(4),
-                )
-              : 0,
-          low_quality_count: analysisResults.filter((r) => r.quality_score < 0.6).length,
-          medium_quality_count: analysisResults.filter((r) => r.quality_score >= 0.6 && r.quality_score < 0.8).length,
-          high_quality_count: analysisResults.filter((r) => r.quality_score >= 0.8).length,
-        },
-        results: analysisResults,
+        mode: "sync",
+        ...out.summary,
+        ...(includeResults ? { results: out.results } : {}),
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {
     console.error("Error in analyze-phrase-quality:", error);
