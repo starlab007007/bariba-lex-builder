@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  normalizeBaribaText,
+  analyzeBaribaPairRules,
+  clamp01,
+  uniqStrings,
+  safeJsonExtract,
+} from "../_shared/bariba-linguistic-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,19 +24,6 @@ type PhraseRow = {
   metadata?: Record<string, unknown> | null;
 };
 
-type RuleIssue = {
-  code: string;
-  severity: "low" | "medium" | "high";
-  issue: string;
-  suggestion: string;
-};
-
-type RuleAnalysis = {
-  score: number; // 0..1
-  issues: RuleIssue[];
-  notes: string[];
-};
-
 type AiAnalysis = {
   index: number;
   quality_score: number;
@@ -37,50 +31,8 @@ type AiAnalysis = {
   suggestions: string[];
 };
 
-function normalizeText(input: string): string {
-  return (input || "").normalize("NFC").replace(/\s+/g, " ").trim();
-}
-
-function hasBaribaDiacritics(text: string): boolean {
-  return /[ɔɛɑãɛ̃ĩɔ̃ũ̀́]/u.test(text);
-}
-
-function containsAny(text: string, patterns: RegExp[]): boolean {
-  return patterns.some((re) => re.test(text));
-}
-
-function clamp01(n: number): number {
-  if (Number.isNaN(n)) return 0;
-  return Math.max(0, Math.min(1, n));
-}
-
-function uniqStrings(arr: string[]): string[] {
-  return [...new Set(arr.map((s) => s.trim()).filter(Boolean))];
-}
-
-function safeJsonExtract(text: string): unknown | null {
-  if (!text) return null;
-
-  const cleaned = text
-    .replace(/```json/gi, "```")
-    .replace(/```/g, "")
-    .trim();
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    // continue
-  }
-
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-
-  try {
-    return JSON.parse(match[0]);
-  } catch {
-    return null;
-  }
-}
+// Alias pour garder le style du fichier existant
+const normalizeText = normalizeBaribaText;
 
 async function fetchWithTimeout(
   url: string,
@@ -98,216 +50,6 @@ async function fetchWithTimeout(
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function analyzeBaribaPairRules(frenchRaw: string, baribaRaw: string): RuleAnalysis {
-  const french = normalizeText(frenchRaw).toLowerCase();
-  const bariba = normalizeText(baribaRaw);
-
-  const issues: RuleIssue[] = [];
-  const notes: string[] = [];
-  let score = 0.9;
-
-  if (!bariba) {
-    return {
-      score: 0,
-      issues: [
-        {
-          code: "EMPTY_BARIBA",
-          severity: "high",
-          issue: "Traduction bariba vide.",
-          suggestion: "Ajouter une traduction bariba complète.",
-        },
-      ],
-      notes: [],
-    };
-  }
-
-  // Bruit OCR / dictionnaire brut / artefacts
-  if (
-    containsAny(bariba, [
-      /dictionnaire bariba - français/iu,
-      /<PARSED TEXT FOR PAGE/iu,
-      /\bacc\./iu,
-      /\binacc\./iu,
-      /\bimp\./iu,
-    ])
-  ) {
-    issues.push({
-      code: "OCR_OR_DICTIONARY_NOISE",
-      severity: "high",
-      issue: "La phrase semble contenir du bruit OCR ou une entrée dictionnaire brute.",
-      suggestion: "Conserver uniquement la phrase cible, sans définitions ni marques grammaticales.",
-    });
-    score -= 0.35;
-  }
-
-  // Longueur / structure
-  if (bariba.length < 2) {
-    issues.push({
-      code: "TOO_SHORT",
-      severity: "high",
-      issue: "Traduction trop courte pour être fiable.",
-      suggestion: "Fournir une phrase ou expression complète.",
-    });
-    score -= 0.3;
-  }
-
-  if (/[{}[\]]/.test(bariba)) {
-    issues.push({
-      code: "PLACEHOLDER_OR_JSON",
-      severity: "medium",
-      issue: "La traduction semble contenir des marqueurs techniques ou JSON.",
-      suggestion: "Nettoyer les placeholders et garder uniquement le texte Bariba.",
-    });
-    score -= 0.15;
-  }
-
-  // Erreurs critiques connues
-  if (french.includes("bonjour") && /\bKua dɔ̃ɔ\b/iu.test(bariba)) {
-    issues.push({
-      code: "BAD_GREETING_MORNING",
-      severity: "high",
-      issue: `Salutation matin erronée ("Kua dɔ̃ɔ").`,
-      suggestion: `Utiliser "A kpuna n do?" pour "Bonjour (matin)".`,
-    });
-    score -= 0.35;
-  }
-
-  if (french.includes("bonsoir") && /\bKua wɛrɛ\b/iu.test(bariba)) {
-    issues.push({
-      code: "BAD_GREETING_EVENING",
-      severity: "high",
-      issue: `Salutation du soir erronée ("Kua wɛrɛ").`,
-      suggestion: `Utiliser "Bɛɛ ka yoka" pour "Bonsoir".`,
-    });
-    score -= 0.35;
-  }
-
-  if ((french.includes("comment") && french.includes("vas")) && /\bA kɛra\??\b/iu.test(bariba)) {
-    issues.push({
-      code: "BAD_HOW_ARE_YOU",
-      severity: "high",
-      issue: `"A kɛra?" est incorrect pour "Comment vas-tu ?"`,
-      suggestion: `Utiliser "Anna wunɛn wasi?"`,
-    });
-    score -= 0.35;
-  }
-
-  if ((french.includes("je vais bien") || french.includes("ça va")) && /\bNa kɛra sãa sãa\b/iu.test(bariba)) {
-    issues.push({
-      code: "BAD_IM_FINE",
-      severity: "high",
-      issue: `"Na kɛra sãa sãa" est incorrect pour la réponse de salutation.`,
-      suggestion: `Utiliser "Alaafia".`,
-    });
-    score -= 0.35;
-  }
-
-  if (french.includes("merci") && /\bA nii koo\b/iu.test(bariba)) {
-    issues.push({
-      code: "BAD_THANKS",
-      severity: "high",
-      issue: `"A nii koo" n’est pas la forme de référence confirmée pour "merci".`,
-      suggestion: `Préférer "siara", "a kua", "ami" ou "Na nun siara" selon le contexte.`,
-    });
-    score -= 0.3;
-  }
-
-  if (french.includes("mère") && /\bNɛn yaa\b/iu.test(bariba)) {
-    issues.push({
-      code: "MOTHER_CONFUSION",
-      severity: "high",
-      issue: `"yaa" renvoie à viande/animal, pas "mère".`,
-      suggestion: `Utiliser "bii mɛro" pour "mère".`,
-    });
-    score -= 0.4;
-  }
-
-  if (
-    (french.includes("soif") || french.includes("j'ai soif") || french.includes("j’ai soif")) &&
-    /\bn[ɔo]nkuru\b/iu.test(bariba)
-  ) {
-    issues.push({
-      code: "BAD_THIRST_TERM",
-      severity: "high",
-      issue: `Forme non validée pour "soif" ("nɔnkuru").`,
-      suggestion: `Utiliser "nim nɔru".`,
-    });
-    score -= 0.35;
-  }
-
-  // wa vs mɛɛri
-  const mentionsVoir = [
-    "voir",
-    "trouver",
-    "obtenir",
-    "j'ai vu",
-    "j’ai vu",
-    "tu vois",
-    "il voit",
-    "as-tu vu",
-    "avez-vous vu",
-    "je trouve",
-  ].some((w) => french.includes(w));
-
-  if (mentionsVoir && /\bmɛɛri\b/iu.test(bariba) && !/\bwa\b/iu.test(bariba)) {
-    issues.push({
-      code: "WA_VS_MEERI",
-      severity: "high",
-      issue: `"mɛɛri" utilisé pour "voir/trouver/obtenir" (faux ami fréquent).`,
-      suggestion: `Utiliser "wa" pour voir/trouver/obtenir ; réserver "mɛɛri" à regarder/étudier/apprendre.`,
-    });
-    score -= 0.35;
-  }
-
-  const mentionsRegarderEtudier = ["regarder", "étudier", "apprendre"].some((w) => french.includes(w));
-  if (mentionsRegarderEtudier && /\bwa\b/iu.test(bariba) && !/\bmɛɛri\b/iu.test(bariba)) {
-    issues.push({
-      code: "MEERI_EXPECTED",
-      severity: "medium",
-      issue: `Le sens "regarder/étudier/apprendre" attend plutôt "mɛɛri".`,
-      suggestion: `Vérifier si "mɛɛri" est plus approprié selon le contexte.`,
-    });
-    score -= 0.15;
-  }
-
-  // Proverbe
-  if (french.includes("qui cherche trouve") && /Goo u g[ɑaã̃]+ kasuu,\s*u ga bɛri/iu.test(bariba)) {
-    issues.push({
-      code: "BAD_PROVERB",
-      severity: "high",
-      issue: "Proverbe mal formé.",
-      suggestion: `Utiliser "Durɔ goo u kasuu, u ga bɛri".`,
-    });
-    score -= 0.35;
-  }
-
-  if (!hasBaribaDiacritics(bariba)) {
-    notes.push("Pas de diacritiques détectés — possible mais vérifier la graphie (ɔ, ɛ, etc.).");
-    score -= 0.05;
-  }
-
-  if (bariba.length > 260) {
-    issues.push({
-      code: "POSSIBLE_DICTIONARY_DUMP",
-      severity: "medium",
-      issue: "Traduction très longue — possible collage d’entrée dictionnaire brute.",
-      suggestion: "Conserver uniquement la phrase cible, sans définitions ni formes grammaticales.",
-    });
-    score -= 0.12;
-  }
-
-  if (/\b(A kpuna n do\?|Bɛɛ ka yoka|Anna wunɛn wasi\?|Alaafia|bii mɛro|nim nɔru)\b/iu.test(bariba)) {
-    notes.push("Forme idiomatique validée détectée.");
-    score += 0.05;
-  }
-
-  return {
-    score: clamp01(score),
-    issues,
-    notes,
-  };
 }
 
 function buildAnalysisPrompt(batch: PhraseRow[]): string {
@@ -472,9 +214,7 @@ serve(async (req: Request) => {
           return !qa?.analyzed_at;
         });
 
-        if (phrases.length === 0) {
-          continue;
-        }
+        if (phrases.length === 0) continue;
 
         const analysisResults: typeof allResults = [];
 
@@ -486,7 +226,9 @@ serve(async (req: Request) => {
             bariba_text: normalizeText(p.bariba_text || ""),
           }));
 
-          const localAnalyses = batch.map((p) => analyzeBaribaPairRules(p.french_text || "", p.bariba_text || ""));
+          const localAnalyses = batch.map((p) =>
+            analyzeBaribaPairRules(p.french_text || "", p.bariba_text || "")
+          );
 
           let parsedAiAnalyses: AiAnalysis[] = [];
 
@@ -583,7 +325,7 @@ serve(async (req: Request) => {
               ai_score: result.ai_score,
               notes: result.notes,
               analyzed_at: new Date().toISOString(),
-              analyzer_version: "bariba-v3-hybrid-rules-ai",
+              analyzer_version: "bariba-v3-hybrid-rules-ai-shared",
             },
             quality_analysis_run: {
               ...(existingMetadata as any)?.quality_analysis_run,
