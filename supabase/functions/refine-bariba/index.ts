@@ -69,7 +69,7 @@ IDIOMES / FORMULES VALIDÉES (priorité haute) :
 
 const REFERENCE_PAIRS = `
 PAIRES DE TRADUCTION DE RÉFÉRENCE :
-"Je mange du riz" ↔ "Na koko di" | "Il a tué une biche" ↔ "Taaso u nɛmu go"
+"Je mange du riz" ↔ "Na mɔri di" | "Il a tué une biche" ↔ "Taaso u nɛmu go"
 "Je cherche du travail" ↔ "Na sɔmburu kasuu" | "Où es-tu?" ↔ "Mɑnɑ ɑ wɑ̃ɑ?"
 "Quand es-tu venu?" ↔ "Domma a na?" | "As-tu vu ces gens?" ↔ "A tɔn be wa?"
 "Je n'ai pas le courage" ↔ "Na ǹ kãkɔ" | "J'ai besoin d'argent" ↔ "Na gobin bukaata mɔ"
