@@ -2073,6 +2073,7 @@ export type Database = {
       tamtam_posts: {
         Row: {
           action_buttons: Json | null
+          ai_generated: boolean
           audio_narration_ba_url: string | null
           audio_narration_url: string | null
           audio_url: string | null
@@ -2104,6 +2105,7 @@ export type Database = {
         }
         Insert: {
           action_buttons?: Json | null
+          ai_generated?: boolean
           audio_narration_ba_url?: string | null
           audio_narration_url?: string | null
           audio_url?: string | null
@@ -2135,6 +2137,7 @@ export type Database = {
         }
         Update: {
           action_buttons?: Json | null
+          ai_generated?: boolean
           audio_narration_ba_url?: string | null
           audio_narration_url?: string | null
           audio_url?: string | null
@@ -2269,6 +2272,7 @@ export type Database = {
           following_count: number | null
           friends_count: number | null
           id: string
+          is_ai_profile: boolean
           is_verified: boolean | null
           last_seen_at: string | null
           location: string | null
@@ -2290,6 +2294,7 @@ export type Database = {
           following_count?: number | null
           friends_count?: number | null
           id?: string
+          is_ai_profile?: boolean
           is_verified?: boolean | null
           last_seen_at?: string | null
           location?: string | null
@@ -2311,6 +2316,7 @@ export type Database = {
           following_count?: number | null
           friends_count?: number | null
           id?: string
+          is_ai_profile?: boolean
           is_verified?: boolean | null
           last_seen_at?: string | null
           location?: string | null

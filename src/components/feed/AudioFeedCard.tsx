@@ -413,6 +413,9 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
         {/* Follow + Author */}
         <div className="flex items-center gap-3 mb-3">
           <span className="text-white/70 text-sm font-medium">{post.profile?.display_name || 'Utilisateur'}</span>
+          {(post as any).ai_generated && (
+            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-violet-500/30 text-violet-200 border border-violet-400/30">🤖 IA</span>
+          )}
           {(!isFollowing && authorId && currentUserId !== authorId) && (
             <motion.button whileTap={{ scale: 0.9 }} onClick={handleFollow}
               className="px-3 py-1 rounded-full text-xs font-bold"
