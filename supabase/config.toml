@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.refine-bariba]
 verify_jwt = false
+
+[functions.hf-keep-alive]
+verify_jwt = false
