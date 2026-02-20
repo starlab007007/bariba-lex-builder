@@ -1,4 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import {
+  normalizeBaribaText,
+  safeJsonExtract,
+  isInvalidUiLikeText,
+  applyLocalBaribaCorrections,
+} from "../_shared/bariba-linguistic-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,31 +20,7 @@ type OCRTranslateRequest = {
 };
 
 function normalizeText(input: string): string {
-  return (input || "").normalize("NFC").replace(/\s+/g, " ").trim();
-}
-
-function safeJsonExtract(text: string): any | null {
-  if (!text) return null;
-
-  const cleaned = text
-    .replace(/```json/gi, "```")
-    .replace(/```/g, "")
-    .trim();
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    // continue
-  }
-
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-
-  try {
-    return JSON.parse(match[0]);
-  } catch {
-    return null;
-  }
+  return normalizeBaribaText(input);
 }
 
 function detectDataUrl(input: string, fileName?: string): { dataUrl: string; mime: string } {
@@ -65,6 +47,16 @@ function isLikelyPdf(mime: string, fileName?: string): boolean {
   return mime === "application/pdf" || (fileName || "").toLowerCase().endsWith(".pdf");
 }
 
+function cleanOcrText(text: string): string {
+  const t = normalizeText(text);
+  if (!t) return "";
+
+  // Évite de renvoyer des placeholders/UI artifacts comme "button", "copy", etc.
+  if (isInvalidUiLikeText(t)) return "";
+
+  return t;
+}
+
 async function callVisionOcr(params: {
   lovableApiKey: string;
   dataUrl: string;
@@ -80,7 +72,7 @@ Task:
 1) Read all visible text from the provided ${isPdf ? "document page/image" : "image"}.
 2) Return ONLY valid JSON.
 3) Do NOT translate.
-4) Preserve line breaks where possible.
+4) Preserve line breaks where possible (but valid JSON string).
 5) If text is unreadable, return empty string and low confidence.
 
 Expected JSON format:
@@ -130,24 +122,24 @@ Expected JSON format:
   const content = aiResult?.choices?.[0]?.message?.content || "";
   console.log("[ocr-translate] OCR raw response:", String(content).substring(0, 500));
 
-  const parsed = safeJsonExtract(content);
+  const parsed = safeJsonExtract(String(content));
   if (parsed && typeof parsed === "object") {
-    const extractedText = normalizeText(String(parsed.extractedText || ""));
-    const confidence = Number.isFinite(Number(parsed.confidence))
-      ? Math.max(0, Math.min(1, Number(parsed.confidence)))
+    const extractedText = cleanOcrText(String((parsed as any).extractedText || ""));
+    const confidence = Number.isFinite(Number((parsed as any).confidence))
+      ? Math.max(0, Math.min(1, Number((parsed as any).confidence)))
       : extractedText
       ? 0.7
       : 0.2;
 
-    const ocrNotes = Array.isArray(parsed.ocrNotes)
-      ? parsed.ocrNotes.map((x: unknown) => String(x))
+    const ocrNotes = Array.isArray((parsed as any).ocrNotes)
+      ? (parsed as any).ocrNotes.map((x: unknown) => String(x))
       : undefined;
 
     return { extractedText, confidence, ocrNotes };
   }
 
   // Fallback: use raw content as extracted text if not JSON
-  const fallbackText = normalizeText(String(content || ""));
+  const fallbackText = cleanOcrText(String(content || ""));
   return {
     extractedText: fallbackText,
     confidence: fallbackText ? 0.45 : 0.1,
@@ -202,10 +194,14 @@ async function callByt5Translate(params: {
   }
 
   const data = await resp.json();
-  const translation = normalizeText(String(data?.translation || ""));
+  let translation = normalizeText(String(data?.translation || ""));
 
-  if (!translation) {
-    throw new Error("byt5 translation returned empty text");
+  if (targetLanguage === "bariba" && translation) {
+    translation = applyLocalBaribaCorrections(translation);
+  }
+
+  if (!translation || (targetLanguage === "bariba" && isInvalidUiLikeText(translation))) {
+    throw new Error("byt5 translation returned invalid/empty text");
   }
 
   return {
@@ -315,8 +311,7 @@ serve(async (req) => {
       0,
       Math.min(
         1,
-        (ocr.confidence * 0.55) +
-          (((translationConfidence ?? 70) / 100) * 0.45),
+        (ocr.confidence * 0.55) + (((translationConfidence ?? 70) / 100) * 0.45),
       ),
     );
 
