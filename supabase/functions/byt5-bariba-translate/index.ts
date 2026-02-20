@@ -16,8 +16,10 @@ interface TranslationRequest {
   skipRefine?: boolean; // ✅ permet de désactiver le post-raffinage si besoin
 }
 
-const SPACE_URL =
-  "https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space";
+const SPACE_URL = (
+  Deno.env.get("BYT5_SPACE_URL") ||
+  "https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space"
+).replace(/\/$/, "");
 const GLOBAL_TIMEOUT_MS = 55_000;
 
 const INVALID_UI_PATTERNS = [

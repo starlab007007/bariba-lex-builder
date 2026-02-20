@@ -353,9 +353,12 @@ async function synthesizeWithHuggingFaceSpace(params: {
 
   if (!joinResp.ok) {
     const errText = await joinResp.text().catch(() => "");
+    const isHtmlPage = errText.trimStart().startsWith("<!DOCTYPE html") || errText.trimStart().startsWith("<html");
     return {
-      error: `HF queue/join ${joinResp.status}: ${errText.substring(0, 200)}`,
-      sleeping: joinResp.status === 503 || /sleep|loading|awake/i.test(errText),
+      error: isHtmlPage
+        ? "Le Space HuggingFace est en veille ou indisponible (page HTML reçue au lieu de JSON)"
+        : `HF queue/join ${joinResp.status}: ${errText.substring(0, 200)}`,
+      sleeping: isHtmlPage || joinResp.status === 503 || /sleep|loading|awake/i.test(errText),
     };
   }
 
