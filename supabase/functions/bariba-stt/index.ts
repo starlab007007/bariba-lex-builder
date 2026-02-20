@@ -1,4 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import {
+  normalizeBaribaText,
+  isInvalidUiLikeText,
+  applyLocalBaribaCorrections,
+} from "../_shared/bariba-linguistic-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,55 +19,17 @@ const HF_CALL_TIMEOUT_MS = 30_000;
 const HF_SSE_TIMEOUT_MS = 60_000;
 const REFINE_TIMEOUT_MS = 5_000;
 
-const INVALID_STT_PATTERNS = [
-  "share via link",
-  "loading",
-  "submit",
-  "clear",
-  "error",
-  "undefined",
-  "null",
-  "<html",
-  "<!doctype",
-];
-
 interface STTRequest {
   audio: string;
   robustMode?: boolean;
   speakerType?: "Auto" | "Enfant" | "Femme" | "Homme" | "PersonneAgee";
 }
 
-function normalizeBaribaText(input: string): string {
-  return (input || "").normalize("NFC").replace(/\s+/g, " ").trim();
-}
-
-function stripWrappingQuotes(input: string): string {
-  return input.replace(/^["'“”]+|["'“”]+$/g, "");
-}
-
 function isValidTranscription(text: unknown): text is string {
   if (typeof text !== "string") return false;
-  const cleaned = normalizeBaribaText(text).toLowerCase();
+  const cleaned = normalizeBaribaText(text);
   if (!cleaned || cleaned.length < 1) return false;
-  return !INVALID_STT_PATTERNS.some((p) => cleaned.includes(p));
-}
-
-function applyLocalBaribaCorrections(input: string): string {
-  let out = normalizeBaribaText(input);
-  out = stripWrappingQuotes(out);
-
-  // Salutations / expressions fréquemment mal transcrites ou mal normalisées
-  out = out.replace(/\bKua dɔ̃ɔ\b/giu, "A kpuna n do?");
-  out = out.replace(/\bKua wɛrɛ\b/giu, "Bɛɛ ka yoka");
-  out = out.replace(/\bA kɛra\s*\?/giu, "Anna wunɛn wasi?");
-  out = out.replace(/\bNa kɛra sãa sãa\b/giu, "Alaafia");
-  out = out.replace(/\bNim nɔnkuru\b/giu, "nim nɔru");
-  out = out.replace(/\bNɛn yaa\b/giu, "bii mɛro");
-
-  // Proverbe de référence
-  out = out.replace(/Goo u g[ɑaã̃]+ kasuu,\s*u ga bɛri/giu, "Durɔ goo u kasuu, u ga bɛri");
-
-  return normalizeBaribaText(out);
+  return !isInvalidUiLikeText(cleaned);
 }
 
 /**
