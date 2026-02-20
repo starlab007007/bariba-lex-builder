@@ -16,14 +16,14 @@ export const AdminFloatingButton: React.FC = () => {
     {
       icon: LayoutDashboard,
       label: 'Tableau de bord',
-      labelBa: 'Kíláàsì àkọ́kọ́',
+      labelBa: 'Mɛɛri kpuro',
       path: '/admin',
       gradient: 'from-purple-500 to-indigo-500',
     },
     {
       icon: Package,
       label: 'Gestion des Assets',
-      labelBa: 'Ìṣàkóso àwọn ohun',
+      labelBa: 'Gɑ̃ɑnu gbɛ̀sìrù',
       path: '/assets',
       gradient: 'from-emerald-500 to-teal-500',
     },

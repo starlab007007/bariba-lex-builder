@@ -17,10 +17,10 @@ interface AIContentCreatorProps {
 }
 
 const CONTENT_TYPES: { id: ContentType; icon: typeof Sparkles; label: string; label_ba: string }[] = [
-  { id: 'script', icon: FileText, label: 'Script', label_ba: 'Àkọsílẹ̀' },
+  { id: 'script', icon: FileText, label: 'Script', label_ba: 'Kɔ̃siru' },
   { id: 'hashtags', icon: Hash, label: 'Hashtags', label_ba: 'Àmì' },
-  { id: 'hook', icon: Lightbulb, label: 'Accroche', label_ba: 'Ìmúdání' },
-  { id: 'suggestions', icon: Sparkles, label: 'Idées', label_ba: 'Ìmọ̀ràn' }
+  { id: 'hook', icon: Lightbulb, label: 'Accroche', label_ba: 'Mú dání' },
+  { id: 'suggestions', icon: Sparkles, label: 'Idées', label_ba: 'Yirɑnu' }
 ];
 
 export const AIContentCreator: React.FC<AIContentCreatorProps> = ({
@@ -133,10 +133,10 @@ export const AIContentCreator: React.FC<AIContentCreatorProps> = ({
         </div>
         <div>
           <h3 className="font-semibold text-gray-800">
-            {currentLang === 'ba' ? 'Ìrànwọ́ AI' : 'Assistant IA'}
+            {currentLang === 'ba' ? 'Ìràn IA' : 'Assistant IA'}
           </h3>
           <p className="text-xs text-gray-500">
-            {currentLang === 'ba' ? 'Ṣẹ̀dá àkóónú' : 'Générer du contenu'}
+            {currentLang === 'ba' ? 'Gɑ̃ɑ ko' : 'Générer du contenu'}
           </p>
         </div>
       </div>

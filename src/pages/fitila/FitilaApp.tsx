@@ -43,8 +43,8 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 
   // Navigation simplifiée : Accueil + Profil uniquement
   const navItems = [
-    { icon: Home, label: 'Accueil', labelBa: 'Ilé', path: '/fitila/social', emoji: '🏠' },
-    { icon: User, label: 'Profil', labelBa: 'Èmi', path: '/fitila/profile', emoji: '👤' },
+    { icon: Home, label: 'Accueil', labelBa: 'Yɛnu', path: '/fitila/social', emoji: '🏠' },
+    { icon: User, label: 'Profil', labelBa: 'Mɛ', path: '/fitila/profile', emoji: '👤' },
   ];
 
   // Outils : Dictionnaire + Traducteur + Apprendre
@@ -52,7 +52,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { 
       emoji: '📖', 
       label: 'Dictionnaire', 
-      labelBa: 'Ìwé ọ̀rọ̀', 
+      labelBa: 'Gbɛ́sɔ́ɔ̀rù', 
       path: '/fitila/dictionary', 
       gradient: 'from-emerald-500 to-teal-400',
       desc: 'FR ↔ Bariba'
@@ -60,7 +60,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { 
       emoji: '🌍', 
       label: 'Traducteur', 
-      labelBa: 'Ìtumọ̀', 
+      labelBa: 'Tùnkɔ̀rù', 
       path: '/fitila/translator', 
       gradient: 'from-blue-500 to-cyan-400',
       desc: 'Voix & Texte'
@@ -68,7 +68,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { 
       emoji: '📚', 
       label: 'Apprendre', 
-      labelBa: 'Kíkọ́', 
+      labelBa: 'Debu', 
       path: '/fitila/learn', 
       gradient: 'from-amber-500 to-orange-400',
       desc: 'Langues locales'

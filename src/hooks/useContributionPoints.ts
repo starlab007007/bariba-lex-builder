@@ -9,10 +9,10 @@ interface ContributionData {
 }
 
 const LEVELS = [
-  { min: 0, label: 'Débutant', labelBa: 'Ọ̀bẹ̀rẹ̀', emoji: '🌱' },
-  { min: 50, label: 'Contributeur', labelBa: 'Olùkópa', emoji: '⭐' },
-  { min: 200, label: 'Expert', labelBa: 'Àmọ̀jà', emoji: '🏆' },
-  { min: 500, label: 'Maître du dictionnaire', labelBa: 'Olórí gbɛ́-sɔ́ɔ̀rù', emoji: '👑' },
+  { min: 0, label: 'Débutant', labelBa: 'Debutɔm', emoji: '🌱' },
+  { min: 50, label: 'Contributeur', labelBa: 'Ìràn tɔm', emoji: '⭐' },
+  { min: 200, label: 'Expert', labelBa: 'Deburu tɔm', emoji: '🏆' },
+  { min: 500, label: 'Maître du dictionnaire', labelBa: 'Gbɛ́sɔ́ɔ̀rù sunɔ', emoji: '👑' },
 ];
 
 export function getLevel(points: number) {

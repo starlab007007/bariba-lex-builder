@@ -28,11 +28,11 @@ type FeedbackType = 'correction' | 'suggestion' | 'error' | 'audio_quality';
 type FeedbackMode = 'text' | 'audio' | 'mixed';
 
 const FEEDBACK_FIELDS = [
-  { id: 'word', label: 'Mot', labelBa: 'Ɔ̀rɔ̀' },
-  { id: 'phonetic', label: 'Phonétique', labelBa: 'Ìró' },
-  { id: 'definition', label: 'Définition', labelBa: 'Ìtúmọ̀' },
-  { id: 'example_bariba', label: 'Exemple bariba', labelBa: 'Àpẹẹrẹ Bàátɔ̀nú' },
-  { id: 'example_francais', label: 'Exemple français', labelBa: 'Àpẹẹrẹ Fàránsé' },
+  { id: 'word', label: 'Mot', labelBa: 'Yenu' },
+  { id: 'phonetic', label: 'Phonétique', labelBa: 'Nɔɔseeru' },
+  { id: 'definition', label: 'Définition', labelBa: 'Nɛɛmɔ' },
+  { id: 'example_bariba', label: 'Exemple bariba', labelBa: 'Yirɑ Bàátɔ̀nú' },
+  { id: 'example_francais', label: 'Exemple français', labelBa: 'Yirɑ Fãsei' },
 ];
 
 export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedbackProps) {
@@ -158,7 +158,7 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
       >
         <Edit3 className="w-4 h-4" />
         <span className="text-sm">
-          {currentLang === 'ba' ? 'Ṣàtúnṣe' : 'Corriger'}
+          {currentLang === 'ba' ? 'Gbɛgbɛru' : 'Corriger'}
         </span>
       </button>
 
@@ -183,7 +183,7 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
               <div className="flex items-center justify-between p-4 border-b border-tamtam-bg">
                 <h3 className="text-lg font-bold text-tamtam-text flex items-center gap-2">
                   <MessageSquarePlus className="w-5 h-5 text-tamtam-primary" />
-                  {currentLang === 'ba' ? 'Fi èsì sílẹ̀' : 'Donner un feedback'}
+                  {currentLang === 'ba' ? 'Nɛɛru yira' : 'Donner un feedback'}
                 </h3>
                 <button
                   onClick={() => setIsOpen(false)}
@@ -203,10 +203,10 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
                   >
                     <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
                     <h4 className="text-xl font-bold text-tamtam-text mb-2">
-                      {currentLang === 'ba' ? 'Ó ṣeun!' : 'Merci !'}
+                      {currentLang === 'ba' ? 'A nii koo!' : 'Merci !'}
                     </h4>
                     <p className="text-tamtam-text-muted">
-                      {currentLang === 'ba' ? 'Èsì rẹ ti dé' : 'Votre feedback a été envoyé'}
+                      {currentLang === 'ba' ? 'Wunɛn nɛɛru ya gɔrima' : 'Votre feedback a été envoyé'}
                     </p>
                   </motion.div>
                 ) : (
@@ -214,7 +214,7 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
                     {/* Entry info */}
                     <div className="p-3 bg-tamtam-bg rounded-xl">
                       <p className="text-sm text-tamtam-text-muted">
-                        {currentLang === 'ba' ? 'Ɔ̀rɔ̀' : 'Mot'}:
+                        {currentLang === 'ba' ? 'Yenu' : 'Mot'}:
                       </p>
                       <p className="font-bold text-tamtam-text">{entry.word}</p>
                       <p className="text-sm text-tamtam-text-muted mt-1">{entry.definition}</p>
@@ -223,7 +223,7 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
                     {/* Field selector */}
                     <div>
                       <label className="text-sm font-medium text-tamtam-text-muted mb-2 block">
-                        {currentLang === 'ba' ? 'Apá láti ṣàtúnṣe' : 'Champ à corriger'}
+                        {currentLang === 'ba' ? 'Kpindu gbɛgbɛru' : 'Champ à corriger'}
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {FEEDBACK_FIELDS.map((field) => (
@@ -253,7 +253,7 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
                         }`}
                       >
                         <Type className="w-4 h-4" />
-                        {currentLang === 'ba' ? 'Ọ̀rọ̀' : 'Texte'}
+                        {currentLang === 'ba' ? 'Kɔ̃siru' : 'Texte'}
                       </button>
                       <button
                         onClick={() => setFeedbackMode('audio')}
@@ -264,7 +264,7 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
                         }`}
                       >
                         <Volume2 className="w-4 h-4" />
-                        {currentLang === 'ba' ? 'Ohùn' : 'Audio'}
+                        {currentLang === 'ba' ? 'Nɔɔ' : 'Audio'}
                       </button>
                     </div>
 
@@ -274,8 +274,8 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
                         <textarea
                           value={textFeedback}
                           onChange={(e) => setTextFeedback(e.target.value)}
-                          placeholder={currentLang === 'ba' 
-                            ? 'Kọ àtúnṣe rẹ sí i níbí...'
+                           placeholder={currentLang === 'ba' 
+                             ? 'Wunɛn gbɛgbɛru kɔ̃si...'
                             : 'Écrivez votre correction ici...'}
                           className="w-full p-4 bg-tamtam-bg rounded-xl text-tamtam-text placeholder:text-tamtam-text-muted/50 resize-none focus:outline-none focus:ring-2 focus:ring-tamtam-primary/50"
                           rows={3}
@@ -305,15 +305,15 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
                         
                         <p className="text-center text-sm text-tamtam-text-muted">
                           {isRecording 
-                            ? (currentLang === 'ba' ? 'Ń gbóhùn...' : 'Enregistrement...')
-                            : (currentLang === 'ba' ? 'Tẹ̀ láti gbóhùn' : 'Appuyez pour enregistrer')}
+                            ? (currentLang === 'ba' ? 'Gɑ mɑɑrumɔ...' : 'Enregistrement...')
+                            : (currentLang === 'ba' ? 'Tɛ̀ kɑ mɑɑru' : 'Appuyez pour enregistrer')}
                         </p>
 
                         {/* Audio preview */}
                         {audioBlob && !isRecording && (
                           <div className="p-3 bg-tamtam-bg rounded-xl">
                             <p className="text-sm text-tamtam-text-muted mb-2">
-                              {currentLang === 'ba' ? 'Ohùn rẹ:' : 'Votre audio:'}
+                              {currentLang === 'ba' ? 'Wunɛn nɔɔ:' : 'Votre audio:'}
                             </p>
                             <audio 
                               controls 
@@ -340,7 +340,7 @@ export function VocalDictionaryFeedback({ entry, onClose }: VocalDictionaryFeedb
                     <div className="space-y-2">
                       <div className="flex items-center justify-center gap-2 text-tamtam-primary">
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>{currentLang === 'ba' ? 'Ń fi ránṣẹ́...' : 'Envoi en cours...'}</span>
+                        <span>{currentLang === 'ba' ? 'Gɑ gɔrimɔ...' : 'Envoi en cours...'}</span>
                       </div>
                       <div className="h-2 bg-tamtam-bg rounded-full overflow-hidden">
                         <div 

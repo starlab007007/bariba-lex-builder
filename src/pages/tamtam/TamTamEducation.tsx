@@ -8,12 +8,12 @@ import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 
 const categories = [
-  { id: 'crops', icon: '🌱', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Cultures', labelBa: 'Àwọn ohun ọ̀gbìn' },
-  { id: 'livestock', icon: '🐄', color: 'bg-amber-500', bgLight: 'bg-amber-50', labelFr: 'Élevage', labelBa: 'Ẹ̀tọ́ ẹran' },
-  { id: 'business', icon: '💼', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelFr: 'Commerce', labelBa: 'Òwò' },
-  { id: 'health', icon: '🏥', color: 'bg-red-500', bgLight: 'bg-red-50', labelFr: 'Santé', labelBa: 'Ìlera' },
-  { id: 'qa', icon: '❓', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelFr: 'Questions', labelBa: 'Àwọn ìbéèrè' },
-  { id: 'stories', icon: '👨‍🌾', color: 'bg-orange-500', bgLight: 'bg-orange-50', labelFr: 'Témoignages', labelBa: 'Àwọn ìtàn' },
+  { id: 'crops', icon: '🌱', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Cultures', labelBa: 'Gberu' },
+  { id: 'livestock', icon: '🐄', color: 'bg-amber-500', bgLight: 'bg-amber-50', labelFr: 'Élevage', labelBa: 'Nɑɑnu mɑɑru' },
+  { id: 'business', icon: '💼', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelFr: 'Commerce', labelBa: 'Aburu' },
+  { id: 'health', icon: '🏥', color: 'bg-red-500', bgLight: 'bg-red-50', labelFr: 'Santé', labelBa: 'Dɔɔru' },
+  { id: 'qa', icon: '❓', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelFr: 'Questions', labelBa: 'Kasuurenu' },
+  { id: 'stories', icon: '👨‍🌾', color: 'bg-orange-500', bgLight: 'bg-orange-50', labelFr: 'Témoignages', labelBa: 'Gɛsɛrenu' },
 ];
 
 interface AudioCourse {
@@ -27,24 +27,24 @@ interface AudioCourse {
 
 const mockCourses: Record<string, AudioCourse[]> = {
   crops: [
-    { id: '1', titleFr: 'Préparation du sol', titleBa: 'Ìpèsè ilẹ̀', duration: '5 min', icon: '🪴', completed: true },
-    { id: '2', titleFr: 'Semis et plantation', titleBa: 'Fífún irúgbìn', duration: '7 min', icon: '🌾', completed: true },
-    { id: '3', titleFr: 'Application engrais', titleBa: 'Lílo ajílẹ̀', duration: '6 min', icon: '🧪', completed: false },
-    { id: '4', titleFr: 'Gestion des maladies', titleBa: 'Ìṣàkóso àrùn', duration: '8 min', icon: '🦠', completed: false },
-    { id: '5', titleFr: 'Récolte optimale', titleBa: 'Ìkórè tó dára', duration: '5 min', icon: '🌽', completed: false },
+    { id: '1', titleFr: 'Préparation du sol', titleBa: 'Tɛ̃ɛ gbɛsiru', duration: '5 min', icon: '🪴', completed: true },
+    { id: '2', titleFr: 'Semis et plantation', titleBa: 'Gberu yira', duration: '7 min', icon: '🌾', completed: true },
+    { id: '3', titleFr: 'Application engrais', titleBa: 'Tɛ̃ɛ ìràn', duration: '6 min', icon: '🧪', completed: false },
+    { id: '4', titleFr: 'Gestion des maladies', titleBa: 'Dɔɔru gbɛsiru', duration: '8 min', icon: '🦠', completed: false },
+    { id: '5', titleFr: 'Récolte optimale', titleBa: 'Gberu koru nɔɔra', duration: '5 min', icon: '🌽', completed: false },
   ],
   livestock: [
-    { id: '6', titleFr: 'Nutrition animale', titleBa: 'Oúnjẹ ẹranko', duration: '6 min', icon: '🌿', completed: false },
-    { id: '7', titleFr: 'Santé du bétail', titleBa: 'Ìlera ẹran', duration: '7 min', icon: '💉', completed: false },
-    { id: '8', titleFr: 'Production laitière', titleBa: 'Ìṣelọ́pọ̀ wàrà', duration: '8 min', icon: '🥛', completed: false },
+    { id: '6', titleFr: 'Nutrition animale', titleBa: 'Nɑɑnu dɔ̃ɔ', duration: '6 min', icon: '🌿', completed: false },
+    { id: '7', titleFr: 'Santé du bétail', titleBa: 'Nɑɑnu dɔɔru', duration: '7 min', icon: '💉', completed: false },
+    { id: '8', titleFr: 'Production laitière', titleBa: 'Nɔɔ koru', duration: '8 min', icon: '🥛', completed: false },
   ],
   business: [
-    { id: '9', titleFr: 'Calculer ses bénéfices', titleBa: 'Ṣe àkọọ́lẹ̀ èrè', duration: '5 min', icon: '📊', completed: false },
-    { id: '10', titleFr: 'Négocier les prix', titleBa: 'Dá owó lọ́wọ́', duration: '6 min', icon: '🤝', completed: false },
+    { id: '9', titleFr: 'Calculer ses bénéfices', titleBa: 'Gobi nɛɛrɑ', duration: '5 min', icon: '📊', completed: false },
+    { id: '10', titleFr: 'Négocier les prix', titleBa: 'Gobi kasuu', duration: '6 min', icon: '🤝', completed: false },
   ],
   health: [
-    { id: '11', titleFr: 'Premiers secours', titleBa: 'Ìrànwọ́ àkọ́kọ́', duration: '10 min', icon: '🩹', completed: false },
-    { id: '12', titleFr: 'Nutrition familiale', titleBa: 'Oúnjẹ ìdílé', duration: '7 min', icon: '🥗', completed: false },
+    { id: '11', titleFr: 'Premiers secours', titleBa: 'Ìràn kpákpá', duration: '10 min', icon: '🩹', completed: false },
+    { id: '12', titleFr: 'Nutrition familiale', titleBa: 'Dɛnu dɔ̃ɔ', duration: '7 min', icon: '🥗', completed: false },
   ],
 };
 

@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const multiFormatTemplate: Template = {
   id: 'multi-format',
   name: 'Multi-Format',
-  nameBa: 'Ọ̀pọ̀ Ìrísí',
+  nameBa: 'Kpindu kpuro',
   category: 'business',
   description: 'Optimisé pour tous les réseaux sociaux (9:16, 16:9, 1:1)',
-  descriptionBa: 'Dára fún gbogbo àwọn nẹ́tíwọ̀kì àwùjọ',
+  descriptionBa: 'Nɔɔra kpuro tɔmbu yɛrenu yira',
   thumbnail: '/assets/templates/multi-format-thumb.jpg',
   duration: 30,
   isPremium: true,

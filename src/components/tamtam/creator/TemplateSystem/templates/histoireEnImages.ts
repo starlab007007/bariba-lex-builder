@@ -9,10 +9,10 @@ import { Template } from '../types';
 export const histoireEnImagesTemplate: Template = {
   id: 'histoire-en-images',
   name: 'Histoire en Images',
-  nameBa: 'Ìtàn Nínú Àwòrán',
+  nameBa: 'Gɛsɛru photo sɔɔ',
   category: 'storytelling',
   description: 'Diaporama photo avec narration vocale',
-  descriptionBa: 'Àwọn àwòrán pẹ̀lú ìtàn',
+  descriptionBa: 'Photo kɑ nɔɔ gɛsɛru',
   thumbnail: '/assets/templates/histoire-en-images-thumb.jpg',
   duration: 60,
   isPremium: false,

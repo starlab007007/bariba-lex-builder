@@ -57,8 +57,8 @@ const CreateMenu: React.FC<{
               <div className="flex items-center gap-3">
                 <span className="text-3xl">🎙️</span>
                 <div>
-                  <h2 className="text-white text-xl font-bold">{currentLang === 'ba' ? 'Ṣẹ̀dá Tuntun' : 'Créer'}</h2>
-                  <p className="text-white/50 text-sm">{currentLang === 'ba' ? 'Yan ọ̀kan' : 'Choisissez une option'}</p>
+                  <h2 className="text-white text-xl font-bold">{currentLang === 'ba' ? 'Ko yɔyɔ' : 'Créer'}</h2>
+                  <p className="text-white/50 text-sm">{currentLang === 'ba' ? 'Dɔmbɔ sɛnbu' : 'Choisissez une option'}</p>
                 </div>
               </div>
               <motion.button whileTap={{ scale: 0.9 }} onClick={onClose} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
@@ -210,10 +210,10 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
       {/* Welcome message */}
       <div className="mb-6 text-center">
         <h1 className="text-white text-2xl font-bold mb-2">
-          {currentLang === 'ba' ? 'Ẹ káàbọ̀!' : 'Bienvenue!'}
+          {currentLang === 'ba' ? 'Aagu wunɛ ka weru!' : 'Bienvenue!'}
         </h1>
         <p className="text-white/60 text-sm">
-          {currentLang === 'ba' ? 'Kí ni o fẹ́ ṣe lónìí?' : 'Que voulez-vous découvrir?'}
+          {currentLang === 'ba' ? 'Mba i koo ko gisɔ?' : 'Que voulez-vous découvrir?'}
         </p>
       </div>
 
@@ -245,7 +245,7 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="w-5 h-5 text-[#FF7A00]" />
-          <h2 className="text-white font-bold">{currentLang === 'ba' ? 'Àwọn tó gbajúmọ̀' : 'Tendances'}</h2>
+          <h2 className="text-white font-bold">{currentLang === 'ba' ? 'Gɑ tɛ̀lé' : 'Tendances'}</h2>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {['🎵 Musique', '📚 Contes', '🌾 Agriculture', '🩺 Santé', '😂 Humour'].map((tag, i) => (
@@ -269,15 +269,15 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
             <Sparkles className="w-5 h-5 text-[#FF7A00]" />
           </div>
           <div>
-            <h3 className="text-white font-bold text-sm">{currentLang === 'ba' ? 'Àbá AI' : 'Suggestion IA'}</h3>
+            <h3 className="text-white font-bold text-sm">{currentLang === 'ba' ? 'IA yirɑ' : 'Suggestion IA'}</h3>
             <p className="text-white/60 text-xs">Basé sur votre localisation</p>
           </div>
         </div>
         <p className="text-white/80 text-sm mb-3">
-          "{currentLang === 'ba' ? 'Sọ̀rọ̀ nípa owó ọjà lónìí!' : 'Parlez des prix du marché aujourd\'hui!'}"
+          "{currentLang === 'ba' ? 'Gisɔ aburu gobi nɛɛ!' : 'Parlez des prix du marché aujourd\'hui!'}"
         </p>
         <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/fitila/social')} className="w-full py-2.5 rounded-xl bg-[#FF7A00] text-white text-sm font-bold">
-          {currentLang === 'ba' ? 'Bẹ̀rẹ̀' : 'Commencer'}
+          {currentLang === 'ba' ? 'Sɔ̃ɔ' : 'Commencer'}
         </motion.button>
       </motion.div>
     </div>

@@ -8,12 +8,12 @@ import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
 const sections = [
-  { id: 'weather', icon: '🌧️', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelFr: 'Météo', labelBa: 'Ọjọ́ ojú ọ̀run' },
-  { id: 'crops', icon: '🌱', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Conseils cultures', labelBa: 'Ìmọ̀ràn àgbẹ̀' },
-  { id: 'livestock', icon: '🐄', color: 'bg-amber-500', bgLight: 'bg-amber-50', labelFr: 'Bétail', labelBa: 'Ẹran ọ̀sìn' },
-  { id: 'water', icon: '💧', color: 'bg-cyan-500', bgLight: 'bg-cyan-50', labelFr: 'Eau & Irrigation', labelBa: 'Omi àti ìfomi' },
-  { id: 'technician', icon: '📞', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelFr: 'Appeler technicien', labelBa: 'Pe onímọ̀' },
-  { id: 'prices', icon: '💰', color: 'bg-yellow-500', bgLight: 'bg-yellow-50', labelFr: 'Prix du jour', labelBa: 'Owó ọjọ́' },
+  { id: 'weather', icon: '🌧️', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelFr: 'Météo', labelBa: 'Gura wɑɑru' },
+  { id: 'crops', icon: '🌱', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Conseils cultures', labelBa: 'Gberu deburu' },
+  { id: 'livestock', icon: '🐄', color: 'bg-amber-500', bgLight: 'bg-amber-50', labelFr: 'Bétail', labelBa: 'Nɑɑnu' },
+  { id: 'water', icon: '💧', color: 'bg-cyan-500', bgLight: 'bg-cyan-50', labelFr: 'Eau & Irrigation', labelBa: 'Niru kɑ gberu' },
+  { id: 'technician', icon: '📞', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelFr: 'Appeler technicien', labelBa: 'Pè deburu tɔm' },
+  { id: 'prices', icon: '💰', color: 'bg-yellow-500', bgLight: 'bg-yellow-50', labelFr: 'Prix du jour', labelBa: 'Gisɔ gobi' },
 ];
 
 // Mock weather data
@@ -33,10 +33,10 @@ const mockWeather = {
 
 // Mock market prices
 const mockPrices = [
-  { product: '🌽', nameFr: 'Maïs (sac 100kg)', nameBa: 'Àgbàdo', price: 15000 },
-  { product: '🌾', nameFr: 'Riz (sac 50kg)', nameBa: 'Ìrẹsì', price: 22000 },
-  { product: '🥜', nameFr: 'Arachide (sac)', nameBa: 'Ẹ̀pà', price: 18000 },
-  { product: '🫘', nameFr: 'Haricot (sac)', nameBa: 'Ẹ̀wà', price: 25000 },
+  { product: '🌽', nameFr: 'Maïs (sac 100kg)', nameBa: 'Gbɑdoo', price: 15000 },
+  { product: '🌾', nameFr: 'Riz (sac 50kg)', nameBa: 'Mɔɔ', price: 22000 },
+  { product: '🥜', nameFr: 'Arachide (sac)', nameBa: 'Sɑ̃ɑ', price: 18000 },
+  { product: '🫘', nameFr: 'Haricot (sac)', nameBa: 'Sɔɔru', price: 25000 },
 ];
 
 export default function TamTamAgriculture() {
@@ -73,7 +73,7 @@ export default function TamTamAgriculture() {
     tamtamFeedback.play('click');
     const weatherText = currentLang === 'fr' 
       ? `Aujourd'hui: ${mockWeather.temp} degrés, humidité ${mockWeather.humidity}%. Prévision de pluie mercredi et jeudi. Bon moment pour semer.`
-      : `Òní: ìwọ̀n ooru ${mockWeather.temp}, ọ̀rinrin ${mockWeather.humidity}%. Òjò yóò rọ̀ ọjọ́ Ajé àti Ìṣẹ́gun. Àkókò tó dára láti fún irúgbìn.`;
+      : `Gisɔ: gura ${mockWeather.temp}, niru ${mockWeather.humidity}%. Gura kɑ nɑɑ. Wɑɑru nɔɔra gberu yira.`;
     await speakCurrentLang(weatherText);
   };
 
@@ -81,7 +81,7 @@ export default function TamTamAgriculture() {
     tamtamFeedback.play('click');
     const text = currentLang === 'fr' 
       ? `${nameFr}: ${price.toLocaleString()} francs CFA`
-      : `${nameBa}: ${price.toLocaleString()} owó`;
+      : `${nameBa}: ${price.toLocaleString()} gobi`;
     await speakCurrentLang(text);
   };
 
@@ -89,7 +89,7 @@ export default function TamTamAgriculture() {
     tamtamFeedback.play('click');
     const text = currentLang === 'fr' 
       ? "Appel du technicien agricole en cours..."
-      : "Mo ń pe onímọ̀ àgbẹ̀...";
+      : "Na pè deburu tɔm...";
     await speakCurrentLang(text);
     toast({
       title: "📞 Appel en cours",
@@ -113,7 +113,7 @@ export default function TamTamAgriculture() {
             <div className="text-center mb-6">
               <span className="text-5xl">🌾</span>
               <h1 className="text-xl font-bold text-tamtam-text mt-2">
-                {currentLang === 'fr' ? 'Agriculture' : 'Àgbẹ̀'}
+                {currentLang === 'fr' ? 'Agriculture' : 'Gberu sɔmburu'}
               </h1>
             </div>
 
@@ -126,7 +126,7 @@ export default function TamTamAgriculture() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-80">{currentLang === 'fr' ? "Aujourd'hui" : 'Òní'}</p>
+                  <p className="text-sm opacity-80">{currentLang === 'fr' ? "Aujourd'hui" : 'Gisɔ'}</p>
                   <p className="text-3xl font-bold">{mockWeather.temp}°C</p>
                 </div>
                 <div className="text-6xl">☀️</div>
