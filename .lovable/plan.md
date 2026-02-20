@@ -1,118 +1,110 @@
 
 
-# Plan : Version Bariba de la plateforme via dictionnaire local
+# Plan : Profil Super IA - Createur Automatise de Contenu
 
-## Contexte du probleme
+## Probleme 1 : Erreur TTS (bariba-tts)
 
-Le fichier `public/i18n-platform.json` contient ~300 cles avec les champs `"ba": ""` tous vides. De plus, le fichier `FitilaLanguageContext.tsx` contient ~220 traductions "ba" qui utilisent du **Yoruba** (langue nigeriane) au lieu du **Bariba** authentique. Les mots comme "Sɔ́ɔ̀rù", "Gbɛ̀kú", "Ṣàtúnṣe", "Àwọn ìwádìí" sont du Yoruba, pas du Bariba.
+L'erreur `HF queue/join 404` indique que le Space HuggingFace utilise pour la synthese vocale Bariba est soit en veille, soit que son URL a change ou n'existe plus. Le Space gratuit s'endort apres inactivite et retourne une page HTML 404 au lieu du JSON attendu.
 
-## Sources locales disponibles pour les traductions
+**Correction** : Ajouter une detection plus robuste du 404 HTML (la reponse contient `<!DOCTYPE html>`) et retourner un message clair au frontend au lieu d'un crash. Ajouter un fallback silencieux qui retourne le texte sans audio plutot qu'une erreur 500.
 
-Le projet dispose de 3 sources fiables de vocabulaire Bariba :
+## Probleme 2 : Profil Super IA
 
-1. **`baribaLinguisticKnowledge.ts`** : ~130 expressions idiomatiques + ~50 paires de reference (salutations, famille, actions, connecteurs, nombres, religion)
-2. **`learningFoundations.ts`** (949 lignes) : 12 lecons avec des tables de vocabulaire (corps humain, nourriture, jours/temps, verbes, pronoms, etc.) et leurs equivalents `br` (bariba)
-3. **`learningExercises.ts`** (418 lignes) : 300+ exercices bidirectionnels avec paires french/bariba sur 14 themes
+### Concept
 
-## Ce qui va etre fait
+Creer un profil utilisateur special "Fitila IA" dans la base de donnees, identifiable par un flag `is_ai_profile`. Ce profil apparait dans le feed social comme un utilisateur normal avec un badge "IA" distinctif. Quand l'administrateur envoie un prompt simple (ex: "Cree un conte sur le lievre et la tortue"), le systeme utilise Lovable AI (Gemini 3 Flash) pour generer automatiquement le contenu et le publier sous ce profil.
 
-### Etape 1 : Remplir `public/i18n-platform.json` avec les traductions Bariba
+### Architecture
 
-Chaque cle sera traduite en cherchant d'abord dans les sources locales. Voici le mapping prevu :
+```text
+ Utilisateur (Admin)
+       |
+       | Prompt simple ("Cree un conte sur...")
+       v
+ [Edge Function: super-ia-create]
+       |
+       | 1. Genere le contenu via Lovable AI
+       | 2. Genere transcript FR + BA (dictionnaire local)
+       | 3. Insere dans tamtam_posts ou videos
+       | 4. Utilise le user_id du profil IA
+       v
+ [Feed Social] -> Le post apparait comme venant de "Fitila IA"
+```
 
-**Navigation / Sidebar :**
-- "Accueil" -> "Yɛnu" (maison/foyer, source: exercices famille)
-- "Profil" -> "Mɛ" (soi-meme, derive de fondations pronoms)
-- "Dictionnaire" -> "Gbɛ́sɔ́ɔ̀rù" (mot-chercher, fondations)
-- "Traducteur" -> "Tùnkɔ̀rù" (traduction, derive)
-- "Apprendre" -> "Debu" (apprentissage, fondations alphabet)
-- "Langue" -> "Nɛɛru" (parole/langue, fondations)
-- "Francais" -> "Fãsei" (fondations)
-- "Bariba" -> "Bàátɔ̀nú" (fondations)
-- "Parametres" -> "Gbɛ̀sìrù" (reglage, fondations)
-- "Outils" -> "Kɛ̀rùsù" (instruments, fondations)
-- "Administration" -> "Sunɔ sɔmburu" (travail du chef)
+### Types de contenu supportes
 
-**Actions communes :**
-- "Partager" -> "Pín" (exercices)
-- "Sauvegarder" -> "Mɑɑru" (garder)
-- "Supprimer" -> "Bɔru" (enlever)
-- "Modifier" -> "Gbɛsiru" (changer, fondations)
-- "Confirmer" -> "Sɛnbu" (valider)
-- "Annuler" -> "Gbɛ́ru" (arreter)
-- "Retour" -> "Wiru" (revenir)
-- "Suivant" -> "Tɛ̀lé" (suivre)
-- "Oui" -> "Ee / Ɔ̃ɔ̃" (fondations quiz)
-- "Non" -> "Aawo" (exercices salutations)
-- "Fermer" -> "Kpe" (fermer)
-- "Rechercher" -> "Kasuu" (chercher, reference pairs)
-- "Envoyer" -> "Gɔrima" (envoyer, exercices)
-- "Erreur" -> "Kɑsɔru" (faute, exercices)
-- "Succes" -> "Nɔɔra" (bon/bien, fondations)
-- "Chargement..." -> "Gɑ nɑɑmɔ..." (ca arrive)
+| Type | Table cible | template_id | Description |
+|------|------------|-------------|-------------|
+| Conte Live | tamtam_posts | conte-vivant | Conte interactif avec narration |
+| Griot | videos | griot-digital | Video narrative animee |
+| Patrimoine | tamtam_posts | patrimoine | Heritage culturel audio |
+| Voix du Village | tamtam_posts | voix-village | Temoignage communautaire |
 
-**Salutations / Auth :**
-- "Bienvenue" -> "Aagu wunɛ ka weru" (idiomes)
-- "Merci" -> "A nii koo" (idiomes)
-- "Comment vas-tu ?" -> "A kɛra?" (idiomes)
-- "Continuer" -> "Tɛ̀lé" (avancer)
-- "Effacer" -> "Wɔri" (nettoyer)
-- "Connexion" -> "Doo" (entrer, fondations)
+### Etapes d'implementation
 
-**Social / Feed :**
-- "Patrimoine" -> "Kpɑɑru" (heritage, fondations)
-- "Ma Voix" -> "Nɛn nɔɔ" (ma bouche/voix)
-- "Creation" -> "Koru" (faire/creer)
-- "Messages" -> "Nɛɛrenu" (paroles)
-- "Groupes" -> "Yɛrenu" (assemblees)
-- "En direct" -> "Tɛ̃" (maintenant)
-- "Repondre" -> "Nɛɛ wiru" (dire en retour)
-- "Suivre" -> "Tɛ̀lé" (suivre)
+**Etape 1 : Migration base de donnees**
 
-**Dictionnaire :**
-- "Clavier" -> "Kɔ̃siru" (ecriture)
-- "Vocal" -> "Nɔɔ" (voix/bouche)
-- "Bariba vers Francais" -> "Bàátɔ̀nú kɑ Fãsei"
-- "Francais vers Bariba" -> "Fãsei kɑ Bàátɔ̀nú"
-- "Mot non trouve" -> "Yenu kun bɛri" (mot pas trouve)
+- Ajouter une colonne `is_ai_profile` (boolean, default false) a la table `tamtam_profiles`
+- Inserer le profil IA "Fitila IA" avec un UUID fixe genere, username "fitila_ia", display_name "Fitila IA", is_verified true, is_ai_profile true
+- Creer une entree correspondante dans `auth.users` n'est PAS possible, donc le profil IA aura `user_id` NULL dans les posts (la colonne est nullable) et on identifiera les posts IA via un champ `metadata` ou `template_id`
 
-**Temps :**
-- "Aujourd'hui" -> "Gisɔ" (fondations)
-- "Demain" -> "Yɑmɔ" (fondations)
-- "Hier" -> "Yinɑ" (fondations)
-- "Maintenant" -> "Tɛ̃" (fondations)
+**Alternative retenue** : Puisque `user_id` dans `tamtam_posts` est nullable, les posts du Super IA seront publies avec `user_id = NULL` et un champ identifiant dans les colonnes existantes (ex: `topic = 'fitila-ia'` ou ajout d'une colonne `ai_generated`).
 
-Et ainsi de suite pour toutes les ~300 cles.
+**Etape 2 : Edge Function `super-ia-create`**
 
-### Etape 2 : Corriger `FitilaLanguageContext.tsx`
+Nouvelle edge function qui :
+1. Recoit un prompt + type de contenu (conte, griot, patrimoine, voix-village)
+2. Appelle Lovable AI (Gemini 3 Flash) avec un system prompt specialise par type
+3. Genere :
+   - `transcript_fr` : Le texte complet en francais
+   - `transcript_ba` : Traduction Bariba via le dictionnaire local (pas de service en ligne)
+   - `feeling_emoji` : Emoji contextuel
+   - `hashtags` : Tags pertinents
+4. Insere dans `tamtam_posts` avec les champs remplis
+5. Retourne l'ID du post cree
 
-Remplacer toutes les traductions Yoruba par du Bariba authentique dans les ~220 entrees du dictionnaire `translations`. Par exemple :
-- `home: { ba: "Sɔ́ɔ̀rù" }` (Yoruba) -> `home: { ba: "Yɛnu" }` (Bariba)
-- `social: { ba: "Gbɛ̀kú" }` (Yoruba) -> `social: { ba: "Tɔmbu" }` (Bariba, = gens)
-- `listen: { ba: "Tɛ́ɛ́" }` (Yoruba) -> `listen: { ba: "Turu" }` (Bariba, idiomes)
-- `record: { ba: "Wé" }` (Yoruba) -> `record: { ba: "Mɑɑru" }` (Bariba)
-- `today: { ba: "Òní" }` (Yoruba) -> `today: { ba: "Gisɔ" }` (Bariba)
-- `yesterday: { ba: "Àná" }` (Yoruba) -> `yesterday: { ba: "Yinɑ" }` (Bariba)
-- `yes: { ba: "Bẹ́ẹ̀ni" }` (Yoruba) -> `yes: { ba: "Ee" }` (Bariba)
-- `no: { ba: "Bẹ́ẹ̀kọ́" }` (Yoruba) -> `no: { ba: "Aawo" }` (Bariba)
-- `family: { ba: "Ẹbí" }` (Yoruba) -> `family: { ba: "Dɛnu" }` (Bariba, exercices)
-- Et les 200+ autres entrees
+**System prompts par type** :
+- **Conte** : "Tu es un griot traditionnel. Cree un conte court (200 mots max) avec une morale..."
+- **Patrimoine** : "Tu documentes le patrimoine culturel Bariba. Decris une tradition, un rituel..."
+- **Voix du Village** : "Tu rapportes une nouvelle du village. Cree un temoignage realiste..."
+- **Griot** : "Tu es un griot anime. Cree une narration epique courte..."
 
-### Etape 3 : Supprimer la dependance au service en ligne
+**Etape 3 : Interface Admin - Super IA Panel**
 
-Le `FitilaLanguageContext.tsx` importe actuellement `useSimpleTranslation` qui appelle l'edge function `byt5-bariba-translate` pour la fonction `translateText()`. Cette dependance sera retiree pour la traduction d'interface. Le `translateText` restera disponible uniquement pour le traducteur de contenu utilisateur, pas pour l'interface.
+Ajouter un composant `SuperIAPanel.tsx` accessible depuis le bouton admin flottant existant (`AdminFloatingButton.tsx`) :
+- Champ texte pour le prompt
+- Selecteur du type de contenu (Conte / Griot / Patrimoine / Voix du Village)
+- Bouton "Generer et Publier"
+- Indicateur de progression
+- Apercu du contenu genere avant publication optionnel
+- Historique des publications IA recentes
 
-## Fichiers modifies
+**Etape 4 : Affichage dans le Feed**
 
-1. **`public/i18n-platform.json`** : Remplir tous les ~300 champs `"ba": ""` avec les traductions Bariba extraites des sources locales
-2. **`src/contexts/FitilaLanguageContext.tsx`** : Corriger les ~220 entrees du dictionnaire en remplacement du Yoruba par du Bariba authentique, et retirer l'import de `useSimpleTranslation` pour l'interface
+Modifier `TamTamSocial.tsx` pour :
+- Detecter les posts IA (via `topic = 'fitila-ia'` ou metadata)
+- Afficher un badge distinctif "Fitila IA" avec une icone robot
+- Afficher le nom "Fitila IA" avec un badge verifie + badge IA
+- Les interactions (likes, commentaires, partages) fonctionnent normalement
 
-## Methode de traduction
+**Etape 5 : Fix du bariba-tts**
 
-Pour chaque mot/expression :
-1. Chercher d'abord un equivalent exact dans `BARIBA_IDIOMS` et `BARIBA_REFERENCE_PAIRS`
-2. Puis dans les tables de `learningFoundations.ts` (vocabulaire thematique)
-3. Puis dans les exercices de `learningExercises.ts`
-4. Si aucun equivalent direct n'existe, composer a partir des mots disponibles (ex: "Statistiques Vocales" = "Nɔɔ mɑɑru" = voix + comptage)
-5. Pour les mots sans equivalent possible (ex: "Photo", "Doc", "Quiz"), garder le mot tel quel car ils sont aussi empruntes en Bariba parle
+Modifier `bariba-tts/index.ts` pour :
+- Detecter les reponses HTML (404 du Space endormi) et retourner une erreur propre au lieu d'un crash
+- Ajouter un mode "text-only" qui retourne le texte sans audio si le Space est indisponible
+
+### Fichiers concernes
+
+1. **Nouveau** : `supabase/functions/super-ia-create/index.ts` - Edge function de generation
+2. **Nouveau** : `src/components/admin/SuperIAPanel.tsx` - Interface admin
+3. **Modifie** : `src/components/admin/AdminFloatingButton.tsx` - Ajouter acces au panel
+4. **Modifie** : `src/pages/tamtam/TamTamSocial.tsx` - Badge IA dans le feed
+5. **Modifie** : `supabase/functions/bariba-tts/index.ts` - Fix erreur 404 HTML
+6. **Migration SQL** : Ajout colonne `ai_generated` (boolean) sur `tamtam_posts`
+
+### Securite
+
+- L'edge function `super-ia-create` verifiera que l'appelant est un admin via la fonction `has_role()`
+- Seuls les admins pourront publier en tant que "Fitila IA"
+- Les posts IA sont en lecture publique comme les autres posts
 
