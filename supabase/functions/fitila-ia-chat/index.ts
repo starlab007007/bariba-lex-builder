@@ -71,8 +71,9 @@ async function callLLMWithFallback(args: {
         body: JSON.stringify({
           model,
           messages: args.messages,
-          temperature: args.temperature,
-          max_tokens: args.maxTokens,
+          ...(model.startsWith("openai/")
+            ? { max_completion_tokens: args.maxTokens }
+            : { temperature: args.temperature, max_tokens: args.maxTokens }),
         }),
         signal: controller.signal,
       });
