@@ -6,6 +6,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const GLOBAL_TIMEOUT_MS = 12_000;
+
+type RefineType = "translate" | "translation" | "transcription";
+type RefineDirection = "fr-ba" | "ba-fr";
+
+interface RefineRequest {
+  text?: string;
+  type?: RefineType;
+  direction?: RefineDirection;
+  originalInput?: string;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // PROMPT SYSTÈME LINGUISTIQUE BARIBA — injecté dans chaque appel
 // ═══════════════════════════════════════════════════════════════════
@@ -86,15 +98,47 @@ ATTENTION AUX ERREURS COURANTES (INTERDITES) :
 - Proverbe "Qui cherche trouve" : "Durɔ goo u kasuu, u ga bɛri"
 `;
 
+const INVALID_OUTPUT_PATTERNS = [
+  "share via link",
+  "loading",
+  "submit",
+  "clear",
+  "undefined",
+  "null",
+  "<html",
+  "<!doctype",
+];
+
 function normalizeBaribaText(input: string): string {
-  return input.normalize("NFC").replace(/\s+/g, " ").trim();
+  return (input || "").normalize("NFC").replace(/\s+/g, " ").trim();
+}
+
+function stripWrappingQuotes(input: string): string {
+  return input.replace(/^["'“”`]+|["'“”`]+$/g, "");
+}
+
+function cleanModelText(input: string): string {
+  let out = normalizeBaribaText(input);
+
+  // Enlève fences markdown éventuels
+  out = out.replace(/^```[\w-]*\s*/i, "").replace(/\s*```$/i, "");
+  out = stripWrappingQuotes(out);
+
+  // Certains modèles renvoient "Traduction: ..."
+  out = out.replace(/^traduction\s*:\s*/i, "");
+  out = out.replace(/^texte corrigé\s*:\s*/i, "");
+  out = out.replace(/^réponse\s*:\s*/i, "");
+
+  return normalizeBaribaText(out);
+}
+
+function isInvalidUiLikeText(input: string): boolean {
+  const s = normalizeBaribaText(input).toLowerCase();
+  return INVALID_OUTPUT_PATTERNS.some((p) => s.includes(p));
 }
 
 function applyHardCorrections(input: string): string {
-  let out = normalizeBaribaText(input);
-
-  // Retire guillemets parasites renvoyés parfois par le modèle
-  out = out.replace(/^["'“”]+|["'“”]+$/g, "");
+  let out = cleanModelText(input);
 
   // Corrections de salutations / formules
   out = out.replace(/\bKua dɔ̃ɔ\b/giu, "A kpuna n do?");
@@ -111,73 +155,66 @@ function applyHardCorrections(input: string): string {
   out = out.replace(/\bNɛn yaa\b/giu, "bii mɛro");
 
   // Correction faux-ami "voir"
-  // Si le modèle sort une paire explicative erronée dans sa réponse (rare), on recadre.
-  out = out.replace(/Voir\s*\/?\s*Trouver\s*\/?\s*Obtenir\s*["'“”]?\s*=\s*["'“”]?\s*Mɛɛri/giu, "Voir / Trouver / Obtenir = Wa");
+  out = out.replace(
+    /Voir\s*\/?\s*Trouver\s*\/?\s*Obtenir\s*["'“”]?\s*=\s*["'“”]?\s*Mɛɛri/giu,
+    "Voir / Trouver / Obtenir = Wa",
+  );
 
-  // Correction proverbes mal formés
+  // Correction proverbe mal formé
   out = out.replace(/Goo u g[ɑaã̃]+ kasuu,\s*u ga bɛri/giu, "Durɔ goo u kasuu, u ga bɛri");
 
-  return out;
+  return normalizeBaribaText(out);
 }
 
-function buildSystemPrompt(type: string, direction?: string): string {
+function buildSystemPrompt(type: RefineType, direction?: RefineDirection): string {
   let taskBlock: string;
   let strictRules: string;
 
   if (type === "translate") {
-    // Mode traduction directe — utilise UNIQUEMENT la base de connaissances
     const dirLabel = direction === "ba-fr" ? "Bariba → Français" : "Français → Bariba";
     taskBlock = `TÂCHE — TRADUCTION DIRECTE (${dirLabel}) :
 Tu dois traduire ce texte en utilisant EXCLUSIVEMENT :
-1. Les règles grammaticales SOV ci-dessus
-2. Les expressions idiomatiques de référence
+1. Les règles grammaticales ci-dessus
+2. Les expressions idiomatiques validées
 3. Les paires de traduction de référence
-4. Le vocabulaire et la structure de la langue Bariba
 
 Si un mot n'a pas d'équivalent connu, translittère-le et marque-le entre crochets [mot].
 Retourne UNIQUEMENT la traduction, sans explication ni commentaire.`;
+
     strictRules = `RÈGLES STRICTES :
-- Retourne UNIQUEMENT la traduction, rien d'autre
+- Retourne UNIQUEMENT la traduction
+- Aucune explication, aucun commentaire, aucun JSON
 - Utilise l'ordre SOV pour le Bariba
-- Utilise les pronoms corrects (U=humain, Ga/Mu=non-humain)
-- Préfère les formulations idiomatiques connues
-- Applique les corrections lexicales validées (wa ≠ mɛɛri ; bii mɛro ≠ yaa)
-- Translittère entre crochets les mots sans équivalent`;
+- Utilise wa pour voir/trouver/obtenir ; mɛɛri pour regarder/étudier/apprendre
+- Utilise bii mɛro pour "mère"
+- Utilise nim nɔru pour "j'ai soif"`;
   } else if (type === "transcription") {
     taskBlock = `TÂCHE — RAFFINAGE DE TRANSCRIPTION BARIBA :
 Tu reçois une transcription brute d'un modèle ASR. Améliore-la :
-1. Corrige la segmentation des mots (mots collés ou mal coupés)
-2. Normalise les diacritiques : ɔ, ɛ, ɑ, ã, ɛ̃, ĩ, ɔ̃, ũ
-3. Normalise les voyelles longues : aa, ee, oo, ɔɔ, ɛɛ
-4. Vérifie les tons marqués (accents graves et aigus)
-5. Corrige les mots mal reconnus en utilisant le vocabulaire de référence
-6. Préserve les formes idiomatiques validées (salutations, politesse, expressions courantes)`;
+1. Corrige la segmentation des mots
+2. Normalise les diacritiques (ɔ, ɛ, ɑ, ã, ɛ̃, ĩ, ɔ̃, ũ)
+3. Corrige les mots mal reconnus avec le vocabulaire de référence
+4. Préserve les expressions idiomatiques validées`;
+
     strictRules = `RÈGLES STRICTES :
-- Retourne UNIQUEMENT le texte corrigé, sans explication
-- Si le texte est déjà correct, retourne-le tel quel
-- Ne traduis PAS, améliore seulement la qualité
-- Conserve le sens original
-- Préfère les formulations idiomatiques
-- N'introduis pas de mots non confirmés`;
+- Retourne UNIQUEMENT le texte corrigé
+- Ne traduis PAS
+- Ne change pas le sens
+- Conserve la phrase la plus naturelle possible en Bariba`;
   } else {
-    // type === 'translation' — raffinage d'une traduction existante
     taskBlock = `TÂCHE — RAFFINAGE DE TRADUCTION (${direction || "fr-ba"}) :
 Tu reçois une traduction brute. Améliore-la :
-1. Vérifie l'ordre SOV pour le Bariba
-2. Vérifie pronoms (U=humain, Ga/Mu=non-humain) et classes nominales
-3. Remplace les calques du français par des formulations idiomatiques
-4. Utilise les postpositions correctement (sɔɔ, yèn sɔ̃)
-5. Vérifie les particules TAM (ràa, koo, ra, -mɔ)
-6. Corrige les faux amis (wa vs mɛɛri, bii mɛro vs yaa)
-7. Normalise les diacritiques
-${direction === "ba-fr" ? "8. Assure un français naturel et fluide" : "8. Utilise des formulations naturelles du Bariba"}`;
+1. Corrige la grammaire
+2. Corrige les faux amis (wa vs mɛɛri, bii mɛro vs yaa)
+3. Corrige les salutations/formules de politesse
+4. Normalise les diacritiques
+${direction === "ba-fr" ? "5. Rends le français naturel et fluide" : "5. Rends le Bariba naturel et idiomatique"}`;
+
     strictRules = `RÈGLES STRICTES :
-- Retourne UNIQUEMENT le texte corrigé, sans explication
-- Si le texte est déjà correct, retourne-le tel quel
-- Ne traduis PAS, améliore seulement la qualité
-- Conserve le sens original
-- Préfère les formulations idiomatiques
-- Respecte les corrections lexicales validées par le dictionnaire`;
+- Retourne UNIQUEMENT le texte corrigé
+- Ne traduis PAS de nouveau, raffine seulement
+- Aucune explication
+- Respecte les formes idiomatiques validées`;
   }
 
   return `Tu es un expert linguiste en langue Bariba (Baatonum), langue Niger-Congo parlée au Bénin.
@@ -192,45 +229,156 @@ ${taskBlock}
 ${strictRules}`;
 }
 
+function detectChanges(params: {
+  original: string;
+  refined: string;
+  originalInput?: string;
+}): string[] {
+  const { original, refined, originalInput } = params;
+  const changes: string[] = [];
+
+  if (refined === original) return changes;
+
+  if (refined.length !== original.length) changes.push("Longueur modifiée");
+  if (refined.toLowerCase() !== original.toLowerCase()) changes.push("Corrections linguistiques");
+
+  const hadDiac = /[ɔɛɑãɛ̃ĩɔ̃ũ]/u.test(original);
+  const hasDiac = /[ɔɛɑãɛ̃ĩɔ̃ũ]/u.test(refined);
+  if (hasDiac && !hadDiac) changes.push("Diacritiques ajoutés");
+
+  if (
+    /\bA kpuna n do\?\b/u.test(refined) ||
+    /\bBɛɛ ka yoka\b/u.test(refined) ||
+    /\bAnna wunɛn wasi\?\b/u.test(refined) ||
+    /\bAlaafia\b/u.test(refined)
+  ) {
+    changes.push("Formule idiomatique corrigée");
+  }
+
+  if (/\bbii mɛro\b/iu.test(refined) && !/\bbii mɛro\b/iu.test(original)) {
+    changes.push('Lexique corrigé ("mère")');
+  }
+
+  if (/\bnim nɔru\b/iu.test(refined) && !/\bnim nɔru\b/iu.test(original)) {
+    changes.push('Lexique corrigé ("soif")');
+  }
+
+  if (/\bwa\b/iu.test(refined) && /voir|trouver|obtenir/i.test(originalInput || "")) {
+    changes.push("Verbe clé corrigé (wa)");
+  }
+
+  return [...new Set(changes)];
+}
+
+function computeConfidence(params: {
+  original: string;
+  refined: string;
+  changes: string[];
+  aiUsed: boolean;
+  hadError?: boolean;
+}): number {
+  const { original, refined, changes, aiUsed, hadError } = params;
+
+  if (hadError) return 45;
+  if (!refined) return 30;
+
+  let score = 78;
+
+  if (aiUsed) score += 6;
+  if (changes.length === 0) score += 10;
+  if (/[ɔɛɑãɛ̃ĩɔ̃ũ]/u.test(refined)) score += 3;
+  if (/\b(A kpuna n do\?|Bɛɛ ka yoka|Anna wunɛn wasi\?|Alaafia|bii mɛro|nim nɔru)\b/iu.test(refined)) {
+    score += 3;
+  }
+  if (refined === original) score += 2;
+
+  return Math.max(35, Math.min(97, score));
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startedAt = Date.now();
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), GLOBAL_TIMEOUT_MS);
+
   try {
-    const { text, type, direction, originalInput } = await req.json();
+    const body: RefineRequest = await req.json().catch(() => ({}));
 
-    if (!text || typeof text !== "string" || text.trim().length === 0) {
-      return new Response(
-        JSON.stringify({ refined: "", changes: [], confidence: 0 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
+    const text = typeof body.text === "string" ? body.text : "";
+    const type: RefineType =
+      body.type === "translate" || body.type === "transcription" || body.type === "translation"
+        ? body.type
+        : "translation";
+    const direction: RefineDirection | undefined =
+      body.direction === "fr-ba" || body.direction === "ba-fr" ? body.direction : undefined;
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
+    const originalInput =
+      typeof body.originalInput === "string" ? normalizeBaribaText(body.originalInput) : undefined;
+
+    if (!normalizeBaribaText(text)) {
+      clearTimeout(timeoutId);
       return new Response(
         JSON.stringify({
-          refined: normalizeBaribaText(text),
+          refined: "",
           changes: [],
           confidence: 0,
-          error: "API key missing",
+          meta: { duration: Date.now() - startedAt, fallback: true },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const cleanedText = normalizeBaribaText(text);
-    const cleanedOriginalInput = typeof originalInput === "string" ? normalizeBaribaText(originalInput) : undefined;
 
-    const systemPrompt = buildSystemPrompt(type || "translation", direction);
-    const userPrompt = cleanedOriginalInput
-      ? `Texte source : "${cleanedOriginalInput}"\nTexte à raffiner : "${cleanedText}"`
+    // Fallback immédiat si texte ressemble à du bruit UI
+    if (isInvalidUiLikeText(cleanedText)) {
+      clearTimeout(timeoutId);
+      return new Response(
+        JSON.stringify({
+          refined: cleanedText,
+          changes: [],
+          confidence: 35,
+          error: "Invalid input text",
+          meta: { duration: Date.now() - startedAt, fallback: true, aiUsed: false },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Si pas de clé IA, on applique seulement les hard corrections
+    if (!LOVABLE_API_KEY) {
+      const fallbackRefined = applyHardCorrections(cleanedText);
+      const changes = detectChanges({ original: cleanedText, refined: fallbackRefined, originalInput });
+
+      clearTimeout(timeoutId);
+      return new Response(
+        JSON.stringify({
+          refined: fallbackRefined,
+          changes,
+          confidence: computeConfidence({
+            original: cleanedText,
+            refined: fallbackRefined,
+            changes,
+            aiUsed: false,
+          }),
+          error: "LOVABLE_API_KEY missing",
+          meta: { duration: Date.now() - startedAt, fallback: true, aiUsed: false },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const systemPrompt = buildSystemPrompt(type, direction);
+    const userPrompt = originalInput
+      ? `Texte source : "${originalInput}"\nTexte à traiter : "${cleanedText}"`
       : cleanedText;
 
     console.log(
-      `🔧 refine-bariba: type=${type}, direction=${direction}, text="${cleanedText.substring(0, 80)}..."`,
+      `🔧 refine-bariba: type=${type}, direction=${direction || "-"}, text="${cleanedText.substring(0, 80)}..."`,
     );
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -245,87 +393,114 @@ serve(async (req: Request) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 1024,
-        temperature: type === "translate" ? 0.1 : 0.2,
+        max_tokens: 700,
+        temperature: type === "translate" ? 0.1 : 0.15,
       }),
+      signal: timeoutController.signal,
     });
 
     if (!response.ok) {
-      const errText = await response.text();
+      const errText = await response.text().catch(() => "");
       console.error(`❌ AI gateway error ${response.status}: ${errText.substring(0, 200)}`);
 
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ refined: cleanedText, changes: [], confidence: 0, error: "Rate limited" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ refined: cleanedText, changes: [], confidence: 0, error: "Credits exhausted" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
+      const fallbackRefined = applyHardCorrections(cleanedText);
+      const changes = detectChanges({ original: cleanedText, refined: fallbackRefined, originalInput });
 
+      clearTimeout(timeoutId);
       return new Response(
-        JSON.stringify({ refined: cleanedText, changes: [], confidence: 0, error: "AI error" }),
+        JSON.stringify({
+          refined: fallbackRefined,
+          changes,
+          confidence: computeConfidence({
+            original: cleanedText,
+            refined: fallbackRefined,
+            changes,
+            aiUsed: false,
+            hadError: true,
+          }),
+          error:
+            response.status === 429
+              ? "Rate limited"
+              : response.status === 402
+              ? "Credits exhausted"
+              : "AI error",
+          meta: {
+            duration: Date.now() - startedAt,
+            fallback: true,
+            aiUsed: false,
+            status: response.status,
+          },
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const json = await response.json();
-    const rawRefined = json?.choices?.[0]?.message?.content?.trim();
-    const refined = rawRefined ? applyHardCorrections(rawRefined) : rawRefined;
+    const json = await response.json().catch(() => ({}));
+    const rawRefined = String(json?.choices?.[0]?.message?.content || "");
 
-    if (!refined || refined.length === 0) {
-      console.warn("⚠️ AI returned empty response, keeping original");
-      return new Response(
-        JSON.stringify({ refined: cleanedText, changes: [], confidence: 50 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    let refined = applyHardCorrections(rawRefined);
+
+    // Si l'IA renvoie vide / bruit, fallback sur texte original + hard corrections
+    if (!refined || isInvalidUiLikeText(refined)) {
+      console.warn("⚠️ AI returned empty or invalid response, using hard-correction fallback");
+      refined = applyHardCorrections(cleanedText);
     }
 
-    // Detect changes
-    const changes: string[] = [];
-    if (refined !== cleanedText) {
-      if (refined.length !== cleanedText.length) changes.push("Longueur modifiée");
-      if (/[ɔɛɑãɛ̃ĩɔ̃ũ]/u.test(refined) && !/[ɔɛɑãɛ̃ĩɔ̃ũ]/u.test(cleanedText)) changes.push("Diacritiques ajoutés");
-      if (refined.toLowerCase() !== cleanedText.toLowerCase()) changes.push("Corrections linguistiques");
+    const changes = detectChanges({
+      original: cleanedText,
+      refined,
+      originalInput,
+    });
 
-      // Indicateurs de corrections ciblées
-      if (
-        /\bA kpuna n do\?\b/u.test(refined) ||
-        /\bBɛɛ ka yoka\b/u.test(refined) ||
-        /\bAnna wunɛn wasi\?\b/u.test(refined) ||
-        /\bAlaafia\b/u.test(refined)
-      ) {
-        changes.push("Formule idiomatique corrigée");
-      }
-      if (/\bWa\b/i.test(refined) && /\bvoir|trouver|obtenir\b/i.test(cleanedOriginalInput || "")) {
-        changes.push("Verbe clé corrigé (wa)");
-      }
-    }
+    const confidence = computeConfidence({
+      original: cleanedText,
+      refined,
+      changes,
+      aiUsed: true,
+    });
 
-    const confidence = changes.length > 0 ? 85 : 95;
+    clearTimeout(timeoutId);
 
-    console.log(`✅ refine-bariba: ${changes.length} changes, confidence=${confidence}`);
+    console.log(`✅ refine-bariba: ${changes.length} change(s), confidence=${confidence}`);
     console.log(`   Original: "${cleanedText.substring(0, 60)}"`);
     console.log(`   Refined:  "${refined.substring(0, 60)}"`);
 
     return new Response(
-      JSON.stringify({ refined, changes, confidence }),
+      JSON.stringify({
+        refined,
+        changes,
+        confidence,
+        meta: {
+          duration: Date.now() - startedAt,
+          fallback: false,
+          aiUsed: true,
+          type,
+          direction: direction || null,
+        },
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {
+    clearTimeout(timeoutId);
+
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const isTimeout = /aborted|timeout/i.test(message);
+
     console.error("Fatal error in refine-bariba:", error);
+
     return new Response(
       JSON.stringify({
         refined: "",
         changes: [],
         confidence: 0,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: isTimeout ? "Request timeout" : message,
+        meta: {
+          duration: Date.now() - startedAt,
+          fallback: true,
+          aiUsed: false,
+        },
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: isTimeout ? 504 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
