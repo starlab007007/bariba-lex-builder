@@ -1,506 +1,459 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  normalizeBaribaText,
+  isInvalidUiLikeText,
+  applyLocalBaribaCorrections,
+} from "../_shared/bariba-linguistic-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const GLOBAL_TIMEOUT_MS = 90_000;
+const REFINE_TIMEOUT_MS = 7_000;
+const HF_STEP_TIMEOUT_MS = 25_000;
+
 interface TTSRequest {
   text: string;
-  speakingRate?: number;
-  noiseScale?: number;
-  noiseScaleW?: number;
-  skipRefine?: boolean; // ✅ désactiver refine-bariba si besoin
+  speakingRate?: number;   // compat front (non utilisé par HF VITS, mais gardé)
+  noiseScale?: number;     // si ton Space supporte
+  noiseScaleW?: number;    // si ton Space supporte
+  lengthScale?: number;    // alias plus standard
+  skipRefine?: boolean;
+  voice?: string;
 }
 
-const SPACE_URL = "https://zimesongbian-baatonum-tts-api-v001.hf.space";
-const GLOBAL_TIMEOUT_MS = 55_000;
-const REFINE_TIMEOUT_MS = 5_000;
-
-const INVALID_UI_PATTERNS = [
-  "share via link",
-  "loading",
-  "submit",
-  "clear",
-  "button",
-  "click",
-  "select",
-  "error",
-  "undefined",
-  "<html",
-  "<!doctype",
-];
-
-function normalizeBaribaText(input: string): string {
-  return (input || "").normalize("NFC").replace(/\s+/g, " ").trim();
+function normalizeText(input: string): string {
+  return normalizeBaribaText(input);
 }
 
-function stripWrappingQuotes(input: string): string {
-  return input.replace(/^["'“”]+|["'“”]+$/g, "");
+function isProbablyUiText(text: string): boolean {
+  return isInvalidUiLikeText(text);
 }
 
-function applyLocalBaribaCorrections(input: string): string {
-  let out = normalizeBaribaText(stripWrappingQuotes(input));
-
-  // Corrections lexicales / idiomatiques validées
-  out = out.replace(/\bKua dɔ̃ɔ\b/giu, "A kpuna n do?");
-  out = out.replace(/\bKua wɛrɛ\b/giu, "Bɛɛ ka yoka");
-  out = out.replace(/\bA kɛra\s*\?/giu, "Anna wunɛn wasi?");
-  out = out.replace(/\bNa kɛra sãa sãa\b/giu, "Alaafia");
-  out = out.replace(/\bA nii koo\b/giu, "siara");
-  out = out.replace(/\bNɛn yaa\b/giu, "bii mɛro");
-  out = out.replace(/\bnim nɔnkuru\b/giu, "nim nɔru");
-  out = out.replace(/Goo u g[ɑaã̃]+ kasuu,\s*u ga bɛri/giu, "Durɔ goo u kasuu, u ga bɛri");
-
-  return normalizeBaribaText(out);
-}
-
-function clampNumber(n: number, min: number, max: number, fallback: number): number {
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(min, Math.min(max, n));
-}
-
-function safeJsonParse<T = unknown>(value: string): T | null {
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return JSON.parse(value) as T;
-  } catch {
-    return null;
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-function isProbablyUiText(value: string): boolean {
-  const s = normalizeBaribaText(value).toLowerCase();
-  return INVALID_UI_PATTERNS.some((p) => s.includes(p));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
- * Authentifie (optionnel) pour logs / future quotas, mais TTS reste public
+ * Appelle refine-bariba avant synthèse vocale (optionnel)
  */
-async function authenticateRequest(
-  req: Request,
-): Promise<{ userId: string | null; isAuthenticated: boolean }> {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return { userId: null, isAuthenticated: false };
-
+async function callRefineBariba(text: string): Promise<{
+  refined?: string;
+  confidence?: number;
+  changes?: string[];
+  error?: string;
+}> {
   try {
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
+
+    if (!supabaseUrl || !serviceKey) {
+      return { error: "SUPABASE_URL / key missing for refine-bariba" };
+    }
+
+    const resp = await fetchWithTimeout(
+      `${supabaseUrl}/functions/v1/refine-bariba`,
       {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      },
-    );
-
-    const {
-      data: { user },
-      error,
-    } = await supabaseClient.auth.getUser();
-
-    if (error || !user) return { userId: null, isAuthenticated: false };
-    return { userId: user.id, isAuthenticated: true };
-  } catch (e) {
-    console.error("Auth error:", e);
-    return { userId: null, isAuthenticated: false };
-  }
-}
-
-async function fetchGradioConfig(
-  hfToken: string,
-  abortSignal?: AbortSignal,
-): Promise<{ apiPrefix: string; version?: string }> {
-  for (const path of ["/gradio_api/config", "/config"]) {
-    try {
-      const resp = await fetch(`${SPACE_URL}${path}`, {
-        headers: { Authorization: `Bearer ${hfToken}` },
-        signal: abortSignal,
-      });
-
-      if (!resp.ok) continue;
-      const cfg = await resp.json();
-      return {
-        apiPrefix: cfg?.api_prefix || "/gradio_api",
-        version: cfg?.version,
-      };
-    } catch {
-      // continue
-    }
-  }
-  return { apiPrefix: "/gradio_api" };
-}
-
-async function pollQueueData(
-  spaceUrl: string,
-  apiPrefix: string,
-  sessionHash: string,
-  hfToken: string,
-  abortSignal?: AbortSignal,
-  maxAttempts = 40,
-): Promise<any | null> {
-  const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
-  console.log(`📡 Polling queue: ${pollUrl}`);
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    if (abortSignal?.aborted) throw new Error("Request timeout");
-
-    try {
-      const response = await fetch(pollUrl, {
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${hfToken}`,
-          Accept: "text/event-stream",
+          "Content-Type": "application/json",
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
         },
-        signal: abortSignal,
-      });
-
-      if (response.ok) {
-        const text = await response.text();
-        console.log(`   Poll ${attempt + 1}: ${text.substring(0, 350)}`);
-
-        const lines = text.split("\n");
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-
-          const parsed = safeJsonParse<any>(line.substring(6).trim());
-          if (!parsed) continue;
-
-          if (parsed.msg === "process_errored") {
-            throw new Error(parsed.error || "Gradio process error");
-          }
-
-          if (parsed.msg === "process_completed") {
-            if (parsed.output?.error) throw new Error(parsed.output.error);
-            if (parsed.output?.data) return parsed.output;
-          }
-
-          if (Array.isArray(parsed.data)) return parsed;
-        }
-      }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
-      if (/timeout/i.test(msg)) throw e;
-      console.log(`   Poll error: ${msg}`);
-    }
-
-    await sleep(500);
-  }
-
-  return null;
-}
-
-async function callGradioTTS(
-  text: string,
-  speakingRate: number,
-  noiseScale: number,
-  noiseScaleW: number,
-  hfToken: string,
-  apiPrefix: string,
-  abortSignal?: AbortSignal,
-): Promise<any> {
-  const sessionHash = Math.random().toString(36).slice(2);
-  const data = [text, speakingRate, noiseScale, noiseScaleW];
-
-  // Méthode 1: queue/join (Gradio queue)
-  console.log(`🔄 queue/join session=${sessionHash}`);
-  try {
-    const joinResponse = await fetch(`${SPACE_URL}${apiPrefix}/queue/join`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${hfToken}`,
-        "Content-Type": "application/json",
+        body: JSON.stringify({
+          text,
+          type: "transcription", // ici on nettoie / normalise du Bariba pour TTS
+        }),
       },
-      body: JSON.stringify({
-        data,
-        fn_index: 0,
-        session_hash: sessionHash,
-      }),
-      signal: abortSignal,
-    });
-
-    console.log(`   Join status: ${joinResponse.status}`);
-
-    if (joinResponse.ok) {
-      const joinText = await joinResponse.text().catch(() => "");
-      console.log(`   Join response: ${joinText.substring(0, 220)}`);
-
-      const result = await pollQueueData(
-        SPACE_URL,
-        apiPrefix,
-        sessionHash,
-        hfToken,
-        abortSignal,
-      );
-      if (result) return result;
-    }
-  } catch (e: unknown) {
-    console.log(`   Queue error: ${e instanceof Error ? e.message : "Unknown error"}`);
-  }
-
-  // Méthode 2: direct /call/predict
-  console.log("🔄 direct /call/predict");
-  const directResp = await fetch(`${SPACE_URL}${apiPrefix}/call/predict`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${hfToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ data }),
-    signal: abortSignal,
-  });
-
-  console.log(`   Direct status: ${directResp.status}`);
-
-  if (!directResp.ok) {
-    const errText = await directResp.text().catch(() => "");
-    throw new Error(`Direct TTS call failed (${directResp.status}): ${errText.substring(0, 180)}`);
-  }
-
-  const directResult = await directResp.json();
-  console.log(`   Direct result: ${JSON.stringify(directResult).substring(0, 220)}`);
-
-  // Some Gradio versions return immediate data
-  if (Array.isArray(directResult?.data) || Array.isArray(directResult)) {
-    return directResult;
-  }
-
-  // Some return event_id
-  if (directResult?.event_id) {
-    const eventUrl = `${SPACE_URL}${apiPrefix}/call/predict/${directResult.event_id}`;
-    console.log(`   Reading event: ${eventUrl}`);
-
-    const eventResponse = await fetch(eventUrl, {
-      headers: {
-        Authorization: `Bearer ${hfToken}`,
-        Accept: "text/event-stream",
-      },
-      signal: abortSignal,
-    });
-
-    if (!eventResponse.ok) {
-      const errText = await eventResponse.text().catch(() => "");
-      throw new Error(`Event stream failed (${eventResponse.status}): ${errText.substring(0, 180)}`);
-    }
-
-    const eventText = await eventResponse.text();
-    console.log(`   Event text: ${eventText.substring(0, 350)}`);
-
-    const lines = eventText.split("\n");
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const parsed = safeJsonParse<any>(line.substring(6).trim());
-      if (!parsed) continue;
-
-      if (parsed.msg === "process_errored") {
-        throw new Error(parsed.error || "Gradio process error");
-      }
-      if (parsed.msg === "process_completed" && parsed.output?.data) return parsed.output;
-      if (Array.isArray(parsed.data)) return parsed;
-    }
-  }
-
-  throw new Error("All Gradio API methods failed");
-}
-
-async function extractAudioAsDataUrl(result: any, hfToken: string): Promise<string | null> {
-  console.log(`🔍 Extracting audio from: ${JSON.stringify(result).substring(0, 350)}`);
-
-  let audioData: any = null;
-
-  if (Array.isArray(result)) {
-    audioData = result[0];
-  } else if (Array.isArray(result?.data)) {
-    audioData = result.data[0];
-  } else if (result?.audio) {
-    audioData = result.audio;
-  }
-
-  if (!audioData) return null;
-
-  // Cas 1: déjà data URL
-  if (typeof audioData === "string" && audioData.startsWith("data:audio")) {
-    return audioData;
-  }
-
-  // Cas 2: objet Gradio fichier {url|path|name}
-  if (typeof audioData === "object" && (audioData.url || audioData.path || audioData.name)) {
-    const filePath = audioData.path || audioData.name;
-    let fileUrl = audioData.url as string | undefined;
-
-    if (!fileUrl && filePath) {
-      // gérer path absolu/relatif
-      fileUrl = filePath.startsWith("http")
-        ? filePath
-        : `${SPACE_URL}/file=${filePath}`;
-    }
-
-    if (!fileUrl) return null;
-
-    console.log(`   Fetching audio file: ${fileUrl}`);
-
-    const audioResponse = await fetch(fileUrl, {
-      headers: { Authorization: `Bearer ${hfToken}` },
-    });
-
-    if (!audioResponse.ok) {
-      const errText = await audioResponse.text().catch(() => "");
-      throw new Error(`Audio file fetch failed (${audioResponse.status}): ${errText.substring(0, 120)}`);
-    }
-
-    const contentType = audioResponse.headers.get("content-type") || "audio/wav";
-    const buffer = await audioResponse.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-
-    return `data:${contentType};base64,${btoa(binary)}`;
-  }
-
-  return null;
-}
-
-async function tryRefineTextForTTS(params: {
-  req: Request;
-  text: string;
-  timeoutMs?: number;
-}): Promise<{ refined?: string; changes?: string[]; confidence?: number; error?: string }> {
-  const { req, text, timeoutMs = REFINE_TIMEOUT_MS } = params;
-
-  const supabaseUrl =
-    Deno.env.get("SUPABASE_URL") ||
-    req.headers.get("x-supabase-url") ||
-    "";
-
-  const supabaseAnon =
-    Deno.env.get("SUPABASE_ANON_KEY") ||
-    req.headers.get("apikey") ||
-    "";
-
-  if (!supabaseUrl || !supabaseAnon) {
-    return { error: "Refine unavailable (missing Supabase URL/key)" };
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const resp = await fetch(`${supabaseUrl}/functions/v1/refine-bariba`, {
-      method: "POST",
-      headers: {
-        Authorization: req.headers.get("Authorization") || `Bearer ${supabaseAnon}`,
-        apikey: req.headers.get("apikey") || supabaseAnon,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        type: "transcription", // texte Bariba à lisser avant TTS
-      }),
-      signal: controller.signal,
-    });
+      REFINE_TIMEOUT_MS,
+    );
 
     if (!resp.ok) {
       const body = await resp.text().catch(() => "");
       return { error: `Refine HTTP ${resp.status}: ${body.substring(0, 120)}` };
     }
 
-    const data = await resp.json();
-    const refined = typeof data?.refined === "string" ? normalizeBaribaText(data.refined) : "";
+    const data = await resp.json().catch(() => ({}));
+    const refined = typeof data?.refined === "string" ? normalizeText(data.refined) : "";
+
     if (!refined) return { error: "Refine returned empty text" };
 
     return {
       refined,
-      changes: Array.isArray(data?.changes) ? data.changes.map(String) : [],
       confidence: typeof data?.confidence === "number" ? data.confidence : undefined,
+      changes: Array.isArray(data?.changes) ? data.changes.map(String) : [],
     };
-  } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : "Refine request failed" };
-  } finally {
-    clearTimeout(timer);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Refine failed" };
   }
 }
 
-serve(async (req) => {
+/**
+ * Détecte le préfixe API d’un Space Gradio (/gradio_api ou /run/predict fallback)
+ */
+async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promise<{ apiPrefix: string }> {
+  const headers: HeadersInit = {};
+  if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
+
+  const candidates = [
+    `${spaceUrl}/gradio_api/openapi.json`,
+    `${spaceUrl}/gradio_api/info`,
+    `${spaceUrl}/config`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const r = await fetchWithTimeout(url, { headers }, 5000);
+      if (r.ok) {
+        if (url.includes("/gradio_api/")) return { apiPrefix: "/gradio_api" };
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  // fallback
+  return { apiPrefix: "/gradio_api" };
+}
+
+/**
+ * Parse les chunks SSE de /queue/join pour récupérer event_id
+ */
+async function readEventIdFromQueueJoin(resp: Response): Promise<string | null> {
+  const reader = resp.body?.getReader();
+  if (!reader) return null;
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // Split sur double newline SSE
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() || "";
+
+    for (const part of parts) {
+      const lines = part.split("\n").map((l) => l.trim());
+      const dataLine = lines.find((l) => l.startsWith("data:"));
+      if (!dataLine) continue;
+
+      const payload = dataLine.replace(/^data:\s*/, "");
+      if (!payload || payload === "[DONE]") continue;
+
+      try {
+        const json = JSON.parse(payload);
+        if (json?.event_id) return String(json.event_id);
+        if (json?.data?.event_id) return String(json.data.event_id);
+      } catch {
+        // pas JSON, ignorer
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Poll du endpoint /queue/data?session_hash=...
+ */
+async function pollQueueData(
+  spaceUrl: string,
+  apiPrefix: string,
+  sessionHash: string,
+  hfToken: string,
+  maxAttempts = 40,
+): Promise<any | null> {
+  const headers: HeadersInit = {};
+  if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const url = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${encodeURIComponent(sessionHash)}`;
+    const resp = await fetchWithTimeout(url, { headers }, HF_STEP_TIMEOUT_MS);
+
+    if (!resp.ok) {
+      await sleep(800);
+      continue;
+    }
+
+    const text = await resp.text();
+
+    // /queue/data renvoie souvent du SSE
+    const chunks = text.split("\n\n");
+    for (const chunk of chunks) {
+      const line = chunk
+        .split("\n")
+        .map((x) => x.trim())
+        .find((x) => x.startsWith("data:"));
+
+      if (!line) continue;
+      const payload = line.replace(/^data:\s*/, "");
+      if (!payload) continue;
+
+      try {
+        const json = JSON.parse(payload);
+
+        // cas Gradio final
+        if (json?.msg === "process_completed") return json;
+        if (json?.output) return json;
+        if (json?.success && json?.data) return json;
+
+        // erreurs de queue
+        if (json?.msg === "process_starts" || json?.msg === "estimation") {
+          // continue polling
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    await sleep(1000);
+  }
+
+  return null;
+}
+
+/**
+ * Tente extraction URL audio depuis plusieurs formats de réponse Gradio
+ */
+function extractAudioUrlFromGradioResult(result: any, spaceUrl: string): string | null {
+  const candidates: any[] = [];
+
+  if (result?.output?.data) candidates.push(...result.output.data);
+  if (Array.isArray(result?.data)) candidates.push(...result.data);
+  if (result?.data) candidates.push(result.data);
+  if (result?.output) candidates.push(result.output);
+
+  const stack = [...candidates];
+
+  while (stack.length) {
+    const node = stack.shift();
+    if (!node) continue;
+
+    if (typeof node === "string") {
+      if (/^https?:\/\//i.test(node) && /\.(wav|mp3|ogg|flac)(\?|$)/i.test(node)) return node;
+      if (node.startsWith("/")) return `${spaceUrl}${node}`;
+      continue;
+    }
+
+    if (Array.isArray(node)) {
+      stack.push(...node);
+      continue;
+    }
+
+    if (typeof node === "object") {
+      // formats fréquents
+      const maybe =
+        node.url ||
+        node.path ||
+        node.name ||
+        node.audio ||
+        node.value?.url ||
+        node.value?.path ||
+        node.file?.url ||
+        node.file?.path;
+
+      if (typeof maybe === "string") {
+        if (/^https?:\/\//i.test(maybe)) return maybe;
+        if (maybe.startsWith("/")) return `${spaceUrl}${maybe}`;
+      }
+
+      for (const v of Object.values(node)) stack.push(v);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Appel principal au Space HF (queue Gradio)
+ */
+async function synthesizeWithHuggingFaceSpace(params: {
+  text: string;
+  noiseScale?: number;
+  noiseScaleW?: number;
+  lengthScale?: number;
+}): Promise<{ audio_url?: string; raw?: any; error?: string; sleeping?: boolean }> {
+  const HF_SPACE_URL = (Deno.env.get("HF_SPACE_URL") || "").replace(/\/$/, "");
+  const HF_TOKEN = Deno.env.get("HF_TOKEN") || Deno.env.get("HUGGINGFACEHUB_API_TOKEN") || "";
+
+  if (!HF_SPACE_URL) {
+    return { error: "HF_SPACE_URL manquant" };
+  }
+
+  const { apiPrefix } = await detectGradioApiPrefix(HF_SPACE_URL, HF_TOKEN);
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+  if (HF_TOKEN) headers["Authorization"] = `Bearer ${HF_TOKEN}`;
+
+  // Gradio queue: /queue/join
+  const sessionHash = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+
+  // IMPORTANT:
+  // Selon le Space, fn_index / api_name peut varier.
+  // On garde une structure générique compatible avec la plupart des VITS Gradio.
+  // Si besoin, adapte `api_name` ou `fn_index`.
+  const body = {
+    data: [
+      params.text,
+      params.noiseScale ?? 0.667,
+      params.noiseScaleW ?? 0.8,
+      params.lengthScale ?? 1.0,
+    ],
+    event_data: null,
+    fn_index: 0,
+    session_hash: sessionHash,
+    trigger_id: 0,
+  };
+
+  let joinResp: Response;
+  try {
+    joinResp = await fetchWithTimeout(
+      `${HF_SPACE_URL}${apiPrefix}/queue/join`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      },
+      HF_STEP_TIMEOUT_MS,
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "HF join failed";
+    return {
+      error: msg,
+      sleeping: /503|sleep|temporarily unavailable/i.test(msg),
+    };
+  }
+
+  if (!joinResp.ok) {
+    const errText = await joinResp.text().catch(() => "");
+    return {
+      error: `HF queue/join ${joinResp.status}: ${errText.substring(0, 200)}`,
+      sleeping: joinResp.status === 503 || /sleep|loading|awake/i.test(errText),
+    };
+  }
+
+  // Certains espaces retournent directement JSON, d’autres SSE
+  let eventId: string | null = null;
+  const ctype = joinResp.headers.get("content-type") || "";
+
+  if (ctype.includes("application/json")) {
+    const js = await joinResp.json().catch(() => ({}));
+    eventId = js?.event_id || js?.data?.event_id || null;
+  } else {
+    eventId = await readEventIdFromQueueJoin(joinResp);
+  }
+
+  // Même si eventId n’est pas disponible, le polling par session_hash suffit souvent
+  const result = await pollQueueData(HF_SPACE_URL, apiPrefix, sessionHash, HF_TOKEN, 45);
+
+  if (!result) {
+    return { error: "Aucune réponse finale du Space (timeout queue/data)" };
+  }
+
+  const audioUrl = extractAudioUrlFromGradioResult(result, HF_SPACE_URL);
+  if (!audioUrl) {
+    return { error: "Audio introuvable dans la réponse du Space", raw: result };
+  }
+
+  return { audio_url: audioUrl, raw: result };
+}
+
+/**
+ * Optionnel: log dans Supabase (si table existe)
+ */
+async function logTtsRequestSafe(params: {
+  original_text: string;
+  final_text: string;
+  audio_url?: string;
+  refinement_applied: boolean;
+  refinement_meta?: Record<string, unknown>;
+  duration_ms: number;
+  success: boolean;
+  error?: string;
+}) {
+  try {
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !key) return;
+
+    const db = createClient(url, key);
+    await db.from("tts_logs").insert({
+      original_text: params.original_text,
+      final_text: params.final_text,
+      audio_url: params.audio_url || null,
+      refinement_applied: params.refinement_applied,
+      refinement_meta: params.refinement_meta || null,
+      duration_ms: params.duration_ms,
+      success: params.success,
+      error: params.error || null,
+      created_at: new Date().toISOString(),
+    });
+  } catch {
+    // ne bloque jamais la réponse TTS
+  }
+}
+
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   const startedAt = Date.now();
-  const abortController = new AbortController();
-  const globalTimer = setTimeout(() => abortController.abort(), GLOBAL_TIMEOUT_MS);
+  const globalController = new AbortController();
+  const globalTimer = setTimeout(() => globalController.abort(), GLOBAL_TIMEOUT_MS);
 
   try {
-    const { isAuthenticated, userId } = await authenticateRequest(req);
+    const body: TTSRequest = await req.json().catch(() => ({} as TTSRequest));
+    const rawText = typeof body.text === "string" ? body.text : "";
+    const skipRefine = body.skipRefine === true;
 
-    if (isAuthenticated) {
-      console.log(`🔐 Authenticated TTS request from user: ${userId}`);
-    } else {
-      console.log("📢 Public TTS request (unauthenticated)");
-    }
-
-    const {
-      text,
-      speakingRate = 1.0,
-      noiseScale = 0.3,
-      noiseScaleW = 0.6,
-      skipRefine = false,
-    }: TTSRequest = await req.json();
-
-    // Health check
-    if (!text || text === "test") {
+    if (!rawText || !normalizeText(rawText)) {
       clearTimeout(globalTimer);
       return new Response(
-        JSON.stringify({
-          status: "ok",
-          service: "bariba-tts",
-          space: SPACE_URL,
-          message: "Service disponible",
-          isHealthCheck: true,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const HF_TOKEN = Deno.env.get("HUGGING_FACE_API_TOKEN");
-    if (!HF_TOKEN) {
-      clearTimeout(globalTimer);
-      return new Response(
-        JSON.stringify({ error: "HuggingFace token not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    let safeText = normalizeBaribaText(text);
-    if (!safeText || isProbablyUiText(safeText)) {
-      clearTimeout(globalTimer);
-      return new Response(
-        JSON.stringify({ error: "Texte invalide pour TTS" }),
+        JSON.stringify({ error: "Texte vide" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Clamp des paramètres (évite crash modèle)
-    const rate = clampNumber(Number(speakingRate), 0.6, 1.6, 1.0);
-    const ns = clampNumber(Number(noiseScale), 0.05, 1.2, 0.3);
-    const nsw = clampNumber(Number(noiseScaleW), 0.05, 1.5, 0.6);
-
-    // Pré-corrections locales Bariba
+    let safeText = normalizeText(rawText);
     safeText = applyLocalBaribaCorrections(safeText);
 
-    let refinementMeta: {
-      applied: boolean;
-      confidence?: number;
-      changes?: string[];
-      error?: string;
-    } = { applied: false };
+    if (isProbablyUiText(safeText)) {
+      clearTimeout(globalTimer);
+      return new Response(
+        JSON.stringify({ error: "Texte invalide (bruit UI / placeholder)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
-    // Raffinage (non bloquant) pour améliorer la naturalité avant TTS
+    let refinementMeta: Record<string, unknown> = { applied: false };
+
+    // 1) Raffinage (optionnel)
     if (!skipRefine) {
-      const refined = await tryRefineTextForTTS({ req, text: safeText });
+      const refined = await callRefineBariba(safeText);
       if (refined.refined) {
         const refinedText = applyLocalBaribaCorrections(refined.refined);
         if (refinedText && !isProbablyUiText(refinedText)) {
@@ -516,86 +469,93 @@ serve(async (req) => {
       }
     }
 
-    console.log(`🔊 Bariba TTS: "${safeText.substring(0, 80)}..."`);
+    // 2) TTS HuggingFace Space
+    const tts = await synthesizeWithHuggingFaceSpace({
+      text: safeText,
+      noiseScale: typeof body.noiseScale === "number" ? body.noiseScale : undefined,
+      noiseScaleW: typeof body.noiseScaleW === "number" ? body.noiseScaleW : undefined,
+      lengthScale:
+        typeof body.lengthScale === "number"
+          ? body.lengthScale
+          : typeof body.speakingRate === "number" && body.speakingRate > 0
+          ? Number((1 / body.speakingRate).toFixed(3)) // approx mapping speakingRate -> lengthScale
+          : undefined,
+    });
 
-    const cfg = await fetchGradioConfig(HF_TOKEN, abortController.signal);
-    console.log(`📋 Gradio version=${cfg.version || "?"}, prefix=${cfg.apiPrefix}`);
+    if (!tts.audio_url) {
+      const duration = Date.now() - startedAt;
+      await logTtsRequestSafe({
+        original_text: rawText,
+        final_text: safeText,
+        refinement_applied: refinementMeta.applied === true,
+        refinement_meta: refinementMeta,
+        duration_ms: duration,
+        success: false,
+        error: tts.error,
+      });
 
-    const gradioResult = await callGradioTTS(
-      safeText,
-      rate,
-      ns,
-      nsw,
-      HF_TOKEN,
-      cfg.apiPrefix,
-      abortController.signal,
-    );
+      const isSleeping = !!tts.sleeping;
+      clearTimeout(globalTimer);
 
-    const audio = await extractAudioAsDataUrl(gradioResult, HF_TOKEN);
-    const duration = Date.now() - startedAt;
-
-    clearTimeout(globalTimer);
-
-    if (!audio || !audio.startsWith("data:audio")) {
-      console.error(`❌ TTS failed after ${duration}ms (no audio payload)`);
       return new Response(
         JSON.stringify({
-          error: "Bariba TTS service unavailable",
-          details: "No audio returned by HuggingFace Space.",
+          error: isSleeping ? "Service en veille" : (tts.error || "Échec TTS"),
+          details: isSleeping ? "Le Space HuggingFace est probablement en veille. Réessaie dans 30 secondes." : undefined,
+          text_used: safeText,
+          refine: refinementMeta,
           duration,
+          debug: tts.raw ? { raw: tts.raw } : undefined,
         }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: isSleeping ? 503 : 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
-    const hasBaribaChars = /[ɔɛɑãɛ̃ĩɔ̃ũ̀́]/u.test(safeText);
-    const confidence = Math.min(
-      97,
-      84 + (hasBaribaChars ? 4 : 0) + (refinementMeta.applied ? 4 : 0),
-    );
+    const duration = Date.now() - startedAt;
+    await logTtsRequestSafe({
+      original_text: rawText,
+      final_text: safeText,
+      audio_url: tts.audio_url,
+      refinement_applied: refinementMeta.applied === true,
+      refinement_meta: refinementMeta,
+      duration_ms: duration,
+      success: true,
+    });
 
-    console.log(`✅ TTS Success in ${duration}ms`);
+    clearTimeout(globalTimer);
 
     return new Response(
       JSON.stringify({
-        audio,
+        success: true,
+        audio_url: tts.audio_url,
+        text_used: safeText,
+        refine: refinementMeta,
         duration,
-        confidence,
-        text: safeText.substring(0, 200),
-        refinement: refinementMeta,
-        modelInfo: {
-          name: "Baatonum TTS",
-          space: SPACE_URL,
-          speakingRate: rate,
-          noiseScale: ns,
-          noiseScaleW: nsw,
-          postRefine: !skipRefine,
-        },
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   } catch (error: unknown) {
     clearTimeout(globalTimer);
-    const duration = Date.now() - startedAt;
-    const msg = error instanceof Error ? error.message : "TTS failed";
-    const isTimeout = /timeout/i.test(msg);
-    const isSleeping = msg.includes("503") || msg.toLowerCase().includes("sleep");
 
-    console.error(`Fatal TTS error after ${duration}ms:`, error);
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    const isTimeout = /aborted|timeout/i.test(msg);
+    const duration = Date.now() - startedAt;
+
+    console.error("[bariba-tts] Error:", error);
 
     return new Response(
       JSON.stringify({
-        error: isTimeout
-          ? "Temps de réponse dépassé"
-          : isSleeping
-          ? "Service en veille"
-          : msg,
-        details: isSleeping
-          ? "Le Space HuggingFace est probablement en veille. Réessayez dans 30 secondes."
-          : undefined,
+        error: isTimeout ? "Temps de réponse dépassé" : msg,
         duration,
       }),
-      { status: isSleeping ? 503 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: isTimeout ? 504 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });
