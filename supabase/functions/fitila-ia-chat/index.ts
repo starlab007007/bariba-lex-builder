@@ -57,8 +57,6 @@ serve(async (req) => {
     // Step 2: Call AI via Lovable AI Gateway (multi-model fallback)
     console.log('[fitila-ia] Step 2: Calling AI...');
     const modelsToTry = [
-      'google/gemini-2.5-flash-lite',
-      'google/gemini-2.5-flash',
       'openai/gpt-5-nano',
     ];
 
