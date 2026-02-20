@@ -1,85 +1,90 @@
 
-# Refonte UI de Fitila IA - Style ChatGPT clair avec prediction de mots Bariba
 
-## Objectif
+# Diagnostic et Corrections - Fitila IA + Traducteur
 
-Transformer l'interface de Fitila IA en un design moderne style ChatGPT avec fond clair, texte anime en typing, traduction francais sous chaque reponse, prediction de mots bariba pendant la saisie, et clavier de caracteres bariba integre.
+## Bugs critiques identifiés
 
-## Changements prevus
+### Bug 1 (CRITIQUE) - Fitila IA : Reponses cassees - le frontend et le backend ne parlent pas le meme langage
 
-### 1. Refonte complete de `src/pages/fitila/FitilaIA.tsx`
+Le frontend (`FitilaIA.tsx`) attend les champs `response_ba`, `response_fr` et `fallback` dans la reponse, mais le backend (`fitila-ia-chat/index.ts`) renvoie `reply`, `text`, `language`. Resultat : **chaque reponse affiche "Goo toore..." au lieu du vrai contenu**.
 
-**Design UI style ChatGPT clair :**
-- Fond blanc/gris clair au lieu du fond sombre actuel
-- Bulles de messages repensees : utilisateur a droite (fond orange clair), IA a gauche (fond blanc avec bordure grise)
-- Avatar IA avec icone robot, avatar utilisateur avec icone user
-- Typographie claire et lisible
+- Frontend lit : `data?.response_ba` et `data?.response_fr` --> toujours `undefined`
+- Le texte affiche donc le fallback statique `'Gɔɔ tɔɔrɛ...'`
 
-**Effet typing anime sur les reponses :**
-- Les reponses IA s'affichent caractere par caractere avec un effet de machine a ecrire
-- Un curseur clignotant pendant l'animation
-- Le texte est mis en forme avec des paragraphes bien separes et des sauts de ligne clairs
+### Bug 2 (CRITIQUE) - Fitila IA : Pas de pipeline de traduction ByT5
 
-**Bouton "Traduire en francais" sous chaque reponse :**
-- Un bouton discret sous chaque bulle IA en couleur differente (bleu/indigo)
-- Au clic, appel au modele ByT5 via `supabase.functions.invoke('byt5-bariba-translate')` pour traduire la reponse bariba en francais
-- La traduction francaise s'affiche juste en dessous de la bulle, dans un bloc avec fond bleu clair
-- Indicateur de chargement pendant la traduction
+Le systeme devrait fonctionner ainsi :
+1. L'utilisateur pose une question (en bariba ou francais)
+2. Le LLM (GPT-5-nano) genere une reponse en **francais**
+3. La reponse est traduite en **bariba** via ByT5
 
-**Prediction de mots bariba dans le champ de saisie :**
-- Integration du hook `usePhoneticSuggestions` (deja existant) directement dans le champ de saisie
-- Quand l'utilisateur tape, le dernier mot en cours est utilise pour chercher des suggestions dans le dictionnaire (71 000+ mots)
-- Les suggestions s'affichent dans un panneau au-dessus du champ de saisie (style autocompletion)
-- Au clic sur un mot, il remplace le mot en cours de saisie
-- Prediction du mot suivant : apres selection d'un mot, le systeme propose des mots frequemment associes
+Actuellement, le backend demande au LLM de repondre directement en bariba (ce qu'il ne sait pas faire), puis utilise `refine-bariba` (un simple raffinage, pas une traduction complete). C'est pourquoi les reponses arrivent souvent en francais.
 
-**Clavier bariba integre :**
-- Bouton pour afficher/masquer le clavier de caracteres speciaux bariba
-- Reutilise les caracteres de `BaribaKeyboardInput` : ɔ, ɛ, ã, ŋ, ɔ̀, ɔ́, ɛ̀, ɛ́, etc.
-- Le clavier apparait au-dessus de la zone de saisie
-- Insertion du caractere a la position du curseur
+### Bug 3 - Fitila IA : Modele code en dur
 
-**Conservation des fonctionnalites existantes :**
-- Saisie vocale via micro (hooks `useAudioRecorder` et `useBaribaSTT`)
-- Envoi au backend `fitila-ia-chat`
-- Vidage immediat du champ apres envoi
+`callLovableChat` utilise toujours `google/gemini-2.5-flash` au lieu du fallback multi-modele (`openai/gpt-5-nano` en priorite) qui avait ete demande.
 
-### 2. Structure des messages enrichie
+### Bug 4 - Fitila IA : max_tokens trop eleve
 
-Le type `ChatMessage` est enrichi avec :
-- `translationFr?: string` - stocke la traduction francaise locale
-- `isTranslatingFr?: boolean` - indicateur de chargement traduction
-- `isTyping?: boolean` - controle de l'animation typing
-- `displayedContent?: string` - contenu partiellement affiche pendant le typing
+Le `max_tokens` par defaut est 800, mais devrait etre ~120 pour que la traduction ByT5 ne timeout pas.
+
+### Traducteur (PhraseTranslator) : OK
+
+Le traducteur utilise correctement `useSimpleTranslation` --> `ByT5TranslationService` --> edge function `byt5-bariba-translate`. Le pipeline est stable.
+
+---
+
+## Plan de correction
+
+### Etape 1 : Refondre `fitila-ia-chat/index.ts`
+
+Implementer le vrai pipeline :
+
+```text
+[Question utilisateur]
+        |
+        v
+[GPT-5-nano genere reponse FR]  (fallback: gemini-flash-lite, gemini-flash, gpt-5-mini)
+        |
+        v
+[ByT5 traduit FR --> Bariba]  (via appel interne a byt5-bariba-translate)
+        |
+        v
+[Retourne { response_ba, response_fr, fallback }]
+```
+
+- Modele principal : `openai/gpt-5-nano` avec fallback multi-modele
+- System prompt : forcer la reponse en francais (2 paragraphes, max 50 mots)
+- max_tokens : 120
+- Appeler `byt5-bariba-translate` (pas juste refine-bariba) pour la traduction finale
+- Si ByT5 echoue : retourner `{ response_ba: null, response_fr: "...", fallback: true }`
+- Si ByT5 reussit : retourner `{ response_ba: "...", response_fr: "...", fallback: false }`
+
+### Etape 2 : Verifier `FitilaIA.tsx`
+
+Le frontend est deja code pour lire `response_ba`, `response_fr`, `fallback`. Il suffit de s'assurer que le backend renvoie ces champs. Aucune modification frontend necessaire.
+
+### Etape 3 : Deployer et tester
+
+- Deployer `fitila-ia-chat`
+- Tester avec un message simple pour verifier que la reponse arrive en bariba
+- Verifier le fallback francais en cas de timeout ByT5
+
+---
 
 ## Details techniques
 
-### Effet typing
-- Utilisation de `useEffect` + `setInterval` avec un delai de 15-25ms par caractere
-- Le contenu complet est stocke dans `content`, le contenu affiche progressivement dans `displayedContent`
-- Le scroll suit automatiquement l'animation
+### Modifications dans `fitila-ia-chat/index.ts` :
 
-### Prediction de mots
-- Extraction du dernier mot en cours via `input.split(' ').pop()`
-- Appel a `getSuggestions(lastWord, 5)` du hook `usePhoneticSuggestions`
-- Remplacement du dernier mot par le mot selectionne + ajout d'un espace
+1. Remplacer `callLovableChat` pour supporter le fallback multi-modele (`modelsToTry` array avec boucle)
+2. Changer le system prompt : "Reponds TOUJOURS en francais, maximum 3 phrases courtes, 50 mots max"
+3. Ajouter une fonction `translateViaByT5` qui appelle l'edge function `byt5-bariba-translate` en interne
+4. Restructurer la reponse finale pour renvoyer `{ response_ba, response_fr, fallback, duration, model }`
+5. Supprimer la logique `refine-bariba` (la traduction ByT5 inclut deja le post-raffinage)
+6. Mettre `max_tokens: 120` par defaut
 
-### Traduction sous les reponses
-- Appel `supabase.functions.invoke('byt5-bariba-translate', { body: { text, sourceLang: 'bariba', targetLang: 'french' } })`
-- Resultat stocke dans le state local du message, pas de nouvel appel backend
+### Aucune modification necessaire :
+- `FitilaIA.tsx` (frontend) - deja compatible
+- `byt5-bariba-translate/index.ts` - fonctionne correctement
+- `PhraseTranslator.tsx` - traducteur stable
 
-### Clavier bariba
-- Les memes caracteres que dans `BaribaKeyboardInput` : `['ɔ', 'ɛ', 'ã', 'ŋ', 'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́', 'à', 'á', 'è', 'é', 'ì', 'í', 'ò', 'ó', 'ù', 'ú']`
-- Insertion via manipulation de `selectionStart/selectionEnd` sur l'input ref
-
-## Fichiers a modifier
-
-1. **`src/pages/fitila/FitilaIA.tsx`** - Refonte complete de la page (seul fichier modifie)
-
-## Fichiers reutilises (non modifies)
-
-- `src/hooks/usePhoneticSuggestions.ts` - Prediction de mots bariba
-- `src/hooks/useAudioRecorder.ts` - Enregistrement vocal
-- `src/hooks/useBaribaSTT.ts` - Transcription bariba
-- `supabase/functions/fitila-ia-chat/index.ts` - Pipeline backend (inchange)
-- `supabase/functions/byt5-bariba-translate/index.ts` - Traduction ByT5 (inchange)
