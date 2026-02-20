@@ -21,14 +21,14 @@ interface VoiceGuidedJobCreatorProps {
 type Step = 'type' | 'category' | 'title' | 'photos' | 'confirm';
 
 const JOB_CATEGORIES = [
-  { id: 'agriculture', emoji: '🚜', labelFr: 'Agriculture', labelBa: 'Àgbẹ̀' },
-  { id: 'construction', emoji: '🏗️', labelFr: 'Construction', labelBa: 'Ìkọ́lé' },
-  { id: 'transport', emoji: '🚗', labelFr: 'Transport', labelBa: 'Ìrìnnà' },
-  { id: 'commerce', emoji: '🛒', labelFr: 'Commerce', labelBa: 'Òwò' },
-  { id: 'domestic', emoji: '🏠', labelFr: 'Domestique', labelBa: 'Iṣẹ́ ilé' },
-  { id: 'craft', emoji: '🔧', labelFr: 'Artisanat', labelBa: 'Iṣẹ́ ọwọ́' },
-  { id: 'education', emoji: '📚', labelFr: 'Éducation', labelBa: 'Ẹ̀kọ́' },
-  { id: 'other', emoji: '💼', labelFr: 'Autre', labelBa: 'Mìíràn' },
+  { id: 'agriculture', emoji: '🚜', labelFr: 'Agriculture', labelBa: 'Gberu sɔmburu' },
+  { id: 'construction', emoji: '🏗️', labelFr: 'Construction', labelBa: 'Yɛnu koru' },
+  { id: 'transport', emoji: '🚗', labelFr: 'Transport', labelBa: 'Gɔrima' },
+  { id: 'commerce', emoji: '🛒', labelFr: 'Commerce', labelBa: 'Aburu' },
+  { id: 'domestic', emoji: '🏠', labelFr: 'Domestique', labelBa: 'Yɛnu sɔmburu' },
+  { id: 'craft', emoji: '🔧', labelFr: 'Artisanat', labelBa: 'Nɔɔru sɔmburu' },
+  { id: 'education', emoji: '📚', labelFr: 'Éducation', labelBa: 'Debu' },
+  { id: 'other', emoji: '💼', labelFr: 'Autre', labelBa: 'Dɔmbɔ' },
 ];
 
 export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType, prefillData = {} }: VoiceGuidedJobCreatorProps) {

@@ -44,12 +44,12 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
   const audioChunksRef = useRef<Blob[]>([]);
 
   const PART_OF_SPEECH_OPTIONS = [
-    { value: 'n', label: 'Nom', labelBa: 'Orúkọ' },
-    { value: 'v', label: 'Verbe', labelBa: 'Ìṣe' },
-    { value: 'adj', label: 'Adjectif', labelBa: 'Àpèjúwe' },
-    { value: 'adv', label: 'Adverbe', labelBa: 'Àpólà' },
-    { value: 'conj', label: 'Conjonction', labelBa: 'Àsopọ̀' },
-    { value: 'prep', label: 'Préposition', labelBa: 'Àfitọ́' },
+    { value: 'n', label: 'Nom', labelBa: 'Yiru' },
+    { value: 'v', label: 'Verbe', labelBa: 'Kobu' },
+    { value: 'adj', label: 'Adjectif', labelBa: 'Yirɑ' },
+    { value: 'adv', label: 'Adverbe', labelBa: 'Nɛɛ kpindu' },
+    { value: 'conj', label: 'Conjonction', labelBa: 'Yɔku' },
+    { value: 'prep', label: 'Préposition', labelBa: 'Sɔɔru' },
   ];
 
   // Start recording for a specific field

@@ -119,9 +119,9 @@ export default function TamTamMarket() {
       icon: Package, 
       emoji: '📦', 
       labelFr: 'Vendre', 
-      labelBa: 'Ta',
+      labelBa: 'Tà',
       descFr: 'Mettre un produit en vente',
-      descBa: 'Fi ọjà sílẹ̀ fún títà',
+      descBa: 'Gɑ̃ɑ tà yira',
       color: 'bg-green-500'
     },
     { 
@@ -129,9 +129,9 @@ export default function TamTamMarket() {
       icon: Briefcase, 
       emoji: '💼', 
       labelFr: 'Travailler', 
-      labelBa: 'Ṣiṣẹ́',
+      labelBa: 'Sɔmburu ko',
       descFr: 'Trouver du travail',
-      descBa: 'Wá iṣẹ́ láti ṣe',
+      descBa: 'Sɔmburu kasuu',
       color: 'bg-purple-500'
     },
     { 
@@ -139,9 +139,9 @@ export default function TamTamMarket() {
       icon: HandHelping, 
       emoji: '🙋', 
       labelFr: 'Embaucher', 
-      labelBa: 'Gbà ẹni',
+      labelBa: 'Tɔm kasuu',
       descFr: 'Trouver quelqu\'un pour travailler',
-      descBa: 'Wá ẹnìkan fún iṣẹ́',
+      descBa: 'Tɔm kasuu sɔmburu yira',
       color: 'bg-orange-500'
     },
   ];
@@ -151,11 +151,11 @@ export default function TamTamMarket() {
       {/* Header with global audio help */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-tamtam-text">
-          {currentLang === 'ba' ? 'Ọjà' : 'Marché'}
+          {currentLang === 'ba' ? 'Aburu' : 'Marché'}
         </h1>
         <VoiceButton 
           textFr="Bienvenue au marché. Appuyez sur les icônes pour acheter, vendre, trouver du travail ou embaucher quelqu'un."
-          textBa="Ẹ káàbọ̀ sí ọjà. Tẹ àwọn àmì láti ra, tà, wá iṣẹ́ tàbí gbà ẹnìkan fún iṣẹ́."
+          textBa="Aagu wunɛ ka weru aburu sɔɔ. Tɛ̀ kɑ rà, tà, sɔmburu kasuu."
           variant="full"
           showLabel
           size="md"
@@ -208,14 +208,14 @@ export default function TamTamMarket() {
                 className="flex-1 py-3 px-4 bg-tamtam-surface rounded-xl flex items-center justify-center gap-2 text-tamtam-text-muted"
               >
                 <span>👤</span>
-                <span className="text-sm">{currentLang === 'ba' ? 'Ti mi' : 'Ma Boutique'}</span>
+                <span className="text-sm">{currentLang === 'ba' ? 'Nɛn aburu' : 'Ma Boutique'}</span>
               </button>
               <button
                 onClick={() => handleMainAction('my-jobs')}
                 className="flex-1 py-3 px-4 bg-tamtam-surface rounded-xl flex items-center justify-center gap-2 text-tamtam-text-muted"
               >
                 <span>📋</span>
-                <span className="text-sm">{currentLang === 'ba' ? 'Àwọn mi' : 'Mes Annonces'}</span>
+                <span className="text-sm">{currentLang === 'ba' ? 'Nɛn lɑɑbɑrinu' : 'Mes Annonces'}</span>
               </button>
             </div>
 
@@ -330,11 +330,11 @@ export default function TamTamMarket() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-tamtam-text">
-                  {currentLang === 'ba' ? 'Sọ pé o wà' : 'Signaler votre disponibilité'}
+                  {currentLang === 'ba' ? 'Na wãa nɛɛ' : 'Signaler votre disponibilité'}
                 </h3>
                 <VoiceButton 
                   textFr="Dites aux employeurs que vous êtes disponible pour travailler"
-                  textBa="Sọ fún àwọn olówó iṣẹ́ pé o wà fún iṣẹ́"
+                  textBa="Sɔmburu sunɔnu nɛɛ a wãa sɔmburu yira"
                   size="sm"
                 />
               </div>
@@ -343,7 +343,7 @@ export default function TamTamMarket() {
 
             {/* Job offers list */}
             <h3 className="font-bold text-tamtam-text mb-3">
-              {currentLang === 'ba' ? 'Àwọn iṣẹ́ tó wà' : 'Offres d\'emploi'}
+              {currentLang === 'ba' ? 'Sɔmburunu wãa' : 'Offres d\'emploi'}
             </h3>
 
             {isLoading ? (
@@ -364,7 +364,7 @@ export default function TamTamMarket() {
                 ))}
                 {offers.length === 0 && (
                   <div className="text-center py-12 text-tamtam-text-muted">
-                    {currentLang === 'ba' ? 'Kò sí iṣẹ́' : 'Aucune offre'}
+                    {currentLang === 'ba' ? 'Sɔmburu kun wãa' : 'Aucune offre'}
                   </div>
                 )}
               </div>
@@ -384,18 +384,18 @@ export default function TamTamMarket() {
               onClick={() => setView('home')} 
               className="mb-4 text-tamtam-primary flex items-center gap-2"
             >
-              ← {currentLang === 'ba' ? 'Padà' : 'Retour'}
+              ← {currentLang === 'ba' ? 'Wiru' : 'Retour'}
             </button>
 
             {/* Quick create offer */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-tamtam-text">
-                  {currentLang === 'ba' ? 'Ṣẹ̀dá ìpolówó' : 'Créer une offre'}
+                  {currentLang === 'ba' ? 'Sɔmburu ko' : 'Créer une offre'}
                 </h3>
                 <VoiceButton 
                   textFr="Publiez une offre d'emploi pour trouver quelqu'un"
-                  textBa="Fi ìpolówó sílẹ̀ láti wá ẹnìkan"
+                  textBa="Sɔmburu yira kɑ tɔm kasuu"
                   size="sm"
                 />
               </div>
@@ -404,7 +404,7 @@ export default function TamTamMarket() {
 
             {/* People looking for work */}
             <h3 className="font-bold text-tamtam-text mb-3">
-              {currentLang === 'ba' ? 'Àwọn tó ń wá iṣẹ́' : 'Personnes disponibles'}
+              {currentLang === 'ba' ? 'Tɔmbu sɔmburu kasuumɔ' : 'Personnes disponibles'}
             </h3>
 
             {isLoading ? (

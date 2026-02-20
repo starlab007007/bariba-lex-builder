@@ -279,7 +279,7 @@ export const DuoMode: React.FC<DuoModeProps> = ({
           <div className="flex items-center gap-2">
             <SplitSquareVertical className="w-5 h-5 text-primary" />
             <span className="text-white font-medium">
-              {currentLang === 'ba' ? 'Ìdáhùn Duo' : 'Mode Duo'}
+              {currentLang === 'ba' ? 'Duo kpindu' : 'Mode Duo'}
             </span>
           </div>
 

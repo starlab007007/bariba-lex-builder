@@ -19,12 +19,12 @@ interface TemplateHeroSectionProps {
 
 // Voice-first categories with large emojis and colors
 const CATEGORIES = [
-  { id: 'all', emoji: '✨', label: 'Tous', labelBa: 'Bɛɛ', color: 'from-primary to-accent-cyan', bgColor: 'bg-primary/10' },
-  { id: 'storytelling', emoji: '📖', label: 'Histoires', labelBa: 'Kàlàmɔ̀', color: 'from-orange-400 to-rose-500', bgColor: 'bg-orange-100' },
+  { id: 'all', emoji: '✨', label: 'Tous', labelBa: 'Kpuro', color: 'from-primary to-accent-cyan', bgColor: 'bg-primary/10' },
+  { id: 'storytelling', emoji: '📖', label: 'Histoires', labelBa: 'Gɛsɛrenu', color: 'from-orange-400 to-rose-500', bgColor: 'bg-orange-100' },
   { id: 'music', emoji: '🎵', label: 'Musique', labelBa: 'Wùúsú', color: 'from-purple-400 to-pink-500', bgColor: 'bg-purple-100' },
-  { id: 'business', emoji: '💼', label: 'Business', labelBa: 'Sɔ̀nkɔ́', color: 'from-blue-400 to-cyan-500', bgColor: 'bg-blue-100' },
-  { id: 'education', emoji: '📚', label: 'Éducation', labelBa: 'Kàráŋgà', color: 'from-green-400 to-emerald-500', bgColor: 'bg-green-100' },
-  { id: 'future', emoji: '🚀', label: 'Futuriste', labelBa: 'Sɔ̀ɔ̀n', color: 'from-violet-400 to-purple-500', bgColor: 'bg-violet-100' },
+  { id: 'business', emoji: '💼', label: 'Business', labelBa: 'Aburu', color: 'from-blue-400 to-cyan-500', bgColor: 'bg-blue-100' },
+  { id: 'education', emoji: '📚', label: 'Éducation', labelBa: 'Debu', color: 'from-green-400 to-emerald-500', bgColor: 'bg-green-100' },
+  { id: 'future', emoji: '🚀', label: 'Futuriste', labelBa: 'Yɑmɔ', color: 'from-violet-400 to-purple-500', bgColor: 'bg-violet-100' },
 ];
 
 export function TemplateHeroSection({

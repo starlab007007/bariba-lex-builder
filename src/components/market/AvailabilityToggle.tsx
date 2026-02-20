@@ -17,21 +17,21 @@ export function AvailabilityToggle({ currentStatus, onChange, disabled }: Availa
       icon: '🟢', 
       color: 'bg-green-500', 
       labelFr: 'Disponible', 
-      labelBa: 'Mo wà' 
+      labelBa: 'Na wãa' 
     },
     { 
       id: 'searching' as const, 
       icon: '🟠', 
       color: 'bg-orange-500', 
       labelFr: 'En recherche', 
-      labelBa: 'Mo ń wá' 
+      labelBa: 'Na kasuumɔ' 
     },
     { 
       id: 'busy' as const, 
       icon: '🔴', 
       color: 'bg-red-500', 
       labelFr: 'Occupé', 
-      labelBa: 'Mo ti ní iṣẹ́' 
+      labelBa: 'Na sɔmburumɔ' 
     },
   ];
 

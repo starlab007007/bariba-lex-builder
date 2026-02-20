@@ -191,7 +191,7 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
                   <div>
                     <h3 className="text-white font-bold text-lg">Raconte-Moi</h3>
                     <p className="text-white/70 text-sm">
-                      {currentLang === 'ba' ? 'Olùrànlọ́wọ́ ohùn Bàátɔ̀nú' : 'Assistant vocal Bariba'}
+                      {currentLang === 'ba' ? 'Nɔɔ ìràn Bàátɔ̀nú' : 'Assistant vocal Bariba'}
                     </p>
                   </div>
                 </div>

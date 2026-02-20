@@ -8,10 +8,10 @@ import { Template } from '../types';
 export const voixDeFamilleTemplate: Template = {
   id: 'voix-de-famille',
   name: 'Voix de Famille',
-  nameBa: 'Ohùn Ẹbí',
+  nameBa: 'Dɛnu nɔɔ',
   category: 'storytelling',
   description: 'Messages vocaux et souvenirs familiaux',
-  descriptionBa: 'Ìrántí àti ohùn ẹbí',
+  descriptionBa: 'Nɔɔ nɛɛrenu kɑ dɛnu mɑɑrunu',
   thumbnail: '/assets/templates/voix-de-famille-thumb.jpg',
   duration: 60,
   isPremium: false,

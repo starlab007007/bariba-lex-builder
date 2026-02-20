@@ -8,12 +8,12 @@ import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 
 const sections = [
-  { id: 'sales', icon: '💵', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Mes ventes', labelBa: 'Àwọn títà mi' },
-  { id: 'expenses', icon: '📉', color: 'bg-red-500', bgLight: 'bg-red-50', labelFr: 'Mes dépenses', labelBa: 'Àwọn ìnáwó mi' },
-  { id: 'tontine', icon: '🤝', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelFr: 'Ma tontine', labelBa: 'Ẹ̀jọ́ mi' },
-  { id: 'credit', icon: '🏦', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelFr: 'Crédit', labelBa: 'Àwín' },
-  { id: 'savings', icon: '🐷', color: 'bg-pink-500', bgLight: 'bg-pink-50', labelFr: 'Épargne', labelBa: 'Ìfipamọ́' },
-  { id: 'advisor', icon: '🤖', color: 'bg-indigo-500', bgLight: 'bg-indigo-50', labelFr: 'Conseiller', labelBa: 'Olùràn' },
+  { id: 'sales', icon: '💵', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Mes ventes', labelBa: 'Nɛn tànu' },
+  { id: 'expenses', icon: '📉', color: 'bg-red-500', bgLight: 'bg-red-50', labelFr: 'Mes dépenses', labelBa: 'Nɛn gobinu' },
+  { id: 'tontine', icon: '🤝', color: 'bg-purple-500', bgLight: 'bg-purple-50', labelFr: 'Ma tontine', labelBa: 'Nɛn tontine' },
+  { id: 'credit', icon: '🏦', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelFr: 'Crédit', labelBa: 'Bẹni' },
+  { id: 'savings', icon: '🐷', color: 'bg-pink-500', bgLight: 'bg-pink-50', labelFr: 'Épargne', labelBa: 'Gobi mɑɑru' },
+  { id: 'advisor', icon: '🤖', color: 'bg-indigo-500', bgLight: 'bg-indigo-50', labelFr: 'Conseiller', labelBa: 'Deburu tɔm' },
 ];
 
 interface Transaction {
