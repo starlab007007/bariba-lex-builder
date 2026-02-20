@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, LayoutDashboard, Package, ChevronUp, X } from 'lucide-react';
+import { Shield, LayoutDashboard, Package, ChevronUp, X, Bot } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import SuperIAPanel from '@/components/admin/SuperIAPanel';
 
 export const AdminFloatingButton: React.FC = () => {
   const { isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [showSuperIA, setShowSuperIA] = useState(false);
 
   // Ne pas afficher si pas admin ou en chargement
   if (loading || !isAdmin) return null;
 
   const menuItems = [
+    {
+      icon: Bot,
+      label: 'Super IA',
+      labelBa: 'Fitila IA 🤖',
+      action: () => setShowSuperIA(true),
+      gradient: 'from-violet-500 to-indigo-500',
+    },
     {
       icon: LayoutDashboard,
       label: 'Tableau de bord',
@@ -32,6 +41,15 @@ export const AdminFloatingButton: React.FC = () => {
   const handleNavigate = (path: string) => {
     navigate(path);
     setIsOpen(false);
+  };
+
+  const handleItemClick = (item: typeof menuItems[0]) => {
+    if (item.action) {
+      item.action();
+      setIsOpen(false);
+    } else if (item.path) {
+      handleNavigate(item.path);
+    }
   };
 
   return (
@@ -58,12 +76,12 @@ export const AdminFloatingButton: React.FC = () => {
 
             {/* Menu Items */}
             <div className="space-y-1">
-              {menuItems.map((item) => (
+              {menuItems.map((item, idx) => (
                 <motion.button
-                  key={item.path}
+                  key={item.label}
                   whileHover={{ x: 4 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => handleNavigate(item.path)}
+                  onClick={() => handleItemClick(item)}
                   className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition-all group"
                 >
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg`}>
@@ -131,6 +149,36 @@ export const AdminFloatingButton: React.FC = () => {
           <span className="text-[#FF7A00] text-[10px] font-black">A</span>
         </motion.div>
       </motion.button>
+
+      {/* Super IA Modal */}
+      <AnimatePresence>
+        {showSuperIA && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+            onClick={() => setShowSuperIA(false)}
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-md z-10"
+            >
+              <button
+                onClick={() => setShowSuperIA(false)}
+                className="absolute -top-3 -right-3 z-20 w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center"
+              >
+                <X className="w-4 h-4 text-gray-600" />
+              </button>
+              <SuperIAPanel />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
