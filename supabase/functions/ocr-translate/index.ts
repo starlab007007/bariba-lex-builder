@@ -12,11 +12,20 @@ const corsHeaders = {
 };
 
 type OCRTranslateRequest = {
-  image?: string;
-  document?: string;
+  image?: string;                    // rétrocompat (1 image)
+  document?: string;                 // rétrocompat (PDF ou image base64)
+  pages?: string[];                  // ✅ v2: pages PDF déjà converties en images (base64/dataURL)
   fileName?: string;
   targetLanguage?: "bariba" | "french";
   skipRefine?: boolean;
+  translateMode?: "per_page" | "combined"; // défaut: per_page
+};
+
+type OCRPageResult = {
+  page: number;
+  extractedText: string;
+  ocr_confidence: number;
+  ocrNotes: string[];
 };
 
 function normalizeText(input: string): string {
@@ -26,13 +35,13 @@ function normalizeText(input: string): string {
 function detectDataUrl(input: string, fileName?: string): { dataUrl: string; mime: string } {
   const raw = (input || "").trim();
 
-  // If already data URL
+  // data URL déjà complet
   const dataMatch = raw.match(/^data:([^;]+);base64,(.+)$/s);
   if (dataMatch) {
     return { dataUrl: raw, mime: dataMatch[1] };
   }
 
-  // Guess mime from filename
+  // Deviner mime par extension
   const lower = (fileName || "").toLowerCase();
   let mime = "image/jpeg";
   if (lower.endsWith(".png")) mime = "image/png";
@@ -50,26 +59,59 @@ function isLikelyPdf(mime: string, fileName?: string): boolean {
 function cleanOcrText(text: string): string {
   const t = normalizeText(text);
   if (!t) return "";
-
-  // Évite de renvoyer des placeholders/UI artifacts comme "button", "copy", etc.
   if (isInvalidUiLikeText(t)) return "";
-
   return t;
+}
+
+function chunkTextForTranslation(text: string, maxLen = 2400): string[] {
+  const clean = normalizeText(text);
+  if (!clean) return [];
+
+  if (clean.length <= maxLen) return [clean];
+
+  const lines = clean.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const line of lines) {
+    const next = current ? `${current}\n${line}` : line;
+    if (next.length <= maxLen) {
+      current = next;
+    } else {
+      if (current) chunks.push(current);
+
+      if (line.length <= maxLen) {
+        current = line;
+      } else {
+        // fallback: découpe brute d'une très longue ligne
+        for (let i = 0; i < line.length; i += maxLen) {
+          chunks.push(line.slice(i, i + maxLen));
+        }
+        current = "";
+      }
+    }
+  }
+
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function callVisionOcr(params: {
   lovableApiKey: string;
   dataUrl: string;
   targetLanguage: "bariba" | "french";
-  isPdf: boolean;
+  pageNumber?: number;
 }): Promise<{ extractedText: string; confidence: number; ocrNotes?: string[] }> {
-  const { lovableApiKey, dataUrl, targetLanguage, isPdf } = params;
+  const { lovableApiKey, dataUrl, targetLanguage, pageNumber } = params;
 
-  // IMPORTANT: OCR only (translation handled by byt5 pipeline after)
   const systemPrompt = `You are a precise OCR extraction assistant.
 
 Task:
-1) Read all visible text from the provided ${isPdf ? "document page/image" : "image"}.
+1) Read all visible text from the provided image.
 2) Return ONLY valid JSON.
 3) Do NOT translate.
 4) Preserve line breaks where possible (but valid JSON string).
@@ -84,8 +126,8 @@ Expected JSON format:
 
   const userText =
     targetLanguage === "bariba"
-      ? "Extract all visible text exactly as written (likely French source text). Return ONLY JSON."
-      : "Extract all visible text exactly as written (likely Bariba source text). Return ONLY JSON.";
+      ? `Extract all visible text exactly as written (likely French source text). Return ONLY JSON.${pageNumber ? ` Page ${pageNumber}.` : ""}`
+      : `Extract all visible text exactly as written (likely Bariba source text). Return ONLY JSON.${pageNumber ? ` Page ${pageNumber}.` : ""}`;
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -120,7 +162,6 @@ Expected JSON format:
 
   const aiResult = await response.json();
   const content = aiResult?.choices?.[0]?.message?.content || "";
-  console.log("[ocr-translate] OCR raw response:", String(content).substring(0, 500));
 
   const parsed = safeJsonExtract(String(content));
   if (parsed && typeof parsed === "object") {
@@ -138,7 +179,7 @@ Expected JSON format:
     return { extractedText, confidence, ocrNotes };
   }
 
-  // Fallback: use raw content as extracted text if not JSON
+  // fallback raw text si pas JSON
   const fallbackText = cleanOcrText(String(content || ""));
   return {
     extractedText: fallbackText,
@@ -213,6 +254,71 @@ async function callByt5Translate(params: {
   };
 }
 
+async function translateLongText(params: {
+  req: Request;
+  text: string;
+  targetLanguage: "bariba" | "french";
+  skipRefine?: boolean;
+}): Promise<{
+  translation: string;
+  confidence: number | null;
+  method: string;
+  chunks: number;
+  refinements: unknown[];
+  modelInfos: unknown[];
+}> {
+  const chunks = chunkTextForTranslation(params.text, 2400);
+
+  if (chunks.length === 0) {
+    return {
+      translation: "",
+      confidence: null,
+      method: "none",
+      chunks: 0,
+      refinements: [],
+      modelInfos: [],
+    };
+  }
+
+  const translations: string[] = [];
+  const confidences: number[] = [];
+  const refinements: unknown[] = [];
+  const modelInfos: unknown[] = [];
+  const methods: string[] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const tr = await callByt5Translate({
+      req: params.req,
+      text: chunks[i],
+      targetLanguage: params.targetLanguage,
+      skipRefine: params.skipRefine,
+    });
+
+    translations.push(tr.translation);
+    if (typeof tr.confidence === "number") confidences.push(tr.confidence);
+    if (tr.refinement !== undefined) refinements.push(tr.refinement);
+    if (tr.modelInfo !== undefined) modelInfos.push(tr.modelInfo);
+    if (tr.method) methods.push(tr.method);
+
+    // petite pause pour éviter burst
+    if (i < chunks.length - 1) await sleep(120);
+  }
+
+  const avgConfidence =
+    confidences.length > 0
+      ? Number((confidences.reduce((a, b) => a + b, 0) / confidences.length).toFixed(2))
+      : null;
+
+  return {
+    translation: translations.join("\n"),
+    confidence: avgConfidence,
+    method: methods[0] || "byt5-expert",
+    chunks: chunks.length,
+    refinements,
+    modelInfos,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -224,9 +330,11 @@ serve(async (req) => {
     const {
       image,
       document,
+      pages = [],
       fileName,
       targetLanguage = "bariba",
       skipRefine = false,
+      translateMode = "per_page",
     }: OCRTranslateRequest = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -234,32 +342,88 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const sourceData = image || document;
-    if (!sourceData) {
-      throw new Error("No image or document provided");
+    // ─────────────────────────────────────────────
+    // V2 source detection
+    // ─────────────────────────────────────────────
+    let pageImages: string[] = [];
+
+    if (Array.isArray(pages) && pages.length > 0) {
+      // ✅ mode recommandé pour PDF multi-pages
+      pageImages = pages.filter((p) => typeof p === "string" && p.trim().length > 0);
+    } else {
+      // rétrocompat 1 image / document
+      const sourceData = image || document;
+      if (!sourceData) throw new Error("No image, document, or pages[] provided");
+
+      const { dataUrl, mime } = detectDataUrl(sourceData, fileName);
+      const pdfMode = isLikelyPdf(mime, fileName);
+
+      if (pdfMode) {
+        // PDF brut envoyé sans pages[] → on ne peut pas garantir un multi-pages fiable côté Edge sans rasterizer
+        return new Response(
+          JSON.stringify({
+            error: "PDF multi-pages non converti",
+            details:
+              "Pour la v2, convertis le PDF en images (une image par page) côté frontend et envoie `pages: string[]`.",
+            expected: {
+              pages: ["data:image/png;base64,...", "data:image/png;base64,..."],
+              targetLanguage: "bariba",
+            },
+            fallback: false,
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      pageImages = [dataUrl];
     }
 
-    const { dataUrl, mime } = detectDataUrl(sourceData, fileName);
-    const pdfMode = isLikelyPdf(mime, fileName);
+    if (pageImages.length === 0) {
+      throw new Error("pages[] is empty after filtering");
+    }
 
-    console.log("[ocr-translate] Start OCR+Translate");
-    console.log("[ocr-translate] targetLanguage:", targetLanguage, "| mime:", mime, "| pdf:", pdfMode);
+    console.log("[ocr-translate-v2] Start OCR+Translate");
+    console.log("[ocr-translate-v2] pages:", pageImages.length, "| target:", targetLanguage, "| mode:", translateMode);
 
-    // 1) OCR extraction
-    const ocr = await callVisionOcr({
-      lovableApiKey: LOVABLE_API_KEY,
-      dataUrl,
-      targetLanguage,
-      isPdf: pdfMode,
-    });
+    // ─────────────────────────────────────────────
+    // 1) OCR page par page
+    // ─────────────────────────────────────────────
+    const ocrPages: OCRPageResult[] = [];
 
-    if (!ocr.extractedText) {
+    for (let i = 0; i < pageImages.length; i++) {
+      const ocr = await callVisionOcr({
+        lovableApiKey: LOVABLE_API_KEY,
+        dataUrl: pageImages[i],
+        targetLanguage,
+        pageNumber: i + 1,
+      });
+
+      ocrPages.push({
+        page: i + 1,
+        extractedText: ocr.extractedText,
+        ocr_confidence: Number(ocr.confidence.toFixed(3)),
+        ocrNotes: ocr.ocrNotes || [],
+      });
+
+      if (i < pageImages.length - 1) await sleep(150);
+    }
+
+    const extractedPages = ocrPages.filter((p) => p.extractedText.trim().length > 0);
+
+    if (extractedPages.length === 0) {
       return new Response(
         JSON.stringify({
           extractedText: "",
           translation: "",
+          extracted_pages: ocrPages,
+          translated_pages: [],
           confidence: 0.15,
-          ocr_confidence: ocr.confidence,
+          ocr_confidence: 0.15,
+          translation_confidence: null,
+          page_count: pageImages.length,
           error: "Aucun texte lisible détecté",
           fallback: true,
           duration: Date.now() - startedAt,
@@ -271,68 +435,166 @@ serve(async (req) => {
       );
     }
 
-    // 2) Translation through patched ByT5 pipeline
-    let translation = "";
-    let translationConfidence: number | undefined;
+    // ─────────────────────────────────────────────
+    // 2) Translation (per_page ou combined)
+    // ─────────────────────────────────────────────
+    let translatedPages: Array<{
+      page: number;
+      translation: string;
+      translation_confidence: number | null;
+      method: string;
+      chunks: number;
+      refinement?: unknown[];
+      modelInfo?: unknown[];
+      fallback?: boolean;
+      error?: string;
+    }> = [];
+
+    let finalTranslation = "";
+    let translationConfList: number[] = [];
     let translationMethod = "none";
-    let refinement: unknown = undefined;
-    let modelInfo: unknown = undefined;
-    let fallback = false;
+    let globalFallback = false;
+    let allRefinements: unknown[] = [];
+    let allModelInfos: unknown[] = [];
 
-    try {
-      const tr = await callByt5Translate({
-        req,
-        text: ocr.extractedText,
-        targetLanguage,
-        skipRefine,
-      });
+    if (translateMode === "combined") {
+      const combinedExtracted = extractedPages
+        .map((p) => `--- Page ${p.page} ---\n${p.extractedText}`)
+        .join("\n\n");
 
-      translation = tr.translation;
-      translationConfidence = tr.confidence;
-      translationMethod = tr.method || "byt5-expert";
-      refinement = tr.refinement;
-      modelInfo = tr.modelInfo;
-    } catch (translateErr) {
-      // Fallback: if target is french, OCR text may already be usable
-      // If target is bariba and translation fails, return OCR only + fallback=true
-      console.warn("[ocr-translate] Translation fallback:", translateErr);
+      try {
+        const tr = await translateLongText({
+          req,
+          text: combinedExtracted,
+          targetLanguage,
+          skipRefine,
+        });
 
-      fallback = true;
-      translationMethod = "fallback-ocr-only";
-
-      if (targetLanguage === "french") {
-        translation = ocr.extractedText;
-      } else {
-        translation = ""; // avoid pretending OCR raw French is Bariba
+        finalTranslation = tr.translation;
+        if (typeof tr.confidence === "number") translationConfList.push(tr.confidence);
+        translationMethod = tr.method;
+        allRefinements = tr.refinements;
+        allModelInfos = tr.modelInfos;
+      } catch (e) {
+        globalFallback = true;
+        finalTranslation = targetLanguage === "french" ? combinedExtracted : "";
+        translationMethod = "fallback-ocr-only";
       }
+    } else {
+      // per_page (recommandé)
+      for (const page of ocrPages) {
+        if (!page.extractedText) {
+          translatedPages.push({
+            page: page.page,
+            translation: "",
+            translation_confidence: null,
+            method: "none",
+            chunks: 0,
+            fallback: true,
+            error: "No OCR text",
+          });
+          continue;
+        }
+
+        try {
+          const tr = await translateLongText({
+            req,
+            text: page.extractedText,
+            targetLanguage,
+            skipRefine,
+          });
+
+          translatedPages.push({
+            page: page.page,
+            translation: tr.translation,
+            translation_confidence: tr.confidence,
+            method: tr.method,
+            chunks: tr.chunks,
+            refinement: tr.refinements,
+            modelInfo: tr.modelInfos,
+          });
+
+          if (typeof tr.confidence === "number") translationConfList.push(tr.confidence);
+          if (tr.method && translationMethod === "none") translationMethod = tr.method;
+          allRefinements.push(...tr.refinements);
+          allModelInfos.push(...tr.modelInfos);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Translation failed";
+          globalFallback = true;
+
+          translatedPages.push({
+            page: page.page,
+            translation: targetLanguage === "french" ? page.extractedText : "",
+            translation_confidence: null,
+            method: "fallback-ocr-only",
+            chunks: 0,
+            fallback: true,
+            error: msg,
+          });
+        }
+
+        await sleep(120);
+      }
+
+      finalTranslation = translatedPages
+        .map((p) => (p.translation ? `--- Page ${p.page} ---\n${p.translation}` : `--- Page ${p.page} ---\n`))
+        .join("\n\n");
     }
+
+    // ─────────────────────────────────────────────
+    // 3) Agrégation des confidences
+    // ─────────────────────────────────────────────
+    const avgOcr =
+      ocrPages.length > 0
+        ? Number((ocrPages.reduce((s, p) => s + p.ocr_confidence, 0) / ocrPages.length).toFixed(3))
+        : 0;
+
+    const avgTranslation =
+      translationConfList.length > 0
+        ? Number((translationConfList.reduce((s, v) => s + v, 0) / translationConfList.length).toFixed(2))
+        : null;
 
     const combinedConfidence = Math.max(
       0,
       Math.min(
         1,
-        (ocr.confidence * 0.55) + (((translationConfidence ?? 70) / 100) * 0.45),
+        avgOcr * 0.55 + (((avgTranslation ?? 70) / 100) * 0.45),
       ),
     );
 
+    const extractedTextCombined = ocrPages
+      .map((p) => (p.extractedText ? `--- Page ${p.page} ---\n${p.extractedText}` : `--- Page ${p.page} ---\n`))
+      .join("\n\n");
+
     const result = {
-      extractedText: ocr.extractedText,
-      translation,
+      version: "v2",
+      page_count: pageImages.length,
+
+      // sortie globale (compat)
+      extractedText: extractedTextCombined,
+      translation: finalTranslation,
+
+      // sortie détaillée v2
+      extracted_pages: ocrPages,
+      translated_pages: translatedPages,
+
       confidence: Number(combinedConfidence.toFixed(3)),
-      ocr_confidence: Number(ocr.confidence.toFixed(3)),
-      translation_confidence: translationConfidence ?? null,
+      ocr_confidence: avgOcr,
+      translation_confidence: avgTranslation,
       targetLanguage,
-      fallback,
+      fallback: globalFallback,
       translation_method: translationMethod,
-      refinement,
-      modelInfo,
-      ocrNotes: ocr.ocrNotes || [],
+      translation_mode: translateMode,
+
+      refinement: allRefinements.length ? allRefinements : undefined,
+      modelInfo: allModelInfos.length ? allModelInfos : undefined,
       duration: Date.now() - startedAt,
     };
 
-    console.log("[ocr-translate] Success:", {
-      extractedLen: result.extractedText.length,
-      translatedLen: result.translation.length,
+    console.log("[ocr-translate-v2] Success:", {
+      pages: result.page_count,
+      extractedPages: result.extracted_pages.filter((p) => p.extractedText).length,
+      translatedPages: result.translated_pages.filter((p) => p.translation).length,
       fallback: result.fallback,
       method: result.translation_method,
     });
@@ -341,7 +603,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
-    console.error("[ocr-translate] Error:", error);
+    console.error("[ocr-translate-v2] Error:", error);
 
     const message = error instanceof Error ? error.message : "Unknown error";
     const status =
