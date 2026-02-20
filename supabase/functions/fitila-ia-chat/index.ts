@@ -58,6 +58,9 @@ serve(async (req) => {
     console.log('[fitila-ia] Step 2: Calling AI...');
     const modelsToTry = [
       'openai/gpt-5-nano',
+      'google/gemini-2.5-flash-lite',
+      'google/gemini-2.5-flash',
+      'openai/gpt-5-mini',
     ];
 
     let responseFr = '';
