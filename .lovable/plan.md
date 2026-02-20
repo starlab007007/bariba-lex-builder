@@ -1,89 +1,151 @@
 
-# Anti Cold-Sleep : Ping automatique des HuggingFace Spaces
+# Plan : Fichier d'internationalisation complet pour la plateforme FITILA
 
-## Modeles HuggingFace utilises
+## Contexte
 
-| Modele | Fonction | URL du Space | Edge Function |
-|--------|----------|-------------|---------------|
-| ByT5 Expert (Traduction FR-BA) | Traduction francais-bariba | `https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space` | `byt5-bariba-translate` |
-| Baatonum TTS (Text-to-Speech) | Synthese vocale bariba | `https://zimesongbian-baatonum-tts-api-v001.hf.space` | `bariba-tts` |
-| Baatonum ASR/STT (Speech-to-Text) | Reconnaissance vocale bariba | `https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space` | `bariba-stt` |
+La plateforme FITILA contient des centaines de textes visibles en francais, repartis dans plus de 50 fichiers de composants et pages. Actuellement, une partie utilise deja le systeme `useFitilaLanguage()` avec un dictionnaire dans `FitilaLanguageContext.tsx` (~150 entrees), mais la majorite des textes sont **codes en dur** directement dans les fichiers JSX.
 
-Les 3 Spaces sont heberges sous le compte HuggingFace `zimesongbian`.
+## Ce que je vais creer
 
-## Probleme
-
-Les HuggingFace Spaces gratuits se mettent en veille ("cold sleep") apres environ 48h d'inactivite. Le premier appel apres le reveil prend 30-60 secondes, causant des timeouts et des erreurs 503 pour les utilisateurs.
-
-## Solution proposee
-
-Creer une edge function `hf-keep-alive` qui envoie un simple GET a chaque Space toutes les 30 minutes via un cron job PostgreSQL.
-
-### Etape 1 : Creer `supabase/functions/hf-keep-alive/index.ts`
-
-La fonction :
-- Envoie un GET a chacun des 3 Spaces (endpoint `/gradio_api/config` qui est leger)
-- Timeout de 15 secondes par Space
-- Retourne le statut de chaque Space (awake/sleeping/error)
-- Execution totale en moins de 20 secondes
+Un fichier JSON unique `public/i18n-platform.json` contenant **tous les textes visibles** de la plateforme, organises par page/section, avec la structure :
 
 ```text
-hf-keep-alive
-    |
-    +--> GET zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space/gradio_api/config
-    +--> GET zimesongbian-baatonum-tts-api-v001.hf.space/gradio_api/config
-    +--> GET zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space/gradio_api/config
-    |
-    +--> Retourne { byt5: "awake", tts: "awake", stt: "awake" }
+{
+  "cle_unique": {
+    "fr": "Texte en francais",
+    "ba": ""   <-- Vous remplirez manuellement la traduction Bariba
+  }
+}
 ```
 
-### Etape 2 : Ajouter dans `supabase/config.toml`
+## Inventaire exhaustif des textes trouves (par page/section)
 
-```
-[functions.hf-keep-alive]
-verify_jwt = false
-```
+### 1. Menu lateral (FitilaApp.tsx)
+- Navigation, Accueil, Profil, ACTIF
+- Outils : Dictionnaire, Traducteur, Apprendre, Fitila IA
+- Descriptions : FR ↔ Bariba, Voix & Texte, Langues locales, ChatGPT Bariba
+- Langue, Francais, Bariba
+- Administration, Tableau de bord, Gestion globale, Gestion Assets, Telecharger & Optimiser
+- Parametres
 
-### Etape 3 : Configurer le cron job (pg_cron + pg_net)
+### 2. Social / Feed (TamTamSocial.tsx)
+- Patrimoine, Ma Voix, Creation
+- Fil, Messages, Groupes, Live
+- Creer, Choisissez une option
+- Voix du Village, Annonces & Messages
+- Culture & Traditions, Video Photo Journal
+- Glisser
+- Repondre, Remix, Partager, Sauver, Sauve
+- Suivre, Utilisateur
+- Pas d'audio, En attente de narration, EN DIRECT
+- Conte Interactif, segments, fins, Jouer le conte
+- Erreur chargement du conte
+- Vitesse
 
-Un cron PostgreSQL qui appelle la fonction toutes les 30 minutes :
+### 3. Profil (TamTamProfile.tsx)
+- Format invalide, Veuillez selectionner une image
+- Fichier trop volumineux, La taille maximale est de 5MB
+- Confirmer cette photo de profil ?
+- Photo mise a jour, Votre photo de profil a ete modifiee
+- Bio enregistree, Votre bio audio a ete sauvegardee
+- Publication modifiee, Publication supprimee
+- Publication publique, Tout le monde peut voir cette publication
+- Publication privee, Seul vous pouvez voir cette publication
+- Profil mis a jour
+- Statistiques Vocales, Enregistrements, Duree totale, Vues stories, J'aime recus
+- Mes Stories
 
-```sql
--- Activer les extensions
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
+### 4. Authentification (TamTamPhoneAuth.tsx)
+- Votre numero, Effacer, Continuer, Chargement...
+- Numero trop court, Entrez un numero de telephone valide
+- Comment vous appelez-vous ?, Votre nom ou pseudo, Dicter mon nom
+- Nom requis, Entrez votre nom ou pseudo
+- Presentez-vous vocalement
+- Enregistrez un message audio pour vous presenter a la communaute (optionnel)
+- Bio enregistree !, Passer, Terminer, Creation...
+- Connexion reussie, Bienvenue sur TAM-TAM !
+- Compte cree !, Bienvenue sur TAM-TAM
+- Erreur, Impossible de creer le compte. Veuillez reessayer.
+- Redirection vers TAM-TAM...
 
--- Programmer le ping toutes les 30 minutes
-SELECT cron.schedule(
-  'hf-keep-alive-ping',
-  '*/30 * * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://pmrhezgnyffiskbaiudb.supabase.co/functions/v1/hf-keep-alive',
-    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcmhlemdueWZmaXNrYmFpdWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyODgzNzAsImV4cCI6MjA3ODg2NDM3MH0.BRqdPly5tClRwhuQes1dckaTNQkbjIqZ5I8q6km_lZ4"}'::jsonb,
-    body := '{"source": "cron"}'::jsonb
-  ) AS request_id;
-  $$
-);
-```
+### 5. Fitila IA (FitilaIA.tsx)
+- Assistant intelligent en Bariba
+- Posez vos questions en Bariba
+- Erreur de connexion, Erreur de traduction
+- Traduction..., Traduire en francais, Francais
+- Reponse en francais (traduction bariba indisponible)
+- Transcription impossible
 
-## Details techniques
+### 6. Apprendre (FitilaLearn.tsx + learningConfig.ts)
+- Bienvenue / Sia kanu, Choisissez votre langue maternelle
+- Je parle Francais, Je veux apprendre le Bariba
+- Vous apprendrez : Systeme tonal, Ordre SOV, Classes nominales, Culture bariba
+- Apprenant, Apprendre le Bariba
+- Connectez-vous pour sauvegarder votre progression
+- Votre evolution sera conservee entre vos sessions, Connexion
+- A venir, Mode editeur
+- Exemples, Corriger, Suggerer
+- Question, Signaler une erreur
+- questions
+- Toutes les cles de `learningConfig.ts` (dashboard, score, xp, level, etc.)
 
-### Edge function `hf-keep-alive/index.ts`
+### 7. Dictionnaire (TamTamDictionary.tsx)
+- Dictionnaire, Clavier, Vocal
+- mots, Chargement..., pts
+- Tapez un mot bariba, Tapez un mot francais
+- Tapez un mot bariba..., Tapez un mot francais...
+- Recherches recentes, Chargement du dictionnaire...
+- Transcription echouee, Aucun mot detecte
+- Mode vocal, Mode clavier
+- Bariba vers Francais, Francais vers Bariba
+- Mot non trouve
 
-- Ping les 3 Spaces en parallele (Promise.all) pour minimiser le temps d'execution
-- Utilise `/gradio_api/config` comme endpoint de health check (reponse legere, ne declenche pas de calcul GPU)
-- Log le statut de chaque Space pour le suivi
-- Pas besoin de token HuggingFace pour le health check (les Spaces sont publics)
+### 8. Traducteur (TamTamTranslator.tsx)
+- Traducteur IA
+- Voix, Texte, Photo, Coller, Doc
+- Detection auto, Mode conversation
+- Bienvenue!, Je traduis entre Francais et Bariba
+- Detection automatique, Mode conversation
+- Historique, Rechercher...
+- Recent, Favoris, Aucun historique, Aucun favori
+- Effacer tout l'historique, Effacer
+- Traduction en cours...
+- Detecte: Bariba / Francais
+- Tapez dans n'importe quelle langue...
+- Photographier, Coller et traduire, Importer document
+- Transcription echouee, Aucun texte detecte
 
-### Frequence : toutes les 30 minutes
+### 9. Radio (FitilaRadio.tsx)
+- RADIO FITILA, Diffuser en direct
+- Voir en Bariba, Voir en Francais
+- Source :
+- Vitesse :
+- J'aime le sujet, Commenter en vocal, Partager
 
-- Les Spaces HuggingFace gratuits dorment apres ~48h d'inactivite
-- Un ping toutes les 30 minutes est suffisant pour les garder eveilles
-- Cout minimal : 48 appels/jour, chaque appel dure moins de 5 secondes
+### 10. Composants partages
+- Tout (SearchToggle), Bariba → FR, FR → Bariba
+- Textes dans les composants Kuaishou (profil, stats, actions)
+- Textes des modals (commentaires, communautes, messages)
 
-### Aucune modification sur les fonctions existantes
+## Etapes d'implementation
 
-- `byt5-bariba-translate`, `bariba-tts`, `bariba-stt` restent inchanges
-- `fitila-ia-chat` reste inchange
-- Le traducteur (PhraseTranslator) reste inchange
+### Etape 1 : Creer le fichier `public/i18n-platform.json`
+Fichier JSON complet avec toutes les cles organisees par section, chaque entree ayant `fr` rempli et `ba` vide.
+
+### Etape 2 : Creer un hook `useI18n`
+Un hook simple qui charge le fichier JSON et retourne une fonction `t(key)` basee sur la langue selectionnee dans `FitilaLanguageContext`.
+
+### Etape 3 : Remplacer les textes codes en dur
+Modifier systematiquement chaque page et composant pour utiliser `t('cle')` au lieu du texte en dur.
+
+## Livrable immediat
+
+Pour cette premiere phase, je vais **uniquement creer le fichier JSON complet** avec toutes les cles et les textes francais. Vous pourrez ensuite :
+1. Telecharger le fichier
+2. Traduire chaque entree `"ba": ""` en bariba
+3. Re-uploader le fichier traduit
+4. Je brancherai ensuite le systeme pour que la plateforme utilise les traductions
+
+## Estimation
+- ~400+ cles de traduction couvrant toute la plateforme
+- Fichier organise par sections pour faciliter la traduction manuelle
