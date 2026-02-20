@@ -294,12 +294,16 @@ async function synthesizeWithHuggingFaceSpace(params: {
   noiseScaleW?: number;
   lengthScale?: number;
 }): Promise<{ audio_url?: string; raw?: any; error?: string; sleeping?: boolean }> {
-  const HF_SPACE_URL = (Deno.env.get("HF_SPACE_URL") || "").replace(/\/$/, "");
-  const HF_TOKEN = Deno.env.get("HF_TOKEN") || Deno.env.get("HUGGINGFACEHUB_API_TOKEN") || "";
-
-  if (!HF_SPACE_URL) {
-    return { error: "HF_SPACE_URL manquant" };
-  }
+  // Use secret if set, otherwise fall back to the known TTS Space URL
+  const HF_SPACE_URL = (
+    Deno.env.get("HF_SPACE_URL") ||
+    "https://zimesongbian-baatonum-tts-api-v001.hf.space"
+  ).replace(/\/$/, "");
+  const HF_TOKEN =
+    Deno.env.get("HUGGING_FACE_API_TOKEN") ||
+    Deno.env.get("HF_TOKEN") ||
+    Deno.env.get("HUGGINGFACEHUB_API_TOKEN") ||
+    "";
 
   const { apiPrefix } = await detectGradioApiPrefix(HF_SPACE_URL, HF_TOKEN);
 
