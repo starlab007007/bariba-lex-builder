@@ -139,9 +139,9 @@ serve(async (req) => {
     if (!translateToBaRes.ok) {
       const errText = await translateToBaRes.text();
       console.error('[fitila-ia] Step 3 failed:', errText);
-      // Fallback: return French response if translation fails
+      // Fallback: clearly mark that response_ba is NOT available
       return new Response(JSON.stringify({
-        response_ba: responseFr,
+        response_ba: null,
         response_fr: responseFr,
         question_fr: questionFr,
         fallback: true,

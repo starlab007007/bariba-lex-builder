@@ -18,6 +18,7 @@ interface ChatMessage {
   displayedContent?: string;
   translationFr?: string;
   isTranslatingFr?: boolean;
+  isFallbackFr?: boolean;
 }
 
 const BARIBA_CHARS = [
@@ -120,14 +121,26 @@ export default function FitilaIA() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      const responseBa = data?.response_ba || 'Gɔɔ tɔɔrɛ...';
-      // Format: split into clear paragraphs
-      const formatted = responseBa.replace(/\.\s+/g, '.\n\n').trim();
+      const isFallback = data?.fallback === true;
+      const responseBa = data?.response_ba;
+      const responseFr = data?.response_fr;
+      
+      // If fallback (translation failed), show French with pre-filled translation
+      // Otherwise show Bariba response
+      const displayText = (responseBa && !isFallback) ? responseBa : (responseFr || 'Gɔɔ tɔɔrɛ...');
+      const formatted = displayText.replace(/\.\s+/g, '.\n\n').trim();
 
       setMessages(prev =>
         prev.map(m =>
           m.id === loadingMsg.id
-            ? { ...m, content: formatted, isLoading: false, isTyping: true }
+            ? { 
+                ...m, 
+                content: formatted, 
+                isLoading: false, 
+                isTyping: true,
+                // If fallback, pre-fill French translation since response is already in French
+                ...(isFallback ? { translationFr: responseFr, isFallbackFr: true } : {}),
+              }
             : m
         )
       );
@@ -286,8 +299,13 @@ export default function FitilaIA() {
                     )}
                   </div>
 
+                  {/* Fallback notice when response is in French */}
+                  {msg.role === 'assistant' && !msg.isLoading && !msg.isTyping && msg.isFallbackFr && (
+                    <p className="text-[10px] text-amber-500 ml-1 mt-0.5 italic">⚠ Réponse en français (traduction bariba indisponible)</p>
+                  )}
+
                   {/* Translate button for assistant messages */}
-                  {msg.role === 'assistant' && !msg.isLoading && !msg.isTyping && (
+                  {msg.role === 'assistant' && !msg.isLoading && !msg.isTyping && !msg.isFallbackFr && (
                     <>
                       {!msg.translationFr ? (
                         <button
