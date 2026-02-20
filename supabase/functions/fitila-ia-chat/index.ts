@@ -1,9 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import {
-  normalizeBaribaText,
-  isInvalidUiLikeText,
-  applyLocalBaribaCorrections,
-} from "../_shared/bariba-linguistic-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,222 +7,146 @@ const corsHeaders = {
 };
 
 const GLOBAL_TIMEOUT_MS = 60_000;
-const STEP_TIMEOUT_MS = 25_000;
-const REFINE_TIMEOUT_MS = 6_000;
+const LLM_TIMEOUT_MS = 20_000;
+const BYT5_TIMEOUT_MS = 30_000;
 
-type ChatRole = "system" | "user" | "assistant";
+const MODELS_TO_TRY = [
+  "openai/gpt-5-nano",
+  "google/gemini-2.5-flash-lite",
+  "google/gemini-2.5-flash",
+  "openai/gpt-5-mini",
+];
+
+const SYSTEM_PROMPT = `Tu es Fitila, un assistant intelligent et bienveillant.
+Réponds TOUJOURS en français, de manière claire et concise.
+Maximum 3 phrases courtes (50 mots max).
+Ne mets jamais de markdown, JSON, ou formatage spécial.
+Si la question est en bariba, comprends-la et réponds en français simple.`;
 
 interface ChatMessage {
-  role: ChatRole;
+  role: "system" | "user" | "assistant";
   content: string;
 }
 
 interface FitilaRequest {
   message?: string;
   history?: ChatMessage[];
-  conversationHistory?: ChatMessage[]; // alias toléré
+  conversationHistory?: ChatMessage[];
   systemPrompt?: string;
-  language?: "fr" | "bariba" | "auto";
-  targetLanguage?: "fr" | "bariba" | "auto";
-  skipRefine?: boolean;
+  language?: string;
+  targetLanguage?: string;
   temperature?: number;
   max_tokens?: number;
 }
 
 function normalizeText(input: string): string {
-  return normalizeBaribaText(input);
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label = "timeout"): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-
-  return new Promise<T>((resolve, reject) => {
-    promise
-      .then(resolve)
-      .catch(reject)
-      .finally(() => clearTimeout(timer));
-
-    // Si la promesse n'utilise pas ce signal, on garde quand même une barrière temporelle
-    setTimeout(() => {
-      reject(new Error(label));
-    }, ms + 10);
-  });
-}
-
-async function fetchJsonWithTimeout(
-  url: string,
-  init: RequestInit,
-  timeoutMs: number,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function looksLikeBariba(text: string): boolean {
-  const t = normalizeText(text).toLowerCase();
-
-  if (!t) return false;
-
-  // indices forts
-  if (/[ɔɛɑãɛ̃ĩɔ̃ũ]/u.test(t)) return true;
-
-  const baribaTokens = [
-    "alaafia",
-    "siara",
-    "bii",
-    "mɛro",
-    "nim",
-    "nɔru",
-    "kpuna",
-    "wasi",
-    "durɔ",
-    "kasuu",
-    "wa",
-    "mɛɛri",
-    "gura",
-  ];
-
-  const hits = baribaTokens.filter((w) => t.includes(w)).length;
-  return hits >= 1;
-}
-
-function buildBaseSystemPrompt(language: "fr" | "bariba" | "auto", custom?: string): string {
-  const defaultPrompt = `
-Tu es Fitila IA, un assistant utile, clair et naturel.
-Priorités :
-1) Répondre de façon pratique, concise et exacte
-2) Quand la demande touche au Bariba/Baatonum, utiliser des formulations naturelles et cohérentes
-3) Éviter les placeholders, JSON, markdown inutile
-4) Si l'utilisateur écrit en français, répondre en français sauf demande contraire
-5) Si l'utilisateur écrit en Bariba, répondre en Bariba naturel (ou bilingue si nécessaire)
-
-Règles linguistiques Bariba critiques :
-- "wa" = voir / trouver / obtenir
-- "mɛɛri" = regarder / étudier / apprendre
-- "mère" = "bii mɛro"
-- "Bonjour (matin)" = "A kpuna n do?"
-- "Bonsoir" = "Bɛɛ ka yoka"
-- "Comment vas-tu ?" = "Anna wunɛn wasi?"
-- "Je vais bien / Merci" = "Alaafia"
-- "J'ai soif" = "nim nɔru"
-`.trim();
-
-  const langHint =
-    language === "bariba"
-      ? "\nRéponds prioritairement en Bariba (Baatonum)."
-      : language === "fr"
-      ? "\nRéponds prioritairement en français."
-      : "\nDétecte automatiquement la langue la plus appropriée selon l'utilisateur.";
-
-  return custom?.trim()
-    ? `${defaultPrompt}\n\nInstruction supplémentaire:\n${custom.trim()}${langHint}`
-    : `${defaultPrompt}${langHint}`;
+  return (input || "").normalize("NFC").replace(/\s+/g, " ").trim();
 }
 
 function sanitizeHistory(input: unknown): ChatMessage[] {
   if (!Array.isArray(input)) return [];
   return input
-    .map((m) => {
-      const role = (m as any)?.role;
-      const content = normalizeText(String((m as any)?.content || ""));
-      if (!content) return null;
-      if (role !== "system" && role !== "user" && role !== "assistant") return null;
-      return { role, content } as ChatMessage;
-    })
-    .filter(Boolean) as ChatMessage[];
+    .filter((m: any) => m?.content && ["user", "assistant"].includes(m?.role))
+    .map((m: any) => ({ role: m.role, content: normalizeText(String(m.content)) }))
+    .filter((m) => m.content.length > 0);
 }
 
-async function callLovableChat(args: {
+async function callLLMWithFallback(args: {
   apiKey: string;
   messages: ChatMessage[];
   temperature: number;
   maxTokens: number;
-}): Promise<{ text: string; model?: string; error?: string }> {
-  const resp = await fetchJsonWithTimeout(
-    "https://ai.gateway.lovable.dev/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${args.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: args.messages,
-        temperature: args.temperature,
-        max_tokens: args.maxTokens,
-      }),
-    },
-    STEP_TIMEOUT_MS,
-  );
+}): Promise<{ text: string; model: string; error?: string }> {
+  for (const model of MODELS_TO_TRY) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
 
-  if (!resp.ok) {
-    const body = await resp.text().catch(() => "");
-    return { text: "", error: `Chat HTTP ${resp.status}: ${body.substring(0, 200)}` };
-  }
-
-  const data = await resp.json().catch(() => ({}));
-  const text = normalizeText(String(data?.choices?.[0]?.message?.content || ""));
-  const model = String(data?.model || "google/gemini-2.5-flash");
-
-  if (!text) return { text: "", model, error: "Réponse vide du modèle" };
-
-  return { text, model };
-}
-
-async function tryRefineBaribaText(args: {
-  text: string;
-  originalInput: string;
-}): Promise<{ refined?: string; changes?: string[]; confidence?: number; error?: string }> {
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
-
-    if (!supabaseUrl || !serviceKey) {
-      return { error: "SUPABASE_URL / key missing for refine call" };
-    }
-
-    const resp = await fetchJsonWithTimeout(
-      `${supabaseUrl}/functions/v1/refine-bariba`,
-      {
+      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${args.apiKey}`,
           "Content-Type": "application/json",
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`,
         },
         body: JSON.stringify({
-          text: args.text,
-          type: "translation",
-          direction: "fr-ba",
-          originalInput: args.originalInput,
+          model,
+          messages: args.messages,
+          temperature: args.temperature,
+          max_tokens: args.maxTokens,
         }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timer);
+
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => "");
+        console.warn(`[fitila] Model ${model} failed HTTP ${resp.status}: ${body.substring(0, 100)}`);
+        continue;
+      }
+
+      const data = await resp.json();
+      const text = normalizeText(String(data?.choices?.[0]?.message?.content || ""));
+      if (!text) {
+        console.warn(`[fitila] Model ${model} returned empty response`);
+        continue;
+      }
+
+      console.log(`[fitila] LLM OK with ${model}: "${text.substring(0, 80)}..."`);
+      return { text, model };
+    } catch (e) {
+      console.warn(`[fitila] Model ${model} error: ${e instanceof Error ? e.message : "unknown"}`);
+      continue;
+    }
+  }
+
+  return { text: "", model: "", error: "Tous les modèles ont échoué" };
+}
+
+async function translateViaByT5(args: {
+  text: string;
+  supabaseUrl: string;
+  serviceKey: string;
+}): Promise<{ translation: string | null; error?: string }> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), BYT5_TIMEOUT_MS);
+
+    const resp = await fetch(`${args.supabaseUrl}/functions/v1/byt5-bariba-translate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: args.serviceKey,
+        Authorization: `Bearer ${args.serviceKey}`,
       },
-      REFINE_TIMEOUT_MS,
-    );
+      body: JSON.stringify({
+        text: args.text,
+        sourceLang: "french",
+        targetLang: "bariba",
+        mode: "quality",
+        advanced: true,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timer);
 
     if (!resp.ok) {
       const body = await resp.text().catch(() => "");
-      return { error: `Refine HTTP ${resp.status}: ${body.substring(0, 120)}` };
+      return { translation: null, error: `ByT5 HTTP ${resp.status}: ${body.substring(0, 120)}` };
     }
 
-    const data = await resp.json().catch(() => ({}));
-    const refined = typeof data?.refined === "string" ? normalizeText(data.refined) : "";
-    if (!refined) return { error: "Refine returned empty text" };
+    const data = await resp.json();
+    const translation = typeof data?.translation === "string" ? normalizeText(data.translation) : null;
 
-    return {
-      refined,
-      changes: Array.isArray(data?.changes) ? data.changes.map(String) : [],
-      confidence: typeof data?.confidence === "number" ? data.confidence : undefined,
-    };
+    if (!translation) {
+      return { translation: null, error: data?.error || "ByT5 returned empty translation" };
+    }
+
+    console.log(`[fitila] ByT5 OK: "${translation.substring(0, 80)}..."`);
+    return { translation };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Refine failed" };
+    return { translation: null, error: e instanceof Error ? e.message : "ByT5 failed" };
   }
 }
 
@@ -237,134 +156,95 @@ serve(async (req: Request) => {
   }
 
   const startedAt = Date.now();
-  const globalController = new AbortController();
-  const globalTimer = setTimeout(() => globalController.abort(), GLOBAL_TIMEOUT_MS);
+  const globalTimer = setTimeout(() => {}, GLOBAL_TIMEOUT_MS);
 
   try {
     const body: FitilaRequest = await req.json().catch(() => ({}));
-
-    const rawMessage = typeof body.message === "string" ? body.message : "";
-    const message = normalizeText(rawMessage);
-    const skipRefine = body.skipRefine === true;
-
-    const requestedLang = (body.targetLanguage || body.language || "auto") as "fr" | "bariba" | "auto";
-    const temperature = Math.max(0, Math.min(Number(body.temperature) || 0.3, 1));
-    const maxTokens = Math.min(Math.max(Number(body.max_tokens) || 800, 120), 2000);
+    const message = normalizeText(typeof body.message === "string" ? body.message : "");
 
     if (!message) {
       clearTimeout(globalTimer);
       return new Response(
         JSON.stringify({ error: "Message vide", duration: Date.now() - startedAt }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY missing");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
+
+    const temperature = Math.max(0, Math.min(Number(body.temperature) || 0.3, 1));
+    const maxTokens = Math.min(Math.max(Number(body.max_tokens) || 120, 60), 200);
 
     const history = sanitizeHistory(body.history ?? body.conversationHistory);
-    const systemPrompt = buildBaseSystemPrompt(requestedLang, body.systemPrompt);
 
     const chatMessages: ChatMessage[] = [
-      { role: "system", content: systemPrompt },
-      ...history.filter((m) => m.role !== "system"),
+      { role: "system", content: body.systemPrompt?.trim() ? `${SYSTEM_PROMPT}\n\n${body.systemPrompt.trim()}` : SYSTEM_PROMPT },
+      ...history,
       { role: "user", content: message },
     ];
 
-    console.log(`[fitila-ia] Incoming message (${requestedLang}) => ${message.substring(0, 120)}`);
+    console.log(`[fitila] Incoming: "${message.substring(0, 120)}"`);
 
-    const chatResult = await callLovableChat({
+    // Step 1: LLM generates French response
+    const llmResult = await callLLMWithFallback({
       apiKey: LOVABLE_API_KEY,
       messages: chatMessages,
       temperature,
       maxTokens,
     });
 
-    if (chatResult.error || !chatResult.text) {
-      throw new Error(chatResult.error || "Chat failed");
+    if (llmResult.error || !llmResult.text) {
+      throw new Error(llmResult.error || "LLM failed");
     }
 
-    let reply = normalizeText(chatResult.text);
-    let refineMeta: {
-      attempted: boolean;
-      applied: boolean;
-      error?: string;
-      changes?: string[];
-      confidence?: number;
-    } = {
-      attempted: false,
-      applied: false,
-    };
+    const responseFr = llmResult.text;
 
-    // Nettoyage local minimal toujours
-    reply = applyLocalBaribaCorrections(reply);
+    // Step 2: Translate French → Bariba via ByT5
+    let responseBa: string | null = null;
+    let isFallback = true;
 
-    // Rejet bruit UI
-    if (isInvalidUiLikeText(reply)) {
-      reply = "Je n’ai pas pu générer une réponse propre. Réessaie avec une question plus précise.";
-    }
-
-    // Raffinage Bariba si pertinent (et si non désactivé)
-    const shouldRefine =
-      !skipRefine &&
-      (
-        requestedLang === "bariba" ||
-        looksLikeBariba(message) ||
-        looksLikeBariba(reply) ||
-        /bariba|baatonum|bààtɔ̀nú/i.test(message)
-      );
-
-    if (shouldRefine && reply && !isInvalidUiLikeText(reply)) {
-      refineMeta.attempted = true;
-
-      const refineRes = await tryRefineBaribaText({
-        text: reply,
-        originalInput: message,
+    if (supabaseUrl && serviceKey) {
+      const byt5Result = await translateViaByT5({
+        text: responseFr,
+        supabaseUrl,
+        serviceKey,
       });
 
-      if (refineRes.refined && !isInvalidUiLikeText(refineRes.refined)) {
-        const localRefined = applyLocalBaribaCorrections(refineRes.refined);
-        if (localRefined) {
-          reply = localRefined;
-          refineMeta.applied = true;
-          refineMeta.changes = refineRes.changes;
-          refineMeta.confidence = refineRes.confidence;
-        }
-      } else if (refineRes.error) {
-        refineMeta.error = refineRes.error;
+      if (byt5Result.translation) {
+        responseBa = byt5Result.translation;
+        isFallback = false;
+      } else {
+        console.warn(`[fitila] ByT5 translation failed: ${byt5Result.error}`);
       }
+    } else {
+      console.warn("[fitila] Missing SUPABASE_URL/key, skipping ByT5 translation");
     }
 
     clearTimeout(globalTimer);
-
     const duration = Date.now() - startedAt;
 
+    // Step 3: Return response matching frontend contract
     return new Response(
       JSON.stringify({
-        reply,
-        text: reply, // alias compat front
-        language: requestedLang === "auto" ? (looksLikeBariba(reply) ? "bariba" : "fr") : requestedLang,
-        model: chatResult.model || "google/gemini-2.5-flash",
-        refine: refineMeta,
+        response_ba: responseBa,
+        response_fr: responseFr,
+        fallback: isFallback,
+        model: llmResult.model,
         duration,
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e: unknown) {
     clearTimeout(globalTimer);
-
     const msg = e instanceof Error ? e.message : "Unknown error";
     const isTimeout = /aborted|timeout/i.test(msg);
     const duration = Date.now() - startedAt;
 
-    console.error("[fitila-ia] Error:", e);
+    console.error("[fitila] Error:", e);
 
     return new Response(
       JSON.stringify({
