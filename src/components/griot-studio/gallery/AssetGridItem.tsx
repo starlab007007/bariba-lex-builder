@@ -67,7 +67,7 @@ export function AssetGridItem({ asset, isSelected, selectionIndex, onToggle, dis
       onTouchStart={handleMouseEnter}
       onTouchEnd={handleMouseLeave}
       className={cn(
-        'relative aspect-[9/16] rounded-xl overflow-hidden border-2 transition-all',
+        'relative aspect-[9/16] rounded-lg overflow-hidden border-2 transition-all',
         'will-change-transform',
         isSelected
           ? 'border-amber-400 ring-2 ring-amber-400/30 shadow-lg shadow-amber-500/20'

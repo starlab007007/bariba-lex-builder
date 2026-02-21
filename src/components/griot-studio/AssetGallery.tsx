@@ -6,7 +6,8 @@
  * - Photo / Video toggle tabs
  * - Horizontal scrollable category chips (scene_type)
  * - Character sub-filters (character_type)
- * - Shows 3 items per view with "Voir plus" to expand
+ * - Incremental "Voir plus" (+3 items each click)
+ * - Search bar to filter by description
  * - Max 10 selections with numbered badges
  */
 
@@ -15,9 +16,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { X, ImageIcon, Camera, Film } from 'lucide-react';
+import { X, ImageIcon, Camera, Film, Search } from 'lucide-react';
 import { AssetGridItem } from './gallery/AssetGridItem';
-import { AssetExpandedDrawer } from './gallery/AssetExpandedDrawer';
 
 export interface LibraryAsset {
   id: string;
@@ -65,15 +65,17 @@ const CHARACTER_FILTERS = [
 ] as const;
 
 const MAX_SELECTION = 10;
-const PREVIEW_COUNT = 3;
+const INITIAL_COUNT = 3;
+const INCREMENT = 3;
 
 export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection = MAX_SELECTION, disabled }: AssetGalleryProps) {
   const [assetType, setAssetType] = useState<'photo' | 'video'>('photo');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activeCharacter, setActiveCharacter] = useState<string>('all');
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
 
-  // Fetch all african assets (photos + videos)
+  // Fetch ALL african assets (no limit)
   const { data: assets, isLoading } = useQuery({
     queryKey: ['anime-scene-library', 'african', 'all-types'],
     queryFn: async () => {
@@ -82,31 +84,36 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         .select('id, image_url, scene_type, character_type, emotion, description_fr, description_en, action, time_of_day, asset_type, video_url, video_duration')
         .eq('style', 'african')
         .order('scene_type')
-        .range(0, 99);
+        .range(0, 999);
       if (error) throw error;
       return (data || []) as LibraryAsset[];
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  // Filter assets by type + category + character
+  // Filter assets by type + category + character + search
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
+    const q = searchQuery.toLowerCase().trim();
     return assets.filter(a => {
       if (a.asset_type !== assetType) return false;
       if (activeCategory !== 'all' && a.scene_type !== activeCategory) return false;
       if (activeCharacter !== 'all' && a.character_type !== activeCharacter) return false;
+      if (q) {
+        const text = `${a.description_fr || ''} ${a.description_en || ''} ${a.scene_type || ''} ${a.emotion || ''}`.toLowerCase();
+        if (!text.includes(q)) return false;
+      }
       return true;
     });
-  }, [assets, assetType, activeCategory, activeCharacter]);
+  }, [assets, assetType, activeCategory, activeCharacter, searchQuery]);
 
-  // First 3 for preview, rest hidden
-  const previewAssets = useMemo(() => filteredAssets.slice(0, PREVIEW_COUNT), [filteredAssets]);
-  const remainingCount = Math.max(0, filteredAssets.length - PREVIEW_COUNT);
+  // Reset visible count when filters change
+  const resetFilters = useCallback(() => {
+    setVisibleCount(INITIAL_COUNT);
+  }, []);
 
-  // Count per type (for tab badges)
-  const photosCount = useMemo(() => assets?.filter(a => a.asset_type === 'photo').length || 0, [assets]);
-  const videosCount = useMemo(() => assets?.filter(a => a.asset_type === 'video').length || 0, [assets]);
+  const visibleAssets = useMemo(() => filteredAssets.slice(0, visibleCount), [filteredAssets, visibleCount]);
+  const hasMore = visibleCount < filteredAssets.length;
 
   // Selection helpers
   const selectedIds = useMemo(() => new Set(selectedAssets.map(a => a.id)), [selectedAssets]);
@@ -153,10 +160,22 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         )}
       </div>
 
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-300/40" />
+        <input
+          type="text"
+          placeholder="Rechercher une image ou vidéo..."
+          value={searchQuery}
+          onChange={(e) => { setSearchQuery(e.target.value); resetFilters(); }}
+          className="w-full pl-9 pr-3 py-2 rounded-xl bg-amber-950/30 border border-amber-500/10 text-sm text-amber-100 placeholder:text-amber-300/30 focus:outline-none focus:border-amber-500/30"
+        />
+      </div>
+
       {/* Photo / Video Tabs */}
       <div className="flex gap-2">
         <button
-          onClick={() => { setAssetType('photo'); setActiveCategory('all'); setActiveCharacter('all'); }}
+          onClick={() => { setAssetType('photo'); setActiveCategory('all'); setActiveCharacter('all'); resetFilters(); }}
           className={cn(
             'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all border',
             assetType === 'photo'
@@ -167,10 +186,9 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         >
           <Camera className="w-4 h-4" />
           📸 Photos
-          {photosCount > 0 && <span className="text-[10px] opacity-80">({photosCount})</span>}
         </button>
         <button
-          onClick={() => { setAssetType('video'); setActiveCategory('all'); setActiveCharacter('all'); }}
+          onClick={() => { setAssetType('video'); setActiveCategory('all'); setActiveCharacter('all'); resetFilters(); }}
           className={cn(
             'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all border',
             assetType === 'video'
@@ -181,7 +199,6 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         >
           <Film className="w-4 h-4" />
           🎬 Vidéos
-          {videosCount > 0 && <span className="text-[10px] opacity-80">({videosCount})</span>}
         </button>
       </div>
 
@@ -190,7 +207,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         {SCENE_CATEGORIES.map(cat => (
           <button
             key={cat.key}
-            onClick={() => setActiveCategory(cat.key)}
+            onClick={() => { setActiveCategory(cat.key); resetFilters(); }}
             disabled={disabled}
             className={cn(
               'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap',
@@ -209,7 +226,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         {CHARACTER_FILTERS.map(ch => (
           <button
             key={ch.key}
-            onClick={() => setActiveCharacter(ch.key)}
+            onClick={() => { setActiveCharacter(ch.key); resetFilters(); }}
             disabled={disabled}
             className={cn(
               'flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] transition-all whitespace-nowrap',
@@ -223,23 +240,25 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         ))}
       </div>
 
-      {/* Grid — 3 items preview with smooth transitions */}
+      {/* Grid — incremental display */}
       {isLoading ? (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-[9/16] rounded-xl bg-blue-900/30" />
+            <Skeleton key={i} className="aspect-[9/16] rounded-lg bg-blue-900/30" />
           ))}
         </div>
-      ) : previewAssets.length === 0 ? (
+      ) : visibleAssets.length === 0 ? (
         <div className="text-center py-8 text-blue-200/40 text-sm animate-fade-in">
-          {assetType === 'video'
-            ? '🎬 Aucune vidéo dans cette catégorie'
-            : '📸 Aucune illustration dans cette catégorie'}
+          {searchQuery
+            ? '🔍 Aucun résultat pour cette recherche'
+            : assetType === 'video'
+              ? '🎬 Aucune vidéo dans cette catégorie'
+              : '📸 Aucune illustration dans cette catégorie'}
         </div>
       ) : (
         <>
-          <div key={`${assetType}-${activeCategory}-${activeCharacter}`} className="grid grid-cols-3 gap-2 animate-fade-in">
-            {previewAssets.map(asset => (
+          <div key={`${assetType}-${activeCategory}-${activeCharacter}`} className="grid grid-cols-3 gap-1.5 animate-fade-in">
+            {visibleAssets.map(asset => (
               <AssetGridItem
                 key={asset.id}
                 asset={asset}
@@ -251,35 +270,21 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
             ))}
           </div>
 
-          {/* "Voir plus" button */}
-          {remainingCount > 0 && (
+          {/* "Voir plus" button — adds 3 more */}
+          {hasMore && (
             <button
-              onClick={() => setDrawerOpen(true)}
+              onClick={() => setVisibleCount(prev => prev + INCREMENT)}
               disabled={disabled}
               className={cn(
-                'w-full py-2.5 rounded-xl text-sm font-medium transition-all border',
-                'bg-blue-600 text-white border-blue-500 hover:bg-blue-500'
+                'w-full py-2 rounded-xl text-sm font-medium transition-all border',
+                'bg-blue-600/80 text-white border-blue-500/50 hover:bg-blue-500 active:scale-[0.98]'
               )}
             >
-              ▶ Voir plus ({remainingCount})
+              ▶ Voir plus
             </button>
           )}
         </>
       )}
-
-      {/* Expanded drawer */}
-      <AssetExpandedDrawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        assets={filteredAssets}
-        selectedIds={selectedIds}
-        selectionIndex={selectionIndex}
-        onToggle={toggleAsset}
-        maxSelection={maxSelection}
-        currentCount={selectedAssets.length}
-        assetType={assetType}
-        disabled={disabled}
-      />
 
       {/* Helper text */}
       <p className="text-[11px] text-center text-amber-200/30">
