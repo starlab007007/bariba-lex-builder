@@ -1,4 +1,4 @@
-# Build v2.1 - GitHub Pro enabled
+# Build v2.2 - GitHub Pro billing OK - Force rebuild
 name: Deploy React App Bariba de zime
 on:
   push:
