@@ -55,10 +55,10 @@
     --kuaishou-accent-cyan: 188 100% 50%;    /* #00D4FF */
     --kuaishou-verified: 24 100% 55%;        /* #FF7A00 */
     
-    /* Navigation */
-    --kuaishou-nav-bg: 0 0% 100%;
-    --kuaishou-nav-icon: 0 0% 10%;
-    --kuaishou-nav-icon-muted: 0 0% 60%;
+    /* Navigation - TikTok-style dark bottom nav */
+    --kuaishou-nav-bg: 0 0% 0%;
+    --kuaishou-nav-icon: 0 0% 100%;
+    --kuaishou-nav-icon-muted: 0 0% 55%;
     
     /* ====== LIGHT GLASS PALETTE ====== */
     

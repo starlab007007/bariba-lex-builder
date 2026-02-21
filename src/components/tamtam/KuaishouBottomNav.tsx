@@ -50,12 +50,12 @@ export const KuaishouBottomNav: React.FC = () => {
     <motion.nav
       initial={{ y: 100 }}
       animate={{ y: 0 }}
+      transition={{ type: 'tween', duration: 0.2 }}
       className="fixed bottom-0 left-0 right-0 z-50"
       style={{ 
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        background: 'hsl(var(--kuaishou-nav-bg))',
-        borderTop: '1px solid hsl(var(--kuaishou-border))',
-        boxShadow: '0 -2px 10px rgba(0,0,0,0.05)'
+        paddingBottom: 'max(env(safe-area-inset-bottom), 4px)',
+        background: '#000000',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
       }}
     >
       <div className="flex items-end justify-around px-2 pt-2 pb-1">
