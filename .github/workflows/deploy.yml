@@ -1,4 +1,4 @@
-# Build v2.3 - Node 22 + npm install fix
+# Build v2.4 - Force rebuild with Node 22 + npm install fix
 name: Deploy React App Bariba de zime
 on:
   push:
