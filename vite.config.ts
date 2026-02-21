@@ -17,7 +17,9 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['fitila-icon.png', 'fitila-icon-192.png', 'fitila-icon-512.png'],
       workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globIgnores: ['**/envato/**'],
         navigateFallbackDenylist: [/^\/~oauth/],
         runtimeCaching: [
           {
