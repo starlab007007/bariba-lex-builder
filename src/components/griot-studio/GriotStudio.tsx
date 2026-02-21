@@ -476,13 +476,13 @@ export function GriotStudio() {
 
   const handleCancelClick = useCallback(() => {
     if (audioBlob || generationResult) setShowCancelConfirm(true);
-    else navigate(-1);
+    else navigate('/fitila', { replace: true });
   }, [audioBlob, generationResult, navigate]);
 
   const confirmCancel = useCallback(() => {
     setShowCancelConfirm(false);
     handleReset();
-    navigate(-1);
+    navigate('/fitila', { replace: true });
   }, [handleReset, navigate]);
 
   const handleModify = useCallback(() => {
