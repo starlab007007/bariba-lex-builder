@@ -247,16 +247,15 @@ serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await userClient.auth.getClaims(token);
-    if (claimsError || !claims?.claims?.sub) {
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    if (userError || !userData?.user?.id) {
       return new Response(JSON.stringify({ error: "Token invalide" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claims.claims.sub as string;
+    const userId = userData.user.id;
 
     // Vérifier le rôle admin
     const adminDb = createClient(supabaseUrl, serviceKey);
