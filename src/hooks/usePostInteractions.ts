@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -15,24 +15,52 @@ interface UsePostInteractionsResult {
   currentUserId: string | null;
 }
 
+// Module-level cache to avoid refetching the same post interactions
+const interactionsCache = new Map<string, { isLiked: boolean; isBookmarked: boolean; likesCount: number; sharesCount: number; ts: number }>();
+const followCache = new Map<string, { isFollowing: boolean; ts: number }>();
+const CACHE_TTL = 60_000; // 60s
+
+// Module-level user id cache
+let cachedUserId: string | null = null;
+let userIdPromise: Promise<string | null> | null = null;
+
+function getCachedUserId(): Promise<string | null> {
+  if (cachedUserId !== null) return Promise.resolve(cachedUserId);
+  if (!userIdPromise) {
+    userIdPromise = supabase.auth.getUser().then(({ data }) => {
+      cachedUserId = data.user?.id || null;
+      return cachedUserId;
+    });
+  }
+  return userIdPromise;
+}
+
 export function usePostInteractions(postId: string | null, authorId: string | null): UsePostInteractionsResult {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(cachedUserId);
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [sharesCount, setSharesCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
 
-  // Get current user
+  // Get current user (cached)
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setCurrentUserId(data.user?.id || null);
-    });
+    getCachedUserId().then(id => setCurrentUserId(id));
   }, []);
 
-  // Load initial states from DB
+  // Load initial states from DB with cache
   useEffect(() => {
     if (!currentUserId || !postId) return;
+
+    const cacheKey = `${postId}_${currentUserId}`;
+    const cached = interactionsCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      setIsLiked(cached.isLiked);
+      setIsBookmarked(cached.isBookmarked);
+      setLikesCount(cached.likesCount);
+      setSharesCount(cached.sharesCount);
+      return;
+    }
 
     const loadStates = async () => {
       const [likeRes, bookmarkRes, likesCountRes, sharesCountRes] = await Promise.all([
@@ -42,25 +70,45 @@ export function usePostInteractions(postId: string | null, authorId: string | nu
         supabase.from('tamtam_shares').select('id', { count: 'exact', head: true }).eq('post_id', postId),
       ]);
 
-      setIsLiked(!!likeRes.data);
-      setIsBookmarked(!!bookmarkRes.data);
-      setLikesCount(likesCountRes.count || 0);
-      setSharesCount(sharesCountRes.count || 0);
+      const state = {
+        isLiked: !!likeRes.data,
+        isBookmarked: !!bookmarkRes.data,
+        likesCount: likesCountRes.count || 0,
+        sharesCount: sharesCountRes.count || 0,
+        ts: Date.now(),
+      };
+      interactionsCache.set(cacheKey, state);
+
+      setIsLiked(state.isLiked);
+      setIsBookmarked(state.isBookmarked);
+      setLikesCount(state.likesCount);
+      setSharesCount(state.sharesCount);
     };
 
     loadStates();
   }, [currentUserId, postId]);
 
-  // Load follow state
+  // Load follow state with cache
   useEffect(() => {
     if (!currentUserId || !authorId || currentUserId === authorId) return;
+
+    const followKey = `${currentUserId}_${authorId}`;
+    const cached = followCache.get(followKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      setIsFollowing(cached.isFollowing);
+      return;
+    }
 
     supabase.from('tamtam_follows')
       .select('id')
       .eq('follower_id', currentUserId)
       .eq('following_id', authorId)
       .maybeSingle()
-      .then(({ data }) => setIsFollowing(!!data));
+      .then(({ data }) => {
+        const val = !!data;
+        followCache.set(followKey, { isFollowing: val, ts: Date.now() });
+        setIsFollowing(val);
+      });
   }, [currentUserId, authorId]);
 
   const toggleLike = useCallback(async () => {

@@ -151,9 +151,9 @@ const KaraokeDisplay: React.FC<{
 interface AudioFeedCardProps {
   post: any;
   isActive: boolean;
-  onLike: () => void;
+  onLike?: () => void;
   onComment: () => void;
-  onShare: () => void;
+  onShare?: () => void;
   category: 'patrimoine' | 'mavoix';
   onNext?: () => void;
   onPrevious?: () => void;
@@ -339,7 +339,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
 
       {/* Decorative emojis */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {template.decorEmojis.map((emoji, i) => (
+        {isActive && template.decorEmojis.map((emoji, i) => (
           <motion.span key={i} className="absolute text-6xl opacity-10"
             style={{ left: `${20 + i * 30}%`, top: `${15 + i * 20}%`, transform: `rotate(${i * 15}deg)` }}
             animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
