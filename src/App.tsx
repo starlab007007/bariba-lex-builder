@@ -46,6 +46,7 @@ const GriotStudioPage = lazy(() => import("./pages/GriotStudioPage"));
 const FitilaLearn = lazy(() => import("./pages/fitila/FitilaLearn"));
 const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 const ComingSoonPage = lazy(() => import("./pages/fitila/ComingSoonPage"));
+const InstallPage = lazy(() => import("./pages/fitila/InstallPage"));
 
 // Loading fallback - minimal spinner
 const PageLoader = () => (
@@ -111,6 +112,7 @@ const App = () => (
                 <Route path="ia" element={<FitilaIA />} />
                 <Route path="messages" element={<ComingSoonPage />} />
                 <Route path="discover" element={<ComingSoonPage />} />
+                <Route path="install" element={<InstallPage />} />
                 <Route path="user/:userId" element={<TamTamPublicProfile />} />
                 <Route path="profile/:userId" element={<TamTamPublicProfile />} />
               </Route>

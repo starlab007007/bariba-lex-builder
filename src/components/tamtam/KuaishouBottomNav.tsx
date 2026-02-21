@@ -58,7 +58,7 @@ export const KuaishouBottomNav: React.FC = () => {
         borderTop: '1px solid rgba(255,255,255,0.08)',
       }}
     >
-      <div className="flex items-end justify-around px-2 pt-2 pb-1">
+      <div className="flex items-end justify-around px-1 pt-1.5 pb-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -96,7 +96,7 @@ export const KuaishouBottomNav: React.FC = () => {
               key={item.id}
               whileTap={{ scale: 0.9 }}
               onClick={() => handleNavPress(item)}
-              className="relative flex flex-col items-center gap-0.5 py-2 px-3 min-w-[56px]"
+              className="relative flex flex-col items-center gap-0.5 py-1.5 px-2 min-w-[52px] min-h-[44px] active:scale-95 transition-transform"
             >
               <Icon 
                 className={`w-5 h-5 transition-colors ${
