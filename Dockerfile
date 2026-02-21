@@ -1,5 +1,5 @@
 # Utilisation d'une image Node.js pour le build
-FROM node:18 as build
+FROM node:22 as build
 
 # Build args for version tracking
 ARG VITE_BUILD_SHA=dev
@@ -10,7 +10,7 @@ ENV VITE_BUILD_TIME=$VITE_BUILD_TIME
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY . .
 RUN npm run build
 
