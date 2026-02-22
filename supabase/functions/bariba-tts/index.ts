@@ -286,7 +286,53 @@ function extractAudioUrlFromGradioResult(result: any, spaceUrl: string): string 
 }
 
 /**
- * Appel principal au Space HF (queue Gradio)
+ * Réveille le Space HF en pingant /gradio_api/config puis attend
+ */
+async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> {
+  const headers: HeadersInit = {};
+  if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
+
+  console.log("[bariba-tts] 🔄 Attempting to wake up HF Space...");
+
+  // Ping config endpoint to trigger wake-up
+  try {
+    await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 10_000);
+  } catch {
+    // Even if it fails, the request itself can trigger the wake-up
+  }
+
+  // Wait for space to boot (typically 15-30s for free spaces)
+  await sleep(18_000);
+
+  // Verify it's awake
+  try {
+    const check = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 10_000);
+    if (check.ok) {
+      console.log("[bariba-tts] ✅ Space is now awake");
+      return true;
+    }
+  } catch {
+    // still sleeping
+  }
+
+  // Second wait + check
+  await sleep(12_000);
+  try {
+    const check2 = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 10_000);
+    if (check2.ok) {
+      console.log("[bariba-tts] ✅ Space awoke on second check");
+      return true;
+    }
+  } catch {
+    // give up
+  }
+
+  console.log("[bariba-tts] ❌ Space still not awake after retries");
+  return false;
+}
+
+/**
+ * Appel principal au Space HF (queue Gradio) — avec auto-wake retry
  */
 async function synthesizeWithHuggingFaceSpace(params: {
   text: string;
@@ -294,7 +340,6 @@ async function synthesizeWithHuggingFaceSpace(params: {
   noiseScaleW?: number;
   lengthScale?: number;
 }): Promise<{ audio_url?: string; raw?: any; error?: string; sleeping?: boolean }> {
-  // Use secret if set, otherwise fall back to the known TTS Space URL
   const HF_SPACE_URL = (
     Deno.env.get("HF_SPACE_URL") ||
     "https://zimesongbian-baatonum-tts-api-v001.hf.space"
@@ -304,6 +349,32 @@ async function synthesizeWithHuggingFaceSpace(params: {
     Deno.env.get("HF_TOKEN") ||
     Deno.env.get("HUGGINGFACEHUB_API_TOKEN") ||
     "";
+
+  // Try up to 2 times (first attempt + 1 retry after wake-up)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await _doSynthesize(HF_SPACE_URL, HF_TOKEN, params);
+
+    if (!result.sleeping || attempt === 1) {
+      return result;
+    }
+
+    // Space is sleeping — try to wake it up
+    console.log(`[bariba-tts] Space sleeping, wake-up attempt ${attempt + 1}...`);
+    const awoke = await wakeUpSpace(HF_SPACE_URL, HF_TOKEN);
+    if (!awoke) {
+      return result; // Return original sleeping error
+    }
+    // Retry synthesis
+  }
+
+  return { error: "Échec après tentatives de réveil", sleeping: true };
+}
+
+async function _doSynthesize(
+  HF_SPACE_URL: string,
+  HF_TOKEN: string,
+  params: { text: string; noiseScale?: number; noiseScaleW?: number; lengthScale?: number },
+): Promise<{ audio_url?: string; raw?: any; error?: string; sleeping?: boolean }> {
 
   const { apiPrefix } = await detectGradioApiPrefix(HF_SPACE_URL, HF_TOKEN);
 
