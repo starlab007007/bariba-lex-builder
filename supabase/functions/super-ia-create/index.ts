@@ -283,8 +283,12 @@ serve(async (req: Request) => {
     // Step 1: Générer le contenu FR via Gemini
     const content = await generateContent(prompt);
     if (!content.text_fr) {
-      return new Response(JSON.stringify({ error: content.error || "Échec génération contenu", step: "generate" }), {
-        status: 500,
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: content.error || "Échec génération contenu", 
+        step: "generate" 
+      }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

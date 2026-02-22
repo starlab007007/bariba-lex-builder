@@ -441,7 +441,7 @@ const VideoFeedCard: React.FC<{
         <video 
           ref={videoRef} 
           src={videoUrl} 
-          poster={thumbnailUrl || undefined}
+          poster=""
           loop 
           muted={isMuted}
           playsInline 
