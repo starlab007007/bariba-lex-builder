@@ -324,35 +324,14 @@ export default function FitilaLearn() {
           {currentView === 'language-selection' && (
             <motion.div key="lang-select" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center min-h-full px-6 py-8">
               <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-lg w-full">
-                <div className="text-center mb-8">
-                  <h1 className="text-3xl font-bold text-gray-800 mb-2">Bienvenue / Sĩa kãnu</h1>
-                  <p className="text-gray-500">Choisissez votre langue maternelle</p>
-                  <p className="text-gray-400 text-sm">A win yenu debu</p>
-                </div>
                 <div className="space-y-4">
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('french')} className="w-full bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 rounded-3xl p-8 text-left text-white transition-all shadow-lg hover:shadow-xl">
-                    <div className="text-6xl mb-4">🇫🇷</div>
-                    <h2 className="text-2xl font-bold mb-1">Je parle Français</h2>
-                    <p className="text-white/80 text-sm mb-4">Je veux apprendre le Bariba</p>
-                    <div className="bg-white/15 rounded-xl p-3 text-xs space-y-1">
-                      <p className="font-semibold mb-1">Vous apprendrez :</p>
-                      <p>✓ Système tonal (3 tons)</p>
-                      <p>✓ Ordre SOV (différent du français)</p>
-                      <p>✓ Classes nominales</p>
-                      <p>✓ Culture bariba</p>
-                    </div>
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('french')} className="w-full bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 rounded-3xl p-8 text-center text-white transition-all shadow-lg hover:shadow-xl flex flex-col items-center gap-3">
+                    <div className="text-6xl">🇫🇷</div>
+                    <h2 className="text-2xl font-bold">Français</h2>
                   </motion.button>
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('bariba')} className="w-full bg-gradient-to-br from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 rounded-3xl p-8 text-left text-white transition-all shadow-lg hover:shadow-xl">
-                    <div className="text-6xl mb-4">🌍</div>
-                    <h2 className="text-2xl font-bold mb-1">Ń nɛɛ Bariba</h2>
-                    <p className="text-white/80 text-sm mb-4">Ń wure Fãsei debu</p>
-                    <div className="bg-white/15 rounded-xl p-3 text-xs space-y-1">
-                      <p className="font-semibold mb-1">A deburenu :</p>
-                      <p>✓ Yenu fãsei (26 yenu)</p>
-                      <p>✓ SVO kpindu (kã Bariba)</p>
-                      <p>✓ Koru deburu (conjugaisons)</p>
-                      <p>✓ Fãsei waakurenu</p>
-                    </div>
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('bariba')} className="w-full bg-gradient-to-br from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 rounded-3xl p-8 text-center text-white transition-all shadow-lg hover:shadow-xl flex flex-col items-center gap-3">
+                    <div className="text-6xl">🌍</div>
+                    <h2 className="text-2xl font-bold">Baatonum</h2>
                   </motion.button>
                 </div>
               </div>
