@@ -1,7 +1,6 @@
 /**
  * VideoFeedCard - Memoized video card component for feed
- * OPTIMIZED: React.memo to prevent unnecessary re-renders
- * Features: Follow button, @username, responsive action sidebar
+ * OPTIMIZED: Zero spinners, instant thumbnail, engagement tracking
  */
 
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
@@ -18,6 +17,8 @@ interface VideoFeedCardProps {
   onShare: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  onEngagement?: (videoId: string, type: 'view' | 'like' | 'share' | 'comment' | 'bookmark', data?: { watchMs?: number; totalMs?: number; completed?: boolean; replayed?: boolean }) => void;
+  onSwipe?: (videoId: string, speedMs: number) => void;
 }
 
 const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({ 
@@ -27,7 +28,9 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   onComment, 
   onShare, 
   isMuted, 
-  onToggleMute 
+  onToggleMute,
+  onEngagement,
+  onSwipe,
 }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -38,7 +41,13 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
 
-  // Support both tamtam_posts and videos table format
+  // Engagement tracking refs
+  const activatedAtRef = useRef<number>(0);
+  const watchAccumRef = useRef<number>(0);
+  const hasCompletedRef = useRef(false);
+  const hasReplayedRef = useRef(false);
+  const lastTimeRef = useRef<number>(0);
+
   const videoUrl = post.media_url || post.video_url || post.videoUrl;
   const thumbnailUrl = post.thumbnail_url || post.thumbnailUrl;
   const authorName = post.profile?.display_name || post.author?.name || 'Créateur';
@@ -51,6 +60,34 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   const avatarUrl = post.profile?.avatar_url || post.author?.avatarUrl;
   const authorId = post.profile?.user_id || post.author?.id || post.user_id;
   const feelingEmoji = post.feeling_emoji;
+
+  // Track activation time for swipe speed
+  useEffect(() => {
+    if (isActive) {
+      activatedAtRef.current = Date.now();
+      watchAccumRef.current = 0;
+      hasCompletedRef.current = false;
+      hasReplayedRef.current = false;
+      lastTimeRef.current = 0;
+    } else if (activatedAtRef.current > 0) {
+      // Card deactivated — send engagement data
+      const swipeSpeed = Date.now() - activatedAtRef.current;
+      const totalMs = (videoRef.current?.duration || post.duration_seconds || 30) * 1000;
+      
+      if (onSwipe && swipeSpeed < 3000) {
+        onSwipe(post.id, swipeSpeed);
+      }
+      if (onEngagement) {
+        onEngagement(post.id, 'view', {
+          watchMs: watchAccumRef.current,
+          totalMs,
+          completed: hasCompletedRef.current,
+          replayed: hasReplayedRef.current,
+        });
+      }
+      activatedAtRef.current = 0;
+    }
+  }, [isActive, post.id]);
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -65,7 +102,39 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     }
   }, [isActive, isMuted]);
 
-  // Cleanup on unmount — revoke blob URLs
+  // Track watch time via timeupdate
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+
+    const onTimeUpdate = () => {
+      const currentTime = vid.currentTime * 1000;
+      if (lastTimeRef.current > 0) {
+        const delta = currentTime - lastTimeRef.current;
+        if (delta > 0 && delta < 1000) {
+          watchAccumRef.current += delta;
+        }
+      }
+      lastTimeRef.current = currentTime;
+    };
+
+    const onEnded = () => {
+      if (!hasCompletedRef.current) {
+        hasCompletedRef.current = true;
+      } else {
+        hasReplayedRef.current = true;
+      }
+    };
+
+    vid.addEventListener('timeupdate', onTimeUpdate);
+    vid.addEventListener('ended', onEnded);
+    return () => {
+      vid.removeEventListener('timeupdate', onTimeUpdate);
+      vid.removeEventListener('ended', onEnded);
+    };
+  }, [videoUrl]);
+
+  // Cleanup on unmount
   useEffect(() => {
     const currentVideoUrl = videoUrl;
     return () => {
@@ -86,20 +155,21 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   const handleLike = useCallback(() => {
     setIsLiked(prev => !prev);
     onLike();
+    onEngagement?.(post.id, 'like');
     triggerFeedback('notification');
-  }, [onLike]);
+  }, [onLike, post.id, onEngagement]);
 
   const handleSave = useCallback(() => {
     setIsSaved(prev => !prev);
+    onEngagement?.(post.id, 'bookmark');
     triggerFeedback('success');
-  }, []);
+  }, [post.id, onEngagement]);
 
   const handleFollow = useCallback(() => {
     setIsFollowing(prev => !prev);
     triggerFeedback('success');
   }, []);
 
-  // Tap to play/pause (Kuaishou-style)
   const handleVideoTap = useCallback(() => {
     if (!videoRef.current) return;
     if (isPlaying) {
@@ -115,7 +185,13 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   }, [isPlaying]);
 
   return (
-    <div className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative bg-black overflow-hidden">
+    <div 
+      className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative overflow-hidden"
+      style={{ 
+        background: thumbnailUrl ? `url(${thumbnailUrl}) center/cover no-repeat` : '#000',
+        backgroundColor: '#000',
+      }}
+    >
       {/* Tap zone for play/pause */}
       <div className="absolute inset-0 z-10" onClick={handleVideoTap} />
 
@@ -140,7 +216,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Video/Media - FULLSCREEN */}
+      {/* Video — loads over thumbnail background via opacity transition */}
       {videoUrl ? (
         <video 
           ref={videoRef} 
@@ -151,7 +227,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
           playsInline 
           preload={isActive ? 'auto' : 'metadata'} 
           onLoadedData={() => setIsLoaded(true)} 
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
         />
       ) : thumbnailUrl ? (
         <img 
@@ -166,18 +242,9 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
         </div>
       )}
       
-      {/* Loading state */}
-      {!isLoaded && videoUrl && (
-        <div className="absolute inset-0 bg-black flex items-center justify-center">
-          <motion.div 
-            animate={{ rotate: 360 }} 
-            transition={{ repeat: Infinity, duration: 1 }} 
-            className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full" 
-          />
-        </div>
-      )}
-      
-      {/* Author info - bottom left with @username, date & time */}
+      {/* NO SPINNER — thumbnail background is always visible */}
+
+      {/* Author info - bottom left */}
       <div 
         className="absolute bottom-0 left-0 right-16 sm:right-20 px-3 sm:px-4"
         style={{ paddingBottom: 'max(5rem, calc(env(safe-area-inset-bottom) + 5rem))' }}
@@ -208,7 +275,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
         </motion.div>
       </div>
 
-      {/* Right sidebar - Actions vertically centered */}
+      {/* Right sidebar - Actions */}
       <div 
         className="absolute right-2 sm:right-3 md:right-4 flex flex-col items-center gap-2 sm:gap-3 md:gap-4 z-20"
         style={{ top: '50%', transform: 'translateY(-10%)' }}
@@ -284,7 +351,6 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   );
 };
 
-// Memoize to prevent unnecessary re-renders
 export const VideoFeedCard = memo(VideoFeedCardComponent, (prevProps, nextProps) => {
   return (
     prevProps.post.id === nextProps.post.id &&
