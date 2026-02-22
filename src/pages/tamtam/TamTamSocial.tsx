@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Menu, X, Home, MessageCircle, Users, Zap, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, RefreshCw } from 'lucide-react';
+import { Menu, X, Home, BookOpen, BookText, Bot, MessageCircle, Heart, Share2, Bookmark, Plus, Mic, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, RefreshCw } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
@@ -26,7 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
-type BottomTab = 'fil' | 'chat' | 'groupes' | 'direct';
+type BottomTab = 'fil' | 'learn' | 'dictionary' | 'ia';
 
 // Plus de musique par défaut - uniquement les audios enregistrés/sélectionnés par l'utilisateur
 
@@ -254,14 +254,13 @@ const BottomTabBar: React.FC<{
   activeTab: BottomTab;
   onTabChange: (t: BottomTab) => void;
   onCreatePress: () => void;
-  unreadMessages?: number;
-  liveCount?: number;
-}> = ({ activeTab, onTabChange, onCreatePress, unreadMessages = 0, liveCount = 0 }) => {
-  const tabs: { id: BottomTab; icon: typeof Home; label: string; badge?: number }[] = [
+  onNavigate: (path: string) => void;
+}> = ({ activeTab, onTabChange, onCreatePress, onNavigate }) => {
+  const tabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
     { id: 'fil', icon: Home, label: 'Fil' },
-    { id: 'chat', icon: MessageCircle, label: 'Messages', badge: unreadMessages },
-    { id: 'groupes', icon: Users, label: 'Groupes' },
-    { id: 'direct', icon: Zap, label: 'Live', badge: liveCount },
+    { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
+    { id: 'dictionary', icon: BookText, label: 'Dico', path: '/fitila/dictionary' },
+    { id: 'ia', icon: Bot, label: 'Fitila IA', path: '/fitila/ia' },
   ];
 
   return (
@@ -279,17 +278,10 @@ const BottomTabBar: React.FC<{
             <motion.button 
               key={tab.id} 
               whileTap={{ scale: 0.9 }} 
-              onClick={() => onTabChange(tab.id)} 
+              onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)} 
               className="relative flex flex-col items-center gap-1 py-1 px-4"
             >
-              <div className="relative">
-                <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} />
-                {tab.badge && tab.badge > 0 && (
-                  <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                    {tab.badge > 99 ? '99+' : tab.badge}
-                  </span>
-                )}
-              </div>
+              <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} />
               <span className={`text-[10px] ${isActive ? 'text-white font-medium' : 'text-white/50'}`}>{tab.label}</span>
               {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-1 w-8 h-0.5 rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
             </motion.button>
@@ -310,17 +302,10 @@ const BottomTabBar: React.FC<{
             <motion.button 
               key={tab.id} 
               whileTap={{ scale: 0.9 }} 
-              onClick={() => onTabChange(tab.id)} 
+              onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)} 
               className="relative flex flex-col items-center gap-1 py-1 px-4"
             >
-              <div className="relative">
-                <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} />
-                {tab.badge && tab.badge > 0 && (
-                  <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
-                    {tab.badge}
-                  </span>
-                )}
-              </div>
+              <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} />
               <span className={`text-[10px] ${isActive ? 'text-white font-medium' : 'text-white/50'}`}>{tab.label}</span>
               {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-1 w-8 h-0.5 rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
             </motion.button>
@@ -1008,12 +993,10 @@ export default function TamTamSocial() {
           </motion.div>
         )}
         
-        {activeTab === 'chat' && <motion.div key="chat" className="pt-4 pb-20 h-full"><TamTamMessagesHub isOpen={true} onClose={() => setActiveTab('fil')} /></motion.div>}
-        {activeTab === 'groupes' && <motion.div key="groupes" className="pt-4 pb-20 h-full"><TamTamCommunities /></motion.div>}
-        {activeTab === 'direct' && <motion.div key="direct" className="pt-4 pb-20 h-full"><TamTamLiveList /></motion.div>}
+        {/* Learn, Dictionary, IA tabs navigate to their pages via onNavigate */}
       </AnimatePresence>
 
-      <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} onCreatePress={() => setShowCreateMenu(true)} unreadMessages={3} liveCount={2} />
+      <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} onCreatePress={() => setShowCreateMenu(true)} onNavigate={(path) => navigate(path)} />
 
       <CreateMenu isOpen={showCreateMenu} onClose={() => setShowCreateMenu(false)} currentFeed={feedMode} onSelectPatrimoine={() => { setCreatePostType('patrimoine'); setShowCreatePost(true); }} onSelectMaVoix={() => { setCreatePostType('mavoix'); setShowCreatePost(true); }} onSelectCreateur={() => setShowCreator(true)} currentLang={currentLang} />
 
