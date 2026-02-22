@@ -5,329 +5,244 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Shield, ShieldOff, Loader2, Search, PenTool } from 'lucide-react';
-import { z } from 'zod';
+import { Shield, ShieldOff, Loader2, Search, PenTool, Trash2, Ban, CheckCircle, Edit, Key, Phone } from 'lucide-react';
 
-const emailSchema = z.string().trim().email({ message: "Email invalide" }).max(255);
-
-interface UserWithRole {
+interface UserData {
   id: string;
   email: string;
-  isAdmin: boolean;
-  isEditor: boolean;
+  phone: string | null;
+  display_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
   created_at: string;
+  last_sign_in_at: string | null;
+  banned: boolean;
+  roles: string[];
 }
 
 export default function UserRoleManager() {
-  const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchEmail, setSearchEmail] = useState('');
-  const [searchError, setSearchError] = useState('');
+  const [search, setSearch] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
-  const [showRevokeDialog, setShowRevokeDialog] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  // Dialogs
+  const [deleteUser, setDeleteUser] = useState<UserData | null>(null);
+  const [banUser, setBanUser] = useState<UserData | null>(null);
+  const [editUser, setEditUser] = useState<UserData | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [revokeInfo, setRevokeInfo] = useState<{ user: UserData; role: string } | null>(null);
+
+  useEffect(() => { loadUsers(); }, []);
+
+  const callAdmin = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke('admin-users', { body });
+    if (error) throw new Error(error.message || 'Erreur serveur');
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      
-      // Get all user roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      if (rolesError) throw rolesError;
-
-      // Get all users from auth (admin only)
-      const { data: { users: authUsers }, error: usersError } = await supabase.auth.admin.listUsers();
-
-      if (usersError) throw usersError;
-
-      // Combine data
-      const usersWithRoles: UserWithRole[] = authUsers.map((user) => ({
-        id: user.id,
-        email: user.email || 'Email non disponible',
-        isAdmin: rolesData?.some((role) => role.user_id === user.id && role.role === 'admin') || false,
-        isEditor: rolesData?.some((role) => role.user_id === user.id && role.role === 'editor') || false,
-        created_at: user.created_at,
-      }));
-
-      setUsers(usersWithRoles.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ));
+      const data = await callAdmin({ action: 'list' });
+      setUsers(data.users || []);
     } catch (error: any) {
-      console.error('Error loading users:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Impossible de charger les utilisateurs',
-        variant: 'destructive',
-      });
+      console.error(error);
+      toast({ title: 'Erreur', description: error.message || 'Impossible de charger les utilisateurs', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  const validateAndSearchEmail = () => {
-    setSearchError('');
-    
-    try {
-      emailSchema.parse(searchEmail);
-      return true;
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        setSearchError(error.errors[0].message);
-      }
-      return false;
-    }
-  };
-
-  const handleGrantRole = async (userId: string, email: string, role: 'admin' | 'editor') => {
+  const handleGrantRole = async (userId: string, role: string) => {
     try {
       setActionLoading(userId);
-
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({ user_id: userId, role });
-
+      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as 'admin' | 'editor' | 'user' });
       if (error) throw error;
-
-      toast({
-        title: 'Succès',
-        description: `Rôle ${role} attribué à ${email}`,
-      });
-
+      toast({ title: 'Succès', description: `Rôle ${role} attribué` });
       await loadUsers();
     } catch (error: any) {
-      console.error('Error granting role:', error);
-      toast({
-        title: 'Erreur',
-        description: error.message || `Impossible d'attribuer le rôle ${role}`,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleRevokeRole = async (role: 'admin' | 'editor') => {
-    if (!selectedUser) return;
-
+  const handleRevokeRole = async () => {
+    if (!revokeInfo) return;
     try {
-      setActionLoading(selectedUser.id);
-
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', selectedUser.id)
-        .eq('role', role);
-
+      setActionLoading(revokeInfo.user.id);
+      const { error } = await supabase.from('user_roles').delete().eq('user_id', revokeInfo.user.id).eq('role', revokeInfo.role as 'admin' | 'editor' | 'user');
       if (error) throw error;
-
-      toast({
-        title: 'Succès',
-        description: `Rôle ${role} révoqué pour ${selectedUser.email}`,
-      });
-
+      toast({ title: 'Succès', description: `Rôle ${revokeInfo.role} révoqué` });
       await loadUsers();
     } catch (error: any) {
-      console.error('Error revoking role:', error);
-      toast({
-        title: 'Erreur',
-        description: error.message || `Impossible de révoquer le rôle ${role}`,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     } finally {
       setActionLoading(null);
-      setShowRevokeDialog(false);
-      setSelectedUser(null);
+      setRevokeInfo(null);
     }
   };
 
-  const [revokeRole, setRevokeRole] = useState<'admin' | 'editor'>('admin');
-
-  const openRevokeDialog = (user: UserWithRole, role: 'admin' | 'editor') => {
-    setSelectedUser(user);
-    setRevokeRole(role);
-    setShowRevokeDialog(true);
+  const handleDelete = async () => {
+    if (!deleteUser) return;
+    try {
+      setActionLoading(deleteUser.id);
+      await callAdmin({ action: 'delete', userId: deleteUser.id });
+      toast({ title: 'Utilisateur supprimé' });
+      await loadUsers();
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } finally {
+      setActionLoading(null);
+      setDeleteUser(null);
+    }
   };
 
-  const filteredUsers = users.filter((user) =>
-    user.email.toLowerCase().includes(searchEmail.toLowerCase())
+  const handleBanToggle = async () => {
+    if (!banUser) return;
+    try {
+      setActionLoading(banUser.id);
+      await callAdmin({ action: banUser.banned ? 'unban' : 'ban', userId: banUser.id });
+      toast({ title: banUser.banned ? 'Utilisateur réactivé' : 'Utilisateur désactivé' });
+      await loadUsers();
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } finally {
+      setActionLoading(null);
+      setBanUser(null);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!editUser) return;
+    try {
+      setActionLoading(editUser.id);
+      await callAdmin({ action: 'update', userId: editUser.id, userData: { display_name: editName, username: editUsername } });
+      toast({ title: 'Profil mis à jour' });
+      await loadUsers();
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } finally {
+      setActionLoading(null);
+      setEditUser(null);
+    }
+  };
+
+  const openEdit = (u: UserData) => {
+    setEditUser(u);
+    setEditName(u.display_name || '');
+    setEditUsername(u.username || '');
+  };
+
+  const filtered = users.filter(u =>
+    (u.display_name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(search.toLowerCase()) ||
+    (u.phone || '').includes(search) ||
+    (u.username || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Gestion des Rôles Utilisateurs</CardTitle>
-          <CardDescription>
-            Attribuez ou révoquez les privilèges d'administrateur
-          </CardDescription>
+          <CardTitle>Gestion des Utilisateurs</CardTitle>
+          <CardDescription>{users.length} utilisateurs inscrits</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Bar */}
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Input
-                  placeholder="Rechercher par email..."
-                  value={searchEmail}
-                  onChange={(e) => {
-                    setSearchEmail(e.target.value);
-                    setSearchError('');
-                  }}
-                  className={searchError ? 'border-destructive' : ''}
-                />
-                {searchError && (
-                  <p className="text-sm text-destructive mt-1">{searchError}</p>
-                )}
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setSearchEmail('')}
-                disabled={!searchEmail}
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="flex gap-2">
+            <Input placeholder="Rechercher par nom, email, téléphone..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1" />
+            <Button variant="outline" onClick={() => setSearch('')} disabled={!search}>
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
 
-          {/* Users Table */}
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
+                    <TableHead>Utilisateur</TableHead>
+                    <TableHead>Téléphone</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead>Date d'inscription</TableHead>
+                    <TableHead>Inscrit le</TableHead>
+                    <TableHead>Dernière connexion</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.length === 0 ? (
+                  {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                        Aucun utilisateur trouvé
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucun utilisateur trouvé</TableCell>
+                    </TableRow>
+                  ) : filtered.map(u => (
+                    <TableRow key={u.id} className={u.banned ? 'opacity-50' : ''}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{u.display_name || 'Sans nom'}</p>
+                          <p className="text-xs text-muted-foreground">{u.username ? `@${u.username}` : u.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {u.phone ? (
+                          <span className="flex items-center gap-1 text-sm">
+                            <Phone className="h-3 w-3" />
+                            {u.phone}
+                          </span>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 flex-wrap">
+                          {u.banned && <Badge variant="destructive">Désactivé</Badge>}
+                          {u.roles.includes('admin') && <Badge variant="default" className="gap-1"><Shield className="h-3 w-3" />Admin</Badge>}
+                          {u.roles.includes('editor') && <Badge variant="outline" className="gap-1 border-blue-300 text-blue-700 bg-blue-50"><PenTool className="h-3 w-3" />Éditeur</Badge>}
+                          {!u.roles.includes('admin') && !u.roles.includes('editor') && !u.banned && <Badge variant="secondary">Utilisateur</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">{new Date(u.created_at).toLocaleDateString('fr-FR')}</TableCell>
+                      <TableCell className="text-sm">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('fr-FR') : '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 justify-end flex-wrap">
+                          <Button variant="ghost" size="icon" title="Modifier" onClick={() => openEdit(u)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          {/* Role toggles */}
+                          {u.roles.includes('admin') ? (
+                            <Button variant="ghost" size="icon" title="Révoquer admin" onClick={() => setRevokeInfo({ user: u, role: 'admin' })}>
+                              <ShieldOff className="h-4 w-4 text-destructive" />
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="icon" title="Promouvoir admin" onClick={() => handleGrantRole(u.id, 'admin')} disabled={actionLoading === u.id}>
+                              <Shield className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {/* Ban/Unban */}
+                          <Button variant="ghost" size="icon" title={u.banned ? 'Réactiver' : 'Désactiver'} onClick={() => setBanUser(u)}>
+                            {u.banned ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Ban className="h-4 w-4 text-orange-500" />}
+                          </Button>
+                          {/* Delete */}
+                          <Button variant="ghost" size="icon" title="Supprimer" onClick={() => setDeleteUser(u)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.email}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1 flex-wrap">
-                            {user.isAdmin && (
-                              <Badge variant="default" className="gap-1">
-                                <Shield className="h-3 w-3" />
-                                Admin
-                              </Badge>
-                            )}
-                            {user.isEditor && (
-                              <Badge variant="outline" className="gap-1 border-blue-300 text-blue-700 bg-blue-50">
-                                <PenTool className="h-3 w-3" />
-                                Éditeur
-                              </Badge>
-                            )}
-                            {!user.isAdmin && !user.isEditor && (
-                              <Badge variant="secondary">Utilisateur</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(user.created_at).toLocaleDateString('fr-FR')}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end flex-wrap">
-                            {/* Admin toggle */}
-                            {user.isAdmin ? (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => openRevokeDialog(user, 'admin')}
-                                disabled={actionLoading === user.id}
-                              >
-                                {actionLoading === user.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <ShieldOff className="mr-1 h-4 w-4" />
-                                    Admin
-                                  </>
-                                )}
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleGrantRole(user.id, user.email, 'admin')}
-                                disabled={actionLoading === user.id}
-                              >
-                                <Shield className="mr-1 h-4 w-4" />
-                                Admin
-                              </Button>
-                            )}
-                            {/* Editor toggle */}
-                            {user.isEditor ? (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => openRevokeDialog(user, 'editor')}
-                                disabled={actionLoading === user.id}
-                              >
-                                {actionLoading === user.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <PenTool className="mr-1 h-4 w-4" />
-                                    Éditeur
-                                  </>
-                                )}
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                                onClick={() => handleGrantRole(user.id, user.email, 'editor')}
-                                disabled={actionLoading === user.id}
-                              >
-                                <PenTool className="mr-1 h-4 w-4" />
-                                Éditeur
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -335,25 +250,77 @@ export default function UserRoleManager() {
         </CardContent>
       </Card>
 
-      {/* Revoke Confirmation Dialog */}
-      <AlertDialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
+      {/* Edit Dialog */}
+      <Dialog open={!!editUser} onOpenChange={open => !open && setEditUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier l'utilisateur</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nom d'affichage</label>
+              <Input value={editName} onChange={e => setEditName(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Nom d'utilisateur</label>
+              <Input value={editUsername} onChange={e => setEditUsername(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUser(null)}>Annuler</Button>
+            <Button onClick={handleEdit} disabled={actionLoading === editUser?.id}>
+              {actionLoading === editUser?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enregistrer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteUser} onOpenChange={open => !open && setDeleteUser(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la révocation</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer l'utilisateur ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir révoquer le rôle <span className="font-semibold">{revokeRole}</span> pour{' '}
-              <span className="font-semibold">{selectedUser?.email}</span> ?
-              Cette action peut être annulée en réattribuant le rôle.
+              Cette action est irréversible. L'utilisateur <span className="font-semibold">{deleteUser?.display_name || deleteUser?.email}</span> sera définitivement supprimé.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleRevokeRole(revokeRole)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Révoquer
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Supprimer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Ban Confirmation */}
+      <AlertDialog open={!!banUser} onOpenChange={open => !open && setBanUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{banUser?.banned ? 'Réactiver' : 'Désactiver'} l'utilisateur ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {banUser?.banned 
+                ? `${banUser.display_name || banUser.email} pourra à nouveau se connecter.`
+                : `${banUser?.display_name || banUser?.email} ne pourra plus se connecter.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBanToggle}>{banUser?.banned ? 'Réactiver' : 'Désactiver'}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Revoke Role Confirmation */}
+      <AlertDialog open={!!revokeInfo} onOpenChange={open => !open && setRevokeInfo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Révoquer le rôle {revokeInfo?.role} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le rôle <span className="font-semibold">{revokeInfo?.role}</span> sera retiré de <span className="font-semibold">{revokeInfo?.user.display_name || revokeInfo?.user.email}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRevokeRole} className="bg-destructive text-destructive-foreground">Révoquer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
