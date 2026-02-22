@@ -5,7 +5,8 @@ import { Menu, X, Home, BookOpen, BookText, Bot, MessageCircle, Heart, Share2, B
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
-import { useVideoFeed } from '@/hooks/useVideoFeed';
+import { useAdaptiveFeed } from '@/hooks/useAdaptiveFeed';
+import { useEngagementTracker } from '@/hooks/useEngagementTracker';
 import { TamTamCommentsModal } from '@/components/tamtam/TamTamCommentsModal';
 import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
@@ -329,13 +330,21 @@ const VideoFeedCard: React.FC<{
   isMuted: boolean;
   onToggleMute: () => void;
   onPlayInteractive?: (storyId: string) => void;
-}> = ({ post, isActive, onComment, isMuted, onToggleMute, onPlayInteractive }) => {
+  engagementTracker?: ReturnType<typeof import('@/hooks/useEngagementTracker').useEngagementTracker>;
+}> = ({ post, isActive, onComment, isMuted, onToggleMute, onPlayInteractive, engagementTracker }) => {
   const isInteractive = post.template_id === 'conte-vivant' || post.metadata?.is_interactive;
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
+
+  // Engagement tracking refs
+  const activatedAtRef = useRef<number>(0);
+  const watchAccumRef = useRef<number>(0);
+  const hasCompletedRef = useRef(false);
+  const hasReplayedRef = useRef(false);
+  const lastTimeRef = useRef<number>(0);
 
   // Support both tamtam_posts and videos table format
   const videoUrl = post.media_url || post.video_url || post.videoUrl;
@@ -351,6 +360,26 @@ const VideoFeedCard: React.FC<{
 
   const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow } = usePostInteractions(post.id, authorId);
 
+  // Track activation for swipe speed + engagement
+  useEffect(() => {
+    if (isActive) {
+      activatedAtRef.current = Date.now();
+      watchAccumRef.current = 0;
+      hasCompletedRef.current = false;
+      hasReplayedRef.current = false;
+      lastTimeRef.current = 0;
+    } else if (activatedAtRef.current > 0 && engagementTracker) {
+      const swipeSpeed = Date.now() - activatedAtRef.current;
+      const totalMs = (videoRef.current?.duration || post.duration_seconds || 30) * 1000;
+      if (swipeSpeed < 3000) engagementTracker.trackSwipe(post.id, swipeSpeed);
+      engagementTracker.trackView(post.id, watchAccumRef.current, totalMs, hasCompletedRef.current, hasReplayedRef.current);
+      // Track category preference
+      const cat = post.template_name || post.metadata?.category || 'general';
+      if (watchAccumRef.current > 3000) engagementTracker.recordCategoryEngagement(cat);
+      activatedAtRef.current = 0;
+    }
+  }, [isActive, post.id]);
+
   useEffect(() => {
     if (!videoRef.current) return;
     if (isActive) {
@@ -364,6 +393,27 @@ const VideoFeedCard: React.FC<{
       setIsPlaying(false);
     }
   }, [isActive, isMuted]);
+
+  // Track watch time via timeupdate + completion/replay
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    const onTimeUpdate = () => {
+      const ct = vid.currentTime * 1000;
+      if (lastTimeRef.current > 0) {
+        const d = ct - lastTimeRef.current;
+        if (d > 0 && d < 1000) watchAccumRef.current += d;
+      }
+      lastTimeRef.current = ct;
+    };
+    const onEnded = () => {
+      if (!hasCompletedRef.current) hasCompletedRef.current = true;
+      else hasReplayedRef.current = true;
+    };
+    vid.addEventListener('timeupdate', onTimeUpdate);
+    vid.addEventListener('ended', onEnded);
+    return () => { vid.removeEventListener('timeupdate', onTimeUpdate); vid.removeEventListener('ended', onEnded); };
+  }, [videoUrl]);
 
   const handleVideoTap = useCallback(() => {
     if (!videoRef.current) return;
@@ -389,7 +439,13 @@ const VideoFeedCard: React.FC<{
   }, [toggleFollow]);
 
   return (
-    <div className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative bg-black overflow-hidden">
+    <div 
+      className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative overflow-hidden"
+      style={{ 
+        background: thumbnailUrl ? `url(${thumbnailUrl}) center/cover no-repeat` : '#000',
+        backgroundColor: '#000',
+      }}
+    >
       {/* Tap zone for play/pause */}
       <div className="absolute inset-0 z-10" onClick={handleVideoTap} />
 
@@ -426,7 +482,7 @@ const VideoFeedCard: React.FC<{
         <video 
           ref={videoRef} 
           src={videoUrl} 
-          poster=""
+          poster={thumbnailUrl || undefined}
           loop 
           muted={isMuted}
           playsInline 
@@ -442,12 +498,7 @@ const VideoFeedCard: React.FC<{
         </div>
       )}
       
-      {/* Loading state */}
-      {!isLoaded && (videoUrl || post.media_type === 'photo') && !isInteractive && (
-        <div className="absolute inset-0 bg-black flex items-center justify-center">
-          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full" />
-        </div>
-      )}
+      {/* NO SPINNER — thumbnail background is always visible */}
 
       {/* Interactive Story Badge + Play Button */}
       {isInteractive && (
@@ -537,7 +588,7 @@ const VideoFeedCard: React.FC<{
         {/* Like */}
         <motion.button 
           whileTap={{ scale: 0.85 }} 
-          onClick={() => { toggleLike(); triggerFeedback('notification'); }} 
+          onClick={() => { toggleLike(); engagementTracker?.trackInteraction(post.id, 'like'); triggerFeedback('notification'); }} 
           className="flex flex-col items-center"
         >
           <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white'} drop-shadow-lg`} strokeWidth={1.5} />
@@ -587,8 +638,9 @@ export default function TamTamSocial() {
   const { currentLang } = useTamTamLanguage();
   const { toast } = useToast();
   const { posts, isLoading, createPost, addReaction, addComment, fetchComments, fetchPosts } = useTamTamPosts();
-  // ✅ FIX: Also fetch videos from the videos table (Village Chronicle, Griot Digital, etc.)
-  const { videos: videoFeedItems, isLoading: isVideosLoading, refetch: refetchVideos } = useVideoFeed();
+  // Adaptive algorithm-ranked video feed (replaces chronological useVideoFeed)
+  const { videos: videoFeedItems, isLoading: isVideosLoading, refetch: refetchVideos, loadMore: loadMoreVideos } = useAdaptiveFeed();
+  const engagementTracker = useEngagementTracker();
   const sideMenu = useSideMenu();
 
   const [activeTab, setActiveTab] = useState<BottomTab>('fil');
@@ -893,14 +945,11 @@ export default function TamTamSocial() {
                  post.topic !== 'patrimoine' && post.topic !== 'mavoix';
         });
         
-        // Merge both sources, videos table first (newest template videos)
+        // Merge both sources — adaptive feed already ranked, posts appended after
         const allCreationContent = [...videosAsVideoCards, ...creationFromPosts];
         
-        // Sort by created_at descending
-        allCreationContent.sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        
+        // No chronological sort — adaptive algorithm handles ranking for videos
+        // Posts from tamtam_posts are appended at the end
         return allCreationContent;
     }
   }, [feedMode, posts, videoFeedItems]);
@@ -924,9 +973,7 @@ export default function TamTamSocial() {
             onScroll={handleScroll}
           >
             {(isLoading || (feedMode === 'creation' && isVideosLoading)) ? (
-              <div className="h-screen flex items-center justify-center">
-                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-3 border-[#FF7A00] border-t-transparent rounded-full" />
-              </div>
+              <div className="h-screen" style={{ background: '#0B0B0B' }} />
             ) : getCurrentPosts.length > 0 ? (
               feedMode === 'creation' ? (
                 // VIRTUALIZED: Only render posts near the current index
@@ -946,6 +993,7 @@ export default function TamTamSocial() {
                       isMuted={isMuted}
                       onToggleMute={() => setIsMuted(prev => !prev)}
                       onPlayInteractive={handlePlayInteractiveStory}
+                      engagementTracker={engagementTracker}
                     />
                   );
                 })

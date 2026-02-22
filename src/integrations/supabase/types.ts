@@ -2929,6 +2929,56 @@ export type Database = {
         }
         Relationships: []
       }
+      video_engagements: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          id: string
+          interaction_type: string | null
+          replayed: boolean | null
+          session_id: string | null
+          swipe_speed_ms: number | null
+          user_id: string | null
+          video_duration_ms: number | null
+          video_id: string
+          watch_duration_ms: number | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          interaction_type?: string | null
+          replayed?: boolean | null
+          session_id?: string | null
+          swipe_speed_ms?: number | null
+          user_id?: string | null
+          video_duration_ms?: number | null
+          video_id: string
+          watch_duration_ms?: number | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          interaction_type?: string | null
+          replayed?: boolean | null
+          session_id?: string | null
+          swipe_speed_ms?: number | null
+          user_id?: string | null
+          video_duration_ms?: number | null
+          video_id?: string
+          watch_duration_ms?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_engagements_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_processing_jobs: {
         Row: {
           created_at: string
