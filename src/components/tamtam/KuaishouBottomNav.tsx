@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Compass, Plus, MessageSquare, User, Users, Radio } from 'lucide-react';
+import { Home, Plus, BookOpen, BookText, Bot } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { toast } from 'sonner';
@@ -15,14 +15,14 @@ interface NavItem {
   isCreate?: boolean;
 }
 
-const COMING_SOON_PATHS = ['/fitila/messages', '/fitila/discover', '/fitila/groups', '/fitila/live'];
+const COMING_SOON_PATHS: string[] = [];
 
 const navItems: NavItem[] = [
   { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Ilé', path: '/fitila/social' },
-  { id: 'inbox', icon: MessageSquare, labelFr: 'Messages', labelBa: 'Ìròyìn', path: '/fitila/messages' },
+  { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Kíkọ́', path: '/fitila/learn' },
   { id: 'create', icon: Plus, labelFr: 'Create', labelBa: 'Ṣẹ̀dá', path: '/fitila/creator', isCreate: true },
-  { id: 'groups', icon: Users, labelFr: 'Groupes', labelBa: 'Ẹgbẹ́', path: '/fitila/groups' },
-  { id: 'live', icon: Radio, labelFr: 'Live', labelBa: 'Gbé', path: '/fitila/live' },
+  { id: 'dictionary', icon: BookText, labelFr: 'Dico', labelBa: 'Ìwé', path: '/fitila/dictionary' },
+  { id: 'fitila-ia', icon: Bot, labelFr: 'Fitila IA', labelBa: 'Fitila IA', path: '/fitila/ia' },
 ];
 
 export const KuaishouBottomNav: React.FC = () => {
