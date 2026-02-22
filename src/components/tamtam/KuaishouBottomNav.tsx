@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Compass, Plus, MessageSquare, User } from 'lucide-react';
+import { Home, Compass, Plus, MessageSquare, User, Users, Radio } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { toast } from 'sonner';
 
 interface NavItem {
   id: string;
@@ -14,12 +15,14 @@ interface NavItem {
   isCreate?: boolean;
 }
 
+const COMING_SOON_PATHS = ['/fitila/messages', '/fitila/discover', '/fitila/groups', '/fitila/live'];
+
 const navItems: NavItem[] = [
-  { id: 'home', icon: Home, labelFr: 'Home', labelBa: 'Ilé', path: '/fitila/social' },
-  { id: 'discover', icon: Compass, labelFr: 'Featured', labelBa: 'Wá', path: '/fitila/discover' },
+  { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Ilé', path: '/fitila/social' },
+  { id: 'inbox', icon: MessageSquare, labelFr: 'Messages', labelBa: 'Ìròyìn', path: '/fitila/messages' },
   { id: 'create', icon: Plus, labelFr: 'Create', labelBa: 'Ṣẹ̀dá', path: '/fitila/creator', isCreate: true },
-  { id: 'inbox', icon: MessageSquare, labelFr: 'Message', labelBa: 'Ìròyìn', path: '/fitila/messages' },
-  { id: 'profile', icon: User, labelFr: 'Me', labelBa: 'Èmi', path: '/fitila/profile' },
+  { id: 'groups', icon: Users, labelFr: 'Groupes', labelBa: 'Ẹgbẹ́', path: '/fitila/groups' },
+  { id: 'live', icon: Radio, labelFr: 'Live', labelBa: 'Gbé', path: '/fitila/live' },
 ];
 
 export const KuaishouBottomNav: React.FC = () => {
@@ -43,6 +46,10 @@ export const KuaishouBottomNav: React.FC = () => {
 
   const handleNavPress = (item: NavItem) => {
     triggerFeedback('click');
+    if (COMING_SOON_PATHS.includes(item.path)) {
+      toast('🚧 Bientôt disponible !', { description: `La section "${item.labelFr}" arrive très prochainement.` });
+      return;
+    }
     navigate(item.path);
   };
 

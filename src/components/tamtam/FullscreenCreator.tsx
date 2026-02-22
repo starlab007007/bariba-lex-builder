@@ -758,6 +758,17 @@ export default function FullscreenCreator({
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("L'API caméra n'est pas disponible sur ce navigateur.");
       }
+
+      // Request permission explicitly first (important for native apps)
+      try {
+        const testStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        testStream.getTracks().forEach(t => t.stop());
+      } catch (permErr: any) {
+        if (permErr?.name === 'NotAllowedError') {
+          throw new Error("Permission caméra refusée. Veuillez autoriser l'accès à la caméra dans les paramètres de votre appareil.");
+        }
+        throw permErr;
+      }
       
       // Step 1: Fast low-res stream for instant preview
       const fastConstraints: MediaStreamConstraints = {
@@ -771,7 +782,7 @@ export default function FullscreenCreator({
       // Step 2: Upgrade to HD in background
       setTimeout(async () => {
         try {
-          if (streamRef.current !== fastStream) return; // user switched already
+          if (streamRef.current !== fastStream) return;
           const hdConstraints: MediaStreamConstraints = {
             video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
             audio: mode === "video",
@@ -783,7 +794,6 @@ export default function FullscreenCreator({
           }
           fastStream.getTracks().forEach(t => t.stop());
           streamRef.current = hdStream;
-          // Re-attach to video element
           if (videoRef.current) {
             videoRef.current.srcObject = hdStream;
           }
@@ -795,7 +805,7 @@ export default function FullscreenCreator({
     } catch (e: any) {
       setCameraLoading(false);
       const message = e?.name === 'NotAllowedError' 
-        ? "Permission caméra refusée. Veuillez autoriser l'accès à la caméra."
+        ? "Permission caméra refusée. Veuillez autoriser l'accès à la caméra dans les paramètres."
         : e?.name === 'NotFoundError'
         ? "Aucune caméra trouvée sur cet appareil."
         : e?.name === 'NotReadableError'
@@ -3006,6 +3016,7 @@ export default function FullscreenCreator({
               <video
                 ref={videoRef}
                 className="absolute inset-0 w-full h-full object-cover bg-black"
+                poster=""
                 style={{
                   filter: isKEngineActive ? "none" : cssFilter,
                   transform: facing === "user" ? "scaleX(-1)" : "none",
@@ -4104,13 +4115,17 @@ export default function FullscreenCreator({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[200] bg-background"
+              className="fixed inset-0 z-[200] bg-background"
             >
               <button
-                onClick={() => setShowGriotDigitalMode(false)}
-                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-background/80 backdrop-blur"
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(20);
+                  setShowGriotDigitalMode(false);
+                }}
+                className="absolute top-4 left-4 z-[210] p-3 rounded-full bg-background/90 backdrop-blur-md border border-border/50 shadow-lg min-w-[48px] min-h-[48px] flex items-center justify-center"
+                aria-label="Fermer Griot Animé"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
               <GriotStudio />
             </motion.div>

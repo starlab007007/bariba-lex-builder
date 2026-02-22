@@ -7,14 +7,16 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
     useLegacyBridge: false,
+    // Permissions are declared in AndroidManifest.xml after cap sync
+    // They will be requested at runtime via getUserMedia
+  },
+  ios: {
+    // Usage descriptions for iOS permission prompts
+    // These are added to Info.plist after cap sync
   },
   plugins: {
     CapacitorHttp: {
       enabled: true,
-    },
-    Permissions: {
-      camera: true,
-      microphone: true,
     },
   },
 };

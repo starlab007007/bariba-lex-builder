@@ -47,7 +47,18 @@ export const SuperIAPanel: React.FC = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Extract more details from FunctionsHttpError
+        let errorMsg = error.message || 'Erreur de connexion';
+        try {
+          const ctx = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const body = await ctx.json();
+            errorMsg = body?.error || body?.message || errorMsg;
+          }
+        } catch {}
+        throw new Error(errorMsg);
+      }
 
       setResult(data as PublishResult);
 
@@ -58,8 +69,9 @@ export const SuperIAPanel: React.FC = () => {
       }
     } catch (err: any) {
       console.error('[SuperIA] Error:', err);
-      toast.error(err?.message || 'Erreur de connexion');
-      setResult({ success: false, error: err?.message || 'Erreur inconnue' });
+      const msg = err?.message || 'Erreur de connexion';
+      toast.error(msg);
+      setResult({ success: false, error: msg });
     } finally {
       setIsGenerating(false);
     }
