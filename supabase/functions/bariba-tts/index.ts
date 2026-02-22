@@ -296,38 +296,30 @@ async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> 
 
   // Ping config endpoint to trigger wake-up
   try {
-    await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 10_000);
+    const initial = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 8_000);
+    if (initial.ok) {
+      console.log("[bariba-tts] ✅ Space already awake on first ping");
+      return true;
+    }
   } catch {
     // Even if it fails, the request itself can trigger the wake-up
   }
 
-  // Wait for space to boot (typically 15-30s for free spaces)
-  await sleep(18_000);
-
-  // Verify it's awake
-  try {
-    const check = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 10_000);
-    if (check.ok) {
-      console.log("[bariba-tts] ✅ Space is now awake");
-      return true;
+  // Poll every 5s for up to 50s total (10 checks)
+  for (let i = 1; i <= 10; i++) {
+    await sleep(5_000);
+    try {
+      const check = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 8_000);
+      if (check.ok) {
+        console.log(`[bariba-tts] ✅ Space awoke after ${i * 5}s`);
+        return true;
+      }
+    } catch {
+      console.log(`[bariba-tts] ⏳ Poll ${i}/10 - still waking...`);
     }
-  } catch {
-    // still sleeping
   }
 
-  // Second wait + check
-  await sleep(12_000);
-  try {
-    const check2 = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 10_000);
-    if (check2.ok) {
-      console.log("[bariba-tts] ✅ Space awoke on second check");
-      return true;
-    }
-  } catch {
-    // give up
-  }
-
-  console.log("[bariba-tts] ❌ Space still not awake after retries");
+  console.log("[bariba-tts] ❌ Space still not awake after 50s of polling");
   return false;
 }
 
@@ -350,7 +342,29 @@ async function synthesizeWithHuggingFaceSpace(params: {
     Deno.env.get("HUGGINGFACEHUB_API_TOKEN") ||
     "";
 
-  // Try up to 2 times (first attempt + 1 retry after wake-up)
+  // First check if space is awake before attempting synthesis
+  // Quick pre-check
+  const headers: HeadersInit = {};
+  if (HF_TOKEN) headers["Authorization"] = `Bearer ${HF_TOKEN}`;
+  
+  let spaceReady = false;
+  try {
+    const preCheck = await fetchWithTimeout(`${HF_SPACE_URL}/gradio_api/config`, { headers }, 5_000);
+    spaceReady = preCheck.ok;
+  } catch {
+    spaceReady = false;
+  }
+
+  // If not ready, wake it up first
+  if (!spaceReady) {
+    console.log("[bariba-tts] Space not ready, waking up first...");
+    const awoke = await wakeUpSpace(HF_SPACE_URL, HF_TOKEN);
+    if (!awoke) {
+      return { error: "Service en veille", sleeping: true };
+    }
+  }
+
+  // Now attempt synthesis (up to 2 tries)
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await _doSynthesize(HF_SPACE_URL, HF_TOKEN, params);
 
@@ -358,13 +372,8 @@ async function synthesizeWithHuggingFaceSpace(params: {
       return result;
     }
 
-    // Space is sleeping — try to wake it up
-    console.log(`[bariba-tts] Space sleeping, wake-up attempt ${attempt + 1}...`);
-    const awoke = await wakeUpSpace(HF_SPACE_URL, HF_TOKEN);
-    if (!awoke) {
-      return result; // Return original sleeping error
-    }
-    // Retry synthesis
+    console.log(`[bariba-tts] Synthesis failed (sleeping), retry ${attempt + 1}...`);
+    await sleep(3_000);
   }
 
   return { error: "Échec après tentatives de réveil", sleeping: true };

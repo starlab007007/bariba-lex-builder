@@ -29,76 +29,95 @@ export const useBaribaTTS = (): UseBaribaTTSReturn => {
     setIsLoading(true);
     setError(null);
 
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('bariba-tts', {
-        body: {
-          text,
-          speakingRate: options?.speakingRate ?? 1.0,
-          noiseScale: options?.noiseScale ?? 0.5,
-          noiseScaleW: options?.noiseScaleW ?? 0.6
+    const MAX_RETRIES = 2;
+    let lastError: string | null = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke('bariba-tts', {
+          body: {
+            text,
+            speakingRate: options?.speakingRate ?? 1.0,
+            noiseScale: options?.noiseScale ?? 0.5,
+            noiseScaleW: options?.noiseScaleW ?? 0.6
+          }
+        });
+
+        // Check for sleeping/503 errors - retry automatically
+        if (fnError || data?.error) {
+          const errMsg = fnError?.message || data?.error || '';
+          const isSleeping = errMsg.includes('veille') || errMsg.includes('503') || data?.details?.includes('veille');
+          
+          if (isSleeping && attempt < MAX_RETRIES) {
+            console.log(`[bariba-tts] Service sleeping, auto-retry ${attempt + 1}/${MAX_RETRIES} in 5s...`);
+            lastError = errMsg;
+            await new Promise(r => setTimeout(r, 5000));
+            continue;
+          }
+          throw new Error(errMsg);
         }
-      });
 
-      if (fnError) {
-        throw new Error(fnError.message);
+        if (!data.audio_url && !data.audio) {
+          throw new Error('No audio data received');
+        }
+
+        // Get audio URL - support both audio_url (direct URL) and audio (base64)
+        let audioUrl: string;
+        if (data.audio_url) {
+          audioUrl = data.audio_url;
+        } else {
+          const audioBlob = base64ToBlob(data.audio, 'audio/wav');
+          audioUrl = URL.createObjectURL(audioBlob);
+        }
+
+        // Stop any current playback
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        audio.onplay = () => setIsSpeaking(true);
+        audio.onended = () => {
+          setIsSpeaking(false);
+          if (!data.audio_url) URL.revokeObjectURL(audioUrl);
+        };
+        audio.onerror = () => {
+          setIsSpeaking(false);
+          setError('Erreur de lecture audio');
+          if (!data.audio_url) URL.revokeObjectURL(audioUrl);
+        };
+
+        await audio.play();
+
+        toast({
+          title: "🔊 Lecture Bariba",
+          description: `"${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`
+        });
+
+        // Success - break out of retry loop
+        return;
+      } catch (err: any) {
+        lastError = err.message || 'Erreur TTS Bariba';
+        if (attempt < MAX_RETRIES) continue;
       }
+    }
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      if (!data.audio) {
-        throw new Error('No audio data received');
-      }
-
-      // Convert base64 to audio and play
-      const audioBlob = base64ToBlob(data.audio, 'audio/wav');
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      // Stop any current playback
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.onplay = () => setIsSpeaking(true);
-      audio.onended = () => {
-        setIsSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-      audio.onerror = () => {
-        setIsSpeaking(false);
-        setError('Erreur de lecture audio');
-        URL.revokeObjectURL(audioUrl);
-      };
-
-      await audio.play();
-
+    // All retries failed
+    if (lastError) {
+      setError(lastError);
+      const isSpaceIssue = lastError.includes('veille') || lastError.includes('503') || lastError.includes('unavailable');
       toast({
-        title: "🔊 Lecture Bariba",
-        description: `"${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`
-      });
-
-    } catch (err: any) {
-      const errorMessage = err.message || 'Erreur TTS Bariba';
-      setError(errorMessage);
-      
-      // Provide helpful message for HuggingFace Space issues
-      const isSpaceIssue = errorMessage.includes('unavailable') || errorMessage.includes('503');
-      
-      toast({
-        title: isSpaceIssue ? "🔧 Service TTS Bariba temporairement indisponible" : "Erreur de synthèse vocale",
+        title: isSpaceIssue ? "🔧 Service TTS en cours de réveil" : "Erreur de synthèse vocale",
         description: isSpaceIssue 
-          ? "Le service HuggingFace est en veille. Réessayez dans 30 secondes ou visitez le Space directement pour le réveiller."
-          : errorMessage,
+          ? "Le service est en train de démarrer. Réessayez dans quelques secondes."
+          : lastError,
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }, [toast]);
 
   const stop = useCallback(() => {
