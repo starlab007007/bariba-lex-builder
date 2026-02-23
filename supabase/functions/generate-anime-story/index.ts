@@ -243,8 +243,8 @@ async function getSceneImage(
 
   console.log(`[getSceneImage] Scene ${sceneIndex + 1}: type=${sceneType}, char=${characterType}, action=${action}, emotion=${scene.emotion}`);
 
-  // Try library match with character reference bonus
-  const libraryMatch = await findLibraryMatch(supabase, style, scene.emotion, sceneType, characterType, action, charRef?.id);
+  // Try library match with character reference bonus + text similarity
+  const libraryMatch = await findLibraryMatch(supabase, style, scene.emotion, sceneType, characterType, action, charRef?.id, scene.text);
 
   if (libraryMatch) {
     console.log(`[getSceneImage] Library match for scene ${sceneIndex + 1}: ${libraryMatch.id} (score includes char ref bonus)`);
@@ -347,6 +347,7 @@ async function findStitchedClips(
 
 /**
  * Find a matching image from the library
+ * Enhanced: semantic text similarity against description_fr/description_en metadata
  * DÉFI 1: +2 bonus for matching character_reference_id
  */
 async function findLibraryMatch(
@@ -356,16 +357,23 @@ async function findLibraryMatch(
   sceneType: string,
   characterType: string,
   action: string,
-  characterRefId?: string
+  characterRefId?: string,
+  sceneText?: string
 ): Promise<LibraryImage | null> {
+  // Fetch more candidates for better text matching
   const { data, error } = await supabase
     .from('anime_scene_library')
-    .select('*')
+    .select('id, style, emotion, scene_type, character_type, action, image_url, video_url, video_duration, asset_type, character_reference_id, consistency_score, description_fr, description_en, usage_count')
     .eq('style', style)
     .order('usage_count', { ascending: true })
-    .limit(15);
+    .limit(50);
 
   if (error || !data || data.length === 0) return null;
+
+  // Build normalized keywords from scene text for semantic matching
+  const textWords = sceneText
+    ? normalizeText(sceneText).split(/\s+/).filter(w => w.length > 2)
+    : [];
 
   const scored = data.map((img: any) => {
     let score = 3; // Base for style match
@@ -373,18 +381,57 @@ async function findLibraryMatch(
     if (img.scene_type === sceneType) score += 2;
     if (img.character_type === characterType) score += 1;
     if (img.action === action) score += 1;
-    // DÉFI 1: Character reference consistency bonus
+    // Character reference consistency bonus
     if (characterRefId && img.character_reference_id === characterRefId) score += 2;
-    // Bonus for higher consistency scores
     if (img.consistency_score && img.consistency_score > 0.8) score += 1;
+
+    // TEXT SIMILARITY: compare scene text against asset descriptions
+    if (textWords.length > 0) {
+      const descWords = normalizeText(
+        `${img.description_fr || ''} ${img.description_en || ''}`
+      ).split(/\s+/).filter((w: string) => w.length > 2);
+
+      if (descWords.length > 0) {
+        const descSet = new Set(descWords);
+        let matches = 0;
+        for (const w of textWords) {
+          if (descSet.has(w)) matches++;
+          // Partial match (stem-like): check if any desc word starts with this word or vice versa
+          else {
+            for (const dw of descSet) {
+              if ((dw.length >= 4 && w.startsWith(dw.slice(0, 4))) ||
+                  (w.length >= 4 && dw.startsWith(w.slice(0, 4)))) {
+                matches += 0.5;
+                break;
+              }
+            }
+          }
+        }
+        // Normalize: up to +4 bonus for high text overlap
+        const textScore = Math.min(4, (matches / Math.max(1, textWords.length)) * 6);
+        score += textScore;
+      }
+    }
+
     return { ...img, matchScore: score };
   });
 
   scored.sort((a, b) => b.matchScore - a.matchScore);
 
   const best = scored[0];
-  if (best && best.matchScore >= 5) return best as LibraryImage;
+  // Lower threshold to 4 since text similarity provides better discrimination
+  if (best && best.matchScore >= 4) return best as LibraryImage;
   return null;
+}
+
+/** Normalize text for matching: lowercase, remove accents, strip punctuation */
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function detectSceneType(text: string, visualDesc: string): string {
