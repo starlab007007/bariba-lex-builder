@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.hf-keep-alive]
 verify_jwt = false
+
+[functions.generate-video-posters]
+verify_jwt = false
