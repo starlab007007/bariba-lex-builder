@@ -39,6 +39,7 @@ interface SegmentEditorProps {
   label: string;
   showEndingOptions?: boolean;
   showChoiceOptions?: boolean;
+  maxMediaSelection?: number;
 }
 
 const ENDING_EMOJIS = [
@@ -56,7 +57,7 @@ const CHOICE_COLORS = [
   { name: 'Pink', hex: '#EC4899' },
 ];
 
-export default function SegmentEditor({ segment, onChange, label, showEndingOptions, showChoiceOptions }: SegmentEditorProps) {
+export default function SegmentEditor({ segment, onChange, label, showEndingOptions, showChoiceOptions, maxMediaSelection = 1 }: SegmentEditorProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [showAssetGallery, setShowAssetGallery] = useState(false);
@@ -212,11 +213,21 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
     setSelectedAssets(assets);
     if (assets.length > 0) {
       const asset = assets[assets.length - 1];
-      onChange({
-        ...segment,
-        media_url: asset.video_url || asset.image_url,
-        mediaType: asset.asset_type === 'video' ? 'video' : 'photo',
-      });
+      // Store all selected assets' URLs in image_urls for multi-selection
+      if (maxMediaSelection > 1) {
+        onChange({
+          ...segment,
+          image_urls: assets.map(a => a.image_url),
+          media_url: asset.video_url || asset.image_url,
+          mediaType: asset.asset_type === 'video' ? 'video' : 'photo',
+        });
+      } else {
+        onChange({
+          ...segment,
+          media_url: asset.video_url || asset.image_url,
+          mediaType: asset.asset_type === 'video' ? 'video' : 'photo',
+        });
+      }
     }
   };
 
@@ -407,7 +418,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
           <SheetContent side="bottom" className="h-[85vh] bg-background">
             <div className="p-4 space-y-4 overflow-y-auto h-full">
               <h3 className="text-lg font-bold text-foreground">Sélectionner un visuel</h3>
-              <AssetGallery selectedAssets={selectedAssets} onSelectionChange={handleAssetSelect} maxSelection={1} />
+              <AssetGallery selectedAssets={selectedAssets} onSelectionChange={handleAssetSelect} maxSelection={maxMediaSelection} />
             </div>
           </SheetContent>
         </Sheet>

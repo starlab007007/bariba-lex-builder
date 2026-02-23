@@ -42,7 +42,7 @@ const STEPS: { key: BuilderStep; label: string; icon: string }[] = [
 export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps) {
   const [currentStep, setCurrentStep] = useState<BuilderStep>('intro');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [description] = useState('');
   const [selectedMusic, setSelectedMusic] = useState<{ url: string; name: string } | null>(null);
   const [showMusicLibrary, setShowMusicLibrary] = useState(false);
   const [showTestPlayer, setShowTestPlayer] = useState(false);
@@ -323,8 +323,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
           {currentStep === 'intro' && (
             <motion.div key="intro" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre du conte..." className="text-lg font-semibold bg-white text-black placeholder:text-gray-400 border-white/20" />
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description courte..." className="bg-white text-black placeholder:text-gray-400 border-white/20" />
-              <SegmentEditor segment={introSegment} onChange={setIntroSegment} label="📖 Segment d'introduction" />
+              <SegmentEditor segment={introSegment} onChange={setIntroSegment} label="📖 Introduction" maxMediaSelection={12} />
             </motion.div>
           )}
 
@@ -366,7 +365,7 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
                       <span>{choices[idx]?.label || `Branche ${idx + 1}`}</span>
                     </div>
                     <SegmentEditor segment={branch.segment} onChange={(seg) => updateBranchSegment(idx, seg)}
-                      label={`Segment : ${choices[idx]?.label || `Branche ${idx + 1}`}`} showEndingOptions showChoiceOptions />
+                      label={`Segment : ${choices[idx]?.label || `Branche ${idx + 1}`}`} showEndingOptions showChoiceOptions maxMediaSelection={12} />
                   </div>
                 ))}
               </div>
