@@ -1,8 +1,8 @@
 // useAudioLibrary - React hook for TAM-TAM audio library
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AudioLibraryService } from '@/services/AudioLibraryService';
-import type { AudioTrack, AudioLibrary, AudioSearchOptions } from '@/types/audio';
+import type { AudioTrack, AudioLibrary, AudioCategory, AudioSearchOptions } from '@/types/audio';
 
 export function useAudioLibrary() {
   const [library, setLibrary] = useState<AudioLibrary | null>(null);
@@ -29,7 +29,18 @@ export function useAudioLibrary() {
     return () => { mounted = false; };
   }, []);
 
-  return { library, isLoading, error };
+  // Expose all tracks (JSON + DB) and all categories merged
+  const allTracks = useMemo(() => {
+    if (!library) return [];
+    return AudioLibraryService.getAllTracks();
+  }, [library]);
+
+  const allCategories = useMemo(() => {
+    if (!library) return [];
+    return AudioLibraryService.getAllCategories();
+  }, [library]);
+
+  return { library, isLoading, error, allTracks, allCategories };
 }
 
 export function useTrackPlayer() {

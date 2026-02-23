@@ -4,6 +4,7 @@
 import type { 
   AudioTrack, 
   AudioLibrary, 
+  AudioCategory,
   AudioSearchOptions, 
   AudioCacheStats 
 } from '@/types/audio';
@@ -72,21 +73,25 @@ class AudioLibraryServiceClass {
         return;
       }
 
-      this.dbTracks = (data || []).map((row: any) => ({
-        id: `db_${row.id}`,
-        title: row.title,
-        artist: row.artist || 'TAM-TAM',
-        duration: row.duration || 0,
-        bpm: row.bpm || undefined,
-        mood: [row.mood],
-        tags: Array.isArray(row.tags) ? row.tags : [],
-        language: 'fr',
-        description: { fr: row.description_fr || '', bariba: '' },
-        source: {
-          type: 'url' as const,
-          url: row.audio_url,
-        },
-      }));
+      this.dbTracks = (data || []).map((row: any) => {
+        const track: AudioTrack & { _dbCategory?: string } = {
+          id: `db_${row.id}`,
+          title: row.title,
+          artist: row.artist || 'TAM-TAM',
+          duration: row.duration || 0,
+          bpm: row.bpm || undefined,
+          mood: [row.mood],
+          tags: Array.isArray(row.tags) ? row.tags : [],
+          language: 'fr',
+          description: { fr: row.description_fr || '', bariba: '' },
+          source: {
+            type: 'url' as const,
+            url: row.audio_url,
+          },
+        };
+        (track as any)._dbCategory = row.category || row.mood || 'other';
+        return track;
+      });
 
       if (DEBUG) console.log('[AudioLibrary] DB tracks loaded:', this.dbTracks.length);
     } catch (error) {
@@ -326,6 +331,34 @@ class AudioLibraryServiceClass {
     } catch (error) {
       console.warn('[AudioLibrary] Failed to clear browser cache:', error);
     }
+  }
+
+  // Get all categories (JSON + dynamic DB categories merged)
+  getAllCategories(): AudioCategory[] {
+    const jsonCategories = this.library?.categories || [];
+    
+    // Extract unique categories from DB tracks not already in JSON
+    const jsonCatIds = new Set(jsonCategories.map(c => c.id));
+    const dbCategoryMap = new Map<string, AudioTrack[]>();
+    
+    for (const track of this.dbTracks) {
+      // Use the mood field as category identifier for DB tracks
+      const catId = (track as any)._dbCategory || track.mood[0] || 'other';
+      if (!jsonCatIds.has(catId)) {
+        if (!dbCategoryMap.has(catId)) dbCategoryMap.set(catId, []);
+        dbCategoryMap.get(catId)!.push(track);
+      }
+    }
+    
+    const dbCategories: AudioCategory[] = Array.from(dbCategoryMap.entries()).map(([id, tracks]) => ({
+      id,
+      name: { fr: id.charAt(0).toUpperCase() + id.slice(1), bariba: id },
+      emoji: '🎵',
+      description: { fr: `Musiques ${id}`, bariba: '' },
+      tracks,
+    }));
+    
+    return [...jsonCategories, ...dbCategories];
   }
 
   // Get library metadata
