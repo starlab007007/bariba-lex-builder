@@ -47,7 +47,7 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
   selectedTrackId,
   videoDuration = 30,
 }) => {
-  const { library, isLoading, error } = useAudioLibrary();
+  const { library, isLoading, error, allTracks, allCategories } = useAudioLibrary();
   const { currentTrack, isPlaying, isLoading: trackLoading, progress, togglePlay, stop } = useTrackPlayer();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,12 +70,17 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
   const filteredTracks = useMemo(() => {
     if (!library) return [];
     
-    let tracks = library.categories.flatMap(cat => cat.tracks);
+    let tracks = allTracks;
     
     // Filter by category
     if (activeCategory) {
-      const cat = library.categories.find(c => c.id === activeCategory);
-      tracks = cat?.tracks || [];
+      const cat = allCategories.find(c => c.id === activeCategory);
+      if (cat) {
+        const catTrackIds = new Set(cat.tracks.map(t => t.id));
+        tracks = tracks.filter(t => catTrackIds.has(t.id) || (t as any)._dbCategory === activeCategory);
+      } else {
+        tracks = [];
+      }
     }
     
     // Filter by search
@@ -89,7 +94,7 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
     }
     
     return tracks;
-  }, [library, activeCategory, searchQuery]);
+  }, [library, allTracks, allCategories, activeCategory, searchQuery]);
 
   // Open trimmer when selecting a track
   const handleSelect = (track: AudioTrack) => {
@@ -134,7 +139,7 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
           </div>
           <div>
             <span className="text-white font-bold text-lg">Bibliothèque</span>
-            <p className="text-white/50 text-xs">{library?.metadata.totalTracks || 0} musiques</p>
+            <p className="text-white/50 text-xs">{allTracks.length || 0} musiques</p>
           </div>
         </motion.div>
         <motion.button
@@ -188,7 +193,7 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
             >
               🎵 Tout
             </motion.button>
-            {library.categories.map((cat, idx) => (
+            {allCategories.map((cat, idx) => (
               <motion.button
                 key={cat.id}
                 initial={{ opacity: 0, x: 20 }}
