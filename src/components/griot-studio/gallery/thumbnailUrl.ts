@@ -13,10 +13,18 @@
 
 const RENDER_BASE_REGEX = /\/storage\/v1\/object\/public\//;
 const RENDER_REPLACE = '/storage/v1/render/image/public/';
+const VIDEO_EXT_REGEX = /\.(mp4|webm|mov)(\?|$)/i;
+
+/** Check if a URL points to a video file (not an image) */
+export function isVideoFileUrl(url: string): boolean {
+  if (!url) return false;
+  return VIDEO_EXT_REGEX.test(url);
+}
 
 /**
  * Convert a public Supabase storage URL to a render-transformed thumbnail.
  * Falls back to original URL if format is unrecognized.
+ * Returns empty string for video file URLs (can't render as image).
  */
 export function thumbUrl(originalUrl: string, width = 320, quality = 60): string {
   if (!originalUrl) return '';
@@ -24,8 +32,8 @@ export function thumbUrl(originalUrl: string, width = 320, quality = 60): string
   // Only transform Supabase storage URLs
   if (!RENDER_BASE_REGEX.test(originalUrl)) return originalUrl;
   
-  // Don't transform video files
-  if (/\.(mp4|webm|mov)(\?|$)/i.test(originalUrl)) return originalUrl;
+  // Don't transform video files — they can't be rendered as images
+  if (isVideoFileUrl(originalUrl)) return '';
   
   const transformed = originalUrl.replace(
     RENDER_BASE_REGEX,

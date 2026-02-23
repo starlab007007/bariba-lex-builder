@@ -14,7 +14,7 @@ import React, { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Play, Film } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { gridThumb } from './thumbnailUrl';
+import { gridThumb, isVideoFileUrl } from './thumbnailUrl';
 import type { LibraryAsset } from '../AssetGallery';
 
 interface AssetGridItemProps {
@@ -30,7 +30,9 @@ const AssetGridItemInner = ({ asset, isSelected, selectionIndex, onToggle, disab
   const isVideo = asset.asset_type === 'video' && asset.video_url;
 
   // THUMBNAIL URL: CDN-resized 320px instead of full original
+  // Returns '' if image_url is actually a video file (993/994 videos!)
   const thumbnailSrc = gridThumb(asset.image_url);
+  const hasPoster = !!thumbnailSrc;
 
   const handleClick = useCallback(() => {
     onToggle(asset);
@@ -49,40 +51,45 @@ const AssetGridItemInner = ({ asset, isSelected, selectionIndex, onToggle, disab
         disabled && 'opacity-50 pointer-events-none'
       )}
     >
-      {/* Skeleton placeholder while loading */}
-      {!imageLoaded && (
+      {/* Case 1: Has real image thumbnail → show it with skeleton loader */}
+      {hasPoster && !imageLoaded && (
         <div className="absolute inset-0 z-10">
           <Skeleton className="w-full h-full rounded-none bg-muted/20" />
-          {isVideo && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Film className="w-6 h-6 text-muted-foreground/30" />
-            </div>
-          )}
         </div>
       )}
 
-      {/* THUMBNAIL IMAGE — always shown, CDN-resized */}
-      <img
-        src={thumbnailSrc}
-        alt={asset.description_fr || asset.description_en}
-        loading="lazy"
-        decoding="async"
-        onLoad={() => setImageLoaded(true)}
-        className={cn(
-          'w-full h-full object-cover transition-opacity duration-200',
-          imageLoaded ? 'opacity-100' : 'opacity-0'
-        )}
-      />
+      {hasPoster && (
+        <img
+          src={thumbnailSrc}
+          alt={asset.description_fr || asset.description_en}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
+          className={cn(
+            'w-full h-full object-cover transition-opacity duration-200',
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          )}
+        />
+      )}
 
-      {/* Video play icon overlay — NO video element in grid for performance */}
-      {isVideo && imageLoaded && (
+      {/* Case 2: No poster (video file as image_url) → styled gradient fallback */}
+      {!hasPoster && (
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/80 via-indigo-900/60 to-slate-900/80 flex flex-col items-center justify-center gap-1.5">
+          <Film className="w-8 h-8 text-purple-300/70" />
+          <span className="text-[10px] text-purple-200/60 font-medium">
+            {asset.scene_type}
+          </span>
+        </div>
+      )}
+
+      {/* Video play icon overlay */}
+      {isVideo && (hasPoster ? imageLoaded : true) && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
             <Play className="w-4 h-4 text-white ml-0.5" />
           </div>
         </div>
       )}
-
       {/* Selection overlay */}
       {isSelected && (
         <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center">
