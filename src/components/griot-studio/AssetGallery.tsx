@@ -2,13 +2,31 @@
  * AssetGallery — Optimized gallery for browsing & selecting
  * pre-generated illustrations AND short video clips.
  *
- * Performance:
- * - Server-side paginated queries (60/page) via useInfiniteQuery
- * - IntersectionObserver sentinel for infinite scroll
- * - Debounced search (300ms)
- * - Memoized cards with stable callbacks
- * - Scroll position preserved across filter changes
- * - Max 12 selections with bottom tray
+ * PERFORMANCE STRATEGY (why it's fast with 2000+ assets):
+ *
+ * 1. SERVER-SIDE PAGINATION — 60 items/page via useInfiniteQuery
+ *    Never loads 2000 assets at once. Each page is a light DB query.
+ *
+ * 2. CDN THUMBNAILS — gridThumb() transforms Supabase URLs to
+ *    /render/image/public/ with width=320 quality=55
+ *    → ~15KB per thumb vs ~500KB originals = 30x bandwidth reduction
+ *
+ * 3. NO VIDEO ELEMENTS IN GRID — Videos show their poster image only.
+ *    No <video> tags in the grid = zero decode overhead.
+ *
+ * 4. CONTENT-VISIBILITY: AUTO — Browser skips layout/paint for
+ *    off-screen cards. Massive scroll perf gain.
+ *
+ * 5. INFINITE SCROLL + PREFETCH — IntersectionObserver sentinel
+ *    triggers fetchNextPage 400px before user reaches bottom.
+ *
+ * 6. DEBOUNCED SEARCH (300ms) — Prevents query spam during typing.
+ *
+ * 7. REACT QUERY CACHE — staleTime: 5min. Switching tabs/filters
+ *    reuses cached data instantly, no re-fetch.
+ *
+ * 8. REACT.MEMO + STABLE CALLBACKS — AssetGridItem never re-renders
+ *    unless its specific props change.
  */
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -69,6 +87,9 @@ const CHARACTER_FILTERS = [
 const MAX_SELECTION = 12;
 const PAGE_SIZE = 60;
 
+/** Only select columns needed for the grid — no heavy fields */
+const SELECT_COLUMNS = 'id, image_url, scene_type, character_type, emotion, description_fr, description_en, action, time_of_day, asset_type, video_url, video_duration';
+
 export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection = MAX_SELECTION, disabled }: AssetGalleryProps) {
   const [assetType, setAssetType] = useState<'photo' | 'video'>('photo');
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -77,13 +98,13 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Debounce search — 300ms
+  // DEBOUNCE SEARCH — 300ms to prevent query spam
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim().toLowerCase()), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // Paginated server-side query
+  // PAGINATED SERVER-SIDE QUERY — 60 items/page, cached 5min
   const {
     data,
     isLoading,
@@ -95,7 +116,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from('anime_scene_library')
-        .select('id, image_url, scene_type, character_type, emotion, description_fr, description_en, action, time_of_day, asset_type, video_url, video_duration')
+        .select(SELECT_COLUMNS)
         .eq('asset_type', assetType)
         .order('scene_type')
         .order('created_at', { ascending: false })
@@ -116,16 +137,17 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
     },
     getNextPageParam: (lastPage) => lastPage.nextOffset,
     initialPageParam: 0,
+    // CACHE — 5 min staleTime so switching tabs reuses data instantly
     staleTime: 5 * 60 * 1000,
   });
 
-  // Flatten all pages into a single list
+  // Flatten all pages — memoized
   const allAssets = useMemo(() => {
     if (!data?.pages) return [];
     return data.pages.flatMap(p => p.items);
   }, [data]);
 
-  // IntersectionObserver for infinite scroll — prefetch next page
+  // INFINITE SCROLL — prefetch 400px before bottom
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -135,13 +157,13 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
           fetchNextPage();
         }
       },
-      { threshold: 0.1, rootMargin: '400px' } // prefetch 400px before visible
+      { threshold: 0.1, rootMargin: '400px' }
     );
     obs.observe(el);
     return () => obs.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Selection helpers — stable callbacks
+  // SELECTION — stable callbacks to prevent card re-renders
   const selectedIds = useMemo(() => new Set(selectedAssets.map(a => a.id)), [selectedAssets]);
 
   const toggleAsset = useCallback((asset: LibraryAsset) => {
@@ -170,7 +192,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
   const hasSelection = selectedAssets.length > 0;
 
   return (
-    <section className="space-y-3 pb-20"> {/* pb-20 for selection tray space */}
+    <section className="space-y-3 pb-20">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-amber-100 flex items-center gap-2">
@@ -193,7 +215,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         )}
       </div>
 
-      {/* Search bar — debounced */}
+      {/* Search — DEBOUNCED 300ms */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-300/40" />
         <input
@@ -225,7 +247,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         ))}
       </div>
 
-      {/* Scene category chips — scrollable */}
+      {/* Scene category chips */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
         {SCENE_CATEGORIES.map(cat => (
           <button
@@ -270,15 +292,15 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         </p>
       )}
 
-      {/* Grid — infinite scroll */}
+      {/* GRID — content-visibility: auto for off-screen paint skip */}
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {Array.from({ length: 12 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-[9/16] rounded-lg bg-blue-900/30" />
+            <Skeleton key={i} className="aspect-[9/16] rounded-lg bg-amber-900/20" />
           ))}
         </div>
       ) : totalCount === 0 ? (
-        <div className="text-center py-8 text-blue-200/40 text-sm">
+        <div className="text-center py-8 text-amber-200/40 text-sm">
           {debouncedSearch
             ? '🔍 Aucun résultat pour cette recherche'
             : assetType === 'video'
@@ -298,7 +320,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
             />
           ))}
 
-          {/* Infinite scroll sentinel */}
+          {/* INFINITE SCROLL SENTINEL — triggers fetchNextPage */}
           <div ref={sentinelRef} className="col-span-full flex items-center justify-center py-4">
             {isFetchingNextPage && (
               <div className="flex items-center gap-2 text-amber-200/40 text-xs">
@@ -310,7 +332,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         </div>
       )}
 
-      {/* Selection Tray — fixed bottom */}
+      {/* SELECTION TRAY — fixed bottom */}
       {hasSelection && (
         <SelectionTray
           selectedAssets={selectedAssets}

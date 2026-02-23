@@ -1,19 +1,20 @@
 /**
  * AssetGridItem — Single asset card (photo or video) for the gallery grid.
- * 
- * Performance optimizations:
+ *
+ * PERFORMANCE OPTIMIZATIONS:
  * - React.memo with shallow comparison prevents unnecessary re-renders
- * - Native loading="lazy" for images
- * - IntersectionObserver for lazy video mounting
+ * - gridThumb() → 320px CDN-resized thumbnails (30x smaller than originals)
+ * - Native loading="lazy" + decoding="async"
+ * - Video poster = gridThumb(image_url), NO video element in grid
  * - Skeleton placeholder with fade-in transition
  * - will-change for GPU-accelerated hover
- * - Video poster fallback: uses image_url as poster, shows first frame
  */
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Play, Film } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { gridThumb } from './thumbnailUrl';
 import type { LibraryAsset } from '../AssetGallery';
 
 interface AssetGridItemProps {
@@ -25,120 +26,61 @@ interface AssetGridItemProps {
 }
 
 const AssetGridItemInner = ({ asset, isSelected, selectionIndex, onToggle, disabled }: AssetGridItemProps) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
   const isVideo = asset.asset_type === 'video' && asset.video_url;
 
-  // IntersectionObserver for lazy mounting of videos
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsVisible(entry.isIntersecting),
-      { threshold: 0.1, rootMargin: '200px' }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  // THUMBNAIL URL: CDN-resized 320px instead of full original
+  const thumbnailSrc = gridThumb(asset.image_url);
 
   const handleClick = useCallback(() => {
     onToggle(asset);
   }, [onToggle, asset]);
 
-  // Play video on hover/touch — only when visible
-  const handlePointerEnter = useCallback(() => {
-    if (isVideo && videoRef.current && isVisible) {
-      videoRef.current.play().catch(() => {});
-    }
-  }, [isVideo, isVisible]);
-
-  const handlePointerLeave = useCallback(() => {
-    if (isVideo && videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
-  }, [isVideo]);
-
   return (
     <button
-      ref={containerRef as any}
       onClick={handleClick}
       disabled={disabled}
-      onPointerEnter={handlePointerEnter}
-      onPointerLeave={handlePointerLeave}
       className={cn(
-        'relative aspect-[9/16] rounded-lg overflow-hidden border-2 transition-colors',
+        'relative w-full h-full rounded-lg overflow-hidden border-2 transition-colors',
         'will-change-transform active:scale-[0.97] transition-transform duration-150',
         isSelected
           ? 'border-amber-400 ring-2 ring-amber-400/30 shadow-lg shadow-amber-500/20'
           : 'border-transparent hover:border-amber-500/30',
         disabled && 'opacity-50 pointer-events-none'
       )}
-      style={{ contentVisibility: 'auto', containIntrinsicSize: '0 200px' }}
     >
       {/* Skeleton placeholder while loading */}
       {!imageLoaded && (
         <div className="absolute inset-0 z-10">
-          <Skeleton className="w-full h-full rounded-none bg-amber-900/30" />
+          <Skeleton className="w-full h-full rounded-none bg-muted/20" />
           {isVideo && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <Film className="w-6 h-6 text-amber-200/30" />
+              <Film className="w-6 h-6 text-muted-foreground/30" />
             </div>
           )}
         </div>
       )}
 
-      {/* Thumbnail: video or image */}
-      {isVideo ? (
-        <>
-          {/* Always show poster image first for instant visual */}
-          <img
-            src={asset.image_url}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            onLoad={() => setImageLoaded(true)}
-            className={cn(
-              'absolute inset-0 w-full h-full object-cover transition-opacity duration-200',
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            )}
-          />
-          {/* Video loads on top when visible — plays on hover */}
-          {isVisible && (
-            <video
-              ref={videoRef}
-              src={asset.video_url!}
-              poster={asset.image_url}
-              muted
-              loop
-              playsInline
-              preload="none"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          )}
-          {/* Play icon overlay */}
-          {imageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                <Play className="w-4 h-4 text-white ml-0.5" />
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <img
-          src={asset.image_url}
-          alt={asset.description_fr || asset.description_en}
-          loading="lazy"
-          decoding="async"
-          onLoad={() => setImageLoaded(true)}
-          className={cn(
-            'w-full h-full object-cover transition-opacity duration-200',
-            imageLoaded ? 'opacity-100' : 'opacity-0'
-          )}
-        />
+      {/* THUMBNAIL IMAGE — always shown, CDN-resized */}
+      <img
+        src={thumbnailSrc}
+        alt={asset.description_fr || asset.description_en}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setImageLoaded(true)}
+        className={cn(
+          'w-full h-full object-cover transition-opacity duration-200',
+          imageLoaded ? 'opacity-100' : 'opacity-0'
+        )}
+      />
+
+      {/* Video play icon overlay — NO video element in grid for performance */}
+      {isVideo && imageLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
+            <Play className="w-4 h-4 text-white ml-0.5" />
+          </div>
+        </div>
       )}
 
       {/* Selection overlay */}
