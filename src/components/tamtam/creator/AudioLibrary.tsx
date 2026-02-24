@@ -45,7 +45,7 @@ const AudioLibrary: React.FC<AudioLibraryProps> = ({
   onSelectTrack,
   onClose,
   selectedTrackId,
-  videoDuration = 30,
+  videoDuration = 90,
 }) => {
   const { library, isLoading, error, allTracks, allCategories } = useAudioLibrary();
   const { currentTrack, isPlaying, isLoading: trackLoading, progress, togglePlay, stop } = useTrackPlayer();

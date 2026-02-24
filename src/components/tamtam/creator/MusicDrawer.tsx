@@ -268,7 +268,7 @@ export default function MusicDrawer({
         {
           style: selectedAIStyle as any,
           mood: activeMood !== 'all' ? activeMood : undefined,
-          duration: videoDuration || 30,
+          duration: videoDuration || 90,
           culturalContext: 'bariba'
         },
         (progress) => setGenerationProgress(progress)
