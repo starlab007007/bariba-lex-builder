@@ -331,7 +331,7 @@ export const IntegratedPreviewMode: React.FC<IntegratedPreviewModeProps> = ({
     const videoDuration = Number(duration);
     const finalDuration = segmentDuration > 0 
       ? segmentDuration 
-      : (isFinite(videoDuration) && videoDuration > 0 ? videoDuration : 30);
+      : (isFinite(videoDuration) && videoDuration > 0 ? videoDuration : 90);
     
     return Math.max(1, finalDuration);
   }, [segments, duration]);
