@@ -440,7 +440,7 @@ export default function FullscreenCreator({
   const [torchActive, setTorchActive] = useState(false);
   const [timerSec, setTimerSec] = useState<0 | 3 | 10>(0);
   const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
-  const [lengthSec, setLengthSec] = useState<15 | 30 | 60 | 180 | 600>(30);
+  const [lengthSec, setLengthSec] = useState<15 | 30 | 60 | 90 | 180 | 600>(90);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingElapsed, setRecordingElapsed] = useState(0);
 
@@ -670,7 +670,7 @@ export default function FullscreenCreator({
   // Auto-apply simple template settings
   useEffect(() => {
     if (selectedTemplate && selectedTemplate.id !== "free") {
-      setLengthSec(selectedTemplate.suggestedDuration as 15 | 30 | 60 | 180 | 600);
+      setLengthSec(selectedTemplate.suggestedDuration as 15 | 30 | 60 | 90 | 180 | 600);
       setMode(selectedTemplate.suggestedMode as CaptureMode);
       setCanvasRatio(selectedTemplate.suggestedRatio);
       if (selectedTemplate.autoFilter) updateEffects({ filterId: selectedTemplate.autoFilter });
@@ -2320,10 +2320,11 @@ export default function FullscreenCreator({
 
         // best-effort: align ratio + duration
         setCanvasRatio((tpl.ratio as CanvasRatio) || "9:16");
-        const dur = typeof tpl.duration === "number" ? tpl.duration : 30;
+        const dur = typeof tpl.duration === "number" ? tpl.duration : 90;
         if (dur <= 15) setLengthSec(15);
         else if (dur <= 30) setLengthSec(30);
         else if (dur <= 60) setLengthSec(60);
+        else if (dur <= 90) setLengthSec(90);
         else setLengthSec(180);
 
         // pick a reasonable mode based on slots
@@ -2423,9 +2424,10 @@ export default function FullscreenCreator({
 
           // Align settings
           const dur = kseManifest.durationSec;
-          if (dur <= 15) setLengthSec(15);
+           if (dur <= 15) setLengthSec(15);
           else if (dur <= 30) setLengthSec(30);
           else if (dur <= 60) setLengthSec(60);
+          else if (dur <= 90) setLengthSec(90);
           else setLengthSec(180);
 
           setCanvasRatio((kseManifest.ratio as CanvasRatio) || "9:16");
@@ -2448,6 +2450,7 @@ export default function FullscreenCreator({
         if (durationSec <= 15) setLengthSec(15);
         else if (durationSec <= 30) setLengthSec(30);
         else if (durationSec <= 60) setLengthSec(60);
+        else if (durationSec <= 90) setLengthSec(90);
         else setLengthSec(180);
       }
 
@@ -2498,6 +2501,7 @@ export default function FullscreenCreator({
       if (dur <= 15) setLengthSec(15);
       else if (dur <= 30) setLengthSec(30);
       else if (dur <= 60) setLengthSec(60);
+      else if (dur <= 90) setLengthSec(90);
       else setLengthSec(180);
     }
     
@@ -2661,6 +2665,7 @@ export default function FullscreenCreator({
               if (template.duration <= 15) setLengthSec(15);
               else if (template.duration <= 30) setLengthSec(30);
               else if (template.duration <= 60) setLengthSec(60);
+              else if (template.duration <= 90) setLengthSec(90);
               else setLengthSec(180);
 
               setToast(`${template.emoji} ${template.name} activé`);
@@ -3994,6 +3999,7 @@ export default function FullscreenCreator({
               onClose={() => setShowAudioLibrary(false)}
               onSelectTrack={handleAudioTrackSelect}
               selectedTrackId={selectedAudioTrack?.id}
+              videoDuration={totalDuration || lengthSec || 90}
             />
           )}
         </AnimatePresence>
