@@ -10,9 +10,11 @@ import { AnimeLibraryControls } from './AnimeLibraryControls';
 import { AnimeLibraryGrid } from './AnimeLibraryGrid';
 import { AssetUploadForm } from './AssetUploadForm';
 import { MusicUploadForm } from './MusicUploadForm';
+import { useBatchPosterGenerator } from '@/hooks/useBatchPosterGenerator';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RefreshCw, BookImage, Image, Music2, Upload, AlertTriangle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { RefreshCw, BookImage, Image, Music2, Upload, AlertTriangle, Film, Loader2, StopCircle } from 'lucide-react';
 
 /** Error boundary to prevent white page crashes */
 class LibraryErrorBoundary extends Component<
@@ -48,10 +50,13 @@ class LibraryErrorBoundary extends Component<
 
 export function AnimeLibraryManager() {
   const { stats, loading, error, fetchStats } = useAnimeLibrary();
+  const { generate, stop, isProcessing, progress } = useBatchPosterGenerator();
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  const progressPercent = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
   return (
     <LibraryErrorBoundary>
@@ -85,6 +90,49 @@ export function AnimeLibraryManager() {
           {error}
         </div>
       )}
+
+      {/* ===== POSTER GENERATOR PANEL ===== */}
+      <div className="p-4 rounded-xl border border-purple-500/20 bg-purple-950/20 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Film className="h-5 w-5 text-purple-400" />
+            <div>
+              <h3 className="text-sm font-semibold text-purple-200">Générateur de Posters Vidéo</h3>
+              <p className="text-xs text-purple-300/60">Extrait la 1ère frame de chaque vidéo pour des miniatures instantanées</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {isProcessing ? (
+              <Button size="sm" variant="destructive" onClick={stop} className="gap-1.5">
+                <StopCircle className="h-4 w-4" /> Arrêter
+              </Button>
+            ) : (
+              <>
+                <Button size="sm" variant="outline" onClick={() => generate(50)} className="gap-1.5 border-purple-500/30 text-purple-200 hover:bg-purple-500/20">
+                  <Film className="h-4 w-4" /> Batch 50
+                </Button>
+                <Button size="sm" onClick={() => generate(100)} className="gap-1.5 bg-purple-600 hover:bg-purple-500 text-white">
+                  <Film className="h-4 w-4" /> Batch 100
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {isProcessing && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs text-purple-300/80">
+              <span>
+                {progress.current && <span className="text-purple-400">{progress.current}</span>}
+                {' '}{progress.done}/{progress.total} traités
+                {progress.errors > 0 && <span className="text-destructive ml-1">({progress.errors} erreurs)</span>}
+              </span>
+              <span className="font-mono">{progressPercent}%</span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+          </div>
+        )}
+      </div>
 
       {/* Tabs */}
       <Tabs defaultValue="gallery" className="w-full">
