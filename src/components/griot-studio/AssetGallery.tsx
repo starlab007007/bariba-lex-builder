@@ -296,7 +296,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {Array.from({ length: 12 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-[9/16] rounded-lg bg-amber-900/20" />
+            <Skeleton key={i} className="aspect-[9/16] rounded-lg bg-muted/20" />
           ))}
         </div>
       ) : totalCount === 0 ? (
@@ -308,7 +308,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
               : '📸 Aucune illustration dans cette catégorie'}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" style={{ contain: 'layout style' }}>
           {allAssets.map(asset => (
             <AssetGridItem
               key={asset.id}
