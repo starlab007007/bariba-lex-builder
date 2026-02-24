@@ -30,7 +30,7 @@ interface AssetExpandedDrawerProps {
   disabled?: boolean;
 }
 
-const BATCH_SIZE = 12;
+const BATCH_SIZE = 8;
 
 export function AssetExpandedDrawer({
   open,

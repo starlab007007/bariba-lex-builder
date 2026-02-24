@@ -12,7 +12,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { Play, Film } from 'lucide-react';
+import { Play, Film, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { gridThumb, isVideoFileUrl } from './thumbnailUrl';
 import type { LibraryAsset } from '../AssetGallery';
@@ -22,21 +22,25 @@ interface AssetGridItemProps {
   isSelected: boolean;
   selectionIndex: number;
   onToggle: (asset: LibraryAsset) => void;
+  onPreview?: (asset: LibraryAsset) => void;
   disabled?: boolean;
 }
 
-const AssetGridItemInner = ({ asset, isSelected, selectionIndex, onToggle, disabled }: AssetGridItemProps) => {
+const AssetGridItemInner = ({ asset, isSelected, selectionIndex, onToggle, onPreview, disabled }: AssetGridItemProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const isVideo = asset.asset_type === 'video' && asset.video_url;
 
-  // THUMBNAIL URL: CDN-resized 320px instead of full original
-  // Returns '' if image_url is actually a video file (993/994 videos!)
   const thumbnailSrc = gridThumb(asset.image_url);
   const hasPoster = !!thumbnailSrc;
 
   const handleClick = useCallback(() => {
     onToggle(asset);
   }, [onToggle, asset]);
+
+  const handlePreview = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onPreview) onPreview(asset);
+  }, [onPreview, asset]);
 
   return (
     <button
@@ -91,6 +95,16 @@ const AssetGridItemInner = ({ asset, isSelected, selectionIndex, onToggle, disab
           </div>
         </div>
       )}
+      {/* Preview button for videos */}
+      {isVideo && onPreview && (
+        <button
+          onClick={handlePreview}
+          className="absolute top-1 right-1 z-10 w-7 h-7 rounded-full bg-purple-600/80 flex items-center justify-center backdrop-blur-sm hover:bg-purple-500 transition-colors"
+          title="Prévisualiser"
+        >
+          <Eye className="w-3.5 h-3.5 text-white" />
+        </button>
+      )}
       {/* Selection overlay */}
       {isSelected && (
         <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center">
@@ -121,6 +135,7 @@ export const AssetGridItem = React.memo(AssetGridItemInner, (prev, next) => {
     prev.asset.id === next.asset.id &&
     prev.isSelected === next.isSelected &&
     prev.selectionIndex === next.selectionIndex &&
-    prev.disabled === next.disabled
+    prev.disabled === next.disabled &&
+    prev.onPreview === next.onPreview
   );
 });

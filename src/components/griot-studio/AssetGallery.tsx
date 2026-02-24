@@ -1,42 +1,23 @@
 /**
- * AssetGallery — Optimized gallery for browsing & selecting
- * pre-generated illustrations AND short video clips.
+ * AssetGallery — Gallery for browsing & selecting illustrations AND video clips.
  *
- * PERFORMANCE STRATEGY (why it's fast with 2000+ assets):
- *
- * 1. SERVER-SIDE PAGINATION — 60 items/page via useInfiniteQuery
- *    Never loads 2000 assets at once. Each page is a light DB query.
- *
- * 2. CDN THUMBNAILS — gridThumb() transforms Supabase URLs to
- *    /render/image/public/ with width=320 quality=55
- *    → ~15KB per thumb vs ~500KB originals = 30x bandwidth reduction
- *
- * 3. NO VIDEO ELEMENTS IN GRID — Videos show their poster image only.
- *    No <video> tags in the grid = zero decode overhead.
- *
- * 4. CONTENT-VISIBILITY: AUTO — Browser skips layout/paint for
- *    off-screen cards. Massive scroll perf gain.
- *
- * 5. INFINITE SCROLL + PREFETCH — IntersectionObserver sentinel
- *    triggers fetchNextPage 400px before user reaches bottom.
- *
- * 6. DEBOUNCED SEARCH (300ms) — Prevents query spam during typing.
- *
- * 7. REACT QUERY CACHE — staleTime: 5min. Switching tabs/filters
- *    reuses cached data instantly, no re-fetch.
- *
- * 8. REACT.MEMO + STABLE CALLBACKS — AssetGridItem never re-renders
- *    unless its specific props change.
+ * KEY FEATURES:
+ * - Paginated display: 8 items at a time with "Voir plus" button
+ * - Separate selection: up to 12 photos AND 12 videos independently
+ * - Video preview modal: play video before selecting
+ * - CDN thumbnails, debounced search, React Query cache
  */
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { X, ImageIcon, Camera, Film, Search, Loader2 } from 'lucide-react';
+import { X, ImageIcon, Camera, Film, Search, Loader2, ChevronDown } from 'lucide-react';
 import { AssetGridItem } from './gallery/AssetGridItem';
 import { SelectionTray } from './gallery/SelectionTray';
+import { VideoPreviewModal } from './gallery/VideoPreviewModal';
 
 export interface LibraryAsset {
   id: string;
@@ -84,27 +65,34 @@ const CHARACTER_FILTERS = [
   { key: 'spirit', label: 'Esprit', emoji: '✨' },
 ] as const;
 
-const MAX_SELECTION = 12;
-const PAGE_SIZE = 60;
+const MAX_PHOTOS = 12;
+const MAX_VIDEOS = 12;
+const PAGE_SIZE = 60; // server page
+const DISPLAY_BATCH = 8; // visible batch in UI
 
-/** Only select columns needed for the grid — no heavy fields */
 const SELECT_COLUMNS = 'id, image_url, scene_type, character_type, emotion, description_fr, description_en, action, time_of_day, asset_type, video_url, video_duration';
 
-export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection = MAX_SELECTION, disabled }: AssetGalleryProps) {
+export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection, disabled }: AssetGalleryProps) {
   const [assetType, setAssetType] = useState<'photo' | 'video'>('photo');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activeCharacter, setActiveCharacter] = useState<string>('all');
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(DISPLAY_BATCH);
+  const [previewAsset, setPreviewAsset] = useState<LibraryAsset | null>(null);
 
-  // DEBOUNCE SEARCH — 300ms to prevent query spam
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(DISPLAY_BATCH);
+  }, [assetType, activeCategory, activeCharacter, debouncedSearch]);
+
+  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim().toLowerCase()), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // PAGINATED SERVER-SIDE QUERY — 60 items/page, cached 5min
+  // Server-side paginated query
   const {
     data,
     isLoading,
@@ -137,43 +125,36 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
     },
     getNextPageParam: (lastPage) => lastPage.nextOffset,
     initialPageParam: 0,
-    // CACHE — 5 min staleTime so switching tabs reuses data instantly
     staleTime: 5 * 60 * 1000,
   });
 
-  // Flatten all pages — memoized
   const allAssets = useMemo(() => {
     if (!data?.pages) return [];
     return data.pages.flatMap(p => p.items);
   }, [data]);
 
-  // INFINITE SCROLL — prefetch 400px before bottom
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1, rootMargin: '400px' }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  // Split selection by type
+  const selectedPhotos = useMemo(() => selectedAssets.filter(a => a.asset_type === 'photo'), [selectedAssets]);
+  const selectedVideos = useMemo(() => selectedAssets.filter(a => a.asset_type === 'video'), [selectedAssets]);
 
-  // SELECTION — stable callbacks to prevent card re-renders
   const selectedIds = useMemo(() => new Set(selectedAssets.map(a => a.id)), [selectedAssets]);
+
+  const currentMax = assetType === 'photo' ? MAX_PHOTOS : MAX_VIDEOS;
+  const currentTypeCount = assetType === 'photo' ? selectedPhotos.length : selectedVideos.length;
 
   const toggleAsset = useCallback((asset: LibraryAsset) => {
     if (disabled) return;
     if (selectedIds.has(asset.id)) {
       onSelectionChange(selectedAssets.filter(a => a.id !== asset.id));
-    } else if (selectedAssets.length < maxSelection) {
-      onSelectionChange([...selectedAssets, asset]);
+    } else {
+      // Check limit for the asset's type
+      const typeCount = asset.asset_type === 'photo' ? selectedPhotos.length : selectedVideos.length;
+      const typeMax = asset.asset_type === 'photo' ? MAX_PHOTOS : MAX_VIDEOS;
+      if (typeCount < typeMax) {
+        onSelectionChange([...selectedAssets, asset]);
+      }
     }
-  }, [selectedAssets, selectedIds, maxSelection, disabled, onSelectionChange]);
+  }, [selectedAssets, selectedIds, selectedPhotos.length, selectedVideos.length, disabled, onSelectionChange]);
 
   const clearSelection = useCallback(() => {
     if (!disabled) onSelectionChange([]);
@@ -188,7 +169,24 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
     return idx >= 0 ? idx + 1 : 0;
   }, [selectedAssets]);
 
-  const totalCount = allAssets.length;
+  const handlePreview = useCallback((asset: LibraryAsset) => {
+    setPreviewAsset(asset);
+  }, []);
+
+  // Pagination: show only `visibleCount` items, load more server data if needed
+  const visibleAssets = allAssets.slice(0, visibleCount);
+  const totalFetched = allAssets.length;
+  const canShowMore = visibleCount < totalFetched || hasNextPage;
+
+  const handleShowMore = useCallback(() => {
+    const nextVisible = visibleCount + DISPLAY_BATCH;
+    setVisibleCount(nextVisible);
+    // If we need more data from server
+    if (nextVisible >= totalFetched && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [visibleCount, totalFetched, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   const hasSelection = selectedAssets.length > 0;
 
   return (
@@ -198,9 +196,14 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         <h3 className="text-sm font-semibold text-amber-100 flex items-center gap-2">
           <ImageIcon className="w-4 h-4 text-amber-400" />
           Illustrations
-          {hasSelection && (
+          {selectedPhotos.length > 0 && (
             <span className="ml-1 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
-              {selectedAssets.length}/{maxSelection}
+              📸 {selectedPhotos.length}/{MAX_PHOTOS}
+            </span>
+          )}
+          {selectedVideos.length > 0 && (
+            <span className="ml-1 bg-purple-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              🎬 {selectedVideos.length}/{MAX_VIDEOS}
             </span>
           )}
         </h3>
@@ -215,7 +218,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
         )}
       </div>
 
-      {/* Search — DEBOUNCED 300ms */}
+      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-300/40" />
         <input
@@ -242,7 +245,7 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
             disabled={disabled}
           >
             {type === 'photo' ? <Camera className="w-4 h-4" /> : <Film className="w-4 h-4" />}
-            {type === 'photo' ? '📸 Photos' : '🎬 Vidéos'}
+            {type === 'photo' ? `📸 Photos (${selectedPhotos.length}/${MAX_PHOTOS})` : `🎬 Vidéos (${selectedVideos.length}/${MAX_VIDEOS})`}
           </button>
         ))}
       </div>
@@ -286,20 +289,20 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
       </div>
 
       {/* Result count */}
-      {!isLoading && totalCount > 0 && (
+      {!isLoading && totalFetched > 0 && (
         <p className="text-[11px] text-amber-200/40 px-1">
-          {totalCount} résultat{totalCount > 1 ? 's' : ''}{hasNextPage ? '+' : ''}
+          {visibleAssets.length} sur {totalFetched}{hasNextPage ? '+' : ''} résultat{totalFetched > 1 ? 's' : ''}
         </p>
       )}
 
-      {/* GRID — content-visibility: auto for off-screen paint skip */}
+      {/* GRID — paginated by 8 */}
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-          {Array.from({ length: 12 }).map((_, i) => (
+          {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="aspect-[9/16] rounded-lg bg-muted/20" />
           ))}
         </div>
-      ) : totalCount === 0 ? (
+      ) : totalFetched === 0 ? (
         <div className="text-center py-8 text-amber-200/40 text-sm">
           {debouncedSearch
             ? '🔍 Aucun résultat pour cette recherche'
@@ -308,35 +311,57 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection =
               : '📸 Aucune illustration dans cette catégorie'}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" style={{ contain: 'layout style' }}>
-          {allAssets.map(asset => (
-            <AssetGridItem
-              key={asset.id}
-              asset={asset}
-              isSelected={selectedIds.has(asset.id)}
-              selectionIndex={selectionIndex(asset.id)}
-              onToggle={toggleAsset}
-              disabled={disabled || (!selectedIds.has(asset.id) && selectedAssets.length >= maxSelection)}
-            />
-          ))}
-
-          {/* INFINITE SCROLL SENTINEL — triggers fetchNextPage */}
-          <div ref={sentinelRef} className="col-span-full flex items-center justify-center py-4">
-            {isFetchingNextPage && (
-              <div className="flex items-center gap-2 text-amber-200/40 text-xs">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Chargement...
-              </div>
-            )}
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" style={{ contain: 'layout style' }}>
+            {visibleAssets.map(asset => (
+              <AssetGridItem
+                key={asset.id}
+                asset={asset}
+                isSelected={selectedIds.has(asset.id)}
+                selectionIndex={selectionIndex(asset.id)}
+                onToggle={toggleAsset}
+                onPreview={asset.asset_type === 'video' ? handlePreview : undefined}
+                disabled={disabled || (!selectedIds.has(asset.id) && currentTypeCount >= currentMax)}
+              />
+            ))}
           </div>
-        </div>
+
+          {/* "Voir plus" button */}
+          {canShowMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShowMore}
+                disabled={isFetchingNextPage}
+                className="gap-2 border-amber-500/20 text-amber-200 hover:bg-amber-500/10 hover:text-amber-100"
+              >
+                {isFetchingNextPage ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Chargement...</>
+                ) : (
+                  <><ChevronDown className="w-4 h-4" /> Voir plus ({DISPLAY_BATCH})</>
+                )}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
-      {/* SELECTION TRAY — fixed bottom */}
+      {/* Video Preview Modal */}
+      <VideoPreviewModal
+        asset={previewAsset}
+        open={!!previewAsset}
+        onOpenChange={(open) => { if (!open) setPreviewAsset(null); }}
+        isSelected={previewAsset ? selectedIds.has(previewAsset.id) : false}
+        onToggle={toggleAsset}
+        disabled={disabled || (previewAsset ? !selectedIds.has(previewAsset.id) && currentTypeCount >= currentMax : false)}
+      />
+
+      {/* Selection Tray */}
       {hasSelection && (
         <SelectionTray
           selectedAssets={selectedAssets}
-          maxSelection={maxSelection}
+          maxSelection={MAX_PHOTOS + MAX_VIDEOS}
           onRemove={removeFromSelection}
           onClearAll={clearSelection}
           disabled={disabled}
