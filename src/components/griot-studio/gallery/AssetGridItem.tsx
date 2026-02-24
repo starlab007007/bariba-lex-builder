@@ -42,8 +42,9 @@ const AssetGridItemInner = ({ asset, isSelected, selectionIndex, onToggle, disab
     <button
       onClick={handleClick}
       disabled={disabled}
+      style={{ contentVisibility: 'auto', containIntrinsicSize: '0 200px' }}
       className={cn(
-        'relative w-full h-full rounded-lg overflow-hidden border-2 transition-colors',
+        'relative w-full aspect-[9/16] rounded-lg overflow-hidden border-2 transition-colors',
         'will-change-transform active:scale-[0.97] transition-transform duration-150',
         isSelected
           ? 'border-amber-400 ring-2 ring-amber-400/30 shadow-lg shadow-amber-500/20'

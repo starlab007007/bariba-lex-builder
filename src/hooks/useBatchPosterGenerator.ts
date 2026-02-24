@@ -113,8 +113,8 @@ export function useBatchPosterGenerator() {
       setProgress(p => ({ ...p, total: videos.length }));
       toast.info(`🎬 Génération de ${videos.length} posters... (${data?.remaining || 0} restants après ce batch)`);
 
-      // 2. Process 3 at a time (browser can handle 3 concurrent video loads)
-      const CONCURRENCY = 3;
+      // 2. Process 8 at a time for max throughput
+      const CONCURRENCY = 8;
       for (let i = 0; i < videos.length; i += CONCURRENCY) {
         if (abortRef.current) break;
 

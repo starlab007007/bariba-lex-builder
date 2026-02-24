@@ -332,7 +332,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
             {segment.mediaType === 'video' ? (
               <>
                 <video ref={videoRef} src={segment.media_url} className="w-full h-full object-cover"
-                  onEnded={() => setIsPlayingVideo(false)} playsInline />
+                  preload="none" poster="" onEnded={() => setIsPlayingVideo(false)} playsInline />
                 <button onClick={toggleVideoPlay}
                   className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition">
                   {isPlayingVideo ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
