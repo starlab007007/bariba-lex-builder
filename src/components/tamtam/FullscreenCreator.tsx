@@ -1989,9 +1989,11 @@ export default function FullscreenCreator({
     try {
       setError(null);
       
-      // ✅ FIX: If no segments but we have a capturedBlob, create segment on-the-fly
-      if (!segments.length && capturedBlob && capturedBlob.size > 0) {
-        console.log('⚡ [publish] No segments but capturedBlob exists, creating segment...');
+      // ✅ FIX: Build working segments list - use state segments or create from capturedBlob
+      let workingSegments = [...segments];
+      
+      if (!workingSegments.length && capturedBlob && capturedBlob.size > 0) {
+        console.log('⚡ [publish] No segments but capturedBlob exists, creating segment from blob...');
         const fallbackSeg: MiniTimelineSegment = {
           id: `${Date.now()}`,
           type: capturedType === "video" ? "video" : "photo",
@@ -2002,21 +2004,29 @@ export default function FullscreenCreator({
           volume: 100,
           blob: capturedBlob,
         };
+        workingSegments = [fallbackSeg];
         setSegments([fallbackSeg]);
-        // Use the fallback segments directly
-        segments.push(fallbackSeg);
       }
       
-      if (!segments.length) {
+      // ✅ FIX: If segments exist but first blob is missing, patch from capturedBlob
+      if (workingSegments.length > 0 && (!workingSegments[0].blob || workingSegments[0].blob.size === 0) && capturedBlob && capturedBlob.size > 0) {
+        console.log('⚡ [publish] Patching segment blob from capturedBlob...');
+        workingSegments = workingSegments.map((seg, i) =>
+          i === 0 ? { ...seg, blob: capturedBlob } : seg
+        );
+      }
+      
+      if (!workingSegments.length) {
         console.error('❌ [publish] No segments and no blob');
         throw new Error("Aucun contenu à publier.");
       }
       
-      const firstSegment = segments[0];
+      const firstSegment = workingSegments[0];
       if (!firstSegment.blob || firstSegment.blob.size === 0) {
         console.error('❌ [publish] First segment has no valid blob:', {
           hasBlob: !!firstSegment.blob,
-          blobSize: firstSegment.blob?.size
+          blobSize: firstSegment.blob?.size,
+          capturedBlobSize: capturedBlob?.size
         });
         throw new Error("Contenu vidéo manquant ou invalide.");
       }
@@ -2033,10 +2043,10 @@ export default function FullscreenCreator({
       const finalCaption = challenge ? `${caption} ${challenge.hashtag}`.trim() : caption;
 
       setPublishProgress({ percent: 10, message: "Validation du contenu..." });
-      let finalSegments = [...segments];
+      let finalSegments = [...workingSegments];
 
       // ✅ BLOCK B: If K-Engine active, render the final output with template effects at NATIVE resolution
-      if (isKEngineActive && segments[0]?.blob) {
+      if (isKEngineActive && workingSegments[0]?.blob) {
         setIsProcessingTemplate(true);
         setProcessingProgress({ percent: 5, message_fr: "Préparation export HD..." });
 
@@ -2044,12 +2054,12 @@ export default function FullscreenCreator({
           // ✅ NATIVE RESOLUTION: Extract resolution from captured video blob
           let nativeResolution = { width: 1080, height: 1920 };
           
-          if (capturedType === "video" && segments[0].blob) {
+          if (capturedType === "video" && workingSegments[0].blob) {
             try {
               const tempVideo = document.createElement("video");
               tempVideo.muted = true;
               tempVideo.playsInline = true;
-              tempVideo.src = URL.createObjectURL(segments[0].blob);
+              tempVideo.src = URL.createObjectURL(workingSegments[0].blob);
               
               await new Promise<void>((resolve) => {
                 tempVideo.onloadedmetadata = () => resolve();
@@ -2072,7 +2082,7 @@ export default function FullscreenCreator({
 
           const exportResult = await kEngine.exportJob(
             {
-              inputBlob: segments[0].blob,
+              inputBlob: workingSegments[0].blob,
               inputType: capturedType === "photo" ? "photo" : "video",
               outputType: capturedType === "photo" ? "image" : "video",
               preferMp4: false,
@@ -2093,7 +2103,7 @@ export default function FullscreenCreator({
 
           if (exportResult.outputBlob && exportResult.outputBlob.size > 0 && exportResult.used !== "fallback") {
             // Replace segment blob with rendered output
-            finalSegments = segments.map((seg, i) =>
+            finalSegments = workingSegments.map((seg, i) =>
               i === 0 ? { ...seg, blob: exportResult.outputBlob } : seg
             );
             setToast(`✨ Template HD appliqué (${exportResult.used})`);
@@ -2119,7 +2129,7 @@ export default function FullscreenCreator({
             );
           });
           if (renderedBlob.size > 0) {
-            finalSegments = segments.map((seg, i) =>
+            finalSegments = workingSegments.map((seg, i) =>
               i === 0 ? { ...seg, blob: renderedBlob } : seg
             );
           }
