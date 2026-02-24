@@ -209,23 +209,29 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
     cleanupRecordingTimers();
   };
 
-  const handleAssetSelect = (assets: LibraryAsset[]) => {
-    setSelectedAssets(assets);
-    if (assets.length > 0) {
-      const asset = assets[assets.length - 1];
-      // Store all selected assets' URLs in image_urls for multi-selection
+  const handleAssetSelect = (assetsOrUpdater: LibraryAsset[] | ((prev: LibraryAsset[]) => LibraryAsset[])) => {
+    // Support both direct array and functional updater from AssetGallery
+    const resolvedAssets = typeof assetsOrUpdater === 'function'
+      ? assetsOrUpdater(selectedAssets)
+      : assetsOrUpdater;
+    setSelectedAssets(resolvedAssets);
+    if (resolvedAssets.length > 0) {
+      const lastAsset = resolvedAssets[resolvedAssets.length - 1];
+      // Store all selected assets' media URLs (video_url for videos, image_url for photos)
       if (maxMediaSelection > 1) {
         onChange({
           ...segment,
-          image_urls: assets.map(a => a.image_url),
-          media_url: asset.video_url || asset.image_url,
-          mediaType: asset.asset_type === 'video' ? 'video' : 'photo',
+          image_urls: resolvedAssets.map(a =>
+            (a.asset_type === 'video' && a.video_url) ? a.video_url : a.image_url
+          ),
+          media_url: lastAsset.video_url || lastAsset.image_url,
+          mediaType: lastAsset.asset_type === 'video' ? 'video' : 'photo',
         });
       } else {
         onChange({
           ...segment,
-          media_url: asset.video_url || asset.image_url,
-          mediaType: asset.asset_type === 'video' ? 'video' : 'photo',
+          media_url: lastAsset.video_url || lastAsset.image_url,
+          mediaType: lastAsset.asset_type === 'video' ? 'video' : 'photo',
         });
       }
     }

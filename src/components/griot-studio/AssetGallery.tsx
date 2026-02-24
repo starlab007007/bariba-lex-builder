@@ -36,7 +36,7 @@ export interface LibraryAsset {
 
 interface AssetGalleryProps {
   selectedAssets: LibraryAsset[];
-  onSelectionChange: (assets: LibraryAsset[]) => void;
+  onSelectionChange: (assets: LibraryAsset[] | ((prev: LibraryAsset[]) => LibraryAsset[])) => void;
   maxSelection?: number;
   disabled?: boolean;
 }
@@ -144,25 +144,27 @@ export function AssetGallery({ selectedAssets, onSelectionChange, maxSelection, 
 
   const toggleAsset = useCallback((asset: LibraryAsset) => {
     if (disabled) return;
-    if (selectedIds.has(asset.id)) {
-      onSelectionChange(selectedAssets.filter(a => a.id !== asset.id));
-    } else {
-      // Check limit for the asset's type
-      const typeCount = asset.asset_type === 'photo' ? selectedPhotos.length : selectedVideos.length;
-      const typeMax = asset.asset_type === 'photo' ? MAX_PHOTOS : MAX_VIDEOS;
-      if (typeCount < typeMax) {
-        onSelectionChange([...selectedAssets, asset]);
+    // Use functional update to avoid stale closure issues with rapid clicks
+    onSelectionChange((prev: LibraryAsset[]) => {
+      const isAlreadySelected = prev.some(a => a.id === asset.id);
+      if (isAlreadySelected) {
+        return prev.filter(a => a.id !== asset.id);
       }
-    }
-  }, [selectedAssets, selectedIds, selectedPhotos.length, selectedVideos.length, disabled, onSelectionChange]);
+      // Check limit for the asset's actual type
+      const sameTypeCount = prev.filter(a => a.asset_type === asset.asset_type).length;
+      const typeMax = asset.asset_type === 'photo' ? MAX_PHOTOS : MAX_VIDEOS;
+      if (sameTypeCount >= typeMax) return prev; // limit reached, no change
+      return [...prev, asset];
+    });
+  }, [disabled, onSelectionChange]);
 
   const clearSelection = useCallback(() => {
     if (!disabled) onSelectionChange([]);
   }, [disabled, onSelectionChange]);
 
   const removeFromSelection = useCallback((id: string) => {
-    if (!disabled) onSelectionChange(selectedAssets.filter(a => a.id !== id));
-  }, [disabled, selectedAssets, onSelectionChange]);
+    if (!disabled) onSelectionChange((prev: LibraryAsset[]) => prev.filter(a => a.id !== id));
+  }, [disabled, onSelectionChange]);
 
   const selectionIndex = useCallback((id: string) => {
     const idx = selectedAssets.findIndex(a => a.id === id);
