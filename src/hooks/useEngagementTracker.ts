@@ -33,11 +33,12 @@ export function useEngagementTracker() {
     const rows = signals.map(s => ({
       user_id: user?.id || null,
       video_id: s.video_id,
-      watch_duration_ms: s.watch_duration_ms,
-      video_duration_ms: s.video_duration_ms,
+      // DB expects integers
+      watch_duration_ms: Number.isFinite(s.watch_duration_ms) ? Math.round(s.watch_duration_ms) : 0,
+      video_duration_ms: Number.isFinite(s.video_duration_ms) ? Math.round(s.video_duration_ms) : 0,
       completed: s.completed,
       replayed: s.replayed,
-      swipe_speed_ms: s.swipe_speed_ms,
+      swipe_speed_ms: s.swipe_speed_ms == null ? null : (Number.isFinite(s.swipe_speed_ms) ? Math.round(s.swipe_speed_ms) : null),
       interaction_type: s.interaction_type,
       session_id: SESSION_ID,
     }));
