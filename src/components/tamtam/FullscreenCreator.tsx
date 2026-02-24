@@ -2891,7 +2891,21 @@ export default function FullscreenCreator({
                   </div>
 
                   <div className="mt-4 rounded-2xl bg-black/40 border border-white/10 p-2 aspect-[9/16] max-h-[200px] overflow-hidden relative">
-                    {hasCapture ? (
+                    {hasCapture && capturedBlob ? (
+                      capturedType === "video" ? (
+                        <video
+                          src={URL.createObjectURL(capturedBlob)}
+                          className="w-full h-full object-cover rounded-xl"
+                          autoPlay muted loop playsInline
+                        />
+                      ) : (
+                        <img
+                          src={URL.createObjectURL(capturedBlob)}
+                          className="w-full h-full object-cover rounded-xl"
+                          alt="Preview"
+                        />
+                      )
+                    ) : hasCapture ? (
                       <canvas className="w-full h-full object-contain rounded-xl" ref={previewCanvasRef as any} />
                     ) : null}
 
@@ -2917,6 +2931,17 @@ export default function FullscreenCreator({
                     placeholder="Ajoute une description…"
                     className="mt-4 w-full min-h-[100px] rounded-2xl bg-white/5 border border-white/10 p-4 text-white placeholder:text-white/40 outline-none resize-none"
                   />
+
+                  {/* Music selection shortcut */}
+                  <button
+                    onClick={() => { setShowPublish(false); setDrawer("music"); }}
+                    className="mt-3 w-full h-12 rounded-2xl bg-white/5 border border-white/10 text-white flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+                  >
+                    <Music className="h-4 w-4" />
+                    <span className="text-sm">
+                      {selectedAudioTrack ? `🎵 ${selectedAudioTrack.title || 'Musique sélectionnée'}` : 'Ajouter une musique'}
+                    </span>
+                  </button>
 
                   <button
                     onClick={publish}
@@ -3747,20 +3772,13 @@ export default function FullscreenCreator({
 
                 </div>
                 
-                {/* Hidden Album input - still accessible */}
+                {/* Hidden Album input - uses handleAlbumSelect to properly create segments */}
                 <input
                   type="file"
                   ref={albumInputRef}
                   accept="image/*,video/*"
                   className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setCapturedBlob(file);
-                      setHasCapture(true);
-                      setCapturedType(file.type.startsWith("video") ? "video" : "photo");
-                    }
-                  }}
+                  onChange={handleAlbumSelect}
                 />
               </>
             ) : (
@@ -3781,7 +3799,7 @@ export default function FullscreenCreator({
                   </button>
                 )}
 
-                <button onClick={publish} className="flex flex-col items-center gap-1">
+                <button onClick={() => setShowPublish(true)} className="flex flex-col items-center gap-1">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center border border-white/20">
                     <Send className="h-5 w-5" />
                   </div>
