@@ -1989,9 +1989,26 @@ export default function FullscreenCreator({
     try {
       setError(null);
       
-      // ✅ FIX: Enhanced validation - check segments AND blob existence
+      // ✅ FIX: If no segments but we have a capturedBlob, create segment on-the-fly
+      if (!segments.length && capturedBlob && capturedBlob.size > 0) {
+        console.log('⚡ [publish] No segments but capturedBlob exists, creating segment...');
+        const fallbackSeg: MiniTimelineSegment = {
+          id: `${Date.now()}`,
+          type: capturedType === "video" ? "video" : "photo",
+          duration: capturedType === "photo" ? 5 : lengthSec,
+          startTime: 0,
+          endTime: capturedType === "photo" ? 5 : lengthSec,
+          isMuted: false,
+          volume: 100,
+          blob: capturedBlob,
+        };
+        setSegments([fallbackSeg]);
+        // Use the fallback segments directly
+        segments.push(fallbackSeg);
+      }
+      
       if (!segments.length) {
-        console.error('❌ [publish] No segments');
+        console.error('❌ [publish] No segments and no blob');
         throw new Error("Aucun contenu à publier.");
       }
       
@@ -3771,15 +3788,7 @@ export default function FullscreenCreator({
                   </motion.button>
 
                 </div>
-                
-                {/* Hidden Album input - uses handleAlbumSelect to properly create segments */}
-                <input
-                  type="file"
-                  ref={albumInputRef}
-                  accept="image/*,video/*"
-                  className="hidden"
-                  onChange={handleAlbumSelect}
-                />
+                {/* Album input is rendered at top level (line ~2536) */}
               </>
             ) : (
               <>
