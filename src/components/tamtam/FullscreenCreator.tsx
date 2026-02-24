@@ -149,7 +149,7 @@ export type CreatorOutputPayload = {
   musicTrimDuration?: number;
 };
 
-type TopTab = "15s" | "30s" | "45s" | "60s" | "story" | "album" | "template";
+type TopTab = "15s" | "30s" | "45s" | "60s" | "90s" | "story" | "album" | "template";
 type CaptureMode = "burst" | "photo" | "video" | "text";
 type CanvasRatio = "9:16" | "1:1" | "16:9";
 type DrawerType =
@@ -429,7 +429,7 @@ export default function FullscreenCreator({
   const [hasCapture, setHasCapture] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
 
-  const [topTab, setTopTab] = useState<TopTab>("30s");
+  const [topTab, setTopTab] = useState<TopTab>("90s");
   const [mode, setMode] = useState<CaptureMode>("video");
   const [canvasRatio, setCanvasRatio] = useState<CanvasRatio>("9:16");
   const [drawer, setDrawer] = useState<DrawerType>("none");
@@ -3801,6 +3801,7 @@ export default function FullscreenCreator({
                 { id: "30s", label: "30s" },
                 { id: "45s", label: "45s" },
                 { id: "60s", label: "60s" },
+                { id: "90s", label: "1:30" },
                 { id: "story", label: "Story" },
                 { id: "album", label: "Album" },
               ] as { id: TopTab; label: string }[]).map((tab) => (
@@ -3820,6 +3821,9 @@ export default function FullscreenCreator({
                     } else if (tab.id === "60s") {
                       setLengthSec(60);
                       setMode("video");
+                    } else if (tab.id === "90s") {
+                      setLengthSec(90);
+                      setMode("video");
                     } else if (tab.id === "story") {
                       setLengthSec(15);
                       setMode("video");
@@ -3827,7 +3831,10 @@ export default function FullscreenCreator({
                       albumInputRef.current?.click();
                     }
                   }}
-                  className={cn("flex flex-col items-center gap-0.5 transition-all px-2", topTab === tab.id ? "text-white" : "text-white/50")}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 transition-all px-2",
+                    topTab === tab.id ? "text-white" : "text-white/50"
+                  )}
                 >
                   <span className="text-xs font-medium">{tab.label}</span>
                   {topTab === tab.id && <div className="w-4 h-0.5 bg-white rounded-full" />}

@@ -39,7 +39,7 @@ export default function MusicTrimmer({
   const dragStartXRef = useRef(0);
   const dragStartOffsetRef = useRef(0);
 
-  const effectiveDuration = Math.min(clipDuration, totalDuration);
+  const effectiveDuration = Math.min(clipDuration > 0 ? clipDuration : 90, totalDuration);
   const maxOffset = Math.max(0, totalDuration - effectiveDuration);
 
   // Stop any playing audio

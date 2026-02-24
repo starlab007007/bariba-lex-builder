@@ -311,8 +311,19 @@ export default function PublishScreen({
       source.connect(gain).connect(ctx.destination);
 
       const offset = selectedMusic.startOffset || 0;
-      const videoDur = videoRef.current.duration || 30;
-      source.start(0, offset, videoDur);
+
+      // Durée de prévisualisation: on s'aligne sur la durée réelle de la création
+      // (video), sans jamais retomber à 30s par défaut.
+      const creationDur = Number(videoRef.current.duration);
+      const fallbackCreationDur = 90;
+      const safeCreationDur = isFinite(creationDur) && creationDur > 0 ? creationDur : fallbackCreationDur;
+
+      const selectedDur = Number(selectedMusic.trimmedDuration);
+      const safeSelectedDur = isFinite(selectedDur) && selectedDur > 0 ? selectedDur : safeCreationDur;
+
+      const playDur = Math.min(safeCreationDur, safeSelectedDur);
+
+      source.start(0, offset, playDur);
       previewSourceRef.current = source;
 
       source.onended = () => stopMixPreview();
@@ -399,7 +410,7 @@ export default function PublishScreen({
             trimmedAudioBlob = await trimAudioBlob(
               musicUrl,
               selectedMusic.startOffset,
-              selectedMusic.trimmedDuration || 30
+              selectedMusic.trimmedDuration || 90
             );
             // Update meta with trimmed audio blob URL
             const trimmedUrl = URL.createObjectURL(trimmedAudioBlob);
