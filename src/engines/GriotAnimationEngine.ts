@@ -251,34 +251,50 @@ export class GriotAnimationEngine {
       video.preload = 'auto';
       video.src = url;
       
-      const onReady = () => {
+      let resolved = false;
+      
+      const doResolve = () => {
+        if (resolved) return;
+        resolved = true;
         video.removeEventListener('canplaythrough', onReady);
+        video.removeEventListener('canplay', onCanPlay);
         video.removeEventListener('error', onError);
         video.play().catch(() => {});
         console.log(`[GriotEngine] Video ready: ${video.videoWidth}x${video.videoHeight}, ${video.duration.toFixed(1)}s`);
         resolve(video);
       };
       
+      const onReady = () => doResolve();
+      const onCanPlay = () => doResolve();
+      
       const onError = () => {
+        if (resolved) return;
+        resolved = true;
         video.removeEventListener('canplaythrough', onReady);
+        video.removeEventListener('canplay', onCanPlay);
         video.removeEventListener('error', onError);
         reject(new Error(`Failed to load video: ${url.substring(url.lastIndexOf('/') + 1)}`));
       };
       
       video.addEventListener('canplaythrough', onReady);
+      video.addEventListener('canplay', onCanPlay);
       video.addEventListener('error', onError);
       video.load();
       
+      // Timeout: resolve if we have any data, reject if nothing
       setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
         video.removeEventListener('canplaythrough', onReady);
+        video.removeEventListener('canplay', onCanPlay);
         video.removeEventListener('error', onError);
-        if (video.readyState >= 2) {
+        if (video.readyState >= 1) {
           video.play().catch(() => {});
           resolve(video);
         } else {
           reject(new Error(`Video load timeout: ${url.substring(url.lastIndexOf('/') + 1)}`));
         }
-      }, 8000);
+      }, 15000);
     });
   }
 
