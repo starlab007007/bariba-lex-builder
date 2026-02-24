@@ -130,7 +130,7 @@ export async function mixMusicIntoVideo(options: MixMusicOptions): Promise<Blob>
   try {
     videoDuration = await getVideoDuration(videoBlob);
   } catch {
-    videoDuration = 30; // fallback
+    videoDuration = 90; // fallback 1m30s
   }
 
   const musicTrimDuration = options.musicTrimDuration ?? videoDuration;

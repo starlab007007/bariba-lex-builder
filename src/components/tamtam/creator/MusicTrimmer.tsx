@@ -310,7 +310,7 @@ export default function MusicTrimmer({
               {isPlaying ? 'Lecture en cours...' : 'Écouter la sélection'}
             </span>
             <span className="text-orange-400 text-xs font-medium">
-              Durée clip : {effectiveDuration}s
+              Durée clip : {formatTime(effectiveDuration)}
             </span>
           </div>
         </div>

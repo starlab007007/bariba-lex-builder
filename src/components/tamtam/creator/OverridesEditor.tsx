@@ -65,7 +65,7 @@ const OverridesEditor: React.FC<OverridesEditorProps> = ({
   boundAssets,
   isOpen,
   previewCanvasRef,
-  videoDuration = 30,
+  videoDuration = 90,
   onOverride,
   onMusicChange,
   onCaptionsChange,
