@@ -130,7 +130,7 @@ export function GriotStudio() {
   const [transcribedStory, setTranscribedStory] = useState('');
   const [editableScenes, setEditableScenes] = useState<EditableScene[]>([]);
   const [style] = useState<AnimeStyleName>('african');
-  const [duration, setDuration] = useState(30);
+  const [duration, setDuration] = useState(90);
   const [selectedAssets, setSelectedAssets] = useState<LibraryAsset[]>([]);
   const [showNarratorCapture, setShowNarratorCapture] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
