@@ -796,6 +796,11 @@ export default function TamTamSocial() {
       const isRadioVillagePro = d.exportJob?.templateId === 'radio_village_pro' 
         || d.caption?.includes('Radio Village')
         || d.effects?.templateId === 'radio_village_pro_01';
+
+      // Keep DB media_type aligned with the actual uploaded blob type (prevents "video" posts pointing to PNGs)
+      let resolvedMediaType: 'video' | 'photo' | 'audio' = isRadioVillagePro
+        ? 'video'
+        : (d.mode === 'photo' ? 'photo' : 'video');
       
       // Upload media blob if present
       if (d.segments && d.segments.length > 0) {
@@ -820,6 +825,8 @@ export default function TamTamSocial() {
             } else {
               mediaType = 'video';
             }
+
+            resolvedMediaType = mediaType;
             
             console.log('[TamTamSocial] Uploading blob:', {
               size: firstSegment.blob.size,
@@ -836,32 +843,34 @@ export default function TamTamSocial() {
             }
           } catch (uploadError) {
             console.error('[TamTamSocial] Upload error:', uploadError);
-            toast({ title: "❌ Erreur upload", description: "Impossible d'uploader le média", variant: "destructive" });
+            toast({ title: "❌ Erreur upload", description: "Impossible d'uploader le média", variant: 'destructive' });
             return;
           }
         } else {
           console.error('[TamTamSocial] Segment blob is empty or missing');
-          toast({ title: "❌ Erreur", description: "Contenu vidéo manquant", variant: "destructive" });
+          toast({ title: "❌ Erreur", description: "Contenu vidéo manquant", variant: 'destructive' });
           return;
         }
       } else {
         console.error('[TamTamSocial] No segments to upload');
-        toast({ title: "❌ Erreur", description: "Aucun contenu à publier", variant: "destructive" });
+        toast({ title: "❌ Erreur", description: "Aucun contenu à publier", variant: 'destructive' });
         return;
       }
       
+      const rawDurationSeconds = d.segments?.reduce((sum: number, s: any) => {
+        const dur = s.duration || (s.endTime - s.startTime);
+        return sum + (isFinite(dur) ? dur : 0);
+      }, 0) || 0;
+
       const postData = {
         audio_url: audioUrl,
-        media_type: isRadioVillagePro ? 'video' : (d.mode || 'video'),
+        media_type: isRadioVillagePro ? 'video' : resolvedMediaType,
         media_url: mediaUrl,
         transcript_fr: d.caption || '',
         transcript_ba: '',
         topic: 'creation',
         template_id: d.effects?.templateId || d.exportJob?.templateId || null,
-        duration_seconds: d.segments?.reduce((sum: number, s: any) => {
-          const dur = s.duration || (s.endTime - s.startTime);
-          return sum + (isFinite(dur) ? dur : 0);
-        }, 0) || 30,
+        duration_seconds: rawDurationSeconds > 0 ? Math.round(rawDurationSeconds) : 30,
       };
       
       console.log('[TamTamSocial] Creating post with data:', postData);

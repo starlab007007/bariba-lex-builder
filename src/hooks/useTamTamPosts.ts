@@ -277,6 +277,11 @@ export const useTamTamPosts = () => {
         }
       }
 
+      const durationSeconds =
+        typeof postData.duration_seconds === 'number' && Number.isFinite(postData.duration_seconds)
+          ? Math.max(0, Math.round(postData.duration_seconds))
+          : null;
+
       const insertData = {
         user_id: userData.user.id,
         audio_url: postData.audio_url || null,
@@ -286,7 +291,7 @@ export const useTamTamPosts = () => {
         transcript_fr: postData.transcript_fr || null,
         transcript_ba: postData.transcript_ba || null,
         feeling_emoji: postData.feeling_emoji || null,
-        duration_seconds: postData.duration_seconds || null,
+        duration_seconds: durationSeconds,
         topic: postData.topic || null,
         template_id: postData.template_id || null,
         hashtags: postData.hashtags || null, // ✅ Hashtags array
