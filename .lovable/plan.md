@@ -1,41 +1,74 @@
 
 
-# Correction : Musiques uploadees invisibles dans la bibliotheque de selection
+## Diagnostic
 
-## Probleme identifie
+After thorough analysis of the codebase, database, and live preview, the root cause is clear:
 
-Les musiques uploadees dans l'admin "Bibliotheque Anime" (capture 1) sont enregistrees dans la table `music_library_tracks` de la base de donnees. Cependant, le composant de selection de musique (capture 2, `AudioLibrary.tsx`) ne lit que les pistes du fichier JSON statique (`music_library.json`) et ignore completement les pistes de la base de donnees.
+**TamTamSocial.tsx contains TWO different VideoFeedCard components:**
+1. An **inline one** (lines 326-629) used for the creation feed - missing ALL recent fixes
+2. An **imported one** from `src/components/feed/VideoFeedCard.tsx` - has all photo detection, cross-browser, and display fixes
 
-**Cause racine** : Dans `AudioLibrary.tsx` ligne 73, le code fait :
+The creation feed at line 1003 uses the **inline** VideoFeedCard, which:
+- Has NO photo vs video detection (only checks `post.media_type === 'photo'` literally)
+- Uses `object-cover` (causes zoom effect)
+- Missing `crossOrigin="anonymous"` (causes CORS failures in production)
+- Missing `webkit-playsinline` and `onCanPlay` (Safari/iOS crash)
+- Missing muted autoplay retry fallback
+- No `object-contain` with black background
+- No `100dvh` / `-webkit-fill-available` height fix
+
+Additionally, the `.webm` videos from the `videos` table (Griot Anime, Conte Vivant) are not playable on Safari/iOS in production.
+
+## Plan
+
+### Step 1: Unify VideoFeedCard usage in TamTamSocial.tsx
+
+Remove the inline VideoFeedCard (lines 326-629) and replace it with the imported external component from `@/components/feed/VideoFeedCard.tsx`. This immediately brings all cross-browser, photo detection, and display fixes to the creation feed.
+
+The imported component already supports:
+- Photo vs video detection via MIME type AND file extension regex
+- `object-contain` with `#000` background (no zoom)
+- `crossOrigin="anonymous"` for production CORS
+- `webkit-playsinline`, `onCanPlay`, muted autoplay retry
+- Proper `100dvh` height
+
+### Step 2: Add missing props to external VideoFeedCard
+
+The inline version uses `usePostInteractions` and `engagementTracker` which the external one handles differently. Update the external VideoFeedCard to accept optional `engagementTracker` and `onPlayInteractive` props so all creation feed features continue working.
+
+### Step 3: Fix engagement tracking bridge
+
+Wire the external VideoFeedCard's `onEngagement` and `onSwipe` callbacks to the `engagementTracker` instance from TamTamSocial.
+
+### Step 4: Database normalization
+
+Fix existing `tamtam_posts` records that have incorrect `media_type` values by updating photo entries that have image file extensions but are stored as `video`.
+
+### Technical Details
+
 ```text
-let tracks = library.categories.flatMap(cat => cat.tracks);
+Current flow (broken):
+  TamTamSocial.tsx
+    └── inline VideoFeedCard (lines 326-629) ← MISSING ALL FIXES
+        ├── No photo detection regex
+        ├── object-cover (zooms)
+        ├── No crossOrigin
+        └── No Safari compatibility
+
+Fixed flow:
+  TamTamSocial.tsx
+    └── imported VideoFeedCard from @/components/feed/VideoFeedCard.tsx
+        ├── Photo detection: media_type + regex on URL
+        ├── object-contain + black bg
+        ├── crossOrigin="anonymous"
+        ├── webkit-playsinline + onCanPlay
+        └── Muted autoplay retry fallback
 ```
-Cela ne recupere que les 8 pistes du fichier JSON. Les pistes DB chargees par `AudioLibraryService.loadDbTracks()` ne sont jamais utilisees par ce composant.
 
-## Solution
+**Files to modify:**
+- `src/pages/tamtam/TamTamSocial.tsx` - Remove inline VideoFeedCard, use imported one, adapt props
+- `src/components/feed/VideoFeedCard.tsx` - Add `engagementTracker` and `onPlayInteractive` optional props
 
-### 1. Modifier `useAudioLibrary.ts`
-- Exposer une methode `getAllTracks()` depuis le hook, qui appelle `AudioLibraryService.getAllTracks()` (JSON + DB combinees).
-- Ajouter un signal de rechargement apres initialisation pour s'assurer que les pistes DB sont disponibles.
-
-### 2. Modifier `AudioLibrary.tsx` (composant de selection front-end)
-- Utiliser `getAllTracks()` au lieu de `library.categories.flatMap(...)` pour la liste des pistes.
-- S'assurer que le filtrage par categorie fonctionne aussi avec les pistes DB (en utilisant leur champ `category`/`mood`).
-- Ajouter les categories DB dynamiquement si elles n'existent pas dans le JSON statique.
-
-### 3. Modifier `AudioLibraryService.ts`
-- S'assurer que `loadDbTracks()` est bien appelee et terminee avant que `getAllTracks()` soit utilise.
-- Ajouter une methode `getDbCategories()` pour extraire les categories des pistes DB et les fusionner avec les categories JSON.
-
-## Fichiers a modifier
-
-| Fichier | Modification |
-|---|---|
-| `src/hooks/useAudioLibrary.ts` | Exposer `allTracks` et `allCategories` (JSON + DB fusionnes) |
-| `src/components/tamtam/creator/AudioLibrary.tsx` | Utiliser `allTracks` au lieu de `library.categories` pour l'affichage |
-| `src/services/AudioLibraryService.ts` | Ajouter methode pour categories dynamiques DB |
-
-## Resultat attendu
-
-Toute musique chargee via "Upload Musique" dans la Bibliotheque Anime sera automatiquement visible et selectionnable dans la bibliotheque de musique front-end, sans action supplementaire.
+**Database fix:**
+- Update `tamtam_posts` records with image URLs but wrong `media_type`
 
