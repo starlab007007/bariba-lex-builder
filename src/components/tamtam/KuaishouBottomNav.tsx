@@ -30,10 +30,7 @@ export const KuaishouBottomNav: React.FC = () => {
   const location = useLocation();
   const { currentLang } = useTamTamLanguage();
 
-  // Hide bottom nav on translator page
-  if (location.pathname.includes('/translator')) {
-    return null;
-  }
+  // Bottom nav is always visible
 
   const isActive = (path: string) => {
     if (path === '/fitila/social') {
