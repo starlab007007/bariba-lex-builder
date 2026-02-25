@@ -255,7 +255,8 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
           src={photoUrl} 
           alt={post.transcript_fr || ''}
           crossOrigin="anonymous"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-contain"
+          style={{ backgroundColor: '#000' }}
           onLoad={() => setIsLoaded(true)}
           onError={() => setIsLoaded(true)}
         />
@@ -272,18 +273,21 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
           x-webkit-airplay="deny"
           preload={isActive ? 'auto' : 'metadata'} 
           onLoadedData={() => setIsLoaded(true)}
+          onCanPlay={() => setIsLoaded(true)}
           onError={() => {
             console.warn('[VideoFeedCard] Video error for:', videoUrl);
-            setIsLoaded(true); // Show fallback instead of black screen
+            setIsLoaded(true);
           }}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+          className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-200 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+          style={{ backgroundColor: '#000' }}
         />
       ) : thumbnailUrl ? (
         <img 
           src={thumbnailUrl} 
           alt=""
           crossOrigin="anonymous"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-contain"
+          style={{ backgroundColor: '#000' }}
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
