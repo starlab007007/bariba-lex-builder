@@ -119,6 +119,12 @@ export default function FitilaIA() {
       });
 
       if (error) throw error;
+      if (data?.error === 'credits_exhausted') {
+        toast.error('⚠️ Crédits IA épuisés. Veuillez recharger votre compte.');
+        setMessages(prev => prev.filter(m => m.id !== loadingMsg.id));
+        setIsProcessing(false);
+        return;
+      }
       if (data?.error) throw new Error(data.error);
 
       const isFallback = data?.fallback === true;

@@ -83,6 +83,9 @@ async function callLLMWithFallback(args: {
       if (!resp.ok) {
         const body = await resp.text().catch(() => "");
         console.warn(`[fitila] Model ${model} failed HTTP ${resp.status}: ${body.substring(0, 100)}`);
+        if (resp.status === 402) {
+          return { text: "", model, error: "credits_exhausted" };
+        }
         continue;
       }
 
@@ -197,6 +200,18 @@ serve(async (req: Request) => {
       temperature,
       maxTokens,
     });
+
+    if (llmResult.error === "credits_exhausted") {
+      clearTimeout(globalTimer);
+      return new Response(
+        JSON.stringify({
+          error: "credits_exhausted",
+          message: "Les crédits IA sont épuisés. Veuillez recharger votre compte.",
+          duration: Date.now() - startedAt,
+        }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     if (llmResult.error || !llmResult.text) {
       throw new Error(llmResult.error || "LLM failed");

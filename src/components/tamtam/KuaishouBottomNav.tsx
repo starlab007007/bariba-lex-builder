@@ -21,7 +21,7 @@ const navItems: NavItem[] = [
   { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Ilé', path: '/fitila/social' },
   { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Kíkọ́', path: '/fitila/learn' },
   { id: 'create', icon: Plus, labelFr: 'Create', labelBa: 'Ṣẹ̀dá', path: '/fitila/creator', isCreate: true },
-  { id: 'dictionary', icon: BookText, labelFr: 'Dico', labelBa: 'Ìwé', path: '/fitila/dictionary' },
+  { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Túmọ̀', path: '/fitila/translator' },
   { id: 'fitila-ia', icon: Bot, labelFr: 'Fitila IA', labelBa: 'Fitila IA', path: '/fitila/ia' },
 ];
 
