@@ -45,6 +45,12 @@ const formatPublicationDate = (dateString: string | null): string => {
   return `${day} ${month} ${year}, ${hours}:${minutes}`;
 };
 
+const getPostTimestamp = (post: any): number => {
+  const raw = post?.created_at ?? post?.createdAt;
+  const ts = raw ? new Date(raw).getTime() : 0;
+  return Number.isFinite(ts) ? ts : 0;
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // TEMPLATES POUR DISQUES VINYLE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -409,7 +415,11 @@ export default function TamTamSocial() {
   }, [feedMode]);
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const idx = Math.round(e.currentTarget.scrollTop / window.innerHeight);
+    const viewportHeight = window.innerHeight || e.currentTarget.clientHeight || 1;
+    const rawIdx = Math.round(e.currentTarget.scrollTop / viewportHeight);
+    if (!Number.isFinite(rawIdx)) return;
+
+    const idx = Math.max(0, rawIdx);
     if (idx !== currentPostIndex) setCurrentPostIndex(idx);
   }, [currentPostIndex]);
 
@@ -639,7 +649,7 @@ export default function TamTamSocial() {
           );
         });
         
-      case 'creation':
+      case 'creation': {
         const creationFromPosts = allPosts.filter(p => {
           const post = p as any;
           const mediaUrl = (post.media_url || '').trim();
@@ -652,15 +662,37 @@ export default function TamTamSocial() {
                  post.topic !== 'patrimoine' &&
                  post.topic !== 'mavoix';
         });
-        
-        // Merge both sources — adaptive feed already ranked, posts appended after
-        const allCreationContent = [...videosAsVideoCards, ...creationFromPosts];
-        
-        // No chronological sort — adaptive algorithm handles ranking for videos
-        // Posts from tamtam_posts are appended at the end
-        return allCreationContent;
+
+        // ✅ FIX: Merge both sources, dedupe, then sort by recency
+        // This guarantees freshly published album posts appear in the visible top feed.
+        const merged = [...videosAsVideoCards, ...creationFromPosts];
+        const deduped = merged.filter((post, index, arr) => arr.findIndex(p => p.id === post.id) === index);
+        deduped.sort((a: any, b: any) => getPostTimestamp(b) - getPostTimestamp(a));
+        return deduped;
+      }
     }
-  }, [feedMode, posts, videoFeedItems]);
+  }, [feedMode, posts, videosAsVideoCards]);
+
+  // ✅ Guard against invalid/overflow index causing all cards to render as placeholders
+  useEffect(() => {
+    if (!Number.isFinite(currentPostIndex)) {
+      setCurrentPostIndex(0);
+      return;
+    }
+
+    if (getCurrentPosts.length === 0 && currentPostIndex !== 0) {
+      setCurrentPostIndex(0);
+      return;
+    }
+
+    const maxIndex = Math.max(0, getCurrentPosts.length - 1);
+    if (currentPostIndex > maxIndex) {
+      setCurrentPostIndex(maxIndex);
+    }
+  }, [currentPostIndex, getCurrentPosts.length]);
+
+  // ✅ Do not block Creation feed rendering while adaptive videos are still loading
+  const isFeedLoading = isLoading || (feedMode === 'creation' && isVideosLoading && getCurrentPosts.length === 0);
 
   return (
     <div className="fixed inset-0" style={{ background: '#0B0B0B' }}>
@@ -680,7 +712,7 @@ export default function TamTamSocial() {
             className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
             onScroll={handleScroll}
           >
-            {(isLoading || (feedMode === 'creation' && isVideosLoading)) ? (
+            {isFeedLoading ? (
               <div className="h-screen" style={{ background: '#0B0B0B' }} />
             ) : getCurrentPosts.length > 0 ? (
               feedMode === 'creation' ? (
