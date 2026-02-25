@@ -12,13 +12,20 @@ import { triggerFeedback } from '@/utils/tamtamFeedback';
 interface VideoFeedCardProps {
   post: any;
   isActive: boolean;
-  onLike: () => void;
+  onLike?: () => void;
   onComment: () => void;
-  onShare: () => void;
+  onShare?: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
   onEngagement?: (videoId: string, type: 'view' | 'like' | 'share' | 'comment' | 'bookmark', data?: { watchMs?: number; totalMs?: number; completed?: boolean; replayed?: boolean }) => void;
   onSwipe?: (videoId: string, speedMs: number) => void;
+  onPlayInteractive?: (storyId: string) => void;
+  engagementTracker?: {
+    trackView: (videoId: string, watchMs: number, totalMs: number, completed: boolean, replayed: boolean) => void;
+    trackSwipe: (videoId: string, speedMs: number) => void;
+    trackInteraction: (videoId: string, type: 'like' | 'share' | 'comment' | 'bookmark') => void;
+    recordCategoryEngagement: (category: string) => void;
+  };
 }
 
 const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({ 
@@ -31,7 +38,10 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   onToggleMute,
   onEngagement,
   onSwipe,
+  onPlayInteractive,
+  engagementTracker,
 }) => {
+  const isInteractive = post.template_id === 'conte-vivant' || post.metadata?.is_interactive;
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -84,6 +94,12 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
       
       if (onSwipe && swipeSpeed < 3000) {
         onSwipe(post.id, swipeSpeed);
+      }
+      if (engagementTracker) {
+        if (swipeSpeed < 3000) engagementTracker.trackSwipe(post.id, swipeSpeed);
+        engagementTracker.trackView(post.id, watchAccumRef.current, totalMs, hasCompletedRef.current, hasReplayedRef.current);
+        const cat = post.template_name || post.metadata?.category || 'general';
+        if (watchAccumRef.current > 3000) engagementTracker.recordCategoryEngagement(cat);
       }
       if (onEngagement) {
         onEngagement(post.id, 'view', {
@@ -183,16 +199,18 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
 
   const handleLike = useCallback(() => {
     setIsLiked(prev => !prev);
-    onLike();
+    onLike?.();
     onEngagement?.(post.id, 'like');
+    engagementTracker?.trackInteraction(post.id, 'like');
     triggerFeedback('notification');
-  }, [onLike, post.id, onEngagement]);
+  }, [onLike, post.id, onEngagement, engagementTracker]);
 
   const handleSave = useCallback(() => {
     setIsSaved(prev => !prev);
     onEngagement?.(post.id, 'bookmark');
+    engagementTracker?.trackInteraction(post.id, 'bookmark');
     triggerFeedback('success');
-  }, [post.id, onEngagement]);
+  }, [post.id, onEngagement, engagementTracker]);
 
   const handleFollow = useCallback(() => {
     setIsFollowing(prev => !prev);
@@ -295,7 +313,27 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
         </div>
       )}
       
-      {/* NO SPINNER — thumbnail background is always visible */}
+      {/* Interactive Story Badge */}
+      {isInteractive && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40">
+          <span className="text-6xl mb-3">🎪</span>
+          <p className="text-white font-bold text-lg mb-1">Conte Interactif</p>
+          <p className="text-white/60 text-xs mb-4">
+            {post.metadata?.total_segments || '?'} segments · {post.metadata?.total_endings || '?'} fins
+          </p>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const storyId = post.metadata?.story_id;
+              if (storyId && onPlayInteractive) onPlayInteractive(storyId);
+            }}
+            className="px-8 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base shadow-lg"
+          >
+            ▶️ Jouer le conte
+          </motion.button>
+        </div>
+      )}
 
       {/* Author info - bottom left */}
       <div 
