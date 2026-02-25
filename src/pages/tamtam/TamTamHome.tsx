@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Users, ShoppingBag, User, Plus, Menu, ChevronRight, X, TrendingUp, Sparkles } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
-import { useTamTamPosts } from '@/hooks/useTamTamPosts';
+import { useTamTamPosts, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
@@ -18,7 +18,7 @@ import { useSideMenu } from '@/pages/fitila/FitilaApp';
 
 type TabId = 'home' | 'social' | 'market' | 'profile';
 
-const DEFAULT_AUDIO_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MENU CREATE
@@ -347,25 +347,59 @@ export default function TamTamHome() {
 
   const handleCreatorComplete = useCallback(async (d: any) => {
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) throw new Error('Connexion requise pour publier');
+
+      let mediaUrl = d.media_url || null;
+      let audioUrl = d.audio_url || null;
+      let resolvedMediaType: 'video' | 'photo' | 'audio' = d.mode === 'photo' ? 'photo' : 'video';
+
+      const firstSegment = d.segments?.[0];
+      if (firstSegment?.blob && firstSegment.blob.size > 0) {
+        const blobType = firstSegment.blob.type || '';
+        if (blobType.includes('image')) resolvedMediaType = 'photo';
+        else if (blobType.includes('audio')) resolvedMediaType = 'audio';
+        else if (blobType.includes('video')) resolvedMediaType = 'video';
+
+        mediaUrl = await uploadMediaToStorage(firstSegment.blob, resolvedMediaType, userId);
+
+        if (resolvedMediaType !== 'photo') {
+          audioUrl = mediaUrl;
+        } else {
+          audioUrl = null;
+        }
+      }
+
+      if (!mediaUrl) {
+        throw new Error('Aucun média importé à publier');
+      }
+
+      const rawDurationSeconds = d.segments?.reduce((sum: number, s: any) => {
+        const dur = s.duration || (s.endTime - s.startTime);
+        return sum + (isFinite(dur) ? dur : 0);
+      }, 0) || 0;
+
       const postData = {
-        audio_url: d.audio_url || DEFAULT_AUDIO_URL,
-        media_type: d.media_type || 'audio',
-        media_url: d.media_url || null,
-        transcript_fr: d.transcript_fr || '',
+        audio_url: audioUrl,
+        media_type: resolvedMediaType,
+        media_url: mediaUrl,
+        transcript_fr: d.caption || d.transcript_fr || '',
         transcript_ba: d.transcript_ba || '',
-        topic: d.topic || 'creation',
-        template_id: d.template_id || null,
-        duration_seconds: d.duration_seconds || 30,
+        topic: 'creation',
+        template_id: d.effects?.templateId || d.exportJob?.templateId || d.template_id || null,
+        duration_seconds: rawDurationSeconds > 0 ? Math.round(rawDurationSeconds) : 30,
       };
+
       await createPost(postData);
-      toast({ title: "✅ Publié!" });
+      toast({ title: '✅ Publié!' });
       triggerFeedback('success');
-      fetchPosts();
       setShowCreator(false);
-    } catch (error) {
-      toast({ title: "❌ Erreur", description: "Impossible de publier.", variant: "destructive" });
+    } catch (error: any) {
+      console.error('[TamTamHome] Erreur publication créateur:', error);
+      toast({ title: '❌ Erreur', description: error?.message || 'Impossible de publier.', variant: 'destructive' });
     }
-  }, [createPost, fetchPosts, toast]);
+  }, [createPost, toast]);
 
   return (
     <div className="fixed inset-0 overflow-y-auto" style={{ background: '#0B0B0B' }}>

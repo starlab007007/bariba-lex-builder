@@ -949,9 +949,15 @@ export default function TamTamSocial() {
       case 'creation':
         const creationFromPosts = allPosts.filter(p => {
           const post = p as any;
-          return (post.media_type === 'video' || post.media_type === 'photo') && 
-                 post.media_url && post.media_url.trim().length > 0 &&
-                 post.topic !== 'patrimoine' && post.topic !== 'mavoix';
+          const mediaUrl = (post.media_url || '').trim();
+          const mediaType = String(post.media_type || '').toLowerCase();
+          const isVisualByType = mediaType === 'video' || mediaType === 'photo' || mediaType === 'image';
+          const isVisualByUrl = /\.(mp4|mov|webm|m4v|jpg|jpeg|png|webp|gif|heic|heif)(\?|$)/i.test(mediaUrl);
+
+          return mediaUrl.length > 0 &&
+                 (isVisualByType || isVisualByUrl) &&
+                 post.topic !== 'patrimoine' &&
+                 post.topic !== 'mavoix';
         });
         
         // Merge both sources — adaptive feed already ranked, posts appended after
