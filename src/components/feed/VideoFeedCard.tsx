@@ -48,8 +48,16 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   const hasReplayedRef = useRef(false);
   const lastTimeRef = useRef<number>(0);
 
-  const videoUrl = post.media_url || post.video_url || post.videoUrl;
+  const mediaUrl = post.media_url || post.video_url || post.videoUrl;
   const thumbnailUrl = post.thumbnail_url || post.thumbnailUrl;
+  
+  // Detect if this is a photo (image) or video based on media_type AND file extension
+  const mediaType = String(post.media_type || '').toLowerCase();
+  const isPhoto = mediaType === 'photo' || mediaType === 'image' || 
+    /\.(jpg|jpeg|png|webp|gif|heic|heif|bmp|svg)(\?|$)/i.test(mediaUrl || '');
+  const videoUrl = isPhoto ? null : mediaUrl;
+  const photoUrl = isPhoto ? mediaUrl : null;
+  
   const authorName = post.profile?.display_name || post.author?.name || 'Créateur';
   const authorUsername = post.profile?.username 
     ? `@${post.profile.username}` 
@@ -90,6 +98,10 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   }, [isActive, post.id]);
 
   useEffect(() => {
+    if (isPhoto) {
+      setIsLoaded(true);
+      return;
+    }
     if (!videoRef.current) return;
     
     if (isActive) {
@@ -100,7 +112,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
       setIsPlaying(false);
       videoRef.current.currentTime = 0;
     }
-  }, [isActive, isMuted]);
+  }, [isActive, isMuted, isPhoto]);
 
   // Track watch time via timeupdate
   useEffect(() => {
@@ -134,8 +146,9 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     };
   }, [videoUrl]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount (videos only)
   useEffect(() => {
+    if (isPhoto) return;
     const currentVideoUrl = videoUrl;
     return () => {
       if (videoRef.current) {
@@ -146,7 +159,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
         URL.revokeObjectURL(currentVideoUrl);
       }
     };
-  }, [videoUrl]);
+  }, [videoUrl, isPhoto]);
 
   const handleProfileClick = useCallback(() => {
     if (authorId) navigate(`/fitila/profile/${authorId}`);
@@ -171,6 +184,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   }, []);
 
   const handleVideoTap = useCallback(() => {
+    if (isPhoto) return; // No play/pause for photos
     if (!videoRef.current) return;
     if (isPlaying) {
       videoRef.current.pause();
@@ -182,42 +196,50 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     setShowPlayIcon(true);
     setTimeout(() => setShowPlayIcon(false), 600);
     triggerFeedback('notification');
-  }, [isPlaying]);
+  }, [isPlaying, isPhoto]);
 
   return (
     <div 
       className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative overflow-hidden"
       style={{ 
-        background: thumbnailUrl ? `url(${thumbnailUrl}) center/cover no-repeat` : '#000',
         backgroundColor: '#000',
       }}
     >
-      {/* Tap zone for play/pause */}
-      <div className="absolute inset-0 z-10" onClick={handleVideoTap} />
+      {/* Tap zone for play/pause (videos only) */}
+      {!isPhoto && <div className="absolute inset-0 z-10" onClick={handleVideoTap} />}
 
-      {/* Play/Pause indicator */}
-      <AnimatePresence>
-        {showPlayIcon && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 0.8, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.2 }}
-            transition={{ duration: 0.3 }}
-            className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
-          >
-            <div className="w-20 h-20 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-              {isPlaying ? (
-                <Pause className="w-10 h-10 text-white" fill="white" />
-              ) : (
-                <Play className="w-10 h-10 text-white ml-1" fill="white" />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Play/Pause indicator (videos only) */}
+      {!isPhoto && (
+        <AnimatePresence>
+          {showPlayIcon && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 0.8, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.2 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+            >
+              <div className="w-20 h-20 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                {isPlaying ? (
+                  <Pause className="w-10 h-10 text-white" fill="white" />
+                ) : (
+                  <Play className="w-10 h-10 text-white ml-1" fill="white" />
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
 
-      {/* Video — loads over thumbnail background via opacity transition */}
-      {videoUrl ? (
+      {/* PHOTO — render as img, always visible */}
+      {isPhoto && photoUrl ? (
+        <img 
+          src={photoUrl} 
+          alt={post.transcript_fr || ''}
+          className="absolute inset-0 w-full h-full object-cover"
+          onLoad={() => setIsLoaded(true)}
+        />
+      ) : videoUrl ? (
         <video 
           ref={videoRef} 
           src={videoUrl} 
@@ -233,7 +255,6 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
         <img 
           src={thumbnailUrl} 
           alt=""
-          loading="lazy"
           className="absolute inset-0 w-full h-full object-cover"
         />
       ) : (
