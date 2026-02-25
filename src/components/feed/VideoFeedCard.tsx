@@ -8,6 +8,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Bookmark, Play, Pause, Plus } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface VideoFeedCardProps {
   post: any;
@@ -50,6 +53,8 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   // Engagement tracking refs
   const activatedAtRef = useRef<number>(0);
@@ -69,9 +74,8 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   const photoUrl = isPhoto ? mediaUrl : null;
   
   const authorName = post.profile?.display_name || post.author?.name || 'Créateur';
-  const authorUsername = post.profile?.username 
-    ? `@${post.profile.username}` 
-    : post.author?.username || '@fitila_user';
+  const rawUsername = post.profile?.username || post.author?.username || 'fitila_user';
+  const authorUsername = `@${rawUsername.replace(/^@+/, '')}`;
   const likesCount = post.likes_count || post.likesCount || post.reactions_count || 0;
   const commentsCount = post.comments_count || post.commentsCount || 0;
   const sharesCount = post.shares_count || post.sharesCount || 0;
@@ -212,10 +216,44 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     triggerFeedback('success');
   }, [post.id, onEngagement, engagementTracker]);
 
-  const handleFollow = useCallback(() => {
-    setIsFollowing(prev => !prev);
+  // Check if already following on activation
+  useEffect(() => {
+    if (!user || !authorId || authorId === user.id) return;
+    supabase
+      .from('tamtam_follows')
+      .select('id')
+      .eq('follower_id', user.id)
+      .eq('following_id', authorId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setIsFollowing(true);
+      });
+  }, [user, authorId]);
+
+  const handleFollow = useCallback(async () => {
+    if (!user) {
+      toast({ title: '🔐 Connexion requise', description: 'Connectez-vous pour suivre cet utilisateur.', variant: 'destructive' });
+      return;
+    }
+    if (!authorId || authorId === user.id) return;
+
+    if (isFollowing) {
+      // Unfollow
+      await supabase
+        .from('tamtam_follows')
+        .delete()
+        .eq('follower_id', user.id)
+        .eq('following_id', authorId);
+      setIsFollowing(false);
+    } else {
+      // Follow
+      await supabase
+        .from('tamtam_follows')
+        .insert({ follower_id: user.id, following_id: authorId });
+      setIsFollowing(true);
+    }
     triggerFeedback('success');
-  }, []);
+  }, [user, authorId, isFollowing, toast]);
 
   const handleVideoTap = useCallback(() => {
     if (isPhoto) return; // No play/pause for photos
@@ -236,7 +274,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     <div 
       className="h-screen w-screen max-w-full snap-start snap-always relative overflow-hidden"
       style={{ 
-        backgroundColor: '#000',
+        backgroundColor: 'transparent',
         height: '100dvh',
         minHeight: '-webkit-fill-available',
       }}
@@ -274,7 +312,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
           alt={post.transcript_fr || ''}
           crossOrigin="anonymous"
           className="absolute inset-0 w-full h-full object-contain"
-          style={{ backgroundColor: '#000' }}
+          style={{ backgroundColor: 'transparent' }}
           onLoad={() => setIsLoaded(true)}
           onError={() => setIsLoaded(true)}
         />
@@ -297,7 +335,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
             setIsLoaded(true);
           }}
           className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-200 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-          style={{ backgroundColor: '#000' }}
+          style={{ backgroundColor: 'transparent' }}
         />
       ) : thumbnailUrl ? (
         <img 
@@ -305,7 +343,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
           alt=""
           crossOrigin="anonymous"
           className="absolute inset-0 w-full h-full object-contain"
-          style={{ backgroundColor: '#000' }}
+          style={{ backgroundColor: 'transparent' }}
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900">
