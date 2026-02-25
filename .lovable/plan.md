@@ -1,74 +1,97 @@
 
 
-## Diagnostic
+## Diagnostic Summary
 
-After thorough analysis of the codebase, database, and live preview, the root cause is clear:
+After thorough analysis, I identified 5 distinct issues:
 
-**TamTamSocial.tsx contains TWO different VideoFeedCard components:**
-1. An **inline one** (lines 326-629) used for the creation feed - missing ALL recent fixes
-2. An **imported one** from `src/components/feed/VideoFeedCard.tsx` - has all photo detection, cross-browser, and display fixes
+### Issue 1: Black borders/letterboxing on media
+`VideoFeedCard.tsx` uses `backgroundColor: '#000'` on all media elements (lines 277, 300, 308) and on the container (line 239). This creates visible black bars around photos/videos that don't fill the screen. The user wants transparent background so the content blends with the feed background.
 
-The creation feed at line 1003 uses the **inline** VideoFeedCard, which:
-- Has NO photo vs video detection (only checks `post.media_type === 'photo'` literally)
-- Uses `object-cover` (causes zoom effect)
-- Missing `crossOrigin="anonymous"` (causes CORS failures in production)
-- Missing `webkit-playsinline` and `onCanPlay` (Safari/iOS crash)
-- Missing muted autoplay retry fallback
-- No `object-contain` with black background
-- No `100dvh` / `-webkit-fill-available` height fix
+### Issue 2: Follow button is cosmetic only (no database persistence)
+In `VideoFeedCard.tsx` lines 215-218, `handleFollow` only toggles local React state. It never calls Supabase to insert/delete from `tamtam_follows`. The follow action is lost on scroll/refresh.
 
-Additionally, the `.webm` videos from the `videos` table (Griot Anime, Conte Vivant) are not playable on Safari/iOS in production.
+### Issue 3: Double `@@` in usernames
+Two `@` symbols are being added:
+1. In `useAdaptiveFeed.ts` line 228: `@${v.tamtam_profiles.username}` — already adds `@`
+2. In `VideoFeedCard.tsx` line 73: `@${post.profile.username}` — adds a second `@`
+
+Result: `@@songbian` instead of `@songbian`. This affects all videos from the `videos` table.
+
+### Issue 4: Profile navigation works but needs verification
+The route `/fitila/profile/:userId` exists in `App.tsx` line 117 and maps to `TamTamPublicProfile`. The `handleProfileClick` in `VideoFeedCard.tsx` line 197 navigates to `/fitila/profile/${authorId}`. However, `authorId` on line 79 uses `post.profile?.user_id` which is NOT set in the `videosAsVideoCards` mapping (line 611-615 of TamTamSocial.tsx) — it only has `display_name`, `username`, `avatar_url` but NO `user_id`. So clicking profile on videos-table content does nothing.
+
+### Issue 5: Feed loading performance
+Already optimized with virtualization and dedup sort. No additional changes needed beyond the fixes above.
+
+---
 
 ## Plan
 
-### Step 1: Unify VideoFeedCard usage in TamTamSocial.tsx
+### Step 1: Remove black letterboxing — use transparent background
+In `VideoFeedCard.tsx`:
+- Change container `backgroundColor: '#000'` to `transparent` (line 239)
+- Change `style={{ backgroundColor: '#000' }}` on `<img>` and `<video>` to `transparent` (lines 277, 300, 308)
+- Keep `object-contain` to preserve original aspect ratio without cropping
 
-Remove the inline VideoFeedCard (lines 326-629) and replace it with the imported external component from `@/components/feed/VideoFeedCard.tsx`. This immediately brings all cross-browser, photo detection, and display fixes to the creation feed.
+### Step 2: Make Follow button actually persist to database
+In `VideoFeedCard.tsx`:
+- Import `supabase` from the client
+- Import `useAuth` from AuthContext
+- Update `handleFollow` to call `supabase.from('tamtam_follows').insert(...)` or `.delete(...)` based on current state
+- Add a check on mount/activation to see if the current user already follows this author
+- Show toast for unauthenticated users
 
-The imported component already supports:
-- Photo vs video detection via MIME type AND file extension regex
-- `object-contain` with `#000` background (no zoom)
-- `crossOrigin="anonymous"` for production CORS
-- `webkit-playsinline`, `onCanPlay`, muted autoplay retry
-- Proper `100dvh` height
+### Step 3: Fix double `@@` username
+Two options — fix at ONE location only:
+- In `VideoFeedCard.tsx` line 72-74: Strip leading `@` before adding one:
+  ```
+  const rawUsername = post.profile?.username || post.author?.username || 'fitila_user';
+  const authorUsername = `@${rawUsername.replace(/^@+/, '')}`;
+  ```
+This handles both cases (username with or without `@` prefix).
 
-### Step 2: Add missing props to external VideoFeedCard
+### Step 4: Fix profile navigation for videos-table content
+In `TamTamSocial.tsx` line 611-615, add `user_id` to the mapped profile:
+```
+profile: {
+  display_name: v.author.name,
+  username: v.author.username,
+  avatar_url: v.author.avatarUrl,
+  user_id: v.userId,  // ADD THIS
+},
+```
+Also ensure `useAdaptiveFeed.ts` exposes `userId` in the FeedVideo interface from `v.user_id`.
 
-The inline version uses `usePostInteractions` and `engagementTracker` which the external one handles differently. Update the external VideoFeedCard to accept optional `engagementTracker` and `onPlayInteractive` props so all creation feed features continue working.
+### Step 5: Verify and fix AudioFeedCard profile navigation
+Confirm `AudioFeedCard` also has `authorId` properly resolved for profile clicks.
 
-### Step 3: Fix engagement tracking bridge
-
-Wire the external VideoFeedCard's `onEngagement` and `onSwipe` callbacks to the `engagementTracker` instance from TamTamSocial.
-
-### Step 4: Database normalization
-
-Fix existing `tamtam_posts` records that have incorrect `media_type` values by updating photo entries that have image file extensions but are stored as `video`.
+### Files to modify:
+1. **`src/components/feed/VideoFeedCard.tsx`** — transparent bg, real follow, fix `@@`, auth guard
+2. **`src/pages/tamtam/TamTamSocial.tsx`** — add `user_id` to videosAsVideoCards mapping
+3. **`src/hooks/useAdaptiveFeed.ts`** — expose `userId` field in FeedVideo interface
 
 ### Technical Details
 
 ```text
-Current flow (broken):
-  TamTamSocial.tsx
-    └── inline VideoFeedCard (lines 326-629) ← MISSING ALL FIXES
-        ├── No photo detection regex
-        ├── object-cover (zooms)
-        ├── No crossOrigin
-        └── No Safari compatibility
+Username fix flow:
+  useAdaptiveFeed.ts:  username = "@songbian"  (already prefixed)
+  TamTamSocial.tsx:    profile.username = "@songbian"  (passed through)
+  VideoFeedCard.tsx:   `@${profile.username}` = "@@songbian"  ← BUG
 
-Fixed flow:
-  TamTamSocial.tsx
-    └── imported VideoFeedCard from @/components/feed/VideoFeedCard.tsx
-        ├── Photo detection: media_type + regex on URL
-        ├── object-contain + black bg
-        ├── crossOrigin="anonymous"
-        ├── webkit-playsinline + onCanPlay
-        └── Muted autoplay retry fallback
+Fix in VideoFeedCard.tsx:
+  rawUsername.replace(/^@+/, '') → "songbian"
+  `@${cleaned}` → "@songbian"  ✅
+
+Follow persistence flow (new):
+  User taps + → handleFollow()
+    → check auth (toast if not logged in)
+    → supabase.from('tamtam_follows').insert({ follower_id: user.id, following_id: authorId })
+    → setIsFollowing(true)
+    → create notification
+
+Profile click fix:
+  videosAsVideoCards missing user_id in profile object
+  → authorId resolves to undefined → navigate('/fitila/profile/undefined') → broken
+  Fix: add user_id from video record
 ```
-
-**Files to modify:**
-- `src/pages/tamtam/TamTamSocial.tsx` - Remove inline VideoFeedCard, use imported one, adapt props
-- `src/components/feed/VideoFeedCard.tsx` - Add `engagementTracker` and `onPlayInteractive` optional props
-
-**Database fix:**
-- Update `tamtam_posts` records with image URLs but wrong `media_type`
 
