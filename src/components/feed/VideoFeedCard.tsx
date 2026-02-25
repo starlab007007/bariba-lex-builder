@@ -106,11 +106,24 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     
     if (isActive) {
       videoRef.current.muted = isMuted;
-      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => setIsPlaying(true)).catch((e) => {
+          console.warn('[VideoFeedCard] play() failed:', e.name);
+          // Force muted autoplay as fallback (Safari/Chrome policy)
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {
+              // Video truly cannot play — show as loaded anyway to avoid black screen
+              setIsLoaded(true);
+            });
+          }
+        });
+      }
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
-      videoRef.current.currentTime = 0;
+      try { videoRef.current.currentTime = 0; } catch (_) {}
     }
   }, [isActive, isMuted, isPhoto]);
 
@@ -152,8 +165,11 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     const currentVideoUrl = videoUrl;
     return () => {
       if (videoRef.current) {
-        videoRef.current.pause();
-        videoRef.current.src = '';
+        try {
+          videoRef.current.pause();
+          videoRef.current.removeAttribute('src');
+          videoRef.current.load();
+        } catch (_) {}
       }
       if (currentVideoUrl?.startsWith('blob:')) {
         URL.revokeObjectURL(currentVideoUrl);
@@ -200,9 +216,11 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
 
   return (
     <div 
-      className="h-[100dvh] h-screen w-screen max-w-full snap-start snap-always relative overflow-hidden"
+      className="h-screen w-screen max-w-full snap-start snap-always relative overflow-hidden"
       style={{ 
         backgroundColor: '#000',
+        height: '100dvh',
+        minHeight: '-webkit-fill-available',
       }}
     >
       {/* Tap zone for play/pause (videos only) */}
@@ -236,25 +254,35 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
         <img 
           src={photoUrl} 
           alt={post.transcript_fr || ''}
+          crossOrigin="anonymous"
           className="absolute inset-0 w-full h-full object-cover"
           onLoad={() => setIsLoaded(true)}
+          onError={() => setIsLoaded(true)}
         />
       ) : videoUrl ? (
         <video 
           ref={videoRef} 
           src={videoUrl} 
           poster={thumbnailUrl || undefined}
+          crossOrigin="anonymous"
           loop 
           muted={isMuted}
-          playsInline 
+          playsInline
+          webkit-playsinline=""
+          x-webkit-airplay="deny"
           preload={isActive ? 'auto' : 'metadata'} 
-          onLoadedData={() => setIsLoaded(true)} 
+          onLoadedData={() => setIsLoaded(true)}
+          onError={() => {
+            console.warn('[VideoFeedCard] Video error for:', videoUrl);
+            setIsLoaded(true); // Show fallback instead of black screen
+          }}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
         />
       ) : thumbnailUrl ? (
         <img 
           src={thumbnailUrl} 
           alt=""
+          crossOrigin="anonymous"
           className="absolute inset-0 w-full h-full object-cover"
         />
       ) : (
