@@ -612,6 +612,7 @@ export default function TamTamSocial() {
         display_name: v.author.name,
         username: v.author.username,
         avatar_url: v.author.avatarUrl,
+        user_id: v.author.id,
       },
       reactions: { like: v.likesCount, love: 0, laugh: 0, wow: 0, pray: 0 },
       metadata: v.metadata,
