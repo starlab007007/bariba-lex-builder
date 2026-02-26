@@ -397,28 +397,14 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     }
   }, [translateFromText, toast]);
 
-  // Convert PDF file to array of page image dataURLs
-  const pdfToPageImages = useCallback(async (file: File): Promise<string[]> => {
-    const pdfjsLib = await import('pdfjs-dist');
-    // Disable worker to avoid CDN/bundling issues
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-    
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, disableAutoFetch: true, isEvalSupported: false }).promise;
-    const pages: string[] = [];
-    
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 2.0 });
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d')!;
-      await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
-      pages.push(canvas.toDataURL('image/png'));
-    }
-    
-    return pages;
+  // Helper: read file as dataURL
+  const fileToDataUrl = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }, []);
 
   // Translate from document (PDF, images, text files)
@@ -427,79 +413,56 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     tamtamFeedback.play('send');
     
     try {
-      // Handle images directly
-      if (file.type.startsWith('image/')) {
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        
-        const { data, error } = await supabase.functions.invoke('ocr-translate', {
-          body: { 
-            image: dataUrl,
-            fileName: file.name,
-            targetLanguage
-          }
-        });
-        
-        if (error) throw error;
-        
-        setSourceText(data.extractedText || '');
-        setTranslatedText(data.translation || '');
-        setLastResult({
-          sourceText: data.extractedText || '',
-          translatedText: data.translation || '',
-          sourceLanguage,
-          targetLanguage
-        });
-        tamtamFeedback.play('success');
-        return;
-      }
-      
-      // Handle text files
+      // Handle text files directly (no OCR needed)
       if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
         const text = await file.text();
         await translateFromText(text);
         return;
       }
+
+      // Handle images and PDFs via OCR edge function
+      const dataUrl = await fileToDataUrl(file);
       
-      // Handle PDFs - convert to page images first
-      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        toast({
-          title: "📄 Conversion PDF...",
-          description: "Conversion des pages en images pour l'OCR"
-        });
-        
-        const pageImages = await pdfToPageImages(file);
-        
-        toast({
-          title: "🔍 OCR en cours...",
-          description: `Analyse de ${pageImages.length} page(s)`
-        });
-        
-        const { data, error } = await supabase.functions.invoke('ocr-translate', {
-          body: { 
-            pages: pageImages,
-            fileName: file.name,
-            targetLanguage
-          }
-        });
-        
-        if (error) throw error;
-        
-        setSourceText(data.extractedText || '');
-        setTranslatedText(data.translation || '');
-        setLastResult({
-          sourceText: data.extractedText || '',
-          translatedText: data.translation || '',
-          sourceLanguage,
-          targetLanguage
-        });
-        tamtamFeedback.play('success');
-        return;
+      const body: Record<string, unknown> = {
+        fileName: file.name,
+        targetLanguage,
+      };
+
+      if (file.type.startsWith('image/')) {
+        body.image = dataUrl;
+      } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        // Send single-page PDF as image (edge function will handle it)
+        // For multi-page, we send as pages array with single entry
+        body.pages = [dataUrl];
+      } else {
+        // Try as image anyway
+        body.image = dataUrl;
       }
+
+      toast({
+        title: "🔍 OCR en cours...",
+        description: "Extraction et traduction du texte..."
+      });
+
+      const { data, error } = await supabase.functions.invoke('ocr-translate', {
+        body
+      });
+      
+      if (error) throw error;
+      
+      if (data?.error && !data?.translation) {
+        throw new Error(data.details || data.error);
+      }
+      
+      setSourceText(data.extractedText || '');
+      setTranslatedText(data.translation || '');
+      setLastResult({
+        sourceText: data.extractedText || '',
+        translatedText: data.translation || '',
+        sourceLanguage,
+        targetLanguage
+      });
+      tamtamFeedback.play('success');
       
       // Unsupported format
       toast({
@@ -519,7 +482,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     } finally {
       setIsProcessing(false);
     }
-  }, [sourceLanguage, targetLanguage, translateFromText, pdfToPageImages, toast]);
+  }, [sourceLanguage, targetLanguage, translateFromText, fileToDataUrl, toast]);
 
   // Speak source text
   const speakSource = useCallback(async () => {
