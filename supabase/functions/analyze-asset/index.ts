@@ -156,15 +156,10 @@ serve(async (req) => {
       const errText = await response.text();
       console.error(`[analyze-asset] AI gateway error ${response.status}:`, errText);
 
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
-          status: 402,
+      // For 402/429, return empty suggestions gracefully instead of erroring
+      if (response.status === 402 || response.status === 429) {
+        console.warn(`[analyze-asset] AI unavailable (${response.status}), returning empty suggestions`);
+        return new Response(JSON.stringify({ suggestions: {}, warning: response.status === 402 ? "credits_exhausted" : "rate_limited" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
