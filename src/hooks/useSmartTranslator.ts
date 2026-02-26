@@ -397,56 +397,116 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     }
   }, [translateFromText, toast]);
 
-  // Translate from document (PDF, etc.)
+  // Convert PDF file to array of page image dataURLs using pdf.js-like canvas rendering
+  const pdfToPageImages = useCallback(async (file: File): Promise<string[]> => {
+    // Dynamic import of pdfjs
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 2.0 }); // high res for OCR
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d')!;
+      await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
+      pages.push(canvas.toDataURL('image/png'));
+    }
+    
+    return pages;
+  }, []);
+
+  // Translate from document (PDF, images, text files)
   const translateFromDocument = useCallback(async (file: File) => {
     setIsProcessing(true);
     tamtamFeedback.play('send');
     
     try {
-      // Convert file to base64
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // Remove data URL prefix if present
-          const base64Data = result.includes(',') ? result.split(',')[1] : result;
-          resolve(base64Data);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      
-      // Check if it's an image
+      // Handle images directly
       if (file.type.startsWith('image/')) {
-        await translateFromImage(base64);
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        
+        const { data, error } = await supabase.functions.invoke('ocr-translate', {
+          body: { 
+            image: dataUrl,
+            fileName: file.name,
+            targetLanguage
+          }
+        });
+        
+        if (error) throw error;
+        
+        setSourceText(data.extractedText || '');
+        setTranslatedText(data.translation || '');
+        setLastResult({
+          sourceText: data.extractedText || '',
+          translatedText: data.translation || '',
+          sourceLanguage,
+          targetLanguage
+        });
+        tamtamFeedback.play('success');
         return;
       }
       
-      // For other documents, use OCR edge function
-      const { data, error } = await supabase.functions.invoke('ocr-translate', {
-        body: { 
-          document: base64,
-          fileName: file.name,
-          targetLanguage: targetLanguage
-        }
+      // Handle text files
+      if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+        const text = await file.text();
+        await translateFromText(text);
+        return;
+      }
+      
+      // Handle PDFs - convert to page images first
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        toast({
+          title: "📄 Conversion PDF...",
+          description: "Conversion des pages en images pour l'OCR"
+        });
+        
+        const pageImages = await pdfToPageImages(file);
+        
+        toast({
+          title: "🔍 OCR en cours...",
+          description: `Analyse de ${pageImages.length} page(s)`
+        });
+        
+        const { data, error } = await supabase.functions.invoke('ocr-translate', {
+          body: { 
+            pages: pageImages,
+            fileName: file.name,
+            targetLanguage
+          }
+        });
+        
+        if (error) throw error;
+        
+        setSourceText(data.extractedText || '');
+        setTranslatedText(data.translation || '');
+        setLastResult({
+          sourceText: data.extractedText || '',
+          translatedText: data.translation || '',
+          sourceLanguage,
+          targetLanguage
+        });
+        tamtamFeedback.play('success');
+        return;
+      }
+      
+      // Unsupported format
+      toast({
+        title: "Format non supporté",
+        description: "Utilisez une image, un PDF ou un fichier texte",
+        variant: "destructive"
       });
-      
-      if (error) throw error;
-      
-      const extractedText = data.extractedText || '';
-      const translation = data.translation || '';
-      
-      setSourceText(extractedText);
-      setTranslatedText(translation);
-      
-      setLastResult({
-        sourceText: extractedText,
-        translatedText: translation,
-        sourceLanguage,
-        targetLanguage
-      });
-      
-      tamtamFeedback.play('success');
       
     } catch (error: any) {
       console.error('[SmartTranslator] Document translation error:', error);
@@ -459,7 +519,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     } finally {
       setIsProcessing(false);
     }
-  }, [sourceLanguage, targetLanguage, translateFromImage, toast]);
+  }, [sourceLanguage, targetLanguage, translateFromText, pdfToPageImages, toast]);
 
   // Speak source text
   const speakSource = useCallback(async () => {
