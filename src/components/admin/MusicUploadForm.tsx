@@ -5,6 +5,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,7 @@ function AiBadge() {
 }
 
 export function MusicUploadForm() {
+  const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -234,6 +236,7 @@ export function MusicUploadForm() {
             ai_metadata: aiMetadata,
             ai_analysis_status: aiFields.size > 0 ? 'completed' : 'skipped',
             ai_confidence: aiFields.size > 0 ? (aiFields.size / 6) : null,
+            user_id: user?.id || null,
           });
       } catch (importErr) {
         console.warn('asset_imports record failed (non-fatal):', importErr);
