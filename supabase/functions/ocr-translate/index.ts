@@ -348,36 +348,15 @@ serve(async (req) => {
     let pageImages: string[] = [];
 
     if (Array.isArray(pages) && pages.length > 0) {
-      // ✅ mode recommandé pour PDF multi-pages
+      // ✅ mode recommandé - accept both image and PDF dataURLs
       pageImages = pages.filter((p) => typeof p === "string" && p.trim().length > 0);
     } else {
       // rétrocompat 1 image / document
       const sourceData = image || document;
       if (!sourceData) throw new Error("No image, document, or pages[] provided");
 
-      const { dataUrl, mime } = detectDataUrl(sourceData, fileName);
-      const pdfMode = isLikelyPdf(mime, fileName);
-
-      if (pdfMode) {
-        // PDF brut envoyé sans pages[] → on ne peut pas garantir un multi-pages fiable côté Edge sans rasterizer
-        return new Response(
-          JSON.stringify({
-            error: "PDF multi-pages non converti",
-            details:
-              "Pour la v2, convertis le PDF en images (une image par page) côté frontend et envoie `pages: string[]`.",
-            expected: {
-              pages: ["data:image/png;base64,...", "data:image/png;base64,..."],
-              targetLanguage: "bariba",
-            },
-            fallback: false,
-          }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        );
-      }
-
+      const { dataUrl } = detectDataUrl(sourceData, fileName);
+      // Accept any format - Gemini Vision handles both images and PDFs
       pageImages = [dataUrl];
     }
 
