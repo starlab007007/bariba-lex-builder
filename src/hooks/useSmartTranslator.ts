@@ -397,19 +397,19 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     }
   }, [translateFromText, toast]);
 
-  // Convert PDF file to array of page image dataURLs using pdf.js-like canvas rendering
+  // Convert PDF file to array of page image dataURLs
   const pdfToPageImages = useCallback(async (file: File): Promise<string[]> => {
-    // Dynamic import of pdfjs
     const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    // Disable worker to avoid CDN/bundling issues
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
     
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, disableAutoFetch: true, isEvalSupported: false }).promise;
     const pages: string[] = [];
     
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 2.0 }); // high res for OCR
+      const viewport = page.getViewport({ scale: 2.0 });
       const canvas = document.createElement('canvas');
       canvas.width = viewport.width;
       canvas.height = viewport.height;
