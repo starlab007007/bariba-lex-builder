@@ -305,8 +305,8 @@ async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> 
     // Even if it fails, the request itself can trigger the wake-up
   }
 
-  // Poll every 5s for up to 50s total (10 checks)
-  for (let i = 1; i <= 10; i++) {
+  // Poll every 5s for up to 80s total (16 checks)
+  for (let i = 1; i <= 16; i++) {
     await sleep(5_000);
     try {
       const check = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 8_000);
@@ -315,11 +315,11 @@ async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> 
         return true;
       }
     } catch {
-      console.log(`[bariba-tts] ⏳ Poll ${i}/10 - still waking...`);
+      console.log(`[bariba-tts] ⏳ Poll ${i}/16 - still waking...`);
     }
   }
 
-  console.log("[bariba-tts] ❌ Space still not awake after 50s of polling");
+  console.log("[bariba-tts] ❌ Space still not awake after 80s of polling");
   return false;
 }
 
