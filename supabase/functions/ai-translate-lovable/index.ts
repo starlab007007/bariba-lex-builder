@@ -24,6 +24,59 @@ serve(async (req) => {
       );
     }
 
+    // Optimisation: vérifier le cache DB avant d'appeler l'IA
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
+    
+    if (supabaseUrl && serviceKey) {
+      try {
+        const cacheResp = await fetch(
+          `${supabaseUrl}/rest/v1/translation_memory?source_text=eq.${encodeURIComponent(text.trim().toLowerCase())}&source_language=eq.${encodeURIComponent(sourceLang)}&target_language=eq.${encodeURIComponent(targetLang)}&order=usage_count.desc&limit=1`,
+          {
+            headers: {
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+            },
+          }
+        );
+        
+        if (cacheResp.ok) {
+          const cached = await cacheResp.json();
+          if (cached?.length > 0 && cached[0].target_text) {
+            console.log(`✅ Cache hit for: "${text.substring(0, 30)}..." (${cached[0].usage_count} uses)`);
+            
+            // Incrémenter le compteur en arrière-plan
+            fetch(
+              `${supabaseUrl}/rest/v1/translation_memory?source_text=eq.${encodeURIComponent(text.trim().toLowerCase())}&source_language=eq.${sourceLang}&target_language=eq.${targetLang}`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'apikey': serviceKey,
+                  'Authorization': `Bearer ${serviceKey}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal',
+                },
+                body: JSON.stringify({ usage_count: cached[0].usage_count + 1, updated_at: new Date().toISOString() }),
+              }
+            ).catch(() => {});
+
+            return new Response(
+              JSON.stringify({
+                translation: cached[0].target_text,
+                confidence: cached[0].confidence_score || 90,
+                model: 'cache',
+                source: 'Translation Memory (cache DB)',
+                method: 'cache',
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+      } catch (cacheErr) {
+        console.warn('Cache lookup failed, proceeding to AI:', cacheErr);
+      }
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -59,13 +112,13 @@ Be precise and respect the grammatical structure of the target language.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash', // Rapide et de qualité
+        model: 'google/gemini-2.5-flash-lite', // Optimisé: modèle le plus économique
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.3, // Traduction précise
-        max_tokens: 512,
+        temperature: 0.3,
+        max_tokens: 256, // Réduit de 512 à 256 pour économiser
       }),
     });
 
@@ -109,12 +162,33 @@ Be precise and respect the grammatical structure of the target language.`;
     console.log(`✅ Lovable AI translation successful`);
     console.log(`📤 Output: ${translation.substring(0, 50)}...`);
 
+    // Optimisation: sauvegarder dans le cache DB pour éviter les appels futurs
+    if (supabaseUrl && serviceKey) {
+      fetch(`${supabaseUrl}/rest/v1/translation_memory`, {
+        method: 'POST',
+        headers: {
+          'apikey': serviceKey,
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal,resolution=merge-duplicates',
+        },
+        body: JSON.stringify({
+          source_text: text.trim().toLowerCase(),
+          target_text: translation,
+          source_language: sourceLang,
+          target_language: targetLang,
+          confidence_score: confidence,
+          usage_count: 1,
+        }),
+      }).catch((err) => console.warn('Cache save failed:', err));
+    }
+
     return new Response(
       JSON.stringify({
         translation,
         confidence,
-        model: 'lovable-ai',
-        source: 'Lovable AI (Gemini 2.5 Flash)',
+        model: 'lovable-ai-lite',
+        source: 'Lovable AI (Gemini 2.5 Flash Lite)',
         method: 'ai'
       }),
       {

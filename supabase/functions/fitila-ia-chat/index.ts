@@ -10,11 +10,10 @@ const GLOBAL_TIMEOUT_MS = 60_000;
 const LLM_TIMEOUT_MS = 20_000;
 const BYT5_TIMEOUT_MS = 30_000;
 
+// Optimisation: modèle unique le plus économique, pas de cascade coûteuse
 const MODELS_TO_TRY = [
-  "openai/gpt-5-nano",
-  "google/gemini-2.5-flash-lite",
-  "google/gemini-2.5-flash",
-  "openai/gpt-5-mini",
+  "google/gemini-2.5-flash-lite",  // Le plus rapide et économique
+  "openai/gpt-5-nano",             // Fallback uniquement si le premier échoue
 ];
 
 const SYSTEM_PROMPT = `Tu es Fitila, un assistant intelligent et bienveillant.
