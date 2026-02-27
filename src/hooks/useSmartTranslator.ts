@@ -112,6 +112,30 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     return () => unsubscribe();
   }, []);
 
+  // Split text into chunks at sentence boundaries (~500 chars max)
+  const splitIntoChunks = useCallback((text: string, maxLen = 500): string[] => {
+    if (text.length <= maxLen) return [text];
+    const chunks: string[] = [];
+    let remaining = text;
+    while (remaining.length > 0) {
+      if (remaining.length <= maxLen) {
+        chunks.push(remaining);
+        break;
+      }
+      // Find last sentence boundary within maxLen
+      const slice = remaining.substring(0, maxLen);
+      let splitAt = -1;
+      for (const sep of ['. ', '.\n', '! ', '? ', ';\n', '\n\n', '\n', ', ']) {
+        const idx = slice.lastIndexOf(sep);
+        if (idx > maxLen * 0.3) { splitAt = idx + sep.length; break; }
+      }
+      if (splitAt <= 0) splitAt = maxLen; // fallback: hard cut
+      chunks.push(remaining.substring(0, splitAt).trim());
+      remaining = remaining.substring(splitAt).trim();
+    }
+    return chunks.filter(c => c.length > 0);
+  }, []);
+
   // Core translation function with offline fallback
   const performTranslation = useCallback(async (
     text: string,
@@ -131,21 +155,12 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     if (!isOnline) {
       console.log('[SmartTranslator] Offline mode - using dictionary');
       try {
-        const offlineResult = await offlineTranslationService.translate(
-          text,
-          from,
-          to
-        );
-        
+        const offlineResult = await offlineTranslationService.translate(text, from, to);
         if (offlineResult.confidence > 0) {
           translationCache.set(text, from, to, offlineResult.translation);
           return offlineResult.translation;
         } else {
-          // If no match found, return original text with warning
-          toast({
-            title: "Traduction partielle",
-            description: "Certains mots n'ont pas pu être traduits hors-ligne",
-          });
+          toast({ title: "Traduction partielle", description: "Certains mots n'ont pas pu être traduits hors-ligne" });
           return offlineResult.translation;
         }
       } catch (error) {
@@ -154,14 +169,30 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
       }
     }
     
-    // Online: use ByT5 with Lovable AI fallback
-    const result = await byT5TranslationService.translate(text, from, to);
+    // Online: split long texts into chunks to avoid ByT5 timeouts
+    const chunks = splitIntoChunks(text);
+    
+    if (chunks.length > 1) {
+      console.log(`[SmartTranslator] Splitting text into ${chunks.length} chunks`);
+      toast({ title: "📝 Texte long détecté", description: `Traduction en ${chunks.length} parties...` });
+    }
+    
+    const translatedChunks: string[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      if (chunks.length > 1) {
+        console.log(`[SmartTranslator] Translating chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`);
+      }
+      const result = await byT5TranslationService.translate(chunks[i], from, to);
+      translatedChunks.push(result.translation);
+    }
+    
+    const fullTranslation = translatedChunks.join('\n');
     
     // Cache the result
-    translationCache.set(text, from, to, result.translation);
+    translationCache.set(text, from, to, fullTranslation);
     
-    return result.translation;
-  }, [isOnline, toast]);
+    return fullTranslation;
+  }, [isOnline, toast, splitIntoChunks]);
 
   // Translate from audio recording (used for Bariba STT which requires server-side processing)
   const translateFromAudio = useCallback(async (audioBase64: string) => {
@@ -463,13 +494,6 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
         targetLanguage
       });
       tamtamFeedback.play('success');
-      
-      // Unsupported format
-      toast({
-        title: "Format non supporté",
-        description: "Utilisez une image, un PDF ou un fichier texte",
-        variant: "destructive"
-      });
       
     } catch (error: any) {
       console.error('[SmartTranslator] Document translation error:', error);
