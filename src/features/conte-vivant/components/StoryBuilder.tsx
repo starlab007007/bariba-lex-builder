@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Eye, Upload, Sparkles, Music, X, Play, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Eye, Upload, Sparkles, Music, X, Play, Loader2, Wand2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import BranchingPlayer from './BranchingPlayer';
 import AudioLibrary from '@/components/tamtam/creator/AudioLibrary';
 import type { AudioTrack } from '@/types/audio';
 import type { SegmentDraft, ChoiceDraft, BranchDraft, StoryGraph, BuilderStep } from '../types/story.types';
+import { autoIllustrateSegments } from '../utils/autoIllustrate';
 
 type BlobMap = Record<string, { narrationBlob?: Blob; audioBlob?: Blob }>;
 
@@ -49,6 +50,8 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [isBatchGenerating, setIsBatchGenerating] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  const [isAutoIllustrating, setIsAutoIllustrating] = useState(false);
+  const [autoIllustrateProgress, setAutoIllustrateProgress] = useState({ current: 0, total: 0 });
 
   const [introSegment, setIntroSegment] = useState<SegmentDraft>(defaultSegment('intro', 'Introduction'));
   const [choices, setChoices] = useState<ChoiceDraft[]>([
@@ -178,6 +181,58 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
     } catch { return null; }
   };
 
+  const handleAutoIllustrate = useCallback(async () => {
+    setIsAutoIllustrating(true);
+    try {
+      // Collect all segments
+      const allSegs: { id: string; text_content: string; media_url?: string }[] = [
+        { id: introSegment.id, text_content: introSegment.text_content, media_url: introSegment.media_url },
+      ];
+      branches.forEach(b => {
+        allSegs.push({ id: b.segment.id, text_content: b.segment.text_content, media_url: b.segment.media_url });
+        b.sub_branches?.forEach(sub => {
+          allSegs.push({ id: sub.segment.id, text_content: sub.segment.text_content, media_url: sub.segment.media_url });
+        });
+      });
+
+      const results = await autoIllustrateSegments(
+        allSegs, 'african',
+        (current, total) => setAutoIllustrateProgress({ current, total })
+      );
+
+      const matchCount = Object.keys(results).length;
+      if (matchCount === 0) {
+        toast.info('Aucun match trouvé. Ajoutez du texte aux scènes.');
+        return;
+      }
+
+      // Apply results
+      if (results['intro']) {
+        setIntroSegment(prev => ({ ...prev, media_url: results['intro'].media_url, mediaType: results['intro'].mediaType }));
+      }
+      setBranches(prev => prev.map(b => {
+        const branchResult = results[b.segment.id];
+        const updatedBranch = branchResult
+          ? { ...b, segment: { ...b.segment, media_url: branchResult.media_url, mediaType: branchResult.mediaType } }
+          : b;
+        const updatedSubs = updatedBranch.sub_branches?.map(sub => {
+          const subResult = results[sub.segment.id];
+          return subResult
+            ? { ...sub, segment: { ...sub.segment, media_url: subResult.media_url, mediaType: subResult.mediaType } }
+            : sub;
+        });
+        return { ...updatedBranch, sub_branches: updatedSubs };
+      }));
+
+      toast.success(`✨ ${matchCount} scène(s) illustrée(s) automatiquement`);
+    } catch (err) {
+      console.error('[autoIllustrate] Error:', err);
+      toast.error('Erreur lors de l\'auto-illustration');
+    } finally {
+      setIsAutoIllustrating(false);
+    }
+  }, [introSegment, branches]);
+
   const handlePublish = async () => {
     // Batch generate TTS for segments missing audio
     const allSegments: { seg: SegmentDraft; setter: (s: SegmentDraft) => void }[] = [];
@@ -297,6 +352,14 @@ export default function StoryBuilder({ onPublish, onCancel }: StoryBuilderProps)
             </button>
           )}
           <Button variant="ghost" size="sm" onClick={onCancel} className="min-h-[44px] text-white/70">Annuler</Button>
+          <Button variant="ghost" size="sm" onClick={handleAutoIllustrate} disabled={isAutoIllustrating}
+            className="gap-1 text-amber-400 hover:text-amber-300 min-h-[44px]">
+            {isAutoIllustrating ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /><span className="text-xs">{autoIllustrateProgress.current}/{autoIllustrateProgress.total}</span></>
+            ) : (
+              <><Wand2 className="w-4 h-4" /><span className="hidden sm:inline text-xs">Auto-illustrer</span></>
+            )}
+          </Button>
         </div>
       </div>
 

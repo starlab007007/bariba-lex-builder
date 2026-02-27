@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Square, Trash2, ImageIcon, Loader2, Play, Pause, Video, Volume2 } from 'lucide-react';
+import { Mic, Square, Trash2, ImageIcon, Loader2, Play, Pause, Video, Volume2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { getSupportedAudioMimeType, getAudioBlobType, getRecorderTimeslice } from '@/lib/audioMimeUtils';
 import type { SegmentDraft } from '../types/story.types';
 import { NARRATOR_VOICES, type NarratorVoice } from '../types/story.types';
+import { findBestMatch } from '../utils/autoIllustrate';
 
 const MAX_RECORDING_DURATION = 30; // seconds
 
@@ -69,6 +70,7 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
+  const [isAutoIllustrating, setIsAutoIllustrating] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -287,6 +289,27 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
     }
   };
 
+  const handleAutoIllustrateSingle = useCallback(async () => {
+    if (!segment.text_content?.trim()) {
+      toast.error('Ajoutez du texte pour auto-illustrer');
+      return;
+    }
+    setIsAutoIllustrating(true);
+    try {
+      const match = await findBestMatch(segment.text_content, 'african');
+      if (match) {
+        onChange({ ...segment, media_url: match.media_url, mediaType: match.mediaType });
+        toast.success(`✨ Illustration trouvée (score: ${match.score})`);
+      } else {
+        toast.info('Aucun match trouvé pour ce texte');
+      }
+    } catch (err) {
+      toast.error('Erreur auto-illustration');
+    } finally {
+      setIsAutoIllustrating(false);
+    }
+  }, [segment, onChange]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -463,6 +486,17 @@ export default function SegmentEditor({ segment, onChange, label, showEndingOpti
           {isGenerating ? (
             <><Loader2 className="w-4 h-4 animate-spin" />{generationProgress}</>
           ) : '✨ Générer IA'}
+        </Button>
+
+        {/* Auto-illustrate single segment */}
+        <Button size="sm" variant="outline" onClick={handleAutoIllustrateSingle}
+          disabled={isAutoIllustrating || !segment.text_content?.trim()}
+          className="gap-1.5 min-h-[44px] border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+          {isAutoIllustrating ? (
+            <><Loader2 className="w-4 h-4 animate-spin" />Recherche...</>
+          ) : (
+            <><Wand2 className="w-4 h-4" />Auto-illustrer</>
+          )}
         </Button>
       </div>
 
