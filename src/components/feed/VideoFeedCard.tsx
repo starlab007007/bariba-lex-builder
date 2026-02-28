@@ -11,6 +11,7 @@ import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 
 interface VideoFeedCardProps {
   post: any;
@@ -55,6 +56,8 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const isPageVisible = usePageVisibility();
+  const wasPlayingBeforeHide = useRef(false);
 
   // Engagement tracking refs
   const activatedAtRef = useRef<number>(0);
@@ -178,6 +181,21 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
       vid.removeEventListener('ended', onEnded);
     };
   }, [videoUrl]);
+
+  // Pause/resume on tab visibility change
+  useEffect(() => {
+    if (isPhoto || !videoRef.current || !isActive) return;
+    if (!isPageVisible) {
+      wasPlayingBeforeHide.current = isPlaying;
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    } else if (wasPlayingBeforeHide.current) {
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      wasPlayingBeforeHide.current = false;
+    }
+  }, [isPageVisible, isActive, isPhoto]);
 
   // Cleanup on unmount (videos only)
   useEffect(() => {

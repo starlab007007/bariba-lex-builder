@@ -13,12 +13,12 @@ interface TTSRequest {
   returnAudio?: boolean;
 }
 
-// Inworld TTS-1.5 Mini voice mapping
-const VOICE_MAP: Record<string, string> = {
-  'announcer': 'Mark',
-  'narrator': 'Timothy',
-  'female': 'Sarah',
-  'alloy': 'Alex',
+// ElevenLabs French voice IDs
+const ELEVENLABS_VOICE_MAP: Record<string, string> = {
+  'announcer': 'onwK4e9ZLuTAKqWW03F9', // Daniel (French)
+  'narrator': 'onwK4e9ZLuTAKqWW03F9',  // Daniel (French)
+  'female': 'pFZP5JQG7iQjIQuC4Bku',    // Lily (French)
+  'alloy': 'onwK4e9ZLuTAKqWW03F9',     // Daniel (French)
 };
 
 serve(async (req) => {
@@ -82,87 +82,16 @@ Retourne UNIQUEMENT le texte optimisé, sans explications.`
       }
     }
 
-    // Step 2: If returnAudio is true, generate actual audio using Inworld TTS-1.5 Mini
+    // Step 2: If returnAudio is true, generate actual audio
     if (returnAudio) {
-      const aimlApiKey = Deno.env.get('AIML_API_KEY');
-      
-      if (aimlApiKey) {
-        try {
-          const inworldVoice = VOICE_MAP[voice] || VOICE_MAP['announcer'];
-          console.log(`[TTS] Generating audio with Inworld TTS-1.5 Mini voice: ${inworldVoice}`);
-          
-          const ttsResponse = await fetch('https://api.aimlapi.com/v1/tts', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${aimlApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'inworld/tts-1-5-mini',
-              text: optimizedText,
-              voice: inworldVoice,
-              language: 'fr',
-              format: 'mp3',
-            }),
-          });
-
-          if (ttsResponse.ok) {
-            const ttsData = await ttsResponse.json();
-            const audioUrl = ttsData?.audio?.url;
-            
-            if (audioUrl) {
-              console.log(`[TTS] Got audio URL, downloading: ${audioUrl}`);
-              
-              // Download the audio file
-              const audioDownload = await fetch(audioUrl);
-              if (audioDownload.ok) {
-                const audioBuffer = await audioDownload.arrayBuffer();
-                const audioBase64 = base64Encode(audioBuffer);
-                const duration = Date.now() - startTime;
-                
-                console.log(`[TTS] Inworld audio generated: ${audioBuffer.byteLength} bytes in ${duration}ms`);
-                
-                return new Response(
-                  JSON.stringify({
-                    success: true,
-                    method: 'inworld-tts',
-                    text: optimizedText,
-                    audioBase64,
-                    audioFormat: 'audio/mpeg',
-                    audioSize: audioBuffer.byteLength,
-                    duration,
-                  }),
-                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                );
-              } else {
-                console.error('[TTS] Failed to download audio from URL:', audioDownload.status);
-              }
-            } else {
-              console.error('[TTS] No audio URL in response:', JSON.stringify(ttsData));
-            }
-          } else {
-            const errorText = await ttsResponse.text();
-            console.error('[TTS] Inworld TTS error:', ttsResponse.status, errorText);
-          }
-        } catch (inworldError) {
-          console.error('[TTS] Inworld TTS failed:', inworldError);
-        }
-      }
-      
-      // Fallback 2: Try ElevenLabs
+      // PRIMARY: ElevenLabs (native French voices)
       const elevenLabsKey = Deno.env.get('ELEVENLABS_API_KEY');
       if (elevenLabsKey) {
         try {
-          const ELEVEN_VOICE_MAP: Record<string, string> = {
-            'announcer': 'pFZP5JQG7iQjIQuC4Bku', // Lily (French)
-            'narrator': 'onwK4e9ZLuTAKqWW03F9', // Daniel (French)
-            'female': 'pFZP5JQG7iQjIQuC4Bku', // Lily (French)
-            'alloy': 'onwK4e9ZLuTAKqWW03F9', // Daniel (French)
-          };
-          const voiceId = ELEVEN_VOICE_MAP[voice] || ELEVEN_VOICE_MAP['narrator'];
-          console.log(`[TTS] Fallback to ElevenLabs voice: ${voiceId}`);
+          const voiceId = ELEVENLABS_VOICE_MAP[voice] || ELEVENLABS_VOICE_MAP['narrator'];
+          console.log(`[TTS] ElevenLabs French voice: ${voiceId}`);
           
-          const elResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+          const elResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
             method: 'POST',
             headers: {
               'xi-api-key': elevenLabsKey,
@@ -202,7 +131,69 @@ Retourne UNIQUEMENT le texte optimisé, sans explications.`
         }
       }
       
-      // Fallback: Return optimized text for client-side Web Speech API
+      // FALLBACK: Inworld TTS (may not support French well)
+      const aimlApiKey = Deno.env.get('AIML_API_KEY');
+      if (aimlApiKey) {
+        try {
+          const INWORLD_VOICE_MAP: Record<string, string> = {
+            'announcer': 'Mark',
+            'narrator': 'Timothy',
+            'female': 'Sarah',
+            'alloy': 'Alex',
+          };
+          const inworldVoice = INWORLD_VOICE_MAP[voice] || 'Mark';
+          console.log(`[TTS] Fallback to Inworld voice: ${inworldVoice}`);
+          
+          const ttsResponse = await fetch('https://api.aimlapi.com/v1/tts', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${aimlApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'inworld/tts-1-5-mini',
+              text: optimizedText,
+              voice: inworldVoice,
+              language: 'fr',
+              format: 'mp3',
+            }),
+          });
+
+          if (ttsResponse.ok) {
+            const ttsData = await ttsResponse.json();
+            const audioUrl = ttsData?.audio?.url;
+            
+            if (audioUrl) {
+              const audioDownload = await fetch(audioUrl);
+              if (audioDownload.ok) {
+                const audioBuffer = await audioDownload.arrayBuffer();
+                const audioBase64 = base64Encode(audioBuffer);
+                const duration = Date.now() - startTime;
+                
+                return new Response(
+                  JSON.stringify({
+                    success: true,
+                    method: 'inworld-tts',
+                    text: optimizedText,
+                    audioBase64,
+                    audioFormat: 'audio/mpeg',
+                    audioSize: audioBuffer.byteLength,
+                    duration,
+                  }),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+              }
+            }
+          } else {
+            const errorText = await ttsResponse.text();
+            console.error('[TTS] Inworld error:', ttsResponse.status, errorText);
+          }
+        } catch (inworldError) {
+          console.error('[TTS] Inworld failed:', inworldError);
+        }
+      }
+      
+      // LAST FALLBACK: Web Speech API on client
       const duration = Date.now() - startTime;
       return new Response(
         JSON.stringify({
@@ -224,7 +215,7 @@ Retourne UNIQUEMENT le texte optimisé, sans explications.`
       );
     }
 
-    // Default: Return optimized text for client-side synthesis (backward compatible)
+    // Default: Return optimized text for client-side synthesis
     const duration = Date.now() - startTime;
     
     return new Response(
@@ -244,7 +235,7 @@ Retourne UNIQUEMENT le texte optimisé, sans explications.`
           preferredVoice: 'Microsoft Paul - French (France)',
           fallbackVoices: ['Google français', 'French Female', 'fr-FR']
         },
-        instructions: 'Use browser speechSynthesis API with provided settings. Text has been optimized for natural French broadcast speech.'
+        instructions: 'Use browser speechSynthesis API with provided settings.'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

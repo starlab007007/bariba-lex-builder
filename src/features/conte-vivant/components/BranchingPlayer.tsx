@@ -9,6 +9,7 @@ import EndingCard from './EndingCard';
 import SegmentTransition from './SegmentTransition';
 import type { StoryGraph, StorySegment, StoryChoice } from '../types/story.types';
 import { useBranchPreload } from '../hooks/useBranchPreload';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 
 interface BranchingPlayerProps {
   graph: StoryGraph;
@@ -24,12 +25,15 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
   const [path, setPath] = useState<string[]>([]);
   const [endingsFound, setEndingsFound] = useState<Array<{ icon: string; name: string }>>([]);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [slideshowIdx, setSlideshowIdx] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const slideshowRef = useRef<ReturnType<typeof setInterval>>();
   const videoRef = useRef<HTMLVideoElement>(null);
   const narrationRef = useRef<HTMLAudioElement>(null);
   const bgMusicRef = useRef<HTMLAudioElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioUnlockedRef = useRef(false);
+  const isVisible = usePageVisibility();
   const { preloadSegments, getCachedUrl, cancelAll } = useBranchPreload();
 
   const seg = graph.segments[currentId];
@@ -222,9 +226,37 @@ export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps
     }
   };
 
+  // Slideshow for multiple image_urls
+  const imageUrls = seg?.image_urls || [];
+  const hasSlideshow = imageUrls.length > 1;
+
+  useEffect(() => {
+    if (!hasSlideshow || phase !== 'playing') return;
+    setSlideshowIdx(0);
+    const interval = Math.max(3000, ((seg?.duration || 12) * 1000) / imageUrls.length);
+    slideshowRef.current = setInterval(() => {
+      setSlideshowIdx(prev => (prev + 1) % imageUrls.length);
+    }, interval);
+    return () => { clearInterval(slideshowRef.current); };
+  }, [currentId, phase, hasSlideshow, imageUrls.length, seg?.duration]);
+
+  // Pause/resume on tab visibility
+  useEffect(() => {
+    if (!isVisible) {
+      videoRef.current?.pause();
+      narrationRef.current?.pause();
+      bgMusicRef.current?.pause();
+    } else if (isPlaying && phase === 'playing') {
+      videoRef.current?.play().catch(() => {});
+      narrationRef.current?.play().catch(() => {});
+      bgMusicRef.current?.play().catch(() => {});
+    }
+  }, [isVisible, isPlaying, phase]);
+
   // Get media URL - check preload cache first, then all possible sources
+  const currentSlideUrl = hasSlideshow ? imageUrls[slideshowIdx] : undefined;
   const rawMediaUrl = seg?.media_url || seg?.video_url || seg?.image_urls?.[0];
-  const mediaUrl = getCachedUrl(currentId) || rawMediaUrl;
+  const mediaUrl = currentSlideUrl || getCachedUrl(currentId) || rawMediaUrl;
   const isVideo = seg?.mediaType === 'video' || !!seg?.video_url || (typeof mediaUrl === 'string' && /\.(mp4|webm|mov)/i.test(mediaUrl));
 
   if (!seg) return null;
