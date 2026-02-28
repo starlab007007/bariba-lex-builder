@@ -12,9 +12,11 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Merge, Sparkles,
   Smile, Cloud, Zap, Eye, Moon, Flame, Heart,
-  Mic, Play, Pause, Loader2, VolumeX
+  Mic, Play, Pause, Loader2, VolumeX, Wand2
 } from 'lucide-react';
 import type { NarratorVoice } from '@/features/conte-vivant/types/story.types';
+import { findBestMatch } from '@/features/conte-vivant/utils/autoIllustrate';
+import { toast } from 'sonner';
 
 export interface EditableScene {
   id: string;
@@ -62,6 +64,7 @@ export function SceneEditor({ scenes, onScenesChange, onValidate, isGenerating }
   const [expandedEmotion, setExpandedEmotion] = useState<string | null>(null);
   const [expandedVoice, setExpandedVoice] = useState<string | null>(null);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [autoIllustratingId, setAutoIllustratingId] = useState<string | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
   const updateScene = useCallback((id: string, updates: Partial<EditableScene>) => {
@@ -338,6 +341,41 @@ export function SceneEditor({ scenes, onScenesChange, onValidate, isGenerating }
                   )}
                   rows={Math.max(2, Math.ceil(scene.text.length / 50))}
                 />
+
+                {/* Auto-illustrate per scene */}
+                {scene.text.trim() && (
+                  <button
+                    onClick={async () => {
+                      setAutoIllustratingId(scene.id);
+                      try {
+                        const match = await findBestMatch(scene.text, 'african');
+                        if (match) {
+                          toast.success(`✨ Illustration trouvée (score: ${match.score})`);
+                          // Store match info on scene for later use in generation
+                          updateScene(scene.id, { sceneType: match.mediaType === 'video' ? 'video' : 'photo' } as any);
+                        } else {
+                          toast.info('Aucun match pour cette scène');
+                        }
+                      } catch {
+                        toast.error('Erreur auto-illustration');
+                      } finally {
+                        setAutoIllustratingId(null);
+                      }
+                    }}
+                    disabled={autoIllustratingId === scene.id}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95',
+                      'bg-amber-500/20 border border-amber-500/30 hover:border-amber-400/50',
+                      'text-amber-200 disabled:opacity-50'
+                    )}
+                  >
+                    {autoIllustratingId === scene.id ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Recherche...</>
+                    ) : (
+                      <><Wand2 className="w-3.5 h-3.5" /> Auto-illustrer</>
+                    )}
+                  </button>
+                )}
 
                 {/* TTS controls */}
                 {scene.voice && scene.text.trim() && (

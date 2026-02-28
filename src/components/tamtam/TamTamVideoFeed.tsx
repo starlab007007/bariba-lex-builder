@@ -8,6 +8,7 @@ import {
 import { useVideoFeed } from '@/hooks/useVideoFeed';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { useNavigate } from 'react-router-dom';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -90,6 +91,8 @@ const VideoCard: React.FC<{
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const lastTapRef = useRef<number>(0);
   const navigate = useNavigate();
+  const isPageVisible = usePageVisibility();
+  const wasPlayingBeforeHide = useRef(false);
 
   const authorId = (post.author as any)?.id || (post as any).user_id;
   const { isLiked, likesCount, toggleLike, isBookmarked, toggleBookmark, sharesCount, sharePost, isFollowing, toggleFollow } = usePostInteractions(post.id, authorId);
@@ -105,6 +108,21 @@ const VideoCard: React.FC<{
       setIsPlaying(false);
     }
   }, [isActive]);
+
+  // Pause/resume on tab visibility
+  useEffect(() => {
+    if (!videoRef.current || !isActive) return;
+    if (!isPageVisible) {
+      wasPlayingBeforeHide.current = isPlaying;
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    } else if (wasPlayingBeforeHide.current) {
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      wasPlayingBeforeHide.current = false;
+    }
+  }, [isPageVisible, isActive]);
 
   useEffect(() => {
     const video = videoRef.current;
