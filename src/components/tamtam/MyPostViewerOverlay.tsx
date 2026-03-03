@@ -35,9 +35,27 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
     setDeleteConfirm(false);
   }, [initialIndex, isOpen]);
 
+  // Auto-play on open
+  useEffect(() => {
+    if (!isOpen || !post) return;
+    const timer = setTimeout(() => {
+      if (post.media_type === 'video' && videoRef.current) {
+        videoRef.current.muted = true;
+        videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      } else if (post.audio_url) {
+        if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+        const audio = new Audio(post.audio_url);
+        audio.onended = () => setIsPlaying(false);
+        audioRef.current = audio;
+        audio.play().then(() => setIsPlaying(true)).catch(() => {});
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [isOpen, currentIndex]);
+
   useEffect(() => {
     // Cleanup audio/video on index change
-    audioRef.current?.pause();
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     videoRef.current?.pause();
     setIsPlaying(false);
     setDeleteConfirm(false);
@@ -108,11 +126,12 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
             {/* Media area */}
             <div className="flex-1 relative flex items-center justify-center overflow-hidden">
               {hasVideo ? (
-                <video
+              <video
                   ref={videoRef}
                   src={post.media_url!}
                   className="w-full h-full object-contain"
                   playsInline
+                  muted
                   loop
                   onClick={togglePlay}
                 />

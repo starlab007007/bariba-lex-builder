@@ -113,7 +113,8 @@ export const EXERCISES: Record<string, Exercise[]> = {
   // Sources: dictionnaire, phrase_fr_bariba.json, Traducteur
   // ─────────────────────────────────────────────────────────────────
   nourriture: [
-    { french: 'Riz', bariba: 'Koko', context: 'Aliment de base', distractorsBa: ['Wusu', 'Nim', 'Nɔni'], distractorsFr: ['Igname', 'Eau', 'Viande'] },
+    { french: 'Bouillie de céréales', bariba: 'Koko', context: 'Aliment de base (se BOIT : nonra)', distractorsBa: ['Wusu', 'Nim', 'Monri'], distractorsFr: ['Igname', 'Eau', 'Riz'] },
+    { french: 'Riz', bariba: 'Monri', context: 'Aliment de base (se MANGE : di)', distractorsBa: ['Koko', 'Nim', 'Nɔni'], distractorsFr: ['Bouillie', 'Eau', 'Viande'] },
     { french: 'Igname', bariba: 'Wusu', context: 'Aliment de base', distractorsBa: ['Koko', 'Nim', 'Wisu'], distractorsFr: ['Riz', 'Eau', 'Poisson'] },
     { french: 'Eau', bariba: 'Nim', context: 'Boisson essentielle', distractorsBa: ['Koko', 'Wusu', 'Nɔni'], distractorsFr: ['Riz', 'Igname', 'Viande'] },
     { french: 'Viande', bariba: 'Nɔni', context: 'Protéine animale', distractorsBa: ['Wisu', 'Koko', 'Nim'], distractorsFr: ['Poisson', 'Riz', 'Eau'] },
