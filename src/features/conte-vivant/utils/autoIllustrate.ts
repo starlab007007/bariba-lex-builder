@@ -151,21 +151,23 @@ export async function findBestMatch(
   // 3. Score each candidate
   let bestScore = 0;
   let bestCandidate: typeof candidates[0] | null = null;
+  let bestVideoCandidate: typeof candidates[0] | null = null;
+  let bestVideoScore = 0;
 
   for (const candidate of candidates) {
     let score = 3; // base score
 
-    // Emotion match (+2)
-    if (detectedEmotion && candidate.emotion === detectedEmotion) score += 2;
+    // Emotion match (+3)
+    if (detectedEmotion && candidate.emotion === detectedEmotion) score += 3;
 
-    // Scene type match (+2)
-    if (detectedScene && candidate.scene_type === detectedScene) score += 2;
+    // Scene type match (+3)
+    if (detectedScene && candidate.scene_type === detectedScene) score += 3;
 
-    // Character type match (+1)
-    if (detectedCharacter && candidate.character_type === detectedCharacter) score += 1;
+    // Character type match (+2)
+    if (detectedCharacter && candidate.character_type === detectedCharacter) score += 2;
 
-    // Action match (+1)
-    if (detectedAction && candidate.action === detectedAction) score += 1;
+    // Action match (+2)
+    if (detectedAction && candidate.action === detectedAction) score += 2;
 
     // Text similarity with descriptions (0-4)
     const simFr = textSimilarity(text, candidate.description_fr || '');
@@ -173,7 +175,13 @@ export async function findBestMatch(
     score += Math.max(simFr, simEn);
 
     // Video bonus (+3)
-    if (candidate.asset_type === 'video' && candidate.video_url) score += 3;
+    if (candidate.asset_type === 'video' && candidate.video_url) {
+      score += 3;
+      if (score > bestVideoScore) {
+        bestVideoScore = score;
+        bestVideoCandidate = candidate;
+      }
+    }
 
     if (score > bestScore) {
       bestScore = score;
@@ -181,8 +189,18 @@ export async function findBestMatch(
     }
   }
 
-  // Minimum threshold
-  if (!bestCandidate || bestScore < 5) return null;
+  // Lowered threshold from 5 to 3, with fallback to best video
+  if (!bestCandidate || bestScore < 3) {
+    // Fallback: use best video candidate if any
+    if (bestVideoCandidate) {
+      bestCandidate = bestVideoCandidate;
+      bestScore = bestVideoScore;
+    } else {
+      return null;
+    }
+  }
+
+  console.log(`[autoIllustrate] Best match score=${bestScore}, emotion=${detectedEmotion}, scene=${detectedScene}, asset=${bestCandidate.id}`);
 
   const isVideo = bestCandidate.asset_type === 'video' && bestCandidate.video_url;
 

@@ -414,7 +414,12 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-white text-sm sm:text-base font-bold drop-shadow-lg truncate">{authorUsername}</span>
-              <span className="text-white/60 text-xs sm:text-sm drop-shadow-md">
+              {(post.transcript_fr || post.transcript_ba) && (
+                <p className="text-white/90 text-xs sm:text-sm drop-shadow-lg line-clamp-2 mt-0.5 leading-snug">
+                  {post.transcript_fr || post.transcript_ba}
+                </p>
+              )}
+              <span className="text-white/60 text-xs sm:text-sm drop-shadow-md mt-0.5">
                 {post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + new Date(post.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
               </span>
             </div>

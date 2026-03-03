@@ -7,10 +7,12 @@ export const BARIBA_GRAMMAR_RULES = `
 RÈGLES GRAMMATICALES BARIBA (BAATONUM) :
 
 1. ORDRE DES MOTS : SOV (Sujet-Objet-Verbe)
-   - "Na koko di" = Je riz mange (J'ai mangé du riz)
+   - "Na monri di" = Je riz mange (J'ai mangé du riz) — monri = riz, di = manger
+   - "Na koko nonra" = Je bouillie bois (J'ai bu de la bouillie) — koko = bouillie, nonra = boire
    - "Taaso u nɛmu go" = Le chasseur une biche a tué
    - "Na sɔmburu kasuu" = Je travail cherche
    - L'ordre SVO est parfois utilisé avec des particules
+   ATTENTION : koko = bouillie de céréales (verbe : nonra = boire), monri = riz (verbe : di = manger)
 
 2. PRONOMS :
    Sujet : Na/N(je), A(tu), U(il humain), Ga/Mu(il chose), Sa(nous), I(vous), Ba(ils)
@@ -25,8 +27,8 @@ RÈGLES GRAMMATICALES BARIBA (BAATONUM) :
    -nu/-su = pluriel/collectif (Abonu, Yɑkɑsu)
 
 4. SYSTÈME VERBAL (pas de conjugaison, particules TAM) :
-   Passé/Accompli : ∅ (rien) → "Na koko di" = J'ai mangé du riz
-   Futur : koo → "Na koo koko di" = Je vais manger du riz
+   Passé/Accompli : ∅ (rien) → "Na monri di" = J'ai mangé du riz
+   Futur : koo → "Na koo monri di" = Je vais manger du riz
    Habituel : ra/ra ka → "Ba ra ka kɛrusu..." = Ils fabriquent...
    Progressif : -mɔ → "U sĩimɔ" = Il marche (en cours)
    Conditionnel : n → "Goo ù n nɛn bukaata mɔ" = Si quelqu'un...
@@ -137,7 +139,8 @@ export const BARIBA_IDIOMS = [
 
 export const BARIBA_REFERENCE_PAIRS = [
   // Phrases courantes SOV
-  { fr: "Je mange du riz", ba: "Na koko di" },
+  { fr: "J'ai bu de la bouillie", ba: "Na koko nonra" },
+  { fr: "J'ai mangé du riz", ba: "Na monri di" },
   { fr: "Il a tué une biche", ba: "Taaso u nɛmu go" },
   { fr: "Je cherche du travail", ba: "Na sɔmburu kasuu" },
   { fr: "Il est allé travailler", ba: "U sɔmburu da" },

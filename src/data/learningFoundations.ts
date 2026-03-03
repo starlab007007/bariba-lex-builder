@@ -67,7 +67,7 @@ export const FOUNDATION_LESSONS: FoundationLesson[] = [
             ['g', 'g dur', 'gobi', 'argent'],
             ['h', 'h aspiré', 'hali', 'même'],
             ['i', 'comme en français', 'isa', 'excuse'],
-            ['k', 'comme en français', 'koko', 'riz'],
+            ['k', 'comme en français', 'koko', 'bouillie de céréales'],
             ['kp', 'k+p ensemble', 'kpã', 'être grand'],
             ['l', 'comme en français', 'lɑɑbɑri', 'nouvelle'],
             ['m', 'comme en français', 'mɛrɔ', 'mère'],
@@ -280,12 +280,13 @@ export const FOUNDATION_LESSONS: FoundationLesson[] = [
           { bariba: 'Taaso u nɛmu go', french: 'Le chasseur a tué une biche', note: 'S(Taaso u) + O(nɛmu) + V(go)' },
           { bariba: 'Na sɔmburu kasuu', french: 'Je cherche du travail', note: 'S(Na) + O(sɔmburu) + V(kasuu)' },
           { bariba: 'U sɔmburu da', french: 'Il est allé travailler', note: 'S(U) + O(sɔmburu) + V(da)' },
-          { bariba: 'Na koko di', french: 'J\'ai mangé du riz', note: 'S(Na) + O(koko) + V(di)' },
+          { bariba: 'Na koko nonra', french: 'J\'ai bu de la bouillie', note: 'S(Na) + O(koko) + V(nonra) — koko = bouillie, on BOIT (nonra)' },
+          { bariba: 'Na monri di', french: 'J\'ai mangé du riz', note: 'S(Na) + O(monri) + V(di) — monri = riz, on MANGE (di)' },
           { bariba: 'Ba nɛmu go', french: 'Ils ont tué une biche', note: 'S(Ba) + O(nɛmu) + V(go)' },
         ],
         tip: {
-          fr: '💡 Pense à mettre le verbe EN DERNIER en Bariba. Au lieu de "Je mange le riz" → "Je riz mange" (Na koko di).',
-          br: '💡 Verbe KPEERU sɔɔ mɔ Baatɔnum sɔɔ. "Na koko di" = Je riz mange.'
+          fr: '💡 Pense à mettre le verbe EN DERNIER en Bariba. "Na monri di" = Je riz mange. Attention : koko = bouillie (on BOIT : nonra), monri = riz (on MANGE : di).',
+          br: '💡 Verbe KPEERU sɔɔ mɔ Baatɔnum sɔɔ. "Na monri di" = Je riz mange. Koko = bouillie (nonra), monri = riz (di).'
         }
       },
       {
@@ -327,10 +328,10 @@ export const FOUNDATION_LESSONS: FoundationLesson[] = [
         explanation: { fr: '"sɔɔ" est une postposition qui se place APRÈS le nom (wuu sɔɔ = village + dans).', br: '"sɔɔ" postposition mɔ, yenu KPEERU sɔɔ.' }
       },
       {
-        question: { fr: '"Na koko di" signifie :', br: '"Na koko di" nɛɛmɔ :' },
+        question: { fr: '"Na monri di" signifie :', br: '"Na monri di" nɛɛmɔ :' },
         options: ['Je cuisine le riz', 'J\'ai mangé du riz', 'Le riz est bon', 'Donne-moi du riz'],
         correctIndex: 1,
-        explanation: { fr: 'Na (je) + koko (riz) + di (manger) = J\'ai mangé du riz. Ordre SOV !', br: 'Na (je) + koko (riz) + di (manger) = SOV kpindu !' }
+        explanation: { fr: 'Na (je) + monri (riz) + di (manger) = J\'ai mangé du riz. Ordre SOV ! Attention : koko = bouillie (nonra = boire).', br: 'Na (je) + monri (riz) + di (manger) = SOV kpindu ! Koko = bouillie (nonra).' }
       },
     ]
   },
@@ -889,7 +890,8 @@ export const FOUNDATION_LESSONS: FoundationLesson[] = [
         table: {
           headers: ['Français', 'Bariba'],
           rows: [
-            ['Riz', 'Koko'],
+            ['Bouillie de céréales', 'Koko'],
+            ['Riz', 'Monri'],
             ['Igname', 'Dɔkuru / Teru'],
             ['Igname pilée', 'Sɔkura'],
             ['Gombo', 'Abo'],
@@ -934,9 +936,9 @@ export const FOUNDATION_LESSONS: FoundationLesson[] = [
       },
       {
         question: { fr: 'Quel est le mot Bariba pour "riz" ?', br: '"Riz" Baatɔnum ?' },
-        options: ['Dɔkuru', 'Swɛ̃ɛ', 'Koko', 'Nɛmu'],
+        options: ['Dɔkuru', 'Swɛ̃ɛ', 'Monri', 'Nɛmu'],
         correctIndex: 2,
-        explanation: { fr: 'Koko = riz. Dɔkuru = igname, Swɛ̃ɛ = poisson, Nɛmu = viande.', br: 'Koko = riz.' }
+        explanation: { fr: 'Monri = riz (on le MANGE : di). Koko = bouillie de céréales (on la BOIT : nonra). Dɔkuru = igname, Swɛ̃ɛ = poisson.', br: 'Monri = riz (di). Koko = bouillie (nonra).' }
       },
       {
         question: { fr: 'Comment dit-on "demain" ?', br: '"Yɑmɔ" Fãsei sɔɔ ?' },
