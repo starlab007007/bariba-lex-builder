@@ -258,10 +258,12 @@ export default function TamTamProfile() {
 
   const handlePlayPost = (post: MyPost) => {
     tamtamFeedback.play('click');
-    setPlayingPostId(post.id);
-    const audio = new Audio(post.audio_url);
-    audio.onended = () => setPlayingPostId(null);
-    audio.play();
+    // Open the viewer overlay instead of raw Audio
+    const idx = myPosts.findIndex(p => p.id === post.id);
+    if (idx >= 0) {
+      setViewerIndex(idx);
+      setViewerOpen(true);
+    }
   };
 
   const handleEditPost = (post: MyPost) => {
@@ -379,8 +381,8 @@ export default function TamTamProfile() {
         isOwnProfile={true}
         isUploading={isUploadingAvatar}
         onAvatarClick={handleAvatarClick}
-        followersCount={followersCount}
-        followingCount={followingCount}
+        followersCount={profile?.followers_count ?? followersCount}
+        followingCount={profile?.following_count ?? followingCount}
         likesCount={myPosts.reduce((acc, p) => acc + p.likes_count, 0)}
         onFollowersClick={() => setShowFollowers(true)}
         onFollowingClick={() => setShowFollowing(true)}
@@ -390,8 +392,8 @@ export default function TamTamProfile() {
       {/* Stats Grid */}
       <KuaishouStatsGrid
         postsCount={myPosts.length}
-        followersCount={followersCount}
-        followingCount={followingCount}
+        followersCount={profile?.followers_count ?? followersCount}
+        followingCount={profile?.following_count ?? followingCount}
         friendsCount={friendsCount}
         onPostsClick={() => setActiveTab('posts')}
         onFollowersClick={() => setShowFollowers(true)}
