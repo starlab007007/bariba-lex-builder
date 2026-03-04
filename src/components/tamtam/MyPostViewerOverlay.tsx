@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { X, Heart, MessageCircle, Trash2, Edit, Lock, Globe, ChevronUp, ChevronDown, Play, Pause, Volume2 } from 'lucide-react';
+import { X, Heart, MessageCircle, Share2, Trash2, Edit, Lock, Globe, ChevronUp, ChevronDown, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { MyPost } from '@/hooks/useMyPosts';
 
 interface MyPostViewerOverlayProps {
@@ -13,6 +13,11 @@ interface MyPostViewerOverlayProps {
   onToggleVisibility: (postId: string, isPublic: boolean) => void;
 }
 
+const isVideoUrl = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  return /\.(mp4|webm|mov|avi|mkv)(\?|$)/i.test(url);
+};
+
 export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
   posts,
   initialIndex,
@@ -24,6 +29,7 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -35,50 +41,61 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
     setDeleteConfirm(false);
   }, [initialIndex, isOpen]);
 
-  // Auto-play on open
+  // Cleanup on unmount or close
+  useEffect(() => {
+    if (!isOpen) {
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+      if (videoRef.current) { videoRef.current.pause(); }
+      setIsPlaying(false);
+      setIsMuted(true);
+    }
+  }, [isOpen]);
+
+  // Cleanup and auto-play on index change
   useEffect(() => {
     if (!isOpen || !post) return;
+
+    // Cleanup previous
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    setIsPlaying(false);
+    setDeleteConfirm(false);
+
     const timer = setTimeout(() => {
-      if (post.media_type === 'video' && videoRef.current) {
+      const hasVideo = (post.media_type === 'video' || isVideoUrl(post.media_url)) && post.media_url;
+      if (hasVideo && videoRef.current) {
         videoRef.current.muted = true;
+        setIsMuted(true);
         videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
       } else if (post.audio_url) {
-        if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
         const audio = new Audio(post.audio_url);
         audio.onended = () => setIsPlaying(false);
         audioRef.current = audio;
         audio.play().then(() => setIsPlaying(true)).catch(() => {});
       }
-    }, 300);
+    }, 200);
     return () => clearTimeout(timer);
   }, [isOpen, currentIndex]);
 
-  useEffect(() => {
-    // Cleanup audio/video on index change
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    videoRef.current?.pause();
-    setIsPlaying(false);
-    setDeleteConfirm(false);
+  const goNext = useCallback(() => {
+    if (currentIndex < posts.length - 1) setCurrentIndex(i => i + 1);
+  }, [currentIndex, posts.length]);
+
+  const goPrev = useCallback(() => {
+    if (currentIndex > 0) setCurrentIndex(i => i - 1);
   }, [currentIndex]);
 
-  const goNext = () => {
-    if (currentIndex < posts.length - 1) setCurrentIndex(i => i + 1);
-  };
-  const goPrev = () => {
-    if (currentIndex > 0) setCurrentIndex(i => i - 1);
-  };
-
-  const handleDragEnd = (_: any, info: PanInfo) => {
+  const handleDragEnd = useCallback((_: any, info: PanInfo) => {
     if (info.offset.y < -60) goNext();
     else if (info.offset.y > 60) goPrev();
-  };
+  }, [goNext, goPrev]);
 
-  const togglePlay = () => {
-    if (post.media_type === 'video' && videoRef.current) {
+  const togglePlay = useCallback(() => {
+    const hasVideo = (post?.media_type === 'video' || isVideoUrl(post?.media_url)) && post?.media_url;
+    if (hasVideo && videoRef.current) {
       if (isPlaying) videoRef.current.pause();
       else videoRef.current.play();
       setIsPlaying(!isPlaying);
-    } else if (post.audio_url) {
+    } else if (post?.audio_url) {
       if (!audioRef.current) {
         audioRef.current = new Audio(post.audio_url);
         audioRef.current.onended = () => setIsPlaying(false);
@@ -87,9 +104,17 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
       else audioRef.current.play();
       setIsPlaying(!isPlaying);
     }
-  };
+  }, [post, isPlaying]);
 
-  const handleDelete = () => {
+  const toggleMute = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted;
+      setIsMuted(videoRef.current.muted);
+    }
+  }, []);
+
+  const handleDelete = useCallback(() => {
+    if (!post) return;
     if (deleteConfirm) {
       onDelete(post.id);
       if (posts.length <= 1) onClose();
@@ -99,13 +124,14 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
       setDeleteConfirm(true);
       setTimeout(() => setDeleteConfirm(false), 3000);
     }
-  };
+  }, [post, deleteConfirm, posts.length, currentIndex, onDelete, onClose]);
 
   if (!post) return null;
 
-  const hasVideo = post.media_type === 'video' && post.media_url;
+  const hasVideo = (post.media_type === 'video' || isVideoUrl(post.media_url)) && post.media_url;
   const hasImage = (post.media_type === 'image' || post.media_type === 'photo') && post.media_url;
   const hasThumbnail = post.thumbnail_url;
+  const description = post.transcript_fr || post.transcript_ba;
 
   return (
     <AnimatePresence>
@@ -126,7 +152,7 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
             {/* Media area */}
             <div className="flex-1 relative flex items-center justify-center overflow-hidden">
               {hasVideo ? (
-              <video
+                <video
                   ref={videoRef}
                   src={post.media_url!}
                   className="w-full h-full object-contain"
@@ -146,23 +172,40 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
                   <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center">
                     <span className="text-6xl">{post.feeling_emoji || '🎤'}</span>
                   </div>
-                  <p className="text-white/60 text-sm text-center max-w-[250px] line-clamp-3">
-                    {post.transcript_fr || post.transcript_ba || 'Publication audio'}
-                  </p>
+                  {description && (
+                    <p className="text-white/60 text-sm text-center max-w-[250px] line-clamp-3">
+                      {description}
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* Play overlay for audio-only or paused video */}
-              {(!hasVideo || !isPlaying) && post.audio_url && (
+              {/* Play/Pause overlay */}
+              {(post.audio_url || hasVideo) && (
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={togglePlay}
-                  className="absolute bottom-24 left-1/2 -translate-x-1/2 w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center"
+                  className="absolute bottom-28 left-1/2 -translate-x-1/2 w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center"
                 >
                   {isPlaying ? (
-                    <Pause className="w-7 h-7 text-white" />
+                    <Pause className="w-6 h-6 text-white" />
                   ) : (
-                    <Play className="w-7 h-7 text-white ml-1" fill="white" />
+                    <Play className="w-6 h-6 text-white ml-0.5" fill="white" />
+                  )}
+                </motion.button>
+              )}
+
+              {/* Mute toggle for video */}
+              {hasVideo && (
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={toggleMute}
+                  className="absolute bottom-28 right-6 w-10 h-10 bg-white/15 backdrop-blur-sm rounded-full flex items-center justify-center z-10"
+                >
+                  {isMuted ? (
+                    <VolumeX className="w-4 h-4 text-white" />
+                  ) : (
+                    <Volume2 className="w-4 h-4 text-white" />
                   )}
                 </motion.button>
               )}
@@ -193,7 +236,7 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
             </div>
 
             {/* Right action buttons */}
-            <div className="absolute right-4 bottom-32 flex flex-col gap-4 z-10">
+            <div className="absolute right-4 bottom-36 flex flex-col gap-4 z-10">
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => onEdit(post)}
@@ -225,14 +268,23 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
               </motion.button>
             </div>
 
-            {/* Bottom stats bar */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-              <div className="flex items-center gap-6 text-white">
+            {/* Bottom stats & description bar */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+              {/* Description */}
+              {description && (
+                <p className="text-white/90 text-sm mb-2 line-clamp-2 max-w-[75%]">
+                  {description}
+                </p>
+              )}
+              <div className="flex items-center gap-5 text-white">
                 <span className="flex items-center gap-1.5 text-sm">
                   <Heart className="w-4 h-4" /> {post.likes_count}
                 </span>
                 <span className="flex items-center gap-1.5 text-sm">
                   <MessageCircle className="w-4 h-4" /> {post.comments_count}
+                </span>
+                <span className="flex items-center gap-1.5 text-sm">
+                  <Share2 className="w-4 h-4" /> {post.shares_count}
                 </span>
                 {post.duration_seconds && (
                   <span className="flex items-center gap-1.5 text-sm ml-auto">
