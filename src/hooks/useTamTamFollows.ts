@@ -23,6 +23,8 @@ export function useTamTamFollows(targetUserId?: string) {
   const { user } = useAuth();
   const [followers, setFollowers] = useState<FollowWithProfile[]>([]);
   const [following, setFollowing] = useState<FollowWithProfile[]>([]);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -30,26 +32,28 @@ export function useTamTamFollows(targetUserId?: string) {
 
   useEffect(() => {
     if (profileId) {
-      fetchFollowData();
+      fetchFollowCounts();
     }
   }, [profileId, user?.id]);
 
-  const fetchFollowData = async () => {
+  // Fast: only fetch counts using head:true
+  const fetchFollowCounts = async () => {
     if (!profileId) return;
-    
     setLoading(true);
     try {
-      // Fetch followers (people who follow this user)
-      const { data: followersData } = await supabase
-        .from('tamtam_follows')
-        .select('*')
-        .eq('following_id', profileId);
+      const [followersRes, followingRes] = await Promise.all([
+        supabase
+          .from('tamtam_follows')
+          .select('id', { count: 'exact', head: true })
+          .eq('following_id', profileId),
+        supabase
+          .from('tamtam_follows')
+          .select('id', { count: 'exact', head: true })
+          .eq('follower_id', profileId),
+      ]);
 
-      // Fetch following (people this user follows)
-      const { data: followingData } = await supabase
-        .from('tamtam_follows')
-        .select('*')
-        .eq('follower_id', profileId);
+      setFollowersCount(followersRes.count ?? 0);
+      setFollowingCount(followingRes.count ?? 0);
 
       // Check if current user follows the target
       if (user && targetUserId && user.id !== targetUserId) {
@@ -59,74 +63,72 @@ export function useTamTamFollows(targetUserId?: string) {
           .eq('follower_id', user.id)
           .eq('following_id', targetUserId)
           .maybeSingle();
-        
         setIsFollowing(!!followCheck);
       }
-
-      // Fetch profiles for followers
-      if (followersData && followersData.length > 0) {
-        const followerIds = followersData.map(f => f.follower_id);
-        const { data: profiles } = await supabase
-          .from('tamtam_profiles')
-          .select('id, username, display_name, avatar_url, bio_audio_url, user_id')
-          .in('user_id', followerIds);
-        
-        const followersWithProfiles = followersData.map(f => ({
-          ...f,
-          profile: profiles?.find(p => p.user_id === f.follower_id)
-        }));
-        setFollowers(followersWithProfiles as FollowWithProfile[]);
-      } else {
-        setFollowers([]);
-      }
-
-      // Fetch profiles for following
-      if (followingData && followingData.length > 0) {
-        const followingIds = followingData.map(f => f.following_id);
-        const { data: profiles } = await supabase
-          .from('tamtam_profiles')
-          .select('id, username, display_name, avatar_url, bio_audio_url, user_id')
-          .in('user_id', followingIds);
-        
-        const followingWithProfiles = followingData.map(f => ({
-          ...f,
-          profile: profiles?.find(p => p.user_id === f.following_id)
-        }));
-        setFollowing(followingWithProfiles as FollowWithProfile[]);
-      } else {
-        setFollowing([]);
-      }
     } catch (err) {
-      console.error('Error fetching follow data:', err);
+      console.error('Error fetching follow counts:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Lazy: load full profiles only when list is opened
+  const fetchFollowersList = useCallback(async () => {
+    if (!profileId) return;
+    const { data } = await supabase
+      .from('tamtam_follows')
+      .select('*')
+      .eq('following_id', profileId);
+    if (data && data.length > 0) {
+      const ids = data.map(f => f.follower_id);
+      const { data: profiles } = await supabase
+        .from('tamtam_profiles')
+        .select('id, username, display_name, avatar_url, bio_audio_url, user_id')
+        .in('user_id', ids);
+      setFollowers(data.map(f => ({
+        ...f,
+        profile: profiles?.find(p => p.user_id === f.follower_id)
+      })) as FollowWithProfile[]);
+    } else {
+      setFollowers([]);
+    }
+  }, [profileId]);
+
+  const fetchFollowingList = useCallback(async () => {
+    if (!profileId) return;
+    const { data } = await supabase
+      .from('tamtam_follows')
+      .select('*')
+      .eq('follower_id', profileId);
+    if (data && data.length > 0) {
+      const ids = data.map(f => f.following_id);
+      const { data: profiles } = await supabase
+        .from('tamtam_profiles')
+        .select('id, username, display_name, avatar_url, bio_audio_url, user_id')
+        .in('user_id', ids);
+      setFollowing(data.map(f => ({
+        ...f,
+        profile: profiles?.find(p => p.user_id === f.following_id)
+      })) as FollowWithProfile[]);
+    } else {
+      setFollowing([]);
+    }
+  }, [profileId]);
+
   const followUser = useCallback(async (userIdToFollow: string) => {
     if (!user) return { error: 'Not authenticated' };
-
     try {
       const { error } = await supabase
         .from('tamtam_follows')
-        .insert({
-          follower_id: user.id,
-          following_id: userIdToFollow
-        });
-
+        .insert({ follower_id: user.id, following_id: userIdToFollow });
       if (error) throw error;
 
-      // Create notification
       await supabase
         .from('tamtam_notifications')
-        .insert({
-          user_id: userIdToFollow,
-          type: 'follow',
-          actor_id: user.id
-        });
+        .insert({ user_id: userIdToFollow, type: 'follow', actor_id: user.id });
 
       setIsFollowing(true);
-      await fetchFollowData();
+      setFollowersCount(c => c + 1);
       return { error: null };
     } catch (err: any) {
       return { error: err.message };
@@ -135,18 +137,16 @@ export function useTamTamFollows(targetUserId?: string) {
 
   const unfollowUser = useCallback(async (userIdToUnfollow: string) => {
     if (!user) return { error: 'Not authenticated' };
-
     try {
       const { error } = await supabase
         .from('tamtam_follows')
         .delete()
         .eq('follower_id', user.id)
         .eq('following_id', userIdToUnfollow);
-
       if (error) throw error;
 
       setIsFollowing(false);
-      await fetchFollowData();
+      setFollowersCount(c => Math.max(0, c - 1));
       return { error: null };
     } catch (err: any) {
       return { error: err.message };
@@ -154,23 +154,22 @@ export function useTamTamFollows(targetUserId?: string) {
   }, [user]);
 
   const toggleFollow = useCallback(async (userIdToToggle: string) => {
-    if (isFollowing) {
-      return unfollowUser(userIdToToggle);
-    } else {
-      return followUser(userIdToToggle);
-    }
+    if (isFollowing) return unfollowUser(userIdToToggle);
+    else return followUser(userIdToToggle);
   }, [isFollowing, followUser, unfollowUser]);
 
   return {
     followers,
     following,
-    followersCount: followers.length,
-    followingCount: following.length,
+    followersCount,
+    followingCount,
     isFollowing,
     loading,
     followUser,
     unfollowUser,
     toggleFollow,
-    refetch: fetchFollowData
+    fetchFollowersList,
+    fetchFollowingList,
+    refetch: fetchFollowCounts
   };
 }

@@ -1,5 +1,4 @@
-import React, { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
 import { Lock, Globe, MoreVertical, Edit, Trash2, Heart, MessageCircle, Share2, Play, Loader2, Video, Image as ImageIcon, Mic } from 'lucide-react';
 import { MyPost } from '@/hooks/useMyPosts';
 import {
@@ -43,12 +42,11 @@ const PostThumbnail = React.memo(({ post }: { post: MyPost }) => {
   const mediaType = getMediaType(post);
 
   if (mediaType === 'video') {
-    const posterUrl = post.thumbnail_url || undefined;
     return (
       <>
         <video
           src={post.media_url!}
-          poster={posterUrl}
+          poster={post.thumbnail_url || undefined}
           className="w-full h-full object-cover"
           muted
           playsInline
@@ -79,7 +77,6 @@ const PostThumbnail = React.memo(({ post }: { post: MyPost }) => {
     );
   }
 
-  // Audio-only or broken image fallback
   return (
     <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex flex-col items-center justify-center gap-1">
       <span className="text-3xl">{post.feeling_emoji || '🎤'}</span>
@@ -126,124 +123,107 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Posts grid */}
       <div className="grid grid-cols-3 gap-0.5 px-0.5">
-        <AnimatePresence mode="popLayout">
-          {filteredPosts.map((post, index) => (
-            <motion.div
-              key={post.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ delay: index * 0.02 }}
-              className="relative aspect-square bg-muted overflow-hidden group cursor-pointer"
+        {filteredPosts.map((post, index) => (
+          <div
+            key={post.id}
+            className="relative aspect-square bg-muted overflow-hidden group cursor-pointer transition-opacity duration-200"
+          >
+            <PostThumbnail post={post} />
+
+            {/* Overlay on hover/tap */}
+            <div
+              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-3"
+              onClick={() => onViewPost ? onViewPost(filteredPosts.indexOf(post)) : onPlay(post)}
             >
-              {/* Thumbnail */}
-              <PostThumbnail post={post} />
+              <button className="p-2.5 bg-white/20 backdrop-blur-sm rounded-full active:scale-90 transition-transform">
+                <Play className="w-6 h-6 text-white" fill="white" />
+              </button>
+            </div>
 
-              {/* Overlay on hover/tap */}
-              <div
-                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity flex items-center justify-center gap-3"
-                onClick={() => onViewPost ? onViewPost(filteredPosts.indexOf(post)) : onPlay(post)}
-              >
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  className="p-2.5 bg-white/20 backdrop-blur-sm rounded-full"
-                >
-                  <Play className="w-6 h-6 text-white" fill="white" />
-                </motion.button>
-              </div>
+            {/* Visibility badge */}
+            <div className="absolute top-1.5 left-1.5">
+              {post.is_public ? (
+                <Globe className="w-3.5 h-3.5 text-white drop-shadow-lg" />
+              ) : (
+                <Lock className="w-3.5 h-3.5 text-white drop-shadow-lg" />
+              )}
+            </div>
 
-              {/* Visibility badge */}
-              <div className="absolute top-1.5 left-1.5">
-                {post.is_public ? (
-                  <Globe className="w-3.5 h-3.5 text-white drop-shadow-lg" />
-                ) : (
-                  <Lock className="w-3.5 h-3.5 text-white drop-shadow-lg" />
+            {/* Menu */}
+            <div className="absolute top-1.5 right-1.5 z-10">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="p-1 bg-black/30 backdrop-blur-sm rounded-full active:scale-90 transition-transform"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="w-3.5 h-3.5 text-white" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => onEdit(post)}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Modifier
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onToggleVisibility(post.id, !post.is_public)}>
+                    {post.is_public ? (
+                      <>
+                        <Lock className="w-4 h-4 mr-2" />
+                        Rendre privé
+                      </>
+                    ) : (
+                      <>
+                        <Globe className="w-4 h-4 mr-2" />
+                        Rendre public
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleDeleteClick(post.id)}
+                    disabled={deletingId === post.id}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    {deletingId === post.id ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    {deletingId === post.id ? 'Suppression...' : deleteConfirm === post.id ? 'Confirmer ?' : 'Supprimer'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Stats */}
+            <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/70 to-transparent">
+              <div className="flex items-center gap-2 text-white text-[10px]">
+                <span className="flex items-center gap-0.5">
+                  <Heart className="w-2.5 h-2.5" />
+                  {post.likes_count}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  <MessageCircle className="w-2.5 h-2.5" />
+                  {post.comments_count}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  <Share2 className="w-2.5 h-2.5" />
+                  {post.shares_count}
+                </span>
+                {post.duration_seconds && (
+                  <span className="ml-auto">
+                    {Math.floor(post.duration_seconds / 60)}:{String(post.duration_seconds % 60).padStart(2, '0')}
+                  </span>
                 )}
               </div>
-
-              {/* Menu */}
-              <div className="absolute top-1.5 right-1.5 z-10">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      className="p-1 bg-black/30 backdrop-blur-sm rounded-full"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MoreVertical className="w-3.5 h-3.5 text-white" />
-                    </motion.button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => onEdit(post)}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Modifier
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onToggleVisibility(post.id, !post.is_public)}>
-                      {post.is_public ? (
-                        <>
-                          <Lock className="w-4 h-4 mr-2" />
-                          Rendre privé
-                        </>
-                      ) : (
-                        <>
-                          <Globe className="w-4 h-4 mr-2" />
-                          Rendre public
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => handleDeleteClick(post.id)}
-                      disabled={deletingId === post.id}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      {deletingId === post.id ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4 mr-2" />
-                      )}
-                      {deletingId === post.id ? 'Suppression...' : deleteConfirm === post.id ? 'Confirmer ?' : 'Supprimer'}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Stats */}
-              <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/70 to-transparent">
-                <div className="flex items-center gap-2 text-white text-[10px]">
-                  <span className="flex items-center gap-0.5">
-                    <Heart className="w-2.5 h-2.5" />
-                    {post.likes_count}
-                  </span>
-                  <span className="flex items-center gap-0.5">
-                    <MessageCircle className="w-2.5 h-2.5" />
-                    {post.comments_count}
-                  </span>
-                  <span className="flex items-center gap-0.5">
-                    <Share2 className="w-2.5 h-2.5" />
-                    {post.shares_count}
-                  </span>
-                  {post.duration_seconds && (
-                    <span className="ml-auto">
-                      {Math.floor(post.duration_seconds / 60)}:{String(post.duration_seconds % 60).padStart(2, '0')}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Empty state */}
       {filteredPosts.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-12"
-        >
+        <div className="text-center py-12 animate-in fade-in duration-300">
           <div className="text-4xl mb-3">📭</div>
           <p className="text-muted-foreground">
             {filter === 'private' 
@@ -252,7 +232,7 @@ export const MyPostsGrid: React.FC<MyPostsGridProps> = ({
               ? 'Aucune publication publique'
               : 'Aucune publication'}
           </p>
-        </motion.div>
+        </div>
       )}
     </div>
   );

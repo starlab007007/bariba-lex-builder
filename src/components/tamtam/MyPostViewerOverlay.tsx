@@ -92,8 +92,14 @@ export const MyPostViewerOverlay: React.FC<MyPostViewerOverlayProps> = ({
   const togglePlay = useCallback(() => {
     const hasVideo = (post?.media_type === 'video' || isVideoUrl(post?.media_url)) && post?.media_url;
     if (hasVideo && videoRef.current) {
-      if (isPlaying) videoRef.current.pause();
-      else videoRef.current.play();
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        // Auto-unmute after first user interaction
+        videoRef.current.muted = false;
+        setIsMuted(false);
+        videoRef.current.play();
+      }
       setIsPlaying(!isPlaying);
     } else if (post?.audio_url) {
       if (!audioRef.current) {
