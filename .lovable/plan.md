@@ -1,59 +1,68 @@
 
 
-## Plan: Optimisation complète de la page Profil
+## Diagnostic complet : HuggingFace Spaces & APIs payantes
 
-### Diagnostic des problemes identifies (capture d'ecran)
+### 1. HuggingFace Spaces utilisés
 
-1. **Posts affiches avec images cassees** : La grille montre 3 posts avec des icones d'image cassee (broken image). Le composant `MyPostsGrid` utilise `post.thumbnail_url || post.media_url` comme `<img src>` mais ne gere pas les cas ou l'URL est invalide ou ou le media est une video (qui necessite un element `<video>` et non `<img>`).
+| # | Space | URL | Fonction | Usage |
+|---|-------|-----|----------|-------|
+| 1 | **ByT5 Expert (Traduction)** | `zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space` | `byt5-bariba-translate` | Traduction Français ↔ Bariba |
+| 2 | **Bariba TTS** | `zimesongbian-baatonum-tts-api-v001.hf.space` | `bariba-tts` | Synthèse vocale Bariba |
+| 3 | **Bariba STT** | `zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space` | `bariba-stt` | Reconnaissance vocale Bariba |
 
-2. **Statistiques potentiellement incorrectes** : Les compteurs Followers/Follow/Likes affichent 0. Les stats viennent de `useTamTamFollows` qui fait des requetes separees pour followers et following. Le `likesCount` est calcule cote client en sommant `myPosts.likes_count` — correct mais depend de la completude des donnees.
-
-3. **Posts non jouables depuis le portfolio** : `MyPostViewerOverlay` a deja ete corrige (muted/playsInline) mais le `handlePlayPost` dans `TamTamProfile.tsx` (ligne 259-265) cree un `new Audio()` sans gerer les videos — il faut utiliser le viewer overlay systematiquement.
-
-4. **Performance** : Trop de requetes paralleles au chargement (profile, follows, friends, posts, communities, stories). Pas de memoisation.
-
----
-
-### Corrections planifiees
-
-#### 1. MyPostsGrid — Affichage correct des medias (photos ET videos)
-
-- Detecter le type de media via `post.media_type` et regex sur l'extension
-- Pour les videos : afficher un `<video>` avec `poster={post.thumbnail_url}` au lieu d'un `<img>` avec src video
-- Pour les images : garder `<img>` avec fallback `onError` vers le placeholder emoji
-- Ajouter un badge duree sur les videos, et un badge type media (photo/video/audio)
-
-#### 2. MyPostViewerOverlay — Lecture fiable + description du post
-
-- Afficher la description du post (`transcript_fr || transcript_ba`) dans la barre du bas
-- Desactiver `muted` apres le premier play pour que l'audio de la video soit audible
-- Ajouter `shares_count` dans les stats affichees
-
-#### 3. MyPostsGrid — Stats reelles par post
-
-- Afficher `shares_count` en plus de likes et comments dans l'overlay stats de chaque post
-- Les stats sont deja chargees depuis la table `tamtam_posts` via `useMyPosts`
-
-#### 4. KuaishouProfileHeader — Stats fiables
-
-- Les stats `followersCount` et `followingCount` viennent de `useTamTamFollows` qui compte `followers.length` / `following.length` — c'est correct mais limite a 1000 par defaut de Supabase
-- Ajouter un count direct depuis `tamtam_profiles.followers_count` / `following_count` comme source alternative (ces colonnes existent deja dans la table)
-- Pour `likesCount` : utiliser la somme des likes de tous les posts (deja fait)
-
-#### 5. TamTamProfile — Performance et fluidite
-
-- Remplacer `handlePlayPost` (qui cree un Audio brut) par l'ouverture directe du viewer overlay
-- Memoiser les composants enfants couteux avec `React.memo`
-- Lazy-load l'onglet Stats et Communities
+**Statut actuel** : Ces 3 Spaces sont sur le plan **gratuit HuggingFace** et passent en mode **sleeping** (hibernation) après ~48h d'inactivité. Un mécanisme `hf-keep-alive` existe mais ne suffit pas (pas d'auth, pas de scheduling fiable).
 
 ---
 
-### Fichiers a modifier
+### 2. APIs payantes utilisées dans la plateforme
 
-| Fichier | Changement |
-|---------|-----------|
-| `src/components/tamtam/MyPostsGrid.tsx` | Detection media type, video thumbnail, fallback image, badge video |
-| `src/components/tamtam/MyPostViewerOverlay.tsx` | Afficher description, unmute apres play, shares_count |
-| `src/pages/tamtam/TamTamProfile.tsx` | Utiliser profile.followers_count, supprimer handlePlayPost brut, optimisation |
-| `src/hooks/useTamTamFollows.ts` | Optionnel: utiliser count du profil en fallback |
+| Service | Secret | Endpoint | Usage | Coût |
+|---------|--------|----------|-------|------|
+| **Mistral AI** | `MISTRAL_API_KEY` | `api.mistral.ai/v1/audio/transcriptions` | Transcription audio français (Voxtral Mini) | **Payant** - facturation à l'usage |
+| **ElevenLabs** | `ELEVENLABS_API_KEY` | API ElevenLabs | Voice cloning / TTS avancé (AIServicesHub) | **Payant** - quota mensuel |
+| **AIML API** | `AIML_API_KEY` | API AIML | Services AI divers | **Payant** |
+| **Lovable AI** | `LOVABLE_API_KEY` | `ai.gateway.lovable.dev` | Fallback traduction, transcription Gemini, OCR | **Inclus** dans Lovable (crédits limités) |
+
+> Note : `HUGGING_FACE_API_TOKEN` est gratuit (authentification Spaces privés).
+
+---
+
+### 3. Plan pour garder les HF Spaces toujours actifs
+
+#### Option A : Keep-alive renforcé (gratuit)
+- **Corriger `hf-keep-alive`** : ajouter le header `Authorization: Bearer HUGGING_FACE_API_TOKEN` sur tous les pings
+- **Scheduler fiable** : configurer un job `pg_cron` qui appelle `hf-keep-alive` **toutes les 10 minutes** (au lieu de 30 min actuellement)
+- **Ping plus agressif** : tester `/gradio_api/config` puis fallback `/` si erreur 404
+- **Limitation** : sur le plan gratuit HF, les Spaces dorment quand même après inactivité prolongée. Le keep-alive réduit le problème mais ne le résout pas à 100%
+
+#### Option B : HuggingFace "Always-on" (payant, recommandé)
+- Activer l'option **"Always-on"** sur chaque Space dans HuggingFace (nécessite un abonnement HF Pro ~$9/mois ou un upgrade du Space)
+- Cela garantit que les Spaces ne dorment **jamais**
+- C'est la seule solution fiable à 100%
+
+#### Option C : Pré-réveil intelligent (gratuit, complémentaire)
+- Au chargement de l'app, appeler `hf-keep-alive` en arrière-plan (pre-warm)
+- Quand l'utilisateur navigue vers Traducteur/Dictionnaire, déclencher un wake-up ciblé du Space concerné
+- Ajouter retry exponentiel (3 tentatives, délai 5s/10s/20s) dans les edge functions
+
+#### Plan d'implémentation recommandé (Option A + C)
+
+| Étape | Action | Fichier |
+|-------|--------|---------|
+| 1 | Ajouter auth header dans `hf-keep-alive` | `supabase/functions/hf-keep-alive/index.ts` |
+| 2 | Créer job `pg_cron` toutes les 10 min | Migration SQL (insert via SQL, pas migration) |
+| 3 | Ajouter pre-warm au mount de l'app | `src/App.tsx` ou hook dédié |
+| 4 | Retry exponentiel dans `byt5-bariba-translate` et `bariba-stt` | Edge functions concernées |
+| 5 | Fallback automatique vers Lovable AI si HF down | Déjà partiellement en place, renforcer |
+
+### 4. Résumé des coûts obligatoires
+
+Pour une plateforme 100% fonctionnelle :
+- **Mistral API** : seul service payant externe actuellement actif (transcription français). Alternative gratuite : remplacer par Lovable AI Gemini Flash (déjà en fallback)
+- **ElevenLabs** : si voice cloning utilisé. Alternative : désactiver ou utiliser le TTS Bariba HF gratuit
+- **AIML API** : vérifier si encore utilisé activement
+- **Lovable AI** : inclus dans l'abonnement Lovable, pas de coût supplémentaire
+- **HuggingFace** : gratuit tant que les Spaces restent sur le plan free (avec hibernation)
+
+> **Recommandation** : remplacer Mistral par Lovable AI (Gemini Flash) pour la transcription français afin d'éliminer le seul coût externe critique. ElevenLabs et AIML peuvent être désactivés si non essentiels.
 
