@@ -29,7 +29,7 @@ export function useCreatorDraft() {
   const [currentDraft, setCurrentDraft] = useState<CreatorDraft | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load drafts from localStorage on mount
   useEffect(() => {

@@ -61,7 +61,7 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
 
   const captureEngineRef = useRef<CaptureEngine | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 

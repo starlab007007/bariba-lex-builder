@@ -50,7 +50,7 @@ export function useTrackPlayer() {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -32,7 +32,7 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const startRecording = useCallback(async () => {
