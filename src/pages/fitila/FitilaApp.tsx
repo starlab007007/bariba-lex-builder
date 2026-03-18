@@ -9,6 +9,7 @@ import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
 import { BuildInfo } from '@/components/BuildInfo';
+import { useHFPreWarm } from '@/hooks/useHFPreWarm';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 FITILA APP V7 - MENU SIMPLIFIÉ
@@ -302,6 +303,9 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+
+  // Pre-warm HuggingFace Spaces au démarrage
+  useHFPreWarm();
 
   // Safety net: close menu on route change
   useEffect(() => {
