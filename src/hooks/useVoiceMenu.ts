@@ -83,7 +83,7 @@ export function useVoiceMenu(options: UseVoiceMenuOptions = {}): UseVoiceMenuRet
   const baribaTTS = useBaribaTTSWithFallback();
   
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressActiveRef = useRef(false);
 
   // Clean up timer on unmount

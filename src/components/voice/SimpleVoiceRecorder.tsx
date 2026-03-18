@@ -29,7 +29,7 @@ export const SimpleVoiceRecorder = ({
 }: SimpleVoiceRecorderProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveTranscriptRef = useRef<string>('');
   
   const {

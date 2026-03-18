@@ -212,7 +212,7 @@ export const BeatMakerStudio: React.FC = () => {
 
   // Recording timer
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (isRecording) {
       interval = setInterval(() => {
         setRecordingTime(prev => prev + 1);

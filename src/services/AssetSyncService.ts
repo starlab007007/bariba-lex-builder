@@ -82,7 +82,7 @@ class AssetSyncService {
   private state: SyncState;
   private listeners: Set<(state: SyncState) => void> = new Set();
   private abortController: AbortController | null = null;
-  private autoSyncInterval: NodeJS.Timeout | null = null;
+  private autoSyncInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.state = {

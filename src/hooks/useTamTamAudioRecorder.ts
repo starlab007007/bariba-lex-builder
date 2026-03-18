@@ -32,7 +32,7 @@ export function useTamTamAudioRecorder(options?: UseTamTamAudioRecorderOptions) 
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
   const mimeTypeRef = useRef<string>('audio/webm');
 

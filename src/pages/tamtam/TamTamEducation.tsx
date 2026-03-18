@@ -83,7 +83,7 @@ export default function TamTamEducation() {
   const { currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
-  const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     announceAction(currentLang === 'fr' ? 'Éducation' : 'Ẹ̀kọ́');
