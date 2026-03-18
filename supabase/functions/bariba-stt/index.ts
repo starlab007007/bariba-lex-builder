@@ -460,10 +460,32 @@ serve(async (req: Request) => {
     const startTime = Date.now();
 
     try {
-      const rawTranscription = await transcribeBariba(audio, robustMode, speakerType, HF_TOKEN);
+      // Retry exponentiel : 2 tentatives avec délai 5s/15s
+      // Gestion spéciale SPACE_SLEEPING : attente 30s
+      const RETRY_DELAYS = [0, 5000];
+      let rawTranscription: string | null = null;
+      let lastError: string = "";
+
+      for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
+        if (attempt > 0) {
+          const delay = lastError.includes("SPACE_SLEEPING") ? 30000 : RETRY_DELAYS[attempt];
+          console.log(`🔄 STT retry ${attempt}/${RETRY_DELAYS.length - 1} after ${delay}ms...`);
+          await new Promise((r) => setTimeout(r, delay));
+        }
+
+        try {
+          rawTranscription = await transcribeBariba(audio, robustMode, speakerType, HF_TOKEN);
+          if (rawTranscription) break;
+        } catch (retryErr: unknown) {
+          lastError = retryErr instanceof Error ? retryErr.message : "Unknown error";
+          console.warn(`⚠️ STT attempt ${attempt + 1} failed: ${lastError}`);
+          if (attempt === RETRY_DELAYS.length - 1) throw retryErr;
+        }
+      }
+
       const duration = Date.now() - startTime;
 
-      if (!isValidTranscription(rawTranscription)) {
+      if (!rawTranscription || !isValidTranscription(rawTranscription)) {
         return new Response(
           JSON.stringify({
             error: "Aucune transcription valide",

@@ -304,6 +304,9 @@ function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
+  // Pre-warm HuggingFace Spaces au démarrage
+  useHFPreWarm();
+
   // Safety net: close menu on route change
   useEffect(() => {
     if (isMenuOpen) setIsMenuOpen(false);

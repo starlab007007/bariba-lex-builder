@@ -458,28 +458,43 @@ serve(async (req) => {
 
     const apiPrefix = "/gradio_api";
 
-    const result = await callGradioTranslate(
-      SPACE_URL,
-      apiPrefix,
-      normalizedInput,
-      direction,
-      gradioMode,
-      advanced,
-      HF_TOKEN,
-      abortController.signal,
-      true,
-    );
+    // Retry exponentiel : 3 tentatives avec délai 3s/8s/15s
+    const RETRY_DELAYS = [0, 3000, 8000];
+    let result: { success: boolean; data?: any; error?: string } = { success: false, error: "No attempt made" };
+
+    for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
+      if (attempt > 0) {
+        console.log(`🔄 ByT5 retry ${attempt}/${RETRY_DELAYS.length - 1} after ${RETRY_DELAYS[attempt]}ms...`);
+        await sleep(RETRY_DELAYS[attempt]);
+      }
+
+      result = await callGradioTranslate(
+        SPACE_URL,
+        apiPrefix,
+        normalizedInput,
+        direction,
+        gradioMode,
+        advanced,
+        HF_TOKEN,
+        abortController.signal,
+        true,
+      );
+
+      if (result.success) break;
+      console.warn(`⚠️ ByT5 attempt ${attempt + 1} failed: ${result.error}`);
+    }
 
     clearTimeout(timeoutId);
     const duration = Date.now() - startTime;
 
     if (!result.success) {
-      console.error(`❌ ByT5 failed after ${duration}ms: ${result.error}`);
+      console.error(`❌ ByT5 failed after ${RETRY_DELAYS.length} attempts (${duration}ms): ${result.error}`);
       return new Response(
         JSON.stringify({
           error: "ByT5 translation service unavailable",
-          details: result.error || "HuggingFace Space API not responding",
+          details: result.error || "HuggingFace Space API not responding after multiple retries",
           duration,
+          retries: RETRY_DELAYS.length,
           spaceUrl: SPACE_URL,
         }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
