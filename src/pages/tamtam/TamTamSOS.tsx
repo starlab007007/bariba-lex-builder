@@ -74,11 +74,7 @@ export default function TamTamSOS() {
         description: `Position: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
       });
       
-      await speakCurrentLang(
-        currentLang === 'ba'
-          ? "Ìkìlọ̀ ti jẹ́ fíránṣẹ́. Ìrànlọ́wọ́ ń bọ̀"
-          : "Alerte envoyée. L'aide est en route"
-      );
+      await speakCurrentLang(t('sos_alert_sent'));
       
     } catch (err) {
       console.error('[TamTamSOS] Location error:', err);
