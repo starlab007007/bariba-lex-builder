@@ -196,7 +196,7 @@ export default function TamTamSOS() {
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🎤</span>
                 <span className="text-sm font-medium text-tamtam-text">
-                  {currentLang === 'ba' ? 'Ṣàlàyé kíní ó ṣẹlẹ̀' : 'Décrivez la situation'}
+                  {t('sos_describe_situation')}
                 </span>
               </div>
             </div>

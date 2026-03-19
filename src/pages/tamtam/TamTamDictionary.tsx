@@ -37,7 +37,6 @@ export default function TamTamDictionary() {
   const [panelSuccess, setPanelSuccess] = useState(false);
   const [panelError, setPanelError] = useState('');
 
-  // Gestion de la commande vocale avec transcription Bariba directe
   const handleVoiceCommand = async (result: {
     audioBase64: string;
     transcription?: string;
@@ -51,7 +50,6 @@ export default function TamTamDictionary() {
     try {
       let query = result.transcription?.toLowerCase().trim() || '';
 
-      // Si Bariba et pas de transcription → appel STT direct
       if (result.sourceLang === 'ba' && !query && result.audioBase64) {
         console.log('[TamTamDictionary] No transcription for Bariba audio → calling STT');
         const sttResult = await transcribeBariba(result.audioBase64, { robustMode: true, speakerType: 'Auto' });
@@ -59,7 +57,7 @@ export default function TamTamDictionary() {
           query = sttResult.transcription.toLowerCase().trim();
           console.log('[TamTamDictionary] STT result:', query);
         } else {
-          setPanelError(currentLang === 'ba' ? 'Àìsí ɔ̀rɔ̀ — gbìyànjú mọ̀' : 'Transcription échouée — réessayez');
+          setPanelError(t('dict_transcription_failed'));
           return;
         }
       }
@@ -67,7 +65,7 @@ export default function TamTamDictionary() {
       setLastQuery(query);
       
       if (!query) {
-        setPanelError(currentLang === 'ba' ? "Kò gbọ́ ɔ̀rɔ̀ kan" : "Aucun mot détecté");
+        setPanelError(t('dict_no_word_detected'));
         return;
       }
       
@@ -89,22 +87,20 @@ export default function TamTamDictionary() {
         addToHistory(foundEntry);
         setPanelSuccess(true);
         triggerFeedback('success');
-        const announcement = currentLang === 'ba'
-          ? `${foundEntry.word}. Ìtúmọ̀: ${foundEntry.definition}`
-          : `${foundEntry.word}. Définition: ${foundEntry.definition}`;
+        const announcement = `${foundEntry.word}. ${t('dict_meaning')}: ${foundEntry.definition}`;
         await speakCurrentLang(announcement);
       } else {
         setNotFoundWord(query);
-        setPanelSuccess(true); // still signal "done" so panel shows speak-again
+        setPanelSuccess(true);
         const notFoundMsg = currentLang === 'ba' 
-          ? `Kò rí ɔ̀rɔ̀ "${query}"` 
+          ? `${t('dict_word_not_found_msg')} "${query}"` 
           : `Mot "${query}" non trouvé`;
         await speakCurrentLang(notFoundMsg);
       }
     } catch (error) {
       console.error('[TamTamDictionary] Error:', error);
       triggerFeedback('error');
-      setPanelError(currentLang === 'ba' ? 'Àṣìṣe — gbìyànjú mọ̀' : 'Erreur — réessayez');
+      setPanelError(t('dict_error_retry'));
     } finally {
       setIsProcessing(false);
     }
@@ -136,8 +132,8 @@ export default function TamTamDictionary() {
     triggerFeedback('click');
     
     const modeAnnounce = newMode === 'voice' 
-      ? (currentLang === 'ba' ? "Ètò ohùn" : "Mode vocal")
-      : (currentLang === 'ba' ? "Ètò ìkọ̀wé" : "Mode clavier");
+      ? t('dict_voice_mode')
+      : t('dict_keyboard_mode');
     speakCurrentLang(modeAnnounce);
   };
 
@@ -148,8 +144,8 @@ export default function TamTamDictionary() {
     triggerFeedback('click');
     
     const dirAnnounce = newDir === 'ba-fr'
-      ? (currentLang === 'ba' ? "Bàátɔ̀nú sí Fàránsé" : "Bariba vers Français")
-      : (currentLang === 'ba' ? "Fàránsé sí Bàátɔ̀nú" : "Français vers Bariba");
+      ? t('dict_bariba_to_french')
+      : t('dict_french_to_bariba');
     speakCurrentLang(dirAnnounce);
   };
   
@@ -160,7 +156,6 @@ export default function TamTamDictionary() {
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 overflow-hidden">
-      {/* Header + toggles fixes */}
       <div className="flex-shrink-0 z-40 px-4 pt-4 pb-2 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
         <div className="flex items-center gap-3 mb-3">
           <button
@@ -172,12 +167,11 @@ export default function TamTamDictionary() {
           <div className="flex items-center gap-2">
             <span className="text-2xl">📖</span>
             <h1 className="text-xl font-bold text-gray-800">
-              {currentLang === 'ba' ? 'Gbɛ́-sɔ́ɔ̀rù' : 'Dictionnaire'}
+              {t('dict_title')}
             </h1>
           </div>
         </div>
 
-        {/* Mode toggle — Clavier / Vocal */}
         <div className="flex gap-2">
           <button
             onClick={() => { setInputMode('keyboard'); triggerFeedback('click'); }}
@@ -188,7 +182,7 @@ export default function TamTamDictionary() {
             }`}
           >
             <Keyboard className="w-5 h-5" />
-            {currentLang === 'ba' ? "Ìkọ̀wé" : "Clavier"}
+            {t('dict_keyboard')}
           </button>
 
           <button
@@ -200,26 +194,23 @@ export default function TamTamDictionary() {
             }`}
           >
             <span className="text-lg">🎤</span>
-            {currentLang === 'ba' ? "Ohùn" : "Vocal"}
+            {t('dict_vocal')}
           </button>
         </div>
 
-        {/* Word count badge */}
         <div className="mt-2 flex items-center justify-center gap-3">
           <span className="text-gray-500 text-sm">
-            {totalEntries > 0 ? `${totalEntries.toLocaleString()} mots` : 'Chargement...'}
+            {totalEntries > 0 ? `${totalEntries.toLocaleString()} ${t('dict_words')}` : t('dict_loading')}
           </span>
           {!isLoadingContrib && totalPoints > 0 && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white shadow-sm text-gray-600 text-xs">
-              {getLevel(totalPoints).emoji} {totalPoints} pts · {level}
+              {getLevel(totalPoints).emoji} {totalPoints} {t('dict_pts')} · {level}
             </span>
           )}
         </div>
       </div>
 
-      {/* Contenu principal scrollable */}
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        {/* Zone d'entrée */}
         <motion.div layout className="bg-white rounded-3xl shadow-md p-4 mb-4">
           {inputMode === 'voice' ? (
             <VoiceLangPanel
@@ -245,14 +236,14 @@ export default function TamTamDictionary() {
             <div>
               <p className="text-gray-500 mb-3 text-sm">
                 {searchDirection === 'ba-fr'
-                  ? (currentLang === 'ba' ? "Kọ ɔ̀rɔ̀ Bàátɔ̀nú" : "Tapez un mot bariba")
-                  : (currentLang === 'ba' ? "Kọ ɔ̀rɔ̀ Fàránsé" : "Tapez un mot français")}
+                  ? t('dict_type_bariba')
+                  : t('dict_type_french')}
               </p>
               <BaribaKeyboardInput
                 onSelectWord={handleSelectWord}
                 placeholder={searchDirection === 'ba-fr'
-                  ? "Tapez un mot bariba..."
-                  : "Tapez un mot français..."}
+                  ? t('dict_type_bariba_placeholder')
+                  : t('dict_type_french_placeholder')}
                 language={keyboardLang}
                 onLanguageChange={handleKeyboardLangChange}
               />
@@ -260,12 +251,10 @@ export default function TamTamDictionary() {
           )}
         </motion.div>
 
-        {/* Bouton proposer un nouveau mot */}
         <div className="mb-4">
           <NewWordSubmission initialWord={notFoundWord} />
         </div>
 
-        {/* Résultat sélectionné */}
         <AnimatePresence mode="wait">
           {selectedEntry && (
             <motion.div
@@ -284,7 +273,6 @@ export default function TamTamDictionary() {
           )}
         </AnimatePresence>
 
-        {/* Historique */}
         {searchHistory.length > 0 && !selectedEntry && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -293,7 +281,7 @@ export default function TamTamDictionary() {
           >
             <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
               <Search className="w-4 h-4" />
-              {currentLang === 'ba' ? "Àwọn ìwádìí tó ṣẹ̀ṣẹ̀" : "Recherches récentes"}
+              {t('dict_recent_searches')}
             </h3>
             
             <div className="space-y-2">
@@ -315,12 +303,11 @@ export default function TamTamDictionary() {
           </motion.div>
         )}
 
-        {/* État de chargement initial */}
         {isLoadingDict && (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-4" />
             <p className="text-gray-500">
-              {currentLang === 'ba' ? "Ń gbé gbɛ́-sɔ́ɔ̀rù..." : "Chargement du dictionnaire..."}
+              {t('dict_loading_dict')}
             </p>
           </div>
         )}

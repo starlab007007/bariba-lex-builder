@@ -183,8 +183,8 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
   
   const feeds = [
     { id: 'patrimoine', emoji: '🏛️', label: 'Patrimoine', labelBa: 'Kpààrà', desc: 'Contes, proverbes, chants', gradient: 'from-orange-500 to-amber-400' },
-    { id: 'mavoix', emoji: '📢', label: 'Ma Voix', labelBa: 'Ohùn Mi', desc: 'Annonces, messages', gradient: 'from-teal-500 to-cyan-400' },
-    { id: 'creation', emoji: '🎬', label: 'Création', labelBa: 'Ìṣẹ̀dá', desc: 'Vidéos, photos', gradient: 'from-purple-500 to-indigo-400' },
+    { id: 'mavoix', emoji: '📢', label: 'Ma Voix', labelBa: 'Nɛn nɔɔ', desc: 'Annonces, messages', gradient: 'from-teal-500 to-cyan-400' },
+    { id: 'creation', emoji: '🎬', label: 'Création', labelBa: 'Ko yɔyɔ', desc: 'Vidéos, photos', gradient: 'from-purple-500 to-indigo-400' },
   ];
 
   return (

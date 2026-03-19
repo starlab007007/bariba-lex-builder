@@ -128,8 +128,8 @@ const CreateMenu: React.FC<{
               <div className="flex items-center gap-3">
                 <span className="text-3xl">🎙️</span>
                 <div>
-                  <h2 className="text-white text-xl font-bold">{currentLang === 'ba' ? 'Ṣẹ̀dá Tuntun' : 'Créer'}</h2>
-                  <p className="text-white/50 text-sm">{currentLang === 'ba' ? 'Yan ọ̀kan' : 'Choisissez une option'}</p>
+                  <h2 className="text-white text-xl font-bold">{currentLang === 'ba' ? 'Ko yɔyɔ' : 'Créer'}</h2>
+                  <p className="text-white/50 text-sm">{currentLang === 'ba' ? 'Dɔmbɔ sɛnbu' : 'Choisissez une option'}</p>
                 </div>
               </div>
               <motion.button whileTap={{ scale: 0.9 }} onClick={onClose} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
