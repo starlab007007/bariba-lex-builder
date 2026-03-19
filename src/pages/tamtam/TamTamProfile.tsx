@@ -496,7 +496,7 @@ export default function TamTamProfile() {
                     <Clock className="w-4 h-4" />
                     <span className="text-2xl font-bold">{Math.floor(vocalStats.totalDuration / 60)}m</span>
                   </div>
-                  <span className="text-xs opacity-80">Durée totale</span>
+                  <span className="text-xs opacity-80">{t('profile_stats_duration')}</span>
                 </div>
                 
                 <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 text-center">
