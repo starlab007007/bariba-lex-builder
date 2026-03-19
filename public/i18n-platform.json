@@ -3233,5 +3233,753 @@
   "market_say_proposal": {
     "fr": "Dites ce que vous voulez proposer",
     "ba": "Geruo mba a koo nɛɛ"
+  },
+  "product_sell": {
+    "fr": "Vendre un produit",
+    "ba": "Tia nɛn dukiya"
+  },
+  "product_choose_category": {
+    "fr": "Choisissez une catégorie",
+    "ba": "Sɔ dukiya kpaaru"
+  },
+  "product_choose_category_sub": {
+    "fr": "Choisissez la catégorie",
+    "ba": "Sɔ kpaaru"
+  },
+  "product_say_name": {
+    "fr": "Dites le nom de votre produit",
+    "ba": "Sɔ wunɛn dukiya yiru"
+  },
+  "product_say_price": {
+    "fr": "Dites le prix en francs",
+    "ba": "Sɔ wunɛn dukiya sika"
+  },
+  "product_add_photos": {
+    "fr": "Ajoutez des photos si vous voulez",
+    "ba": "De foto ba a ya bɛ"
+  },
+  "product_verify_confirm": {
+    "fr": "Vérifiez et confirmez",
+    "ba": "Gɔru ka tɛ̃yɛ̃ɛ̃ru"
+  },
+  "product_what_selling": {
+    "fr": "Que vendez-vous ?",
+    "ba": "Bɔ̃ɔ̃ tia?"
+  },
+  "product_what_price": {
+    "fr": "Quel prix ?",
+    "ba": "Sika deni?"
+  },
+  "product_press_speak": {
+    "fr": "Appuyez et parlez",
+    "ba": "Tɛ ka sɔ"
+  },
+  "product_not_understood": {
+    "fr": "Je n'ai pas compris. Réessayez ou tapez le texte.",
+    "ba": "N kã gba. Gbirã yɛ̃ɛ̃ru yabu kɔ"
+  },
+  "product_not_understood_short": {
+    "fr": "Pas compris. Réessayez ou tapez",
+    "ba": "N kã gba. Gbirã yabu kɔ"
+  },
+  "product_type_text": {
+    "fr": "Taper le texte",
+    "ba": "Kɔ yɛnu"
+  },
+  "product_name_placeholder": {
+    "fr": "Nom du produit...",
+    "ba": "Dukiya yiru..."
+  },
+  "product_price_placeholder": {
+    "fr": "Prix (ex: 5000)",
+    "ba": "Sika (ex: 5000)"
+  },
+  "product_valid_price": {
+    "fr": "Veuillez donner un prix valide (ex: 5000)",
+    "ba": "Sɔ sika tɔ̃ɔ̃ru (ex: 5000)"
+  },
+  "product_add_photos_title": {
+    "fr": "Ajoutez des photos",
+    "ba": "De foto"
+  },
+  "product_photos_optional": {
+    "fr": "Facultatif (max 3)",
+    "ba": "A sɛrɛ (gbã 3)"
+  },
+  "product_skip": {
+    "fr": "Passer",
+    "ba": "Sã"
+  },
+  "product_continue": {
+    "fr": "Continuer",
+    "ba": "Kpã sii"
+  },
+  "product_back": {
+    "fr": "Retour",
+    "ba": "Gbirã"
+  },
+  "product_processing": {
+    "fr": "Traitement...",
+    "ba": "Na sɔmburumɔ..."
+  },
+  "product_listen_desc": {
+    "fr": "Écouter la description",
+    "ba": "Nɔɔ gɔru"
+  },
+  "product_confirm": {
+    "fr": "Confirmer",
+    "ba": "Tɛ̃yɛ̃ɛ̃ru"
+  },
+  "product_published": {
+    "fr": "Parfait ! Votre produit est en ligne",
+    "ba": "A tɔ̃ɔ̃! Wunɛn dukiya ya wãa"
+  },
+  "product_cat_food": {
+    "fr": "Alimentation",
+    "ba": "Dimbu"
+  },
+  "product_cat_livestock": {
+    "fr": "Élevage",
+    "ba": "Naa piru"
+  },
+  "product_cat_clothing": {
+    "fr": "Vêtements",
+    "ba": "Gãsi"
+  },
+  "product_cat_electronics": {
+    "fr": "Électronique",
+    "ba": "Korãati"
+  },
+  "product_cat_craft": {
+    "fr": "Artisanat",
+    "ba": "Sɔmbu koru"
+  },
+  "product_cat_agriculture": {
+    "fr": "Agriculture",
+    "ba": "Kpaaku"
+  },
+  "product_cat_transport": {
+    "fr": "Transport",
+    "ba": "Tirãsipɔɔ"
+  },
+  "product_cat_other": {
+    "fr": "Autre",
+    "ba": "Bɛɛ gaa"
+  },
+  "keyboard_type_bariba": {
+    "fr": "Tapez un mot bariba...",
+    "ba": "Kɔ bàátɔ̀nú yɛnu..."
+  },
+  "keyboard_type_french": {
+    "fr": "Tapez un mot français...",
+    "ba": "Kɔ fãrãse yɛnu..."
+  },
+  "keyboard_special_bariba": {
+    "fr": "Caractères spéciaux bariba :",
+    "ba": "Bàátɔ̀nú tɛɛka sɛrɛ :"
+  },
+  "keyboard_special_french": {
+    "fr": "Caractères spéciaux français :",
+    "ba": "Fãrãse tɛɛka sɛrɛ :"
+  },
+  "keyboard_no_result": {
+    "fr": "Aucun mot trouvé pour",
+    "ba": "Yɛnu gaa kã bɛ̃"
+  },
+  "keyboard_try_other": {
+    "fr": "Essayez une autre orthographe",
+    "ba": "Gbirã kɔbu bɛɛ gaa"
+  },
+  "keyboard_suggestions": {
+    "fr": "suggestions sur",
+    "ba": "yirɑnu wɛɛ"
+  },
+  "keyboard_words": {
+    "fr": "mots",
+    "ba": "yɛnu"
+  },
+  "keyboard_loading": {
+    "fr": "Chargement...",
+    "ba": "Na yɔkumɔ..."
+  },
+  "keyboard_to_french": {
+    "fr": "→ Français",
+    "ba": "→ Fãrãse"
+  },
+  "keyboard_to_bariba": {
+    "fr": "→ Bariba",
+    "ba": "→ Bàátɔ̀nú"
+  },
+  "translator_subtitle": {
+    "fr": "Je traduis entre Français et Bariba",
+    "ba": "N na tɛnyɛ̃ɛ̃mɔ fãrãse ni bàátɔ̀nú sundu"
+  },
+  "translator_detected": {
+    "fr": "Détecté:",
+    "ba": "Kpinkpãa:"
+  },
+  "translator_processing": {
+    "fr": "Traduction en cours...",
+    "ba": "Na tɛnyɛ̃ɛ̃mɔ..."
+  },
+  "translator_clear_history": {
+    "fr": "Effacer tout l'historique",
+    "ba": "Gbesi tɛɛmɛ kpuro"
+  },
+  "market_all": {
+    "fr": "Tout",
+    "ba": "Kpuro"
+  },
+  "template_tomatoes": {
+    "fr": "Tomates",
+    "ba": "Tòmátì"
+  },
+  "template_chicken": {
+    "fr": "Poulets",
+    "ba": "Gɔsu"
+  },
+  "template_corn": {
+    "fr": "Maïs",
+    "ba": "Kpaamu"
+  },
+  "template_rice": {
+    "fr": "Riz",
+    "ba": "Mɔɔri"
+  },
+  "template_clothes": {
+    "fr": "Vêtements",
+    "ba": "Gãsi"
+  },
+  "template_craft": {
+    "fr": "Artisanat",
+    "ba": "Sɔmbu koru"
+  },
+  "template_seek_farmer": {
+    "fr": "Cherche agriculteur",
+    "ba": "Na kpaakudɔbu kasumɔ"
+  },
+  "template_seek_mason": {
+    "fr": "Cherche maçon",
+    "ba": "Na maasɔ̃ kasumɔ"
+  },
+  "template_domestic_help": {
+    "fr": "Aide ménagère",
+    "ba": "Yooku dɛɛmɛ"
+  },
+  "template_seek_driver": {
+    "fr": "Cherche chauffeur",
+    "ba": "Na wotuuridɔbu kasumɔ"
+  },
+  "template_farm_work": {
+    "fr": "Travail aux champs",
+    "ba": "Kpaaku sɔmbu"
+  },
+  "template_construction": {
+    "fr": "Travail bâtiment",
+    "ba": "Bon dɔbu sɔmbu"
+  },
+  "template_commerce": {
+    "fr": "Travail commerce",
+    "ba": "Tiaru sɔmbu"
+  },
+  "template_any_work": {
+    "fr": "Tout travail",
+    "ba": "Sɔmbu kpuro"
+  },
+  "ai_assistant": {
+    "fr": "Assistant IA",
+    "ba": "Dɛɛmɛ IA"
+  },
+  "ai_generate": {
+    "fr": "Générer du contenu",
+    "ba": "Ko nɛɛru"
+  },
+  "feedback_correct": {
+    "fr": "Corriger",
+    "ba": "Gbɛgbɛru"
+  },
+  "feedback_give": {
+    "fr": "Donner un feedback",
+    "ba": "Nɛɛru yira"
+  },
+  "feedback_thanks": {
+    "fr": "Merci !",
+    "ba": "A nii koo!"
+  },
+  "feedback_sent": {
+    "fr": "Votre feedback a été envoyé",
+    "ba": "Wunɛn nɛɛru ya gɔrima"
+  },
+  "feedback_word": {
+    "fr": "Mot",
+    "ba": "Yɛnu"
+  },
+  "feedback_field": {
+    "fr": "Champ à corriger",
+    "ba": "Kpindu gbɛgbɛru"
+  },
+  "feedback_text": {
+    "fr": "Texte",
+    "ba": "Kɔ̃siru"
+  },
+  "feedback_audio": {
+    "fr": "Audio",
+    "ba": "Nɔɔ"
+  },
+  "feedback_recording": {
+    "fr": "Enregistrement...",
+    "ba": "Na mɑɑrumɔ..."
+  },
+  "feedback_press_record": {
+    "fr": "Appuyez pour enregistrer",
+    "ba": "Tɛ kɑ mɑɑru"
+  },
+  "feedback_your_audio": {
+    "fr": "Votre audio:",
+    "ba": "Wunɛn nɔɔ:"
+  },
+  "feedback_sending": {
+    "fr": "Envoi en cours...",
+    "ba": "Na gɔrimɔ..."
+  },
+  "feedback_send": {
+    "fr": "Envoyer",
+    "ba": "Gɔri"
+  },
+  "conversation_continuous": {
+    "fr": "Conversation Continue",
+    "ba": "Sɔɔru kpã sii"
+  },
+  "conversation_assistant_mode": {
+    "fr": "Mode Assistant IA",
+    "ba": "Dɛɛmɛ IA kpaaru"
+  },
+  "conversation_translator_mode": {
+    "fr": "Mode Traducteur",
+    "ba": "Tɛnyɛ̃ɛ̃ru kpaaru"
+  },
+  "conversation_read_responses": {
+    "fr": "Lire les réponses",
+    "ba": "Gɔru sɔɔru"
+  },
+  "conversation_mode": {
+    "fr": "Mode",
+    "ba": "Kpaaru"
+  },
+  "conversation_assistant": {
+    "fr": "Assistant",
+    "ba": "Dɛɛmɛ"
+  },
+  "conversation_translator": {
+    "fr": "Traducteur",
+    "ba": "Tɛnyɛ̃ɛ̃ru"
+  },
+  "conversation_vad_sensitivity": {
+    "fr": "Sensibilité VAD",
+    "ba": "Nɔɔ kpinkpãaru"
+  },
+  "conversation_speak": {
+    "fr": "Parlez, je vous écoute...",
+    "ba": "Sɔ, n na nɔɔ yɔkumɔ..."
+  },
+  "conversation_press_start": {
+    "fr": "Appuyez pour démarrer la conversation",
+    "ba": "Tɛ ka sɔɔru bɛrɛ"
+  },
+  "conversation_auto_vad": {
+    "fr": "La détection automatique de voix est activée",
+    "ba": "Nɔɔ kpinkpãaru kɛrɛ ya wãa"
+  },
+  "conversation_you": {
+    "fr": "Vous",
+    "ba": "Wunɛ"
+  },
+  "conversation_listen": {
+    "fr": "Écouter",
+    "ba": "Gɔru"
+  },
+  "conversation_speech_detected": {
+    "fr": "Parole détectée",
+    "ba": "Nɔɔ ya kpinkpãa"
+  },
+  "conversation_listening": {
+    "fr": "En écoute...",
+    "ba": "Na nɔɔ yɔkumɔ..."
+  },
+  "conversation_transcribing": {
+    "fr": "Transcription...",
+    "ba": "Na kɔmɔ..."
+  },
+  "conversation_generating_audio": {
+    "fr": "Génération audio...",
+    "ba": "Na nɔɔ komɔ..."
+  },
+  "conversation_started": {
+    "fr": "Conversation démarrée",
+    "ba": "Sɔɔru ya bɛrɛ"
+  },
+  "conversation_speak_naturally": {
+    "fr": "Parlez naturellement...",
+    "ba": "Sɔ kɛrɛ kɛrɛ..."
+  },
+  "conversation_no_speech": {
+    "fr": "Pas de parole détectée",
+    "ba": "Nɔɔ gaa kã kpinkpãa"
+  },
+  "conversation_stop": {
+    "fr": "Arrêter",
+    "ba": "Yɔku"
+  },
+  "duo_mode": {
+    "fr": "Mode Duo",
+    "ba": "Duo kpaaru"
+  },
+  "duo_you": {
+    "fr": "Vous",
+    "ba": "Wunɛ"
+  },
+  "duo_redo": {
+    "fr": "Refaire",
+    "ba": "Koru yɛ̃ɛ̃ru"
+  },
+  "duo_publish": {
+    "fr": "Publier",
+    "ba": "Yira"
+  },
+  "duo_published": {
+    "fr": "Duo publié !",
+    "ba": "Duo ya yira!"
+  },
+  "menu_common_function": {
+    "fr": "Fonctions courantes",
+    "ba": "Sɔmbu sɛrɛbu"
+  },
+  "menu_tool_service": {
+    "fr": "Outils et services",
+    "ba": "Sɔmbu dɛɛmɛbu"
+  },
+  "menu_entertainment": {
+    "fr": "Divertissement",
+    "ba": "Gbirubu"
+  },
+  "menu_history": {
+    "fr": "Historique",
+    "ba": "Tɛɛmɛ"
+  },
+  "menu_offline": {
+    "fr": "Hors ligne",
+    "ba": "Nɛɛti kɛra"
+  },
+  "menu_settings": {
+    "fr": "Paramètres",
+    "ba": "Gbeku"
+  },
+  "menu_wallet": {
+    "fr": "Portefeuille",
+    "ba": "Sika beeru"
+  },
+  "menu_drafts": {
+    "fr": "Brouillons",
+    "ba": "Kɔbu sɛrɛ"
+  },
+  "menu_dictionary": {
+    "fr": "Dictionnaire",
+    "ba": "Yɛnu sɛbɛ"
+  },
+  "menu_translator": {
+    "fr": "Traducteur",
+    "ba": "Tɛnyɛ̃ɛ̃ru"
+  },
+  "menu_assistance": {
+    "fr": "Assistance",
+    "ba": "Dɛɛmɛ"
+  },
+  "menu_protection": {
+    "fr": "Protection",
+    "ba": "Kpãa"
+  },
+  "menu_watch_later": {
+    "fr": "Voir plus tard",
+    "ba": "Gɔru ba gɛɛ"
+  },
+  "menu_subscriptions": {
+    "fr": "Abonnements",
+    "ba": "Kpãsibu"
+  },
+  "menu_report": {
+    "fr": "Rapport",
+    "ba": "Kpasiru"
+  },
+  "menu_games": {
+    "fr": "Jeux",
+    "ba": "Gbirubu"
+  },
+  "menu_tv_shows": {
+    "fr": "TV Shows",
+    "ba": "Tivi gɔrubu"
+  },
+  "menu_language": {
+    "fr": "Langue",
+    "ba": "Sɔɔru"
+  },
+  "menu_system_message": {
+    "fr": "Message système",
+    "ba": "Gbeku sɔɔru"
+  },
+  "menu_scanner": {
+    "fr": "Scanner",
+    "ba": "Gɔru"
+  },
+  "menu_shop": {
+    "fr": "Boutique",
+    "ba": "Tiaru"
+  },
+  "newword_propose": {
+    "fr": "Proposer un mot",
+    "ba": "De yɛnu wɛɛru"
+  },
+  "newword_title": {
+    "fr": "Nouveau mot",
+    "ba": "Yɛnu wɛɛru"
+  },
+  "newword_thanks": {
+    "fr": "Merci !",
+    "ba": "A nii koo!"
+  },
+  "newword_submitted": {
+    "fr": "Votre mot a été soumis pour validation.",
+    "ba": "Wunɛn yɛnu ya gɔrima tɛ̃yɛ̃ɛ̃ru mɛ."
+  },
+  "newword_bariba_word": {
+    "fr": "Mot bariba *",
+    "ba": "Bàátɔ̀nú yɛnu *"
+  },
+  "newword_type_word": {
+    "fr": "Tapez le mot...",
+    "ba": "Kɔ yɛnu..."
+  },
+  "newword_phonetic": {
+    "fr": "Phonétique (optionnel)",
+    "ba": "Nɔɔ sɔbu (a sɛrɛ)"
+  },
+  "newword_grammar": {
+    "fr": "Catégorie grammaticale",
+    "ba": "Yɛnu kpaaru"
+  },
+  "newword_noun": {
+    "fr": "Nom",
+    "ba": "Yiru"
+  },
+  "newword_verb": {
+    "fr": "Verbe",
+    "ba": "Kobu"
+  },
+  "newword_adjective": {
+    "fr": "Adjectif",
+    "ba": "Yirɑ"
+  },
+  "newword_adverb": {
+    "fr": "Adverbe",
+    "ba": "Nɛɛ kpindu"
+  },
+  "newword_conjunction": {
+    "fr": "Conjonction",
+    "ba": "Yɔku"
+  },
+  "newword_preposition": {
+    "fr": "Préposition",
+    "ba": "Sɔɔru"
+  },
+  "newword_definition": {
+    "fr": "Définition (français) *",
+    "ba": "Tɛ̃yɛ̃ɛ̃ru (fãrãse) *"
+  },
+  "newword_write_def": {
+    "fr": "Écrivez la définition...",
+    "ba": "Kɔ tɛ̃yɛ̃ɛ̃ru..."
+  },
+  "newword_example_bariba": {
+    "fr": "Exemple en bariba",
+    "ba": "Bàátɔ̀nú wɛnkpiru"
+  },
+  "newword_write_example": {
+    "fr": "Écrivez une phrase exemple...",
+    "ba": "Kɔ sɔɔru wɛnkpiru..."
+  },
+  "newword_translate_example": {
+    "fr": "Traduction de l'exemple",
+    "ba": "Wɛnkpiru tɛnyɛ̃ɛ̃ru"
+  },
+  "newword_translate_to_french": {
+    "fr": "Traduisez l'exemple en français...",
+    "ba": "Tɛnyɛ̃ɛ̃ru wɛnkpiru fãrãse mɛ..."
+  },
+  "newword_sending": {
+    "fr": "Envoi en cours...",
+    "ba": "Na gɔrimɔ..."
+  },
+  "newword_submit": {
+    "fr": "Soumettre",
+    "ba": "Gɔri"
+  },
+  "raconte_listening": {
+    "fr": "Je vous écoute. Dites ce que vous voulez faire.",
+    "ba": "N na wunɛ nɔɔ yɔkumɔ. Sɔ bɔ̃ɔ̃ wunɛ ya yira."
+  },
+  "raconte_assistant": {
+    "fr": "Assistant vocal Bariba",
+    "ba": "Bàátɔ̀nú nɔɔ dɛɛmɛ"
+  },
+  "raconte_error": {
+    "fr": "Erreur",
+    "ba": "Gbiiru"
+  },
+  "raconte_no_understand": {
+    "fr": "Impossible de comprendre",
+    "ba": "N kã gba"
+  },
+  "raconte_sorry_retry": {
+    "fr": "Désolé, réessayez",
+    "ba": "Pɛrɛdɔ̃, gbirã yɛ̃ɛ̃ru"
+  },
+  "raconte_i_heard": {
+    "fr": "J'ai entendu:",
+    "ba": "N ya gba:"
+  },
+  "raconte_navigating": {
+    "fr": "Navigation en cours...",
+    "ba": "Na taamɔ..."
+  },
+  "raconte_stop": {
+    "fr": "Arrêter",
+    "ba": "Yɔku"
+  },
+  "raconte_start_speaking": {
+    "fr": "Commencer à parler",
+    "ba": "Bɛrɛ ka sɔ"
+  },
+  "feed_redo": {
+    "fr": "Refaire",
+    "ba": "Koru yɛ̃ɛ̃ru"
+  },
+  "feed_hide_text": {
+    "fr": "Masquer le texte",
+    "ba": "Sɔ̃ɔ̃ kɔ̃siru"
+  },
+  "feed_show_text": {
+    "fr": "Voir le texte",
+    "ba": "Gɔru kɔ̃siru"
+  },
+  "story_create": {
+    "fr": "Créer une Story",
+    "ba": "Ko tɛɛmɛ"
+  },
+  "story_add_photo": {
+    "fr": "Ajoutez une photo (optionnel)",
+    "ba": "De foto (a sɛrɛ)"
+  },
+  "story_your_audio": {
+    "fr": "Votre audio",
+    "ba": "Wunɛn nɔɔ"
+  },
+  "story_published": {
+    "fr": "Story publiée !",
+    "ba": "Tɛɛmɛ ya yira!"
+  },
+  "story_visible_24h": {
+    "fr": "Votre story sera visible pendant 24h",
+    "ba": "Wunɛn tɛɛmɛ na bɛ̃mɔ tɔkɔ 24"
+  },
+  "story_error": {
+    "fr": "Erreur",
+    "ba": "Gbiiru"
+  },
+  "story_error_start": {
+    "fr": "Impossible de démarrer l'enregistrement",
+    "ba": "Mɑɑru kã nɔ̃ɔ̃ bɛrɛ"
+  },
+  "story_error_publish": {
+    "fr": "Impossible de publier la story",
+    "ba": "Tɛɛmɛ kã nɔ̃ɔ̃ yira"
+  },
+  "story_recording": {
+    "fr": "Enregistrement... Appuyez pour arrêter",
+    "ba": "Na mɑɑrumɔ... Tɛ ka yɔku"
+  },
+  "story_press_publish": {
+    "fr": "Appuyez ➤ pour publier",
+    "ba": "Tɛ ➤ ka yira"
+  },
+  "story_press_mic": {
+    "fr": "Appuyez 🎤 pour commencer",
+    "ba": "Tɛ 🎤 ka bɛrɛ"
+  },
+  "creator_choose_template": {
+    "fr": "Choisir un modèle",
+    "ba": "Sɔ wɛnkpiru"
+  },
+  "creator_preview": {
+    "fr": "Aperçu",
+    "ba": "Gɔru sɛɛbu"
+  },
+  "creator_record": {
+    "fr": "Enregistrer",
+    "ba": "Mɑɑru"
+  },
+  "a11y_home_desc": {
+    "fr": "Vous êtes sur l'écran d'accueil. Appuyez sur le micro central pour parler.",
+    "ba": "Wunɛ na dam koosiabu. Tɛ mikro ka sɔ."
+  },
+  "a11y_social_desc": {
+    "fr": "Fil d'actualité. Écoutez les publications de vos amis.",
+    "ba": "Soo sɔɔru. Gɔru wunɛn dɔbu sɔɔru."
+  },
+  "a11y_messages_desc": {
+    "fr": "Messages vocaux. Écoutez et envoyez des messages audio.",
+    "ba": "Nɔɔ sɔɔru. Gɔru ka gɔri nɔɔ sɔɔru."
+  },
+  "a11y_live_desc": {
+    "fr": "Salles audio en direct. Rejoignez une conversation.",
+    "ba": "Nɔɔ sɔɔru yooku. De sɔɔru mɛ."
+  },
+  "a11y_market_desc": {
+    "fr": "Marché. Achetez et vendez avec des descriptions audio.",
+    "ba": "Dãa. Dã ka tia ni nɔɔ."
+  },
+  "a11y_services_desc": {
+    "fr": "Services. Traducteur, santé, finance et plus.",
+    "ba": "Sɔmbu dɛɛmɛbu. Tɛnyɛ̃ɛ̃ru, lapia, sika ni bɛɛ gaa."
+  },
+  "a11y_sos_desc": {
+    "fr": "Urgence. Appuyez sur le bouton rouge pour appeler à l'aide.",
+    "ba": "Kiiru. Tɛ tɔ̃mba biru ka kiiru."
+  },
+  "a11y_profile_desc": {
+    "fr": "Votre profil. Gérez vos paramètres.",
+    "ba": "Wunɛn nɛ. Gbeku wunɛn gbeku."
+  },
+  "a11y_create_desc": {
+    "fr": "Créer une publication. Choisissez le type de contenu.",
+    "ba": "Ko sɔɔru. Sɔ sɔɔru kpaaru."
+  },
+  "mode_voice": {
+    "fr": "Voix",
+    "ba": "Nɔɔ"
+  },
+  "mode_text": {
+    "fr": "Texte",
+    "ba": "Kɔ̃siru"
+  },
+  "mode_photo": {
+    "fr": "Photo",
+    "ba": "Foto"
+  },
+  "mode_paste": {
+    "fr": "Coller",
+    "ba": "Da"
+  },
+  "mode_doc": {
+    "fr": "Doc",
+    "ba": "Sɛbɛ"
   }
 }
