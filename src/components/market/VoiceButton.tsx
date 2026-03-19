@@ -74,7 +74,7 @@ export function VoiceButton({
         )}
         {showLabel && (
           <span className="text-sm font-medium">
-            {currentLang === 'ba' ? 'Gbọ́' : 'Écouter'}
+            {currentLang === 'ba' ? 'Swaa daki' : 'Écouter'}
           </span>
         )}
       </motion.button>
