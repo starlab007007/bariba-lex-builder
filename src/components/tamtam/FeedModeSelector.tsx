@@ -12,7 +12,7 @@ interface FeedModeSelectorProps {
 
 const FEED_MODES: { id: FeedMode; icon: typeof Radio; labelFr: string; labelBa: string; color: string }[] = [
   { id: 'creation', icon: Clapperboard, labelFr: 'Création', labelBa: 'Koru', color: 'from-violet-500 to-fuchsia-500' },
-  { id: 'radio', icon: Radio, labelFr: 'Patrimoine', labelBa: 'Kpɑɑru', color: 'from-orange-500 to-red-500' },
+  { id: 'radio', icon: Radio, labelFr: 'Patrimoine', labelBa: 'Sɛmɛ gbãanu', color: 'from-orange-500 to-red-500' },
   { id: 'mavoix', icon: Mic2, labelFr: 'Ma voix', labelBa: 'Nɛn nɔɔ', color: 'from-emerald-500 to-teal-500' },
 ];
 

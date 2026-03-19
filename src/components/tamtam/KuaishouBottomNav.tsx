@@ -18,10 +18,10 @@ interface NavItem {
 const COMING_SOON_PATHS: string[] = [];
 
 const navItems: NavItem[] = [
-  { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Ilé', path: '/fitila/social' },
-  { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Kíkọ́', path: '/fitila/learn' },
-  { id: 'create', icon: Plus, labelFr: 'Create', labelBa: 'Ṣẹ̀dá', path: '/fitila/creator', isCreate: true },
-  { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Túmọ̀', path: '/fitila/translator' },
+  { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Soo', path: '/fitila/social' },
+  { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Dɔnku', path: '/fitila/learn' },
+  { id: 'create', icon: Plus, labelFr: 'Create', labelBa: 'Ko', path: '/fitila/creator', isCreate: true },
+  { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Tɛnyɛ̃ɛ̃ru', path: '/fitila/translator' },
   { id: 'fitila-ia', icon: Bot, labelFr: 'Fitila IA', labelBa: 'Fitila IA', path: '/fitila/ia' },
 ];
 

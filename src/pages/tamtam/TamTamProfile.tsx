@@ -345,7 +345,7 @@ export default function TamTamProfile() {
                 <AvatarImage src={avatarPreview} />
                 <AvatarFallback>?</AvatarFallback>
               </Avatar>
-              <p className="text-sm text-muted-foreground mb-4">Confirmer cette photo de profil ?</p>
+              <p className="text-sm text-muted-foreground mb-4">{t('profile_confirm_photo')}</p>
               <div className="flex gap-3 justify-center">
                 <motion.button
                   whileTap={{ scale: 0.95 }}
@@ -488,7 +488,7 @@ export default function TamTamProfile() {
                     <Mic className="w-4 h-4" />
                     <span className="text-2xl font-bold">{vocalStats.totalRecordings}</span>
                   </div>
-                  <span className="text-xs opacity-80">Enregistrements</span>
+                  <span className="text-xs opacity-80">{t('profile_stats_recordings')}</span>
                 </div>
                 
                 <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 text-center">
@@ -496,7 +496,7 @@ export default function TamTamProfile() {
                     <Clock className="w-4 h-4" />
                     <span className="text-2xl font-bold">{Math.floor(vocalStats.totalDuration / 60)}m</span>
                   </div>
-                  <span className="text-xs opacity-80">Durée totale</span>
+                  <span className="text-xs opacity-80">{t('profile_stats_duration')}</span>
                 </div>
                 
                 <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 text-center">
@@ -504,7 +504,7 @@ export default function TamTamProfile() {
                     <Eye className="w-4 h-4" />
                     <span className="text-2xl font-bold">{vocalStats.storyViews}</span>
                   </div>
-                  <span className="text-xs opacity-80">Vues stories</span>
+                  <span className="text-xs opacity-80">{t('profile_stats_views')}</span>
                 </div>
                 
                 <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 text-center">
@@ -512,7 +512,7 @@ export default function TamTamProfile() {
                     <Heart className="w-4 h-4" />
                     <span className="text-2xl font-bold">{vocalStats.totalLikes}</span>
                   </div>
-                  <span className="text-xs opacity-80">J'aime reçus</span>
+                  <span className="text-xs opacity-80">{t('profile_stats_likes')}</span>
                 </div>
               </div>
             </motion.div>
@@ -557,7 +557,7 @@ export default function TamTamProfile() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">📖</span>
-                    <span className="text-sm font-medium">Mes Stories</span>
+                    <span className="text-sm font-medium">{t('profile_my_stories')}</span>
                   </div>
                   <span className="text-xs text-muted-foreground">{myStories.length}</span>
                 </div>

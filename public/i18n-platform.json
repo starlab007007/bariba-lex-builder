@@ -2745,5 +2745,185 @@
   "empty_start_conversation": {
     "fr": "Commencez une conversation",
     "ba": ""
+  },
+  "market_title": {
+    "fr": "Marché",
+    "ba": "Aburu"
+  },
+  "market_work": {
+    "fr": "Travailler",
+    "ba": "Sɔmburu ko"
+  },
+  "market_hire": {
+    "fr": "Embaucher",
+    "ba": "Tɔm kasuu"
+  },
+  "market_back": {
+    "fr": "Retour",
+    "ba": "Wiru"
+  },
+  "market_no_product": {
+    "fr": "Aucun produit",
+    "ba": "Gɑ̃ɑ kun wãa"
+  },
+  "market_no_offer": {
+    "fr": "Aucune offre",
+    "ba": "Sɔmburu kun wãa"
+  },
+  "market_no_person": {
+    "fr": "Personne disponible",
+    "ba": "Tɔm kun wãa"
+  },
+  "market_no_ad": {
+    "fr": "Aucune annonce",
+    "ba": "Lɑɑbɑri kun wãa"
+  },
+  "market_my_shop": {
+    "fr": "Ma Boutique",
+    "ba": "Nɛn aburu"
+  },
+  "market_my_ads": {
+    "fr": "Mes Annonces",
+    "ba": "Nɛn lɑɑbɑrinu"
+  },
+  "market_what_sell": {
+    "fr": "Que voulez-vous vendre ?",
+    "ba": "A wãa tà mɔ?"
+  },
+  "market_signal_availability": {
+    "fr": "Signaler votre disponibilité",
+    "ba": "Na wãa nɛɛ"
+  },
+  "market_job_offers": {
+    "fr": "Offres d'emploi",
+    "ba": "Sɔmburunu wãa"
+  },
+  "market_create_offer": {
+    "fr": "Créer une offre",
+    "ba": "Sɔmburu ko"
+  },
+  "market_people_available": {
+    "fr": "Personnes disponibles",
+    "ba": "Tɔmbu sɔmburu kasuumɔ"
+  },
+  "market_add_product": {
+    "fr": "Ajouter un produit",
+    "ba": "Gɑ̃ɑ kpɛkuru ko"
+  },
+  "market_offer_btn": {
+    "fr": "Offre",
+    "ba": "Sɔmburu yira"
+  },
+  "market_demand_btn": {
+    "fr": "Demande",
+    "ba": "Sɔmburu kasuu"
+  },
+  "market_results": {
+    "fr": "résultats",
+    "ba": "yɔ̃ɔ̃nu"
+  },
+  "market_search": {
+    "fr": "Recherche",
+    "ba": "Kasuu"
+  },
+  "market_apply_job": {
+    "fr": "Postuler à cette offre",
+    "ba": "Sɔmburu sɔɔ yira"
+  },
+  "market_buy_desc": {
+    "fr": "Voir les produits à vendre",
+    "ba": "Gɑ̃ɑnu kpéé tà mɔ"
+  },
+  "market_sell_desc": {
+    "fr": "Mettre un produit en vente",
+    "ba": "Gɑ̃ɑ tà yira"
+  },
+  "market_work_desc": {
+    "fr": "Trouver du travail",
+    "ba": "Sɔmburu kasuu"
+  },
+  "market_hire_desc": {
+    "fr": "Trouver quelqu'un pour travailler",
+    "ba": "Tɔm kasuu sɔmburu yira"
+  },
+  "market_welcome_desc_fr": {
+    "fr": "Bienvenue au marché. Appuyez sur les icônes pour acheter, vendre, trouver du travail ou embaucher quelqu'un.",
+    "ba": "Aagu wunɛ ka weru aburu sɔɔ. Tɛ̀ kɑ rà, tà, sɔmburu kasuu."
+  },
+  "market_sell_voice_desc": {
+    "fr": "Choisissez ce que vous voulez vendre, ou appuyez sur le micro pour décrire votre produit.",
+    "ba": "A wãa tà mɔ sɛrɛ, tɛ̀ mikiro ka gɑ̃ɑ sɛrɛ."
+  },
+  "market_work_voice_desc": {
+    "fr": "Dites aux employeurs que vous êtes disponible pour travailler",
+    "ba": "Sɔmburu sunɔnu nɛɛ a wãa sɔmburu yira"
+  },
+  "market_hire_voice_desc": {
+    "fr": "Publiez une offre d'emploi pour trouver quelqu'un",
+    "ba": "Sɔmburu yira kɑ tɔm kasuu"
+  },
+  "profile_stats_recordings": {
+    "fr": "Enregistrements",
+    "ba": "Sɛsɛrɛnu"
+  },
+  "profile_stats_duration": {
+    "fr": "Durée totale",
+    "ba": "Tɛrɛ mɔkuru"
+  },
+  "profile_stats_views": {
+    "fr": "Vues stories",
+    "ba": "Gànu kpéé mɔ"
+  },
+  "profile_stats_likes": {
+    "fr": "J'aime reçus",
+    "ba": "Dɔɔkuru yɔ̃ɔ̃nu"
+  },
+  "profile_format_invalid": {
+    "fr": "Format invalide",
+    "ba": "Fɔrma sɔɔ kun daa"
+  },
+  "feed_mode_for_you": {
+    "fr": "Pour toi",
+    "ba": "Nɛn yira"
+  },
+  "feed_mode_following": {
+    "fr": "Abonnements",
+    "ba": "Tɔmbu dɔɔku mɔ"
+  },
+  "feed_mode_trending": {
+    "fr": "Tendances",
+    "ba": "Gɑ̃ɑnu tɛrɛ mɔ"
+  },
+  "nav_home": {
+    "fr": "Accueil",
+    "ba": "Soo"
+  },
+  "nav_social": {
+    "fr": "Social",
+    "ba": "Tɔmbu"
+  },
+  "nav_create": {
+    "fr": "Créer",
+    "ba": "Ko"
+  },
+  "nav_market": {
+    "fr": "Marché",
+    "ba": "Aburu"
+  },
+  "nav_profile": {
+    "fr": "Profil",
+    "ba": "Profili"
+  },
+  "availability_available": {
+    "fr": "Disponible",
+    "ba": "A wãa"
+  },
+  "availability_busy": {
+    "fr": "Occupé",
+    "ba": "A wãa kɔɔ"
+  },
+  "availability_offline": {
+    "fr": "Absent",
+    "ba": "A kun wãa"
   }
 }
