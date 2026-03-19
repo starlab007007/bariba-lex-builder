@@ -12,6 +12,7 @@ interface FitilaLanguageContextType {
   t: (key: string) => string;
   translateText: (text: string, from: FitilaLang, to: FitilaLang) => Promise<string>;
   isTranslating: boolean;
+  translationsLoaded: boolean;
 }
 
 const FitilaLanguageContext = createContext<FitilaLanguageContextType | null>(null);
@@ -23,13 +24,13 @@ export const FitilaLanguageProvider: React.FC<{ children: ReactNode }> = ({ chil
   });
 
   const [translations, setTranslations] = useState<TranslationDict>({});
+  const [translationsLoaded, setTranslationsLoaded] = useState(false);
 
-  // Load translations from the JSON file
+  // Load translations with cache-busting
   useEffect(() => {
-    fetch('/i18n-platform.json')
+    fetch(`/i18n-platform.json?v=${Date.now()}`)
       .then(res => res.json())
       .then((data: Record<string, any>) => {
-        // Filter out comment/section keys (starting with _)
         const dict: TranslationDict = {};
         for (const [key, value] of Object.entries(data)) {
           if (!key.startsWith('_') && value && typeof value === 'object' && 'fr' in value && 'ba' in value) {
@@ -37,10 +38,12 @@ export const FitilaLanguageProvider: React.FC<{ children: ReactNode }> = ({ chil
           }
         }
         setTranslations(dict);
+        setTranslationsLoaded(true);
         console.log(`[FITILA i18n] Loaded ${Object.keys(dict).length} translation keys`);
       })
       .catch(err => {
         console.error('[FITILA i18n] Failed to load translations:', err);
+        setTranslationsLoaded(true); // allow UI to render with fallback
       });
   }, []);
 
@@ -57,7 +60,12 @@ export const FitilaLanguageProvider: React.FC<{ children: ReactNode }> = ({ chil
     if (!translation) {
       return key;
     }
-    return translation[currentLang] || key;
+    // Return target lang; if empty string, fallback to french; if french empty, return key
+    const value = translation[currentLang];
+    if (value && value.trim() !== '') return value;
+    // Fallback to french
+    if (translation.fr && translation.fr.trim() !== '') return translation.fr;
+    return key;
   }, [currentLang, translations]);
 
   const translateText = useCallback(async (text: string, from: FitilaLang, to: FitilaLang): Promise<string> => {
@@ -71,7 +79,8 @@ export const FitilaLanguageProvider: React.FC<{ children: ReactNode }> = ({ chil
       setLanguage,
       t,
       translateText,
-      isTranslating: false
+      isTranslating: false,
+      translationsLoaded
     }}>
       {children}
     </FitilaLanguageContext.Provider>

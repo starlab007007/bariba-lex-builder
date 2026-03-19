@@ -38,50 +38,20 @@ export const useSideMenu = () => useContext(SideMenuContext);
 const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentLang, setLanguage } = useFitilaLanguage();
+  const { t, setLanguage, currentLang } = useFitilaLanguage();
   const { isAdmin } = useAuth();
   const { profile } = useTamTamProfile();
 
-  // Navigation simplifiée : Accueil + Profil uniquement
   const navItems = [
-    { icon: Home, label: 'Accueil', labelBa: 'Yɛnu', path: '/fitila/social', emoji: '🏠' },
-    { icon: User, label: 'Profil', labelBa: 'Mɛ', path: '/fitila/profile', emoji: '👤' },
+    { icon: Home, labelKey: 'sidebar_home', path: '/fitila/social', emoji: '🏠' },
+    { icon: User, labelKey: 'sidebar_profile', path: '/fitila/profile', emoji: '👤' },
   ];
 
-  // Outils : Dictionnaire + Traducteur + Apprendre
   const toolsItems = [
-    { 
-      emoji: '📖', 
-      label: 'Dictionnaire', 
-      labelBa: 'Gbɛ́sɔ́ɔ̀rù', 
-      path: '/fitila/dictionary', 
-      gradient: 'from-emerald-500 to-teal-400',
-      desc: 'FR ↔ Bariba'
-    },
-    { 
-      emoji: '🌍', 
-      label: 'Traducteur', 
-      labelBa: 'Tùnkɔ̀rù', 
-      path: '/fitila/translator', 
-      gradient: 'from-blue-500 to-cyan-400',
-      desc: 'Voix & Texte'
-    },
-    { 
-      emoji: '📚', 
-      label: 'Apprendre', 
-      labelBa: 'Debu', 
-      path: '/fitila/learn', 
-      gradient: 'from-amber-500 to-orange-400',
-      desc: 'Langues locales'
-    },
-    { 
-      emoji: '🤖', 
-      label: 'Fitila IA', 
-      labelBa: 'Fitila IA', 
-      path: '/fitila/ia', 
-      gradient: 'from-purple-500 to-indigo-400',
-      desc: 'ChatGPT Bariba'
-    },
+    { emoji: '📖', labelKey: 'sidebar_dictionary', descKey: 'sidebar_dictionary_desc', path: '/fitila/dictionary', gradient: 'from-emerald-500 to-teal-400' },
+    { emoji: '🌍', labelKey: 'sidebar_translator', descKey: 'sidebar_translator_desc', path: '/fitila/translator', gradient: 'from-blue-500 to-cyan-400' },
+    { emoji: '📚', labelKey: 'sidebar_learn', descKey: 'sidebar_learn_desc', path: '/fitila/learn', gradient: 'from-amber-500 to-orange-400' },
+    { emoji: '🤖', labelKey: 'sidebar_fitila_ia', descKey: 'sidebar_fitila_ia_desc', path: '/fitila/ia', gradient: 'from-purple-500 to-indigo-400' },
   ];
 
   const handleNavigate = (path: string) => {
@@ -142,7 +112,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 
             {/* Navigation principale */}
             <div className="p-4">
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-2 px-2">Navigation</p>
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-2 px-2">{t('sidebar_navigation')}</p>
               <div className="space-y-1">
                 {navItems.map((item, index) => {
                   const active = isActive(item.path);
@@ -159,32 +129,32 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                       }`}
                     >
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden ${active ? 'bg-[#FF7A00]' : 'bg-white/10'}`}>
-                        {item.label === 'Profil' && profile?.avatar_url ? (
+                        {item.labelKey === 'sidebar_profile' && profile?.avatar_url ? (
                           <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-lg">{item.emoji}</span>
                         )}
                       </div>
                       <span className={`font-medium flex-1 text-left text-sm ${active ? 'text-[#FF7A00]' : 'text-white'}`}>
-                        {currentLang === 'ba' ? item.labelBa : item.label}
+                        {t(item.labelKey)}
                       </span>
-                      {active && <span className="px-2 py-0.5 rounded-full bg-[#FF7A00]/20 text-[#FF7A00] text-[9px] font-bold">ACTIF</span>}
+                      {active && <span className="px-2 py-0.5 rounded-full bg-[#FF7A00]/20 text-[#FF7A00] text-[9px] font-bold">{t('sidebar_active')}</span>}
                     </motion.button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Outils : Dictionnaire + Traducteur */}
+            {/* Outils */}
             <div className="p-4 border-t border-white/10">
               <div className="flex items-center gap-2 mb-3 px-2">
                 <BookOpen className="w-4 h-4 text-[#FF7A00]" />
-                <p className="text-[#FF7A00] text-[10px] font-bold uppercase tracking-wider">Outils</p>
+                <p className="text-[#FF7A00] text-[10px] font-bold uppercase tracking-wider">{t('sidebar_tools')}</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {toolsItems.map((tool, index) => (
                   <motion.button
-                    key={tool.label}
+                    key={tool.labelKey}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.1 + index * 0.05 }}
@@ -195,8 +165,8 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                     <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center shadow-lg`}>
                       <span className="text-3xl">{tool.emoji}</span>
                     </div>
-                    <span className="text-white text-sm font-semibold">{currentLang === 'ba' ? tool.labelBa : tool.label}</span>
-                    <span className="text-white/40 text-[10px] text-center">{tool.desc}</span>
+                    <span className="text-white text-sm font-semibold">{t(tool.labelKey)}</span>
+                    <span className="text-white/40 text-[10px] text-center">{t(tool.descKey)}</span>
                   </motion.button>
                 ))}
               </div>
@@ -206,7 +176,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             <div className="p-4 border-t border-white/10">
               <div className="flex items-center gap-2 mb-3 px-2">
                 <Globe className="w-4 h-4 text-white/60" />
-                <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Langue</p>
+                <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider">{t('sidebar_language')}</p>
               </div>
               <div className="flex gap-2">
                 <motion.button
@@ -216,7 +186,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                     currentLang === 'fr' ? 'bg-[#FF7A00] text-white' : 'bg-white/10 text-white/60'
                   }`}
                 >
-                  🇫🇷 Français
+                  🇫🇷 {t('sidebar_french')}
                 </motion.button>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
@@ -225,17 +195,17 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                     currentLang === 'ba' ? 'bg-[#FF7A00] text-white' : 'bg-white/10 text-white/60'
                   }`}
                 >
-                  🇧🇯 Bariba
+                  🇧🇯 {t('sidebar_bariba')}
                 </motion.button>
               </div>
             </div>
 
-            {/* Section Admin - Visible uniquement pour les admins */}
+            {/* Section Admin */}
             {isAdmin && (
               <div className="p-4 border-t border-white/10">
                 <div className="flex items-center gap-2 mb-3 px-2">
                   <Shield className="w-4 h-4 text-red-400" />
-                  <p className="text-red-400 text-[10px] font-bold uppercase tracking-wider">🔒 Administration</p>
+                  <p className="text-red-400 text-[10px] font-bold uppercase tracking-wider">🔒 {t('sidebar_admin')}</p>
                 </div>
                 <div className="space-y-2">
                   <motion.button
@@ -247,8 +217,8 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                       <LayoutDashboard className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-white text-sm font-medium">Tableau de bord</p>
-                      <p className="text-white/40 text-[10px]">Gestion globale</p>
+                      <p className="text-white text-sm font-medium">{t('sidebar_dashboard')}</p>
+                      <p className="text-white/40 text-[10px]">{t('sidebar_dashboard_desc')}</p>
                     </div>
                   </motion.button>
                   <motion.button
@@ -260,8 +230,8 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                       <Package className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-white text-sm font-medium">Gestion Assets</p>
-                      <p className="text-white/40 text-[10px]">Télécharger & Optimiser</p>
+                      <p className="text-white text-sm font-medium">{t('sidebar_assets')}</p>
+                      <p className="text-white/40 text-[10px]">{t('sidebar_assets_desc')}</p>
                     </div>
                   </motion.button>
                 </div>
@@ -270,7 +240,6 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 
             {/* Footer */}
             <div className="p-4 border-t border-white/10 space-y-2">
-              {/* Admin link in settings section for admins */}
               {isAdmin && (
                 <motion.button 
                   whileTap={{ scale: 0.98 }} 
@@ -278,12 +247,12 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 border border-[#FF7A00]/20"
                 >
                   <Package className="w-5 h-5 text-[#FF7A00]" />
-                  <span className="text-[#FF7A00] text-sm font-medium">Gestion Assets</span>
+                  <span className="text-[#FF7A00] text-sm font-medium">{t('sidebar_assets')}</span>
                 </motion.button>
               )}
               <motion.button whileTap={{ scale: 0.98 }} onClick={() => handleNavigate('/fitila/profile?settings=1')} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5">
                 <Settings className="w-5 h-5 text-white/50" />
-                <span className="text-white/50 text-sm">Paramètres</span>
+                <span className="text-white/50 text-sm">{t('sidebar_settings')}</span>
               </motion.button>
               <div className="pt-2 border-t border-white/5">
                 <BuildInfo className="text-white/30" />
@@ -304,10 +273,8 @@ function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
-  // Pre-warm HuggingFace Spaces au démarrage
   useHFPreWarm();
 
-  // Safety net: close menu on route change
   useEffect(() => {
     if (isMenuOpen) setIsMenuOpen(false);
   }, [location.pathname]);
