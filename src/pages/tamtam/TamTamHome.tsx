@@ -109,10 +109,10 @@ const BottomTabBar: React.FC<{
   const navigate = useNavigate();
 
   const tabs: { id: TabId; icon: typeof Home; label: string; labelBa: string }[] = [
-    { id: 'home', icon: Home, label: 'Accueil', labelBa: 'Ilé' },
-    { id: 'social', icon: Users, label: 'Social', labelBa: 'Àwùjọ' },
-    { id: 'market', icon: ShoppingBag, label: 'Marché', labelBa: 'Ọjà' },
-    { id: 'profile', icon: User, label: 'Profil', labelBa: 'Èmi' },
+    { id: 'home', icon: Home, label: 'Accueil', labelBa: 'Yɛnu' },
+    { id: 'social', icon: Users, label: 'Social', labelBa: 'Soo' },
+    { id: 'market', icon: ShoppingBag, label: 'Marché', labelBa: 'Dɛra' },
+    { id: 'profile', icon: User, label: 'Profil', labelBa: 'Ami' },
   ];
 
   const handleTabPress = (tabId: TabId) => {
