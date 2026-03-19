@@ -180,7 +180,7 @@
   },
   "social_swipe": {
     "fr": "Glisser",
-    "ba": "Swaa"
+    "ba": "Wiru"
   },
   "social_reply": {
     "fr": "Répondre",
@@ -756,7 +756,7 @@
   "_section_dictionary": "=== DICTIONNAIRE ===",
   "dict_title": {
     "fr": "Dictionnaire",
-    "ba": "Gbɛ́sɔ́ɔ̀rù"
+    "ba": "Sɛmɛ gbãanu"
   },
   "dict_keyboard": {
     "fr": "Clavier",
@@ -800,7 +800,7 @@
   },
   "dict_loading_dict": {
     "fr": "Chargement du dictionnaire...",
-    "ba": "Gbɛ́sɔ́ɔ̀rù gɑ nɑɑmɔ..."
+    "ba": "Sɛmɛ gbãanu ga namɔ..."
   },
   "dict_transcription_failed": {
     "fr": "Transcription échouée",
@@ -1266,7 +1266,7 @@
   },
   "market_apply": {
     "fr": "Postuler",
-    "ba": "Bẹ̀bẹ̀"
+    "ba": "Bukaata nɛɛ"
   },
   "market_contact_seller": {
     "fr": "Contacter le vendeur",
@@ -1409,7 +1409,7 @@
   },
   "sos_cancel_alert": {
     "fr": "Annuler l'alerte",
-    "ba": "Gbɛ́ru kìlọ̀"
+    "ba": "Kiiru gbɛru"
   },
   "sos_emergency_contacts": {
     "fr": "Contacts d'urgence",
@@ -1432,8 +1432,8 @@
     "ba": "Tɔmbu kùn"
   },
   "sos_alert_sent": {
-    "fr": "Alerte envoyée",
-    "ba": ""
+    "fr": "Alerte envoyée. L'aide est en route",
+    "ba": "Kiiru ga da. Faaba ga namɔ"
   },
   "sos_alert_sent_desc": {
     "fr": "Vos contacts d'urgence ont été prévenus",
@@ -2043,7 +2043,7 @@
   },
   "audio_desc_screen_sos": {
     "fr": "Page urgence. Appuyez sur le bouton rouge pour alerter.",
-    "ba": "Kpákpá sɔɔ. Tɛ̀ bouton kɑ kìlọ̀."
+    "ba": "Kpákpá sɔɔ. Tɛ̀ bouton kɑ kiiru nɛɛ."
   },
   "audio_desc_screen_profile": {
     "fr": "Votre profil. Gérez vos paramètres.",
@@ -2896,11 +2896,11 @@
   },
   "nav_home": {
     "fr": "Accueil",
-    "ba": "Soo"
+    "ba": "Yɛnu"
   },
   "nav_social": {
     "fr": "Social",
-    "ba": "Tɔmbu"
+    "ba": "Soo"
   },
   "nav_create": {
     "fr": "Créer",
@@ -2908,11 +2908,11 @@
   },
   "nav_market": {
     "fr": "Marché",
-    "ba": "Aburu"
+    "ba": "Dɛra"
   },
   "nav_profile": {
     "fr": "Profil",
-    "ba": "Profili"
+    "ba": "Ami"
   },
   "availability_available": {
     "fr": "Disponible",
@@ -2925,5 +2925,97 @@
   "availability_offline": {
     "fr": "Absent",
     "ba": "A kun wãa"
+  },
+  "home_create": {
+    "fr": "Créer",
+    "ba": "Ko yɔyɔ"
+  },
+  "home_choose_option": {
+    "fr": "Choisissez une option",
+    "ba": "Dɔmbɔ sɛnbu"
+  },
+  "home_patrimoine": {
+    "fr": "Patrimoine",
+    "ba": "Kpààrà"
+  },
+  "home_village_voice": {
+    "fr": "Voix du Village",
+    "ba": "Wuu nɔɔ"
+  },
+  "home_creator": {
+    "fr": "Créateur",
+    "ba": "Koyɔbu"
+  },
+  "home_creation": {
+    "fr": "Création",
+    "ba": "Ko yɔyɔ"
+  },
+  "home_my_voice": {
+    "fr": "Ma Voix",
+    "ba": "Nɛn nɔɔ"
+  },
+  "home_welcome": {
+    "fr": "Bienvenue!",
+    "ba": "Aagu wunɛ ka weru!"
+  },
+  "home_discover": {
+    "fr": "Que voulez-vous découvrir?",
+    "ba": "Mba i koo ko gisɔ?"
+  },
+  "home_trends": {
+    "fr": "Tendances",
+    "ba": "Gɑ tɛ̀lé"
+  },
+  "home_ai_suggestion": {
+    "fr": "Suggestion IA",
+    "ba": "IA yirɑ"
+  },
+  "home_start": {
+    "fr": "Commencer",
+    "ba": "Sɔ̃ɔ"
+  },
+  "home_market_suggestion": {
+    "fr": "Parlez des prix du marché aujourd'hui!",
+    "ba": "Gisɔ aburu gobi nɛɛ!"
+  },
+  "nav_feed": {
+    "fr": "Fil",
+    "ba": "Soo"
+  },
+  "nav_learn": {
+    "fr": "Apprendre",
+    "ba": "Mɛɛri"
+  },
+  "nav_dictionary": {
+    "fr": "Dico",
+    "ba": "Sɛmɛ"
+  },
+  "nav_ia": {
+    "fr": "Fitila IA",
+    "ba": "Fitila IA"
+  },
+  "sos_describe_situation": {
+    "fr": "Décrivez la situation",
+    "ba": "A geruo mba ko"
+  },
+  "sos_message_recorded": {
+    "fr": "Compris. Ce message sera envoyé avec l'alerte",
+    "ba": "A yira. Sɛmɛ nɛ ga da kɑ kiiru"
+  },
+  "social_create_new": {
+    "fr": "Créer",
+    "ba": "Ko yɔyɔ"
+  },
+  "social_choose": {
+    "fr": "Choisissez une option",
+    "ba": "Dɔmbɔ sɛnbu"
+  },
+  "dict_meaning": {
+    "fr": "Définition",
+    "ba": "Tusiabu"
+  },
+  "dict_word_not_found_msg": {
+    "fr": "Mot non trouvé",
+    "ba": "Sɛmɛ ǹ waare"
   }
 }
