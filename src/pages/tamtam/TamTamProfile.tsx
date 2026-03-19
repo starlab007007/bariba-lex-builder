@@ -557,7 +557,7 @@ export default function TamTamProfile() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">📖</span>
-                    <span className="text-sm font-medium">Mes Stories</span>
+                    <span className="text-sm font-medium">{t('profile_my_stories')}</span>
                   </div>
                   <span className="text-xs text-muted-foreground">{myStories.length}</span>
                 </div>
