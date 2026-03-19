@@ -3981,5 +3981,17 @@
   "mode_doc": {
     "fr": "Doc",
     "ba": "Sɛbɛ"
+  },
+  "status_available": {
+    "fr": "Disponible",
+    "ba": "Na wãa"
+  },
+  "status_searching": {
+    "fr": "En recherche",
+    "ba": "Na kasuumɔ"
+  },
+  "status_busy": {
+    "fr": "Occupé",
+    "ba": "Na sɔmburumɔ"
   }
 }
