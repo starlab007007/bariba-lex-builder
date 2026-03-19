@@ -504,7 +504,7 @@ export default function TamTamProfile() {
                     <Eye className="w-4 h-4" />
                     <span className="text-2xl font-bold">{vocalStats.storyViews}</span>
                   </div>
-                  <span className="text-xs opacity-80">Vues stories</span>
+                  <span className="text-xs opacity-80">{t('profile_stats_views')}</span>
                 </div>
                 
                 <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 text-center">
