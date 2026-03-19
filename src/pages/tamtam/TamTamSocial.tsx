@@ -104,8 +104,8 @@ const CreateMenu: React.FC<{
   const options = useMemo(() => {
     return [
       { id: 'patrimoine', emoji: '🏛️', label: 'Patrimoine', labelBa: 'Kpààrà', desc: 'Culture & Traditions', gradient: 'from-[#FF8C42] to-[#FF5722]', icons: '📖🎵💬🌿', action: onSelectPatrimoine },
-      { id: 'mavoix', emoji: '📢', label: 'Voix du Village', labelBa: 'Kùú dɔ̀ɔ̀rɔ̀', desc: 'Annonces & Messages', gradient: 'from-[#26D9B0] to-[#00BCD4]', icons: '📢🙏🎉❓', action: onSelectMaVoix },
-      { id: 'creation', emoji: '🎬', label: 'Création', labelBa: 'Ìṣẹ̀dá', desc: 'Vidéo, Photo, Journal', gradient: 'from-[#7C4DFF] to-[#536DFE]', icons: '🎥📸📺✨', action: onSelectCreateur },
+      { id: 'mavoix', emoji: '📢', label: 'Voix du Village', labelBa: 'Wuu nɔɔ', desc: 'Annonces & Messages', gradient: 'from-[#26D9B0] to-[#00BCD4]', icons: '📢🙏🎉❓', action: onSelectMaVoix },
+      { id: 'creation', emoji: '🎬', label: 'Création', labelBa: 'Ko yɔyɔ', desc: 'Vidéo, Photo, Journal', gradient: 'from-[#7C4DFF] to-[#536DFE]', icons: '🎥📸📺✨', action: onSelectCreateur },
     ];
   }, [onSelectPatrimoine, onSelectMaVoix, onSelectCreateur]);
 
@@ -128,8 +128,8 @@ const CreateMenu: React.FC<{
               <div className="flex items-center gap-3">
                 <span className="text-3xl">🎙️</span>
                 <div>
-                  <h2 className="text-white text-xl font-bold">{currentLang === 'ba' ? 'Ṣẹ̀dá Tuntun' : 'Créer'}</h2>
-                  <p className="text-white/50 text-sm">{currentLang === 'ba' ? 'Yan ọ̀kan' : 'Choisissez une option'}</p>
+                  <h2 className="text-white text-xl font-bold">{currentLang === 'ba' ? 'Ko yɔyɔ' : 'Créer'}</h2>
+                  <p className="text-white/50 text-sm">{currentLang === 'ba' ? 'Dɔmbɔ sɛnbu' : 'Choisissez une option'}</p>
                 </div>
               </div>
               <motion.button whileTap={{ scale: 0.9 }} onClick={onClose} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">

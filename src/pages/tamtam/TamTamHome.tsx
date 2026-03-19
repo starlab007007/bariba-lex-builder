@@ -34,8 +34,8 @@ const CreateMenu: React.FC<{
 }> = ({ isOpen, onClose, onSelectPatrimoine, onSelectMaVoix, onSelectCreateur, currentLang }) => {
   const options = [
     { id: 'patrimoine', emoji: '🏛️', label: 'Patrimoine', labelBa: 'Kpààrà', desc: 'Culture & Traditions', gradient: 'from-[#FF8C42] to-[#FF5722]', icons: '📖🎵💬🌿', action: onSelectPatrimoine },
-    { id: 'mavoix', emoji: '📢', label: 'Voix du Village', labelBa: 'Kùú dɔ̀ɔ̀rɔ̀', desc: 'Annonces & Messages', gradient: 'from-[#26D9B0] to-[#00BCD4]', icons: '📢🙏🎉❓', action: onSelectMaVoix },
-    { id: 'creation', emoji: '🎬', label: 'Créateur', labelBa: 'Olùṣẹ̀dá', desc: 'Vidéo, Photo, Texte', gradient: 'from-[#7C4DFF] to-[#536DFE]', icons: '🎥📸✍️🔴', action: onSelectCreateur },
+    { id: 'mavoix', emoji: '📢', label: 'Voix du Village', labelBa: 'Wuu nɔɔ', desc: 'Annonces & Messages', gradient: 'from-[#26D9B0] to-[#00BCD4]', icons: '📢🙏🎉❓', action: onSelectMaVoix },
+    { id: 'creation', emoji: '🎬', label: 'Créateur', labelBa: 'Koyɔbu', desc: 'Vidéo, Photo, Texte', gradient: 'from-[#7C4DFF] to-[#536DFE]', icons: '🎥📸✍️🔴', action: onSelectCreateur },
   ];
 
   return (
@@ -109,10 +109,10 @@ const BottomTabBar: React.FC<{
   const navigate = useNavigate();
 
   const tabs: { id: TabId; icon: typeof Home; label: string; labelBa: string }[] = [
-    { id: 'home', icon: Home, label: 'Accueil', labelBa: 'Ilé' },
-    { id: 'social', icon: Users, label: 'Social', labelBa: 'Àwùjọ' },
-    { id: 'market', icon: ShoppingBag, label: 'Marché', labelBa: 'Ọjà' },
-    { id: 'profile', icon: User, label: 'Profil', labelBa: 'Èmi' },
+    { id: 'home', icon: Home, label: 'Accueil', labelBa: 'Yɛnu' },
+    { id: 'social', icon: Users, label: 'Social', labelBa: 'Soo' },
+    { id: 'market', icon: ShoppingBag, label: 'Marché', labelBa: 'Dɛra' },
+    { id: 'profile', icon: User, label: 'Profil', labelBa: 'Ami' },
   ];
 
   const handleTabPress = (tabId: TabId) => {
@@ -183,8 +183,8 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
   
   const feeds = [
     { id: 'patrimoine', emoji: '🏛️', label: 'Patrimoine', labelBa: 'Kpààrà', desc: 'Contes, proverbes, chants', gradient: 'from-orange-500 to-amber-400' },
-    { id: 'mavoix', emoji: '📢', label: 'Ma Voix', labelBa: 'Ohùn Mi', desc: 'Annonces, messages', gradient: 'from-teal-500 to-cyan-400' },
-    { id: 'creation', emoji: '🎬', label: 'Création', labelBa: 'Ìṣẹ̀dá', desc: 'Vidéos, photos', gradient: 'from-purple-500 to-indigo-400' },
+    { id: 'mavoix', emoji: '📢', label: 'Ma Voix', labelBa: 'Nɛn nɔɔ', desc: 'Annonces, messages', gradient: 'from-teal-500 to-cyan-400' },
+    { id: 'creation', emoji: '🎬', label: 'Création', labelBa: 'Ko yɔyɔ', desc: 'Vidéos, photos', gradient: 'from-purple-500 to-indigo-400' },
   ];
 
   return (

@@ -180,7 +180,7 @@
   },
   "social_swipe": {
     "fr": "Glisser",
-    "ba": "Swaa"
+    "ba": "Wiru"
   },
   "social_reply": {
     "fr": "Répondre",
@@ -756,7 +756,7 @@
   "_section_dictionary": "=== DICTIONNAIRE ===",
   "dict_title": {
     "fr": "Dictionnaire",
-    "ba": "Gbɛ́sɔ́ɔ̀rù"
+    "ba": "Sɛmɛ gbãanu"
   },
   "dict_keyboard": {
     "fr": "Clavier",
@@ -800,7 +800,7 @@
   },
   "dict_loading_dict": {
     "fr": "Chargement du dictionnaire...",
-    "ba": "Gbɛ́sɔ́ɔ̀rù gɑ nɑɑmɔ..."
+    "ba": "Sɛmɛ gbãanu ga namɔ..."
   },
   "dict_transcription_failed": {
     "fr": "Transcription échouée",
@@ -1266,7 +1266,7 @@
   },
   "market_apply": {
     "fr": "Postuler",
-    "ba": "Bẹ̀bẹ̀"
+    "ba": "Bukaata nɛɛ"
   },
   "market_contact_seller": {
     "fr": "Contacter le vendeur",
@@ -1294,7 +1294,7 @@
   },
   "market_urgent": {
     "fr": "Urgent",
-    "ba": ""
+    "ba": "Kpákpá"
   },
   "market_active": {
     "fr": "Actif",
@@ -1409,7 +1409,7 @@
   },
   "sos_cancel_alert": {
     "fr": "Annuler l'alerte",
-    "ba": "Gbɛ́ru kìlọ̀"
+    "ba": "Kiiru gbɛru"
   },
   "sos_emergency_contacts": {
     "fr": "Contacts d'urgence",
@@ -1432,8 +1432,8 @@
     "ba": "Tɔmbu kùn"
   },
   "sos_alert_sent": {
-    "fr": "Alerte envoyée",
-    "ba": ""
+    "fr": "Alerte envoyée. L'aide est en route",
+    "ba": "Kiiru ga da. Faaba ga namɔ"
   },
   "sos_alert_sent_desc": {
     "fr": "Vos contacts d'urgence ont été prévenus",
@@ -2043,7 +2043,7 @@
   },
   "audio_desc_screen_sos": {
     "fr": "Page urgence. Appuyez sur le bouton rouge pour alerter.",
-    "ba": "Kpákpá sɔɔ. Tɛ̀ bouton kɑ kìlọ̀."
+    "ba": "Kpákpá sɔɔ. Tɛ̀ bouton kɑ kiiru nɛɛ."
   },
   "audio_desc_screen_profile": {
     "fr": "Votre profil. Gérez vos paramètres.",
@@ -2760,7 +2760,7 @@
   },
   "market_back": {
     "fr": "Retour",
-    "ba": "Wiru"
+    "ba": "Biru da"
   },
   "market_no_product": {
     "fr": "Aucun produit",
@@ -2828,7 +2828,7 @@
   },
   "market_apply_job": {
     "fr": "Postuler à cette offre",
-    "ba": "Sɔmburu sɔɔ yira"
+    "ba": "Sɔmburu nɛ bukaata nɛɛ"
   },
   "market_buy_desc": {
     "fr": "Voir les produits à vendre",
@@ -2896,11 +2896,11 @@
   },
   "nav_home": {
     "fr": "Accueil",
-    "ba": "Soo"
+    "ba": "Yɛnu"
   },
   "nav_social": {
     "fr": "Social",
-    "ba": "Tɔmbu"
+    "ba": "Soo"
   },
   "nav_create": {
     "fr": "Créer",
@@ -2908,11 +2908,11 @@
   },
   "nav_market": {
     "fr": "Marché",
-    "ba": "Aburu"
+    "ba": "Dɛra"
   },
   "nav_profile": {
     "fr": "Profil",
-    "ba": "Profili"
+    "ba": "Ami"
   },
   "availability_available": {
     "fr": "Disponible",
@@ -2925,5 +2925,313 @@
   "availability_offline": {
     "fr": "Absent",
     "ba": "A kun wãa"
+  },
+  "home_create": {
+    "fr": "Créer",
+    "ba": "Ko yɔyɔ"
+  },
+  "home_choose_option": {
+    "fr": "Choisissez une option",
+    "ba": "Dɔmbɔ sɛnbu"
+  },
+  "home_patrimoine": {
+    "fr": "Patrimoine",
+    "ba": "Kpààrà"
+  },
+  "home_village_voice": {
+    "fr": "Voix du Village",
+    "ba": "Wuu nɔɔ"
+  },
+  "home_creator": {
+    "fr": "Créateur",
+    "ba": "Koyɔbu"
+  },
+  "home_creation": {
+    "fr": "Création",
+    "ba": "Ko yɔyɔ"
+  },
+  "home_my_voice": {
+    "fr": "Ma Voix",
+    "ba": "Nɛn nɔɔ"
+  },
+  "home_welcome": {
+    "fr": "Bienvenue!",
+    "ba": "Aagu wunɛ ka weru!"
+  },
+  "home_discover": {
+    "fr": "Que voulez-vous découvrir?",
+    "ba": "Mba i koo ko gisɔ?"
+  },
+  "home_trends": {
+    "fr": "Tendances",
+    "ba": "Gɑ tɛ̀lé"
+  },
+  "home_ai_suggestion": {
+    "fr": "Suggestion IA",
+    "ba": "IA yirɑ"
+  },
+  "home_start": {
+    "fr": "Commencer",
+    "ba": "Sɔ̃ɔ"
+  },
+  "home_market_suggestion": {
+    "fr": "Parlez des prix du marché aujourd'hui!",
+    "ba": "Gisɔ aburu gobi nɛɛ!"
+  },
+  "nav_feed": {
+    "fr": "Fil",
+    "ba": "Soo"
+  },
+  "nav_learn": {
+    "fr": "Apprendre",
+    "ba": "Mɛɛri"
+  },
+  "nav_dictionary": {
+    "fr": "Dico",
+    "ba": "Sɛmɛ"
+  },
+  "nav_ia": {
+    "fr": "Fitila IA",
+    "ba": "Fitila IA"
+  },
+  "sos_describe_situation": {
+    "fr": "Décrivez la situation",
+    "ba": "A geruo mba ko"
+  },
+  "sos_message_recorded": {
+    "fr": "Compris. Ce message sera envoyé avec l'alerte",
+    "ba": "A yira. Sɛmɛ nɛ ga da kɑ kiiru"
+  },
+  "social_create_new": {
+    "fr": "Créer",
+    "ba": "Ko yɔyɔ"
+  },
+  "social_choose": {
+    "fr": "Choisissez une option",
+    "ba": "Dɔmbɔ sɛnbu"
+  },
+  "dict_meaning": {
+    "fr": "Définition",
+    "ba": "Tusiabu"
+  },
+  "dict_word_not_found_msg": {
+    "fr": "Mot non trouvé",
+    "ba": "Sɛmɛ ǹ waare"
+  },
+  "market_error": {
+    "fr": "Erreur",
+    "ba": "Wɔrikɔ"
+  },
+  "market_cant_send": {
+    "fr": "Impossible d'envoyer le message",
+    "ba": "Ǹ kpɛ̃ɛ sɛmɛ da"
+  },
+  "market_about": {
+    "fr": "À propos de",
+    "ba": "Yèn sɔ̃"
+  },
+  "market_message_sent": {
+    "fr": "Message envoyé",
+    "ba": "Sɛmɛ ga da"
+  },
+  "market_offer": {
+    "fr": "Offre",
+    "ba": "Sɔmburu nɛɛru"
+  },
+  "market_demand": {
+    "fr": "Demande",
+    "ba": "Bukaata"
+  },
+  "market_very_urgent": {
+    "fr": "Très urgent",
+    "ba": "Kpákpá dɔni"
+  },
+  "market_normal": {
+    "fr": "Normal",
+    "ba": "Gãa"
+  },
+  "market_available": {
+    "fr": "Disponible",
+    "ba": "Ga wãa"
+  },
+  "market_busy": {
+    "fr": "Occupé",
+    "ba": "Ga sɔmburu mɔ"
+  },
+  "market_searching": {
+    "fr": "En recherche",
+    "ba": "Ga kasuu"
+  },
+  "market_contact_person": {
+    "fr": "Contacter cette personne",
+    "ba": "Durɔ nɛ yɔkɔ"
+  },
+  "market_apply_vocal": {
+    "fr": "Postuler par message vocal",
+    "ba": "Nɔɔ kɑ bukaata nɛɛ"
+  },
+  "market_send_voice": {
+    "fr": "Envoyer un message vocal",
+    "ba": "Nɔɔ sɛmɛ da"
+  },
+  "market_cancel": {
+    "fr": "Annuler",
+    "ba": "Gbɛru"
+  },
+  "market_postuler": {
+    "fr": "Postuler",
+    "ba": "Bukaata nɛɛ"
+  },
+  "market_contact": {
+    "fr": "Contacter",
+    "ba": "Yɔkɔ"
+  },
+  "market_listen": {
+    "fr": "Écouter",
+    "ba": "Swaa daki"
+  },
+  "market_candidatures": {
+    "fr": "candidatures",
+    "ba": "bukaata nɛɛru"
+  },
+  "market_at_location": {
+    "fr": "À",
+    "ba": "Ka"
+  },
+  "market_no_listing": {
+    "fr": "Aucune annonce",
+    "ba": "Sɛmɛ ǹ wãa"
+  },
+  "market_start_selling": {
+    "fr": "Commencez à vendre !",
+    "ba": "Dɔmbɔ kɑ aburu ko!"
+  },
+  "market_edit": {
+    "fr": "Modifier",
+    "ba": "Wiru"
+  },
+  "market_delete": {
+    "fr": "Supprimer",
+    "ba": "Gbɛru"
+  },
+  "market_dispo": {
+    "fr": "Dispo",
+    "ba": "Wãa"
+  },
+  "market_reserved": {
+    "fr": "Réservé",
+    "ba": "Ga tiru"
+  },
+  "market_sold": {
+    "fr": "Vendu",
+    "ba": "Ga aburu"
+  },
+  "market_available_status": {
+    "fr": "disponible",
+    "ba": "ga wãa"
+  },
+  "market_sold_status": {
+    "fr": "vendu",
+    "ba": "ga aburu"
+  },
+  "market_reserved_status": {
+    "fr": "réservé",
+    "ba": "ga tiru"
+  },
+  "market_present_offer": {
+    "fr": "Je propose un emploi",
+    "ba": "Na sɔmburu nɛɛ"
+  },
+  "market_search_work": {
+    "fr": "Je cherche du travail",
+    "ba": "Na sɔmburu kasuu"
+  },
+  "market_looking_worker": {
+    "fr": "Je cherche quelqu'un pour travailler",
+    "ba": "Na durɔ kasuu kɑ sɔmburu ko"
+  },
+  "market_want_work": {
+    "fr": "Je veux travailler",
+    "ba": "Na sɔmburu koo ko"
+  },
+  "market_offer_or_demand": {
+    "fr": "Offre ou demande ?",
+    "ba": "Nɛɛru n kùn bukaata?"
+  },
+  "market_choose_domain": {
+    "fr": "Choisissez le domaine",
+    "ba": "Dɔmbɔ sɔmburu kpindu"
+  },
+  "market_describe_post": {
+    "fr": "Décrivez le poste",
+    "ba": "Sɔmburu geruo"
+  },
+  "market_present_yourself": {
+    "fr": "Présentez-vous",
+    "ba": "A wunɛ geruo"
+  },
+  "market_press_speak": {
+    "fr": "Appuyez et parlez",
+    "ba": "Tɛ kɑ geruo"
+  },
+  "market_not_understood": {
+    "fr": "Pas compris. Réessayez ou tapez",
+    "ba": "Ǹ mɔ. A wiru n kùn a kɔ̃si"
+  },
+  "market_type_text": {
+    "fr": "Taper le texte",
+    "ba": "Sɛmɛ kɔ̃si"
+  },
+  "market_continue": {
+    "fr": "Continuer",
+    "ba": "Sɔ̃ɔ"
+  },
+  "market_add_photos": {
+    "fr": "Ajoutez des photos si vous voulez",
+    "ba": "Foto ku bí a koo"
+  },
+  "market_verify_confirm": {
+    "fr": "Vérifiez et confirmez",
+    "ba": "Mɛɛri kɑ yira"
+  },
+  "market_published": {
+    "fr": "Votre annonce est en ligne",
+    "ba": "Wunɛn sɛmɛ ga da!"
+  },
+  "market_offer_job": {
+    "fr": "Proposer un emploi",
+    "ba": "Sɔmburu nɛɛ"
+  },
+  "market_search_job": {
+    "fr": "Chercher un emploi",
+    "ba": "Sɔmburu kasuu"
+  },
+  "market_job": {
+    "fr": "Emploi",
+    "ba": "Sɔmburu"
+  },
+  "market_title_placeholder": {
+    "fr": "Titre du poste / description...",
+    "ba": "Sɔmburu yiru / garin tusiabu..."
+  },
+  "market_confirm_delete": {
+    "fr": "Voulez-vous supprimer",
+    "ba": "A koo gbɛru"
+  },
+  "market_say_to_seller": {
+    "fr": "Dites ce que vous voulez dire au vendeur",
+    "ba": "A geruo mba a koo nɛɛ aburu koyɔbu"
+  },
+  "market_start_speaking": {
+    "fr": "Commencer à parler",
+    "ba": "Sɔ̃ɔ kɑ geruo"
+  },
+  "market_explain_interest": {
+    "fr": "Présentez-vous et expliquez pourquoi vous êtes intéressé",
+    "ba": "A wunɛ geruo kɑ amɔna a bukaata mɔ"
+  },
+  "market_say_proposal": {
+    "fr": "Dites ce que vous voulez proposer",
+    "ba": "Geruo mba a koo nɛɛ"
   }
 }

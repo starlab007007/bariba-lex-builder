@@ -74,7 +74,7 @@ export function VoiceButton({
         )}
         {showLabel && (
           <span className="text-sm font-medium">
-            {currentLang === 'ba' ? 'Gbọ́' : 'Écouter'}
+            {currentLang === 'ba' ? 'Swaa daki' : 'Écouter'}
           </span>
         )}
       </motion.button>
@@ -87,7 +87,7 @@ export function VoiceButton({
       onClick={handleSpeak}
       disabled={isSpeaking}
       className={`${sizeClasses[size]} rounded-full bg-tamtam-primary/10 flex items-center justify-center hover:bg-tamtam-primary/20 transition-all ${className}`}
-      aria-label={currentLang === 'ba' ? 'Gbọ́' : 'Écouter'}
+      aria-label={currentLang === 'ba' ? 'Swaa daki' : 'Écouter'}
     >
       {isLoading ? (
         <Loader2 className="animate-spin text-tamtam-primary" style={{ width: iconSizes[size], height: iconSizes[size] }} />

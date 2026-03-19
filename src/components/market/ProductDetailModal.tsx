@@ -22,7 +22,7 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
   const [isRecordingMessage, setIsRecordingMessage] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   
-  const { currentLang } = useTamTamLanguage();
+  const { currentLang, t } = useTamTamLanguage();
   const { speakCurrentLang } = useBilingualAudio();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -90,8 +90,8 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
   const handleSendVoiceMessage = async (result: { audioBase64: string; transcription?: string; sourceLang: 'ba' | 'fr' }) => {
     if (!result.audioBase64 || !user || !product.seller_id) {
       toast({
-        title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
-        description: currentLang === 'ba' ? 'Kò lè fi ránṣẹ́' : 'Impossible d\'envoyer le message',
+        title: t('market_error'),
+        description: t('market_cant_send'),
         variant: 'destructive'
       });
       return;
@@ -99,18 +99,16 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
 
     setIsSendingMessage(true);
     try {
-      // Upload audio to storage
       const audioUrl = await uploadAudioToStorage(result.audioBase64);
       if (!audioUrl) throw new Error('Failed to upload audio');
 
-      // Create a message to the seller
       const { error } = await supabase.from('tamtam_messages').insert({
         sender_id: user.id,
         receiver_id: product.seller_id,
         audio_url: audioUrl,
         transcript_fr: result.transcription,
         message_type: 'voice',
-        text_content: `📦 ${currentLang === 'ba' ? 'Nípa' : 'À propos de'}: ${displayTitle}`
+        text_content: `📦 ${t('market_about')}: ${displayTitle}`
       });
 
       if (error) throw error;
@@ -118,13 +116,13 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
       tamtamFeedback.play('success');
       toast({
         title: '✅',
-        description: currentLang === 'ba' ? 'Ifiránṣẹ́ ti ránṣẹ́' : 'Message envoyé au vendeur'
+        description: t('market_message_sent')
       });
       setIsRecordingMessage(false);
     } catch (err: any) {
       console.error('[ProductDetailModal] sendVoiceMessage error:', err);
       toast({
-        title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
+        title: t('market_error'),
         description: err.message,
         variant: 'destructive'
       });
@@ -140,15 +138,14 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
   };
 
   const statusLabels = {
-    available: { fr: 'Disponible', ba: 'Ó wà' },
-    reserved: { fr: 'Réservé', ba: 'Ti yà sọ́tọ̀' },
-    sold: { fr: 'Vendu', ba: 'Ti tà' }
+    available: { fr: 'Disponible', ba: 'Ga wãa' },
+    reserved: { fr: 'Réservé', ba: 'Ga tiru' },
+    sold: { fr: 'Vendu', ba: 'Ga aburu' }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-lg p-0 bg-tamtam-bg overflow-hidden max-h-[90vh] overflow-y-auto">
-        {/* Image Gallery */}
         <div className="relative aspect-square bg-tamtam-surface">
           {images.length > 0 ? (
             <>
@@ -164,25 +161,17 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                 />
               </AnimatePresence>
 
-              {/* Navigation arrows */}
               {hasMultipleImages && (
                 <>
-                  <button
-                    onClick={prevImage}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center"
-                  >
+                  <button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center">
                     <ChevronLeft className="w-6 h-6" />
                   </button>
-                  <button
-                    onClick={nextImage}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center"
-                  >
+                  <button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center">
                     <ChevronRight className="w-6 h-6" />
                   </button>
                 </>
               )}
 
-              {/* Image indicators */}
               {hasMultipleImages && (
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
                   {images.map((_, index) => (
@@ -190,9 +179,7 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
                       className={`w-2.5 h-2.5 rounded-full transition-all ${
-                        index === currentImageIndex 
-                          ? 'bg-white scale-125' 
-                          : 'bg-white/50'
+                        index === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50'
                       }`}
                     />
                   ))}
@@ -205,48 +192,31 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
             </div>
           )}
 
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center"
-          >
+          <button onClick={onClose} className="absolute top-3 right-3 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center">
             <X className="w-5 h-5" />
           </button>
 
-          {/* Status badge */}
           <div className={`absolute top-3 left-3 px-3 py-1 rounded-full ${statusColors[product.status]} text-white text-sm font-medium`}>
             {currentLang === 'ba' ? statusLabels[product.status].ba : statusLabels[product.status].fr}
           </div>
         </div>
 
-        {/* Product Info */}
         <div className="p-5">
-          {/* Title and listen */}
           <div className="flex items-start justify-between gap-3 mb-3">
-            <h2 className="text-xl font-bold text-tamtam-text flex-1">
-              {displayTitle}
-            </h2>
-            <button
-              onClick={handleListen}
-              className="w-12 h-12 bg-tamtam-primary text-white rounded-full flex items-center justify-center flex-shrink-0"
-            >
+            <h2 className="text-xl font-bold text-tamtam-text flex-1">{displayTitle}</h2>
+            <button onClick={handleListen} className="w-12 h-12 bg-tamtam-primary text-white rounded-full flex items-center justify-center flex-shrink-0">
               <Volume2 className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Price */}
           <div className="text-2xl font-bold text-tamtam-primary mb-4">
             {product.price?.toLocaleString()} <span className="text-base">{product.currency || 'F CFA'}</span>
           </div>
 
-          {/* Description */}
           {product.description_text && (
-            <p className="text-tamtam-text-muted mb-4 leading-relaxed">
-              {product.description_text}
-            </p>
+            <p className="text-tamtam-text-muted mb-4 leading-relaxed">{product.description_text}</p>
           )}
 
-          {/* Location */}
           {product.location && (
             <div className="flex items-center gap-2 text-tamtam-text-muted mb-4">
               <MapPin className="w-4 h-4" />
@@ -254,31 +224,24 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
             </div>
           )}
 
-          {/* Seller phone */}
           {product.seller_phone && (
-            <a 
-              href={`tel:${product.seller_phone}`}
-              className="flex items-center gap-2 text-tamtam-primary mb-4"
-            >
+            <a href={`tel:${product.seller_phone}`} className="flex items-center gap-2 text-tamtam-primary mb-4">
               <Phone className="w-4 h-4" />
               <span>{product.seller_phone}</span>
             </a>
           )}
 
-          {/* Voice Message Section */}
           {product.status === 'available' && user && product.seller_id !== user.id && (
             <div className="border-t border-tamtam-surface pt-4 mt-4">
               <h3 className="font-semibold text-tamtam-text mb-3 flex items-center gap-2">
                 <Mic className="w-4 h-4" />
-                {currentLang === 'ba' ? 'Fi ọ̀rọ̀ ránṣẹ́' : 'Envoyer un message vocal'}
+                {t('market_send_voice')}
               </h3>
 
               {isRecordingMessage ? (
                 <div className="flex flex-col items-center gap-4 py-4">
                   <p className="text-sm text-tamtam-text-muted text-center">
-                    {currentLang === 'ba' 
-                      ? 'Sọ ohun tí o fẹ́ sọ fún olùtà' 
-                      : 'Dites ce que vous voulez dire au vendeur'}
+                    {t('market_say_to_seller')}
                   </p>
                   
                   <TamTamMicButton
@@ -288,19 +251,13 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                     sourceLang={currentLang}
                   />
 
-                  <button
-                    onClick={() => setIsRecordingMessage(false)}
-                    className="text-sm text-tamtam-text-muted underline"
-                  >
-                    {currentLang === 'ba' ? 'Padà' : 'Annuler'}
+                  <button onClick={() => setIsRecordingMessage(false)} className="text-sm text-tamtam-text-muted underline">
+                    {t('market_cancel')}
                   </button>
                 </div>
               ) : (
                 <button
-                  onClick={() => {
-                    tamtamFeedback.play('click');
-                    setIsRecordingMessage(true);
-                  }}
+                  onClick={() => { tamtamFeedback.play('click'); setIsRecordingMessage(true); }}
                   disabled={isSendingMessage}
                   className="w-full py-4 bg-tamtam-primary text-white rounded-2xl flex items-center justify-center gap-3 font-medium"
                 >
@@ -309,7 +266,7 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                   ) : (
                     <>
                       <Mic className="w-5 h-5" />
-                      <span>{currentLang === 'ba' ? 'Bẹ̀rẹ̀ sí sọ̀rọ̀' : 'Commencer à parler'}</span>
+                      <span>{t('market_start_speaking')}</span>
                     </>
                   )}
                 </button>

@@ -58,15 +58,15 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
       if (prefillData.category) {
         setJobData({ ...prefillData, job_type: prefillData.job_type || initialType });
         setStep('title');
-        speakCurrentLang(currentLang === 'ba' ? 'Sọ orúkọ iṣẹ́ náà' : 'Décrivez le poste');
+        speakCurrentLang(currentLang === 'ba' ? 'Sɔmburu geruo' : 'Décrivez le poste');
       } else if (initialType) {
         setStep('category');
         setJobData({ job_type: initialType });
-        speakCurrentLang(currentLang === 'ba' ? 'Yan ẹ̀ka iṣẹ́ náà' : 'Choisissez le domaine');
+        speakCurrentLang(currentLang === 'ba' ? 'Dɔmbɔ sɔmburu kpindu' : 'Choisissez le domaine');
       } else {
         setStep('type');
         setJobData({});
-        speakCurrentLang(currentLang === 'ba' ? 'Ṣé o ń pèsè iṣẹ́ tàbí o ń wá iṣẹ́?' : 'Offre ou demande ?');
+        speakCurrentLang(currentLang === 'ba' ? 'Nɛɛru n kùn bukaata?' : 'Offre ou demande ?');
       }
     }
   }, [isOpen, initialType, prefillData, speakCurrentLang, currentLang]);
@@ -76,7 +76,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
     setJobData(prev => ({ ...prev, job_type: type }));
     setStep('category');
     await speakCurrentLang(
-      currentLang === 'ba' ? 'Yan ẹ̀ka iṣẹ́ náà' : 'Choisissez le domaine'
+      currentLang === 'ba' ? 'Dɔmbɔ sɔmburu kpindu' : 'Choisissez le domaine'
     );
   };
 
@@ -87,14 +87,14 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
     setVoiceError(false);
     setShowTextInput(false);
     await speakCurrentLang(
-      currentLang === 'ba' ? 'Sọ orúkọ iṣẹ́ náà' : 'Dites le titre du poste'
+      currentLang === 'ba' ? 'Sɔmburu geruo' : 'Dites le titre du poste'
     );
   };
 
   const handleVoiceInput = async (result: { audioBase64: string; transcription?: string; sourceLang: 'ba' | 'fr' }) => {
     if (!result.transcription) {
       setVoiceError(true);
-      await speakCurrentLang(currentLang === 'ba' ? 'Mo kò gbọ́. Tún gbìyànjú tàbí kọ ọ́rọ̀' : 'Je n\'ai pas compris. Réessayez ou tapez le texte.');
+      await speakCurrentLang(currentLang === 'ba' ? 'Ǹ mɔ. A wiru n kùn a kɔ̃si' : 'Je n\'ai pas compris. Réessayez ou tapez le texte.');
       return;
     }
 
@@ -151,7 +151,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
         }));
         
         setStep('photos');
-        await speakCurrentLang(currentLang === 'ba' ? 'Fi àwọn fọ́tò kun bí o bá fẹ́' : 'Ajoutez des photos si vous voulez');
+        await speakCurrentLang(currentLang === 'ba' ? 'Foto ku bí a koo' : 'Ajoutez des photos si vous voulez');
       }
     } catch (err) {
       console.error('[VoiceGuidedJobCreator] Error:', err);
@@ -162,7 +162,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
 
   const handleSkipPhotos = async () => {
     setStep('confirm');
-    await speakCurrentLang(currentLang === 'ba' ? 'Jẹ́rìísí àwọn àlàyé rẹ' : 'Vérifiez et confirmez');
+    await speakCurrentLang(currentLang === 'ba' ? 'Mɛɛri kɑ yira' : 'Vérifiez et confirmez');
   };
 
   const handleConfirm = async () => {
@@ -175,7 +175,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
       tamtamFeedback.play('success');
       await speakCurrentLang(
         currentLang === 'ba' 
-          ? 'Ó dára! Ìpolówó rẹ ti jẹ́ títẹ̀jáde' 
+          ? 'Wunɛn sɛmɛ ga da!' 
           : 'Parfait ! Votre annonce est en ligne'
       );
       onComplete();
@@ -220,10 +220,10 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
           </button>
           <h2 className="text-lg font-bold text-tamtam-text">
             {jobData.job_type === 'offer' 
-              ? (currentLang === 'ba' ? 'Pèsè iṣẹ́' : 'Proposer un emploi')
+              ? (currentLang === 'ba' ? 'Sɔmburu nɛɛ' : 'Proposer un emploi')
               : jobData.job_type === 'demand'
-              ? (currentLang === 'ba' ? 'Wá iṣẹ́' : 'Chercher un emploi')
-              : (currentLang === 'ba' ? 'Iṣẹ́' : 'Emploi')
+              ? (currentLang === 'ba' ? 'Sɔmburu kasuu' : 'Chercher un emploi')
+              : (currentLang === 'ba' ? 'Sɔmburu' : 'Emploi')
             }
           </h2>
           <button onClick={onClose}>
@@ -268,10 +268,10 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                   </div>
                   <div className="text-left">
                     <h3 className="font-bold text-tamtam-text text-lg">
-                      {currentLang === 'ba' ? 'Mo ń pèsè iṣẹ́' : 'Je propose un emploi'}
+                      {currentLang === 'ba' ? 'Na sɔmburu nɛɛ' : 'Je propose un emploi'}
                     </h3>
                     <p className="text-tamtam-text-muted text-sm">
-                      {currentLang === 'ba' ? 'Mo ń wá ènìyàn láti ṣiṣẹ́' : 'Je cherche quelqu\'un pour travailler'}
+                      {currentLang === 'ba' ? 'Na durɔ kasuu kɑ sɔmburu ko' : 'Je cherche quelqu\'un pour travailler'}
                     </p>
                   </div>
                 </button>
@@ -285,10 +285,10 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                   </div>
                   <div className="text-left">
                     <h3 className="font-bold text-tamtam-text text-lg">
-                      {currentLang === 'ba' ? 'Mo ń wá iṣẹ́' : 'Je cherche du travail'}
+                      {currentLang === 'ba' ? 'Na sɔmburu kasuu' : 'Je cherche du travail'}
                     </h3>
                     <p className="text-tamtam-text-muted text-sm">
-                      {currentLang === 'ba' ? 'Mo fẹ́ ṣiṣẹ́' : 'Je veux travailler'}
+                      {currentLang === 'ba' ? 'Na sɔmburu koo ko' : 'Je veux travailler'}
                     </p>
                   </div>
                 </button>
@@ -304,7 +304,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                 exit={{ opacity: 0, x: -20 }}
               >
                 <p className="text-center text-tamtam-text-muted mb-6">
-                  {currentLang === 'ba' ? 'Yan ẹ̀ka iṣẹ́' : 'Choisissez le domaine'}
+                  {currentLang === 'ba' ? 'Dɔmbɔ sɔmburu kpindu' : 'Choisissez le domaine'}
                 </p>
                 <div className="grid grid-cols-4 gap-3">
                   {JOB_CATEGORIES.map(cat => (
@@ -340,13 +340,13 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
 
                 <p className="text-tamtam-text mb-2 font-medium text-lg">
                   {jobData.job_type === 'offer'
-                    ? (currentLang === 'ba' ? 'Ṣàpèjúwe iṣẹ́ náà' : 'Décrivez le poste')
-                    : (currentLang === 'ba' ? 'Ṣàpèjúwe ara rẹ' : 'Présentez-vous')
+                    ? (currentLang === 'ba' ? 'Sɔmburu geruo' : 'Décrivez le poste')
+                    : (currentLang === 'ba' ? 'A wunɛ geruo' : 'Présentez-vous')
                   }
                 </p>
 
                 <p className="text-tamtam-text-muted text-sm mb-6">
-                  {currentLang === 'ba' ? 'Tẹ bọ́tìnì náà, kí o sì sọ̀rọ̀' : 'Appuyez et parlez'}
+                  {currentLang === 'ba' ? 'Tɛ kɑ geruo' : 'Appuyez et parlez'}
                 </p>
 
                 {/* Voice input */}
@@ -369,14 +369,14 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                         className="flex flex-col items-center gap-2"
                       >
                         <p className="text-amber-600 text-sm">
-                          {currentLang === 'ba' ? 'Kò gbọ́. Gbìyànjú lẹ́ẹ̀kan síi' : 'Pas compris. Réessayez ou tapez'}
+                          {currentLang === 'ba' ? 'Ǹ mɔ. A wiru n kùn a kɔ̃si' : 'Pas compris. Réessayez ou tapez'}
                         </p>
                         <button
                           onClick={() => setShowTextInput(true)}
                           className="flex items-center gap-2 px-4 py-2 bg-tamtam-surface rounded-full text-sm text-tamtam-text"
                         >
                           <Keyboard className="w-4 h-4" />
-                          {currentLang === 'ba' ? 'Kọ ọ́rọ̀' : 'Taper le texte'}
+                          {currentLang === 'ba' ? 'Sɛmɛ kɔ̃si' : 'Taper le texte'}
                         </button>
                       </motion.div>
                     )}
@@ -393,7 +393,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                     <Input
                       value={textInputValue}
                       onChange={(e) => setTextInputValue(e.target.value)}
-                      placeholder={currentLang === 'ba' ? 'Orúkọ iṣẹ́ / àpèjúwe...' : 'Titre du poste / description...'}
+                      placeholder={currentLang === 'ba' ? 'Sɔmburu yiru...' : 'Titre du poste / description...'}
                       className="text-center text-lg"
                       autoFocus
                       onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
@@ -406,7 +406,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                         }}
                         className="px-4 py-2 bg-tamtam-surface rounded-xl text-tamtam-text-muted"
                       >
-                        {currentLang === 'ba' ? 'Padà' : 'Retour'}
+                        {currentLang === 'ba' ? 'Biru da' : 'Retour'}
                       </button>
                       <button
                         onClick={handleTextSubmit}
@@ -414,7 +414,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                         className="px-6 py-2 bg-tamtam-primary text-white rounded-xl flex items-center gap-2 disabled:opacity-50"
                       >
                         <Check className="w-4 h-4" />
-                        {currentLang === 'ba' ? 'Tẹ̀síwájú' : 'Continuer'}
+                        {currentLang === 'ba' ? 'Sɔ̃ɔ' : 'Continuer'}
                       </button>
                     </div>
                   </motion.div>
@@ -472,7 +472,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                     className="flex-1 py-3 bg-tamtam-primary text-white rounded-xl flex items-center justify-center gap-2 font-medium"
                   >
                     <Check className="w-5 h-5" />
-                    {currentLang === 'ba' ? 'Tẹ̀síwájú' : 'Continuer'}
+                    {currentLang === 'ba' ? 'Sɔ̃ɔ' : 'Continuer'}
                   </button>
                 </div>
               </motion.div>
@@ -500,7 +500,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                         jobData.job_type === 'offer' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'
                       }`}>
                         {jobData.job_type === 'offer' 
-                          ? (currentLang === 'ba' ? 'Iṣẹ́ tí wọ́n ń pèsè' : 'Offre d\'emploi')
+                          ? (currentLang === 'ba' ? 'Sɔmburu tí wọ́n ń pèsè' : 'Offre d\'emploi')
                           : (currentLang === 'ba' ? 'Ẹni tó ń wá iṣẹ́' : 'Demande d\'emploi')
                         }
                       </span>

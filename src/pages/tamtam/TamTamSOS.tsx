@@ -74,11 +74,7 @@ export default function TamTamSOS() {
         description: `Position: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
       });
       
-      await speakCurrentLang(
-        currentLang === 'ba'
-          ? "Ìkìlọ̀ ti jẹ́ fíránṣẹ́. Ìrànlọ́wọ́ ń bọ̀"
-          : "Alerte envoyée. L'aide est en route"
-      );
+      await speakCurrentLang(t('sos_alert_sent'));
       
     } catch (err) {
       console.error('[TamTamSOS] Location error:', err);
@@ -105,11 +101,7 @@ export default function TamTamSOS() {
         description: result.transcription
       });
       
-      await speakCurrentLang(
-        currentLang === 'ba'
-          ? "Ó dára, mo gbọ́ ọ. Ìsọfúnni yìí yóò jẹ́ fíránṣẹ́ pẹ̀lú ìkìlọ̀"
-          : "Compris. Ce message sera envoyé avec l'alerte"
-      );
+      await speakCurrentLang(t('sos_message_recorded'));
     }
   };
 
@@ -204,7 +196,7 @@ export default function TamTamSOS() {
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🎤</span>
                 <span className="text-sm font-medium text-tamtam-text">
-                  {currentLang === 'ba' ? 'Ṣàlàyé kíní ó ṣẹlẹ̀' : 'Décrivez la situation'}
+                  {t('sos_describe_situation')}
                 </span>
               </div>
             </div>
