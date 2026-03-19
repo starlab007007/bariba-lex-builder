@@ -101,11 +101,7 @@ export default function TamTamSOS() {
         description: result.transcription
       });
       
-      await speakCurrentLang(
-        currentLang === 'ba'
-          ? "Ó dára, mo gbọ́ ọ. Ìsọfúnni yìí yóò jẹ́ fíránṣẹ́ pẹ̀lú ìkìlọ̀"
-          : "Compris. Ce message sera envoyé avec l'alerte"
-      );
+      await speakCurrentLang(t('sos_message_recorded'));
     }
   };
 
