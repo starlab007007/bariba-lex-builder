@@ -512,7 +512,7 @@ export default function TamTamProfile() {
                     <Heart className="w-4 h-4" />
                     <span className="text-2xl font-bold">{vocalStats.totalLikes}</span>
                   </div>
-                  <span className="text-xs opacity-80">J'aime reçus</span>
+                  <span className="text-xs opacity-80">{t('profile_stats_likes')}</span>
                 </div>
               </div>
             </motion.div>
