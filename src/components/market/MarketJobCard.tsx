@@ -38,9 +38,9 @@ export function MarketJobCard({
   };
 
   const availabilityLabels = {
-    available: { fr: 'Disponible', ba: 'Ó wà', icon: '🟢' },
-    busy: { fr: 'Occupé', ba: 'Ó ń ṣiṣẹ́', icon: '🔴' },
-    searching: { fr: 'En recherche', ba: 'Ó ń wá', icon: '🟠' }
+    available: { fr: 'Disponible', ba: 'Ga wãa', icon: '🟢' },
+    busy: { fr: 'Occupé', ba: 'Ga sɔmburu mɔ', icon: '🔴' },
+    searching: { fr: 'En recherche', ba: 'Ga kasuu', icon: '🟠' }
   };
 
   const urgencyConfig = {
@@ -58,7 +58,7 @@ export function MarketJobCard({
       textToSpeak += `. ${job.description_text}`;
     }
     if (job.location) {
-      textToSpeak += `. ${currentLang === 'ba' ? 'Ní' : 'À'} ${job.location}`;
+      textToSpeak += `. ${t('market_at_location')} ${job.location}`;
     }
     if (job.salary_range) {
       textToSpeak += `. ${job.salary_range}`;
@@ -92,7 +92,6 @@ export function MarketJobCard({
       className={`rounded-3xl p-5 shadow-tamtam-soft ${urgencyConfig[job.urgency].color || 'bg-tamtam-surface'}`}
     >
       <div className="flex items-start gap-4">
-        {/* Job icon - clickable for details */}
         <button 
           onClick={handleViewDetails}
           className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 relative group ${
@@ -105,9 +104,7 @@ export function MarketJobCard({
           </div>
         </button>
 
-        {/* Info */}
         <div className="flex-1 min-w-0">
-          {/* Title + urgency */}
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-tamtam-text text-base truncate">
               {displayTitle}
@@ -115,17 +112,15 @@ export function MarketJobCard({
             {urgencyConfig[job.urgency].icon}
           </div>
 
-          {/* Type badge */}
           <div className="flex items-center gap-2 mb-2">
             <span className={`text-xs px-2 py-0.5 rounded-full ${
               isOffer 
                 ? 'bg-blue-500 text-white' 
                 : 'bg-green-500 text-white'
             }`}>
-              {isOffer ? (currentLang === 'ba' ? 'Iṣẹ́' : 'Offre') : (currentLang === 'ba' ? 'Ọwọ́' : 'Demande')}
+              {isOffer ? t('market_offer') : t('market_demand')}
             </span>
             
-            {/* Availability status for demands */}
             {!isOffer && (
               <span className="flex items-center gap-1 text-xs text-tamtam-text-muted">
                 {statusInfo.icon}
@@ -134,7 +129,6 @@ export function MarketJobCard({
             )}
           </div>
 
-          {/* Location */}
           {job.location && (
             <div className="flex items-center gap-1 text-tamtam-text-muted text-sm mb-1">
               <MapPin className="w-3 h-3" />
@@ -142,7 +136,6 @@ export function MarketJobCard({
             </div>
           )}
 
-          {/* Salary / Applications count */}
           <div className="flex items-center gap-3 text-sm text-tamtam-text-muted">
             {job.salary_range && (
               <span className="font-medium text-tamtam-text">{job.salary_range}</span>
@@ -156,7 +149,6 @@ export function MarketJobCard({
           </div>
         </div>
 
-        {/* Listen button */}
         <button
           onClick={handleListen}
           className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all flex-shrink-0 ${
@@ -169,7 +161,6 @@ export function MarketJobCard({
         </button>
       </div>
 
-      {/* Action buttons */}
       <div className="flex gap-3 mt-4">
         {isOffer && showApplyButton && (
           <button 
@@ -177,7 +168,7 @@ export function MarketJobCard({
             className="flex-1 py-4 bg-tamtam-primary text-white rounded-2xl flex items-center justify-center gap-2 font-medium"
           >
             <span className="text-xl">🎤</span>
-            <span>{currentLang === 'ba' ? 'Fọwọ́sí' : 'Postuler'}</span>
+            <span>{t('market_postuler')}</span>
           </button>
         )}
         
@@ -187,7 +178,7 @@ export function MarketJobCard({
             className="flex-1 py-4 bg-green-500 text-white rounded-2xl flex items-center justify-center gap-2 font-medium"
           >
             <Phone className="w-5 h-5" />
-            <span>{currentLang === 'ba' ? 'Pè' : 'Contacter'}</span>
+            <span>{t('market_contact')}</span>
           </button>
         )}
       </div>

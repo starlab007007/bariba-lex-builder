@@ -20,7 +20,7 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
   const [isRecordingMessage, setIsRecordingMessage] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   
-  const { currentLang } = useTamTamLanguage();
+  const { currentLang, t } = useTamTamLanguage();
   const { speakCurrentLang } = useBilingualAudio();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -40,7 +40,7 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
       textToSpeak += `. ${job.description_text}`;
     }
     if (job.location) {
-      textToSpeak += `. ${currentLang === 'ba' ? 'Ní' : 'À'} ${job.location}`;
+      textToSpeak += `. ${t('market_at_location')} ${job.location}`;
     }
     if (job.salary_range) {
       textToSpeak += `. ${job.salary_range}`;
@@ -79,8 +79,8 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
   const handleSendVoiceMessage = async (result: { audioBase64: string; transcription?: string; sourceLang: 'ba' | 'fr' }) => {
     if (!result.audioBase64 || !user || !job.employer_id) {
       toast({
-        title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
-        description: currentLang === 'ba' ? 'Kò lè fi ránṣẹ́' : 'Impossible d\'envoyer le message',
+        title: t('market_error'),
+        description: t('market_cant_send'),
         variant: 'destructive'
       });
       return;
@@ -88,18 +88,16 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
 
     setIsSendingMessage(true);
     try {
-      // Upload audio to storage
       const audioUrl = await uploadAudioToStorage(result.audioBase64);
       if (!audioUrl) throw new Error('Failed to upload audio');
 
-      // Create a message to the employer
       const { error } = await supabase.from('tamtam_messages').insert({
         sender_id: user.id,
         receiver_id: job.employer_id,
         audio_url: audioUrl,
         transcript_fr: result.transcription,
         message_type: 'voice',
-        text_content: `${isOffer ? '💼' : '🙋'} ${currentLang === 'ba' ? 'Nípa' : 'À propos de'}: ${displayTitle}`
+        text_content: `${isOffer ? '💼' : '🙋'} ${t('market_about')}: ${displayTitle}`
       });
 
       if (error) throw error;
@@ -107,15 +105,13 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
       tamtamFeedback.play('success');
       toast({
         title: '✅',
-        description: currentLang === 'ba' 
-          ? 'Ifiránṣẹ́ ti ránṣẹ́' 
-          : isOffer ? 'Message envoyé à l\'employeur' : 'Message envoyé'
+        description: t('market_message_sent')
       });
       setIsRecordingMessage(false);
     } catch (err: any) {
       console.error('[JobDetailModal] sendVoiceMessage error:', err);
       toast({
-        title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
+        title: t('market_error'),
         description: err.message,
         variant: 'destructive'
       });
@@ -125,24 +121,22 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
   };
 
   const urgencyConfig = {
-    normal: { color: 'bg-gray-100', label: { fr: 'Normal', ba: 'Déédé' }, icon: null },
-    urgent: { color: 'bg-orange-100', label: { fr: 'Urgent', ba: 'Kíákíá' }, icon: <Clock className="w-4 h-4 text-orange-600" /> },
-    very_urgent: { color: 'bg-red-100', label: { fr: 'Très urgent', ba: 'Kíákíá púpọ̀' }, icon: <AlertTriangle className="w-4 h-4 text-red-600" /> }
+    normal: { color: 'bg-gray-100', label: { fr: 'Normal', ba: 'Gãa' }, icon: null },
+    urgent: { color: 'bg-orange-100', label: { fr: 'Urgent', ba: 'Kpákpá' }, icon: <Clock className="w-4 h-4 text-orange-600" /> },
+    very_urgent: { color: 'bg-red-100', label: { fr: 'Très urgent', ba: 'Kpákpá dɔni' }, icon: <AlertTriangle className="w-4 h-4 text-red-600" /> }
   };
 
   const availabilityLabels = {
-    available: { fr: 'Disponible', ba: 'Ó wà', color: 'bg-green-500' },
-    busy: { fr: 'Occupé', ba: 'Ó ń ṣiṣẹ́', color: 'bg-red-500' },
-    searching: { fr: 'En recherche', ba: 'Ó ń wá', color: 'bg-orange-500' }
+    available: { fr: 'Disponible', ba: 'Ga wãa', color: 'bg-green-500' },
+    busy: { fr: 'Occupé', ba: 'Ga sɔmburu mɔ', color: 'bg-red-500' },
+    searching: { fr: 'En recherche', ba: 'Ga kasuu', color: 'bg-orange-500' }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-lg p-0 bg-tamtam-bg overflow-hidden max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className={`p-5 ${urgencyConfig[job.urgency]?.color || 'bg-tamtam-surface'}`}>
           <div className="flex items-start justify-between gap-3">
-            {/* Icon and title */}
             <div className="flex items-start gap-4">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 ${
                 isOffer ? 'bg-blue-100' : 'bg-green-100'
@@ -157,9 +151,7 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
                   <span className={`text-xs px-2 py-0.5 rounded-full text-white ${
                     isOffer ? 'bg-blue-500' : 'bg-green-500'
                   }`}>
-                    {isOffer 
-                      ? (currentLang === 'ba' ? 'Iṣẹ́' : 'Offre') 
-                      : (currentLang === 'ba' ? 'Ọwọ́' : 'Demande')}
+                    {isOffer ? t('market_offer') : t('market_demand')}
                   </span>
                   {urgencyConfig[job.urgency]?.icon}
                   {job.urgency !== 'normal' && (
@@ -173,7 +165,6 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
               </div>
             </div>
 
-            {/* Close and listen buttons */}
             <div className="flex gap-2">
               <button
                 onClick={handleListen}
@@ -191,9 +182,7 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-5">
-          {/* Availability for demands */}
           {!isOffer && (
             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${availabilityLabels[job.availability_status]?.color} text-white text-sm mb-4`}>
               {currentLang === 'ba' 
@@ -202,16 +191,13 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
             </div>
           )}
 
-          {/* Description */}
           {job.description_text && (
             <p className="text-tamtam-text-muted mb-4 leading-relaxed">
               {job.description_text}
             </p>
           )}
 
-          {/* Details */}
           <div className="space-y-3 mb-4">
-            {/* Location */}
             {job.location && (
               <div className="flex items-center gap-2 text-tamtam-text-muted">
                 <MapPin className="w-4 h-4" />
@@ -219,24 +205,21 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
               </div>
             )}
 
-            {/* Salary */}
             {job.salary_range && (
               <div className="text-lg font-semibold text-tamtam-primary">
                 {job.salary_range}
               </div>
             )}
 
-            {/* Applications count */}
             {isOffer && job.applications_count !== null && job.applications_count > 0 && (
               <div className="flex items-center gap-2 text-tamtam-text-muted">
                 <Users className="w-4 h-4" />
                 <span>
-                  {job.applications_count} {currentLang === 'ba' ? 'ènìyàn ti fọwọ́sí' : 'candidatures'}
+                  {job.applications_count} {t('market_candidatures')}
                 </span>
               </div>
             )}
 
-            {/* Contact phone */}
             {job.contact_phone && (
               <a 
                 href={`tel:${job.contact_phone}`}
@@ -248,26 +231,17 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
             )}
           </div>
 
-          {/* Voice Message Section */}
           {user && job.employer_id !== user.id && (
             <div className="border-t border-tamtam-surface pt-4 mt-4">
               <h3 className="font-semibold text-tamtam-text mb-3 flex items-center gap-2">
                 <Mic className="w-4 h-4" />
-                {isOffer 
-                  ? (currentLang === 'ba' ? 'Fọwọ́sí iṣẹ́ yìí' : 'Postuler à cette offre')
-                  : (currentLang === 'ba' ? 'Kàn sí ẹni yìí' : 'Contacter cette personne')}
+                {isOffer ? t('market_apply_job') : t('market_contact_person')}
               </h3>
 
               {isRecordingMessage ? (
                 <div className="flex flex-col items-center gap-4 py-4">
                   <p className="text-sm text-tamtam-text-muted text-center">
-                    {isOffer
-                      ? (currentLang === 'ba' 
-                          ? 'Sọ ìdí tí o fi yẹ fún iṣẹ́ yìí' 
-                          : 'Présentez-vous et expliquez pourquoi vous êtes intéressé')
-                      : (currentLang === 'ba' 
-                          ? 'Sọ ohun tí o fẹ́ sọ' 
-                          : 'Dites ce que vous voulez proposer')}
+                    {isOffer ? t('market_explain_interest') : t('market_say_proposal')}
                   </p>
                   
                   <TamTamMicButton
@@ -281,7 +255,7 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
                     onClick={() => setIsRecordingMessage(false)}
                     className="text-sm text-tamtam-text-muted underline"
                   >
-                    {currentLang === 'ba' ? 'Padà' : 'Annuler'}
+                    {t('market_cancel')}
                   </button>
                 </div>
               ) : (
@@ -299,9 +273,7 @@ export function JobDetailModal({ job, isOpen, onClose }: JobDetailModalProps) {
                     <>
                       <Mic className="w-5 h-5" />
                       <span>
-                        {isOffer 
-                          ? (currentLang === 'ba' ? 'Fọwọ́sí' : 'Postuler par message vocal')
-                          : (currentLang === 'ba' ? 'Fi ọ̀rọ̀ ránṣẹ́' : 'Envoyer un message vocal')}
+                        {isOffer ? t('market_apply_vocal') : t('market_send_voice')}
                       </span>
                     </>
                   )}

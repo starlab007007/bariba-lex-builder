@@ -21,18 +21,15 @@ export function MarketSellerSpace({
 }: MarketSellerSpaceProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const { currentLang } = useTamTamLanguage();
+  const { currentLang, t } = useTamTamLanguage();
   const { speakCurrentLang } = useBilingualAudio();
   const { deleteProduct, updateStatus } = useMarketProducts();
 
   const handleDelete = async (product: MarketProduct) => {
     tamtamFeedback.play('click');
     
-    // Confirm vocally
     await speakCurrentLang(
-      currentLang === 'ba' 
-        ? `Ṣé o fẹ́ pa ${product.title_fr || product.title} rẹ́?`
-        : `Voulez-vous supprimer ${product.title_fr || product.title} ?`
+      `${t('market_confirm_delete')} ${product.title_fr || product.title} ?`
     );
 
     setDeletingId(product.id);
@@ -62,18 +59,18 @@ export function MarketSellerSpace({
     tamtamFeedback.play('click');
     const title = currentLang === 'ba' && product.title_ba ? product.title_ba : (product.title_fr || product.title);
     const statusText = {
-      available: currentLang === 'ba' ? 'wà' : 'disponible',
-      sold: currentLang === 'ba' ? 'tà tán' : 'vendu',
-      reserved: currentLang === 'ba' ? 'tì sílẹ̀' : 'réservé'
+      available: t('market_available_status'),
+      sold: t('market_sold_status'),
+      reserved: t('market_reserved_status')
     };
     
     await speakCurrentLang(`${title}. ${product.price} francs. ${statusText[product.status]}`);
   };
 
   const statusConfig = {
-    available: { label: currentLang === 'ba' ? 'Wà' : 'Dispo', color: 'bg-green-500', icon: '🟢' },
-    reserved: { label: currentLang === 'ba' ? 'Tì sílẹ̀' : 'Réservé', color: 'bg-orange-500', icon: '🟠' },
-    sold: { label: currentLang === 'ba' ? 'Tà tán' : 'Vendu', color: 'bg-red-500', icon: '🔴' }
+    available: { label: t('market_dispo'), color: 'bg-green-500', icon: '🟢' },
+    reserved: { label: t('market_reserved'), color: 'bg-orange-500', icon: '🟠' },
+    sold: { label: t('market_sold'), color: 'bg-red-500', icon: '🔴' }
   };
 
   if (isLoading) {
@@ -95,10 +92,10 @@ export function MarketSellerSpace({
           <Package className="w-10 h-10 text-tamtam-text-muted" />
         </div>
         <p className="text-tamtam-text-muted text-lg">
-          {currentLang === 'ba' ? 'Kò sí ọjà rẹ' : 'Aucune annonce'}
+          {t('market_no_listing')}
         </p>
         <p className="text-tamtam-text-muted text-sm mt-2">
-          {currentLang === 'ba' ? 'Bẹ̀rẹ̀ ní títa' : 'Commencez à vendre !'}
+          {t('market_start_selling')}
         </p>
       </motion.div>
     );
@@ -106,7 +103,6 @@ export function MarketSellerSpace({
 
   return (
     <div className="space-y-4">
-      {/* Stats summary */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         {(['available', 'reserved', 'sold'] as const).map(status => {
           const count = products.filter(p => p.status === status).length;
@@ -124,7 +120,6 @@ export function MarketSellerSpace({
         })}
       </div>
 
-      {/* Products list */}
       <AnimatePresence>
         {products.map((product, index) => (
           <motion.div
@@ -136,7 +131,6 @@ export function MarketSellerSpace({
             className="bg-tamtam-surface rounded-2xl p-4 shadow-tamtam-soft"
           >
             <div className="flex items-center gap-3">
-              {/* Product emoji/image */}
               <div className="w-14 h-14 bg-tamtam-bg rounded-xl flex items-center justify-center flex-shrink-0">
                 {product.thumbnail_url ? (
                   <img 
@@ -149,7 +143,6 @@ export function MarketSellerSpace({
                 )}
               </div>
 
-              {/* Info */}
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-tamtam-text truncate">
                   {currentLang === 'ba' && product.title_ba ? product.title_ba : (product.title_fr || product.title)}
@@ -163,7 +156,6 @@ export function MarketSellerSpace({
                 </div>
               </div>
 
-              {/* Listen */}
               <button
                 onClick={() => handleListen(product)}
                 className="w-10 h-10 bg-tamtam-bg rounded-xl flex items-center justify-center"
@@ -172,7 +164,6 @@ export function MarketSellerSpace({
               </button>
             </div>
 
-            {/* Status buttons */}
             <div className="flex gap-2 mt-3">
               {(['available', 'reserved', 'sold'] as const).map(status => {
                 const config = statusConfig[status];
@@ -200,14 +191,13 @@ export function MarketSellerSpace({
               })}
             </div>
 
-            {/* Actions */}
             <div className="flex gap-2 mt-3 pt-3 border-t border-tamtam-border">
               <button
                 onClick={() => onEdit?.(product)}
                 className="flex-1 py-2 bg-tamtam-bg rounded-xl flex items-center justify-center gap-2 text-tamtam-text text-sm"
               >
                 <Edit2 className="w-4 h-4" />
-                <span>{currentLang === 'ba' ? 'Ṣàtúnṣe' : 'Modifier'}</span>
+                <span>{t('market_edit')}</span>
               </button>
               <button
                 onClick={() => handleDelete(product)}
@@ -219,7 +209,7 @@ export function MarketSellerSpace({
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    <span>{currentLang === 'ba' ? 'Pa rẹ́' : 'Supprimer'}</span>
+                    <span>{t('market_delete')}</span>
                   </>
                 )}
               </button>
