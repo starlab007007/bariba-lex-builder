@@ -488,7 +488,7 @@ export default function TamTamProfile() {
                     <Mic className="w-4 h-4" />
                     <span className="text-2xl font-bold">{vocalStats.totalRecordings}</span>
                   </div>
-                  <span className="text-xs opacity-80">Enregistrements</span>
+                  <span className="text-xs opacity-80">{t('profile_stats_recordings')}</span>
                 </div>
                 
                 <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 text-center">
