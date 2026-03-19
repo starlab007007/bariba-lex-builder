@@ -345,7 +345,7 @@ export default function TamTamProfile() {
                 <AvatarImage src={avatarPreview} />
                 <AvatarFallback>?</AvatarFallback>
               </Avatar>
-              <p className="text-sm text-muted-foreground mb-4">Confirmer cette photo de profil ?</p>
+              <p className="text-sm text-muted-foreground mb-4">{t('profile_confirm_photo')}</p>
               <div className="flex gap-3 justify-center">
                 <motion.button
                   whileTap={{ scale: 0.95 }}
