@@ -19,14 +19,14 @@ interface VoiceGuidedProductCreatorProps {
 type Step = 'category' | 'title' | 'price' | 'photos' | 'confirm';
 
 const CATEGORIES = [
-  { id: 'food', emoji: '🍅', labelFr: 'Alimentation', labelBa: 'Oúnjẹ' },
-  { id: 'livestock', emoji: '🐔', labelFr: 'Élevage', labelBa: 'Ẹranko' },
-  { id: 'clothing', emoji: '👕', labelFr: 'Vêtements', labelBa: 'Aṣọ' },
-  { id: 'electronics', emoji: '📱', labelFr: 'Électronique', labelBa: 'Ẹ̀rọ' },
-  { id: 'craft', emoji: '🎨', labelFr: 'Artisanat', labelBa: 'Iṣẹ́ ọwọ́' },
-  { id: 'agriculture', emoji: '🌾', labelFr: 'Agriculture', labelBa: 'Àgbẹ̀' },
-  { id: 'transport', emoji: '🚗', labelFr: 'Transport', labelBa: 'Ọkọ̀' },
-  { id: 'other', emoji: '📦', labelFr: 'Autre', labelBa: 'Mìíràn' },
+  { id: 'food', emoji: '🍅', labelKey: 'product_cat_food' },
+  { id: 'livestock', emoji: '🐔', labelKey: 'product_cat_livestock' },
+  { id: 'clothing', emoji: '👕', labelKey: 'product_cat_clothing' },
+  { id: 'electronics', emoji: '📱', labelKey: 'product_cat_electronics' },
+  { id: 'craft', emoji: '🎨', labelKey: 'product_cat_craft' },
+  { id: 'agriculture', emoji: '🌾', labelKey: 'product_cat_agriculture' },
+  { id: 'transport', emoji: '🚗', labelKey: 'product_cat_transport' },
+  { id: 'other', emoji: '📦', labelKey: 'product_cat_other' },
 ];
 
 export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefillData = {} }: VoiceGuidedProductCreatorProps) {
@@ -39,7 +39,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
   const [voiceError, setVoiceError] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   
-  const { currentLang } = useTamTamLanguage();
+  const { currentLang, t } = useTamTamLanguage();
   const { speakCurrentLang } = useBilingualAudio();
   const { createProduct, isCreating } = useMarketProducts();
 
@@ -52,27 +52,26 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
       if (prefillData.category) {
         setProductData(prefillData);
         setStep('title');
-        speakCurrentLang(currentLang === 'ba' ? 'Sọ orúkọ ọjà rẹ' : 'Dites le nom de votre produit');
+        speakCurrentLang(t('product_say_name'));
       } else {
         setStep('category');
         setProductData({});
-        speakCurrentLang(currentLang === 'ba' ? 'Ẹ yan irú ọjà náà' : 'Choisissez la catégorie');
+        speakCurrentLang(t('product_choose_category'));
       }
       setAudioDescriptionUrl(null);
       setPhotos([]);
     }
-  }, [isOpen, prefillData, speakCurrentLang, currentLang]);
+  }, [isOpen, prefillData, speakCurrentLang, currentLang, t]);
 
   const announceStep = async (nextStep: Step) => {
-    const announcements: Record<Step, { fr: string; ba: string }> = {
-      category: { fr: 'Choisissez une catégorie', ba: 'Yan ẹ̀ka kan' },
-      title: { fr: 'Dites le nom de votre produit', ba: 'Sọ orúkọ ọjà rẹ' },
-      price: { fr: 'Dites le prix en francs', ba: 'Sọ iye owó ọjà náà' },
-      photos: { fr: 'Ajoutez des photos si vous voulez', ba: 'Fi àwọn fọ́tò kun bí o bá fẹ́' },
-      confirm: { fr: 'Vérifiez et confirmez', ba: 'Jẹ́rìísí ọjà rẹ' }
+    const keys: Record<Step, string> = {
+      category: 'product_choose_category',
+      title: 'product_say_name',
+      price: 'product_say_price',
+      photos: 'product_add_photos',
+      confirm: 'product_verify_confirm'
     };
-    
-    await speakCurrentLang(currentLang === 'ba' ? announcements[nextStep].ba : announcements[nextStep].fr);
+    await speakCurrentLang(t(keys[nextStep]));
   };
 
   const handleCategorySelect = async (category: typeof CATEGORIES[0]) => {
@@ -87,7 +86,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
   const handleVoiceInput = async (result: { audioBase64: string; transcription?: string; sourceLang: 'ba' | 'fr' }) => {
     if (!result.transcription) {
       setVoiceError(true);
-      await speakCurrentLang(currentLang === 'ba' ? 'Mo kò gbọ́. Tún gbìyànjú tàbí kọ ọ́rọ̀' : 'Je n\'ai pas compris. Réessayez ou tapez le texte.');
+      await speakCurrentLang(t('product_not_understood'));
       return;
     }
 
@@ -114,7 +113,6 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
       if (step === 'title') {
         let audioUrl = null;
         
-        // Upload audio if provided
         if (audioBase64 && audioBase64.length > 100) {
           const audioBlob = new Blob(
             [Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))],
@@ -145,7 +143,6 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
         setStep('price');
         await announceStep('price');
       } else if (step === 'price') {
-        // Extract number from speech/text
         const priceMatch = text.match(/\d+/);
         const price = priceMatch ? parseInt(priceMatch[0], 10) : 0;
         
@@ -155,11 +152,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
           await announceStep('photos');
         } else {
           setVoiceError(true);
-          await speakCurrentLang(
-            currentLang === 'ba' 
-              ? 'Jọ̀wọ́ sọ iye owó tó yẹ' 
-              : 'Veuillez donner un prix valide (ex: 5000)'
-          );
+          await speakCurrentLang(t('product_valid_price'));
         }
       }
     } catch (err) {
@@ -177,7 +170,6 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
   const handleConfirm = async () => {
     tamtamFeedback.play('send');
     
-    // Include photos in product data
     const finalProductData = {
       ...productData,
       images: photos.length > 0 ? photos : undefined
@@ -187,11 +179,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
     
     if (newProduct) {
       tamtamFeedback.play('success');
-      await speakCurrentLang(
-        currentLang === 'ba' 
-          ? 'Ó dára! Ọjà rẹ ti jẹ́ títẹ̀jáde' 
-          : 'Parfait ! Votre produit est en ligne'
-      );
+      await speakCurrentLang(t('product_published'));
       onComplete();
       onClose();
     }
@@ -230,7 +218,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
             {step !== 'category' && <ChevronRight className="w-6 h-6 rotate-180" />}
           </button>
           <h2 className="text-lg font-bold text-tamtam-text">
-            {currentLang === 'ba' ? 'Ṣẹ̀dá ọjà' : 'Vendre un produit'}
+            {t('product_sell')}
           </h2>
           <button onClick={onClose}>
             <X className="w-6 h-6 text-tamtam-text-muted" />
@@ -256,16 +244,10 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
         {/* Content */}
         <div className="p-6">
           <AnimatePresence mode="wait">
-            {/* Category selection */}
             {step === 'category' && (
-              <motion.div
-                key="category"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
+              <motion.div key="category" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <p className="text-center text-tamtam-text-muted mb-6">
-                  {currentLang === 'ba' ? 'Yan ẹ̀ka ọjà rẹ' : 'Choisissez une catégorie'}
+                  {t('product_choose_category_sub')}
                 </p>
                 <div className="grid grid-cols-4 gap-3">
                   {CATEGORIES.map(cat => (
@@ -276,7 +258,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                     >
                       <span className="text-4xl mb-2">{cat.emoji}</span>
                       <span className="text-xs text-tamtam-text text-center">
-                        {currentLang === 'ba' ? cat.labelBa : cat.labelFr}
+                        {t(cat.labelKey)}
                       </span>
                     </button>
                   ))}
@@ -284,22 +266,15 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
               </motion.div>
             )}
 
-            {/* Voice input steps */}
             {(step === 'title' || step === 'price') && (
-              <motion.div
-                key={step}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="text-center"
-              >
+              <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="text-center">
                 <div className="w-20 h-20 bg-tamtam-surface rounded-full flex items-center justify-center mx-auto mb-6">
                   <span className="text-4xl">{productData.emoji_icon || '📦'}</span>
                 </div>
 
                 <p className="text-tamtam-text mb-2 font-medium text-lg">
-                  {step === 'title' && (currentLang === 'ba' ? 'Kíni o ń tà?' : 'Que vendez-vous ?')}
-                  {step === 'price' && (currentLang === 'ba' ? 'Iye owó?' : 'Quel prix ?')}
+                  {step === 'title' && t('product_what_selling')}
+                  {step === 'price' && t('product_what_price')}
                 </p>
                 
                 {productData.title_fr && step === 'price' && (
@@ -307,10 +282,9 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                 )}
 
                 <p className="text-tamtam-text-muted text-sm mb-6">
-                  {currentLang === 'ba' ? 'Tẹ bọ́tìnì náà, kí o sì sọ̀rọ̀' : 'Appuyez et parlez'}
+                  {t('product_press_speak')}
                 </p>
 
-                {/* Voice input */}
                 {!showTextInput && (
                   <div className="flex flex-col items-center gap-4">
                     <TamTamMicButton
@@ -322,55 +296,39 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                       disabled={isProcessing}
                     />
                     
-                    {/* Error feedback with retry and text fallback */}
                     {voiceError && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col items-center gap-2"
-                      >
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-2">
                         <p className="text-amber-600 text-sm">
-                          {currentLang === 'ba' ? 'Kò gbọ́. Gbìyànjú lẹ́ẹ̀kan síi' : 'Pas compris. Réessayez ou tapez'}
+                          {t('product_not_understood_short')}
                         </p>
                         <button
                           onClick={() => setShowTextInput(true)}
                           className="flex items-center gap-2 px-4 py-2 bg-tamtam-surface rounded-full text-sm text-tamtam-text"
                         >
                           <Keyboard className="w-4 h-4" />
-                          {currentLang === 'ba' ? 'Kọ ọ́rọ̀' : 'Taper le texte'}
+                          {t('product_type_text')}
                         </button>
                       </motion.div>
                     )}
                   </div>
                 )}
 
-                {/* Text input fallback */}
                 {showTextInput && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col gap-3"
-                  >
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-3">
                     <Input
                       value={textInputValue}
                       onChange={(e) => setTextInputValue(e.target.value)}
-                      placeholder={step === 'title' 
-                        ? (currentLang === 'ba' ? 'Orúkọ ọjà...' : 'Nom du produit...') 
-                        : (currentLang === 'ba' ? 'Iye owó (ex: 5000)' : 'Prix (ex: 5000)')
-                      }
+                      placeholder={step === 'title' ? t('product_name_placeholder') : t('product_price_placeholder')}
                       className="text-center text-lg"
                       autoFocus
                       onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
                     />
                     <div className="flex gap-2 justify-center">
                       <button
-                        onClick={() => {
-                          setShowTextInput(false);
-                          setTextInputValue('');
-                        }}
+                        onClick={() => { setShowTextInput(false); setTextInputValue(''); }}
                         className="px-4 py-2 bg-tamtam-surface rounded-xl text-tamtam-text-muted"
                       >
-                        {currentLang === 'ba' ? 'Padà' : 'Retour'}
+                        {t('product_back')}
                       </button>
                       <button
                         onClick={handleTextSubmit}
@@ -378,7 +336,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                         className="px-6 py-2 bg-tamtam-primary text-white rounded-xl flex items-center gap-2 disabled:opacity-50"
                       >
                         <Check className="w-4 h-4" />
-                        {currentLang === 'ba' ? 'Tẹ̀síwájú' : 'Continuer'}
+                        {t('product_continue')}
                       </button>
                     </div>
                   </motion.div>
@@ -387,67 +345,41 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                 {isProcessing && (
                   <div className="flex items-center justify-center mt-6 gap-2">
                     <Loader2 className="w-5 h-5 animate-spin text-tamtam-primary" />
-                    <span className="text-tamtam-text-muted">
-                      {currentLang === 'ba' ? 'Ń ṣiṣẹ́...' : 'Traitement...'}
-                    </span>
+                    <span className="text-tamtam-text-muted">{t('product_processing')}</span>
                   </div>
                 )}
               </motion.div>
             )}
 
-            {/* Photos step (optional) */}
             {step === 'photos' && (
-              <motion.div
-                key="photos"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
+              <motion.div key="photos" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                 <div className="text-center">
                   <div className="w-20 h-20 bg-tamtam-surface rounded-full flex items-center justify-center mx-auto mb-4">
                     <span className="text-4xl">{productData.emoji_icon || '📦'}</span>
                   </div>
-                  <p className="text-tamtam-text font-medium">
-                    {currentLang === 'ba' ? 'Fi àwọn fọ́tò kun' : 'Ajoutez des photos'}
-                  </p>
-                  <p className="text-tamtam-text-muted text-sm">
-                    {currentLang === 'ba' ? 'Àṣàyàn (ó pọ̀ jù 3)' : 'Facultatif (max 3)'}
-                  </p>
+                  <p className="text-tamtam-text font-medium">{t('product_add_photos_title')}</p>
+                  <p className="text-tamtam-text-muted text-sm">{t('product_photos_optional')}</p>
                 </div>
 
-                <PhotoUploader
-                  photos={photos}
-                  onPhotosChange={setPhotos}
-                  maxPhotos={3}
-                />
+                <PhotoUploader photos={photos} onPhotosChange={setPhotos} maxPhotos={3} />
 
                 <div className="flex gap-3">
-                  <button
-                    onClick={handleSkipPhotos}
-                    className="flex-1 py-3 bg-tamtam-surface text-tamtam-text rounded-xl font-medium"
-                  >
-                    {currentLang === 'ba' ? 'Fo' : 'Passer'}
+                  <button onClick={handleSkipPhotos} className="flex-1 py-3 bg-tamtam-surface text-tamtam-text rounded-xl font-medium">
+                    {t('product_skip')}
                   </button>
                   <button
                     onClick={handleSkipPhotos}
                     className="flex-1 py-3 bg-tamtam-primary text-white rounded-xl flex items-center justify-center gap-2 font-medium"
                   >
                     <Check className="w-5 h-5" />
-                    {currentLang === 'ba' ? 'Tẹ̀síwájú' : 'Continuer'}
+                    {t('product_continue')}
                   </button>
                 </div>
               </motion.div>
             )}
 
-            {/* Confirmation */}
             {step === 'confirm' && (
-              <motion.div
-                key="confirm"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
+              <motion.div key="confirm" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <div className="bg-tamtam-surface rounded-3xl p-6 mb-6">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-16 h-16 bg-tamtam-bg rounded-2xl flex items-center justify-center">
@@ -463,7 +395,6 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                     <p className="text-tamtam-text-muted text-sm">{productData.description_text}</p>
                   )}
 
-                  {/* Display photos preview */}
                   {photos.length > 0 && (
                     <div className="flex gap-2 mt-4">
                       {photos.map((url, index) => (
@@ -480,7 +411,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                       className="mt-3 flex items-center gap-2 text-tamtam-primary"
                     >
                       <Volume2 className="w-4 h-4" />
-                      <span className="text-sm">{currentLang === 'ba' ? 'Gbọ́ àpèjúwe' : 'Écouter la description'}</span>
+                      <span className="text-sm">{t('product_listen_desc')}</span>
                     </button>
                   )}
                 </div>
@@ -495,7 +426,7 @@ export function VoiceGuidedProductCreator({ isOpen, onClose, onComplete, prefill
                   ) : (
                     <>
                       <Check className="w-6 h-6" />
-                      <span>{currentLang === 'ba' ? 'Jẹ́rìísí' : 'Confirmer'}</span>
+                      <span>{t('product_confirm')}</span>
                     </>
                   )}
                 </button>
