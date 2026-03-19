@@ -9,30 +9,12 @@ interface AvailabilityToggleProps {
 }
 
 export function AvailabilityToggle({ currentStatus, onChange, disabled }: AvailabilityToggleProps) {
-  const { currentLang } = useTamTamLanguage();
+  const { t } = useTamTamLanguage();
 
   const statuses = [
-    { 
-      id: 'available' as const, 
-      icon: '🟢', 
-      color: 'bg-green-500', 
-      labelFr: 'Disponible', 
-      labelBa: 'Na wãa' 
-    },
-    { 
-      id: 'searching' as const, 
-      icon: '🟠', 
-      color: 'bg-orange-500', 
-      labelFr: 'En recherche', 
-      labelBa: 'Na kasuumɔ' 
-    },
-    { 
-      id: 'busy' as const, 
-      icon: '🔴', 
-      color: 'bg-red-500', 
-      labelFr: 'Occupé', 
-      labelBa: 'Na sɔmburumɔ' 
-    },
+    { id: 'available' as const, icon: '🟢', color: 'bg-green-500', labelKey: 'status_available' },
+    { id: 'searching' as const, icon: '🟠', color: 'bg-orange-500', labelKey: 'status_searching' },
+    { id: 'busy' as const, icon: '🔴', color: 'bg-red-500', labelKey: 'status_busy' },
   ];
 
   const handleChange = (status: 'available' | 'busy' | 'searching') => {
@@ -59,7 +41,7 @@ export function AvailabilityToggle({ currentStatus, onChange, disabled }: Availa
           >
             <span className="text-lg">{status.icon}</span>
             <span className="text-xs font-medium hidden sm:inline">
-              {currentLang === 'ba' ? status.labelBa : status.labelFr}
+              {t(status.labelKey)}
             </span>
           </motion.button>
         );

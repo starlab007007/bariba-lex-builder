@@ -14,7 +14,7 @@ interface MarketCategoryFilterProps {
 }
 
 export function MarketCategoryFilter({ categories, selectedCategory, onSelect }: MarketCategoryFilterProps) {
-  const { currentLang } = useTamTamLanguage();
+  const { currentLang, t } = useTamTamLanguage();
 
   const handleSelect = (categoryId: string | null) => {
     tamtamFeedback.play('click');
@@ -23,7 +23,6 @@ export function MarketCategoryFilter({ categories, selectedCategory, onSelect }:
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-      {/* All button */}
       <motion.button
         onClick={() => handleSelect(null)}
         whileTap={{ scale: 0.95 }}
@@ -34,12 +33,9 @@ export function MarketCategoryFilter({ categories, selectedCategory, onSelect }:
         }`}
       >
         <span className="text-lg">📋</span>
-        <span className="text-sm font-medium">
-          {currentLang === 'ba' ? 'Gbogbo' : 'Tout'}
-        </span>
+        <span className="text-sm font-medium">{t('market_all')}</span>
       </motion.button>
 
-      {/* Category buttons */}
       {categories.map(cat => (
         <motion.button
           key={cat.id}

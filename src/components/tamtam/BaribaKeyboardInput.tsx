@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Keyboard, Globe } from 'lucide-react';
 import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSuggestions';
+import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 
 export type SearchLanguage = 'ba' | 'fr';
 
@@ -13,10 +14,7 @@ interface BaribaKeyboardInputProps {
   onLanguageChange?: (lang: SearchLanguage) => void;
 }
 
-// Caractères spéciaux bariba
 const BARIBA_CHARS = ['ɔ', 'ɛ', 'ã', 'ŋ', 'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́', 'à', 'á', 'è', 'é', 'ì', 'í', 'ò', 'ó', 'ù', 'ú'];
-
-// Caractères spéciaux français
 const FRENCH_CHARS = ['é', 'è', 'ê', 'ë', 'à', 'â', 'ù', 'û', 'ô', 'î', 'ï', 'ç', 'œ', 'æ'];
 
 export function BaribaKeyboardInput({ 
@@ -33,25 +31,22 @@ export function BaribaKeyboardInput({
   const [currentLang, setCurrentLang] = useState<SearchLanguage>(language);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const { t } = useFitilaLanguage();
   
   const { getSuggestions, searchInDefinitions, isLoading, totalEntries } = usePhoneticSuggestions();
   
-  // Characters based on language
   const SPECIAL_CHARS = currentLang === 'ba' ? BARIBA_CHARS : FRENCH_CHARS;
   
-  // Default placeholder based on language
   const defaultPlaceholder = currentLang === 'ba' 
-    ? "Tapez un mot bariba..." 
-    : "Tapez un mot français...";
+    ? t('keyboard_type_bariba')
+    : t('keyboard_type_french');
   
-  // Obtenir les suggestions basées sur la requête et la langue
   const suggestions = query.length >= 1 
     ? (currentLang === 'ba' 
         ? getSuggestions(query, 8) 
         : searchInDefinitions(query, 8))
     : [];
     
-  // Toggle language
   const toggleLanguage = () => {
     const newLang = currentLang === 'ba' ? 'fr' : 'ba';
     setCurrentLang(newLang);
@@ -60,12 +55,10 @@ export function BaribaKeyboardInput({
     onLanguageChange?.(newLang);
   };
   
-  // Réinitialiser l'index sélectionné quand les suggestions changent
   useEffect(() => {
     setSelectedIndex(0);
   }, [suggestions.length]);
 
-  // Gérer les touches du clavier
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!showSuggestions || suggestions.length === 0) return;
     
@@ -90,14 +83,12 @@ export function BaribaKeyboardInput({
     }
   };
 
-  // Sélectionner une suggestion
   const handleSelectSuggestion = (entry: PhoneticEntry) => {
     setQuery(entry.word);
     setShowSuggestions(false);
     onSelectWord(entry);
   };
 
-  // Insérer un caractère spécial
   const insertSpecialChar = (char: string) => {
     if (inputRef.current) {
       const start = inputRef.current.selectionStart || query.length;
@@ -105,7 +96,6 @@ export function BaribaKeyboardInput({
       const newQuery = query.substring(0, start) + char + query.substring(end);
       setQuery(newQuery);
       
-      // Repositionner le curseur après le caractère inséré
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.selectionStart = start + char.length;
@@ -116,7 +106,6 @@ export function BaribaKeyboardInput({
     }
   };
 
-  // Effacer la requête
   const clearQuery = () => {
     setQuery('');
     setShowSuggestions(false);
@@ -135,11 +124,11 @@ export function BaribaKeyboardInput({
           <span>{currentLang === 'ba' ? '🇧🇯 Bariba' : '🇫🇷 Français'}</span>
         </button>
         <span className="text-xs text-gray-500">
-          {currentLang === 'ba' ? '→ Français' : '→ Bariba'}
+          {currentLang === 'ba' ? t('keyboard_to_french') : t('keyboard_to_bariba')}
         </span>
       </div>
 
-      {/* Champ de saisie */}
+      {/* Input */}
       <div className="relative">
         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
           <Search className="w-5 h-5" />
@@ -160,46 +149,32 @@ export function BaribaKeyboardInput({
         />
         
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {/* Bouton caractères spéciaux */}
           <button
             onClick={() => setShowSpecialChars(!showSpecialChars)}
             className={`p-2 rounded-xl transition-colors ${showSpecialChars ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-indigo-50'}`}
-            title={currentLang === 'ba' ? 'Caractères bariba' : 'Caractères français'}
+            title={currentLang === 'ba' ? t('keyboard_special_bariba') : t('keyboard_special_french')}
           >
             <Keyboard className="w-5 h-5" />
           </button>
           
-          {/* Bouton effacer */}
           {query && (
-            <button
-              onClick={clearQuery}
-              className="p-2 rounded-xl bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition-colors"
-            >
+            <button onClick={clearQuery} className="p-2 rounded-xl bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition-colors">
               <X className="w-5 h-5" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Clavier de caractères spéciaux */}
+      {/* Special chars */}
       <AnimatePresence>
         {showSpecialChars && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-2 p-3 bg-white rounded-2xl shadow-md overflow-hidden"
-          >
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 p-3 bg-white rounded-2xl shadow-md overflow-hidden">
             <p className="text-xs text-gray-500 mb-2">
-              {currentLang === 'ba' ? 'Caractères spéciaux bariba :' : 'Caractères spéciaux français :'}
+              {currentLang === 'ba' ? t('keyboard_special_bariba') : t('keyboard_special_french')}
             </p>
             <div className="flex flex-wrap gap-1">
               {SPECIAL_CHARS.map((char) => (
-                <button
-                  key={char}
-                  onClick={() => insertSpecialChar(char)}
-                  className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-xl text-lg font-medium text-gray-800 hover:bg-indigo-500 hover:text-white transition-colors active:scale-95"
-                >
+                <button key={char} onClick={() => insertSpecialChar(char)} className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-xl text-lg font-medium text-gray-800 hover:bg-indigo-500 hover:text-white transition-colors active:scale-95">
                   {char}
                 </button>
               ))}
@@ -208,25 +183,17 @@ export function BaribaKeyboardInput({
         )}
       </AnimatePresence>
 
-      {/* Liste des suggestions - inline pour permettre le scroll de la page */}
+      {/* Suggestions */}
       <AnimatePresence>
         {showSuggestions && suggestions.length > 0 && (
-          <motion.div
-            ref={suggestionsRef}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-2 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden"
-          >
+          <motion.div ref={suggestionsRef} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-gray-500">
-                Chargement...
-              </div>
+              <div className="p-4 text-center text-gray-500">{t('keyboard_loading')}</div>
             ) : (
               <>
                 <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
                   <p className="text-xs text-gray-500">
-                    {suggestions.length} suggestion{suggestions.length > 1 ? 's' : ''} sur {totalEntries.toLocaleString()} mots
+                    {suggestions.length} {t('keyboard_suggestions')} {totalEntries.toLocaleString()} {t('keyboard_words')}
                   </p>
                 </div>
                 
@@ -261,17 +228,12 @@ export function BaribaKeyboardInput({
         )}
       </AnimatePresence>
 
-      {/* Message si aucune suggestion */}
+      {/* No results */}
       <AnimatePresence>
         {showSuggestions && query.length >= 1 && suggestions.length === 0 && !isLoading && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-2 bg-white rounded-2xl shadow-lg p-4 text-center"
-          >
-            <p className="text-gray-500">Aucun mot trouvé pour "{query}"</p>
-            <p className="text-xs text-gray-400 mt-1">Essayez une autre orthographe</p>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 bg-white rounded-2xl shadow-lg p-4 text-center">
+            <p className="text-gray-500">{t('keyboard_no_result')} "{query}"</p>
+            <p className="text-xs text-gray-400 mt-1">{t('keyboard_try_other')}</p>
           </motion.div>
         )}
       </AnimatePresence>

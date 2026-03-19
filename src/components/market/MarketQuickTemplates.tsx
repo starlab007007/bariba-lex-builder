@@ -7,6 +7,7 @@ import { VoiceButton } from './VoiceButton';
 export interface QuickTemplate {
   id: string;
   emoji: string;
+  labelKey: string;
   labelFr: string;
   labelBa: string;
   category: string;
@@ -15,26 +16,26 @@ export interface QuickTemplate {
 }
 
 const PRODUCT_TEMPLATES: QuickTemplate[] = [
-  { id: 'tomatoes', emoji: '🍅', labelFr: 'Tomates', labelBa: 'Tòmátì', category: 'food', type: 'product', prefillData: { emoji_icon: '🍅', category: 'food' } },
-  { id: 'chicken', emoji: '🐔', labelFr: 'Poulets', labelBa: 'Adìẹ', category: 'livestock', type: 'product', prefillData: { emoji_icon: '🐔', category: 'livestock' } },
-  { id: 'corn', emoji: '🌽', labelFr: 'Maïs', labelBa: 'Àgbàdo', category: 'food', type: 'product', prefillData: { emoji_icon: '🌽', category: 'food' } },
-  { id: 'rice', emoji: '🍚', labelFr: 'Riz', labelBa: 'Ìrẹsì', category: 'food', type: 'product', prefillData: { emoji_icon: '🍚', category: 'food' } },
-  { id: 'clothes', emoji: '👕', labelFr: 'Vêtements', labelBa: 'Aṣọ', category: 'clothing', type: 'product', prefillData: { emoji_icon: '👕', category: 'clothing' } },
-  { id: 'craft', emoji: '🎨', labelFr: 'Artisanat', labelBa: 'Iṣẹ́ ọwọ́', category: 'craft', type: 'product', prefillData: { emoji_icon: '🎨', category: 'craft' } },
+  { id: 'tomatoes', emoji: '🍅', labelKey: 'template_tomatoes', labelFr: 'Tomates', labelBa: 'Tòmátì', category: 'food', type: 'product', prefillData: { emoji_icon: '🍅', category: 'food' } },
+  { id: 'chicken', emoji: '🐔', labelKey: 'template_chicken', labelFr: 'Poulets', labelBa: 'Gɔsu', category: 'livestock', type: 'product', prefillData: { emoji_icon: '🐔', category: 'livestock' } },
+  { id: 'corn', emoji: '🌽', labelKey: 'template_corn', labelFr: 'Maïs', labelBa: 'Kpaamu', category: 'food', type: 'product', prefillData: { emoji_icon: '🌽', category: 'food' } },
+  { id: 'rice', emoji: '🍚', labelKey: 'template_rice', labelFr: 'Riz', labelBa: 'Mɔɔri', category: 'food', type: 'product', prefillData: { emoji_icon: '🍚', category: 'food' } },
+  { id: 'clothes', emoji: '👕', labelKey: 'template_clothes', labelFr: 'Vêtements', labelBa: 'Gãsi', category: 'clothing', type: 'product', prefillData: { emoji_icon: '👕', category: 'clothing' } },
+  { id: 'craft', emoji: '🎨', labelKey: 'template_craft', labelFr: 'Artisanat', labelBa: 'Sɔmbu koru', category: 'craft', type: 'product', prefillData: { emoji_icon: '🎨', category: 'craft' } },
 ];
 
 const JOB_OFFER_TEMPLATES: QuickTemplate[] = [
-  { id: 'farmer', emoji: '🚜', labelFr: 'Cherche agriculteur', labelBa: 'Ń wá àgbẹ̀', category: 'agriculture', type: 'job_offer', prefillData: { emoji_icon: '🚜', category: 'agriculture', job_type: 'offer' } },
-  { id: 'mason', emoji: '🏗️', labelFr: 'Cherche maçon', labelBa: 'Ń wá ògbọ́n ilé', category: 'construction', type: 'job_offer', prefillData: { emoji_icon: '🏗️', category: 'construction', job_type: 'offer' } },
-  { id: 'domestic', emoji: '🏠', labelFr: 'Aide ménagère', labelBa: 'Ìrànwọ́ ilé', category: 'domestic', type: 'job_offer', prefillData: { emoji_icon: '🏠', category: 'domestic', job_type: 'offer' } },
-  { id: 'driver', emoji: '🚗', labelFr: 'Cherche chauffeur', labelBa: 'Ń wá awakọ̀', category: 'transport', type: 'job_offer', prefillData: { emoji_icon: '🚗', category: 'transport', job_type: 'offer' } },
+  { id: 'farmer', emoji: '🚜', labelKey: 'template_seek_farmer', labelFr: 'Cherche agriculteur', labelBa: 'Na kpaakudɔbu kasumɔ', category: 'agriculture', type: 'job_offer', prefillData: { emoji_icon: '🚜', category: 'agriculture', job_type: 'offer' } },
+  { id: 'mason', emoji: '🏗️', labelKey: 'template_seek_mason', labelFr: 'Cherche maçon', labelBa: 'Na maasɔ̃ kasumɔ', category: 'construction', type: 'job_offer', prefillData: { emoji_icon: '🏗️', category: 'construction', job_type: 'offer' } },
+  { id: 'domestic', emoji: '🏠', labelKey: 'template_domestic_help', labelFr: 'Aide ménagère', labelBa: 'Yooku dɛɛmɛ', category: 'domestic', type: 'job_offer', prefillData: { emoji_icon: '🏠', category: 'domestic', job_type: 'offer' } },
+  { id: 'driver', emoji: '🚗', labelKey: 'template_seek_driver', labelFr: 'Cherche chauffeur', labelBa: 'Na wotuuridɔbu kasumɔ', category: 'transport', type: 'job_offer', prefillData: { emoji_icon: '🚗', category: 'transport', job_type: 'offer' } },
 ];
 
 const JOB_DEMAND_TEMPLATES: QuickTemplate[] = [
-  { id: 'farm_work', emoji: '🌾', labelFr: 'Travail aux champs', labelBa: 'Iṣẹ́ oko', category: 'agriculture', type: 'job_demand', prefillData: { emoji_icon: '🌾', category: 'agriculture', job_type: 'demand' } },
-  { id: 'construction', emoji: '🔨', labelFr: 'Travail bâtiment', labelBa: 'Iṣẹ́ ìkọ́lé', category: 'construction', type: 'job_demand', prefillData: { emoji_icon: '🔨', category: 'construction', job_type: 'demand' } },
-  { id: 'commerce', emoji: '🛒', labelFr: 'Travail commerce', labelBa: 'Iṣẹ́ òwò', category: 'commerce', type: 'job_demand', prefillData: { emoji_icon: '🛒', category: 'commerce', job_type: 'demand' } },
-  { id: 'any_work', emoji: '💪', labelFr: 'Tout travail', labelBa: 'Iṣẹ́ kankan', category: 'other', type: 'job_demand', prefillData: { emoji_icon: '💪', category: 'other', job_type: 'demand' } },
+  { id: 'farm_work', emoji: '🌾', labelKey: 'template_farm_work', labelFr: 'Travail aux champs', labelBa: 'Kpaaku sɔmbu', category: 'agriculture', type: 'job_demand', prefillData: { emoji_icon: '🌾', category: 'agriculture', job_type: 'demand' } },
+  { id: 'construction', emoji: '🔨', labelKey: 'template_construction', labelFr: 'Travail bâtiment', labelBa: 'Bon dɔbu sɔmbu', category: 'construction', type: 'job_demand', prefillData: { emoji_icon: '🔨', category: 'construction', job_type: 'demand' } },
+  { id: 'commerce', emoji: '🛒', labelKey: 'template_commerce', labelFr: 'Travail commerce', labelBa: 'Tiaru sɔmbu', category: 'commerce', type: 'job_demand', prefillData: { emoji_icon: '🛒', category: 'commerce', job_type: 'demand' } },
+  { id: 'any_work', emoji: '💪', labelKey: 'template_any_work', labelFr: 'Tout travail', labelBa: 'Sɔmbu kpuro', category: 'other', type: 'job_demand', prefillData: { emoji_icon: '💪', category: 'other', job_type: 'demand' } },
 ];
 
 interface MarketQuickTemplatesProps {
@@ -43,7 +44,7 @@ interface MarketQuickTemplatesProps {
 }
 
 export function MarketQuickTemplates({ type, onSelect }: MarketQuickTemplatesProps) {
-  const { currentLang } = useTamTamLanguage();
+  const { t } = useTamTamLanguage();
   const { speakCurrentLang } = useBilingualAudio();
 
   const templates = type === 'product' 
@@ -54,8 +55,7 @@ export function MarketQuickTemplates({ type, onSelect }: MarketQuickTemplatesPro
 
   const handleSelect = async (template: QuickTemplate) => {
     tamtamFeedback.play('click');
-    const label = currentLang === 'ba' ? template.labelBa : template.labelFr;
-    await speakCurrentLang(label);
+    await speakCurrentLang(t(template.labelKey));
     onSelect(template);
   };
 
@@ -72,16 +72,11 @@ export function MarketQuickTemplates({ type, onSelect }: MarketQuickTemplatesPro
         >
           <span className="text-4xl mb-2">{template.emoji}</span>
           <span className="text-xs text-tamtam-text text-center font-medium">
-            {currentLang === 'ba' ? template.labelBa : template.labelFr}
+            {t(template.labelKey)}
           </span>
           
-          {/* Audio button */}
           <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <VoiceButton 
-              textFr={template.labelFr} 
-              textBa={template.labelBa} 
-              size="sm" 
-            />
+            <VoiceButton textFr={template.labelFr} textBa={template.labelBa} size="sm" />
           </div>
         </motion.button>
       ))}
