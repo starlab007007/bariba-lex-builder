@@ -1,64 +1,86 @@
 
-Objectif
-Garantir que quand l’utilisateur choisit “Bariba”, toute l’interface utilise les mots du nouveau fichier joint, et non des libellés codés en dur.
 
-Diagnostic déjà établi (à partir du code + logs)
-1) Le fichier JSON est bien chargé côté frontend, mais seulement 676 clés valides sont injectées (log: “[FITILA i18n] Loaded 676 translation keys”).
-2) La requête réseau montre bien le contenu récent de /i18n-platform.json (donc le fichier est servi), mais:
-   - le contexte ne force pas de refresh anti-cache,
-   - et surtout une grande partie de l’UI n’utilise pas t('...').
-3) Beaucoup d’écrans affichent des textes Bariba/FR codés en dur via `currentLang === 'ba' ? '...' : '...'` (ex: `src/pages/fitila/FitilaApp.tsx`, menus, boutons, labels, toasts, modals, etc.). Ces textes ne peuvent pas être mis à jour par le nouveau JSON.
+# Diagnostic Complet de la Plateforme Fitila
 
-Plan de correction (implémentation)
-1) Remplacer la source de traduction par le fichier joint
-- Copier `user-uploads://i18n-platform.json` vers `public/i18n-platform.json` (écrasement).
-- Vérifier qu’il est bien JSON valide UTF-8 (accents/diacritiques Bariba conservés).
+## 1. HuggingFace Spaces — TOUS OPÉRATIONNELS
 
-2) Rendre le chargement i18n robuste dans `FitilaLanguageContext`
-- Charger `/i18n-platform.json?v=<build_or_timestamp>` pour éviter l’ancien cache.
-- Ajouter un état `translationsLoaded`.
-- Tant que non chargé: fallback sûr (FR) + éviter de figer l’UI avec anciennes valeurs.
-- Fallback propre: si clé absente en `ba`, utiliser `fr`; si absente partout, afficher la clé.
+D'après les logs edge functions (il y a quelques minutes) :
 
-3) Migration globale des textes codés en dur vers clés i18n
-- Auditer tous les `currentLang === 'ba' ? ... : ...` et libellés statiques FR/BA.
-- Remplacer par `t('key')` sur toute l’interface (menu, navigation, cartes, modals, toasts, CTA, badges, états vides, erreurs).
-- Priorité immédiate: shell principal `FitilaApp` + pages `/fitila/social`, `/fitila/home`, `/fitila/services`, `/fitila/market`, `/fitila/profile`, composants partagés.
-- Conserver uniquement les contenus dynamiques métiers (ex: données utilisateur) hors dictionnaire.
+| Space | Statut | Latence |
+|-------|--------|---------|
+| **ByT5 Expert** (Traduction) | **Awake** | 724ms |
+| **Bariba TTS** (Synthèse vocale) | **Awake** | 753ms |
+| **Bariba STT** (Reconnaissance vocale) | **Awake** | 743ms |
 
-4) Compléter/aligner les clés manquantes
-- Pour chaque chaîne migrée, créer/valider la clé correspondante dans `i18n-platform.json`.
-- Uniformiser le nommage (`sidebar_*`, `social_*`, `market_*`, etc.) pour éviter doublons.
-- Vérifier que chaque clé a bien `fr` et `ba`.
+- Le `hf-keep-alive` fonctionne correctement (ping toutes les 10 min via pg_cron)
+- Le ByT5 traduit correctement : "bonjour" → "A kpuna n do ?" (751ms, confirmé dans les logs)
+- Le `refine-bariba` post-traitement fonctionne (0 corrections nécessaires, confidence=96)
+- **Seul point d'attention** : le TTS a eu un épisode "Space still not awake after 80s" — ce sont les cold starts normaux des free plans HF. Le keep-alive les minimise.
 
-5) Contrôle qualité fonctionnel
-- Vérification écran par écran:
-  - bascule FR → BA,
-  - hard refresh navigateur,
-  - navigation complète de la plateforme.
-- Vérifier un échantillon de mots “corrigés” demandés (ex: menu/sidebar/social/buttons) contre le nouveau fichier.
-- Vérifier qu’aucun ancien mot Bariba ne reste affiché là où une clé i18n existe.
+## 2. Backend (Database & Auth) — OK
 
-6) Filet de sécurité anti-régression
-- Ajouter un script de contrôle (ou checklist CI) qui détecte les chaînes UI hardcodées suspectes:
-  - occurrences `currentLang === 'ba' ? '...' : '...'`,
-  - libellés FR/BA inline dans composants.
-- Objectif: empêcher le retour de traductions hors fichier central.
+- Toutes les requêtes REST retournent **200** (profils, follows, user_roles, posts)
+- L'utilisateur "Zim" est authentifié avec succès (session JWT valide)
+- Les profils, follows, rôles sont correctement chargés
+- **Aucune erreur 4xx/5xx** dans les requêtes réseau
 
-Résultat attendu
-- Le switch langue pilote toute l’UI via `t('key')`.
-- Les mots Bariba affichés proviennent du nouveau `public/i18n-platform.json`.
-- Les corrections du fichier joint deviennent la source unique de vérité pour la plateforme.
+## 3. Traduction i18n — PARTIELLEMENT MIGRÉE
 
-Détail technique (vue rapide)
+- Le fichier `i18n-platform.json` est bien servi et chargé
+- Le `FitilaLanguageContext` fonctionne avec cache-busting et fallback
+
+**Problème majeur restant** : **785 occurrences** de `currentLang === 'ba' ?` dans **28 fichiers** non encore migrés vers `t('key')`. Dont beaucoup contiennent encore du **Yoruba** (ẹ, ọ, ṣ, etc.) :
+
+Fichiers critiques non migrés :
+- `VoiceGuidedProductCreator.tsx` — 20+ ternaires avec Yoruba ("Ṣẹ̀dá ọjà", "Orúkọ ọjà")
+- `BaribaKeyboardInput.tsx` — labels langue
+- `TamTamTranslator.tsx` — interface traducteur
+- `AvailabilityToggle.tsx`, `TamTamEnhancedFeedCard.tsx`
+- `PhraseTranslator.tsx`, `SmartTranslator.tsx`
+- Et ~20 autres composants
+
+## 4. Traducteur (page actuelle) — FONCTIONNEL
+
+- La session replay montre l'utilisateur tapant "quand?" dans le traducteur
+- Le mode offline tente la traduction locale (dictionnaire), notification "Certains mots n'ont pas pu être traduits hors-ligne"
+- Le mode online (ByT5) fonctionne correctement quand connecté
+
+## 5. Console — PROPRE
+
+- Aucune erreur JavaScript détectée
+- Services offline initialisés normalement
+- IndexedDB et AudioCache OK
+
+---
+
+## Résumé
+
 ```text
-Choix langue (fr/ba)
-      ↓
-FitilaLanguageContext (currentLang, t)
-      ↓
-t('key') lit translations[key][currentLang]
-      ↓
-JSON central /public/i18n-platform.json (nouvelle version)
-      ↓
-UI cohérente partout (plus de labels BA codés en dur)
+┌──────────────────────────────┬───────────┐
+│ Composant                    │ Statut    │
+├──────────────────────────────┼───────────┤
+│ ByT5 Translation             │ ✅ OK     │
+│ Bariba TTS                   │ ✅ OK     │
+│ Bariba STT                   │ ✅ OK     │
+│ HF Keep-Alive (pg_cron)      │ ✅ OK     │
+│ Auth & Profils                │ ✅ OK     │
+│ Database REST API             │ ✅ OK     │
+│ i18n Context & JSON           │ ✅ OK     │
+│ Migration i18n (28 fichiers)  │ ⚠️ 60%   │
+│ Purge Yoruba                  │ ⚠️ 60%   │
+│ Console (erreurs JS)          │ ✅ 0 err  │
+└──────────────────────────────┴───────────┘
 ```
+
+## Plan de finalisation recommandé
+
+Migrer les **28 fichiers restants** (785 ternaires) vers `t('key')` et purger tout le Yoruba résiduel. Priorités :
+
+1. **VoiceGuidedProductCreator.tsx** — contient le plus de Yoruba hardcodé
+2. **TamTamTranslator.tsx** — page actuellement utilisée
+3. **BaribaKeyboardInput.tsx** — composant clavier Bariba
+4. **PhraseTranslator.tsx / SmartTranslator.tsx** — cœur traduction
+5. Puis les ~20 composants restants (feed, toggles, modals, etc.)
+
+Chaque fichier : remplacer les ternaires par `t('key')`, ajouter les clés manquantes au JSON, vérifier que tous les textes Bariba sont authentiques (pas de Yoruba).
+
