@@ -269,6 +269,95 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 // COMPOSANT PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// Bottom navigation items
+const bottomNavItems = [
+  { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Soo', path: '/fitila/social' },
+  { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Dɔnku', path: '/fitila/learn' },
+  { id: 'create', icon: Plus, labelFr: 'Créer', labelBa: 'Ko', path: '/fitila/creator', isCreate: true },
+  { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Tɛnyɛ̃ɛ̃ru', path: '/fitila/translator' },
+  { id: 'fitila-ia', icon: Bot, labelFr: 'Fitila IA', labelBa: 'Fitila IA', path: '/fitila/ia' },
+];
+
+function BottomNav() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { currentLang } = useFitilaLanguage();
+
+  const isActive = (path: string) => {
+    if (path === '/fitila/social') {
+      return location.pathname === '/fitila' || location.pathname === '/fitila/' || location.pathname === '/fitila/social';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  return (
+    <motion.nav
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ type: 'tween', duration: 0.2 }}
+      className="fixed bottom-0 left-0 right-0 z-50"
+      style={{
+        paddingBottom: 'max(env(safe-area-inset-bottom), 4px)',
+        background: '#000000',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      <div className="flex items-end justify-around px-1 pt-1.5 pb-1">
+        {bottomNavItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.path);
+          const label = currentLang === 'ba' ? item.labelBa : item.labelFr;
+
+          if (item.isCreate) {
+            return (
+              <motion.button
+                key={item.id}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => { triggerFeedback('click'); navigate(item.path); }}
+                className="relative -mt-3"
+              >
+                <div className="relative w-12 h-8 rounded-lg overflow-hidden shadow-lg">
+                  <div className="absolute inset-0 bg-[hsl(var(--kuaishou-accent-cyan))]" />
+                  <div
+                    className="absolute inset-0 bg-[hsl(var(--kuaishou-accent-red))]"
+                    style={{ clipPath: 'polygon(35% 0, 100% 0, 100% 100%, 15% 100%)' }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Plus className="w-6 h-6 text-white" strokeWidth={3} />
+                  </div>
+                </div>
+              </motion.button>
+            );
+          }
+
+          return (
+            <motion.button
+              key={item.id}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => { triggerFeedback('click'); navigate(item.path); }}
+              className="relative flex flex-col items-center gap-0.5 py-1.5 px-2 min-w-[52px] min-h-[44px] active:scale-95 transition-transform"
+            >
+              <Icon
+                className={`w-5 h-5 transition-colors ${active ? 'text-white' : 'text-white/40'}`}
+                strokeWidth={active ? 2.5 : 1.5}
+              />
+              <span className={`text-[10px] transition-colors ${active ? 'text-white font-medium' : 'text-white/40'}`}>
+                {label}
+              </span>
+              {active && (
+                <motion.div
+                  layoutId="bottomNavIndicator"
+                  className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-white"
+                />
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+    </motion.nav>
+  );
+}
+
 function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
@@ -290,7 +379,8 @@ function AppContent() {
     <SideMenuContext.Provider value={menuContext}>
       <div className="fixed inset-0 w-full h-full overflow-hidden kuaishou-bg">
         <SideMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-        <main className="w-full h-full overflow-hidden"><Outlet /></main>
+        <main className="w-full h-full overflow-hidden pb-14"><Outlet /></main>
+        <BottomNav />
         <AdminFloatingButton />
       </div>
     </SideMenuContext.Provider>
