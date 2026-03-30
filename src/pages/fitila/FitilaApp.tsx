@@ -5,7 +5,7 @@ import { FitilaLanguageProvider, useFitilaLanguage } from '@/contexts/FitilaLang
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTamTamProfile } from '@/hooks/useTamTamProfile';
-import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package, Plus, Bot, BookText } from 'lucide-react';
+import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
 import { BuildInfo } from '@/components/BuildInfo';
