@@ -5,8 +5,10 @@ import { Phone, ArrowRight, ArrowLeft, Lock, Check, Eye, EyeOff } from 'lucide-r
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import VisualSecuritySetup from '@/components/tamtam/VisualSecuritySetup';
+import VisualSecurityCheck from '@/components/tamtam/VisualSecurityCheck';
 
-type Step = 'phone' | 'pin-login' | 'pin-create' | 'pin-confirm' | 'name' | 'complete' | 'pin-forgot' | 'pin-reset';
+type Step = 'phone' | 'pin-login' | 'pin-create' | 'pin-confirm' | 'name' | 'security-setup' | 'complete' | 'pin-forgot' | 'pin-reset';
 
 export default function TamTamPhoneAuth() {
   const navigate = useNavigate();
@@ -21,16 +23,15 @@ export default function TamTamPhoneAuth() {
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isExistingUser, setIsExistingUser] = useState(false);
-  const [recoveryName, setRecoveryName] = useState('');
   const [newPin, setNewPin] = useState('');
   const [newPinConfirm, setNewPinConfirm] = useState('');
+  const [securityAnswers, setSecurityAnswers] = useState<string[]>([]);
   const pinInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) navigate('/fitila/social');
   }, [user, navigate]);
 
-  // Format phone for display: 01 XX XX XX XX
   const formatPhone = (digits: string) => {
     const d = digits.replace(/\D/g, '');
     const parts = [];
@@ -168,7 +169,6 @@ export default function TamTamPhoneAuth() {
         throw signUpError;
       }
 
-      // Wait for trigger to create profile
       await new Promise(r => setTimeout(r, 500));
 
       if (authData.user) {
@@ -179,12 +179,96 @@ export default function TamTamPhoneAuth() {
       }
 
       vibrate([50, 30, 50]);
+      // Go to visual security setup instead of complete
+      setStep('security-setup');
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Erreur", description: err.message || "Impossible de créer le compte", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSecuritySetupComplete = async (answers: string[]) => {
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Session non trouvée");
+
+      const res = await supabase.functions.invoke('set-security', {
+        body: { answers },
+      });
+
+      if (res.error) {
+        toast({ title: "Erreur", description: "Impossible de sauvegarder le code secret", variant: "destructive" });
+        return;
+      }
+
+      vibrate([50, 30, 50]);
       setStep('complete');
       toast({ title: "Compte créé !", description: `Bienvenue ${displayName} !` });
       setTimeout(() => navigate('/fitila/social'), 2000);
     } catch (err: any) {
       console.error(err);
-      toast({ title: "Erreur", description: err.message || "Impossible de créer le compte", variant: "destructive" });
+      toast({ title: "Erreur", description: err.message || "Erreur serveur", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSecurityCheckComplete = async (answers: string[]) => {
+    setSecurityAnswers(answers);
+    vibrate([50, 30, 50]);
+    setStep('pin-reset');
+  };
+
+  const handlePinReset = async () => {
+    if (newPin.length !== 6 || newPinConfirm.length !== 6) return;
+    if (newPin !== newPinConfirm) {
+      toast({ title: "PIN différent", description: "Les codes ne correspondent pas", variant: "destructive" });
+      vibrate([100, 50, 100]);
+      setNewPinConfirm('');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-pin`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+          body: JSON.stringify({
+            phone_number: fullPhone,
+            security_answers: securityAnswers,
+            new_pin: newPin,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Erreur", description: data.error || "Vérification échouée", variant: "destructive" });
+        vibrate([100, 50, 100]);
+        if (data.locked) {
+          setStep('pin-login');
+        }
+        return;
+      }
+      // Auto login
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: emailFromPhone,
+        password: newPin,
+      });
+      if (loginError) {
+        toast({ title: "PIN réinitialisé", description: "Connectez-vous avec votre nouveau PIN" });
+        setPin('');
+        setStep('pin-login');
+      } else {
+        vibrate([50, 30, 50]);
+        toast({ title: "✅ PIN réinitialisé !", description: "Vous êtes connecté" });
+        navigate('/fitila/social');
+      }
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message || "Erreur serveur", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -301,9 +385,9 @@ export default function TamTamPhoneAuth() {
             </motion.button>
 
             <button className="mt-3 text-white/60 text-sm underline" onClick={() => {
-              setRecoveryName('');
               setNewPin('');
               setNewPinConfirm('');
+              setSecurityAnswers([]);
               setStep('pin-forgot');
             }}>
               PIN oublié ?
@@ -392,48 +476,26 @@ export default function TamTamPhoneAuth() {
           </motion.div>
         )}
 
-        {/* PIN FORGOT - Identity verification */}
+        {/* VISUAL SECURITY SETUP (after account creation) */}
+        {step === 'security-setup' && (
+          <VisualSecuritySetup
+            onComplete={handleSecuritySetupComplete}
+            onBack={() => setStep('complete')}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* PIN FORGOT - Visual security check */}
         {step === 'pin-forgot' && (
           <motion.div key="pin-forgot" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
-            <button onClick={() => { setStep('pin-login'); }} className="self-start mb-4">
-              <ArrowLeft className="w-6 h-6 text-white" />
-            </button>
-            <div className="text-4xl mb-3">🔑</div>
-            <h1 className="text-xl font-bold text-white mb-1">Récupérer votre PIN</h1>
-            <p className="text-white/70 text-sm mb-6">Entrez le nom que vous avez choisi lors de l'inscription</p>
-
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 mb-6 border border-white/20">
-              <input
-                type="text"
-                value={recoveryName}
-                onChange={e => setRecoveryName(e.target.value)}
-                placeholder="Votre nom d'inscription"
-                className="w-full text-xl text-center bg-transparent text-white placeholder-white/50 outline-none"
-                autoFocus
-                maxLength={30}
-              />
-            </div>
-
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              className="w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
-              onClick={() => {
-                if (!recoveryName.trim()) {
-                  toast({ title: "Nom requis", description: "Entrez votre nom d'inscription", variant: "destructive" });
-                  return;
-                }
-                vibrate([50, 30, 50]);
-                setStep('pin-reset');
-              }}
-              disabled={!recoveryName.trim()}
-            >
-              Vérifier
-              <ArrowRight className="w-5 h-5" />
-            </motion.button>
+            <VisualSecurityCheck
+              onComplete={handleSecurityCheckComplete}
+              onBack={() => setStep('pin-login')}
+            />
           </motion.div>
         )}
 
-        {/* PIN RESET - New PIN creation after identity check */}
+        {/* PIN RESET - New PIN creation after visual security check */}
         {step === 'pin-reset' && (
           <motion.div key="pin-reset" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
             <button onClick={() => { setStep('pin-forgot'); setNewPin(''); setNewPinConfirm(''); }} className="self-start mb-4">
@@ -456,62 +518,14 @@ export default function TamTamPhoneAuth() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               className="mt-6 w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
-              onClick={async () => {
-                if (newPin.length < 6) return;
-                if (newPinConfirm.length < 6) return;
-                if (newPin !== newPinConfirm) {
-                  toast({ title: "PIN différent", description: "Les codes ne correspondent pas", variant: "destructive" });
-                  vibrate([100, 50, 100]);
-                  setNewPinConfirm('');
-                  return;
-                }
-                setIsLoading(true);
-                try {
-                  const res = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-pin`,
-                    {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-                      body: JSON.stringify({
-                        phone_number: fullPhone,
-                        display_name: recoveryName,
-                        new_pin: newPin,
-                      }),
-                    }
-                  );
-                  const data = await res.json();
-                  if (!res.ok) {
-                    toast({ title: "Erreur", description: data.error || "Vérification échouée", variant: "destructive" });
-                    vibrate([100, 50, 100]);
-                    return;
-                  }
-                  // Success - auto login
-                  const { error: loginError } = await supabase.auth.signInWithPassword({
-                    email: emailFromPhone,
-                    password: newPin,
-                  });
-                  if (loginError) {
-                    toast({ title: "PIN réinitialisé", description: "Connectez-vous avec votre nouveau PIN" });
-                    setPin('');
-                    setStep('pin-login');
-                  } else {
-                    vibrate([50, 30, 50]);
-                    toast({ title: "✅ PIN réinitialisé !", description: "Vous êtes connecté" });
-                    navigate('/fitila/social');
-                  }
-                } catch (err: any) {
-                  toast({ title: "Erreur", description: err.message || "Erreur serveur", variant: "destructive" });
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
+              onClick={handlePinReset}
               disabled={newPin.length !== 6 || newPinConfirm.length !== 6 || isLoading}
             >
               {isLoading ? 'Vérification...' : 'Réinitialiser le PIN'}
               <Check className="w-5 h-5" />
             </motion.button>
 
-            <button className="mt-3 text-white/60 text-xs" onClick={() => toast({ title: "Aide", description: "Si le nom ne correspond pas, contactez un administrateur FITILA" })}>
+            <button className="mt-3 text-white/60 text-xs" onClick={() => toast({ title: "Aide", description: "Si le code secret ne correspond pas, contactez un administrateur FITILA" })}>
               Besoin d'aide ?
             </button>
           </motion.div>
