@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Plus, BookOpen, BookText, Bot } from 'lucide-react';
+import { Home, Plus, BookOpen, BookText, Book } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { toast } from 'sonner';
@@ -21,8 +21,8 @@ const navItems: NavItem[] = [
   { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Soo', path: '/fitila/social' },
   { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Dɔnku', path: '/fitila/learn' },
   { id: 'create', icon: Plus, labelFr: 'Create', labelBa: 'Ko', path: '/fitila/creator', isCreate: true },
+  { id: 'dictionary', icon: Book, labelFr: 'Dico', labelBa: 'Gãnsɛ', path: '/fitila/dictionary' },
   { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Tɛnyɛ̃ɛ̃ru', path: '/fitila/translator' },
-  { id: 'fitila-ia', icon: Bot, labelFr: 'Fitila IA', labelBa: 'Fitila IA', path: '/fitila/ia' },
 ];
 
 export const KuaishouBottomNav: React.FC = () => {
