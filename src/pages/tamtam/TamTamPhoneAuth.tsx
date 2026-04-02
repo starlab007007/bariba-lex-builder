@@ -493,7 +493,16 @@ export default function TamTamPhoneAuth() {
         {step === 'security-setup' && (
           <VisualSecuritySetup
             onComplete={handleSecuritySetupComplete}
-            onBack={() => setStep('complete')}
+            onBack={() => {
+              // Allow skipping - go to social, reminder will show there
+              if (isExistingUser) {
+                navigate('/fitila/social');
+              } else {
+                setStep('complete');
+                toast({ title: "Rappel", description: "Tu pourras configurer ton code secret plus tard depuis ton profil" });
+                setTimeout(() => navigate('/fitila/social'), 2000);
+              }
+            }}
             isLoading={isLoading}
           />
         )}
