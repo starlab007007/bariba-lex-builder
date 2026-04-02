@@ -20,6 +20,30 @@ serve(async (req) => {
   }
 
   try {
+    // Enforce authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { text, sourceLang, targetLang } = await req.json();
 
     if (!text || !sourceLang || !targetLang) {
@@ -33,11 +57,6 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
-
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
 
     // Get comprehensive training context (220k+ pairs)
     const { data: trainingPhrases } = await supabaseClient
@@ -245,8 +264,8 @@ Translate the following text applying all linguistic rules above:`;
     // Calculate confidence score based on response quality
     const confidence = Math.min(95, 70 + Math.random() * 25); // Simulated confidence score
 
-    // Log the translation
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    // Log the translation - user already authenticated above
+    const userId = claimsData.claims.sub;
     
     const { error: logError } = await supabaseClient
       .from('translation_logs')
@@ -257,7 +276,7 @@ Translate the following text applying all linguistic rules above:`;
         target_language: targetLang,
         confidence_score: confidence,
         model_version: '1.0.0-ai-enhanced',
-        user_id: user?.id || null,
+        user_id: userId,
       });
 
     if (logError) {
