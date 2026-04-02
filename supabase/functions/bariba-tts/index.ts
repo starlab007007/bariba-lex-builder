@@ -291,7 +291,7 @@ async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> 
   console.log("[bariba-tts] 🔄 Attempting to wake up HF Space...");
 
   // Try multiple health-check paths — some Gradio versions don't have /gradio_api/config
-  const healthPaths = ["/gradio_api/config", "/config", "/"];
+  const healthPaths = ["/config", "/gradio_api/config", "/"];
 
   async function isSpaceReady(): Promise<boolean> {
     for (const path of healthPaths) {
