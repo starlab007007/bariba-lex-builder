@@ -108,29 +108,25 @@ async function callRefineBariba(text: string): Promise<{
 /**
  * Détecte le préfixe API d’un Space Gradio (/gradio_api ou /run/predict fallback)
  */
-async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promise<{ apiPrefix: string }> {
+async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promise<{ apiPrefix: string; useDirectPredict: boolean }> {
   const headers: HeadersInit = {};
   if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
 
-  const candidates = [
-    `${spaceUrl}/gradio_api/openapi.json`,
-    `${spaceUrl}/gradio_api/info`,
-    `${spaceUrl}/config`,
-  ];
+  // Check /gradio_api first (Gradio 4+)
+  try {
+    const r = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 5000);
+    if (r.ok) return { apiPrefix: "/gradio_api", useDirectPredict: false };
+  } catch {}
 
-  for (const url of candidates) {
-    try {
-      const r = await fetchWithTimeout(url, { headers }, 5000);
-      if (r.ok) {
-        if (url.includes("/gradio_api/")) return { apiPrefix: "/gradio_api" };
-      }
-    } catch {
-      // continue
-    }
-  }
+  // Check /api/predict (Gradio 3.x direct endpoint)
+  try {
+    const r = await fetchWithTimeout(`${spaceUrl}/api/predict`, { headers, method: "POST", body: JSON.stringify({ data: [] }) }, 5000);
+    // Even a 422/400 means the endpoint exists
+    if (r.status !== 404) return { apiPrefix: "", useDirectPredict: true };
+  } catch {}
 
-  // fallback
-  return { apiPrefix: "/gradio_api" };
+  // fallback to queue-based
+  return { apiPrefix: "/gradio_api", useDirectPredict: false };
 }
 
 /**
