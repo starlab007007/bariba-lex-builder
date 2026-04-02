@@ -622,8 +622,7 @@ serve(async (req: Request) => {
   }
 
   const startedAt = Date.now();
-  const globalController = new AbortController();
-  const globalTimer = setTimeout(() => globalController.abort(), GLOBAL_TIMEOUT_MS);
+  const globalTimer = setTimeout(() => {}, GLOBAL_TIMEOUT_MS);
 
   try {
     const body: TTSRequest = await req.json().catch(() => ({} as TTSRequest));
