@@ -20,7 +20,7 @@ const SPACES = [
   },
 ];
 
-const PING_PATHS = ['/gradio_api/config', '/'];
+const PING_PATHS = ['/config', '/gradio_api/config', '/'];
 
 async function pingSpace(
   space: { name: string; url: string },
