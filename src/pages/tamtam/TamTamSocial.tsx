@@ -22,6 +22,7 @@ import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
 import { useSideMenu } from '@/pages/fitila/FitilaApp';
 import { supabase } from '@/integrations/supabase/client';
+import SecuritySetupReminder from '@/components/tamtam/SecuritySetupReminder';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 FITILA SOCIAL V8 - AVEC UPLOAD MEDIA + HEURES DE PUBLICATION
