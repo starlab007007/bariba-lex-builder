@@ -81,7 +81,7 @@ const App = () => (
               {/* Redirect root to FITILA */}
               <Route path="/" element={<Navigate to="/fitila" replace />} />
               <Route path="/dictionary" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
+              <Route path="/auth" element={<Navigate to="/fitila/auth" replace />} />
               <Route path="/gamification" element={<Gamification />} />
               <Route path="/template-test" element={<TemplateTest />} />
               <Route path="/system-validation" element={<SystemValidation />} />

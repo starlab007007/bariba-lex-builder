@@ -10,6 +10,7 @@ import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
 import { BuildInfo } from '@/components/BuildInfo';
 import { useHFPreWarm } from '@/hooks/useHFPreWarm';
+import { useExtendedNotifications } from '@/hooks/useExtendedNotifications';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 FITILA APP V7 - MENU SIMPLIFIÉ

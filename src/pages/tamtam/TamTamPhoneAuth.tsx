@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-type Step = 'phone' | 'pin-login' | 'pin-create' | 'pin-confirm' | 'name' | 'complete';
+type Step = 'phone' | 'pin-login' | 'pin-create' | 'pin-confirm' | 'name' | 'complete' | 'pin-forgot' | 'pin-reset';
 
 export default function TamTamPhoneAuth() {
   const navigate = useNavigate();
