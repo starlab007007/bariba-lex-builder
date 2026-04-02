@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Menu, X, Home, BookOpen, BookText, Bot, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw } from 'lucide-react';
+import { Menu, X, Home, BookOpen, BookText, Book, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 // usePostInteractions now handled inside VideoFeedCard
@@ -28,7 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
-type BottomTab = 'fil' | 'learn' | 'dictionary' | 'ia';
+type BottomTab = 'fil' | 'learn' | 'dictionary' | 'translator';
 
 // Plus de musique par défaut - uniquement les audios enregistrés/sélectionnés par l'utilisateur
 
@@ -267,8 +267,8 @@ const BottomTabBar: React.FC<{
   const tabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
     { id: 'fil', icon: Home, label: 'Fil' },
     { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
-    { id: 'dictionary', icon: BookText, label: 'Dico', path: '/fitila/dictionary' },
-    { id: 'ia', icon: Bot, label: 'Fitila IA', path: '/fitila/ia' },
+    { id: 'dictionary', icon: Book, label: 'Dico', path: '/fitila/dictionary' },
+    { id: 'translator', icon: BookText, label: 'Traducteur', path: '/fitila/translator' },
   ];
 
   return (
