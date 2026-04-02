@@ -264,8 +264,8 @@ Translate the following text applying all linguistic rules above:`;
     // Calculate confidence score based on response quality
     const confidence = Math.min(95, 70 + Math.random() * 25); // Simulated confidence score
 
-    // Log the translation
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    // Log the translation - user already authenticated above
+    const userId = claimsData.claims.sub;
     
     const { error: logError } = await supabaseClient
       .from('translation_logs')
