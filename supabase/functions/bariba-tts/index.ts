@@ -108,29 +108,38 @@ async function callRefineBariba(text: string): Promise<{
 /**
  * Détecte le préfixe API d’un Space Gradio (/gradio_api ou /run/predict fallback)
  */
-async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promise<{ apiPrefix: string }> {
+async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promise<{ apiPrefix: string; useDirectPredict: boolean }> {
   const headers: HeadersInit = {};
   if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
 
-  const candidates = [
-    `${spaceUrl}/gradio_api/openapi.json`,
-    `${spaceUrl}/gradio_api/info`,
-    `${spaceUrl}/config`,
-  ];
-
-  for (const url of candidates) {
-    try {
-      const r = await fetchWithTimeout(url, { headers }, 5000);
-      if (r.ok) {
-        if (url.includes("/gradio_api/")) return { apiPrefix: "/gradio_api" };
+  // Check /config (root config, works on Gradio 6+ even when /gradio_api/config returns 404)
+  try {
+    const r = await fetchWithTimeout(`${spaceUrl}/config`, { headers }, 5000);
+    if (r.ok) {
+      const ct = r.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const cfg = await r.json().catch(() => ({}));
+        const prefix = cfg?.api_prefix || "/gradio_api";
+        console.log(`[bariba-tts] Detected api_prefix from /config: ${prefix}, Gradio v${cfg?.version || '?'}`);
+        return { apiPrefix: prefix, useDirectPredict: false };
       }
-    } catch {
-      // continue
     }
-  }
+  } catch {}
 
-  // fallback
-  return { apiPrefix: "/gradio_api" };
+  // Check /gradio_api/config (Gradio 4+)
+  try {
+    const r = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 5000);
+    if (r.ok) return { apiPrefix: "/gradio_api", useDirectPredict: false };
+  } catch {}
+
+  // Check /api/predict (Gradio 3.x direct endpoint)
+  try {
+    const r = await fetchWithTimeout(`${spaceUrl}/api/predict`, { headers, method: "POST", body: JSON.stringify({ data: [] }) }, 5000);
+    if (r.status !== 404) return { apiPrefix: "", useDirectPredict: true };
+  } catch {}
+
+  // fallback to queue-based
+  return { apiPrefix: "/gradio_api", useDirectPredict: false };
 }
 
 /**
@@ -294,32 +303,62 @@ async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> 
 
   console.log("[bariba-tts] 🔄 Attempting to wake up HF Space...");
 
-  // Ping config endpoint to trigger wake-up
-  try {
-    const initial = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 8_000);
-    if (initial.ok) {
-      console.log("[bariba-tts] ✅ Space already awake on first ping");
+  // Try multiple health-check paths — some Gradio versions don't have /gradio_api/config
+  const healthPaths = ["/config", "/gradio_api/config", "/"];
+
+  async function isSpaceReady(): Promise<boolean> {
+    for (const path of healthPaths) {
+      try {
+        const resp = await fetchWithTimeout(`${spaceUrl}${path}`, { headers }, 8_000);
+        const ct = resp.headers.get("content-type") || "";
+        console.log(`[bariba-tts] Health check ${path}: status=${resp.status}, ct=${ct.substring(0, 30)}`);
+        
+        if (!resp.ok) continue;
+        
+        // JSON response = definitely Gradio running
+        if (ct.includes("application/json")) {
+          await resp.text(); // consume body
+          return true;
+        }
+        
+        // HTML response — verify it's real Gradio, not HF loading page
+        if (ct.includes("text/html")) {
+          const body = await resp.text();
+          if (body.includes("Hugging Face – The AI community building the future") && !body.includes("gradio")) {
+            console.log(`[bariba-tts] ${path} returned HF loading page, not Gradio`);
+            continue;
+          }
+          // Real Gradio HTML page
+          return true;
+        }
+        
+        await resp.text(); // consume body
+        return true;
+      } catch (e) {
+        console.log(`[bariba-tts] Health check ${path} error: ${e instanceof Error ? e.message : 'unknown'}`);
+        continue;
+      }
+    }
+    return false;
+  }
+
+  // Quick check
+  if (await isSpaceReady()) {
+    console.log("[bariba-tts] ✅ Space already awake on first check");
+    return true;
+  }
+
+  // Poll every 5s for up to 50s (10 checks) — reduced from 80s to avoid Edge Function timeout
+  for (let i = 1; i <= 10; i++) {
+    await sleep(5_000);
+    if (await isSpaceReady()) {
+      console.log(`[bariba-tts] ✅ Space awoke after ${i * 5}s`);
       return true;
     }
-  } catch {
-    // Even if it fails, the request itself can trigger the wake-up
+    console.log(`[bariba-tts] ⏳ Poll ${i}/10 - still waking...`);
   }
 
-  // Poll every 5s for up to 80s total (16 checks)
-  for (let i = 1; i <= 16; i++) {
-    await sleep(5_000);
-    try {
-      const check = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 8_000);
-      if (check.ok) {
-        console.log(`[bariba-tts] ✅ Space awoke after ${i * 5}s`);
-        return true;
-      }
-    } catch {
-      console.log(`[bariba-tts] ⏳ Poll ${i}/16 - still waking...`);
-    }
-  }
-
-  console.log("[bariba-tts] ❌ Space still not awake after 80s of polling");
+  console.log("[bariba-tts] ❌ Space still not awake after 50s of polling");
   return false;
 }
 
@@ -385,27 +424,60 @@ async function _doSynthesize(
   params: { text: string; noiseScale?: number; noiseScaleW?: number; lengthScale?: number },
 ): Promise<{ audio_url?: string; raw?: any; error?: string; sleeping?: boolean }> {
 
-  const { apiPrefix } = await detectGradioApiPrefix(HF_SPACE_URL, HF_TOKEN);
+  const { apiPrefix, useDirectPredict } = await detectGradioApiPrefix(HF_SPACE_URL, HF_TOKEN);
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
   if (HF_TOKEN) headers["Authorization"] = `Bearer ${HF_TOKEN}`;
 
-  // Gradio queue: /queue/join
-  const sessionHash = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  const dataPayload = [
+    params.text,
+    params.noiseScale ?? 0.667,
+    params.noiseScaleW ?? 0.8,
+    params.lengthScale ?? 1.0,
+  ];
 
-  // IMPORTANT:
-  // Selon le Space, fn_index / api_name peut varier.
-  // On garde une structure générique compatible avec la plupart des VITS Gradio.
-  // Si besoin, adapte `api_name` ou `fn_index`.
+  // === Direct /api/predict for Gradio 3.x spaces ===
+  if (useDirectPredict) {
+    console.log("[bariba-tts] Using direct /api/predict endpoint");
+    try {
+      const resp = await fetchWithTimeout(
+        `${HF_SPACE_URL}/api/predict`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ data: dataPayload, fn_index: 0 }),
+        },
+        HF_STEP_TIMEOUT_MS,
+      );
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        const isHtmlPage = errText.trimStart().startsWith("<!DOCTYPE html");
+        return {
+          error: isHtmlPage ? "Space en veille (HTML)" : `api/predict ${resp.status}: ${errText.substring(0, 200)}`,
+          sleeping: isHtmlPage || resp.status === 503,
+        };
+      }
+
+      const result = await resp.json().catch(() => null);
+      if (!result) return { error: "Invalid JSON from /api/predict" };
+
+      const audioUrl = extractAudioUrlFromGradioResult(result, HF_SPACE_URL);
+      if (!audioUrl) return { error: "Audio introuvable dans la réponse directe", raw: result };
+
+      return { audio_url: audioUrl, raw: result };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "predict failed";
+      return { error: msg, sleeping: /abort/i.test(msg) };
+    }
+  }
+
+  // === Queue-based for Gradio 4+ ===
+  const sessionHash = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const body = {
-    data: [
-      params.text,
-      params.noiseScale ?? 0.667,
-      params.noiseScaleW ?? 0.8,
-      params.lengthScale ?? 1.0,
-    ],
+    data: dataPayload,
     event_data: null,
     fn_index: 0,
     session_hash: sessionHash,
@@ -442,7 +514,6 @@ async function _doSynthesize(
     };
   }
 
-  // Certains espaces retournent directement JSON, d’autres SSE
   let eventId: string | null = null;
   const ctype = joinResp.headers.get("content-type") || "";
 
@@ -453,7 +524,6 @@ async function _doSynthesize(
     eventId = await readEventIdFromQueueJoin(joinResp);
   }
 
-  // Même si eventId n’est pas disponible, le polling par session_hash suffit souvent
   const result = await pollQueueData(HF_SPACE_URL, apiPrefix, sessionHash, HF_TOKEN, 45);
 
   if (!result) {
