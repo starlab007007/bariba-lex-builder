@@ -276,7 +276,7 @@ Translate the following text applying all linguistic rules above:`;
         target_language: targetLang,
         confidence_score: confidence,
         model_version: '1.0.0-ai-enhanced',
-        user_id: user?.id || null,
+        user_id: userId,
       });
 
     if (logError) {
