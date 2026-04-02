@@ -109,6 +109,19 @@ export default function TamTamPhoneAuth() {
       }
       vibrate([50, 30, 50]);
       toast({ title: "Connexion réussie", description: `Bienvenue ${displayName} !` });
+      
+      // Check if user has security setup, if not redirect to setup
+      const { data: secData } = await supabase
+        .from('security_answers')
+        .select('id')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
+        .maybeSingle();
+      
+      if (!secData) {
+        setStep('security-setup');
+        return;
+      }
+      
       navigate('/fitila/social');
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -480,7 +493,16 @@ export default function TamTamPhoneAuth() {
         {step === 'security-setup' && (
           <VisualSecuritySetup
             onComplete={handleSecuritySetupComplete}
-            onBack={() => setStep('complete')}
+            onBack={() => {
+              // Allow skipping - go to social, reminder will show there
+              if (isExistingUser) {
+                navigate('/fitila/social');
+              } else {
+                setStep('complete');
+                toast({ title: "Rappel", description: "Tu pourras configurer ton code secret plus tard depuis ton profil" });
+                setTimeout(() => navigate('/fitila/social'), 2000);
+              }
+            }}
             isLoading={isLoading}
           />
         )}
