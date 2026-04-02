@@ -267,8 +267,8 @@ const BottomTabBar: React.FC<{
   const tabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
     { id: 'fil', icon: Home, label: 'Fil' },
     { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
-    { id: 'dictionary', icon: BookText, label: 'Dico', path: '/fitila/dictionary' },
-    { id: 'ia', icon: Bot, label: 'Fitila IA', path: '/fitila/ia' },
+    { id: 'dictionary', icon: Book, label: 'Dico', path: '/fitila/dictionary' },
+    { id: 'translator', icon: BookText, label: 'Traducteur', path: '/fitila/translator' },
   ];
 
   return (
