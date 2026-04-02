@@ -1,86 +1,33 @@
 
 
-# Diagnostic Complet de la Plateforme Fitila
+# Barre de navigation bas de page — 5 items finaux
 
-## 1. HuggingFace Spaces — TOUS OPÉRATIONNELS
+## Changement demandé
 
-D'après les logs edge functions (il y a quelques minutes) :
+Remplacer les 5 items actuels (Fil, Apprendre, Créer, Traducteur, Fitila IA) par : **Fil, Apprendre, Créer (+), Dico, Traducteur**.
 
-| Space | Statut | Latence |
-|-------|--------|---------|
-| **ByT5 Expert** (Traduction) | **Awake** | 724ms |
-| **Bariba TTS** (Synthèse vocale) | **Awake** | 753ms |
-| **Bariba STT** (Reconnaissance vocale) | **Awake** | 743ms |
+## Modifications
 
-- Le `hf-keep-alive` fonctionne correctement (ping toutes les 10 min via pg_cron)
-- Le ByT5 traduit correctement : "bonjour" → "A kpuna n do ?" (751ms, confirmé dans les logs)
-- Le `refine-bariba` post-traitement fonctionne (0 corrections nécessaires, confidence=96)
-- **Seul point d'attention** : le TTS a eu un épisode "Space still not awake after 80s" — ce sont les cold starts normaux des free plans HF. Le keep-alive les minimise.
+**Fichier : `src/components/tamtam/KuaishouBottomNav.tsx`**
 
-## 2. Backend (Database & Auth) — OK
+1. Remplacer l'import `Bot` par `Book` (icone pour Dico/Dictionnaire)
+2. Modifier le tableau `navItems` (lignes 20-26) :
 
-- Toutes les requêtes REST retournent **200** (profils, follows, user_roles, posts)
-- L'utilisateur "Zim" est authentifié avec succès (session JWT valide)
-- Les profils, follows, rôles sont correctement chargés
-- **Aucune erreur 4xx/5xx** dans les requêtes réseau
-
-## 3. Traduction i18n — PARTIELLEMENT MIGRÉE
-
-- Le fichier `i18n-platform.json` est bien servi et chargé
-- Le `FitilaLanguageContext` fonctionne avec cache-busting et fallback
-
-**Problème majeur restant** : **785 occurrences** de `currentLang === 'ba' ?` dans **28 fichiers** non encore migrés vers `t('key')`. Dont beaucoup contiennent encore du **Yoruba** (ẹ, ọ, ṣ, etc.) :
-
-Fichiers critiques non migrés :
-- `VoiceGuidedProductCreator.tsx` — 20+ ternaires avec Yoruba ("Ṣẹ̀dá ọjà", "Orúkọ ọjà")
-- `BaribaKeyboardInput.tsx` — labels langue
-- `TamTamTranslator.tsx` — interface traducteur
-- `AvailabilityToggle.tsx`, `TamTamEnhancedFeedCard.tsx`
-- `PhraseTranslator.tsx`, `SmartTranslator.tsx`
-- Et ~20 autres composants
-
-## 4. Traducteur (page actuelle) — FONCTIONNEL
-
-- La session replay montre l'utilisateur tapant "quand?" dans le traducteur
-- Le mode offline tente la traduction locale (dictionnaire), notification "Certains mots n'ont pas pu être traduits hors-ligne"
-- Le mode online (ByT5) fonctionne correctement quand connecté
-
-## 5. Console — PROPRE
-
-- Aucune erreur JavaScript détectée
-- Services offline initialisés normalement
-- IndexedDB et AudioCache OK
-
----
-
-## Résumé
-
-```text
-┌──────────────────────────────┬───────────┐
-│ Composant                    │ Statut    │
-├──────────────────────────────┼───────────┤
-│ ByT5 Translation             │ ✅ OK     │
-│ Bariba TTS                   │ ✅ OK     │
-│ Bariba STT                   │ ✅ OK     │
-│ HF Keep-Alive (pg_cron)      │ ✅ OK     │
-│ Auth & Profils                │ ✅ OK     │
-│ Database REST API             │ ✅ OK     │
-│ i18n Context & JSON           │ ✅ OK     │
-│ Migration i18n (28 fichiers)  │ ⚠️ 60%   │
-│ Purge Yoruba                  │ ⚠️ 60%   │
-│ Console (erreurs JS)          │ ✅ 0 err  │
-└──────────────────────────────┴───────────┘
+```typescript
+const navItems: NavItem[] = [
+  { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Soo', path: '/fitila/social' },
+  { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Dɔnku', path: '/fitila/learn' },
+  { id: 'create', icon: Plus, labelFr: 'Create', labelBa: 'Ko', path: '/fitila/creator', isCreate: true },
+  { id: 'dictionary', icon: Book, labelFr: 'Dico', labelBa: 'Gãnsɛ', path: '/fitila/dictionary' },
+  { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Tɛnyɛ̃ɛ̃ru', path: '/fitila/translator' },
+];
 ```
 
-## Plan de finalisation recommandé
+- **Dico** pointe vers `/fitila/dictionary` (page dictionnaire existante `TamTamDictionary`)
+- **Traducteur** reste inchangé, pointe vers `/fitila/translator`
+- **Fitila IA** est supprimé de la barre
 
-Migrer les **28 fichiers restants** (785 ternaires) vers `t('key')` et purger tout le Yoruba résiduel. Priorités :
+## Vérification de la route
 
-1. **VoiceGuidedProductCreator.tsx** — contient le plus de Yoruba hardcodé
-2. **TamTamTranslator.tsx** — page actuellement utilisée
-3. **BaribaKeyboardInput.tsx** — composant clavier Bariba
-4. **PhraseTranslator.tsx / SmartTranslator.tsx** — cœur traduction
-5. Puis les ~20 composants restants (feed, toggles, modals, etc.)
-
-Chaque fichier : remplacer les ternaires par `t('key')`, ajouter les clés manquantes au JSON, vérifier que tous les textes Bariba sont authentiques (pas de Yoruba).
+Je confirmerai que la route `/fitila/dictionary` existe dans le routeur avant d'implémenter. Si elle n'existe pas, elle sera ajoutée.
 
