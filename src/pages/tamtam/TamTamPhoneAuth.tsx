@@ -300,7 +300,12 @@ export default function TamTamPhoneAuth() {
               <ArrowRight className="w-5 h-5" />
             </motion.button>
 
-            <button className="mt-3 text-white/60 text-sm underline" onClick={() => toast({ title: "Récupération", description: "Contactez le support pour réinitialiser votre PIN" })}>
+            <button className="mt-3 text-white/60 text-sm underline" onClick={() => {
+              setRecoveryName('');
+              setNewPin('');
+              setNewPinConfirm('');
+              setStep('pin-forgot');
+            }}>
               PIN oublié ?
             </button>
           </motion.div>
