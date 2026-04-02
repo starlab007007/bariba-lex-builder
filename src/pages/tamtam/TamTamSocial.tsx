@@ -699,6 +699,9 @@ export default function TamTamSocial() {
   return (
     <div className="fixed inset-0" style={{ background: '#0B0B0B' }}>
       <FeedIndicator currentFeed={feedMode} onMenuOpen={sideMenu.open} />
+      <div className="fixed top-14 left-0 right-0 z-40 safe-area-top">
+        <SecuritySetupReminder />
+      </div>
 
       <AnimatePresence mode="wait">
         {activeTab === 'fil' && (
