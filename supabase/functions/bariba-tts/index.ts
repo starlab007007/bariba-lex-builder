@@ -310,18 +310,32 @@ async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> 
     for (const path of healthPaths) {
       try {
         const resp = await fetchWithTimeout(`${spaceUrl}${path}`, { headers }, 8_000);
+        const ct = resp.headers.get("content-type") || "";
+        console.log(`[bariba-tts] Health check ${path}: status=${resp.status}, ct=${ct.substring(0, 30)}`);
+        
         if (!resp.ok) continue;
         
-        // Verify it's actually Gradio, not HF's generic sleeping page
-        const ct = resp.headers.get("content-type") || "";
+        // JSON response = definitely Gradio running
+        if (ct.includes("application/json")) {
+          await resp.text(); // consume body
+          return true;
+        }
+        
+        // HTML response — verify it's real Gradio, not HF loading page
         if (ct.includes("text/html")) {
           const body = await resp.text();
           if (body.includes("Hugging Face – The AI community building the future") && !body.includes("gradio")) {
-            continue; // This is the loading page, not the actual app
+            console.log(`[bariba-tts] ${path} returned HF loading page, not Gradio`);
+            continue;
           }
+          // Real Gradio HTML page
+          return true;
         }
+        
+        await resp.text(); // consume body
         return true;
-      } catch {
+      } catch (e) {
+        console.log(`[bariba-tts] Health check ${path} error: ${e instanceof Error ? e.message : 'unknown'}`);
         continue;
       }
     }
