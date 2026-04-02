@@ -28,7 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
-type BottomTab = 'fil' | 'learn' | 'dictionary' | 'ia';
+type BottomTab = 'fil' | 'learn' | 'dictionary' | 'translator';
 
 // Plus de musique par défaut - uniquement les audios enregistrés/sélectionnés par l'utilisateur
 
