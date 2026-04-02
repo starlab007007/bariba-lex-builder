@@ -1032,6 +1032,33 @@ export type Database = {
         }
         Relationships: []
       }
+      security_answers: {
+        Row: {
+          answers_hash: string
+          created_at: string
+          failed_attempts: number
+          id: string
+          locked_until: string | null
+          user_id: string
+        }
+        Insert: {
+          answers_hash: string
+          created_at?: string
+          failed_attempts?: number
+          id?: string
+          locked_until?: string | null
+          user_id: string
+        }
+        Update: {
+          answers_hash?: string
+          created_at?: string
+          failed_attempts?: number
+          id?: string
+          locked_until?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       smt_initialization_logs: {
         Row: {
           cache_preload_count: number | null
