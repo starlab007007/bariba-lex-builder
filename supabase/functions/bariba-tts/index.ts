@@ -14,6 +14,10 @@ const corsHeaders = {
 const GLOBAL_TIMEOUT_MS = 90_000;
 const REFINE_TIMEOUT_MS = 7_000;
 const HF_STEP_TIMEOUT_MS = 25_000;
+const TTS_SPACE_FALLBACK_URL = "https://zimesongbian-baatonum-tts-api-v001.hf.space";
+const HEALTH_PATHS = ["/config", "/gradio_api/config", "/"] as const;
+
+type SpaceStatus = "ready" | "sleeping" | "missing";
 
 interface TTSRequest {
   text: string;
@@ -49,6 +53,22 @@ async function fetchWithTimeout(
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildHfHeaders(hfToken?: string): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
+  return headers;
+}
+
+function getTtsSpaceCandidates(): string[] {
+  return Array.from(
+    new Set(
+      [Deno.env.get("HF_SPACE_URL"), TTS_SPACE_FALLBACK_URL]
+        .filter((value): value is string => !!value && value.trim().length > 0)
+        .map((value) => value.replace(/\/$/, "")),
+    ),
+  );
 }
 
 /**
@@ -109,8 +129,7 @@ async function callRefineBariba(text: string): Promise<{
  * Détecte le préfixe API d’un Space Gradio (/gradio_api ou /run/predict fallback)
  */
 async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promise<{ apiPrefix: string; useDirectPredict: boolean }> {
-  const headers: HeadersInit = {};
-  if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
+  const headers = buildHfHeaders(hfToken);
 
   // Check /config (root config, works on Gradio 6+ even when /gradio_api/config returns 404)
   try {
@@ -297,63 +316,99 @@ function extractAudioUrlFromGradioResult(result: any, spaceUrl: string): string 
 /**
  * Réveille le Space HF en pingant /gradio_api/config puis attend
  */
-async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> {
-  const headers: HeadersInit = {};
-  if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
+async function checkSpaceStatus(spaceUrl: string, hfToken: string): Promise<SpaceStatus> {
+  const headers = buildHfHeaders(hfToken);
+  let sawNon404 = false;
 
-  console.log("[bariba-tts] 🔄 Attempting to wake up HF Space...");
+  for (const path of HEALTH_PATHS) {
+    try {
+      const resp = await fetchWithTimeout(`${spaceUrl}${path}`, { headers }, 8_000);
+      const ct = resp.headers.get("content-type") || "";
+      console.log(`[bariba-tts] Health check ${path}: status=${resp.status}, ct=${ct.substring(0, 30)}`);
 
-  // Try multiple health-check paths — some Gradio versions don't have /gradio_api/config
-  const healthPaths = ["/config", "/gradio_api/config", "/"];
-
-  async function isSpaceReady(): Promise<boolean> {
-    for (const path of healthPaths) {
-      try {
-        const resp = await fetchWithTimeout(`${spaceUrl}${path}`, { headers }, 8_000);
-        const ct = resp.headers.get("content-type") || "";
-        console.log(`[bariba-tts] Health check ${path}: status=${resp.status}, ct=${ct.substring(0, 30)}`);
-        
-        if (!resp.ok) continue;
-        
-        // JSON response = definitely Gradio running
-        if (ct.includes("application/json")) {
-          await resp.text(); // consume body
-          return true;
-        }
-        
-        // HTML response — verify it's real Gradio, not HF loading page
-        if (ct.includes("text/html")) {
-          const body = await resp.text();
-          if (body.includes("Hugging Face – The AI community building the future") && !body.includes("gradio")) {
-            console.log(`[bariba-tts] ${path} returned HF loading page, not Gradio`);
-            continue;
-          }
-          // Real Gradio HTML page
-          return true;
-        }
-        
-        await resp.text(); // consume body
-        return true;
-      } catch (e) {
-        console.log(`[bariba-tts] Health check ${path} error: ${e instanceof Error ? e.message : 'unknown'}`);
+      if (resp.status === 404) {
+        await resp.text().catch(() => "");
         continue;
       }
+
+      sawNon404 = true;
+
+      if (!resp.ok) {
+        await resp.text().catch(() => "");
+        if ([429, 502, 503, 504].includes(resp.status)) {
+          return "sleeping";
+        }
+        continue;
+      }
+
+      if (ct.includes("application/json")) {
+        await resp.text().catch(() => "");
+        return "ready";
+      }
+
+      if (ct.includes("text/html")) {
+        const body = await resp.text().catch(() => "");
+        const lowerBody = body.toLowerCase();
+        const isLoadingPage = lowerBody.includes("hugging face") && !lowerBody.includes("gradio");
+        return isLoadingPage ? "sleeping" : "ready";
+      }
+
+      await resp.text().catch(() => "");
+      return "ready";
+    } catch (e) {
+      console.log(`[bariba-tts] Health check ${path} error: ${e instanceof Error ? e.message : "unknown"}`);
     }
-    return false;
   }
 
-  // Quick check
-  if (await isSpaceReady()) {
+  return sawNon404 ? "sleeping" : "missing";
+}
+
+async function resolveTtsSpaceUrl(hfToken: string): Promise<{ spaceUrl: string; status: SpaceStatus }> {
+  const candidates = getTtsSpaceCandidates();
+  let selectedUrl = candidates[candidates.length - 1] || TTS_SPACE_FALLBACK_URL;
+  let selectedStatus: SpaceStatus = "missing";
+
+  for (const candidate of candidates) {
+    const status = await checkSpaceStatus(candidate, hfToken);
+    console.log(`[bariba-tts] Probe ${candidate}: ${status}`);
+
+    if (status === "ready") {
+      return { spaceUrl: candidate, status };
+    }
+
+    if (status !== "missing") {
+      selectedUrl = candidate;
+      selectedStatus = status;
+    }
+  }
+
+  return { spaceUrl: selectedUrl, status: selectedStatus };
+}
+
+async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> {
+  console.log(`[bariba-tts] 🔄 Attempting to wake up HF Space: ${spaceUrl}`);
+
+  const initialStatus = await checkSpaceStatus(spaceUrl, hfToken);
+  if (initialStatus === "ready") {
     console.log("[bariba-tts] ✅ Space already awake on first check");
     return true;
   }
 
-  // Poll every 5s for up to 50s (10 checks) — reduced from 80s to avoid Edge Function timeout
+  if (initialStatus === "missing") {
+    console.log("[bariba-tts] ❌ Space health endpoints returned 404 on all paths");
+    return false;
+  }
+
   for (let i = 1; i <= 10; i++) {
     await sleep(5_000);
-    if (await isSpaceReady()) {
+    const status = await checkSpaceStatus(spaceUrl, hfToken);
+    if (status === "ready") {
       console.log(`[bariba-tts] ✅ Space awoke after ${i * 5}s`);
       return true;
+    }
+    if (status === "missing") {
+      console.log("[bariba-tts] ❌ Space became unreachable during wake-up checks");
+      return false;
     }
     console.log(`[bariba-tts] ⏳ Poll ${i}/10 - still waking...`);
   }
@@ -371,28 +426,16 @@ async function synthesizeWithHuggingFaceSpace(params: {
   noiseScaleW?: number;
   lengthScale?: number;
 }): Promise<{ audio_url?: string; raw?: any; error?: string; sleeping?: boolean }> {
-  const HF_SPACE_URL = (
-    Deno.env.get("HF_SPACE_URL") ||
-    "https://zimesongbian-baatonum-tts-api-v001.hf.space"
-  ).replace(/\/$/, "");
   const HF_TOKEN =
     Deno.env.get("HUGGING_FACE_API_TOKEN") ||
     Deno.env.get("HF_TOKEN") ||
     Deno.env.get("HUGGINGFACEHUB_API_TOKEN") ||
     "";
+  const resolvedSpace = await resolveTtsSpaceUrl(HF_TOKEN);
+  const HF_SPACE_URL = resolvedSpace.spaceUrl;
+  console.log(`[bariba-tts] Using HF Space URL: ${HF_SPACE_URL} (${resolvedSpace.status})`);
 
-  // First check if space is awake before attempting synthesis
-  // Quick pre-check
-  const headers: HeadersInit = {};
-  if (HF_TOKEN) headers["Authorization"] = `Bearer ${HF_TOKEN}`;
-  
-  let spaceReady = false;
-  try {
-    const preCheck = await fetchWithTimeout(`${HF_SPACE_URL}/gradio_api/config`, { headers }, 5_000);
-    spaceReady = preCheck.ok;
-  } catch {
-    spaceReady = false;
-  }
+  const spaceReady = resolvedSpace.status === "ready";
 
   // If not ready, wake it up first
   if (!spaceReady) {
@@ -579,8 +622,7 @@ serve(async (req: Request) => {
   }
 
   const startedAt = Date.now();
-  const globalController = new AbortController();
-  const globalTimer = setTimeout(() => globalController.abort(), GLOBAL_TIMEOUT_MS);
+  const globalTimer = setTimeout(() => {}, GLOBAL_TIMEOUT_MS);
 
   try {
     const body: TTSRequest = await req.json().catch(() => ({} as TTSRequest));
@@ -656,7 +698,9 @@ serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({
+          success: false,
           error: isSleeping ? "Service en veille" : (tts.error || "Échec TTS"),
+          sleeping: isSleeping,
           details: isSleeping ? "Le Space HuggingFace est probablement en veille. Réessaie dans 30 secondes." : undefined,
           text_used: safeText,
           refine: refinementMeta,
@@ -664,7 +708,7 @@ serve(async (req: Request) => {
           debug: tts.raw ? { raw: tts.raw } : undefined,
         }),
         {
-          status: isSleeping ? 503 : 500,
+          status: isSleeping ? 200 : 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
