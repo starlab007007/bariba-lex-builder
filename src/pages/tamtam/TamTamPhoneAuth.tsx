@@ -392,7 +392,131 @@ export default function TamTamPhoneAuth() {
           </motion.div>
         )}
 
-        {/* COMPLETE */}
+        {/* PIN FORGOT - Identity verification */}
+        {step === 'pin-forgot' && (
+          <motion.div key="pin-forgot" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
+            <button onClick={() => { setStep('pin-login'); }} className="self-start mb-4">
+              <ArrowLeft className="w-6 h-6 text-white" />
+            </button>
+            <div className="text-4xl mb-3">🔑</div>
+            <h1 className="text-xl font-bold text-white mb-1">Récupérer votre PIN</h1>
+            <p className="text-white/70 text-sm mb-6">Entrez le nom que vous avez choisi lors de l'inscription</p>
+
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 mb-6 border border-white/20">
+              <input
+                type="text"
+                value={recoveryName}
+                onChange={e => setRecoveryName(e.target.value)}
+                placeholder="Votre nom d'inscription"
+                className="w-full text-xl text-center bg-transparent text-white placeholder-white/50 outline-none"
+                autoFocus
+                maxLength={30}
+              />
+            </div>
+
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              className="w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+              onClick={() => {
+                if (!recoveryName.trim()) {
+                  toast({ title: "Nom requis", description: "Entrez votre nom d'inscription", variant: "destructive" });
+                  return;
+                }
+                vibrate([50, 30, 50]);
+                setStep('pin-reset');
+              }}
+              disabled={!recoveryName.trim()}
+            >
+              Vérifier
+              <ArrowRight className="w-5 h-5" />
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* PIN RESET - New PIN creation after identity check */}
+        {step === 'pin-reset' && (
+          <motion.div key="pin-reset" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
+            <button onClick={() => { setStep('pin-forgot'); setNewPin(''); setNewPinConfirm(''); }} className="self-start mb-4">
+              <ArrowLeft className="w-6 h-6 text-white" />
+            </button>
+            <Lock className="w-10 h-10 text-white mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-white mb-1">
+              {newPinConfirm.length > 0 || newPin.length === 6 ? 'Confirmez le nouveau PIN' : 'Nouveau PIN'}
+            </h1>
+            <p className="text-white/70 text-sm mb-6">
+              {newPin.length < 6 ? 'Choisissez 6 nouveaux chiffres' : 'Entrez à nouveau pour confirmer'}
+            </p>
+
+            {newPin.length < 6 ? (
+              <PinInput value={newPin} onChange={setNewPin} />
+            ) : (
+              <PinInput value={newPinConfirm} onChange={setNewPinConfirm} autoFocus />
+            )}
+
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              className="mt-6 w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+              onClick={async () => {
+                if (newPin.length < 6) return;
+                if (newPinConfirm.length < 6) return;
+                if (newPin !== newPinConfirm) {
+                  toast({ title: "PIN différent", description: "Les codes ne correspondent pas", variant: "destructive" });
+                  vibrate([100, 50, 100]);
+                  setNewPinConfirm('');
+                  return;
+                }
+                setIsLoading(true);
+                try {
+                  const res = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-pin`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+                      body: JSON.stringify({
+                        phone_number: fullPhone,
+                        display_name: recoveryName,
+                        new_pin: newPin,
+                      }),
+                    }
+                  );
+                  const data = await res.json();
+                  if (!res.ok) {
+                    toast({ title: "Erreur", description: data.error || "Vérification échouée", variant: "destructive" });
+                    vibrate([100, 50, 100]);
+                    return;
+                  }
+                  // Success - auto login
+                  const { error: loginError } = await supabase.auth.signInWithPassword({
+                    email: emailFromPhone,
+                    password: newPin,
+                  });
+                  if (loginError) {
+                    toast({ title: "PIN réinitialisé", description: "Connectez-vous avec votre nouveau PIN" });
+                    setPin('');
+                    setStep('pin-login');
+                  } else {
+                    vibrate([50, 30, 50]);
+                    toast({ title: "✅ PIN réinitialisé !", description: "Vous êtes connecté" });
+                    navigate('/fitila/social');
+                  }
+                } catch (err: any) {
+                  toast({ title: "Erreur", description: err.message || "Erreur serveur", variant: "destructive" });
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              disabled={newPin.length !== 6 || newPinConfirm.length !== 6 || isLoading}
+            >
+              {isLoading ? 'Vérification...' : 'Réinitialiser le PIN'}
+              <Check className="w-5 h-5" />
+            </motion.button>
+
+            <button className="mt-3 text-white/60 text-xs" onClick={() => toast({ title: "Aide", description: "Si le nom ne correspond pas, contactez un administrateur FITILA" })}>
+              Besoin d'aide ?
+            </button>
+          </motion.div>
+        )}
+
         {step === 'complete' && (
           <motion.div key="complete" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} className="text-center flex-1 flex flex-col justify-center">
             <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 0.5 }} className="text-6xl mb-4">
