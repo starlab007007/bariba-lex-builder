@@ -275,6 +275,7 @@ function AppContent() {
   const location = useLocation();
 
   useHFPreWarm();
+  useExtendedNotifications();
 
   useEffect(() => {
     if (isMenuOpen) setIsMenuOpen(false);

@@ -21,6 +21,9 @@ export default function TamTamPhoneAuth() {
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isExistingUser, setIsExistingUser] = useState(false);
+  const [recoveryName, setRecoveryName] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [newPinConfirm, setNewPinConfirm] = useState('');
   const pinInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
