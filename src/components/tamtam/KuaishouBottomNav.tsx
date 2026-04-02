@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Plus, BookOpen, BookText, Bot } from 'lucide-react';
+import { Home, Plus, BookOpen, BookText, Book } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { toast } from 'sonner';
