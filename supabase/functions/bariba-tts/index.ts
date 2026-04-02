@@ -112,7 +112,21 @@ async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promis
   const headers: HeadersInit = {};
   if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
 
-  // Check /gradio_api first (Gradio 4+)
+  // Check /config (root config, works on Gradio 6+ even when /gradio_api/config returns 404)
+  try {
+    const r = await fetchWithTimeout(`${spaceUrl}/config`, { headers }, 5000);
+    if (r.ok) {
+      const ct = r.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const cfg = await r.json().catch(() => ({}));
+        const prefix = cfg?.api_prefix || "/gradio_api";
+        console.log(`[bariba-tts] Detected api_prefix from /config: ${prefix}, Gradio v${cfg?.version || '?'}`);
+        return { apiPrefix: prefix, useDirectPredict: false };
+      }
+    }
+  } catch {}
+
+  // Check /gradio_api/config (Gradio 4+)
   try {
     const r = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 5000);
     if (r.ok) return { apiPrefix: "/gradio_api", useDirectPredict: false };
@@ -121,7 +135,6 @@ async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promis
   // Check /api/predict (Gradio 3.x direct endpoint)
   try {
     const r = await fetchWithTimeout(`${spaceUrl}/api/predict`, { headers, method: "POST", body: JSON.stringify({ data: [] }) }, 5000);
-    // Even a 422/400 means the endpoint exists
     if (r.status !== 404) return { apiPrefix: "", useDirectPredict: true };
   } catch {}
 
