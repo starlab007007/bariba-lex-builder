@@ -294,32 +294,48 @@ async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> 
 
   console.log("[bariba-tts] 🔄 Attempting to wake up HF Space...");
 
-  // Ping config endpoint to trigger wake-up
-  try {
-    const initial = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 8_000);
-    if (initial.ok) {
-      console.log("[bariba-tts] ✅ Space already awake on first ping");
+  // Try multiple health-check paths — some Gradio versions don't have /gradio_api/config
+  const healthPaths = ["/gradio_api/config", "/config", "/"];
+
+  async function isSpaceReady(): Promise<boolean> {
+    for (const path of healthPaths) {
+      try {
+        const resp = await fetchWithTimeout(`${spaceUrl}${path}`, { headers }, 8_000);
+        if (!resp.ok) continue;
+        
+        // Verify it's actually Gradio, not HF's generic sleeping page
+        const ct = resp.headers.get("content-type") || "";
+        if (ct.includes("text/html")) {
+          const body = await resp.text();
+          if (body.includes("Hugging Face – The AI community building the future") && !body.includes("gradio")) {
+            continue; // This is the loading page, not the actual app
+          }
+        }
+        return true;
+      } catch {
+        continue;
+      }
+    }
+    return false;
+  }
+
+  // Quick check
+  if (await isSpaceReady()) {
+    console.log("[bariba-tts] ✅ Space already awake on first check");
+    return true;
+  }
+
+  // Poll every 5s for up to 50s (10 checks) — reduced from 80s to avoid Edge Function timeout
+  for (let i = 1; i <= 10; i++) {
+    await sleep(5_000);
+    if (await isSpaceReady()) {
+      console.log(`[bariba-tts] ✅ Space awoke after ${i * 5}s`);
       return true;
     }
-  } catch {
-    // Even if it fails, the request itself can trigger the wake-up
+    console.log(`[bariba-tts] ⏳ Poll ${i}/10 - still waking...`);
   }
 
-  // Poll every 5s for up to 80s total (16 checks)
-  for (let i = 1; i <= 16; i++) {
-    await sleep(5_000);
-    try {
-      const check = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 8_000);
-      if (check.ok) {
-        console.log(`[bariba-tts] ✅ Space awoke after ${i * 5}s`);
-        return true;
-      }
-    } catch {
-      console.log(`[bariba-tts] ⏳ Poll ${i}/16 - still waking...`);
-    }
-  }
-
-  console.log("[bariba-tts] ❌ Space still not awake after 80s of polling");
+  console.log("[bariba-tts] ❌ Space still not awake after 50s of polling");
   return false;
 }
 

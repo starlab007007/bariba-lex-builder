@@ -45,6 +45,17 @@ async function pingSpace(
 
       const ms = Date.now() - start;
       if (res.ok) {
+        // Verify it's actually a Gradio response, not HF's generic loading page
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('text/html')) {
+          const body = await res.text();
+          // HF loading page has generic title, real Gradio pages have the app
+          if (body.includes('Hugging Face – The AI community building the future') && !body.includes('gradio')) {
+            // This is the HF loading/sleeping page, not the actual Gradio app
+            if (path === PING_PATHS[0]) continue;
+            return { name: space.name, status: 'sleeping', ms, path };
+          }
+        }
         return { name: space.name, status: 'awake', ms, path };
       }
       // If 404 on /gradio_api/config, try fallback /
