@@ -39,6 +39,10 @@ function normalizeText(input: string): string {
   return normalizeBaribaText(input);
 }
 
+function isTooShortForTts(text: string): boolean {
+  return Array.from(text.trim()).length < 2;
+}
+
 function isProbablyUiText(text: string): boolean {
   return isInvalidUiLikeText(text);
 }
@@ -670,6 +674,14 @@ serve(async (req: Request) => {
     let safeText = normalizeText(rawText);
     safeText = applyLocalBaribaCorrections(safeText);
 
+    if (isTooShortForTts(safeText)) {
+      clearTimeout(globalTimer);
+      return new Response(
+        JSON.stringify({ error: "Texte trop court pour la synthèse vocale" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (isProbablyUiText(safeText)) {
       clearTimeout(globalTimer);
       return new Response(
@@ -713,6 +725,10 @@ serve(async (req: Request) => {
 
     if (!tts.audio_url) {
       const duration = Date.now() - startedAt;
+      const rawModelError = typeof tts.raw?.output?.error === "string" ? tts.raw.output.error : "";
+      const isInputTooShort =
+        isTooShortForTts(safeText) ||
+        /dimension out of range|input.*too short|text too short/i.test(`${tts.error || ""} ${rawModelError}`);
       await logTtsRequestSafe({
         original_text: rawText,
         final_text: safeText,
@@ -729,7 +745,11 @@ serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: isSleeping ? "Service en veille" : (tts.error || "Échec TTS"),
+          error: isSleeping
+            ? "Service en veille"
+            : isInputTooShort
+            ? "Texte trop court pour la synthèse vocale"
+            : (tts.error || "Échec TTS"),
           sleeping: isSleeping,
           details: isSleeping ? "Le Space HuggingFace est probablement en veille. Réessaie dans 30 secondes." : undefined,
           text_used: safeText,
@@ -738,7 +758,7 @@ serve(async (req: Request) => {
           debug: tts.raw ? { raw: tts.raw } : undefined,
         }),
         {
-          status: isSleeping ? 200 : 500,
+          status: isSleeping ? 200 : isInputTooShort ? 400 : 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
