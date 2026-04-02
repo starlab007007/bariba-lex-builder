@@ -11,9 +11,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GLOBAL_TIMEOUT_MS = 90_000;
-const REFINE_TIMEOUT_MS = 7_000;
-const HF_STEP_TIMEOUT_MS = 25_000;
+const GLOBAL_TIMEOUT_MS = 45_000;
+const REFINE_TIMEOUT_MS = 6_000;
+const HF_HEALTH_TIMEOUT_MS = 2_500;
+const HF_CONFIG_TIMEOUT_MS = 2_500;
+const HF_JOIN_TIMEOUT_MS = 5_000;
+const HF_QUEUE_POLL_TIMEOUT_MS = 3_500;
+const HF_WAKE_POLL_INTERVAL_MS = 2_000;
+const HF_WAKE_MAX_POLLS = 3;
+const HF_QUEUE_MAX_ATTEMPTS = 6;
 const TTS_SPACE_FALLBACK_URL = "https://zimesongbian-baatonum-tts-api-v001.hf.space";
 const HEALTH_PATHS = ["/config", "/gradio_api/config", "/"] as const;
 
@@ -133,7 +139,7 @@ async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promis
 
   // Check /config (root config, works on Gradio 6+ even when /gradio_api/config returns 404)
   try {
-    const r = await fetchWithTimeout(`${spaceUrl}/config`, { headers }, 5000);
+    const r = await fetchWithTimeout(`${spaceUrl}/config`, { headers }, HF_CONFIG_TIMEOUT_MS);
     if (r.ok) {
       const ct = r.headers.get("content-type") || "";
       if (ct.includes("application/json")) {
@@ -147,13 +153,17 @@ async function detectGradioApiPrefix(spaceUrl: string, hfToken?: string): Promis
 
   // Check /gradio_api/config (Gradio 4+)
   try {
-    const r = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, 5000);
+    const r = await fetchWithTimeout(`${spaceUrl}/gradio_api/config`, { headers }, HF_CONFIG_TIMEOUT_MS);
     if (r.ok) return { apiPrefix: "/gradio_api", useDirectPredict: false };
   } catch {}
 
   // Check /api/predict (Gradio 3.x direct endpoint)
   try {
-    const r = await fetchWithTimeout(`${spaceUrl}/api/predict`, { headers, method: "POST", body: JSON.stringify({ data: [] }) }, 5000);
+    const r = await fetchWithTimeout(
+      `${spaceUrl}/api/predict`,
+      { headers, method: "POST", body: JSON.stringify({ data: [] }) },
+      HF_CONFIG_TIMEOUT_MS,
+    );
     if (r.status !== 404) return { apiPrefix: "", useDirectPredict: true };
   } catch {}
 
@@ -210,16 +220,33 @@ async function pollQueueData(
   apiPrefix: string,
   sessionHash: string,
   hfToken: string,
-  maxAttempts = 40,
-): Promise<any | null> {
+  maxAttempts = HF_QUEUE_MAX_ATTEMPTS,
+): Promise<{ result: any | null; sleeping: boolean }> {
   const headers: HeadersInit = {};
   if (hfToken) headers["Authorization"] = `Bearer ${hfToken}`;
 
   for (let i = 0; i < maxAttempts; i++) {
     const url = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${encodeURIComponent(sessionHash)}`;
-    const resp = await fetchWithTimeout(url, { headers }, HF_STEP_TIMEOUT_MS);
+    let resp: Response;
+
+    try {
+      resp = await fetchWithTimeout(url, { headers }, HF_QUEUE_POLL_TIMEOUT_MS);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "queue/data failed";
+      if (/abort|timeout/i.test(msg)) {
+        return { result: null, sleeping: true };
+      }
+      await sleep(800);
+      continue;
+    }
 
     if (!resp.ok) {
+      const errText = await resp.text().catch(() => "");
+      const isHtmlPage = errText.trimStart().startsWith("<!DOCTYPE html") || errText.trimStart().startsWith("<html");
+      const isSleeping = isHtmlPage || [429, 502, 503, 504].includes(resp.status) || /sleep|loading|temporarily unavailable/i.test(errText);
+      if (isSleeping) {
+        return { result: null, sleeping: true };
+      }
       await sleep(800);
       continue;
     }
@@ -242,9 +269,9 @@ async function pollQueueData(
         const json = JSON.parse(payload);
 
         // cas Gradio final
-        if (json?.msg === "process_completed") return json;
-        if (json?.output) return json;
-        if (json?.success && json?.data) return json;
+        if (json?.msg === "process_completed") return { result: json, sleeping: false };
+        if (json?.output) return { result: json, sleeping: false };
+        if (json?.success && json?.data) return { result: json, sleeping: false };
 
         // erreurs de queue
         if (json?.msg === "process_starts" || json?.msg === "estimation") {
@@ -258,7 +285,7 @@ async function pollQueueData(
     await sleep(1000);
   }
 
-  return null;
+  return { result: null, sleeping: false };
 }
 
 /**
@@ -322,7 +349,7 @@ async function checkSpaceStatus(spaceUrl: string, hfToken: string): Promise<Spac
 
   for (const path of HEALTH_PATHS) {
     try {
-      const resp = await fetchWithTimeout(`${spaceUrl}${path}`, { headers }, 8_000);
+      const resp = await fetchWithTimeout(`${spaceUrl}${path}`, { headers }, HF_HEALTH_TIMEOUT_MS);
       const ct = resp.headers.get("content-type") || "";
       console.log(`[bariba-tts] Health check ${path}: status=${resp.status}, ct=${ct.substring(0, 30)}`);
 
@@ -399,21 +426,21 @@ async function wakeUpSpace(spaceUrl: string, hfToken: string): Promise<boolean> 
     return false;
   }
 
-  for (let i = 1; i <= 10; i++) {
-    await sleep(5_000);
+  for (let i = 1; i <= HF_WAKE_MAX_POLLS; i++) {
+    await sleep(HF_WAKE_POLL_INTERVAL_MS);
     const status = await checkSpaceStatus(spaceUrl, hfToken);
     if (status === "ready") {
-      console.log(`[bariba-tts] ✅ Space awoke after ${i * 5}s`);
+      console.log(`[bariba-tts] ✅ Space awoke after ${i * HF_WAKE_POLL_INTERVAL_MS}ms`);
       return true;
     }
     if (status === "missing") {
       console.log("[bariba-tts] ❌ Space became unreachable during wake-up checks");
       return false;
     }
-    console.log(`[bariba-tts] ⏳ Poll ${i}/10 - still waking...`);
+    console.log(`[bariba-tts] ⏳ Poll ${i}/${HF_WAKE_MAX_POLLS} - still waking...`);
   }
 
-  console.log("[bariba-tts] ❌ Space still not awake after 50s of polling");
+  console.log("[bariba-tts] ❌ Space still not awake after short polling window");
   return false;
 }
 
@@ -492,7 +519,7 @@ async function _doSynthesize(
           headers,
           body: JSON.stringify({ data: dataPayload, fn_index: 0 }),
         },
-        HF_STEP_TIMEOUT_MS,
+        HF_JOIN_TIMEOUT_MS,
       );
 
       if (!resp.ok) {
@@ -513,7 +540,7 @@ async function _doSynthesize(
       return { audio_url: audioUrl, raw: result };
     } catch (e) {
       const msg = e instanceof Error ? e.message : "predict failed";
-      return { error: msg, sleeping: /abort/i.test(msg) };
+      return { error: msg, sleeping: /abort|timeout/i.test(msg) };
     }
   }
 
@@ -529,20 +556,20 @@ async function _doSynthesize(
 
   let joinResp: Response;
   try {
-    joinResp = await fetchWithTimeout(
+      joinResp = await fetchWithTimeout(
       `${HF_SPACE_URL}${apiPrefix}/queue/join`,
       {
         method: "POST",
         headers,
         body: JSON.stringify(body),
       },
-      HF_STEP_TIMEOUT_MS,
+        HF_JOIN_TIMEOUT_MS,
     );
   } catch (e) {
     const msg = e instanceof Error ? e.message : "HF join failed";
     return {
       error: msg,
-      sleeping: /503|sleep|temporarily unavailable/i.test(msg),
+        sleeping: /503|sleep|temporarily unavailable|abort|timeout/i.test(msg),
     };
   }
 
@@ -567,10 +594,13 @@ async function _doSynthesize(
     eventId = await readEventIdFromQueueJoin(joinResp);
   }
 
-  const result = await pollQueueData(HF_SPACE_URL, apiPrefix, sessionHash, HF_TOKEN, 45);
+  const { result, sleeping } = await pollQueueData(HF_SPACE_URL, apiPrefix, sessionHash, HF_TOKEN);
 
   if (!result) {
-    return { error: "Aucune réponse finale du Space (timeout queue/data)" };
+    return {
+      error: sleeping ? "Service en veille" : "Aucune réponse finale du Space (timeout queue/data)",
+      sleeping,
+    };
   }
 
   const audioUrl = extractAudioUrlFromGradioResult(result, HF_SPACE_URL);
