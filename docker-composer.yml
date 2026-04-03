@@ -7,7 +7,7 @@ services:
     restart: always
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.react-app-bariba.rule=Host(`app.bot.bj`)"
+      - "traefik.http.routers.react-app-bariba.rule=Host(`fitila.bj`)"
       - "traefik.http.routers.react-app-bariba.entrypoints=websecure"
       - "traefik.http.routers.react-app-bariba.tls.certresolver=letsencrypt"
       - "traefik.http.services.react-app-bariba.loadbalancer.server.port=80"
