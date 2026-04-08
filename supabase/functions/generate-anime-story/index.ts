@@ -6,7 +6,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -208,7 +208,7 @@ serve(async (req) => {
  * Look up a character reference from the database
  */
 async function getCharacterReference(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   characterType: string
 ): Promise<CharacterReference | null> {
   const { data } = await supabase
@@ -228,7 +228,7 @@ async function getSceneImage(
   style: string,
   sceneIndex: number,
   totalScenes: number,
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   apiKey?: string
 ): Promise<GeneratedScene> {
   const sceneType = detectSceneType(scene.text, scene.visualDescription);
@@ -306,7 +306,7 @@ async function getSceneImage(
  * Find complementary video clips for scenes longer than 8s
  */
 async function findStitchedClips(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   style: string,
   emotion: string,
   sceneType: string,
@@ -351,7 +351,7 @@ async function findStitchedClips(
  * DÉFI 1: +2 bonus for matching character_reference_id
  */
 async function findLibraryMatch(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   style: string,
   emotion: string,
   sceneType: string,

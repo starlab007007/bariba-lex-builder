@@ -81,8 +81,8 @@ serve(async (req: Request) => {
             avatar_url: profile?.avatar_url,
             created_at: u.created_at,
             last_sign_in_at: u.last_sign_in_at,
-            banned: u.banned_until ? true : false,
-            banned_until: u.banned_until,
+            banned: (u as any).banned_until ? true : false,
+            banned_until: (u as any).banned_until,
             roles: userRoles.map((r) => r.role),
           };
         });

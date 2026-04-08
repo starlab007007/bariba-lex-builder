@@ -135,8 +135,8 @@ Deno.serve(async (req) => {
     }
 
     return jsonResponse({ error: 'Invalid action. Use "list" or "save".' }, 400);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("generate-video-posters error:", error);
-    return jsonResponse({ error: error.message }, 500);
+    return jsonResponse({ error: (error as Error).message }, 500);
   }
 });

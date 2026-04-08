@@ -75,7 +75,7 @@ async function uploadAudioFile(
   console.log(`📤 Uploading audio file to HuggingFace Space (${audioBytes.length} bytes, ${mime})`);
 
   const formData = new FormData();
-  const blob = new Blob([audioBytes], { type: mime });
+  const blob = new Blob([audioBytes as unknown as BlobPart], { type: mime });
   formData.append("files", blob, `audio.${ext}`);
 
   const uploadResponse = await fetch(`${SPACE_URL}/gradio_api/upload`, {

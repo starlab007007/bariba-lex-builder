@@ -470,6 +470,64 @@ function getPhaseDescription(frameIndex: number, totalFrames: number): string {
   return 'Final polished result, effect complete';
 }
 
+// generateStoryboardFrames: generates descriptive storyboard frames for a template
+async function generateStoryboardFrames(apiKey: string, template: any, supabase: any): Promise<any[]> {
+  console.log(`[generateStoryboardFrames] Generating for ${template.template_key}`);
+  
+  const kseEngine = template.kse_engine as any;
+  const totalDur = kseEngine?.variants?.[kseEngine?.defaultDuration || '15s']?.durationSec || 10;
+  const frameCount = Math.min(6, Math.max(3, Math.ceil(totalDur / 3)));
+  
+  const frames: any[] = [];
+  
+  for (let i = 0; i < frameCount; i++) {
+    const progress = Math.round((i / (frameCount - 1)) * 100);
+    const prompt = `Generate storyboard frame ${i + 1}/${frameCount} for "${template.label_fr}" video template.
+Theme: ${template.family} - ${template.description_fr}
+Progress: ${progress}%
+Style: Clean storyboard sketch, African-inspired, ${template.color} tones, 9:16 format.`;
+
+    try {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-3-pro-image-preview",
+          messages: [{ role: "user", content: prompt }],
+          modalities: ["image", "text"]
+        })
+      });
+
+      if (!response.ok) { console.error(`Storyboard frame ${i} failed: ${response.status}`); continue; }
+
+      const data = await response.json();
+      const imageBase64 = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      
+      if (imageBase64) {
+        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        const filePath = `storyboards/${template.template_key}_frame_${String(i).padStart(2, '0')}.png`;
+        
+        await supabase.storage.from('template-assets').upload(filePath, buffer, { contentType: 'image/png', upsert: true });
+        const { data: urlData } = supabase.storage.from('template-assets').getPublicUrl(filePath);
+        
+        frames.push({
+          index: i,
+          imageUrl: urlData.publicUrl,
+          progressPercent: progress,
+          description: `Frame ${i + 1}/${frameCount} - ${getPhaseDescription(i, frameCount)}`
+        });
+      }
+    } catch (err) {
+      console.error(`Error generating storyboard frame ${i}:`, err);
+    }
+    
+    if (i < frameCount - 1) await new Promise(r => setTimeout(r, 300));
+  }
+  
+  return frames;
+}
+
 // Store animation frames as JSON for client-side video generation
 async function generateDemoVideo(apiKey: string, template: any, supabase: any, previewImageUrl?: string): Promise<string> {
   console.log(`[generateDemoVideo] Creating animated sequence for ${template.template_key}`);
