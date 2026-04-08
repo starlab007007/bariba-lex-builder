@@ -10,7 +10,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -146,7 +146,7 @@ async function handleGenerateBatch(
     time_of_day?: string;
     count?: number;
   },
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   apiKey?: string
 ) {
   const { style, emotion, scene_type, character_type, action, time_of_day, count = 1 } = params;
@@ -206,7 +206,7 @@ async function generateAndStoreImage(params: {
   action: string;
   time_of_day: string;
   apiKey: string;
-  supabase: ReturnType<typeof createClient>;
+  supabase: any;
 }) {
   const { style, emotion, scene_type, character_type, action, time_of_day, apiKey, supabase } = params;
 
@@ -333,7 +333,7 @@ async function handleListLibrary(
     limit?: number;
     offset?: number;
   },
-  supabase: ReturnType<typeof createClient>
+  supabase: any
 ) {
   const { style, emotion, scene_type, character_type, asset_type, limit = 50, offset = 0 } = params;
 
@@ -367,7 +367,7 @@ async function handleListLibrary(
 /**
  * Get library coverage statistics
  */
-async function handleGetStats(supabase: ReturnType<typeof createClient>) {
+async function handleGetStats(supabase: any) {
   // Count total images
   const { count: totalCount } = await supabase
     .from('anime_scene_library')
@@ -471,7 +471,7 @@ function generateAllCombinations(style: string) {
 /**
  * Get existing combinations from database
  */
-async function getExistingCombinations(supabase: ReturnType<typeof createClient>, style: string) {
+async function getExistingCombinations(supabase: any, style: string) {
   const { data } = await supabase
     .from('anime_scene_library')
     .select('style, emotion, scene_type, character_type, action')
