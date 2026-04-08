@@ -492,7 +492,7 @@ async function getExistingCombinations(supabase: any, style: string) {
  */
 async function handleGenerateFullLibrary(
   params: { style: string; batch_size?: number; start_from?: number },
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   apiKey?: string
 ) {
   const { style, batch_size = 1, start_from = 0 } = params;
