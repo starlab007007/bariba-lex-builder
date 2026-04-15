@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, BookOpen, Type, Calculator, ClipboardCheck, Users, Lock, ChevronRight } from 'lucide-react';
+import { ArrowLeft, BookOpen, Type, Calculator, ClipboardCheck, Users, Lock, ChevronRight, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useSideMenu } from './FitilaApp';
-import { CLASSE_LESSONS, CLASSE_EVALUATIONS, CALCUL_LESSONS, getClasseProgress } from '@/data/classeContent';
+import { CLASSE_LESSONS, CLASSE_EVALUATIONS, CALCUL_LESSONS, getClasseProgress, getLessonStars, isLessonUnlocked } from '@/data/classeContent';
 import ClasseLessonView from '@/components/classe/ClasseLessonView';
 import ClasseAlphabetView from '@/components/classe/ClasseAlphabetView';
 import ClasseCalculView from '@/components/classe/ClasseCalculView';
