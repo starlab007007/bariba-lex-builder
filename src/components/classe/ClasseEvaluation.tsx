@@ -15,14 +15,13 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
 
-  if (!evaluation) return <p className="text-white/60">Évaluation introuvable</p>;
+  if (!evaluation) return <p className="text-gray-400">Évaluation introuvable</p>;
 
-  const totalQuestions = evaluation.sections.reduce((sum, s) => sum + s.questions.length, 0);
+  const totalQuestions = evaluation.allQuestions.length;
 
   const handleSubmit = () => {
-    // Simple scoring: each answered question = 1 point
     const answered = Object.values(answers).filter(a => a.trim().length > 3).length;
-    const pct = Math.round((answered / totalQuestions) * 100);
+    const pct = totalQuestions > 0 ? Math.round((answered / totalQuestions) * 100) : 0;
     setScore(pct);
     saveEvaluationScore(evalId, pct);
     setSubmitted(true);
@@ -34,24 +33,24 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
           <span className="text-6xl">{score >= 70 ? '🎉' : score >= 40 ? '📝' : '💪'}</span>
         </motion.div>
-        <h2 className="text-white font-black text-3xl">{score}%</h2>
-        <p className="text-white/60">
+        <h2 className="text-gray-800 font-black text-3xl">{score}%</h2>
+        <p className="text-gray-500">
           {score >= 70
             ? (currentLang === 'ba' ? 'A kua dee dee!' : 'Excellent travail !')
-            : (currentLang === 'ba' ? 'A sáa yäru' : 'Continue à t\'entraîner')}
+            : (currentLang === 'ba' ? 'A sãa yɛru' : 'Continue à t\'entraîner')}
         </p>
-        <div className="h-3 bg-white/10 rounded-full overflow-hidden max-w-xs mx-auto">
+        <div className="h-3 bg-gray-200 rounded-full overflow-hidden max-w-xs mx-auto">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${score}%` }}
             transition={{ duration: 1, delay: 0.3 }}
-            className={`h-full rounded-full ${score >= 70 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+            className={`h-full rounded-full ${score >= 70 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-400'}`}
           />
         </div>
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={onBack}
-          className="px-6 py-3 rounded-xl bg-amber-500 text-white font-bold"
+          className="px-6 py-3 rounded-xl bg-amber-500 text-white font-bold shadow-lg shadow-amber-200"
         >
           {currentLang === 'ba' ? 'Yeni' : 'Retour'}
         </motion.button>
@@ -61,23 +60,24 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
-        <h2 className="text-white font-black text-xl">{evaluation.title}</h2>
-        <p className="text-purple-300 text-sm mt-1">
+      <div className="p-4 rounded-3xl bg-gradient-to-br from-purple-100 to-pink-100 border border-purple-200 shadow-md">
+        <h2 className="text-gray-800 font-black text-xl">{evaluation.title}</h2>
+        <p className="text-purple-600 text-sm mt-1">
           {totalQuestions} {currentLang === 'ba' ? 'gari bikiabu' : 'questions'}
         </p>
       </div>
 
-      {evaluation.sections.map((section, si) => (
+      {/* Questions by section */}
+      {Object.entries(evaluation.sections).map(([sec, questions], si) => (
         <div key={si} className="space-y-3">
-          <p className="text-white/60 text-xs uppercase font-bold px-1">{section.label}</p>
-          {section.questions.map((q, qi) => {
+          <p className="text-gray-500 text-xs uppercase font-bold px-1">{sec}</p>
+          {(questions as string[]).map((q, qi) => {
             const key = `${si}_${qi}`;
             return (
-              <div key={key} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                <p className="text-white text-sm font-medium mb-2">{qi + 1}. {q}</p>
+              <div key={key} className="p-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
+                <p className="text-gray-800 text-sm font-medium mb-2">{qi + 1}. {q}</p>
                 <textarea
-                  className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm placeholder:text-white/30 focus:border-purple-500/50 outline-none resize-none"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-gray-700 text-sm placeholder:text-gray-300 focus:border-purple-400 outline-none resize-none"
                   rows={2}
                   placeholder={currentLang === 'ba' ? 'A yora...' : 'Ta réponse...'}
                   value={answers[key] || ''}
@@ -89,14 +89,12 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
         </div>
       ))}
 
-      {/* Dictation */}
-      {evaluation.dictation && (
-        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-          <p className="text-white/60 text-xs uppercase font-bold mb-3">📝 {currentLang === 'ba' ? 'Gari yoran yorubu' : 'Dictée'}</p>
-          {evaluation.dictation.map((d, i) => (
-            <div key={i} className="mt-2 p-2 rounded-lg bg-white/5">
-              <p className="text-amber-300 text-sm">{d}</p>
-            </div>
+      {/* Writing exercises */}
+      {evaluation.writing.length > 0 && (
+        <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
+          <p className="text-gray-500 text-xs uppercase font-bold mb-3">✍️ {currentLang === 'ba' ? 'A yora' : 'Écriture'}</p>
+          {evaluation.writing.map((w, i) => (
+            <p key={i} className="text-amber-600 text-sm font-mono mb-1">{w}</p>
           ))}
         </div>
       )}
@@ -104,7 +102,7 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={handleSubmit}
-        className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black text-lg"
+        className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black text-lg shadow-lg shadow-purple-200"
       >
         {currentLang === 'ba' ? 'Yaayasia' : 'Soumettre'}
       </motion.button>
