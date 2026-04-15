@@ -6,10 +6,16 @@ import { BARIBA_ALPHABET } from '@/data/classeContent';
 export default function ClasseAlphabetView() {
   const { currentLang } = useFitilaLanguage();
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
-  const [mode, setMode] = useState<'vowels' | 'consonants' | 'syllables'>('vowels');
+  const [mode, setMode] = useState<'vowels' | 'consonants' | 'nasals' | 'syllables'>('vowels');
 
-  const allLetters = mode === 'vowels' ? BARIBA_ALPHABET.vowels : BARIBA_ALPHABET.consonants;
-  const selected = [...BARIBA_ALPHABET.vowels, ...BARIBA_ALPHABET.consonants].find(l => l.letter === selectedLetter);
+  const getLetters = () => {
+    switch (mode) {
+      case 'vowels': return BARIBA_ALPHABET.vowels;
+      case 'consonants': return BARIBA_ALPHABET.consonants;
+      case 'nasals': return [...BARIBA_ALPHABET.nasalVowels, ...BARIBA_ALPHABET.toneMarkers];
+      default: return [];
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -18,13 +24,16 @@ export default function ClasseAlphabetView() {
         {[
           { id: 'vowels' as const, label: currentLang === 'ba' ? 'Yori piibunu' : 'Voyelles', count: BARIBA_ALPHABET.vowels.length },
           { id: 'consonants' as const, label: currentLang === 'ba' ? 'Yori bakanu' : 'Consonnes', count: BARIBA_ALPHABET.consonants.length },
-          { id: 'syllables' as const, label: currentLang === 'ba' ? 'Gømbi' : 'Syllabes' },
+          { id: 'nasals' as const, label: currentLang === 'ba' ? 'Wãrun yĩreru' : 'Nasales', count: BARIBA_ALPHABET.nasalVowels.length },
+          { id: 'syllables' as const, label: currentLang === 'ba' ? 'Gɔmbi' : 'Syllabes' },
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setMode(tab.id)}
+            onClick={() => { setMode(tab.id); setSelectedLetter(null); }}
             className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              mode === tab.id ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white/50'
+              mode === tab.id
+                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
+                : 'bg-white text-gray-500 border border-gray-200'
             }`}
           >
             {tab.label} {tab.count ? `(${tab.count})` : ''}
@@ -36,60 +45,59 @@ export default function ClasseAlphabetView() {
         <>
           {/* Letter grid */}
           <div className="grid grid-cols-4 gap-3">
-            {allLetters.map((l, i) => (
+            {getLetters().map((letter, i) => (
               <motion.button
-                key={l.letter}
+                key={letter}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.03 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => setSelectedLetter(l.letter)}
-                className={`aspect-square rounded-2xl flex flex-col items-center justify-center transition-all ${
-                  selectedLetter === l.letter
-                    ? 'bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/30'
-                    : 'bg-white/10 border border-white/10'
+                onClick={() => setSelectedLetter(letter)}
+                className={`aspect-square rounded-2xl flex flex-col items-center justify-center transition-all shadow-sm ${
+                  selectedLetter === letter
+                    ? 'bg-gradient-to-br from-emerald-400 to-teal-400 shadow-lg shadow-emerald-200'
+                    : 'bg-white border border-gray-100'
                 }`}
               >
-                <span className="text-3xl font-black text-white">{l.letter}</span>
-                <span className="text-white/40 text-xs mt-1">{l.upper}</span>
+                <span className={`text-3xl font-black ${selectedLetter === letter ? 'text-white' : 'text-gray-800'}`}>{letter}</span>
+                <span className={`text-xs mt-1 ${selectedLetter === letter ? 'text-white/70' : 'text-gray-400'}`}>{letter.toUpperCase()}</span>
               </motion.button>
             ))}
           </div>
 
           {/* Selected detail */}
-          {selected && (
+          {selectedLetter && (
             <motion.div
-              key={selected.letter}
+              key={selectedLetter}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30"
+              className="p-5 rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 shadow-md"
             >
               <div className="flex items-center gap-4">
-                <span className="text-6xl font-black text-white">{selected.letter}</span>
-                <span className="text-4xl font-black text-white/40">{selected.upper}</span>
+                <span className="text-6xl font-black text-gray-800">{selectedLetter}</span>
+                <span className="text-4xl font-black text-gray-300">{selectedLetter.toUpperCase()}</span>
                 <div className="flex-1">
-                  <p className="text-white/60 text-xs uppercase">{currentLang === 'ba' ? 'Wunana' : 'Exemple'}</p>
-                  <p className="text-emerald-300 text-xl font-bold">{selected.example}</p>
+                  <p className="text-gray-500 text-xs uppercase">{currentLang === 'ba' ? 'Yori' : 'Lettre'}</p>
+                  <p className="text-emerald-600 text-xl font-bold">{selectedLetter}</p>
                 </div>
-                <button className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                <button className="w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center">
                   <span className="text-2xl">🔊</span>
                 </button>
               </div>
             </motion.div>
           )}
 
-          {/* Tones info */}
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-            <p className="text-white/60 text-xs uppercase font-bold mb-2">{currentLang === 'ba' ? 'Wirin gari' : 'Les tons'}</p>
-            <div className="space-y-1 text-sm">
-              <p className="text-white/80">• {BARIBA_ALPHABET.tones.bas}</p>
-              <p className="text-white/80">• {BARIBA_ALPHABET.tones.moyen}</p>
-              <p className="text-white/80">• {BARIBA_ALPHABET.tones.eleve}</p>
-            </div>
+          {/* Info */}
+          <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
+            <p className="text-gray-500 text-xs uppercase font-bold mb-2">
+              {mode === 'vowels' ? '📕' : mode === 'consonants' ? '📗' : '📘'} {currentLang === 'ba' ? 'Gari' : 'Info'}
+            </p>
+            {mode === 'vowels' && <p className="text-gray-600 text-sm">{currentLang === 'ba' ? 'Baatɔnum yori piibunu 7 bu mɔ: a, ɛ, e, i, o, ɔ, u' : 'L\'alphabet Bariba comporte 7 voyelles de base: a, ɛ, e, i, o, ɔ, u'}</p>}
+            {mode === 'consonants' && <p className="text-gray-600 text-sm">{currentLang === 'ba' ? 'Yori bakanu 16 bu mɔ. Kp ka gb ba mɔ yori bakanu yiruse' : '16 consonnes dont les digraphes kp et gb'}</p>}
+            {mode === 'nasals' && <p className="text-gray-600 text-sm">{currentLang === 'ba' ? 'Wãrun yĩreru ba mɔ: ã, ɛ̃, ĩ, ɔ̃. Ton bas: ɔ̀, ǹ' : 'Voyelles nasales: ã, ɛ̃, ĩ, ɔ̃. Marques tonales: ɔ̀ (ton bas), ǹ (n syllabique)'}</p>}
           </div>
         </>
       ) : (
-        /* Syllable builder */
         <SyllableBuilder />
       )}
     </div>
@@ -104,30 +112,30 @@ function SyllableBuilder() {
 
   return (
     <div className="space-y-4">
-      <p className="text-white/60 text-sm">{currentLang === 'ba' ? 'Gømbi saribu: yori bakan daki kpa yori piibunu nø' : 'Construction de syllabes : choisis une consonne puis combine avec les voyelles'}</p>
+      <p className="text-gray-600 text-sm">{currentLang === 'ba' ? 'Gɔmbi saribu: yori bakan daki kpa yori piibunu nɔ' : 'Choisis une consonne pour voir les syllabes'}</p>
 
       {/* Consonant selector */}
       <div className="flex flex-wrap gap-2">
         {consonants.map(c => (
           <button
-            key={c.letter}
-            onClick={() => setConsonant(c.letter)}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold transition-all ${
-              consonant === c.letter ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/60'
+            key={c}
+            onClick={() => setConsonant(c)}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold transition-all shadow-sm ${
+              consonant === c ? 'bg-blue-500 text-white shadow-blue-200' : 'bg-white text-gray-600 border border-gray-200'
             }`}
           >
-            {c.letter}
+            {c}
           </button>
         ))}
       </div>
 
       {/* Generated syllables */}
-      <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-        <p className="text-white/40 text-xs uppercase font-bold mb-3">{currentLang === 'ba' ? 'Gømbi' : 'Syllabes'} — {consonant} + voyelle</p>
+      <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
+        <p className="text-gray-400 text-xs uppercase font-bold mb-3">{currentLang === 'ba' ? 'Gɔmbi' : 'Syllabes'} — {consonant} + voyelle</p>
         <div className="grid grid-cols-4 gap-2">
           {vowels.map(v => (
-            <div key={v.letter} className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-center">
-              <span className="text-white text-xl font-bold">{consonant}{v.letter}</span>
+            <div key={v} className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 text-center">
+              <span className="text-gray-800 text-xl font-bold">{consonant}{v}</span>
             </div>
           ))}
         </div>

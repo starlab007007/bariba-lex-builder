@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, BookOpen, Type, Calculator, ClipboardCheck, Users, BarChart3, Lock, ChevronRight } from 'lucide-react';
+import { ArrowLeft, BookOpen, Type, Calculator, ClipboardCheck, Users, Lock, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useSideMenu } from './FitilaApp';
-import { CLASSE_LESSONS, CLASSE_THEMES, CLASSE_EVALUATIONS, getClasseProgress } from '@/data/classeContent';
+import { CLASSE_LESSONS, CLASSE_EVALUATIONS, CALCUL_LESSONS, getClasseProgress } from '@/data/classeContent';
 import ClasseLessonView from '@/components/classe/ClasseLessonView';
 import ClasseAlphabetView from '@/components/classe/ClasseAlphabetView';
 import ClasseCalculView from '@/components/classe/ClasseCalculView';
@@ -15,7 +15,7 @@ type Section = 'home' | 'lessons' | 'lesson-detail' | 'alphabet' | 'calcul' | 'e
 
 export default function FitilaClasse() {
   const navigate = useNavigate();
-  const { t, currentLang } = useFitilaLanguage();
+  const { currentLang } = useFitilaLanguage();
   const { open: openMenu } = useSideMenu();
   const [section, setSection] = useState<Section>('home');
   const [selectedLessonId, setSelectedLessonId] = useState<number>(1);
@@ -24,14 +24,17 @@ export default function FitilaClasse() {
   const progress = getClasseProgress();
   const completedCount = progress.completedLessons.length;
   const totalLessons = CLASSE_LESSONS.length;
-  const progressPercent = Math.round((completedCount / totalLessons) * 100);
+  const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-  const sections = [
-    { id: 'lessons' as Section, icon: BookOpen, emoji: '📖', label: currentLang === 'ba' ? 'Garibu' : 'Leçons', desc: `${totalLessons} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-amber-500 to-orange-500', count: completedCount },
-    { id: 'alphabet' as Section, icon: Type, emoji: '🔤', label: currentLang === 'ba' ? 'Baranu ka gømbi' : 'Lecture & Écriture', desc: currentLang === 'ba' ? 'Yori piibunu ka bakanu' : 'Alphabet Bariba', gradient: 'from-emerald-500 to-teal-500' },
-    { id: 'calcul' as Section, icon: Calculator, emoji: '🔢', label: currentLang === 'ba' ? 'Dooru' : 'Calcul & Gestion', desc: currentLang === 'ba' ? 'Dootinu ka yèesu' : 'Numération, opérations', gradient: 'from-blue-500 to-indigo-500' },
-    { id: 'evaluations' as Section, icon: ClipboardCheck, emoji: '📝', label: currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations', desc: `${CLASSE_EVALUATIONS.length} ${currentLang === 'ba' ? 'yaayasiabu' : 'évaluations'}`, gradient: 'from-purple-500 to-pink-500' },
-    { id: 'facilitateur' as Section, icon: Users, emoji: '👨‍🏫', label: currentLang === 'ba' ? 'Sóøsirun søøru' : 'Mode Facilitateur', desc: currentLang === 'ba' ? 'Keu sóøsion garibu' : 'Guide pédagogique', gradient: 'from-rose-500 to-red-500' },
+  const langEvals = CLASSE_EVALUATIONS.filter(e => e.page < 85);
+  const calcEvals = CLASSE_EVALUATIONS.filter(e => e.page >= 85);
+
+  const sectionCards = [
+    { id: 'lessons' as Section, emoji: '📖', label: currentLang === 'ba' ? 'Garibu' : 'Leçons', desc: `${totalLessons} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-amber-400 to-orange-400', count: completedCount },
+    { id: 'alphabet' as Section, emoji: '🔤', label: currentLang === 'ba' ? 'Sɔ̃ɔsiru' : 'Alphabet', desc: currentLang === 'ba' ? 'Yori piibunu ka bakanu' : 'Voyelles & Consonnes', gradient: 'from-emerald-400 to-teal-400' },
+    { id: 'calcul' as Section, emoji: '🔢', label: currentLang === 'ba' ? 'Dooru' : 'Calcul', desc: `${CALCUL_LESSONS.length} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-blue-400 to-indigo-400' },
+    { id: 'evaluations' as Section, emoji: '📝', label: currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations', desc: `${CLASSE_EVALUATIONS.length} ${currentLang === 'ba' ? 'yaayasiabu' : 'évaluations'}`, gradient: 'from-purple-400 to-pink-400' },
+    { id: 'facilitateur' as Section, emoji: '👨‍🏫', label: currentLang === 'ba' ? 'Sɔ̃ɔsirun sɔɔru' : 'Facilitateur', desc: currentLang === 'ba' ? 'Keu sɔ̃ɔsion garibu' : 'Guide pédagogique', gradient: 'from-rose-400 to-red-400' },
   ];
 
   const goBack = () => {
@@ -41,121 +44,150 @@ export default function FitilaClasse() {
     else navigate('/fitila');
   };
 
-  // ═══ LESSON LIST ═══
-  const renderLessonList = () => {
-    const grouped = CLASSE_THEMES.map(theme => ({
-      ...theme,
-      lessons: CLASSE_LESSONS.filter(l => l.theme === theme.id),
-    })).filter(g => g.lessons.length > 0);
+  // Group lessons by theme
+  const themes = [...new Set(CLASSE_LESSONS.map(l => l.theme))];
+  const groupedLessons = themes.map(t => ({
+    theme: t,
+    label: CLASSE_LESSONS.find(l => l.theme === t)?.themeLabel || t,
+    lessons: CLASSE_LESSONS.filter(l => l.theme === t),
+  }));
 
-    return (
-      <div className="space-y-6">
-        {grouped.map(group => (
-          <div key={group.id}>
-            <div className="flex items-center gap-2 mb-3 px-1">
-              <span className="text-xl">{group.icon}</span>
-              <h3 className="text-white font-bold text-sm">{group.label}</h3>
-              <span className="text-white/40 text-xs">— {group.labelFr}</span>
-            </div>
-            <div className="space-y-2">
-              {group.lessons.map(lesson => {
-                const done = progress.completedLessons.includes(lesson.id);
-                return (
-                  <motion.button
-                    key={lesson.id}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => { setSelectedLessonId(lesson.id); setSection('lesson-detail'); }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${done ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-white/5 border border-white/10'}`}
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${done ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white/60'}`}>
-                      {done ? '✓' : lesson.id}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-white text-sm font-medium">{lesson.title}</p>
-                      <p className="text-white/40 text-xs">{currentLang === 'ba' ? 'Sóøsiru' : 'Lettres'}: {lesson.letters}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-white/30" />
-                  </motion.button>
-                );
-              })}
-            </div>
+  const renderLessonList = () => (
+    <div className="space-y-6">
+      {groupedLessons.map(group => (
+        <div key={group.theme}>
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <span className="text-lg">📖</span>
+            <h3 className="text-gray-800 font-bold text-sm">{group.label}</h3>
           </div>
-        ))}
-      </div>
-    );
-  };
-
-  // ═══ EVALUATION LIST ═══
-  const renderEvaluationList = () => (
-    <div className="space-y-3">
-      {CLASSE_EVALUATIONS.map(ev => {
-        const score = progress.evaluationScores[ev.id];
-        return (
-          <motion.button
-            key={ev.id}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => { setSelectedEvalId(ev.id); setSection('eval-detail'); }}
-            className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10"
-          >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <span className="text-2xl">📝</span>
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-white font-medium">{ev.title}</p>
-              <p className="text-white/40 text-xs">
-                {currentLang === 'ba' ? 'Gari' : 'Après leçon'} {ev.afterLesson}
-              </p>
-            </div>
-            {score !== undefined && (
-              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-bold">
-                {score}%
-              </span>
-            )}
-            <ChevronRight className="w-4 h-4 text-white/30" />
-          </motion.button>
-        );
-      })}
+          <div className="space-y-2">
+            {group.lessons.map(lesson => {
+              const done = progress.completedLessons.includes(lesson.id);
+              return (
+                <motion.button
+                  key={lesson.id}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => { setSelectedLessonId(lesson.id); setSection('lesson-detail'); }}
+                  className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all shadow-sm ${done ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-white border border-gray-100'}`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${done ? 'bg-emerald-500 text-white' : 'bg-amber-100 text-amber-700'}`}>
+                    {done ? '✓' : lesson.id}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-gray-800 text-sm font-semibold">{lesson.title}</p>
+                    {lesson.phonetics && (
+                      <p className="text-gray-400 text-xs">{lesson.phonetics.label}</p>
+                    )}
+                  </div>
+                  {lesson.imageUrl && <span className="text-gray-300 text-xs">🖼️</span>}
+                  <ChevronRight className="w-4 h-4 text-gray-300" />
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 
-  // ═══ HOME ═══
+  const renderEvaluationList = () => (
+    <div className="space-y-6">
+      {/* Langue evaluations */}
+      <div>
+        <h3 className="text-gray-700 font-bold text-sm mb-3 px-1">📖 {currentLang === 'ba' ? 'Garibu' : 'Langue'}</h3>
+        <div className="space-y-2">
+          {langEvals.map(ev => {
+            const score = progress.evaluationScores[ev.id];
+            return (
+              <motion.button key={ev.id} whileTap={{ scale: 0.98 }}
+                onClick={() => { setSelectedEvalId(ev.id); setSection('eval-detail'); }}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm"
+              >
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+                  <span className="text-2xl">📝</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-gray-800 font-semibold text-sm">{ev.title}</p>
+                  <p className="text-gray-400 text-xs">{ev.allQuestions.length} {currentLang === 'ba' ? 'gari bikiabu' : 'questions'}</p>
+                </div>
+                {score !== undefined && (
+                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-sm font-bold">{score}%</span>
+                )}
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+      {/* Calcul evaluations */}
+      {calcEvals.length > 0 && (
+        <div>
+          <h3 className="text-gray-700 font-bold text-sm mb-3 px-1">🔢 {currentLang === 'ba' ? 'Dooru' : 'Calcul'}</h3>
+          <div className="space-y-2">
+            {calcEvals.map(ev => {
+              const score = progress.evaluationScores[ev.id];
+              return (
+                <motion.button key={ev.id} whileTap={{ scale: 0.98 }}
+                  onClick={() => { setSelectedEvalId(ev.id); setSection('eval-detail'); }}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-400 flex items-center justify-center">
+                    <span className="text-2xl">🧮</span>
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-gray-800 font-semibold text-sm">{ev.title}</p>
+                    <p className="text-gray-400 text-xs">{ev.allQuestions.length} {currentLang === 'ba' ? 'gari bikiabu' : 'questions'}</p>
+                  </div>
+                  {score !== undefined && (
+                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-sm font-bold">{score}%</span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-gray-300" />
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const renderHome = () => (
     <div className="space-y-6">
       {/* Niveau selector */}
       <div className="flex gap-3">
-        <div className="flex-1 p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50">
-          <p className="text-amber-400 font-black text-lg">🔥 {currentLang === 'ba' ? 'Dii gbiikiru' : 'Niveau 1'}</p>
-          <p className="text-white/60 text-xs mt-1">{progressPercent}% {currentLang === 'ba' ? 'kobu' : 'complété'}</p>
-          <div className="mt-2 h-2 bg-white/10 rounded-full overflow-hidden">
+        <div className="flex-1 p-4 rounded-3xl bg-gradient-to-br from-amber-100 to-orange-100 border-2 border-amber-300 shadow-md">
+          <p className="text-amber-700 font-black text-lg">🔥 {currentLang === 'ba' ? 'Dii gbiikiru' : 'Niveau 1'}</p>
+          <p className="text-amber-600/70 text-xs mt-1">{progressPercent}% {currentLang === 'ba' ? 'kobu' : 'complété'}</p>
+          <div className="mt-2 h-2.5 bg-amber-200/50 rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
           </div>
         </div>
-        <div className="flex-1 p-4 rounded-2xl bg-white/5 border border-white/10 opacity-50 relative">
-          <Lock className="absolute top-3 right-3 w-4 h-4 text-white/30" />
-          <p className="text-white/40 font-bold text-lg">🔒 {currentLang === 'ba' ? 'Dii yiruse' : 'Niveau 2'}</p>
-          <p className="text-white/30 text-xs mt-1">{currentLang === 'ba' ? 'Ta n wá' : 'Bientôt'}</p>
+        <div className="flex-1 p-4 rounded-3xl bg-gray-50 border border-gray-200 opacity-60 relative">
+          <Lock className="absolute top-3 right-3 w-4 h-4 text-gray-400" />
+          <p className="text-gray-400 font-bold text-lg">🔒 {currentLang === 'ba' ? 'Dii yiruse' : 'Niveau 2'}</p>
+          <p className="text-gray-300 text-xs mt-1">{currentLang === 'ba' ? 'Ta ǹ wã' : 'Bientôt'}</p>
         </div>
       </div>
 
       {/* Stats */}
       <div className="flex gap-3">
-        <div className="flex-1 p-3 rounded-xl bg-white/5 text-center">
-          <p className="text-2xl font-black text-white">{completedCount}</p>
-          <p className="text-white/40 text-[10px]">{currentLang === 'ba' ? 'Gari kobu' : 'Leçons terminées'}</p>
+        <div className="flex-1 p-3 rounded-2xl bg-white shadow-sm border border-gray-100 text-center">
+          <p className="text-2xl font-black text-gray-800">{completedCount}</p>
+          <p className="text-gray-400 text-[10px]">{currentLang === 'ba' ? 'Gari kobu' : 'Leçons'}</p>
         </div>
-        <div className="flex-1 p-3 rounded-xl bg-white/5 text-center">
-          <p className="text-2xl font-black text-white">{Object.keys(progress.evaluationScores).length}</p>
-          <p className="text-white/40 text-[10px]">{currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations'}</p>
+        <div className="flex-1 p-3 rounded-2xl bg-white shadow-sm border border-gray-100 text-center">
+          <p className="text-2xl font-black text-gray-800">{Object.keys(progress.evaluationScores).length}</p>
+          <p className="text-gray-400 text-[10px]">{currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations'}</p>
         </div>
-        <div className="flex-1 p-3 rounded-xl bg-white/5 text-center">
-          <p className="text-2xl font-black text-amber-400">{progressPercent}%</p>
-          <p className="text-white/40 text-[10px]">{currentLang === 'ba' ? 'Swaa søø' : 'Progression'}</p>
+        <div className="flex-1 p-3 rounded-2xl bg-white shadow-sm border border-gray-100 text-center">
+          <p className="text-2xl font-black text-amber-500">{progressPercent}%</p>
+          <p className="text-gray-400 text-[10px]">{currentLang === 'ba' ? 'Swaa sɔɔ' : 'Progression'}</p>
         </div>
       </div>
 
       {/* Section cards */}
       <div className="grid grid-cols-2 gap-3">
-        {sections.map((sec, i) => (
+        {sectionCards.map((sec, i) => (
           <motion.button
             key={sec.id}
             initial={{ opacity: 0, y: 20 }}
@@ -163,15 +195,15 @@ export default function FitilaClasse() {
             transition={{ delay: i * 0.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setSection(sec.id)}
-            className="flex flex-col items-center gap-2 p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+            className="flex flex-col items-center gap-2 p-5 rounded-3xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all"
           >
             <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${sec.gradient} flex items-center justify-center shadow-lg`}>
               <span className="text-3xl">{sec.emoji}</span>
             </div>
-            <span className="text-white text-sm font-bold text-center">{sec.label}</span>
-            <span className="text-white/40 text-[10px] text-center">{sec.desc}</span>
+            <span className="text-gray-800 text-sm font-bold text-center">{sec.label}</span>
+            <span className="text-gray-400 text-[10px] text-center">{sec.desc}</span>
             {sec.count !== undefined && (
-              <span className="text-emerald-400 text-[10px] font-bold">{sec.count}/{totalLessons} ✓</span>
+              <span className="text-emerald-500 text-[10px] font-bold">{sec.count}/{totalLessons} ✓</span>
             )}
           </motion.button>
         ))}
@@ -183,26 +215,26 @@ export default function FitilaClasse() {
     home: currentLang === 'ba' ? 'Keu' : 'Classe',
     lessons: currentLang === 'ba' ? 'Garibu' : 'Leçons',
     'lesson-detail': CLASSE_LESSONS.find(l => l.id === selectedLessonId)?.title || '',
-    alphabet: currentLang === 'ba' ? 'Baranu ka gømbi' : 'Alphabet',
+    alphabet: currentLang === 'ba' ? 'Sɔ̃ɔsiru' : 'Alphabet',
     calcul: currentLang === 'ba' ? 'Dooru' : 'Calcul',
     evaluations: currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations',
     'eval-detail': CLASSE_EVALUATIONS.find(e => e.id === selectedEvalId)?.title || '',
-    facilitateur: currentLang === 'ba' ? 'Sóøsirun søøru' : 'Facilitateur',
+    facilitateur: currentLang === 'ba' ? 'Sɔ̃ɔsirun sɔɔru' : 'Facilitateur',
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-amber-950/30 via-black to-black">
+    <div className="h-full flex flex-col bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-white/10">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={goBack} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
-          <ArrowLeft className="w-5 h-5 text-white" />
+      <div className="flex items-center gap-3 p-4 bg-white/80 backdrop-blur-sm border-b border-gray-200/50">
+        <motion.button whileTap={{ scale: 0.9 }} onClick={goBack} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+          <ArrowLeft className="w-5 h-5 text-gray-600" />
         </motion.button>
         <div className="flex-1">
-          <h1 className="text-white font-black text-lg flex items-center gap-2">
+          <h1 className="text-gray-800 font-black text-lg flex items-center gap-2">
             🏫 {sectionTitles[section]}
           </h1>
           {section === 'home' && (
-            <p className="text-white/40 text-xs">{currentLang === 'ba' ? 'Dii gbiikiru — Baatønum' : 'Niveau 1 — Bariba'}</p>
+            <p className="text-gray-400 text-xs">{currentLang === 'ba' ? 'Dii gbiikiru — Baatɔnum' : 'Niveau 1 — Bariba'}</p>
           )}
         </div>
       </div>
@@ -217,13 +249,13 @@ export default function FitilaClasse() {
               <ClasseLessonView
                 lessonId={selectedLessonId}
                 onNext={() => {
-                  const next = CLASSE_LESSONS.find(l => l.id === selectedLessonId + 1);
-                  if (next) setSelectedLessonId(next.id);
+                  const idx = CLASSE_LESSONS.findIndex(l => l.id === selectedLessonId);
+                  if (idx < CLASSE_LESSONS.length - 1) setSelectedLessonId(CLASSE_LESSONS[idx + 1].id);
                   else setSection('lessons');
                 }}
                 onPrev={() => {
-                  const prev = CLASSE_LESSONS.find(l => l.id === selectedLessonId - 1);
-                  if (prev) setSelectedLessonId(prev.id);
+                  const idx = CLASSE_LESSONS.findIndex(l => l.id === selectedLessonId);
+                  if (idx > 0) setSelectedLessonId(CLASSE_LESSONS[idx - 1].id);
                 }}
               />
             )}
@@ -231,10 +263,7 @@ export default function FitilaClasse() {
             {section === 'calcul' && <ClasseCalculView />}
             {section === 'evaluations' && renderEvaluationList()}
             {section === 'eval-detail' && (
-              <ClasseEvaluation
-                evalId={selectedEvalId}
-                onBack={() => setSection('evaluations')}
-              />
+              <ClasseEvaluation evalId={selectedEvalId} onBack={() => setSection('evaluations')} />
             )}
             {section === 'facilitateur' && <ClasseFacilitateur />}
           </motion.div>

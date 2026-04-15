@@ -1,20 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, X, ChevronRight } from 'lucide-react';
+import { ChevronRight, ArrowLeft } from 'lucide-react';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { CALCUL_LESSONS } from '@/data/classeContent';
 
 export default function ClasseCalculView() {
   const { currentLang } = useFitilaLanguage();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [results, setResults] = useState<Record<string, boolean>>({});
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const selected = CALCUL_LESSONS.find(l => l.id === selectedId);
-
-  const checkAnswer = (key: string, expected: string) => {
-    setResults(prev => ({ ...prev, [key]: answers[key]?.trim() === expected }));
-  };
 
   if (selected) {
     return (
@@ -22,59 +16,47 @@ export default function ClasseCalculView() {
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => setSelectedId(null)}
-          className="text-amber-400 text-sm font-bold"
+          className="flex items-center gap-1 text-amber-600 text-sm font-bold"
         >
-          ← {currentLang === 'ba' ? 'Yeni' : 'Retour'}
+          <ArrowLeft className="w-4 h-4" /> {currentLang === 'ba' ? 'Yeni' : 'Retour'}
         </motion.button>
 
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30">
-          <h2 className="text-white font-black text-xl">{selected.title}</h2>
-          <p className="text-blue-300 text-sm mt-1">{selected.titleBa}</p>
+        <div className="p-4 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 border border-blue-200 shadow-md">
+          <h2 className="text-gray-800 font-black text-xl">{selected.title || `Dooru ${selected.id}`}</h2>
         </div>
 
-        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-          <p className="text-white/80 text-sm">{selected.content}</p>
-        </div>
+        {/* Illustration */}
+        {selected.images.length > 0 && (
+          <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+            <img src={selected.images[0]} alt={selected.title} className="w-full h-auto object-contain max-h-64" />
+          </div>
+        )}
 
-        <div className="space-y-3">
-          <p className="text-white/60 text-xs uppercase font-bold">✍️ {currentLang === 'ba' ? 'Yäru' : 'Exercices'}</p>
-          {selected.exercises.map((ex, i) => {
-            const key = `${selected.id}_${i}`;
-            return (
-              <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                <p className="text-white font-medium text-sm mb-2">{ex.question}</p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="flex-1 bg-white/5 border border-white/10 rounded-lg p-2 text-white text-lg font-bold text-center placeholder:text-white/30 focus:border-blue-500/50 outline-none"
-                    placeholder="?"
-                    value={answers[key] || ''}
-                    onChange={e => {
-                      setAnswers(prev => ({ ...prev, [key]: e.target.value }));
-                      setResults(prev => { const n = { ...prev }; delete n[key]; return n; });
-                    }}
-                    onKeyDown={e => e.key === 'Enter' && checkAnswer(key, ex.answer)}
-                  />
-                  <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => checkAnswer(key, ex.answer)}
-                    className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center"
-                  >
-                    <Check className="w-5 h-5 text-white" />
-                  </motion.button>
-                  {results[key] === true && <Check className="w-6 h-6 text-emerald-400" />}
-                  {results[key] === false && (
-                    <div className="flex items-center gap-1">
-                      <X className="w-6 h-6 text-red-400" />
-                      <span className="text-red-400 text-xs">{ex.answer}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Text content */}
+        {selected.text && (
+          <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
+            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{selected.text}</p>
+          </div>
+        )}
+
+        {/* Paragraphs */}
+        {selected.paragraphs.length > 0 && !selected.text && (
+          <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm space-y-1">
+            {selected.paragraphs.map((p, i) => (
+              <p key={i} className="text-gray-700 text-sm font-mono">{p}</p>
+            ))}
+          </div>
+        )}
+
+        {/* Sections/questions */}
+        {Object.entries(selected.sections).map(([sec, questions]) => (
+          <div key={sec} className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
+            <p className="text-blue-600 text-xs uppercase font-bold mb-2">{sec}</p>
+            {(questions as string[]).map((q, i) => (
+              <p key={i} className="text-gray-700 text-sm mb-1">{q}</p>
+            ))}
+          </div>
+        ))}
       </div>
     );
   }
@@ -86,19 +68,19 @@ export default function ClasseCalculView() {
           key={lesson.id}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.05 }}
+          transition={{ delay: i * 0.03 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setSelectedId(lesson.id)}
-          className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+          className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all"
         >
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-400 flex items-center justify-center">
             <span className="text-2xl">🔢</span>
           </div>
           <div className="flex-1 text-left">
-            <p className="text-white font-bold">{lesson.title}</p>
-            <p className="text-white/40 text-xs">{lesson.titleBa} — {lesson.exercises.length} {currentLang === 'ba' ? 'yäru' : 'exercices'}</p>
+            <p className="text-gray-800 font-semibold text-sm">{lesson.title || `Dooru ${lesson.id}`}</p>
+            <p className="text-gray-400 text-xs">p.{lesson.page}</p>
           </div>
-          <ChevronRight className="w-4 h-4 text-white/30" />
+          <ChevronRight className="w-4 h-4 text-gray-300" />
         </motion.button>
       ))}
     </div>
