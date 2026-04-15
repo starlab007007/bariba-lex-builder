@@ -3993,5 +3993,13 @@
   "status_busy": {
     "fr": "Occupé",
     "ba": "Na sɔmburumɔ"
+  },
+  "sidebar_classe": {
+    "fr": "Classe",
+    "ba": "Keu"
+  },
+  "sidebar_classe_desc": {
+    "fr": "Alphabétisation Niveau 1",
+    "ba": "Barum keun sóøsiru"
   }
 }
