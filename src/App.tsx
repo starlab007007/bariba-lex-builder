@@ -44,6 +44,7 @@ const SystemValidation = lazy(() => import("./pages/SystemValidation"));
 const AssetsDashboard = lazy(() => import("./pages/AssetsDashboard"));
 const GriotStudioPage = lazy(() => import("./pages/GriotStudioPage"));
 const FitilaLearn = lazy(() => import("./pages/fitila/FitilaLearn"));
+const FitilaClasse = lazy(() => import("./pages/fitila/FitilaClasse"));
 const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 const ComingSoonPage = lazy(() => import("./pages/fitila/ComingSoonPage"));
 const InstallPage = lazy(() => import("./pages/fitila/InstallPage"));
@@ -109,6 +110,7 @@ const App = () => (
                 <Route path="profile" element={<TamTamProfile />} />
                 <Route path="dictionary" element={<TamTamDictionary />} />
                 <Route path="learn" element={<FitilaLearn />} />
+                <Route path="classe" element={<FitilaClasse />} />
                 <Route path="ia" element={<FitilaIA />} />
                 <Route path="messages" element={<ComingSoonPage />} />
                 <Route path="discover" element={<ComingSoonPage />} />
