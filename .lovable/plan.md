@@ -1,59 +1,42 @@
 
 
-# Plan : Conversion du Guide d'enseignement N1 en HTML corrigé
+# Plan : Conversion du Module de formation NM Niv 1 en HTML corrigé
 
 ## Objectif
 
-Convertir le PDF "Guide d'enseignement N1 Baatonum" (28 pages) en fichier HTML structuré avec application du mapping V2 de correction des caractères Bariba, dans le même format que `Manuel_Bariba_N1_Corrige.html`.
+Convertir le PDF "Module de formation des facilitateurs du Niveau 1" (31 pages) en fichier HTML structuré avec application du mapping V2 de correction des caractères Bariba — même processus que pour le Guide d'enseignement.
 
-## Contenu du document (28 pages)
+## Contenu du document
 
-Le guide contient :
-- Page de titre et table des matières (pages 1-4)
-- **Bɔnu gbiika** (Partie 1) : Structure des leçons, planification des 288 séances, répartition par semaine (pages 7-20)
-- **Bɔnu yiruse** (Partie 2) : Démarche pédagogique pour langue et calcul (pages 21-27)
-- Alphabet Bariba complet (page 25)
-- Crédits et auteurs (page 28)
+Le document est principalement en français (formation des facilitateurs) avec 7 grandes parties :
+1. **Langue** — alphabet, tons, nasalisation, classes nominales, conjugaison
+2. **Mathématiques/Gestion** — numération, opérations, mesures, monnaie
+3. **Étude détaillée du manuel et du guide** — tableaux comparatifs
+4. **Démarche d'enseignement/apprentissage** — lecture-écriture et calcul
+5. **Préparation des fiches pédagogiques** — modèles de fiches
+6. **Exercices de simulation** — pratique en classe
+7. **Andragogie** — pédagogie des adultes
 
-Le texte contient massivement les faux caractères hérités de la police SIL (`ø`, `æ`, `ó`, `á`, `å`, `ä`, `±`, etc.) qu'il faut corriger.
+Contient des tableaux HTML complexes (planning, fiches, comparatifs) et quelques termes Bariba à corriger.
 
 ## Étapes
 
-### 1. Extraction du contenu parsé
-Récupérer le texte intégral déjà extrait par le parser (1502 lignes de markdown avec tables HTML) et les 48 images extraites.
+### 1. Copier le PDF et extraire le contenu
+Utiliser le contenu déjà parsé (1601 lignes de markdown + images extraites).
 
 ### 2. Script Python de conversion
-- Lire le contenu markdown extrait
-- Appliquer le mapping V2 complet (12 substitutions) sur tout le texte
+- Appliquer le mapping V2 Bariba sur tout le texte
+- Convertir le markdown en HTML structuré avec CSS (même style que `Manuel_Bariba_N1_Corrige.html` et `Guide_Enseignement_N1_Corrige.html`)
+- Intégrer les images de pages comme illustrations base64
 - Normaliser en NFC
-- Convertir le markdown en HTML structuré avec CSS (même style que le Manuel corrigé)
-- Intégrer les images des pages comme illustrations
-- Produire `/mnt/documents/Guide_Enseignement_N1_Corrige.html`
+- Produire `/mnt/documents/Module_Formation_N1_Corrige.html`
 
-### 3. Mapping appliqué
-
-| Faux | Vrai | Rôle |
-|------|------|------|
-| `ø` | `ɔ` | Voyelle ouverte |
-| `Ø` | `Ɔ` | Majuscule |
-| `æ` | `ɛ` | Voyelle ouverte |
-| `Æ` | `Ɛ` | Majuscule |
-| `ó` | `ɔ̃` | Nasale o ouvert |
-| `á` | `ã` | Nasale a |
-| `í` | `ĩ` | Nasale i |
-| `ä` | `ã` | Variante nasale a |
-| `å` | `ɛ̃` | Nasale e ouvert |
-| `ö` | `ɔ̀` | o ouvert + ton bas |
-| `±` | `ǹ` | n syllabique + ton bas |
-| `‹` | `'` | Apostrophe |
-
-### 4. Vérification
-Compter les occurrences avant/après pour chaque caractère et afficher un rapport de conversion.
+### 3. Vérification
+Rapport de comptage des caractères convertis.
 
 ## Sortie
 
-Un fichier HTML autonome téléchargeable : `Guide_Enseignement_N1_Corrige.html`
+Fichier HTML autonome téléchargeable : `Module_Formation_N1_Corrige.html`
 
-## Aucun changement au code de l'application
-Ce traitement est un script one-off qui produit un document. Aucun fichier du projet ne sera modifié.
+Aucun fichier du projet ne sera modifié.
 
