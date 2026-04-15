@@ -2697,25 +2697,192 @@ export const BARIBA_ALPHABET = {
   toneMarkers: ['ɔ̀', 'ǹ'],
 };
 
-// localStorage helpers
+// ============ EXPECTED ANSWERS (extracted from narrative texts) ============
+// Key answers for verification — derived from lesson texts
+export const LESSON_ANSWERS: Record<number, {
+  observe?: string[];
+  ecoute?: string[];
+  reagis?: string[];
+  retiens?: string[];
+}> = {
+  1: {
+    observe: ['Sɔ̃ɔ sãreru, tɔn durɔ ka tɔn kurɔ ba wãa', 'Bɛɛrɛ sariru'],
+    ecoute: ['Sɔ̃ɔ sãreru ta torua. Saka ka Duwe ba suanamɔ. Koto u win yãa buranu doke', 'Koto', 'Deedeeru mana gari yi yi koora win kpaasibu ba nim bɔkua'],
+  },
+  2: {
+    observe: ['Tɔmbu ba nim takamɔ pɔmpiɔ', 'Nim takabu'],
+    ecoute: ['Nari kurɔ mɔrowa Duniawɔ. Pɔmpin nima u ra take', 'Yè ba daarun nim mɛ nɔra, ben yɛnugibu ba kesukubu mwarawa', 'Nim buram mu ra wãa wɔɔ bera mi'],
+  },
+  3: {
+    observe: ['Tɔmbu ba nim nɔmɔ wɔɔ bera mi', 'Wɔɔ bera min nim nɔru'],
+    ecoute: ['Bɛsɛn wuun dɔkɔ pɔmpi ya ka bɛsɛn wɔɔ bera tondewa', 'Wɔɔ pii ya ka na wuuwɔ'],
+  },
+  4: {
+    observe: ['Tɔn durɔ ka tɔn kurɔ ka bii turo', 'Bii mɛroru'],
+    ecoute: ['Saarɛ ka win kurɔ ba ka suana', 'Yãrondo u bii turowa u mɔ gisɔ'],
+  },
+  7: {
+    ecoute: ['Faaru tɔn sãsɔgiiwa', 'Faaru u ku ra bare kam kam, u ku ra gobi mɛnabu kã', 'Faagi ye sɔɔ gari gɛɛ yu sɔ̃ɔsimɔ mɛ̃ Faaru u ra tɛmanɛ'],
+    reagis: ['Kurɔ wi u gem mɔ ù ka durɔ wi yina', 'Ba koo ko bù ka durɔ wi daa kɔsisia'],
+  },
+  9: {
+    reagis: ['Ba bè kãɛ te kua wuun sɔmbu sɔ̃', 'Wondugurugibun sɔmbu te — tɔn durɔbu ba n wukumɔ, tɔn kurɔbu ba n kuramɔ', 'Yarufaani — yam nɛnu burabun sina yasakpɔɔ'],
+  },
+  11: {
+    ecoute: ['Yɔ̃ɔ u Dama yàba gobi bikiamɔ', 'Yɔ̃ɔ u nùn nɛɛ bɛɛrɛ a man nɛn yàba gobi wãɔ'],
+    reagis: ['Gɔnnaru, kurɔ ka durɔ ba ra gɔnnɛ', 'Suuru kobuwa gɔnnarun swaa sɔɔ', 'Tɔn durɔ biiwa u ra n bukuro'],
+  },
+  14: {
+    ecoute: ['Sika kurɔ mɔrowa Kookiraɔ. U ku ra gbãa teye', 'Wara dɔra bi bu koo yarufaani ko — dɔra bi bu sɛm siare ba bè dɔra'],
+    reagis: ['Tiraasiwa gɔ̃ru kĩra Sika u ka kom kɔsa', 'Sɛm mɔru ta bikia bù gina nun dɔra'],
+  },
+  19: {
+    ecoute: ['Mako kpookpoo tenkuwa', 'Mako u kpookpoo ten dwebu sika kua Kãnu nɛɛ fɔɔtɔ 60wa'],
+    reagis: ['Kɛnun mwa bi — naanɛgii u kpookpooru saaki kua', 'Makon koma — u dɛburu gɔnaba sɔ̃ɔwa'],
+  },
+};
+
+// ============ CALCUL EXERCISE DATA ============
+export interface MathExercise {
+  type: 'count' | 'addition' | 'subtraction' | 'multiplication' | 'division';
+  operands: number[];
+  expected: number;
+  remainder?: number;
+  label?: string;
+}
+
+export const CALCUL_EXERCISES: Record<number, MathExercise[]> = {
+  // Lesson 1-2: counting 1-3
+  1: [
+    { type: 'count', operands: [1], expected: 1, label: 'tia' },
+    { type: 'count', operands: [2], expected: 2, label: 'yiru' },
+    { type: 'count', operands: [3], expected: 3, label: 'ita' },
+  ],
+  // Lesson 3-4: counting 4-9
+  3: [
+    { type: 'count', operands: [4], expected: 4, label: 'nnɛ' },
+    { type: 'count', operands: [5], expected: 5, label: 'nɔɔbu' },
+    { type: 'count', operands: [6], expected: 6, label: 'nɔbaa tia' },
+    { type: 'count', operands: [7], expected: 7, label: 'nɔba yiru' },
+    { type: 'count', operands: [8], expected: 8, label: 'nɔba ita' },
+    { type: 'count', operands: [9], expected: 9, label: 'nɔba nnɛ' },
+  ],
+  // Addition without carry
+  7: [
+    { type: 'addition', operands: [23, 14], expected: 37 },
+    { type: 'addition', operands: [31, 45], expected: 76 },
+    { type: 'addition', operands: [102, 234], expected: 336 },
+    { type: 'addition', operands: [412, 153], expected: 565 },
+  ],
+  // Addition with carry
+  9: [
+    { type: 'addition', operands: [47, 35], expected: 82 },
+    { type: 'addition', operands: [268, 456], expected: 724 },
+    { type: 'addition', operands: [1589, 2743], expected: 4332 },
+    { type: 'addition', operands: [3675, 4867], expected: 8542 },
+  ],
+  // Subtraction without carry
+  11: [
+    { type: 'subtraction', operands: [87, 43], expected: 44 },
+    { type: 'subtraction', operands: [465, 231], expected: 234 },
+    { type: 'subtraction', operands: [1896, 754], expected: 1142 },
+  ],
+  // Subtraction with carry
+  13: [
+    { type: 'subtraction', operands: [503, 267], expected: 236 },
+    { type: 'subtraction', operands: [4000, 1589], expected: 2411 },
+    { type: 'subtraction', operands: [7213, 3845], expected: 3368 },
+  ],
+  // Multiplication by 1 digit
+  15: [
+    { type: 'multiplication', operands: [23, 4], expected: 92 },
+    { type: 'multiplication', operands: [145, 3], expected: 435 },
+    { type: 'multiplication', operands: [312, 6], expected: 1872 },
+  ],
+  // Multiplication by 2 digits
+  17: [
+    { type: 'multiplication', operands: [34, 12], expected: 408 },
+    { type: 'multiplication', operands: [56, 25], expected: 1400 },
+    { type: 'multiplication', operands: [123, 45], expected: 5535 },
+  ],
+  // Division without remainder
+  19: [
+    { type: 'division', operands: [8, 4], expected: 2 },
+    { type: 'division', operands: [36, 3], expected: 12 },
+    { type: 'division', operands: [426, 6], expected: 71 },
+    { type: 'division', operands: [252, 3], expected: 84 },
+  ],
+  // Division with remainder
+  21: [
+    { type: 'division', operands: [7, 2], expected: 3, remainder: 1 },
+    { type: 'division', operands: [13, 5], expected: 2, remainder: 3 },
+    { type: 'division', operands: [17, 2], expected: 8, remainder: 1 },
+    { type: 'division', operands: [169, 8], expected: 21, remainder: 1 },
+  ],
+};
+
+// ============ BARIBA NUMBER NAMES ============
+export const BARIBA_NUMBERS: Record<number, string> = {
+  0: 'bɔɔrɔ', 1: 'tia', 2: 'yiru', 3: 'ita', 4: 'nnɛ', 5: 'nɔɔbu',
+  6: 'nɔbaa tia', 7: 'nɔba yiru', 8: 'nɔba ita', 9: 'nɔba nnɛ',
+  10: 'wɔku', 20: 'mɔɔbu', 30: 'mɔɔbu ka wɔku', 40: 'mɔɔbu yiru',
+  50: 'mɔɔbu yiru ka wɔku', 100: 'wunɔ', 1000: 'wunɔ wɔku',
+};
+
+// ============ localStorage PROGRESS SYSTEM ============
 const STORAGE_KEY = 'classe_progress';
 
-interface ClasseProgress {
+export interface ClasseProgress {
   completedLessons: number[];
+  lessonStars: Record<number, number>; // 0-5 stars per lesson
+  tabsCompleted: Record<string, boolean>; // "lesson_1_observe": true
   evaluationScores: Record<number, number>;
+  evaluationBest: Record<number, number>;
+  calculScores: Record<number, { score: number; total: number }>;
   lastLesson: number;
+  themeBadges: string[];
 }
 
 export function getClasseProgress(): ClasseProgress {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        completedLessons: parsed.completedLessons || [],
+        lessonStars: parsed.lessonStars || {},
+        tabsCompleted: parsed.tabsCompleted || {},
+        evaluationScores: parsed.evaluationScores || {},
+        evaluationBest: parsed.evaluationBest || {},
+        calculScores: parsed.calculScores || {},
+        lastLesson: parsed.lastLesson || 0,
+        themeBadges: parsed.themeBadges || [],
+      };
+    }
   } catch {}
-  return { completedLessons: [], evaluationScores: {}, lastLesson: 0 };
+  return { completedLessons: [], lessonStars: {}, tabsCompleted: {}, evaluationScores: {}, evaluationBest: {}, calculScores: {}, lastLesson: 0, themeBadges: [] };
 }
 
 function saveProgress(p: ClasseProgress) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+}
+
+export function markTabComplete(lessonId: number, tab: string) {
+  const p = getClasseProgress();
+  p.tabsCompleted[`lesson_${lessonId}_${tab}`] = true;
+  // Count completed tabs for stars
+  const lesson = CLASSE_LESSONS.find(l => l.id === lessonId);
+  if (lesson) {
+    const allTabs = ['text', 'observe', 'ecoute', 'reagis', 'retiens', 'phonetics'];
+    const activeTabs = allTabs.filter(t => {
+      if (t === 'text') return true;
+      if (t === 'phonetics') return !!lesson.phonetics;
+      return (lesson.sections as any)[t]?.length > 0;
+    });
+    const completedCount = activeTabs.filter(t => p.tabsCompleted[`lesson_${lessonId}_${t}`]).length;
+    p.lessonStars[lessonId] = Math.min(5, completedCount);
+  }
+  saveProgress(p);
 }
 
 export function markLessonComplete(id: number) {
@@ -2728,5 +2895,26 @@ export function markLessonComplete(id: number) {
 export function saveEvaluationScore(evalId: number, score: number) {
   const p = getClasseProgress();
   p.evaluationScores[evalId] = score;
+  if (!p.evaluationBest[evalId] || score > p.evaluationBest[evalId]) {
+    p.evaluationBest[evalId] = score;
+  }
   saveProgress(p);
+}
+
+export function saveCalculScore(lessonId: number, score: number, total: number) {
+  const p = getClasseProgress();
+  p.calculScores[lessonId] = { score, total };
+  saveProgress(p);
+}
+
+export function getLessonStars(lessonId: number): number {
+  return getClasseProgress().lessonStars[lessonId] || 0;
+}
+
+export function isLessonUnlocked(lessonId: number): boolean {
+  if (lessonId <= 1) return true;
+  const p = getClasseProgress();
+  const prevLesson = CLASSE_LESSONS.find(l => l.id === lessonId - 1);
+  if (!prevLesson) return true;
+  return (p.lessonStars[lessonId - 1] || 0) >= 2 || p.completedLessons.includes(lessonId - 1);
 }
