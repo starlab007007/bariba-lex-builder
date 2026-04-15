@@ -111,6 +111,11 @@ const DEMARCHE_CALCUL = {
         'Poser un problème contextuel tiré de la vie quotidienne',
         'Laisser les apprenants proposer des solutions',
       ],
+      stepsFr: [
+        'Rappeler la notion précédente avec du matériel concret',
+        'Poser un problème contextuel tiré de la vie quotidienne',
+        'Laisser les apprenants proposer des solutions',
+      ],
     },
     {
       id: 'dev_calc',
@@ -125,6 +130,13 @@ const DEMARCHE_CALCUL = {
         'IV- Weenɛ : retenir la méthode de résolution',
         'V- Sɔmaa : s\'entraîner avec de nouveaux exercices',
       ],
+      stepsFr: [
+        'I- Observe : observer l\'illustration du problème',
+        'II- Écoute : écouter le problème et le reformuler',
+        'III- Résous : résoudre le problème, choisir l\'opération',
+        'IV- Retiens : retenir la méthode de résolution',
+        'V- Entraîne-toi : s\'entraîner avec de nouveaux exercices',
+      ],
     },
     {
       id: 'eval_calc',
@@ -137,6 +149,12 @@ const DEMARCHE_CALCUL = {
         'Bù dootinu gari kpa bù nì yore sàa 1n di n ka da 1000',
         'Bù geetinu ka dootinu tubu — compter et décompter',
         'Bù ka doorun masini dooru ko — utiliser la calculatrice',
+      ],
+      stepsFr: [
+        'Maîtriser les symboles numériques',
+        'Nommer et écrire les nombres de 1 à 1000',
+        'Compter et décompter',
+        'Résoudre des problèmes pratiques de gestion',
       ],
     },
   ],
