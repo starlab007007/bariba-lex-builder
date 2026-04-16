@@ -1,127 +1,66 @@
 
 
-# Plan : Enrichissement interactif du module Classe N1 a partir du Guide et du Module de formation
+# Plan : Saisie Bariba intelligente + écriture manuscrite dans tous les champs du module Classe
 
-## Contexte
+## Objectif
 
-Le module Classe actuel contient le contenu textuel du Manuel mais manque d'interactivite pedagogique. Le Guide d'enseignement et le Module de formation fournissent des informations structurelles essentielles :
+Remplacer tous les `<textarea>` et `<input type="text">` du module Classe par un composant enrichi offrant :
+1. **Clavier caractères spéciaux Bariba** (ɔ, ɛ, ã, ɔ̃, ɛ̃, ĩ, ɔ̀, ǹ)
+2. **Suggestions prédictives** depuis le dictionnaire Bariba existant (`usePhoneticSuggestions`)
+3. **Zone d'écriture manuscrite** (canvas) avec reconnaissance de caractères/lettres
 
-**Du Guide d'enseignement (28 pages) :**
-- Planification detaillee des 288 seances sur 48 semaines (6 seances/semaine)
-- Les 8 themes avec leurs sous-themes et objectifs
-- Structure des lecons langue (32 lecons) et calcul (13 lecons) avec leurs titres exacts
-- Demarche pedagogique detaillee pour chaque rubrique (Amorce, Developpement, Evaluation)
-- Alphabet Bariba complet avec majuscules/minuscules (page 25)
-- Liste des objectifs d'apprentissage par domaine (SS, SVT, Yarumani)
+## Approche
 
-**Du Module de formation (31 pages) :**
-- Les 4 rubriques lecture-ecriture : Observe, Ecoute et reponds, Reagis, Retiens
-- Les 5 rubriques maths : Observe, Ecoute et reponds, Resous/Ecris, Retiens, Entraine-toi
-- Demarche d'enseignement en lecture-ecriture : Amorce > Developpement (lecture maitre, comprehension, phonetique, ecriture) > Evaluation
-- Demarche d'enseignement en maths : Amorce > Developpement (probleme contextuel, resolution, entrainement) > Evaluation
-- Principes d'andragogie (pedagogie des adultes)
+### 1. Créer `BaribaSmartTextarea` — composant réutilisable
 
-## Ce qui va changer
+Un nouveau composant `src/components/classe/BaribaSmartTextarea.tsx` qui encapsule :
 
-### 1. Systeme de correction et verification des reponses
+- Un `<textarea>` standard avec les styles existants
+- Un **bouton clavier** (toggle) affichant les caractères spéciaux Bariba en grille cliquable (même liste que `BaribaKeyboardInput` : `BARIBA_CHARS`)
+- Des **suggestions prédictives inline** : à chaque mot tapé, recherche dans le dictionnaire via `usePhoneticSuggestions.getSuggestions()` — les suggestions s'affichent sous le champ et un clic insère le mot
+- Un **bouton écriture manuscrite** (toggle) qui ouvre un `<canvas>` où l'utilisateur dessine. Reconnaissance via l'API Canvas + analyse de traits pour proposer des lettres Bariba candidates
 
-**Lecons de langue** — Ajout de reponses attendues et feedback :
-- Section Meerio (Observe) : questions a reponse ouverte avec indices visuels
-- Section Faagi (Ecoute) : questions avec reponses-cles extraites du texte narratif. L'apprenant ecrit sa reponse, puis clique "Verifier" pour voir la bonne reponse et un score (vert/rouge)
-- Section Weene (Retiens) : affichage de la phrase-cle avec un exercice de completion a trous
-- Section Yora (Ecris) : verification lettre par lettre avec score en points (ex: 3/5 correct)
+Props : `value`, `onChange`, `placeholder`, `rows`, `className` — drop-in replacement pour `<textarea>`
 
-**Lecons de calcul** — Exercices dynamiques interactifs :
-- Numeration : glisser-deposer pour ordonner les nombres, input pour ecrire le nombre en Bariba
-- Addition/Soustraction : operations posees visuellement avec colonnes (unites, dizaines, centaines), l'apprenant remplit chaque case
-- Multiplication/Division : meme systeme de colonnes avec retenue visible
-- Verification automatique : score instantane avec animation (confettis si tout juste)
-- Bouton "Recommencer" pour refaire les exercices
-- "Entraine-toi" : exercices generes dynamiquement a partir des regles du manuel
+### 2. Reconnaissance d'écriture manuscrite
 
-### 2. Systeme de progression et maitrise
+- Canvas tactile avec support stylet/doigt (touch events + mouse events)
+- Utilisation de l'API **Lovable AI (Gemini Flash)** pour la reconnaissance : capture du canvas en image, envoi à Gemini avec prompt "Reconnaître les caractères Bariba écrits à la main"
+- Fallback simplifié : boutons de lettres Bariba fréquentes affichés sous le canvas pour sélection rapide
+- Bouton "Effacer" et "Insérer" pour le canvas
 
-**Progression par lecon :**
-- Chaque lecon a 4-5 onglets. Chaque onglet complete = une etoile
-- Pour completer un onglet : repondre a au moins 80% des questions ou exercices
-- Barre de progression par lecon visible dans la liste
-- Etoiles affichees : 0 a 5 etoiles par lecon
+### 3. Intégration dans les 3 composants Classe
 
-**Progression globale enrichie :**
-- Progression separee Langue vs Calcul sur le dashboard
-- Nombre de lecons maitrisees (toutes etoiles) vs partiellement completees
-- Score moyen aux evaluations (Yaayasiabu)
-- Deblocage sequentiel : lecon N+1 accessible seulement si lecon N a au moins 3 etoiles
-- Badge "Sɔ̃ɔsiru kobu" (Maitrise) quand toutes les lecons d'un theme sont completees
+| Composant | Champs concernés | Nombre |
+|-----------|-----------------|--------|
+| `ClasseLessonView.tsx` | Tous les `<textarea>` des sections Observe, Écoute, Réagis, Retiens (lignes 125-142) | ~4-8 par leçon |
+| `ClasseEvaluation.tsx` | Tous les `<textarea>` des questions (lignes 147-153) | ~5-15 par éval |
+| `ClasseCalculView.tsx` | Les `<input>` numériques restent numériques, mais les champs texte des sections questions (lignes 198-200) recevront le composant | Variable |
 
-**Sauvegarde locale enrichie :**
-```typescript
-interface ClasseProgress {
-  completedLessons: number[];
-  lessonStars: Record<number, number>; // 0-5 etoiles
-  tabsCompleted: Record<string, boolean>; // "lesson_1_observe": true
-  evaluationScores: Record<number, number>;
-  calculScores: Record<number, { score: number; total: number }>;
-  lastLesson: number;
-  themeBadges: string[]; // themes maitrises
-}
-```
+Remplacement simple : `<textarea ... />` → `<BaribaSmartTextarea ... />`
 
-### 3. Calcul dynamique et interactif
+### 4. Prédiction intelligente des mots
 
-Refonte complete de `ClasseCalculView.tsx` :
+- Détection du **mot en cours** (derniers caractères après le dernier espace)
+- Recherche en temps réel via `getSuggestions(currentWord, 5)` du hook existant
+- Affichage de 3-5 suggestions sous le champ en "chips" cliquables
+- Un clic insère le mot complet et ajoute un espace
+- Les suggestions disparaissent quand le mot est complété ou le champ perd le focus
 
-- **Numeration (lecon 1)** : Affichage visuel de billes/cubes pour compter 0-9, input pour ecrire le chiffre
-- **Addition sans retenue (lecon 2)** : Operation posee avec 2 lignes, l'apprenant tape le resultat chiffre par chiffre
-- **Addition avec retenue (lecon 3)** : Meme systeme avec une ligne "retenue" visible
-- **Soustraction sans/avec retenue (lecons 4-5)** : Colonnes avec emprunt visible
-- **Multiplication (lecons 6-8)** : Table de multiplication interactive + operations posees
-- **Division (lecons 9-10)** : Division posee avec quotient et reste
-- **Problemes contextuels** : Texte du probleme en Bariba avec illustration, l'apprenant choisit l'operation puis calcule
-- **Verification instantanee** : Chaque reponse est verifiee automatiquement avec feedback colore
-
-### 4. Evaluations (Yaayasiabu) enrichies
-
-- Questions a choix multiples quand applicable (extraites du texte)
-- Score en points (pas juste % de champs remplis)
-- Affichage de la correction complete apres soumission
-- Possibilite de "Refaire" l'evaluation
-- Score historique visible (meilleur score)
-
-### 5. Facilitateur enrichi avec le contenu du Guide et Module
-
-Refonte de `ClasseFacilitateur.tsx` avec le contenu reel :
-- Demarche detaillee lecture-ecriture (6 phases du Module)
-- Demarche detaillee maths (5 phases du Module)
-- Planning des 48 semaines (du Guide)
-- Principes d'andragogie (du Module)
-- Fiches pedagogiques modeles
-
-### 6. Enrichissement du contenu de donnees
-
-Script d'extraction pour completer `classeContent.ts` avec :
-- Reponses attendues pour chaque question (extraites du texte narratif)
-- Titres des 13 lecons calcul du Guide (Geetinu, Wɔkure, Wunɔɔre, etc.)
-- Objectifs d'apprentissage par theme
-- Les 8 themes SS et SVT avec sous-themes detailles
-
-## Fichiers modifies
+## Fichiers modifiés
 
 | Action | Fichier |
 |--------|---------|
-| Script | `/tmp/enrich_content.py` — extrait reponses et metadata du Guide/Module |
-| Modifier | `src/data/classeContent.ts` — ajouter reponses, scores, metadata calcul |
-| Refaire | `src/components/classe/ClasseCalculView.tsx` — operations interactives dynamiques |
-| Refaire | `src/components/classe/ClasseEvaluation.tsx` — correction, refaire, historique |
-| Modifier | `src/components/classe/ClasseLessonView.tsx` — verification reponses, progression etoiles |
-| Refaire | `src/components/classe/ClasseFacilitateur.tsx` — contenu reel Guide + Module |
-| Modifier | `src/pages/fitila/FitilaClasse.tsx` — progression enrichie, deblocage, badges |
+| Créer | `src/components/classe/BaribaSmartTextarea.tsx` — composant avec clavier + prédiction + handwriting |
+| Modifier | `src/components/classe/ClasseLessonView.tsx` — remplacer textarea par BaribaSmartTextarea |
+| Modifier | `src/components/classe/ClasseEvaluation.tsx` — remplacer textarea par BaribaSmartTextarea |
+| Modifier | `src/components/classe/ClasseCalculView.tsx` — ajouter BaribaSmartTextarea aux champs texte |
 
 ## Contraintes
 
-- Contenu 100% issu des 3 documents (Manuel, Guide, Module)
-- Caracteres Bariba Unicode corrects
-- Style clair pastel coherent avec le module Apprendre
-- Mobile-first, navigation simple
-- Aucune API externe requise, tout fonctionne en local
+- Réutilise `usePhoneticSuggestions` existant (pas de nouvelle source de données)
+- Même liste `BARIBA_CHARS` que dans `BaribaKeyboardInput`
+- Mobile-first : canvas tactile, boutons suffisamment grands
+- Style pastel clair cohérent avec le module Classe
+- Les champs numériques (`type="number"`) du calcul restent numériques
 
