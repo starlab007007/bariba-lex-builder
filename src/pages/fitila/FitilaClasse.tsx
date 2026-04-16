@@ -47,6 +47,9 @@ export default function FitilaClasse() {
     { id: 'lessons' as Section, emoji: '📖', label: currentLang === 'ba' ? 'Garibu ka yora' : 'Part 1 — Langue', desc: `${n2LangLessons.length} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-amber-400 to-orange-400', count: completedCount },
     { id: 'calcul' as Section, emoji: '🔢', label: currentLang === 'ba' ? 'Dooru ka yarumani' : 'Part 2 — Calcul', desc: `${n2CalcLessons.length} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-blue-400 to-indigo-400' },
     { id: 'evaluations' as Section, emoji: '📝', label: currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations', desc: `${evaluations.length} ${currentLang === 'ba' ? 'yaayasiabu' : 'évaluations'}`, gradient: 'from-purple-400 to-pink-400' },
+    { id: 'grammaire' as Section, emoji: '📐', label: currentLang === 'ba' ? 'Sɔ̃ɔsirun swɛɛru' : 'Grammaire', desc: currentLang === 'ba' ? 'Bɔru, tundu, sɔm garu' : 'Classes, tons, verbes', gradient: 'from-emerald-400 to-teal-400' },
+    { id: 'textprod' as Section, emoji: '✍️', label: currentLang === 'ba' ? 'Sɔm yorubu' : 'Production de textes', desc: currentLang === 'ba' ? 'Tireru bweseru 6' : '6 types de textes', gradient: 'from-cyan-400 to-blue-400' },
+    { id: 'gestion' as Section, emoji: '💼', label: currentLang === 'ba' ? 'Gobi dwebu' : 'Gestion', desc: currentLang === 'ba' ? 'Tireru ka tɛtɛ 7' : '7 documents', gradient: 'from-teal-400 to-cyan-400' },
     { id: 'facilitateur' as Section, emoji: '👨‍🏫', label: currentLang === 'ba' ? 'Sɔ̃ɔsirun sɔɔru' : 'Facilitateur', desc: currentLang === 'ba' ? 'Keu sɔ̃ɔsion garibu' : 'Guide pédagogique', gradient: 'from-rose-400 to-red-400' },
   ] : [
     { id: 'lessons' as Section, emoji: '📖', label: currentLang === 'ba' ? 'Garibu' : 'Leçons', desc: `${totalLessons} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-amber-400 to-orange-400', count: completedCount },
@@ -276,6 +279,9 @@ export default function FitilaClasse() {
     evaluations: currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations',
     'eval-detail': evaluations.find(e => e.id === selectedEvalId)?.title || '',
     facilitateur: currentLang === 'ba' ? 'Sɔ̃ɔsirun sɔɔru' : 'Facilitateur',
+    grammaire: currentLang === 'ba' ? 'Sɔ̃ɔsirun swɛɛru' : 'Grammaire',
+    textprod: currentLang === 'ba' ? 'Sɔm yorubu' : 'Production de textes',
+    gestion: currentLang === 'ba' ? 'Gobi dwebu' : 'Gestion',
   };
 
   const levelBadge = activeLevel === 'N2' ? '🚀 N2' : '🔥 N1';
