@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCcw, Check, X, Trophy } from 'lucide-react';
+import BaribaSmartTextarea from './BaribaSmartTextarea';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { CLASSE_EVALUATIONS, saveEvaluationScore, getClasseProgress } from '@/data/classeContent';
 
@@ -144,12 +145,12 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
             return (
               <div key={key} className="p-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
                 <p className="text-gray-800 text-sm font-medium mb-2">{qi + 1}. {q}</p>
-                <textarea
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-gray-700 text-sm placeholder:text-gray-300 focus:border-purple-400 outline-none resize-none"
+                <BaribaSmartTextarea
+                  className="bg-gray-50 border-gray-200 focus:border-purple-400"
                   rows={2}
                   placeholder={currentLang === 'ba' ? 'A yora...' : 'Ta réponse...'}
                   value={answers[key] || ''}
-                  onChange={e => setAnswers(prev => ({ ...prev, [key]: e.target.value }))}
+                  onChange={(val) => setAnswers(prev => ({ ...prev, [key]: val }))}
                 />
               </div>
             );
