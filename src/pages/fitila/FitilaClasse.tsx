@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, BookOpen, Type, Calculator, ClipboardCheck, Users, Lock, ChevronRight, Star } from 'lucide-react';
+import { ArrowLeft, Lock, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useSideMenu } from './FitilaApp';
-import { CLASSE_LESSONS, CLASSE_EVALUATIONS, CALCUL_LESSONS, getClasseProgress, getLessonStars, isLessonUnlocked } from '@/data/classeContent';
+import { CLASSE_LESSONS, CLASSE_EVALUATIONS, CALCUL_LESSONS, getClasseProgress } from '@/data/classeContent';
+import { CLASSE_N2_LESSONS, CLASSE_N2_EVALUATIONS, CALCUL_N2_LESSONS, getClasseN2Progress } from '@/data/classeContentN2';
 import ClasseLessonView from '@/components/classe/ClasseLessonView';
 import ClasseAlphabetView from '@/components/classe/ClasseAlphabetView';
 import ClasseCalculView from '@/components/classe/ClasseCalculView';
@@ -12,6 +13,7 @@ import ClasseEvaluation from '@/components/classe/ClasseEvaluation';
 import ClasseFacilitateur from '@/components/classe/ClasseFacilitateur';
 
 type Section = 'home' | 'lessons' | 'lesson-detail' | 'alphabet' | 'calcul' | 'evaluations' | 'eval-detail' | 'facilitateur';
+type Level = 'N1' | 'N2';
 
 export default function FitilaClasse() {
   const navigate = useNavigate();
@@ -20,20 +22,26 @@ export default function FitilaClasse() {
   const [section, setSection] = useState<Section>('home');
   const [selectedLessonId, setSelectedLessonId] = useState<number>(1);
   const [selectedEvalId, setSelectedEvalId] = useState<number>(1);
+  const [activeLevel, setActiveLevel] = useState<Level>('N1');
 
-  const progress = getClasseProgress();
+  // Pick data based on level
+  const lessons = activeLevel === 'N1' ? CLASSE_LESSONS : CLASSE_N2_LESSONS;
+  const evaluations = activeLevel === 'N1' ? CLASSE_EVALUATIONS : CLASSE_N2_EVALUATIONS;
+  const calculLessons = activeLevel === 'N1' ? CALCUL_LESSONS : CALCUL_N2_LESSONS;
+  const progress = activeLevel === 'N1' ? getClasseProgress() : getClasseN2Progress();
+
   const completedCount = progress.completedLessons.length;
-  const totalLessons = CLASSE_LESSONS.length;
+  const totalLessons = lessons.length;
   const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-  const langEvals = CLASSE_EVALUATIONS.filter(e => e.page < 85);
-  const calcEvals = CLASSE_EVALUATIONS.filter(e => e.page >= 85);
+  const langEvals = evaluations.filter(e => e.page < 85);
+  const calcEvals = evaluations.filter(e => e.page >= 85);
 
   const sectionCards = [
     { id: 'lessons' as Section, emoji: '📖', label: currentLang === 'ba' ? 'Garibu' : 'Leçons', desc: `${totalLessons} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-amber-400 to-orange-400', count: completedCount },
     { id: 'alphabet' as Section, emoji: '🔤', label: currentLang === 'ba' ? 'Sɔ̃ɔsiru' : 'Alphabet', desc: currentLang === 'ba' ? 'Yori piibunu ka bakanu' : 'Voyelles & Consonnes', gradient: 'from-emerald-400 to-teal-400' },
-    { id: 'calcul' as Section, emoji: '🔢', label: currentLang === 'ba' ? 'Dooru' : 'Calcul', desc: `${CALCUL_LESSONS.length} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-blue-400 to-indigo-400' },
-    { id: 'evaluations' as Section, emoji: '📝', label: currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations', desc: `${CLASSE_EVALUATIONS.length} ${currentLang === 'ba' ? 'yaayasiabu' : 'évaluations'}`, gradient: 'from-purple-400 to-pink-400' },
+    { id: 'calcul' as Section, emoji: '🔢', label: currentLang === 'ba' ? 'Dooru' : 'Calcul', desc: `${calculLessons.length} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-blue-400 to-indigo-400' },
+    { id: 'evaluations' as Section, emoji: '📝', label: currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations', desc: `${evaluations.length} ${currentLang === 'ba' ? 'yaayasiabu' : 'évaluations'}`, gradient: 'from-purple-400 to-pink-400' },
     { id: 'facilitateur' as Section, emoji: '👨‍🏫', label: currentLang === 'ba' ? 'Sɔ̃ɔsirun sɔɔru' : 'Facilitateur', desc: currentLang === 'ba' ? 'Keu sɔ̃ɔsion garibu' : 'Guide pédagogique', gradient: 'from-rose-400 to-red-400' },
   ];
 
@@ -44,13 +52,66 @@ export default function FitilaClasse() {
     else navigate('/fitila');
   };
 
-  // Group lessons by theme
-  const themes = [...new Set(CLASSE_LESSONS.map(l => l.theme))];
+  const themes = [...new Set(lessons.map(l => l.theme))];
   const groupedLessons = themes.map(t => ({
     theme: t,
-    label: CLASSE_LESSONS.find(l => l.theme === t)?.themeLabel || t,
-    lessons: CLASSE_LESSONS.filter(l => l.theme === t),
+    label: lessons.find(l => l.theme === t)?.themeLabel || t,
+    lessons: lessons.filter(l => l.theme === t),
   }));
+
+  const handleLevelSwitch = (level: Level) => {
+    setActiveLevel(level);
+    setSection('home');
+    setSelectedLessonId(1);
+    setSelectedEvalId(1);
+  };
+
+  const renderLevelSelector = () => (
+    <div className="flex gap-3">
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={() => handleLevelSwitch('N1')}
+        className={`flex-1 p-4 rounded-3xl border-2 shadow-md transition-all ${
+          activeLevel === 'N1'
+            ? 'bg-gradient-to-br from-amber-100 to-orange-100 border-amber-300'
+            : 'bg-white border-gray-200'
+        }`}
+      >
+        <p className={`font-black text-lg ${activeLevel === 'N1' ? 'text-amber-700' : 'text-gray-400'}`}>
+          🔥 {currentLang === 'ba' ? 'Dii gbiikiru' : 'Niveau 1'}
+        </p>
+        {activeLevel === 'N1' && (
+          <>
+            <p className="text-amber-600/70 text-xs mt-1">{progressPercent}% {currentLang === 'ba' ? 'kobu' : 'complété'}</p>
+            <div className="mt-2 h-2.5 bg-amber-200/50 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+            </div>
+          </>
+        )}
+      </motion.button>
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={() => handleLevelSwitch('N2')}
+        className={`flex-1 p-4 rounded-3xl border-2 shadow-md transition-all ${
+          activeLevel === 'N2'
+            ? 'bg-gradient-to-br from-indigo-100 to-purple-100 border-indigo-300'
+            : 'bg-white border-gray-200'
+        }`}
+      >
+        <p className={`font-black text-lg ${activeLevel === 'N2' ? 'text-indigo-700' : 'text-gray-400'}`}>
+          🚀 {currentLang === 'ba' ? 'Dii yiruse' : 'Niveau 2'}
+        </p>
+        {activeLevel === 'N2' && (
+          <>
+            <p className="text-indigo-600/70 text-xs mt-1">{progressPercent}% {currentLang === 'ba' ? 'kobu' : 'complété'}</p>
+            <div className="mt-2 h-2.5 bg-indigo-200/50 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+            </div>
+          </>
+        )}
+      </motion.button>
+    </div>
+  );
 
   const renderLessonList = () => (
     <div className="space-y-6">
@@ -70,7 +131,7 @@ export default function FitilaClasse() {
                   onClick={() => { setSelectedLessonId(lesson.id); setSection('lesson-detail'); }}
                   className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all shadow-sm ${done ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-white border border-gray-100'}`}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${done ? 'bg-emerald-500 text-white' : 'bg-amber-100 text-amber-700'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${done ? 'bg-emerald-500 text-white' : activeLevel === 'N2' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>
                     {done ? '✓' : lesson.id}
                   </div>
                   <div className="flex-1 text-left">
@@ -92,7 +153,6 @@ export default function FitilaClasse() {
 
   const renderEvaluationList = () => (
     <div className="space-y-6">
-      {/* Langue evaluations */}
       <div>
         <h3 className="text-gray-700 font-bold text-sm mb-3 px-1">📖 {currentLang === 'ba' ? 'Garibu' : 'Langue'}</h3>
         <div className="space-y-2">
@@ -119,7 +179,6 @@ export default function FitilaClasse() {
           })}
         </div>
       </div>
-      {/* Calcul evaluations */}
       {calcEvals.length > 0 && (
         <div>
           <h3 className="text-gray-700 font-bold text-sm mb-3 px-1">🔢 {currentLang === 'ba' ? 'Dooru' : 'Calcul'}</h3>
@@ -153,21 +212,7 @@ export default function FitilaClasse() {
 
   const renderHome = () => (
     <div className="space-y-6">
-      {/* Niveau selector */}
-      <div className="flex gap-3">
-        <div className="flex-1 p-4 rounded-3xl bg-gradient-to-br from-amber-100 to-orange-100 border-2 border-amber-300 shadow-md">
-          <p className="text-amber-700 font-black text-lg">🔥 {currentLang === 'ba' ? 'Dii gbiikiru' : 'Niveau 1'}</p>
-          <p className="text-amber-600/70 text-xs mt-1">{progressPercent}% {currentLang === 'ba' ? 'kobu' : 'complété'}</p>
-          <div className="mt-2 h-2.5 bg-amber-200/50 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
-          </div>
-        </div>
-        <div className="flex-1 p-4 rounded-3xl bg-gray-50 border border-gray-200 opacity-60 relative">
-          <Lock className="absolute top-3 right-3 w-4 h-4 text-gray-400" />
-          <p className="text-gray-400 font-bold text-lg">🔒 {currentLang === 'ba' ? 'Dii yiruse' : 'Niveau 2'}</p>
-          <p className="text-gray-300 text-xs mt-1">{currentLang === 'ba' ? 'Ta ǹ wã' : 'Bientôt'}</p>
-        </div>
-      </div>
+      {renderLevelSelector()}
 
       {/* Stats */}
       <div className="flex gap-3">
@@ -180,7 +225,7 @@ export default function FitilaClasse() {
           <p className="text-gray-400 text-[10px]">{currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations'}</p>
         </div>
         <div className="flex-1 p-3 rounded-2xl bg-white shadow-sm border border-gray-100 text-center">
-          <p className="text-2xl font-black text-amber-500">{progressPercent}%</p>
+          <p className={`text-2xl font-black ${activeLevel === 'N2' ? 'text-indigo-500' : 'text-amber-500'}`}>{progressPercent}%</p>
           <p className="text-gray-400 text-[10px]">{currentLang === 'ba' ? 'Swaa sɔɔ' : 'Progression'}</p>
         </div>
       </div>
@@ -214,13 +259,15 @@ export default function FitilaClasse() {
   const sectionTitles: Record<Section, string> = {
     home: currentLang === 'ba' ? 'Keu' : 'Classe',
     lessons: currentLang === 'ba' ? 'Garibu' : 'Leçons',
-    'lesson-detail': CLASSE_LESSONS.find(l => l.id === selectedLessonId)?.title || '',
+    'lesson-detail': lessons.find(l => l.id === selectedLessonId)?.title || '',
     alphabet: currentLang === 'ba' ? 'Sɔ̃ɔsiru' : 'Alphabet',
     calcul: currentLang === 'ba' ? 'Dooru' : 'Calcul',
     evaluations: currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations',
-    'eval-detail': CLASSE_EVALUATIONS.find(e => e.id === selectedEvalId)?.title || '',
+    'eval-detail': evaluations.find(e => e.id === selectedEvalId)?.title || '',
     facilitateur: currentLang === 'ba' ? 'Sɔ̃ɔsirun sɔɔru' : 'Facilitateur',
   };
+
+  const levelBadge = activeLevel === 'N2' ? '🚀 N2' : '🔥 N1';
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50">
@@ -234,28 +281,33 @@ export default function FitilaClasse() {
             🏫 {sectionTitles[section]}
           </h1>
           {section === 'home' && (
-            <p className="text-gray-400 text-xs">{currentLang === 'ba' ? 'Dii gbiikiru — Baatɔnum' : 'Niveau 1 — Bariba'}</p>
+            <p className="text-gray-400 text-xs">{levelBadge} — Baatɔnum</p>
           )}
         </div>
+        {section !== 'home' && (
+          <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+            activeLevel === 'N2' ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-600'
+          }`}>{levelBadge}</span>
+        )}
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <AnimatePresence mode="wait">
-          <motion.div key={section} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+          <motion.div key={`${activeLevel}-${section}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
             {section === 'home' && renderHome()}
             {section === 'lessons' && renderLessonList()}
             {section === 'lesson-detail' && (
               <ClasseLessonView
                 lessonId={selectedLessonId}
                 onNext={() => {
-                  const idx = CLASSE_LESSONS.findIndex(l => l.id === selectedLessonId);
-                  if (idx < CLASSE_LESSONS.length - 1) setSelectedLessonId(CLASSE_LESSONS[idx + 1].id);
+                  const idx = lessons.findIndex(l => l.id === selectedLessonId);
+                  if (idx < lessons.length - 1) setSelectedLessonId(lessons[idx + 1].id);
                   else setSection('lessons');
                 }}
                 onPrev={() => {
-                  const idx = CLASSE_LESSONS.findIndex(l => l.id === selectedLessonId);
-                  if (idx > 0) setSelectedLessonId(CLASSE_LESSONS[idx - 1].id);
+                  const idx = lessons.findIndex(l => l.id === selectedLessonId);
+                  if (idx > 0) setSelectedLessonId(lessons[idx - 1].id);
                 }}
               />
             )}
@@ -265,7 +317,7 @@ export default function FitilaClasse() {
             {section === 'eval-detail' && (
               <ClasseEvaluation evalId={selectedEvalId} onBack={() => setSection('evaluations')} />
             )}
-            {section === 'facilitateur' && <ClasseFacilitateur />}
+            {section === 'facilitateur' && <ClasseFacilitateur activeLevel={activeLevel} />}
           </motion.div>
         </AnimatePresence>
       </div>
