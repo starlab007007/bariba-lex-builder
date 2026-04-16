@@ -335,6 +335,9 @@ export default function FitilaClasse() {
               <ClasseEvaluation evalId={selectedEvalId} onBack={() => setSection('evaluations')} />
             )}
             {section === 'facilitateur' && <ClasseFacilitateur activeLevel={activeLevel} />}
+            {section === 'grammaire' && <ClasseGrammaireN2 />}
+            {section === 'textprod' && <ClasseTextProdN2 />}
+            {section === 'gestion' && <ClasseGestionN2 />}
           </motion.div>
         </AnimatePresence>
       </div>
