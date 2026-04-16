@@ -509,6 +509,7 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
     title: 'Baakon tem dɔrabu',
     theme: 'tem_baun',
     themeLabel: 'Tem baun sannɔsu',
+    phonetics: { label: 'ma, mà, maa, màa, -ma', reading: ['ma', 'mà', 'maa', 'màa'], writing: ['ma', 'mà', 'maa', 'màa', '-ma'] },
     text: 'Baako u wãawa Sõɔ Màroɔ. U seewa u deemawa win mɔwobu ba gberu wukumɔ. Tã, ba gbisuka ma ba wãɛsu deri. Win maabu ka sesubu sibu ba keu kua ba bature sɔmaa mɔ̀. Baako kùn sɔmburu garu mɔ̀.\n\nSɔ̃ teeru, ba Baako tireru mɔrisiama ù be na fuuku mɛɛrun gbankɔkɔwɔ. U sɔɔru kua kùru kùru u dukaa da. U deema Bakiri ka Daado ba sɔ̃ yam mi. Ba tubuna, adama ba nùn mɛɛraawa bɛɛ.\n\nBaako kùn kpĩa u yen gaa siki. Wì u bè siriammɛ u nɛɛ: "Baako, a maa tie wunɛn dàa ye sɔɔ?" U wii win naanaanu wiru kɔreya.',
     sections: {
       observe: [
@@ -527,6 +528,212 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
       retiens: [
         '1- Mba n sãa tem dɔrabu?',
         '2- Amɔna n weenɛ bù tem dɔrabu yanku?',
+      ],
+    },
+  },
+  // ===== PART 2 — Lessons 19-25 =====
+  {
+    id: 19,
+    page: 54,
+    title: 'Dãa bɔɔriban girabu',
+    theme: 'yam_wãa_yeru',
+    themeLabel: 'Yam wãa yeru',
+    phonetics: { label: 'ra, raa, -ra', reading: ['ra', 'raa'], writing: ['ra', 'raa', '-ra'] },
+    text: 'Dãa bɔɔriba ba ra giru mɔ̀ dɔ̃ɔ ba ka dãa bìnu gira. Ba ra giru turu mɔ̀ gbee wukobu sɔɔ. Dãa bìnun girabu ya ra yarufaani mɔ̀ too domi yera ya ra dera dĩanu nu mara n koosi wuugibu kpuro bɛɛ.\n\nDãa bɔɔriba ba ra gbee wukobu duurumɔ bù ka dãa bìnu gbe. Ba ra giru kpaamɔ, ba ka dãa bìnu turu, ba ra ye mɛɛramɔ sere ya ka yiɛ. Giru ge sɔɔ ba ra dãa bwese bweseka turu: dobi, gberenu, tasu, ka sere doogo.\n\nDãa bɔɔriban sɔmburu ya ra dam mɔ̀ too, adama ya ra yarufaani mɔ̀ too wuun dĩanun sɔɔ. Yè ba dãa bìnu gira ba ra ye kpuro kanakunu kɛɛra ba ka ye doke dii sɔɔ.',
+    sections: {
+      observe: [
+        '1- Mba a waamɔ foto yeni sɔɔ?',
+        '2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?',
+      ],
+      ecoute: [
+        '1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?',
+        '2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?',
+        '3- Amɔna dãa bɔɔriba ba ra giru mɔ̀?',
+        '4- Dãa bwese bweseka yerà ba ra turu?',
+      ],
+      reagis: [
+        '1- Mban sɔ̃na dãa bɔɔriban sɔmburu ya ra dam mɔ̀?',
+        '2- Amɔna a dãa bìnun girabu waasina?',
+        '3- A gari yini daakari koowo:\n«Dãa bɔɔriba ba ra giru mɔ̀».\nMba gari yin yora ya sɔ̃simɔ?',
+      ],
+      retiens: [
+        '1- Saa yerà ba ra /ra/, /raa/ ka /-ra/ yore?',
+        '2- Mba n sãa dãa bɔɔriban sɔmburu?',
+      ],
+    },
+  },
+  {
+    id: 20,
+    page: 56,
+    title: 'Gɔɔ teɔ',
+    theme: 'gɔɔ_wuroru',
+    themeLabel: 'Gɔɔ wuroru',
+    phonetics: { label: 'Mè gãanu nu sãasinɛn gerubu', reading: ['mè', 'nu', 'sãasinɛ'], writing: ['mè', 'nu', 'sãasinɛ'] },
+    text: 'Gɔɔ teɔ gɔɔ bakawa u ka wãa tem kãa bɔnu garu sɔɔ. U wãawa yɛndu giraa, adama u ra ǹ dem sĩimɔ ka yobu. Tɔmbu kpuro ba nùn yã too, domi u ra sɔmburu komɔ tɔmbu kpuro bɛɛ.\n\nGɔɔ teɔ u ra gari dɔɔbun kpuro mɛɛramɔ ka bwisi. U ra ǹ gɔsa mɔ̀ u ǹ faagi ya u da gari ye ko. Sɔ̃ teeru u ra tɔmbu soka mɔ bù tii nɔɔria bù kã bù ra ǹ da mɛ̃ gãanu nu sãasinɛ.\n\nTɔmbu ba nùn nɔɔsia too domi u ra gere gariya ba yã ya wãa geera. U ra n tii wisiamɔ gem kpuro sɔɔ.',
+    sections: {
+      observe: [
+        '1- Mba a waamɔ foto yeni sɔɔ?',
+        '2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?',
+      ],
+      ecoute: [
+        '1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?',
+        '2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?',
+        '3- Mban sɔ̃na tɔmbu ba Gɔɔ teɔ nɔɔsia?',
+      ],
+      reagis: [
+        '1- Amɔna a Gɔɔ teɔn daakari waasina?',
+        '2- Mban sɔ̃na u ra tɔmbu soka bù tii nɔɔria?',
+        '3- A gari yini daakari koowo:\n«U ra gere gariya ba yã ya wãa geera».\nMba gari yin yora ya sɔ̃simɔ?',
+      ],
+      retiens: [
+        '1- Mè gãanu nu sãasinɛn gerubu sɔɔ, mba ka mba ba ra gere?',
+        '2- Amɔna n weenɛ bù gɔɔ tɔkɔ sãa?',
+      ],
+    },
+  },
+  {
+    id: 21,
+    page: 60,
+    title: 'Sina wɔnɔ goon mwabu',
+    theme: 'tɛtɛ_toobu',
+    themeLabel: 'Tɛtɛ toobu',
+    phonetics: { label: 'Yĩsan wùunu (w, y)', reading: ['wa', 'wã', 'ya', 'yã'], writing: ['wa', 'wã', 'ya', 'yã'] },
+    text: 'Sina wɔnɔ goo u wãawa wuu garu sɔɔ. U ra sɔmburu komɔ ka dam. Sɔ̃ teeru u ra gɔɔbu mwamɔ u ra bè nɛɛ bù sɔmburu ko. U ra ǹ tɔnu yarumɔ u ǹ wunanɔ.\n\nYè Sina wɔnɔ u gɔɔ goo mwa, u ra gari ge gbiisimɔ, u ra gari ge sɔ̃simɔ tɔmbu bɛɛ. U ra nɛɛmɔ mɛ̃ n weenɛ goo ù ko sɔmburu ye sɔɔ. Tɔmbu ba ra n nùn nɔɔsiamɔ domi u ra gari gembu geremɔ.\n\nAdama gabu ba ra nɛɛ Sina wɔnɔ u ra n tɔmbu baamɔ too. U ra ǹ goo demɔ u ǹ sɔmburu ko. Yè u gɔɔ goo mwa, tɔn kpuro u ra sɔmburu ko.',
+    sections: {
+      observe: [
+        '1- Mba a waamɔ foto yeni sɔɔ?',
+        '2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?',
+      ],
+      ecoute: [
+        '1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?',
+        '2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?',
+        '3- Mba Sina wɔnɔ u ra ko yè u gɔɔ goo mwa?',
+      ],
+      reagis: [
+        '1- Amɔna a Sina wɔnɔn daakari waasina?',
+        '2- Mban sɔ̃na gabu ba nɛɛ u ra tɔmbu baamɔ?',
+        '3- A yĩsan wùunu /w/ ka /y/ gɔsio gari yini sɔɔ.',
+      ],
+      retiens: [
+        '1- Yĩsan wùunu /w/ ka /y/ sɔɔ, mba n weenɛ a n yã?',
+        '2- Amɔna n weenɛ gɔɔ tɔkɔ ù sɔmburu ko?',
+      ],
+    },
+  },
+  {
+    id: 22,
+    page: 62,
+    title: 'Gannigin bàraru',
+    theme: 'gbiri_wɔ̃koru',
+    themeLabel: 'Gbiri wɔ̃koru',
+    phonetics: { label: 'Yĩsan wùunu (t, n)', reading: ['ta', 'tɔ', 'na', 'nɔ'], writing: ['ta', 'tɔ', 'na', 'nɔ'] },
+    text: 'Gannigin bàraru ya ra wãa tem kpuro sɔɔ. Tɔmbu ba ra bàra mɔ̀ saa gannigi bakaru sɔɔ. Yè gannigin sanam na, tɔmbu ba ra dĩanu duurumɔ bù ka tɔmbu tɔkɔnu sõɔsisi.\n\nGannigin bàrabu ba ra dĩa bwese bweseka kobu torumɔ: ba ra dĩa bwãamu duuru, ba ra nimge ko, ba ra sɔm bwese bweseka ko sere tɔmbu ba ka nɔɔ nɔ.\n\nGannigin bàrabun yigbɛra ya ra dem bakawa too domi ba ra n sɔ̃ɔsimɔ tɔmbu bɛɛ nì n weenɛ bù yã wãarun keu sɔɔ.',
+    sections: {
+      observe: [
+        '1- Mba a waamɔ foto yeni sɔɔ?',
+        '2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?',
+      ],
+      ecoute: [
+        '1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?',
+        '2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?',
+        '3- Mba ba ra ko gannigin bàrabu sɔɔ?',
+      ],
+      reagis: [
+        '1- Amɔna a gannigin bàrabun yarufaani waasina?',
+        '2- Mba ba ra sɔ̃ɔsi gannigin bàrabu sɔɔ?',
+        '3- A yĩsan wùunu /t/ ka /n/ gɔsio gari yini sɔɔ.',
+      ],
+      retiens: [
+        '1- Yĩsan wùunu /t/ ka /n/ sɔɔ, mba n weenɛ a n yã?',
+        '2- Gannigin bàrabun yarufaani yerà mba?',
+      ],
+    },
+  },
+  {
+    id: 23,
+    page: 64,
+    title: 'Bake Sìka ka sɛm sɔm kowobu',
+    theme: 'yãnu_ka_dĩanun_sɛm',
+    themeLabel: 'Yãnu ka dĩanun sɛm',
+    phonetics: { label: 'Yĩsan wùunu (g, s)', reading: ['ga', 'gɔ', 'sa', 'sɔ'], writing: ['ga', 'gɔ', 'sa', 'sɔ'] },
+    text: 'Bake Sìka gbee wukowa u ka sɛm sɔmaa ko. Sɔ̃ teeru u ra yãnu kɔsiamɔ u ra dĩanu sɛm bwese bweseka ko. U ra dĩanu ka yãnu duurumɔ u ra ye kpuro doke dii tɔkɔru sɔɔ.\n\nWin sɔmaa sɔɔ u ra kaasibun bwisi kãmɔ: u ra tìm mɛ̃ u koo ka dĩanu gira yãɛ, u ra tìm mɛ̃ u koo ka dĩa gɔnnu gberasia yãɛ. Bake Sìka u ra sɛm sɔm kowobu bè ba sɔmburu ko win mi siramɔ.\n\nYè sɛm sɔmaa ya kaara, u ra gobi gbaaru mɛɛramɔ ù yã mɛ̃ sɔmburu ya kɔsa u ǹ kɔsa.',
+    sections: {
+      observe: [
+        '1- Mba a waamɔ foto yeni sɔɔ?',
+        '2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?',
+      ],
+      ecoute: [
+        '1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?',
+        '2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?',
+        '3- Mba Bake Sìka u ra ko sɛm sɔmaa sɔɔ?',
+        '4- Mban sɔ̃na u ra sɛm sɔm kowobu sira?',
+      ],
+      reagis: [
+        '1- Amɔna a sɛm sɔmaan yarufaani waasina?',
+        '2- Mba n da ka sannɔsu nɛ sɛm sɔmaan baa sɔɔ?',
+        '3- A yĩsan wùunu /g/ ka /s/ gɔsio gari yini sɔɔ.',
+      ],
+      retiens: [
+        '1- Yĩsan wùunu /g/ ka /s/ sɔɔ, mba n weenɛ a n yã?',
+        '2- Amɔna n weenɛ bù sɛm sɔmaa ko?',
+      ],
+    },
+  },
+  {
+    id: 24,
+    page: 66,
+    title: 'À n tii kĩ, a tii nɔɔri',
+    theme: 'alaafian_yigbɛru',
+    themeLabel: 'Alaafian yigbɛru',
+    phonetics: { label: 'Yĩsan wùunu (b, m)', reading: ['ba', 'bɔ', 'ma', 'mɔ'], writing: ['ba', 'bɔ', 'ma', 'mɔ'] },
+    text: 'Alaafian yigbɛru ya ra dam mɔ̀ too wãarun keu sɔɔ. À n tii kĩ, a tii nɔɔri. Gari yara yèn kɔ̀kɔrɔ ya sɔ̃simɔ mɛ̃ tɔnu u ra tii kĩa, u ra tii nɔɔri, u ra tii mɛɛra sere u ra tii bɔɔri.\n\nTɔnu wì u tii kĩ u ra n barɔwa sere u ka maa. U ra n nɛnumɔwa saa baranu sɔɔ. U ra n kpĩimɔwa u n sɔmburu ko, u n dĩanu di u n nim nɔ.\n\nAdama tɔnu wì u ǹ tii kĩ, u ku ra n barɔ nɛnu. U ra baranu bwese bweseka gabamɔ. Yera n weenɛ tɔn kpuro ù tii kĩa u tii nɔɔri.',
+    sections: {
+      observe: [
+        '1- Mba a waamɔ foto yeni sɔɔ?',
+        '2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?',
+      ],
+      ecoute: [
+        '1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?',
+        '2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?',
+        '3- Mba n kɔ̀kɔrɔ mɛ̃ «à n tii kĩ, a tii nɔɔri»?',
+      ],
+      reagis: [
+        '1- Amɔna tɔnu u ra tii kĩasina?',
+        '2- Mba n da de tɔnu ù tii nɔɔri?',
+        '3- A yĩsan wùunu /b/ ka /m/ gɔsio gari yini sɔɔ.',
+      ],
+      retiens: [
+        '1- Yĩsan wùunu /b/ ka /m/ sɔɔ, mba n weenɛ a n yã?',
+        '2- Amɔna n weenɛ bù alaafian yigbɛru yã?',
+      ],
+    },
+  },
+  {
+    id: 25,
+    page: 68,
+    title: 'Saaton gɔɔ',
+    theme: 'bwãɛn_bararu',
+    themeLabel: 'Bwãɛn bararu',
+    phonetics: { label: 'Baatɔn suruba', reading: ['su', 'ba', 'u', 'a'], writing: ['su', 'ba', 'u', 'a'] },
+    text: 'Saaton gɔɔ gɔɔ bakawa u wãawa saa gisokun di. Tɔmbu ba nùn yã too domi u ra sɔmburu komɔ bwãɛ ba n nùn mara. U ra bwãɛbun bàraru komɔ ka dam.\n\nSaaton gɔɔ u ra gari kpuro gbiisimɔ sere u ra bwãɛbu nɛnumɔ ka bwisi. U ra ǹ gɔsa mɔ̀ u ǹ bwãɛ goo bara. U ra bwãɛ baawere nɛnumɔ ka alaafiya.\n\nYè bwãɛ goo barara, Saaton gɔɔ u ra sɔmburu ko dam too. U ra barɔ nɛnumɔ sere u ka maa. Tɔmbu ba ra nɛɛ Saaton gɔɔ u ra sɔmburu ko mɛ̃ u sãasinɛ.',
+    sections: {
+      observe: [
+        '1- Mba a waamɔ foto yeni sɔɔ?',
+        '2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?',
+      ],
+      ecoute: [
+        '1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?',
+        '2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?',
+        '3- Mba Saaton gɔɔ u ra ko bwãɛbun bàrabu sɔɔ?',
+      ],
+      reagis: [
+        '1- Amɔna a Saaton gɔɔn daakari waasina?',
+        '2- Mban sɔ̃na tɔmbu ba nùn yã?',
+        '3- A baatɔn suruba gɔsio gari yini sɔɔ.',
+      ],
+      retiens: [
+        '1- Baatɔn suruba sɔɔ, mba n weenɛ a n yã?',
+        '2- Amɔna n weenɛ bù bwãɛbu nɛnusina?',
       ],
     },
   },
@@ -1015,7 +1222,71 @@ export const CALCUL_N2_LESSONS: CalculLesson[] = [
     images: [],
   },
   {
-    id: 25, page: 132,
+    id: 25, page: 122,
+    title: 'À n dò mɔrun gaari koo yeru',
+    text: 'Gòonu nɛ — Proportionnalité',
+    paragraphs: [
+      'Gòonu nɛn kɔ̀kɔrɔ: yè dooti yiru nu tii nɛ gòo goo sɔɔ, nu ra tura sere nu ra n gurumɔ sannu.',
+      'Seedaba: 2 kg → F500, 4 kg → F1 000, 6 kg → F1 500',
+      'Gobi ye ǹ kpã tɔn ǹ ku ra gere mɛ̃ gòonu nu tii nɛ.',
+    ],
+    sections: { 'Gòonu nɛ': ['Dooti yiru nì nu tii nɛ gòo goo sɔɔ.'] },
+    images: [],
+  },
+  {
+    id: 26, page: 124,
+    title: 'Sunɔ Kom diru',
+    text: 'Bwèereku — Pourcentage',
+    paragraphs: [
+      'Bwèerekun kɔ̀kɔrɔ: dooti nì nu wãa wunɔbu garu sɔɔ.',
+      '25% saa F10 000 sɔɔ = F2 500',
+      '10% saa F5 000 sɔɔ = F500',
+      'Bwèereku ya ra yarufaani mɔ̀ gobi dwebu sɔɔ.',
+    ],
+    sections: { 'Bwèereku': ['Bwèerekun dooru.'] },
+    images: [],
+  },
+  {
+    id: 27, page: 126,
+    title: 'Gominan gobi bɔkuraru',
+    text: 'Gãa wãɛnaan seeda tireru — Partage proportionnel',
+    paragraphs: [
+      'Gominan gobi bɔkurabu: F60 000 bɔkuru tɔn ita bɛɛ.',
+      'Tɔn gbiikigii: F60 000 ÷ 3 = F20 000',
+      'Bɔkuru nì nu ǹ tii sãa: F60 000 → 1/2 + 1/3 + 1/6',
+      'F30 000 + F20 000 + F10 000 = F60 000',
+    ],
+    sections: { 'Gobi bɔkurabu': ['Gobi bɔkurabu bwese bweseka.'] },
+    images: [],
+  },
+  {
+    id: 28, page: 128,
+    title: 'Gaatan dii kpɛɛrun yãa dwebu',
+    text: 'Kia dwebun seeda tireru — Échelle et plan',
+    paragraphs: [
+      'Gaatan dii kpɛɛrun yãa dwebu: mɛ̃ ba ra gaata dii kpɛɛru yãa dwe.',
+      'Échelle 1/1000: 1 cm = 10 m',
+      'Échelle 1/500: 2 cm = 10 m',
+      'L = 8 cm → L réelle = 8 × 1000 cm = 80 m',
+    ],
+    sections: { 'Yãa dwebu': ['Gaatan dii kpɛɛrun yãa dwebu ka échelle.'] },
+    images: [],
+  },
+  {
+    id: 29, page: 130,
+    title: 'Su ka tii yinan yigbɛru',
+    text: 'Gobi kpakororun tireru — Bilan comptable',
+    paragraphs: [
+      'Gobi kpakororun tireru: mɛ̃ ba ra gobi kpakoro yore.',
+      'Recettes: F150 000 | Dépenses: F120 000',
+      'Bénéfice: F150 000 - F120 000 = F30 000',
+      'Budget prévisionnel ka réalisation.',
+    ],
+    sections: { 'Gobi kpakororu': ['Gobi kpakororun tireru yorubu.'] },
+    images: [],
+  },
+  {
+    id: 30, page: 132,
     title: 'Yaayasiabu nɔɔbuse — Dooru',
     text: 'Évaluation finale — Calcul',
     paragraphs: ['Évaluation complète de toutes les compétences de calcul N2.'],
@@ -1061,6 +1332,30 @@ export const CALCUL_N2_EXERCISES: Record<number, MathExercise[]> = {
   19: [
     { type: 'subtraction', operands: [35000, 30000], expected: 5000, label: 'Gobi dwebu' },
     { type: 'subtraction', operands: [75, 68.4], expected: 6.6, label: 'Bénéfice' },
+  ],
+  25: [
+    { type: 'multiplication', operands: [2, 500], expected: 1000, label: 'Gòonu nɛ: 2 kg' },
+    { type: 'multiplication', operands: [4, 500], expected: 2000, label: 'Gòonu nɛ: 4 kg' },
+    { type: 'multiplication', operands: [6, 500], expected: 3000, label: 'Gòonu nɛ: 6 kg' },
+  ],
+  26: [
+    { type: 'multiplication', operands: [10000, 0.25], expected: 2500, label: '25% saa F10 000' },
+    { type: 'multiplication', operands: [5000, 0.1], expected: 500, label: '10% saa F5 000' },
+    { type: 'multiplication', operands: [20000, 0.15], expected: 3000, label: '15% saa F20 000' },
+  ],
+  27: [
+    { type: 'division', operands: [60000, 3], expected: 20000, label: 'Bɔkuru tɔn ita' },
+    { type: 'multiplication', operands: [60000, 0.5], expected: 30000, label: '1/2 saa F60 000' },
+    { type: 'subtraction', operands: [60000, 50000], expected: 10000, label: '1/6 saa F60 000' },
+  ],
+  28: [
+    { type: 'multiplication', operands: [8, 1000], expected: 8000, label: '8 cm → cm réel' },
+    { type: 'multiplication', operands: [5, 500], expected: 2500, label: '5 cm échelle 1/500' },
+  ],
+  29: [
+    { type: 'subtraction', operands: [150000, 120000], expected: 30000, label: 'Bénéfice' },
+    { type: 'subtraction', operands: [200000, 180000], expected: 20000, label: 'Excédent' },
+    { type: 'subtraction', operands: [100000, 110000], expected: -10000, label: 'Déficit' },
   ],
 };
 

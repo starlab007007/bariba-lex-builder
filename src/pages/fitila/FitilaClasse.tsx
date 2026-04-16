@@ -37,7 +37,15 @@ export default function FitilaClasse() {
   const langEvals = evaluations.filter(e => e.page < 85);
   const calcEvals = evaluations.filter(e => e.page >= 85);
 
-  const sectionCards = [
+  const n2LangLessons = CLASSE_N2_LESSONS;
+  const n2CalcLessons = CALCUL_N2_LESSONS;
+
+  const sectionCards = activeLevel === 'N2' ? [
+    { id: 'lessons' as Section, emoji: '📖', label: currentLang === 'ba' ? 'Garibu ka yora' : 'Part 1 — Langue', desc: `${n2LangLessons.length} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-amber-400 to-orange-400', count: completedCount },
+    { id: 'calcul' as Section, emoji: '🔢', label: currentLang === 'ba' ? 'Dooru ka yarumani' : 'Part 2 — Calcul', desc: `${n2CalcLessons.length} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-blue-400 to-indigo-400' },
+    { id: 'evaluations' as Section, emoji: '📝', label: currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations', desc: `${evaluations.length} ${currentLang === 'ba' ? 'yaayasiabu' : 'évaluations'}`, gradient: 'from-purple-400 to-pink-400' },
+    { id: 'facilitateur' as Section, emoji: '👨‍🏫', label: currentLang === 'ba' ? 'Sɔ̃ɔsirun sɔɔru' : 'Facilitateur', desc: currentLang === 'ba' ? 'Keu sɔ̃ɔsion garibu' : 'Guide pédagogique', gradient: 'from-rose-400 to-red-400' },
+  ] : [
     { id: 'lessons' as Section, emoji: '📖', label: currentLang === 'ba' ? 'Garibu' : 'Leçons', desc: `${totalLessons} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-amber-400 to-orange-400', count: completedCount },
     { id: 'alphabet' as Section, emoji: '🔤', label: currentLang === 'ba' ? 'Sɔ̃ɔsiru' : 'Alphabet', desc: currentLang === 'ba' ? 'Yori piibunu ka bakanu' : 'Voyelles & Consonnes', gradient: 'from-emerald-400 to-teal-400' },
     { id: 'calcul' as Section, emoji: '🔢', label: currentLang === 'ba' ? 'Dooru' : 'Calcul', desc: `${calculLessons.length} ${currentLang === 'ba' ? 'garibu' : 'leçons'}`, gradient: 'from-blue-400 to-indigo-400' },
