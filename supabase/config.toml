@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.generate-video-posters]
 verify_jwt = false
+
+[functions.recognize-handwriting]
+verify_jwt = false

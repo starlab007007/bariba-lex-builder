@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Keyboard, PenTool, X, Eraser, Check } from 'lucide-react';
+import { Keyboard, PenTool, X, Eraser, Loader2 } from 'lucide-react';
 import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSuggestions';
+import { supabase } from '@/integrations/supabase/client';
 
 const BARIBA_CHARS = [
   'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̀', 'ɔ́', 'ɔ̃',
@@ -24,26 +25,27 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [showCanvas, setShowCanvas] = useState(false);
   const [suggestions, setSuggestions] = useState<PhoneticEntry[]>([]);
+  const [hwCandidates, setHwCandidates] = useState<string[]>([]);
+  const [hwLoading, setHwLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
+  const strokeCount = useRef(0);
+  const recognizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Extract current word being typed
   const getCurrentWord = useCallback((text: string, cursorPos: number): string => {
     const before = text.slice(0, cursorPos);
     const match = before.match(/[\wɔɛŋãàáèéìíòóùúũĩɔ̀ɔ́ɔ̃ɛ̀ɛ́ɛ̃ǹ]+$/u);
     return match ? match[0] : '';
   }, []);
 
-  // Update suggestions on value change
   useEffect(() => {
     if (!value) { setSuggestions([]); return; }
     const cursor = textareaRef.current?.selectionStart ?? value.length;
     const word = getCurrentWord(value, cursor);
     if (word.length >= 2) {
-      const results = getSuggestions(word, 5);
-      setSuggestions(results);
+      setSuggestions(getSuggestions(word, 5));
     } else {
       setSuggestions([]);
     }
@@ -80,7 +82,51 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
     });
   }, [value, onChange, getCurrentWord]);
 
-  // Canvas drawing handlers
+  // --- Handwriting recognition ---
+  const triggerRecognition = useCallback(async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Check if canvas has content
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const hasContent = imageData.data.some((v, i) => i % 4 === 3 && v > 0);
+    if (!hasContent) return;
+
+    setHwLoading(true);
+    try {
+      const base64 = canvas.toDataURL('image/png');
+      const { data, error } = await supabase.functions.invoke('recognize-handwriting', {
+        body: { image_base64: base64 },
+      });
+
+      if (error) throw error;
+      const candidates = data?.candidates || [];
+      setHwCandidates(candidates.slice(0, 5));
+    } catch (err) {
+      console.error('Handwriting recognition failed:', err);
+      // Fallback: candidates stay empty, quick-char buttons still available
+    } finally {
+      setHwLoading(false);
+    }
+  }, []);
+
+  const scheduleRecognition = useCallback(() => {
+    if (recognizeTimer.current) clearTimeout(recognizeTimer.current);
+    recognizeTimer.current = setTimeout(() => {
+      triggerRecognition();
+    }, 800);
+  }, [triggerRecognition]);
+
+  const insertHwCandidate = useCallback((candidate: string) => {
+    insertAtCursor(candidate);
+    setHwCandidates([]);
+    clearCanvas();
+    strokeCount.current = 0;
+  }, [insertAtCursor]);
+
+  // Canvas drawing
   const getCanvasPos = (e: React.TouchEvent | React.MouseEvent) => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
@@ -114,14 +160,29 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
     lastPos.current = pos;
   };
 
-  const stopDraw = () => { isDrawing.current = false; };
+  const stopDraw = () => {
+    if (isDrawing.current) {
+      isDrawing.current = false;
+      strokeCount.current += 1;
+      scheduleRecognition();
+    }
+  };
 
   const clearCanvas = () => {
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx && canvasRef.current) {
       ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     }
+    setHwCandidates([]);
+    strokeCount.current = 0;
   };
+
+  // Cleanup timer
+  useEffect(() => {
+    return () => {
+      if (recognizeTimer.current) clearTimeout(recognizeTimer.current);
+    };
+  }, []);
 
   return (
     <div className="relative">
@@ -136,7 +197,6 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
           disabled={disabled}
           onChange={e => onChange(e.target.value)}
         />
-        {/* Toggle buttons */}
         <div className="absolute top-1.5 right-1.5 flex gap-1">
           <button
             type="button"
@@ -181,7 +241,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
         )}
       </AnimatePresence>
 
-      {/* Bariba special characters keyboard */}
+      {/* Bariba keyboard */}
       <AnimatePresence>
         {showKeyboard && (
           <motion.div
@@ -225,7 +285,8 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
               <span className="text-purple-600 text-[10px] font-bold uppercase flex items-center gap-1">
                 <PenTool className="w-3 h-3" /> Écriture manuscrite
               </span>
-              <div className="flex gap-1">
+              <div className="flex gap-1 items-center">
+                {hwLoading && <Loader2 className="w-3 h-3 animate-spin text-purple-400" />}
                 <button type="button" onClick={clearCanvas}
                   className="p-1 rounded bg-white border border-purple-200 text-purple-500 hover:bg-purple-50">
                   <Eraser className="w-3 h-3" />
@@ -236,6 +297,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
                 </button>
               </div>
             </div>
+
             <canvas
               ref={canvasRef}
               width={280}
@@ -249,7 +311,52 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
               onTouchMove={draw}
               onTouchEnd={stopDraw}
             />
-            {/* Quick character insert row below canvas */}
+
+            {/* AI-recognized candidates */}
+            <AnimatePresence>
+              {(hwCandidates.length > 0 || hwLoading) && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="px-2.5 py-2 border-t border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50"
+                >
+                  {hwLoading && hwCandidates.length === 0 ? (
+                    <div className="flex items-center gap-2 text-purple-400 text-xs">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Reconnaissance en cours…</span>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-purple-400 text-[9px] font-bold uppercase mb-1 block">
+                        Suggestions reconnues
+                      </span>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {hwCandidates.map((c, i) => (
+                          <motion.button
+                            key={`${c}-${i}`}
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: i * 0.05 }}
+                            type="button"
+                            onClick={() => insertHwCandidate(c)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                              i === 0
+                                ? 'bg-purple-500 text-white shadow-sm hover:bg-purple-600'
+                                : 'bg-white border border-purple-200 text-purple-700 hover:bg-purple-100'
+                            }`}
+                          >
+                            {c}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Quick character fallback row */}
             <div className="flex gap-1 flex-wrap p-2 border-t border-purple-100 bg-purple-50/50">
               {['a', 'b', 'd', 'e', 'g', 'i', 'k', 'm', 'n', 'o', 'r', 's', 'u', 'w', 'y',
                 'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̃', 'ɛ̃'].map(c => (
