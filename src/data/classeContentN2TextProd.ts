@@ -19,6 +19,7 @@ export interface TextType {
 }
 
 export interface TextStructureField {
+  key: string;
   label: string;
   labelFr: string;
   placeholder: string;
