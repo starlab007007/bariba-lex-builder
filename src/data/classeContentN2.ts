@@ -509,7 +509,7 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
     title: 'Baakon tem dɔrabu',
     theme: 'tem_baun',
     themeLabel: 'Tem baun sannɔsu',
-    phonetics: { label: 'ma, mà, maa, màa, -ma', pairs: [['ma', 'ma (conjonction)'], ['mà', 'mà (ton bas)'], ['maa', 'maa (long)'], ['màa', 'màa (aussi)'], ['-ma', '-ma (suffixe)']] },
+    phonetics: { label: 'ma, mà, maa, màa, -ma', reading: ['ma', 'mà', 'maa', 'màa'], writing: ['ma', 'mà', 'maa', 'màa', '-ma'] },
     text: 'Baako u wãawa Sõɔ Màroɔ. U seewa u deemawa win mɔwobu ba gberu wukumɔ. Tã, ba gbisuka ma ba wãɛsu deri. Win maabu ka sesubu sibu ba keu kua ba bature sɔmaa mɔ̀. Baako kùn sɔmburu garu mɔ̀.\n\nSɔ̃ teeru, ba Baako tireru mɔrisiama ù be na fuuku mɛɛrun gbankɔkɔwɔ. U sɔɔru kua kùru kùru u dukaa da. U deema Bakiri ka Daado ba sɔ̃ yam mi. Ba tubuna, adama ba nùn mɛɛraawa bɛɛ.\n\nBaako kùn kpĩa u yen gaa siki. Wì u bè siriammɛ u nɛɛ: "Baako, a maa tie wunɛn dàa ye sɔɔ?" U wii win naanaanu wiru kɔreya.',
     sections: {
       observe: [
@@ -538,7 +538,7 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
     title: 'Dãa bɔɔriban girabu',
     theme: 'yam_wãa_yeru',
     themeLabel: 'Yam wãa yeru',
-    phonetics: { label: 'ra, raa, -ra', pairs: [['ra', 'ra (habituel)'], ['raa', 'raa (long)'], ['-ra', '-ra (suffixe)']] },
+    phonetics: { label: 'ra, raa, -ra', reading: ['ra', 'raa'], writing: ['ra', 'raa', '-ra'] },
     text: 'Dãa bɔɔriba ba ra giru mɔ̀ dɔ̃ɔ ba ka dãa bìnu gira. Ba ra giru turu mɔ̀ gbee wukobu sɔɔ. Dãa bìnun girabu ya ra yarufaani mɔ̀ too domi yera ya ra dera dĩanu nu mara n koosi wuugibu kpuro bɛɛ.\n\nDãa bɔɔriba ba ra gbee wukobu duurumɔ bù ka dãa bìnu gbe. Ba ra giru kpaamɔ, ba ka dãa bìnu turu, ba ra ye mɛɛramɔ sere ya ka yiɛ. Giru ge sɔɔ ba ra dãa bwese bweseka turu: dobi, gberenu, tasu, ka sere doogo.\n\nDãa bɔɔriban sɔmburu ya ra dam mɔ̀ too, adama ya ra yarufaani mɔ̀ too wuun dĩanun sɔɔ. Yè ba dãa bìnu gira ba ra ye kpuro kanakunu kɛɛra ba ka ye doke dii sɔɔ.',
     sections: {
       observe: [
@@ -568,7 +568,7 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
     title: 'Gɔɔ teɔ',
     theme: 'gɔɔ_wuroru',
     themeLabel: 'Gɔɔ wuroru',
-    phonetics: { label: 'Mè gãanu nu sãasinɛn gerubu', pairs: [['mè', 'mè (que/ce que)'], ['nu', 'nu (ils/elles)'], ['sãasinɛ', 'sãasinɛ (se passer)']] },
+    phonetics: { label: 'Mè gãanu nu sãasinɛn gerubu', reading: ['mè', 'nu', 'sãasinɛ'], writing: ['mè', 'nu', 'sãasinɛ'] },
     text: 'Gɔɔ teɔ gɔɔ bakawa u ka wãa tem kãa bɔnu garu sɔɔ. U wãawa yɛndu giraa, adama u ra ǹ dem sĩimɔ ka yobu. Tɔmbu kpuro ba nùn yã too, domi u ra sɔmburu komɔ tɔmbu kpuro bɛɛ.\n\nGɔɔ teɔ u ra gari dɔɔbun kpuro mɛɛramɔ ka bwisi. U ra ǹ gɔsa mɔ̀ u ǹ faagi ya u da gari ye ko. Sɔ̃ teeru u ra tɔmbu soka mɔ bù tii nɔɔria bù kã bù ra ǹ da mɛ̃ gãanu nu sãasinɛ.\n\nTɔmbu ba nùn nɔɔsia too domi u ra gere gariya ba yã ya wãa geera. U ra n tii wisiamɔ gem kpuro sɔɔ.',
     sections: {
       observe: [
@@ -597,7 +597,7 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
     title: 'Sina wɔnɔ goon mwabu',
     theme: 'tɛtɛ_toobu',
     themeLabel: 'Tɛtɛ toobu',
-    phonetics: { label: 'Yĩsan wùunu (w, y)', pairs: [['w', 'w (semi-voyelle)'], ['y', 'y (semi-voyelle)'], ['wã', 'wã (être)'], ['yã', 'yã (voir)']] },
+    phonetics: { label: 'Yĩsan wùunu (w, y)', reading: ['wa', 'wã', 'ya', 'yã'], writing: ['wa', 'wã', 'ya', 'yã'] },
     text: 'Sina wɔnɔ goo u wãawa wuu garu sɔɔ. U ra sɔmburu komɔ ka dam. Sɔ̃ teeru u ra gɔɔbu mwamɔ u ra bè nɛɛ bù sɔmburu ko. U ra ǹ tɔnu yarumɔ u ǹ wunanɔ.\n\nYè Sina wɔnɔ u gɔɔ goo mwa, u ra gari ge gbiisimɔ, u ra gari ge sɔ̃simɔ tɔmbu bɛɛ. U ra nɛɛmɔ mɛ̃ n weenɛ goo ù ko sɔmburu ye sɔɔ. Tɔmbu ba ra n nùn nɔɔsiamɔ domi u ra gari gembu geremɔ.\n\nAdama gabu ba ra nɛɛ Sina wɔnɔ u ra n tɔmbu baamɔ too. U ra ǹ goo demɔ u ǹ sɔmburu ko. Yè u gɔɔ goo mwa, tɔn kpuro u ra sɔmburu ko.',
     sections: {
       observe: [
@@ -626,7 +626,7 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
     title: 'Gannigin bàraru',
     theme: 'gbiri_wɔ̃koru',
     themeLabel: 'Gbiri wɔ̃koru',
-    phonetics: { label: 'Yĩsan wùunu (t, n)', pairs: [['t', 't (consonne)'], ['n', 'n (consonne nasale)'], ['tɔ', 'tɔ (personne)'], ['nɔ', 'nɔ (bouche)']] },
+    phonetics: { label: 'Yĩsan wùunu (t, n)', reading: ['ta', 'tɔ', 'na', 'nɔ'], writing: ['ta', 'tɔ', 'na', 'nɔ'] },
     text: 'Gannigin bàraru ya ra wãa tem kpuro sɔɔ. Tɔmbu ba ra bàra mɔ̀ saa gannigi bakaru sɔɔ. Yè gannigin sanam na, tɔmbu ba ra dĩanu duurumɔ bù ka tɔmbu tɔkɔnu sõɔsisi.\n\nGannigin bàrabu ba ra dĩa bwese bweseka kobu torumɔ: ba ra dĩa bwãamu duuru, ba ra nimge ko, ba ra sɔm bwese bweseka ko sere tɔmbu ba ka nɔɔ nɔ.\n\nGannigin bàrabun yigbɛra ya ra dem bakawa too domi ba ra n sɔ̃ɔsimɔ tɔmbu bɛɛ nì n weenɛ bù yã wãarun keu sɔɔ.',
     sections: {
       observe: [
@@ -655,7 +655,7 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
     title: 'Bake Sìka ka sɛm sɔm kowobu',
     theme: 'yãnu_ka_dĩanun_sɛm',
     themeLabel: 'Yãnu ka dĩanun sɛm',
-    phonetics: { label: 'Yĩsan wùunu (g, s)', pairs: [['g', 'g (consonne)'], ['s', 's (consonne)'], ['gɔ', 'gɔ (route)'], ['sɔ', 'sɔ (dedans)']] },
+    phonetics: { label: 'Yĩsan wùunu (g, s)', reading: ['ga', 'gɔ', 'sa', 'sɔ'], writing: ['ga', 'gɔ', 'sa', 'sɔ'] },
     text: 'Bake Sìka gbee wukowa u ka sɛm sɔmaa ko. Sɔ̃ teeru u ra yãnu kɔsiamɔ u ra dĩanu sɛm bwese bweseka ko. U ra dĩanu ka yãnu duurumɔ u ra ye kpuro doke dii tɔkɔru sɔɔ.\n\nWin sɔmaa sɔɔ u ra kaasibun bwisi kãmɔ: u ra tìm mɛ̃ u koo ka dĩanu gira yãɛ, u ra tìm mɛ̃ u koo ka dĩa gɔnnu gberasia yãɛ. Bake Sìka u ra sɛm sɔm kowobu bè ba sɔmburu ko win mi siramɔ.\n\nYè sɛm sɔmaa ya kaara, u ra gobi gbaaru mɛɛramɔ ù yã mɛ̃ sɔmburu ya kɔsa u ǹ kɔsa.',
     sections: {
       observe: [
@@ -685,7 +685,7 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
     title: 'À n tii kĩ, a tii nɔɔri',
     theme: 'alaafian_yigbɛru',
     themeLabel: 'Alaafian yigbɛru',
-    phonetics: { label: 'Yĩsan wùunu (b, m)', pairs: [['b', 'b (consonne)'], ['m', 'm (consonne nasale)'], ['bɔ', 'bɔ (ventre)'], ['mɔ', 'mɔ (avoir)']] },
+    phonetics: { label: 'Yĩsan wùunu (b, m)', reading: ['ba', 'bɔ', 'ma', 'mɔ'], writing: ['ba', 'bɔ', 'ma', 'mɔ'] },
     text: 'Alaafian yigbɛru ya ra dam mɔ̀ too wãarun keu sɔɔ. À n tii kĩ, a tii nɔɔri. Gari yara yèn kɔ̀kɔrɔ ya sɔ̃simɔ mɛ̃ tɔnu u ra tii kĩa, u ra tii nɔɔri, u ra tii mɛɛra sere u ra tii bɔɔri.\n\nTɔnu wì u tii kĩ u ra n barɔwa sere u ka maa. U ra n nɛnumɔwa saa baranu sɔɔ. U ra n kpĩimɔwa u n sɔmburu ko, u n dĩanu di u n nim nɔ.\n\nAdama tɔnu wì u ǹ tii kĩ, u ku ra n barɔ nɛnu. U ra baranu bwese bweseka gabamɔ. Yera n weenɛ tɔn kpuro ù tii kĩa u tii nɔɔri.',
     sections: {
       observe: [
@@ -714,7 +714,7 @@ export const CLASSE_N2_LESSONS: ClasseLesson[] = [
     title: 'Saaton gɔɔ',
     theme: 'bwãɛn_bararu',
     themeLabel: 'Bwãɛn bararu',
-    phonetics: { label: 'Baatɔn suruba', pairs: [['su', 'su (nous)'], ['ba', 'ba (ils)'], ['u', 'u (il/elle)'], ['a', 'a (tu)']] },
+    phonetics: { label: 'Baatɔn suruba', reading: ['su', 'ba', 'u', 'a'], writing: ['su', 'ba', 'u', 'a'] },
     text: 'Saaton gɔɔ gɔɔ bakawa u wãawa saa gisokun di. Tɔmbu ba nùn yã too domi u ra sɔmburu komɔ bwãɛ ba n nùn mara. U ra bwãɛbun bàraru komɔ ka dam.\n\nSaaton gɔɔ u ra gari kpuro gbiisimɔ sere u ra bwãɛbu nɛnumɔ ka bwisi. U ra ǹ gɔsa mɔ̀ u ǹ bwãɛ goo bara. U ra bwãɛ baawere nɛnumɔ ka alaafiya.\n\nYè bwãɛ goo barara, Saaton gɔɔ u ra sɔmburu ko dam too. U ra barɔ nɛnumɔ sere u ka maa. Tɔmbu ba ra nɛɛ Saaton gɔɔ u ra sɔmburu ko mɛ̃ u sãasinɛ.',
     sections: {
       observe: [
