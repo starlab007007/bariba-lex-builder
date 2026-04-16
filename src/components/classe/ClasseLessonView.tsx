@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check, X, Star, Eye } from 'lucide-react';
+import BaribaSmartTextarea from './BaribaSmartTextarea';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { CLASSE_LESSONS, LESSON_ANSWERS, markLessonComplete, markTabComplete, getLessonStars, getClasseProgress } from '@/data/classeContent';
 
@@ -122,8 +123,8 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
           return (
             <div key={i}>
               <p className="text-gray-800 text-sm font-medium mb-1">{q}</p>
-              <textarea
-                className={`w-full border rounded-xl p-2.5 text-gray-700 text-sm placeholder:text-gray-300 focus:ring-1 outline-none resize-none transition-colors ${
+              <BaribaSmartTextarea
+                className={`transition-colors ${
                   isCorrect ? 'bg-emerald-50 border-emerald-300 focus:border-emerald-400 focus:ring-emerald-200' :
                   isWrong ? 'bg-red-50 border-red-300 focus:border-red-400 focus:ring-red-200' :
                   'bg-gray-50 border-gray-200 focus:border-amber-400 focus:ring-amber-200'
@@ -131,9 +132,8 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
                 rows={2}
                 placeholder={currentLang === 'ba' ? 'A yora...' : 'Ta réponse...'}
                 value={answers[key] || ''}
-                onChange={e => {
-                  setAnswers(prev => ({ ...prev, [key]: e.target.value }));
-                  // Clear feedback when typing
+                onChange={(val) => {
+                  setAnswers(prev => ({ ...prev, [key]: val }));
                   if (feedback[key]) {
                     setFeedback(prev => { const n = { ...prev }; delete n[key]; return n; });
                     setShowCorrection(prev => { const n = { ...prev }; delete n[key]; return n; });
@@ -288,14 +288,15 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
                   {lesson.phonetics.writing.map((w, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <span className="text-amber-600 text-lg font-bold min-w-[80px] font-mono">{w}</span>
-                      <input
-                        type="text"
-                        className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-2 text-gray-700 text-sm placeholder:text-gray-300 focus:border-amber-400 outline-none"
-                        placeholder={currentLang === 'ba' ? 'Yore...' : 'Écris...'}
-                        value={answers[`wr_${i}`] || ''}
-                        onChange={e => setAnswers(prev => ({ ...prev, [`wr_${i}`]: e.target.value }))}
-                        onBlur={() => checkWord(`wr_${i}`, w)}
-                      />
+                      <div className="flex-1">
+                        <BaribaSmartTextarea
+                          className="bg-gray-50 border-gray-200 focus:border-amber-400"
+                          rows={1}
+                          placeholder={currentLang === 'ba' ? 'Yore...' : 'Écris...'}
+                          value={answers[`wr_${i}`] || ''}
+                          onChange={(val) => setAnswers(prev => ({ ...prev, [`wr_${i}`]: val }))}
+                        />
+                      </div>
                       {feedback[`wr_${i}`] === 'correct' && <Check className="w-5 h-5 text-emerald-500" />}
                       {feedback[`wr_${i}`] === 'wrong' && <X className="w-5 h-5 text-red-400" />}
                     </div>
