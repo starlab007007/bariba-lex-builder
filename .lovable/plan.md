@@ -1,83 +1,51 @@
 
 
-# Plan : Restructuration du Niveau 2 — Modules separes et contenu complet
+# Plan : Regenerer les 3 HTML N2 avec toutes les images embeddees en base64
 
-## Problemes identifies
+## Probleme
 
-1. **Module Alphabet** affiche dans N2 alors qu'il n'existe pas au Niveau 2
-2. **7 lecons de langue manquantes** (Part 2, pages 54-70) : Dãa bɔɔriban girabu, Gɔɔ teɔ, Sina wɔnɔ goon mwabu, Gannigin bàraru, Bake Sika ka sɛm sɔm kowobu, À n tii kĩ a tii nɔɔri, Saaton gɔɔ
-3. **5 lecons de calcul manquantes** (pages 122-130) : À n dò mɔrun gaari koo yeru, Sunɔ Kom diru, Gominan gobi bɔkuraru, Gaatan dii kpɛɛrun yãa dwebu, Su ka tii yinan yigbɛru
-4. **Pas de separation Part 1 / Part 2** — tout est melange dans un seul module "Lecons"
+Les fichiers HTML N2 actuels font 67-82 KB (texte seul) alors que les N1 font 18-22 MB car ils contiennent les screenshots de chaque page en base64. Les illustrations, photos et schemas des PDF originaux sont absents des HTML.
 
-## Architecture cible du N2
+## Solution
 
-Le N2 aura **4 modules** au lieu de 5 (pas d'Alphabet) :
+Re-executer le script de conversion en utilisant les images extraites par le parser PDF, embeddees en base64 directement dans le HTML — meme approche que les N1.
 
-```text
-┌─────────────────────────────────────────┐
-│           NIVEAU 2 — Home               │
-├──────────────┬──────────────────────────┤
-│ 📖 Part 1   │ Garibu ka yora           │
-│   (Langue)   │ 25 lecons + 5 evals     │
-├──────────────┼──────────────────────────┤
-│ 🔢 Part 2   │ Dooru ka yarumani        │
-│   (Calcul)   │ 30 lecons + 5 evals     │
-├──────────────┼──────────────────────────┤
-│ 📝 Yaayasia  │ Evaluations combinees    │
-│              │ Langue + Calcul          │
-├──────────────┼──────────────────────────┤
-│ 👨‍🏫 Guide   │ Facilitateur N2          │
-└──────────────┴──────────────────────────┘
-```
+## Approche technique
 
-## Modifications
+Pour chaque document (Manuel, Guide, Module) :
 
-### 1. `src/data/classeContentN2.ts` — Ajouter contenu manquant
+1. **Collecter les page screenshots** (`page_N.jpg`) et les images inline (`page_N_image_X_v2.jpg`, `img_pN_X.png`) depuis `parsed-documents://`
+2. **Copier toutes les images** vers `/tmp/` pour les lire en binaire
+3. **Convertir chaque image en base64** et l'injecter dans le HTML :
+   - Les page screenshots sont inserees au debut de chaque section `## Page N` comme image pleine largeur
+   - Les images inline referees dans le markdown (`![alt](filename)`) sont remplacees par leurs equivalents base64
+4. **Appliquer le mapping de correction Bariba** sur tout le texte
+5. **Generer les HTML autonomes** avec CSS integre, meme style que les N1
 
-**Lecons langue 19-25** (extraites exhaustivement du Manuel N2 pages 54-70) :
-- 19: Dãa bɔɔriban girabu (Dãa bɔɔriba)
-- 20: Gɔɔ teɔ (Gɔɔ teɔ)
-- 21: Sina wɔnɔ goon mwabu (Sina wɔnɔ)
-- 22: Gannigin bàraru (Gannigin bàra)
-- 23: Bake Sika ka sɛm sɔm kowobu (Sɛm sɔmaa)
-- 24: À n tii kĩ, a tii nɔɔri (Tii nɔɔribu)
-- 25: Saaton gɔɔ (Saaton gɔɔ)
+### Images disponibles (extraites des PDFs)
 
-Chaque lecon avec texte complet + 5 sections interactives (observe/ecoute/reagis/retiens/sɔmaa)
+| Document | Page screenshots | Images inline | Total |
+|----------|-----------------|---------------|-------|
+| Manuel N2 | ~51 pages | ~18 illustrations de lecons | ~69 images |
+| Guide N2 | ~51 pages | ~15 tableaux/schemas | ~66 images |
+| Module N2 | ~34 pages | ~12 images/tableaux | ~46 images |
 
-**Lecons calcul 26-30** (pages 122-132) :
-- 26: À n dò mɔrun gaari koo yeru
-- 27: Sunɔ Kom diru
-- 28: Gominan gobi bɔkuraru
-- 29: Gaatan dii kpɛɛrun yãa dwebu
-- 30: Su ka tii yinan yigbɛru
+## Script Python one-off
 
-Avec exercices interactifs correspondants dans `CALCUL_N2_EXERCISES`
+Un script `/tmp/rebuild_n2_with_images.py` qui :
+- Lit les images depuis `parsed-documents://` (copiees en `/tmp/`)
+- Les encode en base64
+- Reconstruit le HTML avec le texte corrige + images embeddees
+- Produit des fichiers de 15-25 MB chacun (comme les N1)
 
-Ajouter evaluations manquantes pour Part 2 langue (Yaayasiabu nnɛse p.58, nɔɔbuse p.70)
+## Sortie
 
-### 2. `src/pages/fitila/FitilaClasse.tsx` — Restructurer les modules N2
+3 fichiers HTML mis a jour dans `/mnt/documents/` :
+- `Manuel_Bariba_N2_Corrige.html` (~20 MB)
+- `Guide_Enseignement_N2_Corrige.html` (~20 MB)
+- `Module_Formation_N2_Corrige.html` (~15 MB)
 
-- Supprimer le module Alphabet du `sectionCards` quand `activeLevel === 'N2'`
-- Remplacer le module unique "Lecons" par deux modules :
-  - **Part 1 — Garibu ka yora** (section `'n2-langue'`) : 25 lecons langue
-  - **Part 2 — Dooru ka yarumani dendibu** (section `'n2-calcul'`) : 30 lecons calcul
-- Ajouter les types de section correspondants
-- Chaque part a sa propre liste de lecons et evaluations
-- Les composants existants (ClasseLessonView, ClasseCalculView, ClasseEvaluation) sont reutilises avec le bon jeu de donnees
+## Aucun changement au code de l'application
 
-### 3. Aucun changement au `ClasseFacilitateur.tsx`
-
-Le contenu N2 du facilitateur est deja en place.
-
-## Interactivite
-
-Tous les champs texte utilisent automatiquement `BaribaSmartTextarea` (clavier Bariba, suggestions predictives, ecriture manuscrite) — deja integre dans les composants partages.
-
-## Fichiers modifies
-
-| Action | Fichier |
-|--------|---------|
-| Modifier | `src/data/classeContentN2.ts` — Ajouter 7 lecons langue + 5 lecons calcul + exercices + evaluations |
-| Modifier | `src/pages/fitila/FitilaClasse.tsx` — Supprimer Alphabet N2, separer Part 1 et Part 2 |
+Script one-off uniquement. Les fichiers HTML existants seront remplaces par les versions completes avec images.
 
