@@ -11,8 +11,11 @@ import ClasseAlphabetView from '@/components/classe/ClasseAlphabetView';
 import ClasseCalculView from '@/components/classe/ClasseCalculView';
 import ClasseEvaluation from '@/components/classe/ClasseEvaluation';
 import ClasseFacilitateur from '@/components/classe/ClasseFacilitateur';
+import ClasseGrammaireN2 from '@/components/classe/ClasseGrammaireN2';
+import ClasseTextProdN2 from '@/components/classe/ClasseTextProdN2';
+import ClasseGestionN2 from '@/components/classe/ClasseGestionN2';
 
-type Section = 'home' | 'lessons' | 'lesson-detail' | 'alphabet' | 'calcul' | 'evaluations' | 'eval-detail' | 'facilitateur';
+type Section = 'home' | 'lessons' | 'lesson-detail' | 'alphabet' | 'calcul' | 'evaluations' | 'eval-detail' | 'facilitateur' | 'grammaire' | 'textprod' | 'gestion';
 type Level = 'N1' | 'N2';
 
 export default function FitilaClasse() {
