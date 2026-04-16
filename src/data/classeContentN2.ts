@@ -1333,6 +1333,30 @@ export const CALCUL_N2_EXERCISES: Record<number, MathExercise[]> = {
     { type: 'subtraction', operands: [35000, 30000], expected: 5000, label: 'Gobi dwebu' },
     { type: 'subtraction', operands: [75, 68.4], expected: 6.6, label: 'Bénéfice' },
   ],
+  25: [
+    { type: 'multiplication', operands: [2, 500], expected: 1000, label: 'Gòonu nɛ: 2 kg' },
+    { type: 'multiplication', operands: [4, 500], expected: 2000, label: 'Gòonu nɛ: 4 kg' },
+    { type: 'multiplication', operands: [6, 500], expected: 3000, label: 'Gòonu nɛ: 6 kg' },
+  ],
+  26: [
+    { type: 'multiplication', operands: [10000, 0.25], expected: 2500, label: '25% saa F10 000' },
+    { type: 'multiplication', operands: [5000, 0.1], expected: 500, label: '10% saa F5 000' },
+    { type: 'multiplication', operands: [20000, 0.15], expected: 3000, label: '15% saa F20 000' },
+  ],
+  27: [
+    { type: 'division', operands: [60000, 3], expected: 20000, label: 'Bɔkuru tɔn ita' },
+    { type: 'multiplication', operands: [60000, 0.5], expected: 30000, label: '1/2 saa F60 000' },
+    { type: 'subtraction', operands: [60000, 50000], expected: 10000, label: '1/6 saa F60 000' },
+  ],
+  28: [
+    { type: 'multiplication', operands: [8, 1000], expected: 8000, label: '8 cm → cm réel' },
+    { type: 'multiplication', operands: [5, 500], expected: 2500, label: '5 cm échelle 1/500' },
+  ],
+  29: [
+    { type: 'subtraction', operands: [150000, 120000], expected: 30000, label: 'Bénéfice' },
+    { type: 'subtraction', operands: [200000, 180000], expected: 20000, label: 'Excédent' },
+    { type: 'subtraction', operands: [100000, 110000], expected: -10000, label: 'Déficit' },
+  ],
 };
 
 // ============ N2 LESSON ANSWERS ============
