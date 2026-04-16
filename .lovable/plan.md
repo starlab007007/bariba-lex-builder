@@ -1,111 +1,83 @@
 
 
-# Plan : Creation du contenu Classe Niveau 2 a partir des 3 documents N2
+# Plan : Restructuration du Niveau 2 — Modules separes et contenu complet
 
-## Objectif
+## Problemes identifies
 
-Creer un fichier de donnees `src/data/classeContentN2.ts` contenant toutes les lecons, evaluations et exercices de calcul du Niveau 2, puis integrer le Niveau 2 dans la page Classe existante avec selection de niveau et toutes les fonctionnalites interactives (BaribaSmartTextarea, clavier, predictions, ecriture manuscrite).
+1. **Module Alphabet** affiche dans N2 alors qu'il n'existe pas au Niveau 2
+2. **7 lecons de langue manquantes** (Part 2, pages 54-70) : Dãa bɔɔriban girabu, Gɔɔ teɔ, Sina wɔnɔ goon mwabu, Gannigin bàraru, Bake Sika ka sɛm sɔm kowobu, À n tii kĩ a tii nɔɔri, Saaton gɔɔ
+3. **5 lecons de calcul manquantes** (pages 122-130) : À n dò mɔrun gaari koo yeru, Sunɔ Kom diru, Gominan gobi bɔkuraru, Gaatan dii kpɛɛrun yãa dwebu, Su ka tii yinan yigbɛru
+4. **Pas de separation Part 1 / Part 2** — tout est melange dans un seul module "Lecons"
 
-## Contenu extrait des documents
+## Architecture cible du N2
 
-### Du Manuel N2 (946 lignes HTML)
+Le N2 aura **4 modules** au lieu de 5 (pas d'Alphabet) :
 
-**25 lecons de langue** (Bɔnu gbiika : garibu ka yora) — pages 10-70 :
-1. Sekura mɔru kɔsa (Barum keu)
-2. Àson gberun dĩanu (Dĩa gɔnnun yiibun yasansi)
-3. Nim mu ku ra kam mwɛnyɛ (Daa kɔ̃si)
-4. Daa kɔ̃saa (Nim)
-5. Wurènɛn wãaru (Sida)
-6. Dakin yɛnun gɔ̃ɔru (Agbatɛrɛ)
-7. Bii wërun seesiabu (Bii wãrun dĩa kobu)
-8. Gùdan garaasan sɔɔru (Tem bii geon tirenu)
-9. Berun tireru (Gbee wukobu ka kparobun nɔɔsinaa sariru)
-10. Sabi Yoon maro daaru (Swaa sanum sariaba)
-11. Tamban yɛnun wahalaba (Kɔrɛ kɔrɛ)
-12. Baatɔn sikurun sɔɔru (Sikuru)
-13. Yãrondo (Yãa dokebu)
-14. Kpàraru (Bature keu)
-15. Kpaayëron Gɔɔn kpàraru (Bweseru)
-16. Dokotoro dirun garin sannɔ (Desantaralisasĩɔ)
-17. Gansaaren yiribo duurubu (Dãa duurubun yasansi)
-18. Baakon tem dɔrabu (Tem baun sannɔsu)
-19-25. Lecons supplementaires de la 2e partie (pages 54-70)
+```text
+┌─────────────────────────────────────────┐
+│           NIVEAU 2 — Home               │
+├──────────────┬──────────────────────────┤
+│ 📖 Part 1   │ Garibu ka yora           │
+│   (Langue)   │ 25 lecons + 5 evals     │
+├──────────────┼──────────────────────────┤
+│ 🔢 Part 2   │ Dooru ka yarumani        │
+│   (Calcul)   │ 30 lecons + 5 evals     │
+├──────────────┼──────────────────────────┤
+│ 📝 Yaayasia  │ Evaluations combinees    │
+│              │ Langue + Calcul          │
+├──────────────┼──────────────────────────┤
+│ 👨‍🏫 Guide   │ Facilitateur N2          │
+└──────────────┴──────────────────────────┘
+```
 
-Chaque lecon suit la structure 5 sections :
-- I- A mɛɛrio (Observe)
-- II- A faagi yeni gario (Ecoute/Lis)
-- III- A wunɛn yam waaru geruo (Reagis)
-- IV- Yè n weenɛ a n yã (Retiens)
-- V- Sɔmaa (Ecris)
+## Modifications
 
-**5 evaluations langue** : Yaayasia gbiikibu, yiruse, itase, nnɛse, nɔɔbuse
+### 1. `src/data/classeContentN2.ts` — Ajouter contenu manquant
 
-**25 lecons de calcul** (Dooru ka yarumani dendibu) — pages 73-132 :
-1. Tem kãa bɔnun saawaraban tɛtɛ (Dootinun garibu)
-2. Bake ka win kpaasibu (Dooti wãsiaruginu)
-3. Nɔɔ kusiarun sɔɔru (Sosibu)
-4. Bukɔn dɔkɔ (Wĩabu)
-5. Dirun wɔru gbebu (Dabiasibu)
-...25 lecons au total
+**Lecons langue 19-25** (extraites exhaustivement du Manuel N2 pages 54-70) :
+- 19: Dãa bɔɔriban girabu (Dãa bɔɔriba)
+- 20: Gɔɔ teɔ (Gɔɔ teɔ)
+- 21: Sina wɔnɔ goon mwabu (Sina wɔnɔ)
+- 22: Gannigin bàraru (Gannigin bàra)
+- 23: Bake Sika ka sɛm sɔm kowobu (Sɛm sɔmaa)
+- 24: À n tii kĩ, a tii nɔɔri (Tii nɔɔribu)
+- 25: Saaton gɔɔ (Saaton gɔɔ)
 
-**5 evaluations calcul** : Yaayasia gbiikibu a nɔɔbuse
+Chaque lecon avec texte complet + 5 sections interactives (observe/ecoute/reagis/retiens/sɔmaa)
 
-### Du Guide N2 (2024 lignes HTML)
+**Lecons calcul 26-30** (pages 122-132) :
+- 26: À n dò mɔrun gaari koo yeru
+- 27: Sunɔ Kom diru
+- 28: Gominan gobi bɔkuraru
+- 29: Gaatan dii kpɛɛrun yãa dwebu
+- 30: Su ka tii yinan yigbɛru
 
-- Planification pedagogique pour chaque lecon
-- Table de correspondance sɔm bweseru / gari winu / faagin gari winu / yorin sariaba
-- Demarche d'enseignement detaillee
-- Distribution horaire (252 kɔbi sur 11 suru)
+Avec exercices interactifs correspondants dans `CALCUL_N2_EXERCISES`
 
-### Du Module N2 (1548 lignes HTML)
+Ajouter evaluations manquantes pour Part 2 langue (Yaayasiabu nnɛse p.58, nɔɔbuse p.70)
 
-- Grammaire avancee : classes nominales, pronoms, adjectifs, conjugaison
-- Production de texte : lettre familiere, lettre administrative, texte narratif, article, affiches, texte descriptif
-- Mathematiques : numeration en milliers, nombres decimaux, 4 operations, mesures
-- Gestion : benefice, depense, recette, budget
+### 2. `src/pages/fitila/FitilaClasse.tsx` — Restructurer les modules N2
 
-## Architecture technique
+- Supprimer le module Alphabet du `sectionCards` quand `activeLevel === 'N2'`
+- Remplacer le module unique "Lecons" par deux modules :
+  - **Part 1 — Garibu ka yora** (section `'n2-langue'`) : 25 lecons langue
+  - **Part 2 — Dooru ka yarumani dendibu** (section `'n2-calcul'`) : 30 lecons calcul
+- Ajouter les types de section correspondants
+- Chaque part a sa propre liste de lecons et evaluations
+- Les composants existants (ClasseLessonView, ClasseCalculView, ClasseEvaluation) sont reutilises avec le bon jeu de donnees
 
-### 1. Creer `src/data/classeContentN2.ts`
+### 3. Aucun changement au `ClasseFacilitateur.tsx`
 
-Meme structure que `classeContent.ts` avec les types existants :
-- `CLASSE_N2_LESSONS: ClasseLesson[]` — 25+ lecons langue
-- `CLASSE_N2_EVALUATIONS: ClasseEvaluation[]` — 10 evaluations
-- `CALCUL_N2_LESSONS: CalculLesson[]` — 25 lecons calcul
-- `LESSON_N2_ANSWERS` — reponses aux exercices
-- `CALCUL_N2_EXERCISES` — exercices interactifs de calcul
-- Fonctions de progression separees avec cle `classe_n2_progress`
-- Toutes les donnees extraites exhaustivement des 3 HTML
+Le contenu N2 du facilitateur est deja en place.
 
-### 2. Modifier `src/pages/fitila/FitilaClasse.tsx`
+## Interactivite
 
-- Ajouter un selecteur de niveau actif (N1 / N2) en haut
-- Le bouton N2 ne sera plus grise/verrouille
-- Le contenu (lecons, evaluations, calcul, facilitateur) change selon le niveau selectionne
-- Importer les donnees N2 et les utiliser conditionnellement
-
-### 3. Mettre a jour `src/components/classe/ClasseFacilitateur.tsx`
-
-- Ajouter le contenu pedagogique du Guide N2 et Module N2
-- Sections : grammaire avancee, production de textes, demarche pedagogique N2
-
-### 4. Tous les champs texte avec BaribaSmartTextarea
-
-Deja integre dans les composants existants (ClasseLessonView, ClasseEvaluation, ClasseCalculView) — le contenu N2 beneficie automatiquement du clavier Bariba, des suggestions predictives et de l'ecriture manuscrite.
+Tous les champs texte utilisent automatiquement `BaribaSmartTextarea` (clavier Bariba, suggestions predictives, ecriture manuscrite) — deja integre dans les composants partages.
 
 ## Fichiers modifies
 
 | Action | Fichier |
 |--------|---------|
-| Creer | `src/data/classeContentN2.ts` — Tout le contenu N2 (lecons, evaluations, calcul, reponses) |
-| Modifier | `src/pages/fitila/FitilaClasse.tsx` — Selecteur de niveau, chargement conditionnel N1/N2 |
-| Modifier | `src/components/classe/ClasseFacilitateur.tsx` — Contenu pedagogique N2 |
-
-## Contraintes
-
-- Contenu 100% extrait des 3 documents HTML fournis
-- Caracteres Bariba Unicode corrects (deja corriges dans les HTML)
-- Meme structure de donnees que N1 pour reutiliser les composants existants
-- Progression N2 separee de N1 dans localStorage
-- Mobile-first, style pastel coherent
+| Modifier | `src/data/classeContentN2.ts` — Ajouter 7 lecons langue + 5 lecons calcul + exercices + evaluations |
+| Modifier | `src/pages/fitila/FitilaClasse.tsx` — Supprimer Alphabet N2, separer Part 1 et Part 2 |
 
