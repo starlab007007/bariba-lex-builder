@@ -1,67 +1,47 @@
 
 
-# Plan : Reconnaissance manuscrite intelligente avec suggestions dans BaribaSmartTextarea
+# Plan : Conversion des 3 documents N2 en HTML corrige avec mapping Bariba V2
 
 ## Objectif
 
-Quand l'utilisateur dessine sur le canvas d'ecriture manuscrite, le systeme doit automatiquement :
-1. Capturer le dessin et l'envoyer a Gemini Flash pour reconnaissance
-2. Afficher des suggestions de caracteres/lettres/mots similaires sous le canvas
-3. Permettre la selection d'une suggestion pour l'inserer dans le champ texte
-4. Enchainer avec des suggestions predictives de mots du dictionnaire Bariba
+Convertir les 3 PDF du Niveau 2 en fichiers HTML autonomes telechargeables, avec application du mapping de correction des caracteres Bariba — meme processus que pour les documents N1.
 
-## Approche technique
+### Documents a traiter
 
-### 1. Edge function `recognize-handwriting`
+| Document | Pages | Contenu |
+|----------|-------|---------|
+| Manuel Bariba N2 | ~52 pages | Manuel de l'apprenant : 30 lecons langue + evaluations + calcul |
+| Guide d'enseignement N2 | ~51 pages | Planification, demarche pedagogique, exercices de calcul |
+| Module de formation N2 | ~34 pages | Formation des facilitateurs, langue, maths/gestion, andragogie |
 
-Nouvelle edge function qui recoit l'image du canvas en base64 et utilise Lovable AI (Gemini Flash) avec un prompt specifique pour reconnaitre les caracteres Bariba ecrits a la main. Retourne une liste de caracteres/mots candidats classes par confiance.
-
-Prompt systeme :
-```
-Tu es un systeme de reconnaissance d'ecriture manuscrite specialise dans l'alphabet Bariba/Baatonum.
-Analyse l'image et identifie les caracteres ecrits. L'alphabet Bariba inclut : a b d e g i k m n o r s u w y ɔ ɛ ŋ et les versions avec tons/nasalisation.
-Retourne les 5 meilleures interpretations possibles, du plus probable au moins probable.
-```
-
-### 2. Mise a jour de BaribaSmartTextarea
-
-- **Debounce automatique** : 800ms apres que l'utilisateur arrete de dessiner, capturer le canvas en PNG base64 et appeler l'edge function
-- **Zone de suggestions manuscrites** : afficher les resultats (caracteres et mots) entre le canvas et les boutons rapides, sous forme de chips cliquables avec animation
-- **Chaine intelligente** : quand un caractere est selectionne, il s'ajoute au texte, le canvas se vide, et le systeme affiche des suggestions predictives de mots commencant par ce caractere (via `getSuggestions`)
-- **Indicateur de chargement** : spinner discret pendant la reconnaissance
-- **Fonctionnement sans reseau** : si l'appel echoue, les boutons de caracteres rapides restent disponibles comme fallback
-
-### 3. Flux utilisateur
+### Mapping de correction applique
 
 ```text
-Dessiner sur canvas
-       |
-   (800ms pause)
-       |
-  Envoi a Gemini Flash
-       |
-  Suggestions: [a] [ã] [à] [ara] [amu]
-       |
-  Clic sur [ã] → insere "ã" dans textarea
-       |
-  Canvas efface automatiquement
-       |
-  Suggestions predictives: [ãna] [ãnɔ] [ãmu]
-       |
-  Continuer a ecrire ou selectionner
+ø → ɔ    Ø → Ɔ    æ → ɛ    Æ → Ɛ
+ó → ɔ̃    á → ã    í → ĩ    ä → ã    å → ɛ̃
+ö → ɔ̀    ± → ǹ    ‹ → '
 ```
 
-## Fichiers modifies
+## Processus (script Python one-off)
 
-| Action | Fichier |
-|--------|---------|
-| Creer | `supabase/functions/recognize-handwriting/index.ts` — appel Gemini Flash avec image |
-| Modifier | `src/components/classe/BaribaSmartTextarea.tsx` — reconnaissance auto + suggestions manuscrites |
+Pour chaque document :
 
-## Contraintes
+1. Lire le contenu markdown extrait par le parser
+2. Convertir les screenshots de pages en images base64 (illustrations)
+3. Appliquer le mapping de correction caractere par caractere
+4. Convertir le markdown en HTML structure avec CSS integre (meme style que les HTML N1)
+5. Normaliser en NFC
+6. Afficher un rapport de comptage des caracteres convertis
 
-- Utilise Lovable AI (Gemini Flash) via LOVABLE_API_KEY deja disponible
-- Mobile-first : debounce adapte au tactile
-- Fallback si hors ligne : boutons de caracteres rapides toujours visibles
-- Style coherent : chips violets pour les suggestions manuscrites
+## Sortie
+
+3 fichiers HTML autonomes :
+
+- `/mnt/documents/Manuel_Bariba_N2_Corrige.html`
+- `/mnt/documents/Guide_Enseignement_N2_Corrige.html`
+- `/mnt/documents/Module_Formation_N2_Corrige.html`
+
+## Aucun changement au code de l'application
+
+Ce traitement est un script one-off qui produit des documents. Aucun fichier du projet ne sera modifie.
 
