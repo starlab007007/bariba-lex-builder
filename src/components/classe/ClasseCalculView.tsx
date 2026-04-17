@@ -531,6 +531,7 @@ export default function ClasseCalculView({ level = 'N1' }: ClasseCalculViewProps
                 {questions.map((q, i) => (
                   <QuestionAnswerField
                     key={`${sec}_${i}`}
+                    level={level}
                     lessonId={selected.id}
                     sectionName={sec}
                     qIdx={i}
@@ -621,7 +622,40 @@ export default function ClasseCalculView({ level = 'N1' }: ClasseCalculViewProps
 
   return (
     <div className="space-y-3">
-      {CALCUL_LESSONS.map((lesson, i) => {
+      {lessonsSource.map((lesson, i) => {
+        const calcScore = progress.calculScores[lesson.id];
+        const hasInteractive = !!exercisesSource[lesson.id] || Object.keys(lesson.sections).some(k => EXERCISE_SECTION_REGEX.test(k));
+        return (
+          <motion.button
+            key={lesson.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setSelectedId(lesson.id)}
+            className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all"
+          >
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md ${
+              calcScore ? 'bg-gradient-to-br from-emerald-400 to-teal-400' : level === 'N2' ? 'bg-gradient-to-br from-indigo-400 to-purple-400' : 'bg-gradient-to-br from-blue-400 to-indigo-400'
+            }`}>
+              <span className="text-2xl">{hasInteractive ? '🧮' : '🔢'}</span>
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-gray-800 font-semibold text-sm">{lesson.title || `Dooru ${lesson.id}`}</p>
+              <p className="text-gray-400 text-xs">p.{lesson.page}</p>
+            </div>
+            {calcScore && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold">
+                {calcScore.score}/{calcScore.total}
+              </span>
+            )}
+            <ChevronRight className="w-4 h-4 text-gray-300" />
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
         const calcScore = progress.calculScores[lesson.id];
         const hasInteractive = !!CALCUL_EXERCISES[lesson.id] || Object.keys(lesson.sections).some(k => /sɔmaa/i.test(k));
         return (
