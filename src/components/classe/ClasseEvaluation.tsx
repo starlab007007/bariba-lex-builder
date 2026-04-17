@@ -91,6 +91,33 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
           </div>
         </div>
 
+        {/* Corrigés enseignant par question */}
+        <div className="text-left max-w-2xl mx-auto space-y-3 mt-4">
+          <h3 className="text-sm font-bold text-gray-700 px-1">📚 Corrigés et notes</h3>
+          {Object.entries(evaluation.sections).map(([sec, questions], si) => (
+            (questions as string[]).map((q, qi) => {
+              const key = `${si}_${qi}`;
+              return (
+                <div key={key} className="p-3 rounded-xl bg-white border border-gray-100 text-left">
+                  <p className="text-xs text-gray-500 mb-1">{sec} · Q{qi + 1}</p>
+                  <p className="text-sm text-gray-800 mb-1">{q}</p>
+                  {answers[key] && (
+                    <p className="text-xs text-blue-700 italic">Ta réponse : {answers[key]}</p>
+                  )}
+                  <StudentAnswerFeedback
+                    level="N1"
+                    module="evaluation"
+                    lesson_id={String(evalId)}
+                    section_key={String(si)}
+                    question_idx={qi}
+                    studentAnswer={answers[key]}
+                  />
+                </div>
+              );
+            })
+          ))}
+        </div>
+
         <div className="flex gap-3 justify-center">
           <motion.button
             whileTap={{ scale: 0.95 }}
