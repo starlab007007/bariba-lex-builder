@@ -14,6 +14,7 @@ export interface GestionDocument {
   formula?: string;
   formulaFr?: string;
   example: Record<string, string>;
+  qaQuestions?: { ba: string; fr: string }[];
 }
 
 export interface GestionField {
