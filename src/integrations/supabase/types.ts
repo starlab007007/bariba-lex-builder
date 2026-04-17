@@ -394,6 +394,177 @@ export type Database = {
         }
         Relationships: []
       }
+      classe_evaluation_results: {
+        Row: {
+          attempts: number
+          best_score: number
+          completed_at: string
+          details: Json | null
+          evaluation_id: string
+          id: string
+          level: string
+          max_score: number
+          score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          best_score?: number
+          completed_at?: string
+          details?: Json | null
+          evaluation_id: string
+          id?: string
+          level: string
+          max_score?: number
+          score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          best_score?: number
+          completed_at?: string
+          details?: Json | null
+          evaluation_id?: string
+          id?: string
+          level?: string
+          max_score?: number
+          score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      classe_student_answers: {
+        Row: {
+          answer_text: string | null
+          field_data: Json | null
+          graded_at: string | null
+          graded_by: string | null
+          id: string
+          lesson_id: string
+          level: string
+          max_score: number | null
+          module: string
+          question_idx: number
+          score: number | null
+          section_key: string
+          submitted_at: string
+          teacher_comment: string | null
+          teacher_grade: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer_text?: string | null
+          field_data?: Json | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          lesson_id: string
+          level: string
+          max_score?: number | null
+          module: string
+          question_idx?: number
+          score?: number | null
+          section_key?: string
+          submitted_at?: string
+          teacher_comment?: string | null
+          teacher_grade?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer_text?: string | null
+          field_data?: Json | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          lesson_id?: string
+          level?: string
+          max_score?: number | null
+          module?: string
+          question_idx?: number
+          score?: number | null
+          section_key?: string
+          submitted_at?: string
+          teacher_comment?: string | null
+          teacher_grade?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      classe_student_progress: {
+        Row: {
+          completed_lessons: number[]
+          created_at: string
+          extra_data: Json
+          id: string
+          last_lesson_id: number | null
+          lesson_stars: Json
+          level: string
+          tabs_completed: Json
+          theme_badges: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_lessons?: number[]
+          created_at?: string
+          extra_data?: Json
+          id?: string
+          last_lesson_id?: number | null
+          lesson_stars?: Json
+          level: string
+          tabs_completed?: Json
+          theme_badges?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_lessons?: number[]
+          created_at?: string
+          extra_data?: Json
+          id?: string
+          last_lesson_id?: number | null
+          lesson_stars?: Json
+          level?: string
+          tabs_completed?: Json
+          theme_badges?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      classe_teacher_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          level: string | null
+          student_id: string
+          teacher_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          level?: string | null
+          student_id: string
+          teacher_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          level?: string | null
+          student_id?: string
+          teacher_id?: string
+        }
+        Relationships: []
+      }
       conte_vivant_progress: {
         Row: {
           choices: Json | null
@@ -3178,9 +3349,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_teacher_or_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user" | "editor"
+      app_role: "admin" | "user" | "editor" | "teacher"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3308,7 +3480,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "editor"],
+      app_role: ["admin", "user", "editor", "teacher"],
     },
   },
 } as const
