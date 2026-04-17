@@ -314,12 +314,14 @@ function getSectionColor(sectionName: string) {
 }
 
 function QuestionAnswerField({
+  level,
   lessonId,
   sectionName,
   qIdx,
   question,
   onSubmitted,
 }: {
+  level: CalculLevel;
   lessonId: number;
   sectionName: string;
   qIdx: number;
@@ -327,7 +329,9 @@ function QuestionAnswerField({
   onSubmitted: (hasAnswer: boolean) => void;
 }) {
   const sectionKey = sectionName.trim().split('-')[0].trim();
-  const initial = useMemo(() => getCalculAnswer(lessonId, sectionKey, qIdx), [lessonId, sectionKey, qIdx]);
+  const getAns = level === 'N2' ? getN2CalculAnswer : getCalculAnswer;
+  const saveAns = level === 'N2' ? saveN2CalculAnswer : saveCalculAnswer;
+  const initial = useMemo(() => getAns(lessonId, sectionKey, qIdx), [lessonId, sectionKey, qIdx, level]);
   const [text, setText] = useState(initial);
   const [submitted, setSubmitted] = useState(!!initial);
   const [editing, setEditing] = useState(!initial);
@@ -339,7 +343,7 @@ function QuestionAnswerField({
 
   const submit = () => {
     if (!text.trim()) return;
-    saveCalculAnswer(lessonId, sectionKey, qIdx, text);
+    saveAns(lessonId, sectionKey, qIdx, text);
     setSubmitted(true);
     setEditing(false);
     onSubmitted(true);
