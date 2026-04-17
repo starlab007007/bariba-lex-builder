@@ -677,16 +677,16 @@ serve(async (req: Request) => {
     if (isTooShortForTts(safeText)) {
       clearTimeout(globalTimer);
       return new Response(
-        JSON.stringify({ error: "Texte trop court pour la synthèse vocale" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "TEXT_TOO_SHORT", skipped: true, fallback: true, message: "Texte trop court pour la synthèse vocale" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     if (isProbablyUiText(safeText)) {
       clearTimeout(globalTimer);
       return new Response(
-        JSON.stringify({ error: "Texte invalide (bruit UI / placeholder)" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "INVALID_UI_TEXT", skipped: true, fallback: true, message: "Texte invalide (bruit UI / placeholder)" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
