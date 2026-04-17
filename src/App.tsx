@@ -54,6 +54,7 @@ const StudentList = lazy(() => import("./pages/teacher/StudentList"));
 const StudentDetail = lazy(() => import("./pages/teacher/StudentDetail"));
 const PendingGrading = lazy(() => import("./pages/teacher/PendingGrading"));
 const ClassStats = lazy(() => import("./pages/teacher/ClassStats"));
+const AnswerKeysManager = lazy(() => import("./pages/teacher/AnswerKeysManager"));
 const ClasseCorrections = lazy(() => import("./components/classe/ClasseCorrections"));
 
 // Loading fallback - minimal spinner
@@ -133,6 +134,7 @@ const App = () => (
                 <Route path="student/:id" element={<StudentDetail />} />
                 <Route path="grading" element={<PendingGrading />} />
                 <Route path="stats" element={<ClassStats />} />
+                <Route path="answer-keys" element={<AnswerKeysManager />} />
               </Route>
               <Route path="/fitila/classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
 
