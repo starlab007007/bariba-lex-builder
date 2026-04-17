@@ -12,7 +12,19 @@ import {
   saveCalculAnswer,
   getCalculAnswer,
 } from '@/data/classeContent';
+import {
+  CALCUL_N2_LESSONS,
+  CALCUL_N2_EXERCISES,
+  getClasseN2Progress,
+  saveN2CalculScore,
+  saveN2CalculAnswer,
+  getN2CalculAnswer,
+} from '@/data/classeContentN2';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
+
+type CalculLevel = 'N1' | 'N2';
+
+const EXERCISE_SECTION_REGEX = /sɔmaa|sosibu|wĩabu|dabiasibu|bɔnu kosibu|bɔkurabu|sɔmburu|sɔm gbiikiru/i;
 
 // ============ OPERATION PARSER ============
 interface ParsedOperation extends MathExercise {
