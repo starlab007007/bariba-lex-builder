@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Lock, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Lock, ChevronRight, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useSideMenu } from './FitilaApp';
+import { useTeacherRole } from '@/hooks/useTeacherRole';
 import { CLASSE_LESSONS, CLASSE_EVALUATIONS, CALCUL_LESSONS, getClasseProgress } from '@/data/classeContent';
 import { CLASSE_N2_LESSONS, CLASSE_N2_EVALUATIONS, CALCUL_N2_LESSONS, getClasseN2Progress } from '@/data/classeContentN2';
 import ClasseLessonView from '@/components/classe/ClasseLessonView';
@@ -14,14 +15,17 @@ import ClasseFacilitateur from '@/components/classe/ClasseFacilitateur';
 import ClasseGrammaireN2 from '@/components/classe/ClasseGrammaireN2';
 import ClasseTextProdN2 from '@/components/classe/ClasseTextProdN2';
 import ClasseGestionN2 from '@/components/classe/ClasseGestionN2';
+import ClasseCorrections from '@/components/classe/ClasseCorrections';
+import AuthGuardBanner from '@/components/classe/AuthGuardBanner';
 
-type Section = 'home' | 'lessons' | 'lesson-detail' | 'alphabet' | 'calcul' | 'evaluations' | 'eval-detail' | 'facilitateur' | 'grammaire' | 'textprod' | 'gestion';
+type Section = 'home' | 'lessons' | 'lesson-detail' | 'alphabet' | 'calcul' | 'evaluations' | 'eval-detail' | 'facilitateur' | 'grammaire' | 'textprod' | 'gestion' | 'corrections';
 type Level = 'N1' | 'N2';
 
 export default function FitilaClasse() {
   const navigate = useNavigate();
   const { currentLang } = useFitilaLanguage();
   const { open: openMenu } = useSideMenu();
+  const { isTeacher } = useTeacherRole();
   const [section, setSection] = useState<Section>('home');
   const [selectedLessonId, setSelectedLessonId] = useState<number>(1);
   const [selectedEvalId, setSelectedEvalId] = useState<number>(1);
@@ -226,6 +230,25 @@ export default function FitilaClasse() {
 
   const renderHome = () => (
     <div className="space-y-6">
+      <AuthGuardBanner />
+
+      {isTeacher && (
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={() => navigate('/fitila/teacher')}
+          className="w-full flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-200 text-left"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <GraduationCap className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm">{currentLang === 'ba' ? 'Sɔ̃ɔsibun tabulo' : 'Tableau enseignant'}</p>
+            <p className="text-white/80 text-xs">{currentLang === 'ba' ? 'Apprenants, copies, statistiques' : 'Apprenants, copies, statistiques'}</p>
+          </div>
+          <ChevronRight className="w-5 h-5" />
+        </motion.button>
+      )}
+
       {renderLevelSelector()}
 
       {/* Stats */}
@@ -266,6 +289,26 @@ export default function FitilaClasse() {
             )}
           </motion.button>
         ))}
+
+        {/* Mes corrections — visible only when authenticated */}
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: sectionCards.length * 0.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setSection('corrections')}
+          className="flex flex-col items-center gap-2 p-5 rounded-3xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
+            <span className="text-3xl">✅</span>
+          </div>
+          <span className="text-gray-800 text-sm font-bold text-center">
+            {currentLang === 'ba' ? 'Nɛn gɔrasun' : 'Mes corrections'}
+          </span>
+          <span className="text-gray-400 text-[10px] text-center">
+            {currentLang === 'ba' ? 'Sɔ̃ɔsiri yorubu' : 'Notes & commentaires'}
+          </span>
+        </motion.button>
       </div>
     </div>
   );
