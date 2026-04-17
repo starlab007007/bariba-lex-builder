@@ -2839,6 +2839,7 @@ export interface ClasseProgress {
   evaluationScores: Record<number, number>;
   evaluationBest: Record<number, number>;
   calculScores: Record<number, { score: number; total: number }>;
+  calculAnswers: Record<string, string>; // "calcul_qa_2_I_0" -> "ma réponse"
   lastLesson: number;
   themeBadges: string[];
 }
@@ -2855,12 +2856,27 @@ export function getClasseProgress(): ClasseProgress {
         evaluationScores: parsed.evaluationScores || {},
         evaluationBest: parsed.evaluationBest || {},
         calculScores: parsed.calculScores || {},
+        calculAnswers: parsed.calculAnswers || {},
         lastLesson: parsed.lastLesson || 0,
         themeBadges: parsed.themeBadges || [],
       };
     }
   } catch {}
-  return { completedLessons: [], lessonStars: {}, tabsCompleted: {}, evaluationScores: {}, evaluationBest: {}, calculScores: {}, lastLesson: 0, themeBadges: [] };
+  return { completedLessons: [], lessonStars: {}, tabsCompleted: {}, evaluationScores: {}, evaluationBest: {}, calculScores: {}, calculAnswers: {}, lastLesson: 0, themeBadges: [] };
+}
+
+export function calculAnswerKey(lessonId: number, sectionKey: string, qIdx: number) {
+  return `calcul_qa_${lessonId}_${sectionKey}_${qIdx}`;
+}
+
+export function saveCalculAnswer(lessonId: number, sectionKey: string, qIdx: number, value: string) {
+  const p = getClasseProgress();
+  p.calculAnswers[calculAnswerKey(lessonId, sectionKey, qIdx)] = value;
+  saveProgress(p);
+}
+
+export function getCalculAnswer(lessonId: number, sectionKey: string, qIdx: number): string {
+  return getClasseProgress().calculAnswers[calculAnswerKey(lessonId, sectionKey, qIdx)] || '';
 }
 
 function saveProgress(p: ClasseProgress) {
