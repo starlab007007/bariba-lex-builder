@@ -73,6 +73,12 @@ export const useBaribaTTSWithFallback = (): UseBaribaTTSWithFallbackReturn => {
           break;
         }
 
+        // Skipped (text too short / invalid UI) — silent no-op
+        if (d?.skipped) {
+          setIsLoading(false);
+          return;
+        }
+
         if (d?.error) {
           const is503 = d.error === 'Service en veille';
           if (is503 && attempt < 2) {
