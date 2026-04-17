@@ -394,6 +394,57 @@ export type Database = {
         }
         Relationships: []
       }
+      classe_answer_keys: {
+        Row: {
+          accepted_answers: string[]
+          audio_url: string | null
+          created_at: string
+          created_by: string | null
+          explanation: string | null
+          id: string
+          lesson_id: string
+          level: string
+          module: string
+          question_idx: number
+          question_text: string | null
+          section_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          accepted_answers?: string[]
+          audio_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          explanation?: string | null
+          id?: string
+          lesson_id: string
+          level: string
+          module: string
+          question_idx?: number
+          question_text?: string | null
+          section_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          accepted_answers?: string[]
+          audio_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          explanation?: string | null
+          id?: string
+          lesson_id?: string
+          level?: string
+          module?: string
+          question_idx?: number
+          question_text?: string | null
+          section_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       classe_evaluation_results: {
         Row: {
           attempts: number
