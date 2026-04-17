@@ -32,6 +32,12 @@ export const useBaribaTTSWithFallback = (): UseBaribaTTSWithFallbackReturn => {
   const speak = useCallback(async (text: string, options?: BaribaTTSOptions) => {
     if (!text.trim()) return;
 
+    // Guard: skip TTS for very short text (< 2 chars) — avoids edge function 400
+    if (Array.from(text.trim()).length < 2) {
+      console.log('[bariba-tts] Skipping: text too short');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setUsedFallback(false);
