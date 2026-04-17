@@ -1404,12 +1404,13 @@ export function getClasseN2Progress(): ClasseProgress {
         evaluationScores: parsed.evaluationScores || {},
         evaluationBest: parsed.evaluationBest || {},
         calculScores: parsed.calculScores || {},
+        calculAnswers: parsed.calculAnswers || {},
         lastLesson: parsed.lastLesson || 0,
         themeBadges: parsed.themeBadges || [],
       };
     }
   } catch {}
-  return { completedLessons: [], lessonStars: {}, tabsCompleted: {}, evaluationScores: {}, evaluationBest: {}, calculScores: {}, lastLesson: 0, themeBadges: [] };
+  return { completedLessons: [], lessonStars: {}, tabsCompleted: {}, evaluationScores: {}, evaluationBest: {}, calculScores: {}, calculAnswers: {}, lastLesson: 0, themeBadges: [] };
 }
 
 function saveN2Progress(p: ClasseProgress) {
