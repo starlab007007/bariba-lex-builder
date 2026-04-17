@@ -95,6 +95,11 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       motif: 'Keu koo suman gobi',
       receveur: 'Saaru Bio, gobi suabu yãakora',
     },
+    qaQuestions: [
+      { ba: 'Mba n gobi suan seeda tireru sãa?', fr: 'Qu\'est-ce qu\'un reçu et à quoi sert-il ?' },
+      { ba: 'Bweseru sɔ̃ɔsio yì yu raa wãa gobi suan seeda tireru sɔɔ.', fr: 'Citez les mentions obligatoires d\'un reçu.' },
+      { ba: 'Tɔ̃ru garu a gobi sua, sere a ǹ tireru wɛ̃, mba n koo sere?', fr: 'Que peut-il arriver si vous recevez de l\'argent sans délivrer un reçu ?' },
+    ],
   },
 
   // ===== 3. FACTURE =====
