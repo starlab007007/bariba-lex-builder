@@ -325,6 +325,7 @@ export default function FitilaClasse() {
     grammaire: currentLang === 'ba' ? 'Sɔ̃ɔsirun swɛɛru' : 'Grammaire',
     textprod: currentLang === 'ba' ? 'Sɔm yorubu' : 'Production de textes',
     gestion: currentLang === 'ba' ? 'Gobi dwebu' : 'Gestion',
+    corrections: currentLang === 'ba' ? 'Nɛn gɔrasun' : 'Mes corrections',
   };
 
   const levelBadge = activeLevel === 'N2' ? '🚀 N2' : '🔥 N1';
@@ -381,6 +382,7 @@ export default function FitilaClasse() {
             {section === 'grammaire' && <ClasseGrammaireN2 />}
             {section === 'textprod' && <ClasseTextProdN2 />}
             {section === 'gestion' && <ClasseGestionN2 />}
+            {section === 'corrections' && <ClasseCorrections />}
           </motion.div>
         </AnimatePresence>
       </div>
