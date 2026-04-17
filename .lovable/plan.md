@@ -1,140 +1,86 @@
 
 
-# Plan : Contenu Classe N2 professionnel, exhaustif et interactif
+# Plan : Rendre interactif Calcul N1 — Dooru 2 → 34
 
-## Diagnostic de l'existant
+## Diagnostic
 
-Le fichier `classeContentN2.ts` actuel (1468 lignes) contient :
-- 25 lecons langue : textes et sections bien remplis
-- 5 evaluations : correctes mais basiques
-- 30 lecons calcul : **tres sparse** (beaucoup n'ont que 1-2 paragraphes, pas d'exercices)
-- Aucune image referencee
-- **Contenu manquant du Module N2** : grammaire avancee, production de textes, gestion (decharge, recu, facture, cahier de caisse, fiche de stock, PV)
-- **Contenu manquant du Guide N2** : exercices de calcul detailles avec solutions (pages 42-50), tables de correspondance pedagogiques
+`ClasseCalculView.tsx` actuel affiche :
+- `paragraphs` : texte mort (ligne 188-192)
+- `sections` : titre + liste de questions en lecture seule (ligne 197-203)
+- `CALCUL_EXERCISES[id]` : composant `MathOperationExercise` interactif (couvre seulement ~10 leçons)
 
-## Contenu a ajouter (extrait exhaustivement des 3 documents)
+**Problèmes** :
+1. La section **SƆMAA** (présente dans Dooru 2, 4, 6, 8, 10, 11, 13, 15, 16, 18, 20, 22, 24, 27, 29, 31) contient des paragraphes `paragraphs` listant des opérations (`24 + 25`, `426 : 6 =`, `137 x 54 =`, `7 5 6 X 2 5`, etc.) qui sont juste du texte non-interactif.
+2. Les sections `I- A mɛɛrio`, `II- A faagi yeni swaa dakio…`, `III- A tubusio`, `IV- Yè n weenɛ a n yã` sont des listes de questions sans champ de réponse.
 
-### A. Nouveau module : Grammaire N2 (du Module de Formation)
-Section interactive avec quiz et exercices pour chaque theme :
-- Rappel alphabet (voyelles, consonnes)
-- Tons (bas, eleve, nasalisation)
-- Classes nominales
-- Noms (propre, commun, singulier, pluriel)
-- Sujet, Verbe, Pronoms, Adjectifs
-- Decomposition des mots (radical, suffixe)
-- Temps, mode et formes (affirmative, negative, conditionnelle)
+## Solution
 
-### B. Nouveau module : Production de textes (du Module)
-6 types de textes avec definition, caracteristiques, forme et exercice interactif :
-1. Lettre familiere (lieu, date, expediteur, destinataire, corps, signature)
-2. Lettre administrative (objet, formule de politesse, registre soutenu)
-3. Texte narratif (SI, EM/EP, SA, SF)
-4. Article de journal (titre, sous-titre, resume, auteur, colonnes)
-5. Affiches (titre en capitales, cadre, puces, motivation)
-6. Texte descriptif/portrait (adjectifs, imparfait, indicateurs de lieu)
+### 1. Parser intelligent d'opérations (dans `ClasseCalculView.tsx`)
 
-### C. Nouveau module : Gestion (du Module)
-Documents de gestion interactifs avec modeles a remplir :
-- Decharge (formulaire interactif)
-- Recu (modele a completer)
-- Facture (Qte x PU = Montant, TVA, Net)
-- Cahier de caisse (entrees/sorties/solde)
-- Fiche de stock (entree/sortie/reste)
-- Proces-verbal de reunion (modele)
-- Benefice/Perte (Prix de vente - Prix de revient)
+Créer une fonction `parseOperationsFromParagraphs(paragraphs: string[])` qui détecte automatiquement dans le texte :
 
-### D. Enrichissement des lecons de calcul (du Guide N2 pages 42-50)
-Ajouter les exercices resolus exhaustifs :
-- Numeration : 15 001 → 20 002, lecture/ecriture
-- Decimaux : 23,45 = yɛnda ita ka wunɔbubuu weeru ka nɔɔbu
-- Multiplication decimale : 10 exercices resolus (248x1,25=310 etc.)
-- Division decimale : 10 exercices resolus (2134,65:2,1=1016,5 etc.)
-- Multiplication mentale : 37x400=14800, 354x70=24780
-- Division mentale : 51,84:8=6,48, 57,4:7=8,2
-- Exercices mixtes : 10 operations resolues
+| Pattern détecté | Type généré |
+|---|---|
+| `24 + 25`, `253 + 182=` | addition |
+| `87 - 43`, `1896 - 754` | subtraction |
+| `137 x 54 =`, `436 x 6 =` | multiplication |
+| `8 : 4 =`, `426 : 6 =`, `169 : 8 =` | division (avec reste auto si non entier) |
+| Colonnes verticales `26 / +37 / ----` | addition (groupé) |
+| Listes de chiffres `1 4 3 2 6` | exercice "écrire en lettres bariba" via BARIBA_NUMBERS |
 
-### E. Images des lecons
-Copier les images extraites des PDFs (illustrations de chaque lecon) dans `public/classe/n2/` et les referencer dans les donnees.
+Regex robustes pour `+`, `-`, `x`/`X`/`*`, `:` / `÷` / `/`. Calcul de `expected` automatique (et `remainder` pour division).
 
-## Architecture technique
+### 2. Section SƆMAA rendue automatiquement comme exercices interactifs
 
-### Fichiers a creer
+Quand une leçon a `V- Sɔmaa` ou `IV- Sɔmaa` (pages-exercices : Dooru 2, 4, 6, 8, 10, 11, 13, 15, 16, 18, 20, 22, 24, 27, 29, 31, 34) :
+- Les opérations détectées dans `paragraphs` deviennent des `MathOperationExercise` (réutilise composant existant)
+- Les listes de chiffres deviennent des exercices "**Écris ce nombre en bariba**" avec `BaribaSmartTextarea` + validation contre `BARIBA_NUMBERS`
+- Pour les chiffres absents de `BARIBA_NUMBERS`, validation tolérante (saisie acceptée si non vide → marque comme "complété")
+- Bouton **Recommencer** + score sauvegardé via `saveCalculScore`
 
-| Fichier | Contenu |
-|---------|---------|
-| `src/data/classeContentN2Grammar.ts` | Grammaire N2 (7 sections, quiz interactifs) |
-| `src/data/classeContentN2TextProd.ts` | Production de textes (6 types, exercices) |
-| `src/data/classeContentN2Gestion.ts` | Documents de gestion (6 modeles interactifs) |
-| `src/components/classe/ClasseGrammaireN2.tsx` | Composant interactif pour la grammaire |
-| `src/components/classe/ClasseTextProdN2.tsx` | Composant interactif pour la production de textes |
-| `src/components/classe/ClasseGestionN2.tsx` | Composant interactif pour la gestion |
+### 3. Sections de questions Q&R interactives (I- A mɛɛrio, II- A faagi…, III- A tubusio, IV- Yè n weenɛ)
 
-### Fichiers a modifier
+Pour chaque question dans `sections[sectionName]` (Dooru 2 → 34) :
+- Afficher la question + un `BaribaSmartTextarea` (clavier bariba + suggestions prédictives + écriture manuscrite — déjà existant)
+- Bouton **A geruo** (Soumettre) qui sauvegarde la réponse en localStorage (clé : `calcul_qa_${lessonId}_${sectionKey}_${qIdx}`)
+- Affichage d'une coche verte + résumé "Réponse enregistrée" après soumission
+- Bouton "**Modifier**" pour éditer
+- Couleur par section (mɛɛri = bleu, faagi = violet, tubusi = orange, yè n weenɛ = teal)
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/data/classeContentN2.ts` | Enrichir les 30 lecons calcul avec paragraphes detailles et exercices complets du Guide |
-| `src/pages/fitila/FitilaClasse.tsx` | Ajouter 3 modules N2 (Grammaire, Production de textes, Gestion) dans les `sectionCards` et la navigation |
+### 4. Persistance des réponses Q&R
 
-### Structure des modules N2 sur la page d'accueil
-
-```text
-N2 Home :
-┌──────────────┬────────────────────────┐
-│ 📖 Part 1    │ Garibu ka yora (25)    │
-├──────────────┼────────────────────────┤
-│ 🔢 Part 2    │ Dooru ka yarumani (30) │
-├──────────────┼────────────────────────┤
-│ 📝 Yaayasia  │ Evaluations (10)       │
-├──────────────┼────────────────────────┤
-│ 📐 Grammaire │ Classes, tons, verbes  │
-├──────────────┼────────────────────────┤
-│ ✍️ Sɔm yorubu│ Production de textes   │
-├──────────────┼────────────────────────┤
-│ 💼 Gobi      │ Gestion (documents)    │
-├──────────────┼────────────────────────┤
-│ 👨‍🏫 Guide    │ Facilitateur N2        │
-└──────────────┴────────────────────────┘
+Étendre `ClasseProgress` avec :
+```ts
+calculAnswers: Record<string, string>; // "calcul_qa_2_I_0" -> "ma réponse"
 ```
+Helper `saveCalculAnswer(lessonId, sectionKey, qIdx, value)` + `getCalculAnswer(...)` dans `classeContent.ts`.
 
-### Interactivite des nouveaux composants
+### 5. Score global de la leçon
 
-**ClasseGrammaireN2** :
-- Sections expansibles avec animation
-- Quiz a choix multiple pour chaque regle (ex: identifier la classe nominale)
-- Exercices de decomposition de mots avec BaribaSmartTextarea
-- Tableau interactif des classes nominales avec tri et filtrage
-- Code couleur par categorie grammaticale
+À la fin de chaque Dooru, panneau récap :
+- N opérations résolues / total
+- N questions répondues / total
+- Bouton **Sɔm kpe** (Terminer) → `saveCalculScore` + retour à la liste
 
-**ClasseTextProdN2** :
-- Modeles visuels de chaque type de texte avec zones colorees
-- Exercice interactif : remplir un modele de lettre/article/affiche
-- BaribaSmartTextarea pour la redaction libre
-- Validation progressive avec feedback visuel
+## Architecture & fichiers
 
-**ClasseGestionN2** :
-- Formulaires interactifs pour decharge, recu, facture
-- Tableaux editables pour cahier de caisse et fiche de stock
-- Calculs automatiques (total, TVA, benefice/perte, solde)
-- Exercices pratiques avec scenarios reels
+| Action | Fichier | Modifications |
+|---|---|---|
+| Modifier | `src/data/classeContent.ts` | Ajouter `calculAnswers` à `ClasseProgress`, helpers `saveCalculAnswer` / `getCalculAnswer` |
+| Modifier | `src/components/classe/ClasseCalculView.tsx` | • Fonction `parseOperationsFromParagraphs` <br>• Composant `QuestionAnswerField` (BaribaSmartTextarea + soumission)<br>• Composant `BaribaNumberWriteExercise` (écrire chiffre en bariba)<br>• Refactor du rendu : sections Sɔmaa → exercices auto-générés, autres sections → Q&R interactives<br>• Récap final + score |
 
-### Enrichissement calcul (`classeContentN2.ts`)
+## Couverture
 
-Pour chaque lecon de calcul (1-30), ajouter :
-- `paragraphs` complets avec tous les exemples resolus du Guide
-- `sections` detaillees (Sɔm gbiikiru, Sɔmburu yiruse, Sɔmburu itase)
-- Exercices interactifs dans `CALCUL_N2_EXERCISES` pour les lecons manquantes (6-12, 15-24)
-- Tableaux de conversion (mesures, surfaces, volumes) comme donnees structurees
+- **Toutes les leçons Dooru 2 → 34** : sections Q&R deviennent interactives (champs BaribaSmartTextarea soumissibles)
+- **Toutes les pages-exercices** (titres vides + paragraphes d'opérations) : SƆMAA devient interactif avec correction automatique
+- **Aucun changement** au niveau N1 alphabet/lessons/évaluations (intacts)
+- **Aucun changement** au N2 (intact)
 
-### Images
+## Contraintes respectées
 
-Copier ~25 illustrations de lecons depuis les PDFs extraits vers `public/classe/n2/` et ajouter `imageUrl` aux lecons correspondantes.
-
-## Contraintes respectees
-
-- Caracteres Bariba Unicode corrects
-- Mobile-first, style pastel coherent avec N1
-- BaribaSmartTextarea pour tous les champs de saisie
-- Progression N2 separee (localStorage)
-- Aucun module Alphabet dans N2
+- Mobile-first, style pastel cohérent
+- BaribaSmartTextarea pour TOUS les champs texte (clavier bariba + écriture manuscrite + suggestions prédictives)
+- Réponses sauvegardées localement (pas de backend nécessaire)
+- Caractères Unicode bariba corrects
+- Réutilise composants existants (`MathOperationExercise`, `BaribaSmartTextarea`)
 
