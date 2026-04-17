@@ -2869,10 +2869,13 @@ export function calculAnswerKey(lessonId: number, sectionKey: string, qIdx: numb
   return `calcul_qa_${lessonId}_${sectionKey}_${qIdx}`;
 }
 
+import { syncAnswer, syncProgress, syncEvaluation } from '@/lib/classeSync';
+
 export function saveCalculAnswer(lessonId: number, sectionKey: string, qIdx: number, value: string) {
   const p = getClasseProgress();
   p.calculAnswers[calculAnswerKey(lessonId, sectionKey, qIdx)] = value;
   saveProgress(p);
+  syncAnswer({ level: 'N1', module: 'calcul', lessonId: String(lessonId), sectionKey, questionIdx: qIdx, answerText: value });
 }
 
 export function getCalculAnswer(lessonId: number, sectionKey: string, qIdx: number): string {
@@ -2881,12 +2884,18 @@ export function getCalculAnswer(lessonId: number, sectionKey: string, qIdx: numb
 
 function saveProgress(p: ClasseProgress) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+  syncProgress('N1', {
+    completedLessons: p.completedLessons,
+    lessonStars: Object.fromEntries(Object.entries(p.lessonStars).map(([k, v]) => [k, v])),
+    tabsCompleted: p.tabsCompleted,
+    lastLesson: p.lastLesson,
+    themeBadges: p.themeBadges,
+  });
 }
 
 export function markTabComplete(lessonId: number, tab: string) {
   const p = getClasseProgress();
   p.tabsCompleted[`lesson_${lessonId}_${tab}`] = true;
-  // Count completed tabs for stars
   const lesson = CLASSE_LESSONS.find(l => l.id === lessonId);
   if (lesson) {
     const allTabs = ['text', 'observe', 'ecoute', 'reagis', 'retiens', 'phonetics'];
@@ -2915,13 +2924,16 @@ export function saveEvaluationScore(evalId: number, score: number) {
     p.evaluationBest[evalId] = score;
   }
   saveProgress(p);
+  void syncEvaluation('N1', String(evalId), score);
 }
 
 export function saveCalculScore(lessonId: number, score: number, total: number) {
   const p = getClasseProgress();
   p.calculScores[lessonId] = { score, total };
   saveProgress(p);
+  syncAnswer({ level: 'N1', module: 'calcul', lessonId: String(lessonId), sectionKey: '_score', score, maxScore: total });
 }
+
 
 export function getLessonStars(lessonId: number): number {
   return getClasseProgress().lessonStars[lessonId] || 0;
