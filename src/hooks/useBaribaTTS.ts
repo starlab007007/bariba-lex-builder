@@ -26,6 +26,12 @@ export const useBaribaTTS = (): UseBaribaTTSReturn => {
   const speak = useCallback(async (text: string, options?: BaribaTTSOptions) => {
     if (!text.trim()) return;
 
+    // Guard: skip TTS for very short text (< 2 chars) — avoids edge function 400
+    if (Array.from(text.trim()).length < 2) {
+      console.log('[bariba-tts] Skipping: text too short');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -42,6 +48,12 @@ export const useBaribaTTS = (): UseBaribaTTSReturn => {
             noiseScaleW: options?.noiseScaleW ?? 0.6
           }
         });
+
+        // Skipped (text too short / invalid UI) — silent no-op
+        if (data?.skipped) {
+          setIsLoading(false);
+          return;
+        }
 
         // Check for sleeping/503 errors - retry automatically
         if (fnError || data?.error) {
