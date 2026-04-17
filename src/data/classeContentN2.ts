@@ -1479,3 +1479,83 @@ export function getN2CalculAnswer(lessonId: number, sectionKey: string, qIdx: nu
   const p = getClasseN2Progress();
   return p.calculAnswers?.[`calcul_qa_${lessonId}_${sectionKey}_${qIdx}`] || '';
 }
+
+// ============ N2 GESTION PERSISTENCE ============
+const GESTION_N2_STORAGE_KEY = 'classe_n2_gestion';
+
+export interface GestionN2State {
+  formData: Record<string, Record<string, string>>; // docId -> { fieldKey: value }
+  tableData: Record<string, string[][]>; // docId -> rows
+  qaAnswers: Record<string, string>; // `${docId}_${qIdx}` -> answer
+  submitted: Record<string, boolean>; // docId -> submitted flag
+  completed: string[]; // docIds finalized
+}
+
+function readGestionN2(): GestionN2State {
+  try {
+    const raw = localStorage.getItem(GESTION_N2_STORAGE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      return {
+        formData: p.formData || {},
+        tableData: p.tableData || {},
+        qaAnswers: p.qaAnswers || {},
+        submitted: p.submitted || {},
+        completed: p.completed || [],
+      };
+    }
+  } catch {}
+  return { formData: {}, tableData: {}, qaAnswers: {}, submitted: {}, completed: [] };
+}
+
+function writeGestionN2(s: GestionN2State) {
+  localStorage.setItem(GESTION_N2_STORAGE_KEY, JSON.stringify(s));
+}
+
+export function getGestionN2State(): GestionN2State {
+  return readGestionN2();
+}
+
+export function saveGestionN2Form(docId: string, formData: Record<string, string>) {
+  const s = readGestionN2();
+  s.formData[docId] = formData;
+  writeGestionN2(s);
+}
+
+export function saveGestionN2Table(docId: string, tableData: string[][]) {
+  const s = readGestionN2();
+  s.tableData[docId] = tableData;
+  writeGestionN2(s);
+}
+
+export function saveGestionN2QA(docId: string, qIdx: number, value: string) {
+  const s = readGestionN2();
+  s.qaAnswers[`${docId}_${qIdx}`] = value;
+  writeGestionN2(s);
+}
+
+export function getGestionN2QA(docId: string, qIdx: number): string {
+  return readGestionN2().qaAnswers[`${docId}_${qIdx}`] || '';
+}
+
+export function markGestionN2Submitted(docId: string, submitted: boolean) {
+  const s = readGestionN2();
+  s.submitted[docId] = submitted;
+  writeGestionN2(s);
+}
+
+export function markGestionN2Complete(docId: string) {
+  const s = readGestionN2();
+  if (!s.completed.includes(docId)) s.completed.push(docId);
+  writeGestionN2(s);
+}
+
+export function resetGestionN2Doc(docId: string) {
+  const s = readGestionN2();
+  delete s.formData[docId];
+  delete s.tableData[docId];
+  Object.keys(s.qaAnswers).forEach(k => { if (k.startsWith(`${docId}_`)) delete s.qaAnswers[k]; });
+  delete s.submitted[docId];
+  s.completed = s.completed.filter(id => id !== docId);
+  writeGestionN2(s);
+}
