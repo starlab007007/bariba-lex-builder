@@ -396,17 +396,34 @@ function QuestionAnswerField({
 }
 
 // ============ MAIN VIEW ============
-export default function ClasseCalculView() {
+interface ClasseCalculViewProps {
+  level?: CalculLevel;
+}
+
+export default function ClasseCalculView({ level = 'N1' }: ClasseCalculViewProps) {
   const { currentLang } = useFitilaLanguage();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [opResults, setOpResults] = useState<Record<number, boolean>>({});
   const [qaSubmitted, setQaSubmitted] = useState<Record<string, boolean>>({});
   const [showExercises, setShowExercises] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-  const progress = getClasseProgress();
 
-  const selected = CALCUL_LESSONS.find(l => l.id === selectedId);
-  const manualExercises = selectedId ? CALCUL_EXERCISES[selectedId] : undefined;
+  // Resolve data sources by level
+  const lessonsSource = level === 'N2' ? CALCUL_N2_LESSONS : CALCUL_LESSONS;
+  const exercisesSource = level === 'N2' ? CALCUL_N2_EXERCISES : CALCUL_EXERCISES;
+  const progress = level === 'N2' ? getClasseN2Progress() : getClasseProgress();
+  const saveScore = level === 'N2' ? saveN2CalculScore : saveCalculScore;
+
+  // Reset selection when level changes
+  useEffect(() => {
+    setSelectedId(null);
+    setOpResults({});
+    setQaSubmitted({});
+    setShowExercises(false);
+  }, [level]);
+
+  const selected = lessonsSource.find(l => l.id === selectedId);
+  const manualExercises = selectedId ? exercisesSource[selectedId] : undefined;
 
   // Auto-parsed operations from paragraphs
   const autoExos = useMemo<AutoExo[]>(() => {
@@ -414,10 +431,10 @@ export default function ClasseCalculView() {
     return parseAutoExercises(selected.paragraphs);
   }, [selected]);
 
-  // Detect SƆMAA section presence (auto-exercises rendering)
+  // Detect SƆMAA / exercise sections (auto-exercises rendering)
   const hasSomaa = useMemo(() => {
     if (!selected) return false;
-    return Object.keys(selected.sections).some(k => /sɔmaa/i.test(k));
+    return Object.keys(selected.sections).some(k => EXERCISE_SECTION_REGEX.test(k));
   }, [selected]);
 
   const interactiveExos: AutoExo[] = manualExercises
@@ -443,18 +460,18 @@ export default function ClasseCalculView() {
   };
 
   const finishLesson = () => {
-    if (selectedId) saveCalculScore(selectedId, totalCorrect, interactiveExos.length || 1);
+    if (selectedId) saveScore(selectedId, totalCorrect, interactiveExos.length || 1);
     setSelectedId(null);
     setShowExercises(false);
     setOpResults({});
     setQaSubmitted({});
   };
 
-  // Q&A sections (excluding Sɔmaa, which is rendered as auto-exercises)
+  // Q&A sections (excluding exercise sections, which are rendered as auto-exercises)
   const qaSections = useMemo(() => {
     if (!selected) return [] as Array<[string, string[]]>;
     return Object.entries(selected.sections).filter(([name, qs]) => {
-      if (/sɔmaa/i.test(name)) return false;
+      if (EXERCISE_SECTION_REGEX.test(name)) return false;
       return Array.isArray(qs) && qs.length > 0;
     }) as Array<[string, string[]]>;
   }, [selected]);
