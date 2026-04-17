@@ -13,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Shield, ShieldOff, Loader2, Search, PenTool, Trash2, Ban, CheckCircle, Edit, Key, Phone } from 'lucide-react';
+import { Shield, ShieldOff, Loader2, Search, PenTool, Trash2, Ban, CheckCircle, Edit, Key, Phone, GraduationCap } from 'lucide-react';
 
 interface UserData {
   id: string;
@@ -68,7 +68,7 @@ export default function UserRoleManager() {
   const handleGrantRole = async (userId: string, role: string) => {
     try {
       setActionLoading(userId);
-      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as 'admin' | 'editor' | 'user' });
+      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as 'admin' | 'editor' | 'user' | 'teacher' });
       if (error) throw error;
       toast({ title: 'Succès', description: `Rôle ${role} attribué` });
       await loadUsers();
@@ -83,7 +83,7 @@ export default function UserRoleManager() {
     if (!revokeInfo) return;
     try {
       setActionLoading(revokeInfo.user.id);
-      const { error } = await supabase.from('user_roles').delete().eq('user_id', revokeInfo.user.id).eq('role', revokeInfo.role as 'admin' | 'editor' | 'user');
+      const { error } = await supabase.from('user_roles').delete().eq('user_id', revokeInfo.user.id).eq('role', revokeInfo.role as 'admin' | 'editor' | 'user' | 'teacher');
       if (error) throw error;
       toast({ title: 'Succès', description: `Rôle ${revokeInfo.role} révoqué` });
       await loadUsers();
@@ -211,7 +211,8 @@ export default function UserRoleManager() {
                           {u.banned && <Badge variant="destructive">Désactivé</Badge>}
                           {u.roles.includes('admin') && <Badge variant="default" className="gap-1"><Shield className="h-3 w-3" />Admin</Badge>}
                           {u.roles.includes('editor') && <Badge variant="outline" className="gap-1 border-blue-300 text-blue-700 bg-blue-50"><PenTool className="h-3 w-3" />Éditeur</Badge>}
-                          {!u.roles.includes('admin') && !u.roles.includes('editor') && !u.banned && <Badge variant="secondary">Utilisateur</Badge>}
+                          {u.roles.includes('teacher') && <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-700 bg-emerald-50"><GraduationCap className="h-3 w-3" />Enseignant</Badge>}
+                          {!u.roles.includes('admin') && !u.roles.includes('editor') && !u.roles.includes('teacher') && !u.banned && <Badge variant="secondary">Utilisateur</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">{new Date(u.created_at).toLocaleDateString('fr-FR')}</TableCell>
@@ -229,6 +230,15 @@ export default function UserRoleManager() {
                           ) : (
                             <Button variant="ghost" size="icon" title="Promouvoir admin" onClick={() => handleGrantRole(u.id, 'admin')} disabled={actionLoading === u.id}>
                               <Shield className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {u.roles.includes('teacher') ? (
+                            <Button variant="ghost" size="icon" title="Révoquer enseignant" onClick={() => setRevokeInfo({ user: u, role: 'teacher' })}>
+                              <GraduationCap className="h-4 w-4 text-destructive" />
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="icon" title="Attribuer rôle enseignant" onClick={() => handleGrantRole(u.id, 'teacher')} disabled={actionLoading === u.id}>
+                              <GraduationCap className="h-4 w-4 text-emerald-600" />
                             </Button>
                           )}
                           {/* Ban/Unban */}

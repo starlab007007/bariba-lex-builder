@@ -48,6 +48,13 @@ const FitilaClasse = lazy(() => import("./pages/fitila/FitilaClasse"));
 const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 const ComingSoonPage = lazy(() => import("./pages/fitila/ComingSoonPage"));
 const InstallPage = lazy(() => import("./pages/fitila/InstallPage"));
+const TeacherLayout = lazy(() => import("./pages/teacher/TeacherLayout"));
+const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard"));
+const StudentList = lazy(() => import("./pages/teacher/StudentList"));
+const StudentDetail = lazy(() => import("./pages/teacher/StudentDetail"));
+const PendingGrading = lazy(() => import("./pages/teacher/PendingGrading"));
+const ClassStats = lazy(() => import("./pages/teacher/ClassStats"));
+const ClasseCorrections = lazy(() => import("./components/classe/ClasseCorrections"));
 
 // Loading fallback - minimal spinner
 const PageLoader = () => (
@@ -118,6 +125,16 @@ const App = () => (
                 <Route path="user/:userId" element={<TamTamPublicProfile />} />
                 <Route path="profile/:userId" element={<TamTamPublicProfile />} />
               </Route>
+
+              {/* Teacher dashboard */}
+              <Route path="/fitila/teacher" element={<ProtectedRoute requireTeacher><TeacherLayout /></ProtectedRoute>}>
+                <Route index element={<TeacherDashboard />} />
+                <Route path="students" element={<StudentList />} />
+                <Route path="student/:id" element={<StudentDetail />} />
+                <Route path="grading" element={<PendingGrading />} />
+                <Route path="stats" element={<ClassStats />} />
+              </Route>
+              <Route path="/fitila/classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
 
               {/* Legacy /tamtam routes redirect to /fitila */}
               <Route path="/tamtam/*" element={<Navigate to="/fitila" replace />} />
