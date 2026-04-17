@@ -63,6 +63,11 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       objet: 'Tiru wɔkuru, piɔ ita, bukɛɛru nɔɔbu, tabɛɛru yiru, sɛɛzu yɛndu',
       lieu: 'Naanaanu',
     },
+    qaQuestions: [
+      { ba: 'Mba n sɔm gobi doke tireru sãa, ka mba sɔ̃na ba ra yu kɔsibu?', fr: 'Qu\'est-ce qu\'une décharge et pourquoi est-elle nécessaire ?' },
+      { ba: 'A gari yini bweseru sɔ̃ɔsio: wìn doke, wìn sua, mba ba doke?', fr: 'Précisez : qui remet, qui reçoit, et quels biens sont remis ?' },
+      { ba: 'Yè a koo sɔm gobi doke tireru ko, mba sɔɔ a koo de bù seeda?', fr: 'Comment garantir que cette décharge servira de preuve ?' },
+    ],
   },
 
   // ===== 2. REÇU =====
