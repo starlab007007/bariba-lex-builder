@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 
 const gradeSchema = z.object({
@@ -39,6 +39,20 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
   const [grade, setGrade] = useState<string>(answer.teacher_grade?.toString() ?? '');
   const [comment, setComment] = useState(answer.teacher_comment ?? '');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirm('Supprimer définitivement cette réponse ?')) return;
+    setDeleting(true);
+    const { error } = await supabase.from('classe_student_answers').delete().eq('id', answer.id);
+    setDeleting(false);
+    if (error) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: '🗑️ Réponse supprimée' });
+    onGraded?.();
+  };
 
   const handleSubmit = async () => {
     const numericGrade = parseFloat(grade);
@@ -118,6 +132,16 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
         <Button onClick={handleSubmit} disabled={saving || !grade}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Valider'}
         </Button>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="text-xs flex items-center gap-1 px-2 py-1 rounded text-red-500 hover:bg-red-50"
+        >
+          {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Supprimer
+        </button>
       </div>
     </div>
   );
