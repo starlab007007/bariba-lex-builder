@@ -12,7 +12,19 @@ import {
   saveCalculAnswer,
   getCalculAnswer,
 } from '@/data/classeContent';
+import {
+  CALCUL_N2_LESSONS,
+  CALCUL_N2_EXERCISES,
+  getClasseN2Progress,
+  saveN2CalculScore,
+  saveN2CalculAnswer,
+  getN2CalculAnswer,
+} from '@/data/classeContentN2';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
+
+type CalculLevel = 'N1' | 'N2';
+
+const EXERCISE_SECTION_REGEX = /sɔmaa|sosibu|wĩabu|dabiasibu|bɔnu kosibu|bɔkurabu|sɔmburu|sɔm gbiikiru/i;
 
 // ============ OPERATION PARSER ============
 interface ParsedOperation extends MathExercise {
@@ -302,12 +314,14 @@ function getSectionColor(sectionName: string) {
 }
 
 function QuestionAnswerField({
+  level,
   lessonId,
   sectionName,
   qIdx,
   question,
   onSubmitted,
 }: {
+  level: CalculLevel;
   lessonId: number;
   sectionName: string;
   qIdx: number;
@@ -315,7 +329,9 @@ function QuestionAnswerField({
   onSubmitted: (hasAnswer: boolean) => void;
 }) {
   const sectionKey = sectionName.trim().split('-')[0].trim();
-  const initial = useMemo(() => getCalculAnswer(lessonId, sectionKey, qIdx), [lessonId, sectionKey, qIdx]);
+  const getAns = level === 'N2' ? getN2CalculAnswer : getCalculAnswer;
+  const saveAns = level === 'N2' ? saveN2CalculAnswer : saveCalculAnswer;
+  const initial = useMemo(() => getAns(lessonId, sectionKey, qIdx), [lessonId, sectionKey, qIdx, level]);
   const [text, setText] = useState(initial);
   const [submitted, setSubmitted] = useState(!!initial);
   const [editing, setEditing] = useState(!initial);
@@ -327,7 +343,7 @@ function QuestionAnswerField({
 
   const submit = () => {
     if (!text.trim()) return;
-    saveCalculAnswer(lessonId, sectionKey, qIdx, text);
+    saveAns(lessonId, sectionKey, qIdx, text);
     setSubmitted(true);
     setEditing(false);
     onSubmitted(true);
@@ -380,17 +396,34 @@ function QuestionAnswerField({
 }
 
 // ============ MAIN VIEW ============
-export default function ClasseCalculView() {
+interface ClasseCalculViewProps {
+  level?: CalculLevel;
+}
+
+export default function ClasseCalculView({ level = 'N1' }: ClasseCalculViewProps) {
   const { currentLang } = useFitilaLanguage();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [opResults, setOpResults] = useState<Record<number, boolean>>({});
   const [qaSubmitted, setQaSubmitted] = useState<Record<string, boolean>>({});
   const [showExercises, setShowExercises] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-  const progress = getClasseProgress();
 
-  const selected = CALCUL_LESSONS.find(l => l.id === selectedId);
-  const manualExercises = selectedId ? CALCUL_EXERCISES[selectedId] : undefined;
+  // Resolve data sources by level
+  const lessonsSource = level === 'N2' ? CALCUL_N2_LESSONS : CALCUL_LESSONS;
+  const exercisesSource = level === 'N2' ? CALCUL_N2_EXERCISES : CALCUL_EXERCISES;
+  const progress = level === 'N2' ? getClasseN2Progress() : getClasseProgress();
+  const saveScore = level === 'N2' ? saveN2CalculScore : saveCalculScore;
+
+  // Reset selection when level changes
+  useEffect(() => {
+    setSelectedId(null);
+    setOpResults({});
+    setQaSubmitted({});
+    setShowExercises(false);
+  }, [level]);
+
+  const selected = lessonsSource.find(l => l.id === selectedId);
+  const manualExercises = selectedId ? exercisesSource[selectedId] : undefined;
 
   // Auto-parsed operations from paragraphs
   const autoExos = useMemo<AutoExo[]>(() => {
@@ -398,10 +431,10 @@ export default function ClasseCalculView() {
     return parseAutoExercises(selected.paragraphs);
   }, [selected]);
 
-  // Detect SƆMAA section presence (auto-exercises rendering)
+  // Detect SƆMAA / exercise sections (auto-exercises rendering)
   const hasSomaa = useMemo(() => {
     if (!selected) return false;
-    return Object.keys(selected.sections).some(k => /sɔmaa/i.test(k));
+    return Object.keys(selected.sections).some(k => EXERCISE_SECTION_REGEX.test(k));
   }, [selected]);
 
   const interactiveExos: AutoExo[] = manualExercises
@@ -427,18 +460,18 @@ export default function ClasseCalculView() {
   };
 
   const finishLesson = () => {
-    if (selectedId) saveCalculScore(selectedId, totalCorrect, interactiveExos.length || 1);
+    if (selectedId) saveScore(selectedId, totalCorrect, interactiveExos.length || 1);
     setSelectedId(null);
     setShowExercises(false);
     setOpResults({});
     setQaSubmitted({});
   };
 
-  // Q&A sections (excluding Sɔmaa, which is rendered as auto-exercises)
+  // Q&A sections (excluding exercise sections, which are rendered as auto-exercises)
   const qaSections = useMemo(() => {
     if (!selected) return [] as Array<[string, string[]]>;
     return Object.entries(selected.sections).filter(([name, qs]) => {
-      if (/sɔmaa/i.test(name)) return false;
+      if (EXERCISE_SECTION_REGEX.test(name)) return false;
       return Array.isArray(qs) && qs.length > 0;
     }) as Array<[string, string[]]>;
   }, [selected]);
@@ -498,6 +531,7 @@ export default function ClasseCalculView() {
                 {questions.map((q, i) => (
                   <QuestionAnswerField
                     key={`${sec}_${i}`}
+                    level={level}
                     lessonId={selected.id}
                     sectionName={sec}
                     qIdx={i}
@@ -588,9 +622,9 @@ export default function ClasseCalculView() {
 
   return (
     <div className="space-y-3">
-      {CALCUL_LESSONS.map((lesson, i) => {
+      {lessonsSource.map((lesson, i) => {
         const calcScore = progress.calculScores[lesson.id];
-        const hasInteractive = !!CALCUL_EXERCISES[lesson.id] || Object.keys(lesson.sections).some(k => /sɔmaa/i.test(k));
+        const hasInteractive = !!exercisesSource[lesson.id] || Object.keys(lesson.sections).some(k => EXERCISE_SECTION_REGEX.test(k));
         return (
           <motion.button
             key={lesson.id}
@@ -602,7 +636,7 @@ export default function ClasseCalculView() {
             className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all"
           >
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md ${
-              calcScore ? 'bg-gradient-to-br from-emerald-400 to-teal-400' : 'bg-gradient-to-br from-blue-400 to-indigo-400'
+              calcScore ? 'bg-gradient-to-br from-emerald-400 to-teal-400' : level === 'N2' ? 'bg-gradient-to-br from-indigo-400 to-purple-400' : 'bg-gradient-to-br from-blue-400 to-indigo-400'
             }`}>
               <span className="text-2xl">{hasInteractive ? '🧮' : '🔢'}</span>
             </div>
@@ -622,3 +656,4 @@ export default function ClasseCalculView() {
     </div>
   );
 }
+

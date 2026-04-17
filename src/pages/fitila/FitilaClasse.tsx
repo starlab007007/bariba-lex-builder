@@ -329,7 +329,7 @@ export default function FitilaClasse() {
               />
             )}
             {section === 'alphabet' && <ClasseAlphabetView />}
-            {section === 'calcul' && <ClasseCalculView />}
+            {section === 'calcul' && <ClasseCalculView level={activeLevel} />}
             {section === 'evaluations' && renderEvaluationList()}
             {section === 'eval-detail' && (
               <ClasseEvaluation evalId={selectedEvalId} onBack={() => setSection('evaluations')} />

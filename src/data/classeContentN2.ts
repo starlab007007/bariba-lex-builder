@@ -1467,3 +1467,15 @@ export function isN2LessonUnlocked(lessonId: number): boolean {
   if (!prevLesson) return true;
   return (p.lessonStars[lessonId - 1] || 0) >= 2 || p.completedLessons.includes(lessonId - 1);
 }
+
+export function saveN2CalculAnswer(lessonId: number, sectionKey: string, qIdx: number, value: string) {
+  const p = getClasseN2Progress();
+  if (!p.calculAnswers) p.calculAnswers = {};
+  p.calculAnswers[`calcul_qa_${lessonId}_${sectionKey}_${qIdx}`] = value;
+  saveN2Progress(p);
+}
+
+export function getN2CalculAnswer(lessonId: number, sectionKey: string, qIdx: number): string {
+  const p = getClasseN2Progress();
+  return p.calculAnswers?.[`calcul_qa_${lessonId}_${sectionKey}_${qIdx}`] || '';
+}
