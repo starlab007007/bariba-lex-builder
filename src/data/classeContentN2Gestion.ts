@@ -14,6 +14,7 @@ export interface GestionDocument {
   formula?: string;
   formulaFr?: string;
   example: Record<string, string>;
+  qaQuestions?: { ba: string; fr: string }[];
 }
 
 export interface GestionField {
@@ -62,6 +63,11 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       objet: 'Tiru wɔkuru, piɔ ita, bukɛɛru nɔɔbu, tabɛɛru yiru, sɛɛzu yɛndu',
       lieu: 'Naanaanu',
     },
+    qaQuestions: [
+      { ba: 'Mba n sɔm gobi doke tireru sãa, ka mba sɔ̃na ba ra yu kɔsibu?', fr: 'Qu\'est-ce qu\'une décharge et pourquoi est-elle nécessaire ?' },
+      { ba: 'A gari yini bweseru sɔ̃ɔsio: wìn doke, wìn sua, mba ba doke?', fr: 'Précisez : qui remet, qui reçoit, et quels biens sont remis ?' },
+      { ba: 'Yè a koo sɔm gobi doke tireru ko, mba sɔɔ a koo de bù seeda?', fr: 'Comment garantir que cette décharge servira de preuve ?' },
+    ],
   },
 
   // ===== 2. REÇU =====
@@ -89,6 +95,11 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       motif: 'Keu koo suman gobi',
       receveur: 'Saaru Bio, gobi suabu yãakora',
     },
+    qaQuestions: [
+      { ba: 'Mba n gobi suan seeda tireru sãa?', fr: 'Qu\'est-ce qu\'un reçu et à quoi sert-il ?' },
+      { ba: 'Bweseru sɔ̃ɔsio yì yu raa wãa gobi suan seeda tireru sɔɔ.', fr: 'Citez les mentions obligatoires d\'un reçu.' },
+      { ba: 'Tɔ̃ru garu a gobi sua, sere a ǹ tireru wɛ̃, mba n koo sere?', fr: 'Que peut-il arriver si vous recevez de l\'argent sans délivrer un reçu ?' },
+    ],
   },
 
   // ===== 3. FACTURE =====
@@ -121,6 +132,11 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       date: '15/03/2026',
       numero: 'FACT-001',
     },
+    qaQuestions: [
+      { ba: 'Sɔ̃ɔsio amɔna ba ra Gobi kpuro (Montant) sosi facture sɔɔ.', fr: 'Expliquez comment se calcule le Montant d\'une ligne de facture.' },
+      { ba: 'TVA na yɛɛ? Mba sɔ̃na ba ra yu sosi?', fr: 'Qu\'est-ce que la TVA et pourquoi la calcule-t-on ?' },
+      { ba: 'Net à payer ka Sous-total ben yiibura nyera nde ǹ sãa nyera?', fr: 'Quelle est la différence entre Sous-total et Net à payer ?' },
+    ],
   },
 
   // ===== 4. CAHIER DE CAISSE =====
@@ -149,6 +165,11 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       periode: 'Mars 2026',
       solde_initial: '25000',
     },
+    qaQuestions: [
+      { ba: 'Mba n gobi yãɛku tireru sãa, ka mba sɔ̃na ba ra yu yore?', fr: 'Qu\'est-ce qu\'un cahier de caisse et pourquoi le tient-on ?' },
+      { ba: 'Sɔ̃ɔsio amɔna kĩa (solde) u ra sosi tɔ̃ baadii sɔɔ.', fr: 'Comment calcule-t-on le solde au quotidien ?' },
+      { ba: 'Tɔ̃ru garu gobi yèera ya gobi duura kere, mba n koo sere kĩa sɔɔ?', fr: 'Que se passe-t-il si les sorties dépassent les entrées ?' },
+    ],
   },
 
   // ===== 5. FICHE DE STOCK =====
@@ -177,6 +198,11 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       article: 'Tiru (cahiers)',
       stock_initial: '100',
     },
+    qaQuestions: [
+      { ba: 'Mba n fiche de stock ya kuawa magasen sɔɔ?', fr: 'À quoi sert une fiche de stock dans un magasin ?' },
+      { ba: 'Sɔ̃ɔsio amɔna a ra Kĩa (Reste) sosi.', fr: 'Comment calcule-t-on le Reste après chaque mouvement ?' },
+      { ba: 'Bweseru bweseka yera ba ra yãkpa fiche de stock sɔɔ?', fr: 'Quelles informations clés doivent figurer sur une fiche de stock ?' },
+    ],
   },
 
   // ===== 6. PROCÈS-VERBAL =====
@@ -212,6 +238,11 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       ordre_jour: '1. Keu yãa dwebu 2. Gobi dwebu 3. Garibu bwese bweseka',
       decisions: '1. Keu goo koo yãa dwe suru weeru sɔɔ 2. Tɔn baateru nɔɔbu koo gobi wɛ̃ suru kpuro',
     },
+    qaQuestions: [
+      { ba: 'Mba n PV sãa, ka mba sɔ̃na ba ra yu yore wunabu kpuron biru?', fr: 'Qu\'est-ce qu\'un procès-verbal et pourquoi le rédige-t-on ?' },
+      { ba: 'Bweseru bweseka yera n ka raa wãa PV sɔɔ?', fr: 'Quelles sont les rubriques obligatoires d\'un PV ?' },
+      { ba: 'Mba n yiibura wĩabu wunabu PV ka sãa wunabu PV?', fr: 'Différence entre un PV de réunion ordinaire et un PV de réunion extraordinaire ?' },
+    ],
   },
 
   // ===== 7. BÉNÉFICE / PERTE =====
@@ -239,5 +270,10 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       frais: '2000',
       prix_vente: '20000',
     },
+    qaQuestions: [
+      { ba: 'Mba n yiibura PA, PR ka PV?', fr: 'Quelle différence entre Prix d\'achat (PA), Prix de revient (PR) et Prix de vente (PV) ?' },
+      { ba: 'Tɔ̃ru garu PV ya PR kere, mba n koo sere? Tɔ̃ru garu PR ya PV kere maa, mba n koo sere?', fr: 'Que se passe-t-il quand PV > PR ? Et quand PR > PV ?' },
+      { ba: 'Sɔ̃ɔsio amɔna a koo n yɛ̃ɛnɛn dii nɛɛnɛ wɛ̃ɛ ka tii.', fr: 'Comment fixer un prix de vente pour s\'assurer un bénéfice ?' },
+    ],
   },
 ];
