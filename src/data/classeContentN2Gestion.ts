@@ -132,6 +132,11 @@ export const GESTION_N2_DOCUMENTS: GestionDocument[] = [
       date: '15/03/2026',
       numero: 'FACT-001',
     },
+    qaQuestions: [
+      { ba: 'Sɔ̃ɔsio amɔna ba ra Gobi kpuro (Montant) sosi facture sɔɔ.', fr: 'Expliquez comment se calcule le Montant d\'une ligne de facture.' },
+      { ba: 'TVA na yɛɛ? Mba sɔ̃na ba ra yu sosi?', fr: 'Qu\'est-ce que la TVA et pourquoi la calcule-t-on ?' },
+      { ba: 'Net à payer ka Sous-total ben yiibura nyera nde ǹ sãa nyera?', fr: 'Quelle est la différence entre Sous-total et Net à payer ?' },
+    ],
   },
 
   // ===== 4. CAHIER DE CAISSE =====
