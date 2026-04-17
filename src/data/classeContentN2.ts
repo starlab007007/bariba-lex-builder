@@ -2,6 +2,7 @@
 // Contains all 18 language lessons, 5 evaluations, and 25 calcul lessons for Niveau 2
 
 import type { ClasseLesson, ClasseEvaluation, CalculLesson, MathExercise, ClasseProgress } from './classeContent';
+import { syncAnswer, syncProgress, syncEvaluation } from '@/lib/classeSync';
 
 // ============ N2 LANGUAGE LESSONS ============
 export const CLASSE_N2_LESSONS: ClasseLesson[] = [
@@ -1415,6 +1416,13 @@ export function getClasseN2Progress(): ClasseProgress {
 
 function saveN2Progress(p: ClasseProgress) {
   localStorage.setItem(N2_STORAGE_KEY, JSON.stringify(p));
+  syncProgress('N2', {
+    completedLessons: p.completedLessons,
+    lessonStars: p.lessonStars as Record<string, number>,
+    tabsCompleted: p.tabsCompleted,
+    lastLesson: p.lastLesson,
+    themeBadges: p.themeBadges,
+  });
 }
 
 export function markN2TabComplete(lessonId: number, tab: string) {
@@ -1448,12 +1456,14 @@ export function saveN2EvaluationScore(evalId: number, score: number) {
     p.evaluationBest[evalId] = score;
   }
   saveN2Progress(p);
+  void syncEvaluation('N2', String(evalId), score);
 }
 
 export function saveN2CalculScore(lessonId: number, score: number, total: number) {
   const p = getClasseN2Progress();
   p.calculScores[lessonId] = { score, total };
   saveN2Progress(p);
+  syncAnswer({ level: 'N2', module: 'calcul', lessonId: String(lessonId), sectionKey: 'score', score, maxScore: total });
 }
 
 export function getN2LessonStars(lessonId: number): number {
@@ -1473,6 +1483,7 @@ export function saveN2CalculAnswer(lessonId: number, sectionKey: string, qIdx: n
   if (!p.calculAnswers) p.calculAnswers = {};
   p.calculAnswers[`calcul_qa_${lessonId}_${sectionKey}_${qIdx}`] = value;
   saveN2Progress(p);
+  syncAnswer({ level: 'N2', module: 'calcul', lessonId: String(lessonId), sectionKey, questionIdx: qIdx, answerText: value });
 }
 
 export function getN2CalculAnswer(lessonId: number, sectionKey: string, qIdx: number): string {
@@ -1520,18 +1531,21 @@ export function saveGestionN2Form(docId: string, formData: Record<string, string
   const s = readGestionN2();
   s.formData[docId] = formData;
   writeGestionN2(s);
+  syncAnswer({ level: 'N2', module: 'gestion', lessonId: docId, sectionKey: 'form', fieldData: formData });
 }
 
 export function saveGestionN2Table(docId: string, tableData: string[][]) {
   const s = readGestionN2();
   s.tableData[docId] = tableData;
   writeGestionN2(s);
+  syncAnswer({ level: 'N2', module: 'gestion', lessonId: docId, sectionKey: 'table', fieldData: tableData });
 }
 
 export function saveGestionN2QA(docId: string, qIdx: number, value: string) {
   const s = readGestionN2();
   s.qaAnswers[`${docId}_${qIdx}`] = value;
   writeGestionN2(s);
+  syncAnswer({ level: 'N2', module: 'gestion', lessonId: docId, sectionKey: 'qa', questionIdx: qIdx, answerText: value });
 }
 
 export function getGestionN2QA(docId: string, qIdx: number): string {

@@ -4,6 +4,7 @@ import { RotateCcw, Check, X, Trophy } from 'lucide-react';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { CLASSE_EVALUATIONS, saveEvaluationScore, getClasseProgress } from '@/data/classeContent';
+import { syncEvaluation, syncAnswer } from '@/lib/classeSync';
 
 interface Props {
   evalId: number;
@@ -28,6 +29,11 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
     const pct = totalQuestions > 0 ? Math.round((answered / totalQuestions) * 100) : 0;
     setScore(pct);
     saveEvaluationScore(evalId, pct);
+    void syncEvaluation('N1', String(evalId), pct);
+    Object.entries(answers).forEach(([key, value]) => {
+      const [si, qi] = key.split('_');
+      syncAnswer({ level: 'N1', module: 'evaluation', lessonId: String(evalId), sectionKey: si, questionIdx: Number(qi), answerText: value });
+    });
     setSubmitted(true);
   };
 
