@@ -1,120 +1,83 @@
 
 
-# Plan : Conversion du PDF "Traduction en Bariba" au format HTML
+# Plan : Fitila Tem IA — Chatbot RAG sur le Code Foncier Bariba
 
-## Analyse du document source
+## Vue d'ensemble
 
-Le PDF (~50 pages) est la **traduction en Bariba du Code Foncier et Domanial du Bénin** (loi n° 2013-01). Structure hiérarchique détectée :
-- **GARI WIRU** (Titres / Livres) → ex: "GARI WIRU 2se : GARIN GOBERU"
-- **BÆÆRU** (Parties) → ex: "BÆÆRU 4SE : MÈ BA RA KOOSINÆ MA SIKIRINØ GA DUURA"
-- **BØNU** (Chapitres) → ex: "BØNU 3se : DAARIBU"
-- **Saria Nse** (Articles numérotés 1 → 207)
+Créer un nouvel outil **Fitila Tem IA** : clone visuel exact de Fitila IA, mais avec une logique **RAG strict** limitée au document foncier Bariba (loi 2013-01, déjà parsé dans `src/data/foncierBaribaContent.ts` — 207 articles).
 
-Le texte contient les caractères masqués (ø, æ, ó, á, ä, å, ö, ±, ‹) qui doivent être remplacés selon le `bariba_mapping` fourni pour produire l'orthographe authentique (ɔ, ɛ, ɔ̃, ã, ĩ, ɛ̃, ɔ̀, ǹ, ').
+## Architecture
 
-Le fichier de référence `Manuel_Bariba_N1_Corrige.html` n'existe plus dans le repo (seul son dérivé `src/data/classeContent.ts` subsiste). Je vais reproduire le **même style/format pédagogique** : HTML autonome, navigable, avec sommaire, sections cliquables, et caractères Bariba normalisés.
-
-## Ce qu'on va construire
-
-### 1. Pipeline de conversion (script Python)
-
-Script `/tmp/convert_bariba_pdf.py` qui :
-1. **Parse le markdown** déjà extrait du PDF (1450 lignes)
-2. **Applique le mapping de correction** des caractères :
-   ```python
-   bariba_mapping = {
-     'ø':'ɔ', 'Ø':'Ɔ', 'æ':'ɛ', 'Æ':'Ɛ',
-     'ó':'ɔ̃', 'á':'ã', 'í':'ĩ', 'ä':'ã', 'å':'ɛ̃',
-     'ö':'ɔ̀', '±':'ǹ', '‹':'\u2019'
-   }
-   ```
-3. **Détecte la structure** via regex :
-   - `GARI WIRU \d+se` → `<section class="gari-wiru">`
-   - `BÆÆRU \d+SE` ou `BÆRU` → `<section class="baeru">`
-   - `BØNU \d+se` ou `BØNU BAKA` → `<section class="bonu">`
-   - `Saria \d+se` → `<article class="saria" id="saria-N">`
-4. **Nettoie les artefacts** (numéros de page isolés, headers répétés)
-5. **Génère un HTML autonome** au même format pédagogique
-
-### 2. Format HTML produit (`public/classe/Traduction_Bariba_Foncier.html`)
-
-```text
-<!DOCTYPE html>
-<html lang="bba">
-<head>
-  <meta charset="UTF-8" />
-  <title>Tem bausu ka yɛnusun saria — Wooda 2013-01</title>
-  <style>
-    body { font-family: 'Noto Sans', system-ui; max-width: 860px; margin: auto; }
-    .gari-wiru { /* titre principal — bandeau orange */ }
-    .baeru     { /* partie — bordure verte */ }
-    .bonu      { /* chapitre — fond beige */ }
-    .saria     { /* article numéroté avec ancre */ }
-    nav.toc    { position: sticky; top: 0; }
-  </style>
-</head>
-<body>
-  <header><h1>WOODA 2013-01 — Tem bausu ka yɛnusun saria</h1></header>
-  <nav class="toc"><!-- sommaire auto-généré --></nav>
-  <main>
-    <section class="gari-wiru" id="gari-1">
-      <h2>GARI WIRU GBIIKIRU — Sɔɔru bakanu</h2>
-      <section class="bonu" id="bonu-1-1">
-        <h3>BƆNU GBIIKA</h3>
-        <article class="saria" id="saria-1">
-          <h4>Saria gbiika</h4>
-          <p>Yè tire teni ta naa gire, yera bù sariaba yì yè ba koo ka sɔ̀ma ko…</p>
-        </article>
-        ...
-      </section>
-    </section>
-    ...
-  </main>
-</body>
-</html>
-```
-
-### 3. Données structurées parallèles (TypeScript)
-
-Pour usage dans l'app (similaire à `classeContent.ts`), génération de `src/data/foncierBaribaContent.ts` :
-
+### 1. Navigation (FitilaApp.tsx)
+Ajouter une tuile **juste après "Classe"** :
 ```ts
-export interface FoncierArticle {
-  id: number;          // 1..207
-  number: string;      // "Saria 1se"
-  title?: string;      // "Saria gbiika" si présent
-  content: string;     // texte normalisé Bariba
-  bonu: string;        // chapitre parent
-  baeru?: string;      // partie parente (optionnel)
-  gariWiru: string;    // livre parent
-  page: number;        // numéro de page d'origine
-}
-export const FONCIER_BARIBA: FoncierArticle[] = [...];
-export const FONCIER_STRUCTURE = { gariWirus: [...], bonus: [...], ... };
+{ emoji: '⚖️', labelKey: 'sidebar_fitila_tem_ia', descKey: 'sidebar_fitila_tem_ia_desc',
+  path: '/fitila/tem-ia', gradient: 'from-emerald-500 to-teal-400' }
 ```
+Ajouter les clés de traduction FR/BA dans `FitilaLanguageContext` :
+- `sidebar_fitila_tem_ia` : "Fitila Tem IA" / "Fitila Tem IA"
+- `sidebar_fitila_tem_ia_desc` : "Assistant Code Foncier Bariba" / "Tem bausu sariaba sɔ̃ɔsiru"
 
-### 4. QA visuelle obligatoire
+### 2. Page (`src/pages/fitila/FitilaTemIA.tsx`)
+**Clone de FitilaIA.tsx** avec adaptations :
+- Header : icône ⚖️ (Scale), titre "Fitila Tem IA", sous-titre "Tem bausu sariaba"
+- **Badge visible** sous le header : `🔒 Assistant basé uniquement sur le Code Foncier (Bariba)`
+- Messages stockés dans un `useState` **isolé** (clé localStorage différente : `fitila-tem-ia-history`)
+- Couleurs : palette emeraude/teal au lieu d'indigo/purple pour distinguer visuellement
+- Réutilise : `BARIBA_CHARS`, `usePhoneticSuggestions`, `useAudioRecorder`, `useBaribaSTT`, `TypingText`, traduction ByT5
+- Input invoque la nouvelle edge function : `fitila-tem-ia-chat`
 
-Après génération :
-1. Convertir HTML → PDF via `pandoc` ou `wkhtmltopdf`
-2. `pdftoppm -jpeg -r 100 output.pdf qa-page`
-3. **Inspecter visuellement** chaque page-image pour vérifier :
-   - Caractères Bariba bien rendus (ɔ, ɛ, nasales, tons)
-   - Hiérarchie visuelle claire
-   - Aucun ø/æ/± résiduel (signe d'oubli de mapping)
-4. Recompter : les 207 articles `Saria` détectés et structurés
+### 3. Edge Function (`supabase/functions/fitila-tem-ia-chat/index.ts`)
+**Approche RAG simple sans vectorisation** (les 207 articles tiennent en ~80 KB de texte → cabable d'être passé en contexte directement, ou pré-filtré par mots-clés) :
 
-## Fichiers livrés
+**Étape 1 — Récupération (retrieval)** :
+- Charger le corpus depuis un fichier embarqué `_shared/foncier_bariba_corpus.json` (généré depuis `foncierBaribaContent.ts`)
+- Tokenizer la question utilisateur, normaliser (NFC, lowercase, strip ponctuation)
+- **Scoring BM25-like simple** sur tous les articles : compter occurrences des mots-clés non-stop dans `content + bonu + gariWiru`
+- Sélectionner **top 8 articles** les plus pertinents (≈ 4-6 KB de contexte)
 
-- `public/classe/Traduction_Bariba_Foncier.html` — document HTML autonome final
-- `src/data/foncierBaribaContent.ts` — données structurées TS (consommables par React)
-- `/mnt/documents/Traduction_Bariba_Foncier.html` — copie téléchargeable
-- `/mnt/documents/Traduction_Bariba_Foncier_QA.pdf` — preuve QA visuelle
+**Étape 2 — Génération (LLM)** :
+- Modèle : `google/gemini-2.5-flash` (équilibre qualité/coût)
+- System prompt strict (cf. demande utilisateur, repris mot pour mot)
+- User prompt : `[CONTEXTE]\n${top8_articles}\n\n[QUESTION]\n${userMsg}`
+- Si aucun article ne dépasse un seuil de pertinence → réponse forcée "Désolé, je ne trouve pas cette information dans le document foncier Bariba fourni."
+
+**Étape 3 — Format de réponse** :
+- Même contrat que `fitila-ia-chat` : `{ response_ba, response_fr, fallback, model, sources }`
+- Ajout : tableau `sources: [{ id, number, page }]` listant les articles cités → affiché en pied de bulle dans l'UI ("📖 Saria 14se, Saria 27se")
+
+### 4. Préparation des données (script one-shot)
+Script `/tmp/build_foncier_corpus.py` :
+- Lit `src/data/foncierBaribaContent.ts`
+- Applique le `bariba_mapping` une seconde fois (sécurité — déjà appliqué lors de la génération, mais idempotent)
+- Écrit `supabase/functions/_shared/foncier_bariba_corpus.json` (article-id → texte normalisé + métadonnées)
+- Ce fichier est importé en Deno via `import corpus from "../_shared/foncier_bariba_corpus.json" with { type: "json" }`
+
+### 5. Affichage des sources dans la bulle
+Sous chaque réponse de l'assistant, petite carte cliquable :
+```
+📖 Sources : Saria 14se · Saria 27se · Saria 81se
+```
+Cliquer ouvre un modal avec le texte intégral des articles cités.
+
+## Fichiers à créer / modifier
+
+**Créés** :
+- `src/pages/fitila/FitilaTemIA.tsx` (clone adapté)
+- `supabase/functions/fitila-tem-ia-chat/index.ts` (edge RAG)
+- `supabase/functions/_shared/foncier_bariba_corpus.json` (corpus pré-traité)
+- `src/components/fitila/FoncierSourcesModal.tsx` (visualisation des articles cités)
+
+**Modifiés** :
+- `src/App.tsx` → route `<Route path="tem-ia" element={<FitilaTemIA />} />`
+- `src/pages/fitila/FitilaApp.tsx` → nouvelle tuile après "Classe"
+- `src/contexts/FitilaLanguageContext.tsx` → 2 nouvelles clés i18n FR/BA
 
 ## Garanties
 
-- **Mapping complet appliqué** sur tout le texte avant écriture HTML
-- **Idempotent** : le script peut être relancé si le PDF source change
-- **Aucune dépendance UI** : le HTML est lisible directement dans un navigateur OU intégrable via iframe dans l'app
-- **Données prêtes** : `foncierBaribaContent.ts` permet d'utiliser le contenu dans une future page Classe N3 (Foncier) si souhaité
+- **Zéro hallucination** : prompt strict + fallback explicite si aucune source pertinente
+- **Caractères Bariba corrects** : mapping appliqué au build du corpus
+- **Isolation totale** : historique séparé en localStorage, edge function dédiée, état React indépendant
+- **Économique** : pas de service de vectorisation externe — retrieval simple suffit pour 207 articles
+- **Transparent** : sources affichées sous chaque réponse pour auditer la provenance
 
