@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Eye, EyeOff, PenLine } from 'lucide-react';
+import { ChevronRight, Eye, EyeOff, PenLine, Send, Check, Loader2 } from 'lucide-react';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { TEXT_PRODUCTION_TYPES, TextType } from '@/data/classeContentN2TextProd';
+import UniversalAnswerCard from './UniversalAnswerCard';
+import { syncAnswer } from '@/lib/classeSync';
 
 function TextTypeCard({ tt, lang, onSelect }: { tt: TextType; lang: string; onSelect: () => void }) {
   return (
@@ -130,38 +132,31 @@ function TextTypeDetail({ tt, lang, onBack }: { tt: TextType; lang: string; onBa
             <p className="text-indigo-600 text-xs">{lang === 'ba' ? tt.exercisePrompt : tt.exercisePromptFr}</p>
           </div>
 
-          {/* Interactive form */}
-          <div className="space-y-2">
+          {/* Interactive form with submit + verify per field */}
+          <div className="space-y-3">
             {tt.structure.map((field, i) => (
-              <div key={i} className={`p-3 rounded-xl border ${field.color}`}>
-                <label className="text-xs font-bold text-gray-700 block mb-1">
-                  {lang === 'ba' ? field.label : field.labelFr}
-                </label>
-                {field.type === 'long' ? (
-                  <textarea
-                    value={formData[field.key] || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    placeholder={field.placeholder}
-                    rows={3}
-                    className="w-full bg-white/80 border border-gray-200 rounded-lg p-2 text-xs focus:border-indigo-400 outline-none resize-none"
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={formData[field.key] || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    placeholder={field.placeholder}
-                    className="w-full bg-white/80 border border-gray-200 rounded-lg p-2 text-xs focus:border-indigo-400 outline-none"
-                  />
-                )}
-              </div>
+              <UniversalAnswerCard
+                key={field.key}
+                level="N2"
+                module="textprod"
+                lessonId={tt.id}
+                sectionKey={field.key}
+                questionIdx={i}
+                question={lang === 'ba' ? field.label : field.labelFr}
+                questionLabel={`${i + 1}`}
+                initialAnswer={formData[field.key] || ''}
+                rows={field.type === 'long' ? 4 : 2}
+                accent="from-indigo-500 to-purple-500"
+                onLocalChange={(val) => setFormData(prev => ({ ...prev, [field.key]: val }))}
+                onSubmitted={(val) => setFormData(prev => ({ ...prev, [field.key]: val }))}
+              />
             ))}
           </div>
 
           {/* Preview */}
           {Object.values(formData).some(v => v.trim()) && (
             <div className="p-4 rounded-2xl bg-white border-2 border-indigo-200 shadow-sm">
-              <h4 className="text-indigo-700 font-bold text-xs mb-2">👁️ {lang === 'ba' ? 'Yãabu' : 'Aperçu'}</h4>
+              <h4 className="text-indigo-700 font-bold text-xs mb-2">👁️ {lang === 'ba' ? 'Yãabu kpuro' : 'Aperçu complet'}</h4>
               <div className="space-y-1">
                 {tt.structure.map((field, i) => {
                   const val = formData[field.key];
