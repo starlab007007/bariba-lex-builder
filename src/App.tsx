@@ -46,6 +46,7 @@ const GriotStudioPage = lazy(() => import("./pages/GriotStudioPage"));
 const FitilaLearn = lazy(() => import("./pages/fitila/FitilaLearn"));
 const FitilaClasse = lazy(() => import("./pages/fitila/FitilaClasse"));
 const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
+const FitilaTemIA = lazy(() => import("./pages/fitila/FitilaTemIA"));
 const ComingSoonPage = lazy(() => import("./pages/fitila/ComingSoonPage"));
 const InstallPage = lazy(() => import("./pages/fitila/InstallPage"));
 const TeacherLayout = lazy(() => import("./pages/teacher/TeacherLayout"));
@@ -123,6 +124,7 @@ const App = () => (
                 <Route path="learn" element={<FitilaLearn />} />
                 <Route path="classe" element={<FitilaClasse />} />
                 <Route path="ia" element={<FitilaIA />} />
+                <Route path="tem-ia" element={<FitilaTemIA />} />
                 <Route path="messages" element={<ComingSoonPage />} />
                 <Route path="discover" element={<ComingSoonPage />} />
                 <Route path="install" element={<InstallPage />} />
