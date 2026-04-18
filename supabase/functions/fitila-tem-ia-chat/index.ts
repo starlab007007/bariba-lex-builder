@@ -1,3 +1,9 @@
+// ⚠️ DEPRECATED — Cette edge function n'est plus appelée par le client.
+// Fitila Tem IA fonctionne désormais 100% en local côté navigateur via :
+//   - src/lib/foncierRAG.ts (moteur BM25 + extraction de phrases)
+//   - src/data/foncierBaribaCorpus.ts (corpus 207 articles)
+// Conservée pour l'historique git et un éventuel rollback.
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import corpus from "../_shared/foncier_bariba_corpus.json" with { type: "json" };
 

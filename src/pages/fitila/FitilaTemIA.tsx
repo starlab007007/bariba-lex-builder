@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Mic, MicOff, Loader2, Scale, User, Languages, BookOpen, ShieldCheck } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { ArrowLeft, Send, Mic, MicOff, Loader2, Scale, User, BookOpen, ShieldCheck, WifiOff } from 'lucide-react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 import { toast } from 'sonner';
 import FoncierSourcesModal, { type FoncierSource } from '@/components/fitila/FoncierSourcesModal';
 import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
+import { answerFromCorpus } from '@/lib/foncierRAG';
 
 interface ChatMessage {
   id: string;
@@ -16,9 +16,7 @@ interface ChatMessage {
   timestamp: number;
   isLoading?: boolean;
   isTyping?: boolean;
-  translationFr?: string;
-  isTranslatingFr?: boolean;
-  isFallbackFr?: boolean;
+  isFallback?: boolean;
   sources?: FoncierSource[];
 }
 
@@ -40,7 +38,7 @@ function TypingText({ content, onComplete }: { content: string; onComplete: () =
       } else {
         setDisplayed(content.slice(0, indexRef.current));
       }
-    }, 16);
+    }, 14);
     return () => clearInterval(interval);
   }, [content, onComplete]);
 
@@ -61,8 +59,7 @@ export default function FitilaTemIA() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw) as ChatMessage[];
-      // Reset transient flags
-      return parsed.map(m => ({ ...m, isLoading: false, isTyping: false, isTranslatingFr: false }));
+      return parsed.map(m => ({ ...m, isLoading: false, isTyping: false }));
     } catch {
       return [];
     }
@@ -75,14 +72,12 @@ export default function FitilaTemIA() {
   const { startRecording, stopRecording, isRecording } = useAudioRecorder();
   const { transcribe, isTranscribing } = useBaribaSTT();
 
-  // Persist isolated history
   useEffect(() => {
     try {
-      // Only persist non-loading messages (cap to last 30)
       const toSave = messages.filter(m => !m.isLoading).slice(-30);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     } catch {
-      // ignore quota errors
+      // ignore
     }
   }, [messages]);
 
@@ -96,7 +91,7 @@ export default function FitilaTemIA() {
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isTyping: false } : m));
   }, []);
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = (text: string) => {
     if (!text.trim() || isProcessing) return;
 
     const userMsg: ChatMessage = {
@@ -105,75 +100,34 @@ export default function FitilaTemIA() {
       content: text.trim(),
       timestamp: Date.now(),
     };
-    const loadingMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
-      isLoading: true,
-    };
 
-    setMessages(prev => [...prev, userMsg, loadingMsg]);
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsProcessing(true);
 
-    try {
-      const { data, error } = await supabase.functions.invoke('fitila-tem-ia-chat', {
-        body: { message: text.trim() },
-      });
+    // Recherche locale instantanée — léger délai pour effet "réflexion"
+    setTimeout(() => {
+      try {
+        const { answer, sources, isFallback } = answerFromCorpus(text.trim());
+        const formatted = answer.replace(/\.\s+/g, '.\n\n').trim();
 
-      if (error) throw error;
-      if (data?.error === 'credits_exhausted') {
-        toast.error('⚠️ Crédits IA épuisés.');
-        setMessages(prev => prev.filter(m => m.id !== loadingMsg.id));
-        return;
+        const assistantMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: formatted,
+          timestamp: Date.now(),
+          isTyping: true,
+          isFallback,
+          sources: sources as FoncierSource[],
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+      } catch (err) {
+        console.error('[FitilaTemIA] Local search error:', err);
+        toast.error('Erreur de recherche locale');
+      } finally {
+        setIsProcessing(false);
       }
-      if (data?.error) throw new Error(data.error);
-
-      const isFallback = data?.fallback === true;
-      const responseBa = data?.response_ba;
-      const responseFr = data?.response_fr;
-      const sources: FoncierSource[] = Array.isArray(data?.sources) ? data.sources : [];
-
-      const displayText = (responseBa && !isFallback) ? responseBa : (responseFr || '...');
-      const formatted = displayText.replace(/\.\s+/g, '.\n\n').trim();
-
-      setMessages(prev => prev.map(m =>
-        m.id === loadingMsg.id
-          ? {
-              ...m,
-              content: formatted,
-              isLoading: false,
-              isTyping: true,
-              sources,
-              ...(isFallback ? { translationFr: responseFr, isFallbackFr: true } : {}),
-            }
-          : m
-      ));
-    } catch (err) {
-      console.error('[FitilaTemIA] Error:', err);
-      toast.error('Erreur de connexion');
-      setMessages(prev => prev.filter(m => m.id !== loadingMsg.id));
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleTranslate = async (msgId: string, textBa: string) => {
-    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isTranslatingFr: true } : m));
-    try {
-      const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
-        body: { text: textBa, sourceLang: 'bariba', targetLang: 'french' },
-      });
-      if (error) throw error;
-      const translationFr = data?.translatedText || data?.translation || 'Traduction indisponible';
-      setMessages(prev => prev.map(m =>
-        m.id === msgId ? { ...m, translationFr, isTranslatingFr: false } : m
-      ));
-    } catch {
-      toast.error('Erreur de traduction');
-      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isTranslatingFr: false } : m));
-    }
+    }, 250);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -209,7 +163,7 @@ export default function FitilaTemIA() {
           </div>
           <div>
             <h1 className="text-gray-800 font-bold text-base">Fitila Tem IA</h1>
-            <p className="text-gray-400 text-[10px]">Tem bausu sariaba sɔ̃ɔsiru</p>
+            <p className="text-gray-400 text-[10px]">Tem bausu sariaba sɔ̃ɔsiru · 100% local</p>
           </div>
         </div>
       </div>
@@ -232,16 +186,16 @@ export default function FitilaTemIA() {
               <Scale className="w-10 h-10 text-emerald-500" />
             </div>
             <p className="text-gray-700 text-sm text-center max-w-[280px] font-medium">
-              Tem bausu sariaba sɔɔ, n koo nun bukuru ko.
+              Yaa sɔ̃ɔ tem bausu gari Baribarum.
             </p>
             <p className="text-gray-400 text-xs text-center max-w-[280px]">
-              Posez une question sur le Code foncier béninois (en français ou Bariba)
+              Posez votre question directement en Bariba
             </p>
             <div className="flex flex-wrap gap-2 justify-center max-w-[320px] mt-2">
               {[
-                "Que dit l'article 1 ?",
-                "Comment obtenir un titre foncier ?",
-                "Qui peut posséder une terre au Bénin ?",
+                "Saria gbiika gari mba?",
+                "Saria 14se ya nɛɛ mba?",
+                "Tem bausu mba ba mɔ̀ Benɛ temɔ?",
               ].map((q) => (
                 <button
                   key={q}
@@ -278,18 +232,11 @@ export default function FitilaTemIA() {
                   <div className={`px-4 py-3 rounded-2xl text-sm shadow-sm ${
                     msg.role === 'user'
                       ? 'bg-orange-500 text-white rounded-tr-md'
-                      : 'bg-white text-gray-800 rounded-tl-md border border-gray-100'
+                      : msg.isFallback
+                        ? 'bg-amber-50 text-amber-900 rounded-tl-md border border-amber-200'
+                        : 'bg-white text-gray-800 rounded-tl-md border border-gray-100'
                   }`}>
-                    {msg.isLoading ? (
-                      <div className="flex items-center gap-2 py-1">
-                        <div className="flex gap-1">
-                          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                        <span className="text-gray-400 text-xs">Sariaba kasuamɔ...</span>
-                      </div>
-                    ) : msg.isTyping ? (
+                    {msg.isTyping ? (
                       <TypingText content={msg.content} onComplete={() => handleTypingComplete(msg.id)} />
                     ) : (
                       <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
@@ -297,7 +244,7 @@ export default function FitilaTemIA() {
                   </div>
 
                   {/* Sources card */}
-                  {msg.role === 'assistant' && !msg.isLoading && !msg.isTyping && msg.sources && msg.sources.length > 0 && (
+                  {msg.role === 'assistant' && !msg.isTyping && msg.sources && msg.sources.length > 0 && (
                     <button
                       onClick={() => setOpenSources(msg.sources!)}
                       className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 hover:bg-emerald-100 transition-colors mt-1 self-start"
@@ -309,53 +256,46 @@ export default function FitilaTemIA() {
                       </span>
                     </button>
                   )}
-
-                  {msg.role === 'assistant' && !msg.isLoading && !msg.isTyping && msg.isFallbackFr && (
-                    <p className="text-[10px] text-amber-500 ml-1 mt-0.5 italic">⚠ Réponse en français (traduction Bariba indisponible)</p>
-                  )}
-
-                  {msg.role === 'assistant' && !msg.isLoading && !msg.isTyping && !msg.isFallbackFr && (
-                    <>
-                      {!msg.translationFr ? (
-                        <button
-                          onClick={() => handleTranslate(msg.id, msg.content)}
-                          disabled={msg.isTranslatingFr}
-                          className="flex items-center gap-1.5 text-xs text-emerald-500 hover:text-emerald-700 transition-colors ml-1 mt-0.5 disabled:opacity-50"
-                        >
-                          {msg.isTranslatingFr
-                            ? <Loader2 className="w-3 h-3 animate-spin" />
-                            : <Languages className="w-3 h-3" />
-                          }
-                          {msg.isTranslatingFr ? 'Traduction...' : 'Traduire en français'}
-                        </button>
-                      ) : (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 text-xs text-emerald-800 leading-relaxed whitespace-pre-wrap"
-                        >
-                          <span className="font-medium text-emerald-500 text-[10px] uppercase tracking-wide block mb-1">Français</span>
-                          {msg.translationFr}
-                        </motion.div>
-                      )}
-                    </>
-                  )}
                 </div>
               </div>
             </motion.div>
           ))}
+
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-start"
+            >
+              <div className="flex items-start gap-2">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                  <Scale className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div className="px-4 py-3 rounded-2xl bg-white text-gray-800 rounded-tl-md border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 py-1">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span className="text-gray-400 text-xs">Sariaba kasuamɔ...</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Smart Input — clavier Bariba + prédiction + écriture manuscrite */}
+      {/* Smart Input */}
       <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-gray-200 bg-white/80 backdrop-blur-md">
         <div className="flex items-end gap-2">
           <div className="flex-1 min-w-0">
             <BaribaSmartTextarea
               value={input}
               onChange={setInput}
-              placeholder="Yaa sɔ̃ɔ tem bausu gari... (clavier Bariba + écriture manuscrite IA)"
+              placeholder="Yaa sɔ̃ɔ tem bausu gari Baribarum..."
               rows={1}
               disabled={isBusy}
             />
@@ -393,6 +333,13 @@ export default function FitilaTemIA() {
               : <Send className="w-5 h-5 text-white" />
             }
           </motion.button>
+        </div>
+
+        <div className="flex items-center justify-center gap-1.5 mt-2">
+          <WifiOff className="w-3 h-3 text-emerald-600" />
+          <p className="text-[10px] text-emerald-700/80 text-center">
+            Posez votre question directement en Bariba — recherche 100% locale, sans Internet
+          </p>
         </div>
       </form>
 
