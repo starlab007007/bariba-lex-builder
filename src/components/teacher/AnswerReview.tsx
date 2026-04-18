@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
 import { Loader2, CheckCircle2, Trash2, Scale } from 'lucide-react';
 import { z } from 'zod';
 
@@ -127,7 +127,7 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
         <p className="text-xs text-muted-foreground">Score auto: <span className="font-bold">{answer.score}/{answer.max_score}</span></p>
       )}
 
-      <div className="grid grid-cols-[100px_80px_1fr_auto] gap-2 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-[100px_100px_1fr_auto] gap-2 items-start">
         <Input type="number" min={0} max={20} step={0.5} placeholder="Note /20"
           value={grade} onChange={(e) => setGrade(e.target.value)} />
         <div className="flex items-center gap-1">
@@ -136,9 +136,13 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
             value={weight} onChange={(e) => setWeight(parseFloat(e.target.value) || 1)}
             title="Poids de la question dans la section" />
         </div>
-        <Textarea placeholder="Appréciation (facultatif, max 2000 car.)"
-          value={comment} onChange={(e) => setComment(e.target.value.slice(0, 2000))}
-          className="min-h-[60px] text-sm" />
+        <BaribaSmartTextarea
+          placeholder="Appréciation (Baatonum / Français — clavier + écriture manuscrite + prédiction)"
+          value={comment}
+          onChange={(v) => setComment(v.slice(0, 2000))}
+          rows={2}
+          className="bg-background border-input focus:border-primary"
+        />
         <Button onClick={handleSubmit} disabled={saving || !grade}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Valider'}
         </Button>

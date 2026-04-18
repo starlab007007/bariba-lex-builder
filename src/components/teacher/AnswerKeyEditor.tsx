@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
+import BaribaSmartInput from '@/components/classe/BaribaSmartInput';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Trash2, Save, X } from 'lucide-react';
 import { upsertAnswerKey, deleteAnswerKey, type AnswerKey } from '@/lib/answerKeys';
@@ -78,23 +78,33 @@ export default function AnswerKeyEditor({ initial, onSaved, onCancel }: Props) {
       {questionText !== undefined && (
         <div>
           <label className="text-xs font-bold text-muted-foreground">Question (optionnel — pour rappel)</label>
-          <Textarea value={questionText} onChange={e => setQuestionText(e.target.value)} rows={2} className="mt-1 text-sm" placeholder="Énoncé de la question..." />
+          <div className="mt-1">
+            <BaribaSmartTextarea
+              value={questionText}
+              onChange={setQuestionText}
+              rows={2}
+              placeholder="Énoncé de la question..."
+              className="bg-background border-input focus:border-amber-400"
+            />
+          </div>
         </div>
       )}
 
       <div>
-        <label className="text-xs font-bold text-muted-foreground">Réponses acceptées (variantes)</label>
+        <label className="text-xs font-bold text-muted-foreground">Réponses acceptées (variantes Baatonum / FR)</label>
         <div className="space-y-2 mt-1">
           {answers.map((a, i) => (
-            <div key={i} className="flex gap-2">
-              <Input
-                value={a}
-                onChange={e => setAnswers(prev => prev.map((x, j) => j === i ? e.target.value : x))}
-                placeholder={`Réponse ${i + 1}`}
-                className="text-sm"
-              />
+            <div key={i} className="flex gap-2 items-start">
+              <div className="flex-1">
+                <BaribaSmartInput
+                  value={a}
+                  onChange={(v) => setAnswers(prev => prev.map((x, j) => j === i ? v : x))}
+                  placeholder={`Réponse ${i + 1}`}
+                  className="bg-background border-input focus:border-amber-400"
+                />
+              </div>
               {answers.length > 1 && (
-                <button onClick={() => setAnswers(prev => prev.filter((_, j) => j !== i))} className="px-2 text-red-500 hover:bg-red-50 rounded">
+                <button onClick={() => setAnswers(prev => prev.filter((_, j) => j !== i))} className="px-2 py-2 text-red-500 hover:bg-red-50 rounded">
                   <Trash2 className="w-4 h-4" />
                 </button>
               )}
@@ -111,13 +121,15 @@ export default function AnswerKeyEditor({ initial, onSaved, onCancel }: Props) {
 
       <div>
         <label className="text-xs font-bold text-muted-foreground">Explication / commentaire pédagogique</label>
-        <Textarea
-          value={explanation}
-          onChange={e => setExplanation(e.target.value.slice(0, 2000))}
-          rows={3}
-          className="mt-1 text-sm"
-          placeholder="Explication affichée à l'apprenant (max 2000 car.)"
-        />
+        <div className="mt-1">
+          <BaribaSmartTextarea
+            value={explanation}
+            onChange={(v) => setExplanation(v.slice(0, 2000))}
+            rows={3}
+            placeholder="Explication affichée à l'apprenant (max 2000 car.)"
+            className="bg-background border-input focus:border-amber-400"
+          />
+        </div>
       </div>
 
       <div className="flex gap-2 pt-1">

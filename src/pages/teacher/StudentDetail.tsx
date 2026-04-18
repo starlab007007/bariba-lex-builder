@@ -58,7 +58,14 @@ export default function StudentDetail() {
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   const visible = answers.filter(a => filter === 'all' || (filter === 'pending' ? a.teacher_grade === null : a.teacher_grade !== null));
-  const studentName = profile?.display_name ?? profile?.username ?? id?.slice(0, 8);
+  const studentName = (() => {
+    const dn = profile?.display_name?.trim();
+    if (dn && dn !== 'Nouvel utilisateur') return dn;
+    const un = profile?.username?.trim();
+    if (un && !un.startsWith('user_')) return `@${un}`;
+    if (profile?.phone_number) return `📱 ${profile.phone_number.replace(/\D/g, '').slice(-8)}`;
+    return `Apprenant ${id?.slice(0, 4).toUpperCase()}`;
+  })();
   const lastActivity = progress.reduce<string | null>((acc, p) => (!acc || (p.updated_at && p.updated_at > acc)) ? (p.updated_at ?? acc) : acc, null);
 
   return (
