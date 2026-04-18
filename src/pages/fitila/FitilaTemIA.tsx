@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Mic, MicOff, Loader2, Scale, User, Languages, Keyboard, BookOpen, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Send, Mic, MicOff, Loader2, Scale, User, Languages, BookOpen, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
-import { usePhoneticSuggestions } from '@/hooks/usePhoneticSuggestions';
 import { toast } from 'sonner';
 import FoncierSourcesModal, { type FoncierSource } from '@/components/fitila/FoncierSourcesModal';
+import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
 
 interface ChatMessage {
   id: string;
@@ -23,13 +23,6 @@ interface ChatMessage {
 }
 
 const STORAGE_KEY = 'fitila-tem-ia-history';
-
-const BARIBA_CHARS = [
-  'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̀', 'ɔ́', 'ɔ̃',
-  'ɛ̀', 'ɛ́', 'ɛ̃', 'à', 'á', 'è', 'é',
-  'ì', 'í', 'ò', 'ó', 'ù', 'ú', 'ũ', 'õ', 'ĩ',
-  'ǹ', 'ń',
-];
 
 function TypingText({ content, onComplete }: { content: string; onComplete: () => void }) {
   const [displayed, setDisplayed] = useState('');
@@ -76,18 +69,11 @@ export default function FitilaTemIA() {
   });
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showKeyboard, setShowKeyboard] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [openSources, setOpenSources] = useState<FoncierSource[] | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const { startRecording, stopRecording, isRecording } = useAudioRecorder();
   const { transcribe, isTranscribing } = useBaribaSTT();
-  const { getSuggestions } = usePhoneticSuggestions();
-
-  const currentWord = input.split(' ').pop() || '';
-  const suggestions = currentWord.length >= 1 ? getSuggestions(currentWord, 6) : [];
 
   // Persist isolated history
   useEffect(() => {
@@ -129,7 +115,6 @@ export default function FitilaTemIA() {
 
     setMessages(prev => [...prev, userMsg, loadingMsg]);
     setInput('');
-    setShowSuggestions(false);
     setIsProcessing(true);
 
     try {
@@ -207,27 +192,6 @@ export default function FitilaTemIA() {
     } else {
       await startRecording();
     }
-  };
-
-  const insertChar = (char: string) => {
-    const el = inputRef.current;
-    if (!el) { setInput(prev => prev + char); return; }
-    const start = el.selectionStart ?? input.length;
-    const end = el.selectionEnd ?? input.length;
-    const newVal = input.slice(0, start) + char + input.slice(end);
-    setInput(newVal);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(start + char.length, start + char.length);
-    });
-  };
-
-  const selectSuggestion = (word: string) => {
-    const parts = input.split(' ');
-    parts[parts.length - 1] = word;
-    setInput(parts.join(' ') + ' ');
-    setShowSuggestions(false);
-    inputRef.current?.focus();
   };
 
   const isBusy = isProcessing || isTranscribing;
@@ -384,75 +348,25 @@ export default function FitilaTemIA() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggestions */}
-      <AnimatePresence>
-        {suggestions.length > 0 && input.length > 0 && showSuggestions && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="px-4 pb-1">
-            <div className="flex gap-1.5 flex-wrap bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-md">
-              {suggestions.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => selectSuggestion(s.word)}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium hover:bg-emerald-100 transition-colors border border-emerald-100"
-                >
-                  {s.word}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Bariba keyboard */}
-      <AnimatePresence>
-        {showKeyboard && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="px-4 pb-1">
-            <div className="flex gap-1 flex-wrap bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-md">
-              {BARIBA_CHARS.map((char) => (
-                <button
-                  key={char}
-                  onClick={() => insertChar(char)}
-                  className="w-9 h-9 rounded-lg bg-gray-50 hover:bg-emerald-50 text-gray-800 text-sm font-medium flex items-center justify-center border border-gray-200 hover:border-emerald-200 transition-colors active:scale-95"
-                >
-                  {char}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Input */}
+      {/* Smart Input — clavier Bariba + prédiction + écriture manuscrite */}
       <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setShowKeyboard(v => !v)}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-              showKeyboard ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
-          >
-            <Keyboard className="w-5 h-5" />
-          </motion.button>
-
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => { setInput(e.target.value); setShowSuggestions(true); }}
-            onFocus={() => setShowSuggestions(true)}
-            placeholder="Yaa sɔ̃ɔ tem bausu gari..."
-            disabled={isBusy}
-            className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 text-sm placeholder:text-gray-400 focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 disabled:opacity-50 transition-all"
-          />
+        <div className="flex items-end gap-2">
+          <div className="flex-1 min-w-0">
+            <BaribaSmartTextarea
+              value={input}
+              onChange={setInput}
+              placeholder="Yaa sɔ̃ɔ tem bausu gari... (clavier Bariba + écriture manuscrite IA)"
+              rows={1}
+              disabled={isBusy}
+            />
+          </div>
 
           <motion.button
             type="button"
             whileTap={{ scale: 0.9 }}
             onClick={handleVoiceToggle}
             disabled={isProcessing || isTranscribing}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
               isRecording
                 ? 'bg-red-500 animate-pulse shadow-lg shadow-red-200'
                 : isTranscribing
@@ -472,7 +386,7 @@ export default function FitilaTemIA() {
             type="submit"
             whileTap={{ scale: 0.9 }}
             disabled={!input.trim() || isBusy}
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center disabled:opacity-30 transition-opacity shadow-md shadow-emerald-200"
+            className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center disabled:opacity-30 transition-opacity shadow-md shadow-emerald-200 flex-shrink-0"
           >
             {isProcessing
               ? <Loader2 className="w-5 h-5 text-white animate-spin" />
