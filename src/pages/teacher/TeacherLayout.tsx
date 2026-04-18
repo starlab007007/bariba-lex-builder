@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTeacherRole } from '@/hooks/useTeacherRole';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Users, ClipboardCheck, BarChart3, Home, ArrowLeft, BookOpen } from 'lucide-react';
+import { Loader2, Users, ClipboardCheck, BarChart3, Home, ArrowLeft, BookOpen, Scale, FileBarChart } from 'lucide-react';
 
 export default function TeacherLayout() {
   const { isTeacher, loading } = useTeacherRole();
@@ -35,6 +35,8 @@ export default function TeacherLayout() {
     { to: '/fitila/teacher/students', icon: Users, label: 'Apprenants' },
     { to: '/fitila/teacher/grading', icon: ClipboardCheck, label: 'À corriger' },
     { to: '/fitila/teacher/answer-keys', icon: BookOpen, label: 'Corrigés' },
+    { to: '/fitila/teacher/weights', icon: Scale, label: 'Barèmes' },
+    { to: '/fitila/teacher/grades', icon: FileBarChart, label: 'Relevé classe' },
     { to: '/fitila/teacher/stats', icon: BarChart3, label: 'Statistiques' },
   ];
 

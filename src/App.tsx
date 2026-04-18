@@ -55,7 +55,10 @@ const StudentDetail = lazy(() => import("./pages/teacher/StudentDetail"));
 const PendingGrading = lazy(() => import("./pages/teacher/PendingGrading"));
 const ClassStats = lazy(() => import("./pages/teacher/ClassStats"));
 const AnswerKeysManager = lazy(() => import("./pages/teacher/AnswerKeysManager"));
+const WeightsManager = lazy(() => import("./pages/teacher/WeightsManager"));
+const GradeOverview = lazy(() => import("./pages/teacher/GradeOverview"));
 const ClasseCorrections = lazy(() => import("./components/classe/ClasseCorrections"));
+const MyGradeReport = lazy(() => import("./components/classe/MyGradeReport"));
 
 // Loading fallback - minimal spinner
 const PageLoader = () => (
@@ -135,8 +138,11 @@ const App = () => (
                 <Route path="grading" element={<PendingGrading />} />
                 <Route path="stats" element={<ClassStats />} />
                 <Route path="answer-keys" element={<AnswerKeysManager />} />
+                <Route path="weights" element={<WeightsManager />} />
+                <Route path="grades" element={<GradeOverview />} />
               </Route>
               <Route path="/fitila/classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
+              <Route path="/fitila/classe/notes" element={<ProtectedRoute><MyGradeReport /></ProtectedRoute>} />
 
               {/* Legacy /tamtam routes redirect to /fitila */}
               <Route path="/tamtam/*" element={<Navigate to="/fitila" replace />} />

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, CheckCircle2, Trash2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Trash2, Scale } from 'lucide-react';
 import { z } from 'zod';
 
 const gradeSchema = z.object({
@@ -38,18 +38,30 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
   const { toast } = useToast();
   const [grade, setGrade] = useState<string>(answer.teacher_grade?.toString() ?? '');
   const [comment, setComment] = useState(answer.teacher_comment ?? '');
+  const [weight, setWeight] = useState<number>(1);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Load existing weight for this question
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('classe_grade_weights')
+        .select('weight')
+        .eq('level', answer.level).eq('module', answer.module)
+        .eq('lesson_id', answer.lesson_id).eq('section_key', answer.section_key)
+        .eq('question_idx', answer.question_idx)
+        .maybeSingle();
+      if (data) setWeight(Number(data.weight));
+    })();
+  }, [answer.level, answer.module, answer.lesson_id, answer.section_key, answer.question_idx]);
 
   const handleDelete = async () => {
     if (!confirm('Supprimer définitivement cette réponse ?')) return;
     setDeleting(true);
     const { error } = await supabase.from('classe_student_answers').delete().eq('id', answer.id);
     setDeleting(false);
-    if (error) {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
-      return;
-    }
+    if (error) { toast({ title: 'Erreur', description: error.message, variant: 'destructive' }); return; }
     toast({ title: '🗑️ Réponse supprimée' });
     onGraded?.();
   };
@@ -62,21 +74,23 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
       return;
     }
     setSaving(true);
-    const { error } = await supabase
-      .from('classe_student_answers')
-      .update({
+    const [updateRes, weightRes] = await Promise.all([
+      supabase.from('classe_student_answers').update({
         teacher_grade: numericGrade,
         teacher_comment: comment || null,
         graded_by: user?.id,
         graded_at: new Date().toISOString(),
-      })
-      .eq('id', answer.id);
+      }).eq('id', answer.id),
+      supabase.from('classe_grade_weights').upsert({
+        level: answer.level, module: answer.module, lesson_id: answer.lesson_id,
+        section_key: answer.section_key, question_idx: answer.question_idx,
+        weight, updated_by: user?.id,
+      }, { onConflict: 'level,module,lesson_id,section_key,question_idx' }),
+    ]);
     setSaving(false);
-    if (error) {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
-      return;
-    }
-    toast({ title: 'Correction enregistrée', description: studentName ? `Note attribuée à ${studentName}` : undefined });
+    if (updateRes.error) { toast({ title: 'Erreur', description: updateRes.error.message, variant: 'destructive' }); return; }
+    if (weightRes.error) console.warn('Weight save failed', weightRes.error);
+    toast({ title: '✅ Correction enregistrée', description: studentName ? `Note attribuée à ${studentName} (poids ×${weight})` : undefined });
     onGraded?.();
   };
 
@@ -113,33 +127,27 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
         <p className="text-xs text-muted-foreground">Score auto: <span className="font-bold">{answer.score}/{answer.max_score}</span></p>
       )}
 
-      <div className="grid grid-cols-[100px_1fr_auto] gap-2 items-start">
-        <Input
-          type="number"
-          min={0}
-          max={20}
-          step={0.5}
-          placeholder="Note /20"
-          value={grade}
-          onChange={(e) => setGrade(e.target.value)}
-        />
-        <Textarea
-          placeholder="Commentaire de correction (facultatif, max 2000 car.)"
-          value={comment}
-          onChange={(e) => setComment(e.target.value.slice(0, 2000))}
-          className="min-h-[60px] text-sm"
-        />
+      <div className="grid grid-cols-[100px_80px_1fr_auto] gap-2 items-start">
+        <Input type="number" min={0} max={20} step={0.5} placeholder="Note /20"
+          value={grade} onChange={(e) => setGrade(e.target.value)} />
+        <div className="flex items-center gap-1">
+          <Scale className="w-3 h-3 text-muted-foreground" />
+          <Input type="number" min={0.5} max={5} step={0.5} placeholder="Poids"
+            value={weight} onChange={(e) => setWeight(parseFloat(e.target.value) || 1)}
+            title="Poids de la question dans la section" />
+        </div>
+        <Textarea placeholder="Appréciation (facultatif, max 2000 car.)"
+          value={comment} onChange={(e) => setComment(e.target.value.slice(0, 2000))}
+          className="min-h-[60px] text-sm" />
         <Button onClick={handleSubmit} disabled={saving || !grade}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Valider'}
         </Button>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="text-xs flex items-center gap-1 px-2 py-1 rounded text-red-500 hover:bg-red-50"
-        >
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>Note pondérée : <strong>{grade ? (parseFloat(grade) * weight).toFixed(2) : '—'}</strong> / {(20 * weight).toFixed(0)} pts</span>
+        <button onClick={handleDelete} disabled={deleting}
+          className="flex items-center gap-1 px-2 py-1 rounded text-red-500 hover:bg-red-50">
           {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Supprimer
         </button>
       </div>

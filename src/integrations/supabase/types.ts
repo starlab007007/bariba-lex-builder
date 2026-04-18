@@ -445,6 +445,42 @@ export type Database = {
         }
         Relationships: []
       }
+      classe_chapters: {
+        Row: {
+          chapter_key: string
+          created_at: string
+          id: string
+          lesson_ids: string[]
+          level: string
+          order_index: number
+          title_ba: string | null
+          title_fr: string
+          updated_at: string
+        }
+        Insert: {
+          chapter_key: string
+          created_at?: string
+          id?: string
+          lesson_ids?: string[]
+          level: string
+          order_index?: number
+          title_ba?: string | null
+          title_fr: string
+          updated_at?: string
+        }
+        Update: {
+          chapter_key?: string
+          created_at?: string
+          id?: string
+          lesson_ids?: string[]
+          level?: string
+          order_index?: number
+          title_ba?: string | null
+          title_fr?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       classe_evaluation_results: {
         Row: {
           attempts: number
@@ -482,6 +518,90 @@ export type Database = {
           level?: string
           max_score?: number
           score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      classe_grade_weights: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          lesson_id: string
+          lesson_weight: number
+          level: string
+          module: string
+          question_idx: number
+          section_key: string
+          section_weight: number
+          updated_at: string
+          updated_by: string | null
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lesson_id: string
+          lesson_weight?: number
+          level: string
+          module: string
+          question_idx?: number
+          section_key?: string
+          section_weight?: number
+          updated_at?: string
+          updated_by?: string | null
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lesson_id?: string
+          lesson_weight?: number
+          level?: string
+          module?: string
+          question_idx?: number
+          section_key?: string
+          section_weight?: number
+          updated_at?: string
+          updated_by?: string | null
+          weight?: number
+        }
+        Relationships: []
+      }
+      classe_self_assessments: {
+        Row: {
+          confidence_grade: number
+          created_at: string
+          id: string
+          lesson_id: string
+          level: string
+          module: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence_grade?: number
+          created_at?: string
+          id?: string
+          lesson_id: string
+          level: string
+          module: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence_grade?: number
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          level?: string
+          module?: string
+          notes?: string | null
           updated_at?: string
           user_id?: string
         }
