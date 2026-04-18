@@ -1869,7 +1869,7 @@ export const FONCIER_BARIBA: FoncierArticle[] = [
   {
     "id": 207,
     "number": "Saria 207se",
-    "content": "Sarian swaa sɔɔ, yɛnu n kùn mɛ tem mɛ̃ ba mwa, bu ka mɛ̃ dɔra, sere bu gina yen tireru yara tè sɔɔ ba koo doke gobi yì ba koo subu.\n\n### Extracted images (51):",
+    "content": "Sarian swaa sɔɔ, yɛnu n kùn mɛ tem mɛ̃ ba mwa, bu ka mɛ̃ dɔra, sere bu gina yen tireru yara tè sɔɔ ba koo doke gobi yì ba koo subu.",
     "bonu": "VI",
     "baeru": "III",
     "gariWiru": "GBIIKIRU",
