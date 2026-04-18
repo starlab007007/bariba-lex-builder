@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check, X, Star, Eye } from 'lucide-react';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
+import UniversalAnswerCard from './UniversalAnswerCard';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { CLASSE_LESSONS, LESSON_ANSWERS, markLessonComplete, markTabComplete, getLessonStars, getClasseProgress } from '@/data/classeContent';
 
