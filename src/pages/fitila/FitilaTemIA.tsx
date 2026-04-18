@@ -115,7 +115,6 @@ export default function FitilaTemIA() {
 
     setMessages(prev => [...prev, userMsg, loadingMsg]);
     setInput('');
-    setShowSuggestions(false);
     setIsProcessing(true);
 
     try {
@@ -193,27 +192,6 @@ export default function FitilaTemIA() {
     } else {
       await startRecording();
     }
-  };
-
-  const insertChar = (char: string) => {
-    const el = inputRef.current;
-    if (!el) { setInput(prev => prev + char); return; }
-    const start = el.selectionStart ?? input.length;
-    const end = el.selectionEnd ?? input.length;
-    const newVal = input.slice(0, start) + char + input.slice(end);
-    setInput(newVal);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(start + char.length, start + char.length);
-    });
-  };
-
-  const selectSuggestion = (word: string) => {
-    const parts = input.split(' ');
-    parts[parts.length - 1] = word;
-    setInput(parts.join(' ') + ' ');
-    setShowSuggestions(false);
-    inputRef.current?.focus();
   };
 
   const isBusy = isProcessing || isTranscribing;
