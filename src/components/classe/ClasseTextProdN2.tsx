@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Eye, EyeOff, PenLine, Send, Check, Loader2 } from 'lucide-react';
+import { ChevronRight, Eye, EyeOff, PenLine } from 'lucide-react';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { TEXT_PRODUCTION_TYPES, TextType } from '@/data/classeContentN2TextProd';
 import UniversalAnswerCard from './UniversalAnswerCard';
-import { syncAnswer } from '@/lib/classeSync';
 
 function TextTypeCard({ tt, lang, onSelect }: { tt: TextType; lang: string; onSelect: () => void }) {
   return (
