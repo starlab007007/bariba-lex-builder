@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Mic, MicOff, Loader2, Scale, User, Languages, Keyboard, BookOpen, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Send, Mic, MicOff, Loader2, Scale, User, Languages, BookOpen, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
-import { usePhoneticSuggestions } from '@/hooks/usePhoneticSuggestions';
 import { toast } from 'sonner';
 import FoncierSourcesModal, { type FoncierSource } from '@/components/fitila/FoncierSourcesModal';
+import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
 
 interface ChatMessage {
   id: string;
@@ -23,13 +23,6 @@ interface ChatMessage {
 }
 
 const STORAGE_KEY = 'fitila-tem-ia-history';
-
-const BARIBA_CHARS = [
-  'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̀', 'ɔ́', 'ɔ̃',
-  'ɛ̀', 'ɛ́', 'ɛ̃', 'à', 'á', 'è', 'é',
-  'ì', 'í', 'ò', 'ó', 'ù', 'ú', 'ũ', 'õ', 'ĩ',
-  'ǹ', 'ń',
-];
 
 function TypingText({ content, onComplete }: { content: string; onComplete: () => void }) {
   const [displayed, setDisplayed] = useState('');
@@ -76,18 +69,11 @@ export default function FitilaTemIA() {
   });
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showKeyboard, setShowKeyboard] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [openSources, setOpenSources] = useState<FoncierSource[] | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const { startRecording, stopRecording, isRecording } = useAudioRecorder();
   const { transcribe, isTranscribing } = useBaribaSTT();
-  const { getSuggestions } = usePhoneticSuggestions();
-
-  const currentWord = input.split(' ').pop() || '';
-  const suggestions = currentWord.length >= 1 ? getSuggestions(currentWord, 6) : [];
 
   // Persist isolated history
   useEffect(() => {
