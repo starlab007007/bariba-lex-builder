@@ -21,6 +21,7 @@ import {
   getN2CalculAnswer,
 } from '@/data/classeContentN2';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
+import UniversalAnswerCard from './UniversalAnswerCard';
 
 type CalculLevel = 'N1' | 'N2';
 
@@ -332,66 +333,30 @@ function QuestionAnswerField({
   const getAns = level === 'N2' ? getN2CalculAnswer : getCalculAnswer;
   const saveAns = level === 'N2' ? saveN2CalculAnswer : saveCalculAnswer;
   const initial = useMemo(() => getAns(lessonId, sectionKey, qIdx), [lessonId, sectionKey, qIdx, level]);
-  const [text, setText] = useState(initial);
-  const [submitted, setSubmitted] = useState(!!initial);
-  const [editing, setEditing] = useState(!initial);
   const colors = getSectionColor(sectionName);
 
   useEffect(() => {
     onSubmitted(!!initial);
   }, []); // eslint-disable-line
 
-  const submit = () => {
-    if (!text.trim()) return;
-    saveAns(lessonId, sectionKey, qIdx, text);
-    setSubmitted(true);
-    setEditing(false);
-    onSubmitted(true);
-  };
-
   return (
-    <div className={`p-3 rounded-2xl border shadow-sm ${colors.bg} ${colors.border}`}>
-      <p className="text-gray-800 text-sm font-medium mb-2">{question}</p>
-      {editing ? (
-        <>
-          <BaribaSmartTextarea
-            value={text}
-            onChange={setText}
-            rows={2}
-            className="bg-white border-gray-200"
-            placeholder="A wunɛn wisi yoruo..."
-          />
-          <div className="flex items-center gap-2 mt-2">
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={submit}
-              disabled={!text.trim()}
-              className={`px-4 py-2 rounded-xl bg-gradient-to-r ${colors.btn} text-white text-xs font-bold disabled:opacity-30 shadow-md flex items-center gap-1`}
-            >
-              <Send className="w-3 h-3" /> A geruo
-            </motion.button>
-            {submitted && (
-              <button onClick={() => setEditing(false)} className="text-gray-500 text-xs font-bold">
-                Kɔsa
-              </button>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="flex items-start gap-2">
-          <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-gray-700 text-sm whitespace-pre-wrap">{text}</p>
-            <button
-              onClick={() => setEditing(true)}
-              className={`mt-1 text-xs font-bold ${colors.accent} flex items-center gap-1`}
-            >
-              <Edit3 className="w-3 h-3" /> Maa yorubu
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <UniversalAnswerCard
+      level={level}
+      module="calcul"
+      lessonId={String(lessonId)}
+      sectionKey={sectionKey}
+      questionIdx={qIdx}
+      question={question}
+      questionLabel={`${qIdx + 1}.`}
+      initialAnswer={initial}
+      accent={colors.btn}
+      rows={2}
+      onLocalChange={(val) => saveAns(lessonId, sectionKey, qIdx, val)}
+      onSubmitted={(val) => {
+        saveAns(lessonId, sectionKey, qIdx, val);
+        onSubmitted(true);
+      }}
+    />
   );
 }
 

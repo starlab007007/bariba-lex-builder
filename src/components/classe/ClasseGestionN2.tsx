@@ -14,66 +14,26 @@ import {
   resetGestionN2Doc,
 } from '@/data/classeContentN2';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
+import UniversalAnswerCard from './UniversalAnswerCard';
 
-// ============ Q&A Field ============
+// ============ Q&A Field (using UniversalAnswerCard for full feedback flow) ============
 function QAField({ docId, qIdx, question, lang }: { docId: string; qIdx: number; question: { ba: string; fr: string }; lang: string }) {
   const initial = getGestionN2QA(docId, qIdx);
-  const [text, setText] = useState(initial);
-  const [editing, setEditing] = useState(!initial);
-
-  const submit = () => {
-    if (!text.trim()) return;
-    saveGestionN2QA(docId, qIdx, text);
-    setEditing(false);
-  };
-
   return (
-    <div className="p-3 rounded-2xl bg-white border border-teal-100 shadow-sm">
-      <p className="text-xs font-bold text-teal-700 mb-2">
-        {qIdx + 1}. {lang === 'ba' ? question.ba : question.fr}
-      </p>
-      {editing ? (
-        <>
-          <BaribaSmartTextarea
-            value={text}
-            onChange={setText}
-            placeholder={lang === 'ba' ? 'A yoruo bariba sɔɔ...' : 'Votre réponse...'}
-            rows={3}
-          />
-          <div className="flex gap-2 mt-2">
-            <motion.button
-              whileTap={{ scale: 0.96 }}
-              onClick={submit}
-              disabled={!text.trim()}
-              className="flex-1 py-2 rounded-xl bg-teal-500 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1"
-            >
-              <Check className="w-3.5 h-3.5" />
-              {lang === 'ba' ? 'A geruo' : 'Soumettre'}
-            </motion.button>
-          </div>
-        </>
-      ) : (
-        <div className="flex items-start gap-2">
-          <div className="flex-1 p-2 rounded-lg bg-emerald-50 border border-emerald-200">
-            <div className="flex items-center gap-1 mb-1">
-              <Check className="w-3 h-3 text-emerald-600" />
-              <span className="text-[10px] font-bold text-emerald-700 uppercase">
-                {lang === 'ba' ? 'A wɛ̃ra' : 'Réponse enregistrée'}
-              </span>
-            </div>
-            <p className="text-xs text-gray-700 whitespace-pre-wrap">{text}</p>
-          </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setEditing(true)}
-            className="p-2 rounded-lg bg-gray-100 text-gray-600"
-            title={lang === 'ba' ? 'Kɔsiari' : 'Modifier'}
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-          </motion.button>
-        </div>
-      )}
-    </div>
+    <UniversalAnswerCard
+      level="N2"
+      module="gestion"
+      lessonId={docId}
+      sectionKey="qa"
+      questionIdx={qIdx}
+      question={lang === 'ba' ? question.ba : question.fr}
+      questionLabel={`Q${qIdx + 1}`}
+      initialAnswer={initial}
+      accent="from-teal-500 to-cyan-500"
+      rows={3}
+      onLocalChange={(val) => saveGestionN2QA(docId, qIdx, val)}
+      onSubmitted={(val) => saveGestionN2QA(docId, qIdx, val)}
+    />
   );
 }
 

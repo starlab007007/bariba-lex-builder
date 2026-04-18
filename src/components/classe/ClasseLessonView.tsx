@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check, X, Star, Eye } from 'lucide-react';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
+import UniversalAnswerCard from './UniversalAnswerCard';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { CLASSE_LESSONS, LESSON_ANSWERS, markLessonComplete, markTabComplete, getLessonStars, getClasseProgress } from '@/data/classeContent';
 
@@ -103,65 +104,55 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
 
   const renderQuestions = (questions: string[], prefix: string, title: string, emoji: string) => {
     const score = sectionScores[prefix];
-    const tabDone = progress.tabsCompleted[`lesson_${lessonId}_${prefix === 'obs' ? 'observe' : prefix === 'eco' ? 'ecoute' : prefix === 'rea' ? 'reagis' : 'retiens'}`];
-    const sectionKey = prefix === 'obs' ? 'observe' : prefix === 'eco' ? 'ecoute' : prefix === 'rea' ? 'reagis' : 'retiens';
-    const expectedForSection = expectedAnswers?.[sectionKey as keyof typeof expectedAnswers] as string[] | undefined;
+    const sectionKeyMap: Record<string, string> = { obs: 'observe', eco: 'ecoute', rea: 'reagis', ret: 'retiens' };
+    const tabName = sectionKeyMap[prefix] || prefix;
+    const tabDone = progress.tabsCompleted[`lesson_${lessonId}_${tabName}`];
+    const submittedCount = questions.filter((_, i) => (answers[`${prefix}_${i}`] || '').trim().length > 0).length;
 
     return (
       <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-gray-500 text-xs uppercase font-bold">{emoji} {title}</p>
-          {tabDone && <span className="text-emerald-500 text-xs font-bold flex items-center gap-1"><Check className="w-3 h-3" /> ✓</span>}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-400">
+              {submittedCount}/{questions.length} {currentLang === 'ba' ? 'kobu' : 'soumis'}
+            </span>
+            {tabDone && <span className="text-emerald-500 text-xs font-bold flex items-center gap-1"><Check className="w-3 h-3" /> ✓</span>}
+          </div>
         </div>
-        
+
         {questions.map((q, i) => {
           const key = `${prefix}_${i}`;
-          const isCorrect = feedback[key] === 'correct';
-          const isWrong = feedback[key] === 'wrong';
-          const showCorr = showCorrection[key];
-          
           return (
-            <div key={i}>
-              <p className="text-gray-800 text-sm font-medium mb-1">{q}</p>
-              <BaribaSmartTextarea
-                className={`transition-colors ${
-                  isCorrect ? 'bg-emerald-50 border-emerald-300 focus:border-emerald-400 focus:ring-emerald-200' :
-                  isWrong ? 'bg-red-50 border-red-300 focus:border-red-400 focus:ring-red-200' :
-                  'bg-gray-50 border-gray-200 focus:border-amber-400 focus:ring-amber-200'
-                }`}
-                rows={2}
-                placeholder={currentLang === 'ba' ? 'A yora...' : 'Ta réponse...'}
-                value={answers[key] || ''}
-                onChange={(val) => {
-                  setAnswers(prev => ({ ...prev, [key]: val }));
-                  if (feedback[key]) {
-                    setFeedback(prev => { const n = { ...prev }; delete n[key]; return n; });
-                    setShowCorrection(prev => { const n = { ...prev }; delete n[key]; return n; });
-                  }
-                }}
-              />
-              {isCorrect && <p className="text-emerald-600 text-xs mt-1 flex items-center gap-1"><Check className="w-3 h-3" /> {currentLang === 'ba' ? 'A kua dee dee!' : 'Correct !'}</p>}
-              {isWrong && showCorr && expectedForSection?.[i] && (
-                <div className="mt-1 p-2 rounded-lg bg-amber-50 border border-amber-200">
-                  <p className="text-amber-700 text-xs font-bold">{currentLang === 'ba' ? 'Swaa daki:' : 'Réponse attendue :'}</p>
-                  <p className="text-amber-800 text-xs mt-0.5">{expectedForSection[i]}</p>
-                </div>
-              )}
-              {isWrong && !expectedForSection?.[i] && (
-                <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><X className="w-3 h-3" /> {currentLang === 'ba' ? 'A maa yora' : 'Essaie encore'}</p>
-              )}
-            </div>
+            <UniversalAnswerCard
+              key={key}
+              level="N1"
+              module="lesson"
+              lessonId={String(lessonId)}
+              sectionKey={tabName}
+              questionIdx={i}
+              question={q}
+              questionLabel={`Q${i + 1}`}
+              initialAnswer={answers[key] || ''}
+              accent="from-amber-500 to-orange-500"
+              onLocalChange={(val) => {
+                setAnswers(prev => ({ ...prev, [key]: val }));
+              }}
+              onSubmitted={(val) => {
+                setAnswers(prev => ({ ...prev, [key]: val }));
+                // Marque la section comme complétée si ≥50% des questions soumises
+                const submitted = questions.filter((_, idx) => {
+                  if (idx === i) return true;
+                  return (answers[`${prefix}_${idx}`] || '').trim().length > 0;
+                }).length;
+                if (submitted >= Math.ceil(questions.length * 0.5)) {
+                  markTabComplete(lessonId, tabName as any);
+                }
+                setSectionScores(prev => ({ ...prev, [prefix]: { correct: submitted, total: questions.length } }));
+              }}
+            />
           );
         })}
-
-        {/* Verify button */}
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => verifySection(prefix, questions)}
-          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-bold shadow-md"
-        >
-          {currentLang === 'ba' ? '✓ Yaayasia' : '✓ Vérifier'}
-        </motion.button>
 
         {/* Score display */}
         {score && (
@@ -171,7 +162,7 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
               score.correct >= Math.ceil(score.total * 0.4) ? 'bg-amber-100 text-amber-700' :
               'bg-red-100 text-red-700'
             }`}>
-              {score.correct}/{score.total} {currentLang === 'ba' ? 'kɔsa' : 'correct'}
+              {score.correct}/{score.total} {currentLang === 'ba' ? 'kobu' : 'soumis'}
             </div>
             {score.correct >= Math.ceil(score.total * 0.7) && <span className="text-lg">⭐</span>}
           </motion.div>
