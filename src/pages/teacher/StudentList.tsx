@@ -8,11 +8,23 @@ interface Row {
   user_id: string;
   username: string | null;
   display_name: string | null;
+  phone_number: string | null;
   avatar_url: string | null;
   n1_completed: number;
   n2_completed: number;
   last_updated: string;
   pending_count: number;
+}
+
+/** Construit un identifiant lisible : nom > username > téléphone (4 derniers) > "Apprenant ABCD" */
+function readableName(r: { display_name: string | null; username: string | null; phone_number: string | null; user_id: string }) {
+  if (r.display_name && r.display_name.trim() && r.display_name !== 'Nouvel utilisateur') return r.display_name.trim();
+  if (r.username && r.username.trim() && !r.username.startsWith('user_')) return `@${r.username}`;
+  if (r.phone_number && r.phone_number.trim()) {
+    const digits = r.phone_number.replace(/\D/g, '');
+    return `📱 ${digits.slice(-8) || r.phone_number}`;
+  }
+  return `Apprenant ${r.user_id.slice(0, 4).toUpperCase()}`;
 }
 
 export default function StudentList() {
@@ -28,7 +40,7 @@ export default function StudentList() {
 
       const userIds = [...new Set((progress ?? []).map(p => p.user_id))];
       const [profiles, pending] = await Promise.all([
-        userIds.length ? supabase.from('tamtam_profiles').select('user_id, username, display_name, avatar_url').in('user_id', userIds) : Promise.resolve({ data: [] as never[] }),
+        userIds.length ? supabase.from('tamtam_profiles').select('user_id, username, display_name, avatar_url, phone_number').in('user_id', userIds) : Promise.resolve({ data: [] as never[] }),
         supabase.from('classe_student_answers').select('user_id').is('graded_at', null),
       ]);
 
@@ -40,11 +52,12 @@ export default function StudentList() {
         const userRows = (progress ?? []).filter(p => p.user_id === uid);
         const n1 = userRows.find(p => p.level === 'N1');
         const n2 = userRows.find(p => p.level === 'N2');
-        const profile = profileMap.get(uid) as { username?: string; display_name?: string; avatar_url?: string } | undefined;
+        const profile = profileMap.get(uid) as { username?: string; display_name?: string; avatar_url?: string; phone_number?: string } | undefined;
         return {
           user_id: uid,
           username: profile?.username ?? null,
           display_name: profile?.display_name ?? null,
+          phone_number: profile?.phone_number ?? null,
           avatar_url: profile?.avatar_url ?? null,
           n1_completed: (n1?.completed_lessons as number[] | null)?.length ?? 0,
           n2_completed: (n2?.completed_lessons as number[] | null)?.length ?? 0,
@@ -62,7 +75,11 @@ export default function StudentList() {
   const filtered = useMemo(() => {
     const needle = q.toLowerCase().trim();
     if (!needle) return rows;
-    return rows.filter(r => (r.display_name ?? '').toLowerCase().includes(needle) || (r.username ?? '').toLowerCase().includes(needle));
+    return rows.filter(r =>
+      (r.display_name ?? '').toLowerCase().includes(needle) ||
+      (r.username ?? '').toLowerCase().includes(needle) ||
+      (r.phone_number ?? '').toLowerCase().includes(needle)
+    );
   }, [rows, q]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
@@ -87,12 +104,15 @@ export default function StudentList() {
               <img src={r.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
             ) : (
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold">
-                {(r.display_name ?? r.username ?? '?').charAt(0).toUpperCase()}
+                {readableName(r).replace(/^[@📱\s]+/, '').charAt(0).toUpperCase()}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{r.display_name ?? r.username ?? r.user_id.slice(0, 8)}</p>
-              <p className="text-xs text-muted-foreground">N1: {r.n1_completed} leçons · N2: {r.n2_completed} leçons</p>
+              <p className="font-semibold truncate">{readableName(r)}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {r.username && !r.username.startsWith('user_') && r.display_name ? `@${r.username} · ` : ''}
+                N1: {r.n1_completed} · N2: {r.n2_completed} leçons
+              </p>
             </div>
             {r.pending_count > 0 && (
               <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold">{r.pending_count} à noter</span>
