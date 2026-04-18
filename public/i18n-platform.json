@@ -4001,5 +4001,13 @@
   "sidebar_classe_desc": {
     "fr": "Alphabétisation Niveau 1",
     "ba": "Barum keun sóøsiru"
+  },
+  "sidebar_fitila_tem_ia": {
+    "fr": "Fitila Tem IA",
+    "ba": "Fitila Tem IA"
+  },
+  "sidebar_fitila_tem_ia_desc": {
+    "fr": "Assistant Code Foncier Bariba",
+    "ba": "Tem bausu sariaba sɔ̃ɔsiru"
   }
 }
