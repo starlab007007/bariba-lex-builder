@@ -29,10 +29,17 @@ export default function PendingGrading() {
 
       const ids = [...new Set(list.map(i => i.user_id))];
       if (ids.length) {
-        const { data: profs } = await supabase.from('tamtam_profiles').select('user_id, display_name, username').in('user_id', ids);
+        const { data: profs } = await supabase.from('tamtam_profiles').select('user_id, display_name, username, phone_number').in('user_id', ids);
         const m = new Map<string, string>();
-        (profs ?? []).forEach((p: { user_id: string; display_name?: string; username?: string }) => {
-          m.set(p.user_id, p.display_name ?? p.username ?? p.user_id.slice(0, 8));
+        (profs ?? []).forEach((p: { user_id: string; display_name?: string; username?: string; phone_number?: string }) => {
+          const dn = p.display_name?.trim();
+          const un = p.username?.trim();
+          let label: string;
+          if (dn && dn !== 'Nouvel utilisateur') label = dn;
+          else if (un && !un.startsWith('user_')) label = `@${un}`;
+          else if (p.phone_number) label = `📱 ${p.phone_number.replace(/\D/g, '').slice(-8)}`;
+          else label = `Apprenant ${p.user_id.slice(0, 4).toUpperCase()}`;
+          m.set(p.user_id, label);
         });
         setProfiles(m);
       }
