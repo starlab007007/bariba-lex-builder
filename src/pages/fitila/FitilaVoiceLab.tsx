@@ -604,7 +604,8 @@ export default function FitilaVoiceLab() {
                     <motion.button
                       whileTap={{ scale: 0.95 }}
                       onClick={handleValidate}
-                      className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/30"
+                      disabled={processing || !processed}
+                      className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Check className="w-4 h-4" /> Valider & suivante
                     </motion.button>
