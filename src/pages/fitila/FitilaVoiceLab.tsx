@@ -93,6 +93,10 @@ export default function FitilaVoiceLab() {
   const [showFrench, setShowFrench] = useState(true);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
+  // Stable ref for cleanup so we don't re-trigger on every render
+  const cancelRef = useRef(cancelRecording);
+  useEffect(() => { cancelRef.current = cancelRecording; }, [cancelRecording]);
+
   const current = queue[0];
   const upcoming = queue.slice(1, 4);
 
@@ -104,8 +108,10 @@ export default function FitilaVoiceLab() {
     }
   }, [user, navigate]);
 
-  // ─── Cleanup on unmount
-  useEffect(() => () => cancelRecording(), [cancelRecording]);
+  // ─── Cleanup on unmount ONLY (empty deps)
+  useEffect(() => {
+    return () => { cancelRef.current?.(); };
+  }, []);
 
   // ─── Phrases under selected macro
   const filteredCategories = useMemo(() => {
@@ -124,11 +130,13 @@ export default function FitilaVoiceLab() {
   // ─── Recording controls
   const handleStart = async () => {
     if (!current) return;
-    cancelRecording();
     setRecordedDuration(0);
     setPhase('recording');
     const stream = await startRecording();
-    if (!stream) setPhase('idle');
+    if (!stream) {
+      setPhase('idle');
+      toast.error("Impossible d'accéder au microphone. Vérifiez les autorisations du navigateur.");
+    }
   };
 
   const handlePause = () => {
@@ -142,8 +150,9 @@ export default function FitilaVoiceLab() {
   };
 
   const handleStop = async () => {
-    setRecordedDuration(duration);
-    await stopRecording();
+    const dur = duration;
+    setRecordedDuration(dur);
+    await stopRecording(); // resolves only after chunks are flushed and state is updated
     setPhase('recorded');
   };
 
@@ -160,7 +169,12 @@ export default function FitilaVoiceLab() {
   };
 
   const handleValidate = async () => {
-    if (!current || !audioBlob) return;
+    if (!current) return;
+    if (!audioBlob || audioBlob.size === 0) {
+      toast.error("Enregistrement vide. Veuillez recommencer.");
+      setPhase('idle');
+      return;
+    }
     setPhase('submitting');
     const ok = await submitRecording(current, audioBlob, recordedDuration);
     if (ok) {
