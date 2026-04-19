@@ -58,11 +58,19 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          sampleRate: 24000,
+          // Pro-grade ASR-friendly capture
+          sampleRate: 16000,
           channelCount: 1,
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          // Chrome/Edge advanced hints (ignored elsewhere)
+          // @ts-expect-error vendor-specific
+          googHighpassFilter: true,
+          // @ts-expect-error vendor-specific
+          googTypingNoiseDetection: true,
+          // @ts-expect-error vendor-specific
+          googAudioMirroring: false,
         }
       });
 
