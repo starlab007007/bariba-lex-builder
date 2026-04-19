@@ -158,12 +158,26 @@ export default function FitilaVoiceLab() {
   const handleStart = async () => {
     if (!current) return;
     setRecordedDuration(0);
+    // Clear any previous WAV
+    if (processedUrl) URL.revokeObjectURL(processedUrl);
+    setProcessed(null);
+    setProcessedUrl(null);
     setPhase('recording');
     const stream = await startRecording();
     if (!stream) {
       setPhase('idle');
       toast.error("Impossible d'accéder au microphone. Vérifiez les autorisations du navigateur.");
+      return;
     }
+    // Wire up VAD/VU-meter
+    tearDownVad();
+    const v = createVadAnalyser(stream);
+    vadRef.current = v;
+    const tick = () => {
+      setVad(v.getLevel());
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    tick();
   };
 
   const handlePause = () => {
@@ -179,34 +193,46 @@ export default function FitilaVoiceLab() {
   const handleStop = async () => {
     const dur = duration;
     setRecordedDuration(dur);
-    await stopRecording(); // resolves only after chunks are flushed and state is updated
+    await stopRecording();        // flushes chunks → audioBlob in hook state
+    tearDownVad();
     setPhase('recorded');
+    // Conversion to WAV happens in an effect below as soon as audioBlob is ready.
   };
 
   const handleCancel = () => {
     cancelRecording();
+    tearDownVad();
+    if (processedUrl) URL.revokeObjectURL(processedUrl);
+    setProcessed(null);
+    setProcessedUrl(null);
     setRecordedDuration(0);
     setPhase('idle');
   };
 
   const handleRetake = () => {
     cancelRecording();
+    tearDownVad();
+    if (processedUrl) URL.revokeObjectURL(processedUrl);
+    setProcessed(null);
+    setProcessedUrl(null);
     setRecordedDuration(0);
     setPhase('idle');
   };
 
   const handleValidate = async () => {
     if (!current) return;
-    if (!audioBlob || audioBlob.size === 0) {
-      toast.error("Enregistrement vide. Veuillez recommencer.");
-      setPhase('idle');
+    if (!processed || !processed.blob || processed.blob.size === 0) {
+      toast.error("Audio non prêt. Veuillez patienter ou recommencer.");
       return;
     }
     setPhase('submitting');
-    const ok = await submitRecording(current, audioBlob, recordedDuration);
+    const ok = await submitRecording(current, processed.blob, processed.durationSec);
     if (ok) {
       toast.success('🎉 Enregistrement validé, merci !');
       cancelRecording();
+      if (processedUrl) URL.revokeObjectURL(processedUrl);
+      setProcessed(null);
+      setProcessedUrl(null);
       setRecordedDuration(0);
       advance();
       setPhase('idle');
@@ -217,10 +243,38 @@ export default function FitilaVoiceLab() {
 
   const handleSkip = () => {
     cancelRecording();
+    tearDownVad();
+    if (processedUrl) URL.revokeObjectURL(processedUrl);
+    setProcessed(null);
+    setProcessedUrl(null);
     setRecordedDuration(0);
     setPhase('idle');
     advance();
   };
+
+  // ─── Auto-convert raw audioBlob to WAV PCM 16k as soon as it's available
+  useEffect(() => {
+    if (phase !== 'recorded') return;
+    if (!audioBlob || audioBlob.size === 0) return;
+    if (processed) return;
+    let cancelled = false;
+    setProcessing(true);
+    (async () => {
+      try {
+        const result = await blobToWav16kMono(audioBlob);
+        if (cancelled) return;
+        const url = URL.createObjectURL(result.blob);
+        setProcessed(result);
+        setProcessedUrl(url);
+      } catch (e) {
+        console.error('[VoiceLab] WAV conversion failed:', e);
+        toast.error("Impossible de traiter l'audio. Recommencez s'il vous plaît.");
+      } finally {
+        if (!cancelled) setProcessing(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [phase, audioBlob, processed]);
 
   const formatTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
