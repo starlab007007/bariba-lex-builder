@@ -17,13 +17,15 @@ import { ByT5SpaceConfig } from '@/components/admin/ByT5SpaceConfig';
 import { AudioServicesMonitor } from '@/components/admin/AudioServicesMonitor';
 import { TemplateGenerationAdmin } from '@/components/admin/TemplateGenerationAdmin';
 import { AnimeLibraryManager } from '@/components/admin/AnimeLibraryManager';
+import VoiceRecordingsBrowser from '@/components/admin/VoiceRecordingsBrowser';
+import { Link } from 'react-router-dom';
 import { 
   Settings, Users, BarChart3, 
   FileText, Globe, 
   BookOpen, 
   Sparkles, Shield, 
   Activity, Download, Edit3, Volume2, Film, BookImage,
-  AlertTriangle
+  AlertTriangle, Mic, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -148,6 +150,10 @@ export default function AdminDashboard() {
                 <FileText className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Idiomes
               </TabsTrigger>
+              <TabsTrigger value="voice-corpus" className="flex items-center gap-2">
+                <Mic className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Voice Corpus
+              </TabsTrigger>
 
               {/* 🧪 SECTION TESTS & QUALITÉ */}
               <div className="flex items-center gap-1 w-full mt-2">
@@ -244,6 +250,25 @@ export default function AdminDashboard() {
           <TabsContent value="dictionary"><TabErrorBoundary tabName="dictionary"><DictionaryManager /></TabErrorBoundary></TabsContent>
           <TabsContent value="dictionary-advanced"><TabErrorBoundary tabName="dictionary-advanced"><AdvancedDictionaryManager /></TabErrorBoundary></TabsContent>
           <TabsContent value="idioms"><TabErrorBoundary tabName="idioms"><IdiomManager /></TabErrorBoundary></TabsContent>
+          <TabsContent value="voice-corpus">
+            <TabErrorBoundary tabName="voice-corpus">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-card border rounded-lg p-4">
+                  <div>
+                    <h2 className="text-lg font-bold flex items-center gap-2"><Mic className="w-5 h-5 text-primary" /> Corpus Voix Bariba</h2>
+                    <p className="text-sm text-muted-foreground">Écouter, valider, télécharger les enregistrements collectés via le Voice Lab.</p>
+                  </div>
+                  <Link
+                    to="/admin/voice-corpus"
+                    className="inline-flex items-center gap-2 text-sm rounded-md bg-primary text-primary-foreground px-3 py-2 hover:opacity-90"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Stats & Export ZIP complet
+                  </Link>
+                </div>
+                <VoiceRecordingsBrowser />
+              </div>
+            </TabErrorBoundary>
+          </TabsContent>
           
           <TabsContent value="quality"><TabErrorBoundary tabName="quality"><QualityMetricsDashboard /></TabErrorBoundary></TabsContent>
           <TabsContent value="diagnostic"><TabErrorBoundary tabName="diagnostic"><TranslationDiagnosticDashboard /></TabErrorBoundary></TabsContent>
