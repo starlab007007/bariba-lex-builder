@@ -17,13 +17,15 @@ import { ByT5SpaceConfig } from '@/components/admin/ByT5SpaceConfig';
 import { AudioServicesMonitor } from '@/components/admin/AudioServicesMonitor';
 import { TemplateGenerationAdmin } from '@/components/admin/TemplateGenerationAdmin';
 import { AnimeLibraryManager } from '@/components/admin/AnimeLibraryManager';
+import VoiceRecordingsBrowser from '@/components/admin/VoiceRecordingsBrowser';
+import { Link } from 'react-router-dom';
 import { 
   Settings, Users, BarChart3, 
   FileText, Globe, 
   BookOpen, 
   Sparkles, Shield, 
   Activity, Download, Edit3, Volume2, Film, BookImage,
-  AlertTriangle
+  AlertTriangle, Mic, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
