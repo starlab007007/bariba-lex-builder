@@ -218,6 +218,12 @@ export function useVoiceCorpus(category: string | 'all') {
         user_recorded: s.user_recorded + 1,
         remaining: Math.max(s.remaining - 1, 0),
       }));
+      // Update category counts locally
+      setCategories(prev => prev.map(c =>
+        c.name === phrase.category
+          ? { ...c, user_recorded: c.user_recorded + 1, remaining: Math.max(c.remaining - 1, 0) }
+          : c
+      ));
       return true;
     } catch (e: any) {
       console.error('[submitRecording] error:', e);
