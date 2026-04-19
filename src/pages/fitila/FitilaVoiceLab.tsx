@@ -457,17 +457,61 @@ export default function FitilaVoiceLab() {
                 )}
               </div>
 
-              {/* Wave visual when recording/paused */}
+              {/* Live VU-meter + voice activity indicator while recording */}
               {(phase === 'recording' || phase === 'paused') && (
-                <div className="px-6 pb-2">
+                <div className="px-6 pb-2 space-y-2">
                   <WaveBars active={phase === 'recording'} />
+                  {/* VU bar */}
+                  <div className="relative h-2 rounded-full bg-gray-200 overflow-hidden">
+                    <div
+                      className={`h-full transition-[width] duration-75 ${
+                        vad.isClipping ? 'bg-red-500' : vad.isVoice ? 'bg-emerald-500' : 'bg-gray-400'
+                      }`}
+                      style={{ width: `${Math.round(vad.level01 * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-[11px] font-semibold">
+                    {phase === 'paused' ? (
+                      <span className="text-amber-600">⏸ En pause — reprenez quand vous voulez</span>
+                    ) : vad.isClipping ? (
+                      <span className="text-red-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Trop fort, éloignez-vous du micro</span>
+                    ) : vad.isVoice ? (
+                      <span className="text-emerald-600">🎙️ Voix bien détectée</span>
+                    ) : (
+                      <span className="text-gray-500">🤫 Silence — parlez plus fort</span>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Audio player when recorded */}
-              {phase === 'recorded' && audioUrl && (
-                <div className="px-6 pb-2">
-                  <audio ref={audioPlayerRef} src={audioUrl} controls className="w-full" />
+              {/* Audio player & quality info when recorded (uses processed WAV) */}
+              {phase === 'recorded' && (
+                <div className="px-6 pb-2 space-y-2">
+                  {processing && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500 py-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Traitement audio (nettoyage, normalisation)…
+                    </div>
+                  )}
+                  {processedUrl && processed && (
+                    <>
+                      <audio ref={audioPlayerRef} src={processedUrl} controls className="w-full" />
+                      <div className="flex items-center justify-center gap-3 text-[11px] text-gray-500 font-semibold">
+                        <span>⏱ {processed.durationSec.toFixed(1)}s</span>
+                        <span>·</span>
+                        <span>📊 Pic {isFinite(processed.peakDb) ? processed.peakDb.toFixed(1) : '–'} dB</span>
+                        <span>·</span>
+                        <span>🎚 Moy {isFinite(processed.rmsDb) ? processed.rmsDb.toFixed(1) : '–'} dB</span>
+                        <span>·</span>
+                        <span>WAV 16 kHz</span>
+                      </div>
+                      {(!isFinite(processed.rmsDb) || processed.rmsDb < -40) && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-800 flex items-center gap-2">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Audio très faible — recommencez plus près du micro pour un meilleur résultat.
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 
