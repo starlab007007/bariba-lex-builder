@@ -88,7 +88,7 @@ export default function FitilaVoiceLab() {
   const {
     isRecording, isPaused, duration,
     startRecording, stopRecording, pauseRecording, resumeRecording,
-    audioBlob, audioUrl, cancelRecording,
+    audioBlob, cancelRecording, getStream,
   } = useAudioRecorder();
 
   const [phase, setPhase] = useState<Phase>('idle');
@@ -96,12 +96,36 @@ export default function FitilaVoiceLab() {
   const [showFrench, setShowFrench] = useState(true);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
+  // Live VU-meter state (during recording)
+  const [vad, setVad] = useState<VadStats>({ rms: 0, db: -Infinity, level01: 0, isVoice: false, isClipping: false });
+  const vadRef = useRef<ReturnType<typeof createVadAnalyser> | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  // Processed WAV result (after stop) — what the user listens to and what gets uploaded
+  const [processed, setProcessed] = useState<WavConversionResult | null>(null);
+  const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+
   // Stable ref for cleanup so we don't re-trigger on every render
   const cancelRef = useRef(cancelRecording);
   useEffect(() => { cancelRef.current = cancelRecording; }, [cancelRecording]);
 
   const current = queue[0];
   const upcoming = queue.slice(1, 4);
+
+  // Cleanup VAD analyser
+  const tearDownVad = () => {
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (vadRef.current) { vadRef.current.destroy(); vadRef.current = null; }
+  };
+  // Cleanup processed URL when replaced/unmounted
+  useEffect(() => {
+    return () => {
+      if (processedUrl) URL.revokeObjectURL(processedUrl);
+      tearDownVad();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Auth guard
   useEffect(() => {
