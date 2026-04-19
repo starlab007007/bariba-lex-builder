@@ -48,14 +48,18 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { icon: User, labelKey: 'sidebar_profile', path: '/fitila/profile', emoji: '👤' },
   ];
 
+  // ✨ Modules récemment ajoutés - mis en avant
+  const newToolsItems = [
+    { emoji: '🏫', labelKey: 'sidebar_classe',         descKey: 'sidebar_classe_desc',         path: '/fitila/classe',    gradient: 'from-rose-500 to-pink-400' },
+    { emoji: '🎙️', labelKey: 'sidebar_voice_lab',      descKey: 'sidebar_voice_lab_desc',      path: '/fitila/voice-lab', gradient: 'from-pink-500 to-rose-400' },
+    { emoji: '⚖️', labelKey: 'sidebar_fitila_tem_ia',  descKey: 'sidebar_fitila_tem_ia_desc',  path: '/fitila/tem-ia',    gradient: 'from-emerald-500 to-teal-400' },
+  ];
+
   const toolsItems = [
     { emoji: '📖', labelKey: 'sidebar_dictionary', descKey: 'sidebar_dictionary_desc', path: '/fitila/dictionary', gradient: 'from-emerald-500 to-teal-400' },
     { emoji: '🌍', labelKey: 'sidebar_translator', descKey: 'sidebar_translator_desc', path: '/fitila/translator', gradient: 'from-blue-500 to-cyan-400' },
-    { emoji: '📚', labelKey: 'sidebar_learn', descKey: 'sidebar_learn_desc', path: '/fitila/learn', gradient: 'from-amber-500 to-orange-400' },
-    { emoji: '🤖', labelKey: 'sidebar_fitila_ia', descKey: 'sidebar_fitila_ia_desc', path: '/fitila/ia', gradient: 'from-purple-500 to-indigo-400' },
-    { emoji: '🏫', labelKey: 'sidebar_classe', descKey: 'sidebar_classe_desc', path: '/fitila/classe', gradient: 'from-rose-500 to-pink-400' },
-    { emoji: '⚖️', labelKey: 'sidebar_fitila_tem_ia', descKey: 'sidebar_fitila_tem_ia_desc', path: '/fitila/tem-ia', gradient: 'from-emerald-500 to-teal-400' },
-    { emoji: '🎙️', labelKey: 'sidebar_voice_lab', descKey: 'sidebar_voice_lab_desc', path: '/fitila/voice-lab', gradient: 'from-pink-500 to-rose-400' },
+    { emoji: '📚', labelKey: 'sidebar_learn',      descKey: 'sidebar_learn_desc',      path: '/fitila/learn',      gradient: 'from-amber-500 to-orange-400' },
+    { emoji: '🤖', labelKey: 'sidebar_fitila_ia',  descKey: 'sidebar_fitila_ia_desc',  path: '/fitila/ia',         gradient: 'from-purple-500 to-indigo-400' },
   ];
 
   const handleNavigate = (path: string) => {
