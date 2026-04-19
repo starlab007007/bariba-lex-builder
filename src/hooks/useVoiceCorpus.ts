@@ -33,7 +33,7 @@ const QUEUE_FETCH_SIZE = 30;
 export function useVoiceCorpus(category: string | 'all') {
   const { user } = useAuth();
   const [queue, setQueue] = useState<CorpusPhrase[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [stats, setStats] = useState<CorpusStats>({ total_phrases: 0, user_recorded: 0, remaining: 0 });
   const [loading, setLoading] = useState(false);
   const recordedIdsRef = useRef<Set<string>>(new Set());
@@ -48,19 +48,41 @@ export function useVoiceCorpus(category: string | 'all') {
     recordedIdsRef.current = new Set((data || []).map(r => r.phrase_id));
   }, [user]);
 
-  // Fetch categories list (one-shot)
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('bariba_corpus_phrases')
-        .select('category')
-        .eq('is_active', true);
-      if (data) {
-        const unique = Array.from(new Set(data.map(d => d.category))).sort();
-        setCategories(unique);
-      }
-    })();
-  }, []);
+  // Fetch categories with counts (one-shot, refreshed when user changes)
+  const refreshCategories = useCallback(async () => {
+    const { data: phrasesData } = await supabase
+      .from('bariba_corpus_phrases')
+      .select('category')
+      .eq('is_active', true);
+    if (!phrasesData) return;
+
+    const totals: Record<string, number> = {};
+    phrasesData.forEach(p => { totals[p.category] = (totals[p.category] || 0) + 1; });
+
+    let userRecordedByCat: Record<string, number> = {};
+    if (user) {
+      const { data: recs } = await supabase
+        .from('bariba_voice_recordings')
+        .select('phrase_id, bariba_corpus_phrases!inner(category)')
+        .eq('user_id', user.id);
+      (recs || []).forEach((r: any) => {
+        const cat = r.bariba_corpus_phrases?.category;
+        if (cat) userRecordedByCat[cat] = (userRecordedByCat[cat] || 0) + 1;
+      });
+    }
+
+    const list: CategoryInfo[] = Object.entries(totals)
+      .map(([name, count]) => ({
+        name,
+        count,
+        user_recorded: userRecordedByCat[name] || 0,
+        remaining: Math.max(count - (userRecordedByCat[name] || 0), 0),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setCategories(list);
+  }, [user]);
+
+  useEffect(() => { refreshCategories(); }, [refreshCategories]);
 
   // Fetch global stats
   const refreshStats = useCallback(async () => {
