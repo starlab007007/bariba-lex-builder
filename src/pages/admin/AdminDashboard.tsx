@@ -150,6 +150,10 @@ export default function AdminDashboard() {
                 <FileText className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Idiomes
               </TabsTrigger>
+              <TabsTrigger value="voice-corpus" className="flex items-center gap-2">
+                <Mic className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Voice Corpus
+              </TabsTrigger>
 
               {/* 🧪 SECTION TESTS & QUALITÉ */}
               <div className="flex items-center gap-1 w-full mt-2">
