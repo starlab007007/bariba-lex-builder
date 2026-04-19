@@ -31,6 +31,7 @@ const CATEGORY_META: Record<string, { emoji: string; gradient: string; macro: st
   'Voyage & Déplacement':       { emoji: '✈️', gradient: 'from-sky-500 to-blue-400',     macro: 'Société' },
   'Transport et direction':     { emoji: '🚌', gradient: 'from-blue-500 to-cyan-400',    macro: 'Société' },
   'Sport & Jeux':               { emoji: '⚽', gradient: 'from-lime-500 to-green-400',   macro: 'Société' },
+  'Juridique & Foncier':        { emoji: '⚖️', gradient: 'from-teal-500 to-emerald-400', macro: 'Société' },
   'Loi (Foncier)':              { emoji: '⚖️', gradient: 'from-teal-500 to-emerald-400', macro: 'Société' },
   // Nature
   'Agriculture':                { emoji: '🌾', gradient: 'from-green-500 to-lime-400',   macro: 'Nature' },
