@@ -63,12 +63,17 @@ const GradeOverview = lazy(() => import("./pages/teacher/GradeOverview"));
 const ClasseCorrections = lazy(() => import("./components/classe/ClasseCorrections"));
 const MyGradeReport = lazy(() => import("./components/classe/MyGradeReport"));
 
-// Loading fallback - minimal spinner
+// Loading fallback - skeleton minimal responsive
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-amber-950 via-black to-black">
-    <div className="flex flex-col items-center gap-3">
-      <div className="w-10 h-10 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
-      <span className="text-amber-200/60 text-sm">Chargement...</span>
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-amber-950 via-black to-black px-4">
+    <div className="flex flex-col items-center gap-4 w-full max-w-md md:max-w-lg">
+      <div className="w-12 h-12 md:w-14 md:h-14 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+      <span className="text-amber-200/70 text-sm md:text-base font-medium">Chargement...</span>
+      <div className="w-full space-y-2 mt-4">
+        <div className="h-3 bg-amber-500/10 rounded-full animate-pulse" />
+        <div className="h-3 bg-amber-500/10 rounded-full animate-pulse w-4/5" />
+        <div className="h-3 bg-amber-500/10 rounded-full animate-pulse w-3/5" />
+      </div>
     </div>
   </div>
 );

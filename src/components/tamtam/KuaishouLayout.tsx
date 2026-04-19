@@ -48,7 +48,7 @@ export const KuaishouLayout: React.FC<KuaishouLayoutProps> = ({
         </div>
       )}
 
-      {/* Main content */}
+      {/* Main content - responsive max-width on desktop while preserving mobile */}
       <motion.main
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -56,7 +56,9 @@ export const KuaishouLayout: React.FC<KuaishouLayoutProps> = ({
         transition={{ duration: 0.2 }}
         className={`flex-1 overflow-y-auto ${!fullScreen ? 'pb-4' : ''}`}
       >
-        {children}
+        <div className={fullScreen ? '' : 'mx-auto w-full max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl px-2 md:px-4 lg:px-6'}>
+          {children}
+        </div>
       </motion.main>
 
       {/* Bottom navigation */}

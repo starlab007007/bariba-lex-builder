@@ -5,7 +5,7 @@ import { FitilaLanguageProvider, useFitilaLanguage } from '@/contexts/FitilaLang
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTamTamProfile } from '@/hooks/useTamTamProfile';
-import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package } from 'lucide-react';
+import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package, Sparkles } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
 import { BuildInfo } from '@/components/BuildInfo';
@@ -48,14 +48,18 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { icon: User, labelKey: 'sidebar_profile', path: '/fitila/profile', emoji: '👤' },
   ];
 
+  // ✨ Modules récemment ajoutés - mis en avant
+  const newToolsItems = [
+    { emoji: '🏫', labelKey: 'sidebar_classe',         descKey: 'sidebar_classe_desc',         path: '/fitila/classe',    gradient: 'from-rose-500 to-pink-400' },
+    { emoji: '🎙️', labelKey: 'sidebar_voice_lab',      descKey: 'sidebar_voice_lab_desc',      path: '/fitila/voice-lab', gradient: 'from-pink-500 to-rose-400' },
+    { emoji: '⚖️', labelKey: 'sidebar_fitila_tem_ia',  descKey: 'sidebar_fitila_tem_ia_desc',  path: '/fitila/tem-ia',    gradient: 'from-emerald-500 to-teal-400' },
+  ];
+
   const toolsItems = [
     { emoji: '📖', labelKey: 'sidebar_dictionary', descKey: 'sidebar_dictionary_desc', path: '/fitila/dictionary', gradient: 'from-emerald-500 to-teal-400' },
     { emoji: '🌍', labelKey: 'sidebar_translator', descKey: 'sidebar_translator_desc', path: '/fitila/translator', gradient: 'from-blue-500 to-cyan-400' },
-    { emoji: '📚', labelKey: 'sidebar_learn', descKey: 'sidebar_learn_desc', path: '/fitila/learn', gradient: 'from-amber-500 to-orange-400' },
-    { emoji: '🤖', labelKey: 'sidebar_fitila_ia', descKey: 'sidebar_fitila_ia_desc', path: '/fitila/ia', gradient: 'from-purple-500 to-indigo-400' },
-    { emoji: '🏫', labelKey: 'sidebar_classe', descKey: 'sidebar_classe_desc', path: '/fitila/classe', gradient: 'from-rose-500 to-pink-400' },
-    { emoji: '⚖️', labelKey: 'sidebar_fitila_tem_ia', descKey: 'sidebar_fitila_tem_ia_desc', path: '/fitila/tem-ia', gradient: 'from-emerald-500 to-teal-400' },
-    { emoji: '🎙️', labelKey: 'sidebar_voice_lab', descKey: 'sidebar_voice_lab_desc', path: '/fitila/voice-lab', gradient: 'from-pink-500 to-rose-400' },
+    { emoji: '📚', labelKey: 'sidebar_learn',      descKey: 'sidebar_learn_desc',      path: '/fitila/learn',      gradient: 'from-amber-500 to-orange-400' },
+    { emoji: '🤖', labelKey: 'sidebar_fitila_ia',  descKey: 'sidebar_fitila_ia_desc',  path: '/fitila/ia',         gradient: 'from-purple-500 to-indigo-400' },
   ];
 
   const handleNavigate = (path: string) => {
@@ -89,7 +93,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 w-[300px] z-[101] overflow-y-auto pointer-events-auto"
+            className="fixed left-0 top-0 bottom-0 w-[88vw] max-w-[340px] md:max-w-[380px] lg:max-w-[400px] z-[101] overflow-y-auto pointer-events-auto"
             style={{
               background: 'linear-gradient(180deg, rgba(20, 20, 28, 0.98) 0%, rgba(10, 10, 15, 0.99) 100%)',
               backdropFilter: 'blur(20px)',
@@ -149,13 +153,45 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
               </div>
             </div>
 
+            {/* ✨ NOUVEAUX MODULES - Mis en avant */}
+            <div className="p-4 border-t border-white/10">
+              <div className="flex items-center gap-2 mb-3 px-2">
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <p className="text-amber-300 text-[11px] font-bold uppercase tracking-wider">✨ Nouveau</p>
+              </div>
+              <div className="grid grid-cols-1 gap-2.5">
+                {newToolsItems.map((tool, index) => (
+                  <motion.button
+                    key={tool.labelKey}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 + index * 0.04 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => handleNavigate(tool.path)}
+                    className="relative flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 to-rose-500/10 hover:from-amber-500/20 hover:to-rose-500/20 transition-all border border-amber-400/20 hover:border-amber-400/40"
+                  >
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center shadow-lg shrink-0`}>
+                      <span className="text-2xl">{tool.emoji}</span>
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white text-base font-bold truncate">{t(tool.labelKey)}</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[9px] font-bold shrink-0">NEW</span>
+                      </div>
+                      <span className="text-white/60 text-xs line-clamp-2">{t(tool.descKey)}</span>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
             {/* Outils */}
             <div className="p-4 border-t border-white/10">
               <div className="flex items-center gap-2 mb-3 px-2">
                 <BookOpen className="w-4 h-4 text-[#FF7A00]" />
                 <p className="text-[#FF7A00] text-[10px] font-bold uppercase tracking-wider">{t('sidebar_tools')}</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {toolsItems.map((tool, index) => (
                   <motion.button
                     key={tool.labelKey}
@@ -164,13 +200,13 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                     transition={{ delay: 0.1 + index * 0.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleNavigate(tool.path)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-all border border-white/5 hover:border-white/10"
+                    className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-all border border-white/5 hover:border-white/10"
                   >
                     <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center shadow-lg`}>
                       <span className="text-3xl">{tool.emoji}</span>
                     </div>
-                    <span className="text-white text-sm font-semibold">{t(tool.labelKey)}</span>
-                    <span className="text-white/40 text-[10px] text-center">{t(tool.descKey)}</span>
+                    <span className="text-white text-sm font-bold text-center leading-tight">{t(tool.labelKey)}</span>
+                    <span className="text-white/50 text-[11px] text-center leading-snug line-clamp-2">{t(tool.descKey)}</span>
                   </motion.button>
                 ))}
               </div>
