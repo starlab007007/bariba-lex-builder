@@ -93,7 +93,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 w-[300px] z-[101] overflow-y-auto pointer-events-auto"
+            className="fixed left-0 top-0 bottom-0 w-[88vw] max-w-[340px] md:max-w-[380px] lg:max-w-[400px] z-[101] overflow-y-auto pointer-events-auto"
             style={{
               background: 'linear-gradient(180deg, rgba(20, 20, 28, 0.98) 0%, rgba(10, 10, 15, 0.99) 100%)',
               backdropFilter: 'blur(20px)',
