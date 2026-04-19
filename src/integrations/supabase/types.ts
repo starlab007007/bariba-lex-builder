@@ -364,6 +364,104 @@ export type Database = {
         }
         Relationships: []
       }
+      bariba_corpus_phrases: {
+        Row: {
+          category: string
+          created_at: string
+          difficulty: string
+          id: string
+          is_active: boolean
+          recordings_count: number
+          source: string | null
+          text_bariba: string
+          text_french: string | null
+          updated_at: string
+          word_count: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          difficulty?: string
+          id?: string
+          is_active?: boolean
+          recordings_count?: number
+          source?: string | null
+          text_bariba: string
+          text_french?: string | null
+          updated_at?: string
+          word_count?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          difficulty?: string
+          id?: string
+          is_active?: boolean
+          recordings_count?: number
+          source?: string | null
+          text_bariba?: string
+          text_french?: string | null
+          updated_at?: string
+          word_count?: number
+        }
+        Relationships: []
+      }
+      bariba_voice_recordings: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          duration_seconds: number | null
+          file_name: string
+          file_size_bytes: number | null
+          id: string
+          mime_type: string | null
+          phrase_id: string
+          rejected: boolean
+          storage_path: string
+          updated_at: string
+          user_id: string
+          validated: boolean
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          file_name: string
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          phrase_id: string
+          rejected?: boolean
+          storage_path: string
+          updated_at?: string
+          user_id: string
+          validated?: boolean
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          file_name?: string
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          phrase_id?: string
+          rejected?: boolean
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+          validated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bariba_voice_recordings_phrase_id_fkey"
+            columns: ["phrase_id"]
+            isOneToOne: false
+            referencedRelation: "bariba_corpus_phrases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       character_references: {
         Row: {
           character_name: string

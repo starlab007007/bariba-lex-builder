@@ -4009,5 +4009,13 @@
   "sidebar_fitila_tem_ia_desc": {
     "fr": "Assistant Code Foncier Bariba",
     "ba": "Tem bausu sariaba sɔ̃ɔsiru"
+  },
+  "sidebar_voice_lab": {
+    "fr": "Voice Lab",
+    "ba": "Wo nɔɔ Bariba"
+  },
+  "sidebar_voice_lab_desc": {
+    "fr": "Prête ta voix au Bariba",
+    "ba": "Bariba bweseru sɔ̃ɔsi"
   }
 }
