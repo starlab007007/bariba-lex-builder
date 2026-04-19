@@ -1,130 +1,91 @@
 
 
-L'utilisateur veut :
-1. **Calibration micro pro** : VAD (détection voix), suppression bruits, enregistrement clean
-2. **Réécoute haute qualité** : audio bien traité avant validation
-3. **Export admin en WAV** : conversion automatique webm/mp4 → WAV 16kHz mono PCM
-4. **Format prêt-entraînement** : pour chaque enregistrement, un `.wav` + un `.txt` du même nom + `metadata.csv` global
+L'utilisateur veut une optimisation globale de la plateforme :
+1. Performance (ultra rapide)
+2. Responsive design (adaptation à toutes tailles d'écrans)
+3. Lisibilité claire des modules récents (Classe, Voice Lab, Fitila Tem IA)
+4. Tous les autres modules
 
-Analyse du code existant :
-- `useAudioRecorder.ts` utilise MediaRecorder avec mime webm/mp4 — pas de WAV natif côté navigateur
-- L'export ZIP actuel (`voice-corpus-export/index.ts`) copie les fichiers tels quels (webm/mp4)
-- Pas de calibration micro, pas de VAD côté capture
-- Aucune génération de `.txt` jumelé
+Je vais explorer rapidement la structure pour bien cibler.
+<lov-plan>
 
-Solution proposée :
+# Plan : Optimisation globale de la plateforme FITILA
 
-# Plan : Micro pro + Export WAV prêt-entraînement
+## Diagnostic en 4 axes
 
-## A. Capture audio haute qualité (côté navigateur)
+### A. Performance (chargement & runtime)
 
-**Refonte de `useAudioRecorder.ts`** avec contraintes audio professionnelles :
+**Problèmes typiques à corriger** :
+- Bundle initial trop lourd : tous les modules (Classe, VoiceLab, IA, Translator, Dictionary…) chargés en une fois
+- Images non optimisées et non lazy-loadées
+- Re-renders inutiles dans le feed social et Voice Lab
+- AudioContext de Voice Lab parfois non libéré
 
-```ts
-audio: {
-  channelCount: 1,                  // Mono (standard ASR)
-  sampleRate: 16000,                // 16 kHz (standard Whisper/Wav2Vec2)
-  echoCancellation: true,           // Annule l'écho
-  noiseSuppression: true,           // Supprime bruit de fond
-  autoGainControl: true,            // Normalise volume
-  // Constraintes avancées Chrome/Edge
-  googHighpassFilter: true,
-  googTypingNoiseDetection: true,
-  googAudioMirroring: false,
-}
-```
+**Actions** :
+1. **Code-splitting par route** dans `src/App.tsx` : remplacer les imports statiques des pages lourdes par `React.lazy()` + `<Suspense>` avec un fallback skeleton
+   - Routes ciblées : `/fitila/voice-lab`, `/fitila/classe`, `/fitila/tem-ia`, `/fitila/ia`, `/fitila/learn`, `/fitila/dictionary`, `/fitila/translator`, `/admin/*`
+2. **Optimisation images** : ajouter `loading="lazy"` et `decoding="async"` sur toutes les `<img>` non critiques (avatars feed, cartes leçons, thumbnails)
+3. **React Query** : étendre `staleTime: 5min` sur les hooks de listes statiques (catégories, leçons, dictionnaire) pour éviter les re-fetch
+4. **Mémoïsation** : `useMemo`/`useCallback` sur les listes filtrées du Voice Lab et du dictionnaire
+5. **Build Vite** : activer `manualChunks` pour séparer `react-vendor`, `supabase`, `framer-motion`, `lucide`
 
-**Nouveau pipeline AudioContext** :
-- Capture via `MediaStreamSource` → `AnalyserNode` (pour le VU-meter visuel)
-- `BiquadFilterNode` highpass à 80 Hz (élimine ronflements)
-- `DynamicsCompressorNode` léger (-24 dB threshold, ratio 3:1) pour égaliser le volume
-- Enregistrement parallèle via MediaRecorder (webm/opus 32 kbps mono)
+### B. Responsive design (mobile → desktop)
 
-**Détection silence/voix (VAD léger en RMS)** :
-- Calcul du niveau RMS toutes les 100 ms via l'`AnalyserNode`
-- Affichage temps réel : barre verte (voix détectée) / grise (silence)
-- Indicateur visuel "🎙️ Parlez maintenant" / "⚠️ Bruit détecté" / "🤫 Silence"
-- Trim automatique des silences > 500 ms en début/fin avant validation
+**Constat** : la plateforme est mobile-first mais sur tablette/desktop (>768px) le contenu reste collé en colonne étroite ou s'étire mal.
 
-## B. Conversion vers WAV PCM 16 kHz côté client
+**Actions** :
+1. **Conteneurs adaptatifs** : appliquer `max-w-md md:max-w-2xl lg:max-w-4xl mx-auto` sur les pages de contenu (pas sur le feed social qui doit rester étroit)
+2. **Grilles responsive** :
+   - Voice Lab catégories : `grid-cols-2 md:grid-cols-3 lg:grid-cols-4`
+   - Classe (leçons) : `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
+   - Dictionary : layout 2 colonnes ≥ md (liste à gauche, détail à droite)
+3. **Typographie fluide** : `text-base md:text-lg` sur titres, `text-sm md:text-base` sur corps de texte
+4. **Bottom-nav → Side-nav sur desktop** ≥ lg si pertinent (optionnel, à confirmer)
+5. **Spacing** : `p-4 md:p-6 lg:p-8` cohérent
 
-**Nouveau utilitaire `src/lib/audioToWav.ts`** :
-1. Décode le Blob webm/mp4 capturé via `OfflineAudioContext`
-2. Re-échantillonne à **16 kHz mono** (resampling linéaire interne d'`OfflineAudioContext`)
-3. Applique : highpass 80 Hz + noise gate doux (-50 dB) + normalisation peak à -3 dBFS
-4. Encode en **WAV PCM 16-bit** (format universel, compatible Whisper/Wav2Vec2/Praat)
+### C. Lisibilité & visibilité des nouveaux modules
 
-**Avantage** : on stocke directement du WAV en Storage → l'export admin n'a plus rien à convertir, c'est instantané.
+**Voice Lab, Classe, Fitila Tem IA** : aujourd'hui dans la grille `toolsItems` du drawer mais visuellement noyés.
 
-## C. UX réécoute haute qualité
+**Actions** :
+1. **Section "Nouveau" en tête du drawer** avec badges "✨ NEW" sur Voice Lab, Classe, Tem IA
+2. **Tuile d'accueil dédiée** sur `/fitila/social` (carte horizontale en haut du feed) qui présente les 3 nouveaux outils avec CTA direct
+3. **Contraste & tailles** :
+   - Augmenter taille emojis tuiles outils : `text-3xl → text-4xl`
+   - Labels en `font-bold text-base` au lieu de `font-semibold text-sm`
+   - Description visible en 2 lignes au lieu de tronquée
+4. **Header propre** sur les 3 modules avec hero gradient + titre FR/BA + emoji XL
 
-Dans `FitilaVoiceLab.tsx`, phase `recorded` :
-- Affiche **2 informations** : durée nette + pic dB (qualité)
-- Lecteur `<audio controls>` joue le WAV traité (la version finale, pas la brute)
-- Si la qualité est faible (RMS < seuil ou trop de silence) → bandeau jaune "⚠️ Audio faible, recommencez ?"
-- Bouton [🔁 Refaire] efface et retourne à `idle`
-- Bouton [✓ Valider & suivante] upload le WAV final
+### D. Cohérence UX globale
 
-## D. Export admin format prêt-entraînement
+1. **Skeleton loaders** unifiés (au lieu de spinners) sur toutes les pages async
+2. **Toast** système harmonisé (succès vert, erreur rouge, info bleu)
+3. **Empty states** illustrés (emoji XL + message + CTA) sur Voice Lab vide, Classe vide, etc.
+4. **Transitions de page** : `framer-motion` `fade+slide` léger entre routes (déjà présent partiellement)
 
-**Refonte `supabase/functions/voice-corpus-export/index.ts`** :
+## Fichiers modifiés (estimation)
 
-Structure du ZIP générée :
-```
-corpus_bariba_2026-04-19.zip
-├─ metadata.csv                ← format HuggingFace datasets
-├─ README.txt
-├─ wavs/
-│   ├─ salutations_a_kpuna_<id8>.wav
-│   ├─ salutations_a_kpuna_<id8>.txt    ← UTF-8, texte bariba seul
-│   ├─ marche_dwa_<id8>.wav
-│   ├─ marche_dwa_<id8>.txt
-│   └─ ...
-```
-
-**Format `metadata.csv`** (compatible HF Datasets / Common Voice) :
-```csv
-file_name,transcription,transcription_french,category,duration,user_id,recorded_at
-wavs/salutations_a_kpuna_d3f9.wav,"A kpuna n do ?","As-tu bien dormi ?",Salutations,2.8,<uid>,2026-04-15T...
-```
-
-**Logique** :
-1. Pour chaque recording, télécharger le fichier depuis Storage
-2. Si déjà WAV → écrire tel quel dans `wavs/`
-3. Si webm/mp4 (legacy avant la refonte) → convertir via FFmpeg WASM côté Deno OU marquer comme "legacy" et exclure
-4. Générer le `.txt` du même nom contenant uniquement `text_bariba`
-5. Nommage : `<category_slug>_<3_premiers_mots_slug>_<8_chars_id>.wav`
-
-**Filtres export** :
-- Par catégorie (déjà existant)
-- Par statut : `validated only` / `all`
-- Durée min/max (ex : 1s ≤ x ≤ 15s, recommandé pour Whisper)
-
-## E. Migrations & changements DB
-
-Aucune migration de schéma nécessaire. Optionnel :
-- Ajouter colonnes `peak_db numeric`, `rms_db numeric`, `processed boolean default false` dans `bariba_voice_recordings` pour traçabilité qualité
-- Stocker `mime_type='audio/wav'` désormais
-
-## Fichiers modifiés/créés
-
-**Créés** :
-- `src/lib/audioToWav.ts` — décodage + resampling 16k + encode WAV PCM 16-bit
-- `src/lib/audioVad.ts` — analyse RMS temps réel + trim silences
-
-**Modifiés** :
-- `src/hooks/useAudioRecorder.ts` — contraintes pro + AudioContext pipeline + VAD hooks
-- `src/pages/fitila/FitilaVoiceLab.tsx` — VU-meter, indicateur qualité, lecture du WAV traité
-- `src/hooks/useVoiceCorpus.ts` — upload du WAV traité, mime `audio/wav`, extension `.wav`
-- `supabase/functions/voice-corpus-export/index.ts` — génère paires `.wav` + `.txt`, nommage propre, CSV format HF
-- Migration optionnelle : ajout colonnes qualité
+- `src/App.tsx` — `React.lazy` + `<Suspense>` pour ~10 routes lourdes
+- `vite.config.ts` — `manualChunks` build optimisé
+- `src/pages/fitila/FitilaApp.tsx` — section "Nouveau" + tuiles agrandies dans le drawer
+- `src/pages/fitila/FitilaVoiceLab.tsx` — grille responsive + header hero
+- `src/pages/fitila/FitilaClasse.tsx` (ou équivalent) — grille responsive + header
+- `src/pages/fitila/FitilaTemIA.tsx` — header + responsive
+- `src/pages/fitila/FitilaSocial.tsx` — bandeau "Découvrez nos nouveaux outils"
+- `src/components/ui/skeleton.tsx` (utilisation) — appliqué dans loaders pages
+- `src/components/tamtam/KuaishouLayout.tsx` — `max-w` adaptatif
+- ~5-8 composants de listes — `loading="lazy"` images + memoïsation
 
 ## Garanties
 
-- **Audio propre** : echoCancel + noiseSuppress natifs + highpass 80Hz + compression douce
-- **Format universel** : WAV PCM 16 kHz mono 16-bit = standard absolu pour ASR (Whisper, Wav2Vec2, Praat, Audacity)
-- **Pas de double conversion** : conversion en WAV au moment de la capture, le serveur ne fait que zipper
-- **Prêt-entraînement** : structure `wavs/<id>.wav` + `wavs/<id>.txt` + `metadata.csv` directement utilisable par `datasets.load_dataset("audiofolder", data_dir=...)` de HuggingFace
-- **Qualité visible** : utilisateur voit le niveau de sa voix en direct et peut refaire si besoin
-- **Aucune dépendance externe** : tout fait avec Web Audio API native (gratuit, sans API)
+- **Pas de régression** : on ne change pas la logique métier, uniquement layout, lazy-loading et mémoïsation
+- **Mobile reste prioritaire** : tous les changements sont additifs (`md:` / `lg:` ne touchent pas le mobile)
+- **Bundle initial allégé** : objectif ~30-50% de réduction du JS initial (mesurable via build size)
+- **Visibilité immédiate** des nouveaux modules dès l'arrivée sur l'app
+
+## Hors-scope (à demander si besoin)
+
+- Refonte visuelle complète d'un module (juste lisibilité ici)
+- PWA/Capacitor (déjà configuré)
+- Optimisation backend / RLS / index DB (peut être un 2e passage)
 
