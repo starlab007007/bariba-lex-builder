@@ -20,6 +20,13 @@ export interface CorpusStats {
   remaining: number;
 }
 
+export interface CategoryInfo {
+  name: string;
+  count: number;
+  user_recorded: number;
+  remaining: number;
+}
+
 const QUEUE_REFILL_THRESHOLD = 5;
 const QUEUE_FETCH_SIZE = 30;
 
