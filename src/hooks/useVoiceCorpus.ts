@@ -173,7 +173,9 @@ export function useVoiceCorpus(category: string | 'all') {
       return false;
     }
 
-    const ext = blob.type.includes('mp4') ? 'mp4' : (blob.type.includes('webm') ? 'webm' : 'wav');
+    // We always store WAV PCM 16k mono — the .blob is already converted upstream.
+    const isWav = blob.type.includes('wav');
+    const ext = isWav ? 'wav' : (blob.type.includes('mp4') ? 'mp4' : (blob.type.includes('webm') ? 'webm' : 'wav'));
     const safeBaribaSlug = phrase.text_bariba
       .toLowerCase()
       .normalize('NFD')
@@ -188,7 +190,7 @@ export function useVoiceCorpus(category: string | 'all') {
       const { error: upErr } = await supabase.storage
         .from('bariba-voice-corpus')
         .upload(storagePath, blob, {
-          contentType: blob.type,
+          contentType: blob.type || 'audio/wav',
           upsert: false,
         });
       if (upErr) throw upErr;
@@ -201,8 +203,8 @@ export function useVoiceCorpus(category: string | 'all') {
           phrase_id: phrase.id,
           storage_path: storagePath,
           file_name: fileName,
-          duration_seconds: durationSec,
-          mime_type: blob.type,
+          duration_seconds: Math.round(durationSec),
+          mime_type: blob.type || 'audio/wav',
           file_size_bytes: blob.size,
         });
 
