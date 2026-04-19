@@ -250,6 +250,25 @@ export default function AdminDashboard() {
           <TabsContent value="dictionary"><TabErrorBoundary tabName="dictionary"><DictionaryManager /></TabErrorBoundary></TabsContent>
           <TabsContent value="dictionary-advanced"><TabErrorBoundary tabName="dictionary-advanced"><AdvancedDictionaryManager /></TabErrorBoundary></TabsContent>
           <TabsContent value="idioms"><TabErrorBoundary tabName="idioms"><IdiomManager /></TabErrorBoundary></TabsContent>
+          <TabsContent value="voice-corpus">
+            <TabErrorBoundary tabName="voice-corpus">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-card border rounded-lg p-4">
+                  <div>
+                    <h2 className="text-lg font-bold flex items-center gap-2"><Mic className="w-5 h-5 text-primary" /> Corpus Voix Bariba</h2>
+                    <p className="text-sm text-muted-foreground">Écouter, valider, télécharger les enregistrements collectés via le Voice Lab.</p>
+                  </div>
+                  <Link
+                    to="/admin/voice-corpus"
+                    className="inline-flex items-center gap-2 text-sm rounded-md bg-primary text-primary-foreground px-3 py-2 hover:opacity-90"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Stats & Export ZIP complet
+                  </Link>
+                </div>
+                <VoiceRecordingsBrowser />
+              </div>
+            </TabErrorBoundary>
+          </TabsContent>
           
           <TabsContent value="quality"><TabErrorBoundary tabName="quality"><QualityMetricsDashboard /></TabErrorBoundary></TabsContent>
           <TabsContent value="diagnostic"><TabErrorBoundary tabName="diagnostic"><TranslationDiagnosticDashboard /></TabErrorBoundary></TabsContent>
