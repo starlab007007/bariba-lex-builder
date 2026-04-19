@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Mic, Square, Check, SkipForward, Loader2, Sparkles,
-  RotateCcw, Pause, Play, X,
+  RotateCcw, Pause, Play, X, AlertTriangle,
 } from 'lucide-react';
 import { useVoiceCorpus } from '@/hooks/useVoiceCorpus';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { blobToWav16kMono, type WavConversionResult } from '@/lib/audioToWav';
+import { createVadAnalyser, type VadStats } from '@/lib/audioVad';
 
 // ─────────────────────── Category metadata ────────────────────────
 const CATEGORY_META: Record<string, { emoji: string; gradient: string; macro: string }> = {
@@ -86,7 +88,7 @@ export default function FitilaVoiceLab() {
   const {
     isRecording, isPaused, duration,
     startRecording, stopRecording, pauseRecording, resumeRecording,
-    audioBlob, audioUrl, cancelRecording,
+    audioBlob, cancelRecording, getStream,
   } = useAudioRecorder();
 
   const [phase, setPhase] = useState<Phase>('idle');
@@ -94,12 +96,36 @@ export default function FitilaVoiceLab() {
   const [showFrench, setShowFrench] = useState(true);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
+  // Live VU-meter state (during recording)
+  const [vad, setVad] = useState<VadStats>({ rms: 0, db: -Infinity, level01: 0, isVoice: false, isClipping: false });
+  const vadRef = useRef<ReturnType<typeof createVadAnalyser> | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  // Processed WAV result (after stop) — what the user listens to and what gets uploaded
+  const [processed, setProcessed] = useState<WavConversionResult | null>(null);
+  const [processedUrl, setProcessedUrl] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+
   // Stable ref for cleanup so we don't re-trigger on every render
   const cancelRef = useRef(cancelRecording);
   useEffect(() => { cancelRef.current = cancelRecording; }, [cancelRecording]);
 
   const current = queue[0];
   const upcoming = queue.slice(1, 4);
+
+  // Cleanup VAD analyser
+  const tearDownVad = () => {
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (vadRef.current) { vadRef.current.destroy(); vadRef.current = null; }
+  };
+  // Cleanup processed URL when replaced/unmounted
+  useEffect(() => {
+    return () => {
+      if (processedUrl) URL.revokeObjectURL(processedUrl);
+      tearDownVad();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Auth guard
   useEffect(() => {
@@ -132,12 +158,26 @@ export default function FitilaVoiceLab() {
   const handleStart = async () => {
     if (!current) return;
     setRecordedDuration(0);
+    // Clear any previous WAV
+    if (processedUrl) URL.revokeObjectURL(processedUrl);
+    setProcessed(null);
+    setProcessedUrl(null);
     setPhase('recording');
     const stream = await startRecording();
     if (!stream) {
       setPhase('idle');
       toast.error("Impossible d'accéder au microphone. Vérifiez les autorisations du navigateur.");
+      return;
     }
+    // Wire up VAD/VU-meter
+    tearDownVad();
+    const v = createVadAnalyser(stream);
+    vadRef.current = v;
+    const tick = () => {
+      setVad(v.getLevel());
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    tick();
   };
 
   const handlePause = () => {
@@ -153,34 +193,46 @@ export default function FitilaVoiceLab() {
   const handleStop = async () => {
     const dur = duration;
     setRecordedDuration(dur);
-    await stopRecording(); // resolves only after chunks are flushed and state is updated
+    await stopRecording();        // flushes chunks → audioBlob in hook state
+    tearDownVad();
     setPhase('recorded');
+    // Conversion to WAV happens in an effect below as soon as audioBlob is ready.
   };
 
   const handleCancel = () => {
     cancelRecording();
+    tearDownVad();
+    if (processedUrl) URL.revokeObjectURL(processedUrl);
+    setProcessed(null);
+    setProcessedUrl(null);
     setRecordedDuration(0);
     setPhase('idle');
   };
 
   const handleRetake = () => {
     cancelRecording();
+    tearDownVad();
+    if (processedUrl) URL.revokeObjectURL(processedUrl);
+    setProcessed(null);
+    setProcessedUrl(null);
     setRecordedDuration(0);
     setPhase('idle');
   };
 
   const handleValidate = async () => {
     if (!current) return;
-    if (!audioBlob || audioBlob.size === 0) {
-      toast.error("Enregistrement vide. Veuillez recommencer.");
-      setPhase('idle');
+    if (!processed || !processed.blob || processed.blob.size === 0) {
+      toast.error("Audio non prêt. Veuillez patienter ou recommencer.");
       return;
     }
     setPhase('submitting');
-    const ok = await submitRecording(current, audioBlob, recordedDuration);
+    const ok = await submitRecording(current, processed.blob, processed.durationSec);
     if (ok) {
       toast.success('🎉 Enregistrement validé, merci !');
       cancelRecording();
+      if (processedUrl) URL.revokeObjectURL(processedUrl);
+      setProcessed(null);
+      setProcessedUrl(null);
       setRecordedDuration(0);
       advance();
       setPhase('idle');
@@ -191,10 +243,38 @@ export default function FitilaVoiceLab() {
 
   const handleSkip = () => {
     cancelRecording();
+    tearDownVad();
+    if (processedUrl) URL.revokeObjectURL(processedUrl);
+    setProcessed(null);
+    setProcessedUrl(null);
     setRecordedDuration(0);
     setPhase('idle');
     advance();
   };
+
+  // ─── Auto-convert raw audioBlob to WAV PCM 16k as soon as it's available
+  useEffect(() => {
+    if (phase !== 'recorded') return;
+    if (!audioBlob || audioBlob.size === 0) return;
+    if (processed) return;
+    let cancelled = false;
+    setProcessing(true);
+    (async () => {
+      try {
+        const result = await blobToWav16kMono(audioBlob);
+        if (cancelled) return;
+        const url = URL.createObjectURL(result.blob);
+        setProcessed(result);
+        setProcessedUrl(url);
+      } catch (e) {
+        console.error('[VoiceLab] WAV conversion failed:', e);
+        toast.error("Impossible de traiter l'audio. Recommencez s'il vous plaît.");
+      } finally {
+        if (!cancelled) setProcessing(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [phase, audioBlob, processed]);
 
   const formatTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -377,17 +457,61 @@ export default function FitilaVoiceLab() {
                 )}
               </div>
 
-              {/* Wave visual when recording/paused */}
+              {/* Live VU-meter + voice activity indicator while recording */}
               {(phase === 'recording' || phase === 'paused') && (
-                <div className="px-6 pb-2">
+                <div className="px-6 pb-2 space-y-2">
                   <WaveBars active={phase === 'recording'} />
+                  {/* VU bar */}
+                  <div className="relative h-2 rounded-full bg-gray-200 overflow-hidden">
+                    <div
+                      className={`h-full transition-[width] duration-75 ${
+                        vad.isClipping ? 'bg-red-500' : vad.isVoice ? 'bg-emerald-500' : 'bg-gray-400'
+                      }`}
+                      style={{ width: `${Math.round(vad.level01 * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-[11px] font-semibold">
+                    {phase === 'paused' ? (
+                      <span className="text-amber-600">⏸ En pause — reprenez quand vous voulez</span>
+                    ) : vad.isClipping ? (
+                      <span className="text-red-600 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Trop fort, éloignez-vous du micro</span>
+                    ) : vad.isVoice ? (
+                      <span className="text-emerald-600">🎙️ Voix bien détectée</span>
+                    ) : (
+                      <span className="text-gray-500">🤫 Silence — parlez plus fort</span>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Audio player when recorded */}
-              {phase === 'recorded' && audioUrl && (
-                <div className="px-6 pb-2">
-                  <audio ref={audioPlayerRef} src={audioUrl} controls className="w-full" />
+              {/* Audio player & quality info when recorded (uses processed WAV) */}
+              {phase === 'recorded' && (
+                <div className="px-6 pb-2 space-y-2">
+                  {processing && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500 py-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Traitement audio (nettoyage, normalisation)…
+                    </div>
+                  )}
+                  {processedUrl && processed && (
+                    <>
+                      <audio ref={audioPlayerRef} src={processedUrl} controls className="w-full" />
+                      <div className="flex items-center justify-center gap-3 text-[11px] text-gray-500 font-semibold">
+                        <span>⏱ {processed.durationSec.toFixed(1)}s</span>
+                        <span>·</span>
+                        <span>📊 Pic {isFinite(processed.peakDb) ? processed.peakDb.toFixed(1) : '–'} dB</span>
+                        <span>·</span>
+                        <span>🎚 Moy {isFinite(processed.rmsDb) ? processed.rmsDb.toFixed(1) : '–'} dB</span>
+                        <span>·</span>
+                        <span>WAV 16 kHz</span>
+                      </div>
+                      {(!isFinite(processed.rmsDb) || processed.rmsDb < -40) && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-800 flex items-center gap-2">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Audio très faible — recommencez plus près du micro pour un meilleur résultat.
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 
@@ -480,7 +604,8 @@ export default function FitilaVoiceLab() {
                     <motion.button
                       whileTap={{ scale: 0.95 }}
                       onClick={handleValidate}
-                      className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/30"
+                      disabled={processing || !processed}
+                      className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Check className="w-4 h-4" /> Valider & suivante
                     </motion.button>
