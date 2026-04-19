@@ -133,9 +133,13 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
     }
 
     return new Promise((resolve) => {
-      if (mediaRecorderRef.current && state.isRecording) {
-        // Set up handler to get audio when recording stops
-        mediaRecorderRef.current.onstop = async () => {
+      const recorder = mediaRecorderRef.current;
+      if (recorder && (recorder.state === 'recording' || recorder.state === 'paused')) {
+        // Request final chunk before stopping
+        try { recorder.requestData(); } catch (_) { /* not all browsers support */ }
+
+        // Override onstop to do BOTH: update state (audioBlob/audioUrl) AND resolve base64
+        recorder.onstop = async () => {
           if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
@@ -143,26 +147,41 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
 
           if (chunksRef.current.length > 0) {
             const blob = new Blob(chunksRef.current, { type: getAudioBlobType() });
+            const url = URL.createObjectURL(blob);
             console.log('[useAudioRecorder] Created blob:', blob.size, 'bytes from', chunksRef.current.length, 'chunks');
+            // CRITICAL: update state so audioBlob is available for the consumer
+            setState(prev => ({
+              ...prev,
+              isRecording: false,
+              isPaused: false,
+              audioBlob: blob,
+              audioUrl: url,
+            }));
             const base64 = await blobToBase64(blob);
             console.log('[useAudioRecorder] Base64 length:', base64.length);
             resolve(base64);
           } else {
             console.warn('[useAudioRecorder] No chunks available');
+            setState(prev => ({ ...prev, isRecording: false, isPaused: false }));
             resolve(null);
           }
         };
 
-        mediaRecorderRef.current.stop();
+        // If paused, must resume briefly so stop() flushes data on some browsers
+        if (recorder.state === 'paused') {
+          try { recorder.resume(); } catch (_) {}
+        }
+        recorder.stop();
       } else {
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
           streamRef.current = null;
         }
+        setState(prev => ({ ...prev, isRecording: false, isPaused: false }));
         resolve(null);
       }
     });
-  }, [state.isRecording]);
+  }, []);
 
   const pauseRecording = useCallback(() => {
     if (mediaRecorderRef.current && state.isRecording && !state.isPaused) {
