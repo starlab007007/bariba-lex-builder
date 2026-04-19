@@ -1,47 +1,102 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Mic, Square, Play, Check, SkipForward, Loader2, Sparkles, Volume2, RotateCcw } from 'lucide-react';
-import { useVoiceCorpus, type CorpusPhrase } from '@/hooks/useVoiceCorpus';
+import {
+  ArrowLeft, Mic, Square, Check, SkipForward, Loader2, Sparkles,
+  RotateCcw, Pause, Play, X,
+} from 'lucide-react';
+import { useVoiceCorpus } from '@/hooks/useVoiceCorpus';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-const CATEGORY_COLORS: Record<string, string> = {
-  'Salutations et politesse': 'from-pink-500 to-rose-400',
-  'Famille et relations': 'from-purple-500 to-indigo-400',
-  'Nourriture et boissons': 'from-orange-500 to-amber-400',
-  'Santé et corps': 'from-red-500 to-pink-400',
-  'Commerce et argent': 'from-emerald-500 to-teal-400',
-  'Transport et direction': 'from-blue-500 to-cyan-400',
-  'Temps et dates': 'from-yellow-500 to-amber-400',
-  'Émotions et sentiments': 'from-pink-500 to-purple-400',
-  'Travail et métiers': 'from-slate-500 to-gray-400',
-  'Éducation et école': 'from-indigo-500 to-blue-400',
-  'Éducation/Manuel N1': 'from-amber-500 to-orange-400',
-  'Éducation/Manuel N2': 'from-amber-600 to-orange-500',
-  'Loi (Foncier)': 'from-teal-500 to-emerald-400',
-  'Idiomes': 'from-fuchsia-500 to-pink-400',
-  'Autres': 'from-gray-500 to-slate-400',
+// ─────────────────────── Category metadata ────────────────────────
+const CATEGORY_META: Record<string, { emoji: string; gradient: string; macro: string }> = {
+  // Quotidien
+  'Salutations et politesse':   { emoji: '👋', gradient: 'from-pink-500 to-rose-400',    macro: 'Quotidien' },
+  'Famille et relations':       { emoji: '👨‍👩‍👧', gradient: 'from-purple-500 to-indigo-400', macro: 'Quotidien' },
+  'Nourriture et boissons':     { emoji: '🍲', gradient: 'from-orange-500 to-amber-400', macro: 'Quotidien' },
+  'Maison & Vie quotidienne':   { emoji: '🏠', gradient: 'from-amber-500 to-yellow-400', macro: 'Quotidien' },
+  'Temps et dates':             { emoji: '🕒', gradient: 'from-yellow-500 to-amber-400', macro: 'Quotidien' },
+  'Émotions et sentiments':     { emoji: '💗', gradient: 'from-pink-500 to-purple-400',  macro: 'Quotidien' },
+  // Apprendre
+  'Éducation et école':         { emoji: '📚', gradient: 'from-indigo-500 to-blue-400',  macro: 'Apprendre' },
+  'Éducation/Manuel N1':        { emoji: '📘', gradient: 'from-amber-500 to-orange-400', macro: 'Apprendre' },
+  'Éducation/Manuel N2':        { emoji: '📕', gradient: 'from-amber-600 to-orange-500', macro: 'Apprendre' },
+  // Société
+  'Santé et corps':             { emoji: '🏥', gradient: 'from-red-500 to-pink-400',     macro: 'Société' },
+  'Marché & Achat':             { emoji: '🛒', gradient: 'from-emerald-500 to-teal-400', macro: 'Société' },
+  'Commerce et argent':         { emoji: '💰', gradient: 'from-emerald-600 to-green-500',macro: 'Société' },
+  'Travail et métiers':         { emoji: '💼', gradient: 'from-slate-500 to-gray-400',   macro: 'Société' },
+  'Voyage & Déplacement':       { emoji: '✈️', gradient: 'from-sky-500 to-blue-400',     macro: 'Société' },
+  'Transport et direction':     { emoji: '🚌', gradient: 'from-blue-500 to-cyan-400',    macro: 'Société' },
+  'Sport & Jeux':               { emoji: '⚽', gradient: 'from-lime-500 to-green-400',   macro: 'Société' },
+  'Loi (Foncier)':              { emoji: '⚖️', gradient: 'from-teal-500 to-emerald-400', macro: 'Société' },
+  // Nature
+  'Agriculture':                { emoji: '🌾', gradient: 'from-green-500 to-lime-400',   macro: 'Nature' },
+  'Animaux & Nature':           { emoji: '🐄', gradient: 'from-emerald-600 to-green-500',macro: 'Nature' },
+  'Météo & Saisons':            { emoji: '🌧️', gradient: 'from-cyan-500 to-blue-400',    macro: 'Nature' },
+  // Culture
+  'Religion & Tradition':       { emoji: '🕌', gradient: 'from-violet-500 to-purple-400',macro: 'Culture' },
+  'Idiomes':                    { emoji: '🎭', gradient: 'from-fuchsia-500 to-pink-400', macro: 'Culture' },
+  // Fallback
+  'Autres':                     { emoji: '✨', gradient: 'from-gray-500 to-slate-400',   macro: 'Autres' },
 };
 
-const colorFor = (cat: string) => CATEGORY_COLORS[cat] || 'from-pink-500 to-rose-400';
+const MACRO_THEMES = [
+  { key: 'all',        label: 'Tous',      emoji: '✨' },
+  { key: 'Quotidien',  label: 'Quotidien', emoji: '📅' },
+  { key: 'Apprendre',  label: 'Apprendre', emoji: '🎓' },
+  { key: 'Société',    label: 'Société',   emoji: '⚖️' },
+  { key: 'Nature',     label: 'Nature',    emoji: '🌍' },
+  { key: 'Culture',    label: 'Culture',   emoji: '🎭' },
+];
 
+const metaFor = (cat: string) =>
+  CATEGORY_META[cat] || { emoji: '✨', gradient: 'from-pink-500 to-rose-400', macro: 'Autres' };
+
+// ─────────────────────── Recording phase type ────────────────────────
+type Phase = 'idle' | 'recording' | 'paused' | 'recorded' | 'submitting';
+
+// ─────────────────────── Animated wave bars ────────────────────────
+function WaveBars({ active }: { active: boolean }) {
+  return (
+    <div className="flex items-end justify-center gap-1.5 h-12">
+      {[0, 1, 2, 3, 4].map(i => (
+        <motion.span
+          key={i}
+          className="w-2 rounded-full bg-gradient-to-t from-rose-500 to-pink-400"
+          animate={active ? { height: ['20%', '90%', '40%', '100%', '30%'] } : { height: '15%' }}
+          transition={active ? { duration: 0.8 + i * 0.1, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────── Main page ────────────────────────
 export default function FitilaVoiceLab() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const [macro, setMacro] = useState<string>('all');
   const [category, setCategory] = useState<string | 'all'>('all');
   const { queue, categories, stats, loading, advance, submitRecording } = useVoiceCorpus(category);
-  const { isRecording, duration, startRecording, stopRecording, audioBlob, audioUrl, cancelRecording } = useAudioRecorder();
-  const [submitting, setSubmitting] = useState(false);
-  const [showFrench, setShowFrench] = useState(true);
+  const {
+    isRecording, isPaused, duration,
+    startRecording, stopRecording, pauseRecording, resumeRecording,
+    audioBlob, audioUrl, cancelRecording,
+  } = useAudioRecorder();
+
+  const [phase, setPhase] = useState<Phase>('idle');
   const [recordedDuration, setRecordedDuration] = useState(0);
+  const [showFrench, setShowFrench] = useState(true);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   const current = queue[0];
   const upcoming = queue.slice(1, 4);
 
-  // Redirect if not logged in
+  // ─── Auth guard
   useEffect(() => {
     if (user === null) {
       toast.error('Connectez-vous pour contribuer');
@@ -49,51 +104,85 @@ export default function FitilaVoiceLab() {
     }
   }, [user, navigate]);
 
+  // ─── Cleanup on unmount
+  useEffect(() => () => cancelRecording(), [cancelRecording]);
+
+  // ─── Phrases under selected macro
+  const filteredCategories = useMemo(() => {
+    if (macro === 'all') return categories;
+    return categories.filter(c => metaFor(c.name).macro === macro);
+  }, [macro, categories]);
+
+  // ─── Reset category if macro hides current selection
+  useEffect(() => {
+    if (category === 'all') return;
+    if (macro === 'all') return;
+    const stillVisible = filteredCategories.some(c => c.name === category);
+    if (!stillVisible) setCategory('all');
+  }, [macro, category, filteredCategories]);
+
+  // ─── Recording controls
   const handleStart = async () => {
     if (!current) return;
     cancelRecording();
-    await startRecording();
+    setRecordedDuration(0);
+    setPhase('recording');
+    const stream = await startRecording();
+    if (!stream) setPhase('idle');
+  };
+
+  const handlePause = () => {
+    pauseRecording();
+    setPhase('paused');
+  };
+
+  const handleResume = () => {
+    resumeRecording();
+    setPhase('recording');
   };
 
   const handleStop = async () => {
     setRecordedDuration(duration);
     await stopRecording();
+    setPhase('recorded');
   };
 
-  const handleListen = () => {
-    if (audioPlayerRef.current && audioUrl) {
-      audioPlayerRef.current.play();
-    }
+  const handleCancel = () => {
+    cancelRecording();
+    setRecordedDuration(0);
+    setPhase('idle');
   };
 
   const handleRetake = () => {
     cancelRecording();
     setRecordedDuration(0);
+    setPhase('idle');
   };
 
   const handleValidate = async () => {
     if (!current || !audioBlob) return;
-    setSubmitting(true);
+    setPhase('submitting');
     const ok = await submitRecording(current, audioBlob, recordedDuration);
     if (ok) {
-      toast.success('🎉 Enregistrement validé !');
+      toast.success('🎉 Enregistrement validé, merci !');
       cancelRecording();
       setRecordedDuration(0);
       advance();
+      setPhase('idle');
+    } else {
+      setPhase('recorded');
     }
-    setSubmitting(false);
   };
 
   const handleSkip = () => {
     cancelRecording();
     setRecordedDuration(0);
+    setPhase('idle');
     advance();
   };
 
-  // Cleanup recording on unmount
-  useEffect(() => () => cancelRecording(), [cancelRecording]);
-
-  const hasRecording = !!audioBlob && !isRecording;
+  const formatTime = (s: number) =>
+    `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-rose-50 via-pink-50 to-amber-50 overflow-y-auto">
@@ -121,40 +210,75 @@ export default function FitilaVoiceLab() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-        {/* Category selector */}
-        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-white/80">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 block">
-            Thème
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setCategory('all')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                category === 'all'
-                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md'
-                  : 'bg-white/80 text-gray-700 hover:bg-white'
-              }`}
-            >
-              ✨ Tous mélangés
-            </button>
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`px-3 py-2 rounded-full text-xs font-medium transition-all ${
-                  category === cat
-                    ? `bg-gradient-to-r ${colorFor(cat)} text-white shadow-md`
-                    : 'bg-white/80 text-gray-700 hover:bg-white'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+      <main className="max-w-3xl mx-auto px-4 py-5 space-y-5">
+        {/* ─── Two-level theme selector ─── */}
+        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-white/80 space-y-3">
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2 block">
+              Catégorie principale
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {MACRO_THEMES.map(m => (
+                <button
+                  key={m.key}
+                  onClick={() => { setMacro(m.key); if (m.key === 'all') setCategory('all'); }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    macro === m.key
+                      ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md'
+                      : 'bg-white text-gray-700 hover:bg-rose-50 border border-gray-200'
+                  }`}
+                >
+                  {m.emoji} {m.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {(filteredCategories.length > 0 || macro === 'all') && (
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2 block">
+                Thème précis
+              </label>
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                <button
+                  onClick={() => setCategory('all')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    category === 'all'
+                      ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md'
+                      : 'bg-white text-gray-700 hover:bg-rose-50 border border-gray-200'
+                  }`}
+                >
+                  ✨ Tous mélangés
+                </button>
+                {(macro === 'all' ? categories : filteredCategories).map(c => {
+                  const m = metaFor(c.name);
+                  const isActive = category === c.name;
+                  return (
+                    <button
+                      key={c.name}
+                      onClick={() => setCategory(c.name)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        isActive
+                          ? `bg-gradient-to-r ${m.gradient} text-white shadow-md`
+                          : 'bg-white text-gray-700 hover:bg-rose-50 border border-gray-200'
+                      }`}
+                    >
+                      <span>{m.emoji}</span>
+                      <span>{c.name}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                        isActive ? 'bg-white/25' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {c.remaining}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Main phrase card */}
+        {/* ─── Main phrase card ─── */}
         <AnimatePresence mode="wait">
           {current ? (
             <motion.div
@@ -165,20 +289,60 @@ export default function FitilaVoiceLab() {
               transition={{ duration: 0.3 }}
               className="bg-white rounded-3xl shadow-xl overflow-hidden border border-rose-100"
             >
-              {/* Category banner */}
-              <div className={`bg-gradient-to-r ${colorFor(current.category)} px-5 py-2 flex items-center justify-between`}>
-                <span className="text-white text-xs font-bold uppercase tracking-wider">
-                  {current.category}
-                </span>
-                <span className="text-white/80 text-[10px] font-medium">
-                  {current.word_count} mot{current.word_count > 1 ? 's' : ''} · {current.difficulty}
-                </span>
-              </div>
+              {/* Top status banner */}
+              {phase === 'recording' && (
+                <div className="bg-gradient-to-r from-red-500 to-rose-500 px-5 py-2.5 flex items-center justify-center gap-2 animate-pulse">
+                  <span className="w-2.5 h-2.5 bg-white rounded-full" />
+                  <span className="text-white font-bold text-sm tracking-wide">
+                    🔴 Enregistrement en cours · {formatTime(duration)}
+                  </span>
+                </div>
+              )}
+              {phase === 'paused' && (
+                <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 flex items-center justify-center gap-2">
+                  <Pause className="w-4 h-4 text-white" />
+                  <span className="text-white font-bold text-sm tracking-wide">
+                    En pause · {formatTime(duration)}
+                  </span>
+                </div>
+              )}
+              {phase === 'recorded' && (
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 flex items-center justify-center gap-2">
+                  <Check className="w-4 h-4 text-white" />
+                  <span className="text-white font-bold text-sm tracking-wide">
+                    Enregistré · {formatTime(recordedDuration)} · Écoutez avant de valider
+                  </span>
+                </div>
+              )}
+              {phase === 'submitting' && (
+                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-5 py-2.5 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 text-white animate-spin" />
+                  <span className="text-white font-bold text-sm tracking-wide">
+                    Envoi de votre voix…
+                  </span>
+                </div>
+              )}
 
-              {/* Phrase to read */}
+              {/* Category strip when idle */}
+              {phase === 'idle' && (
+                <div className={`bg-gradient-to-r ${metaFor(current.category).gradient} px-5 py-2 flex items-center justify-between`}>
+                  <span className="text-white text-xs font-bold uppercase tracking-wider">
+                    {metaFor(current.category).emoji} {current.category}
+                  </span>
+                  <span className="text-white/80 text-[10px] font-medium">
+                    {current.word_count} mot{current.word_count > 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+
+              {/* Phrase text */}
               <div className="p-6 md:p-8 text-center min-h-[180px] flex flex-col justify-center">
                 <p className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-3">
-                  Lisez à voix haute
+                  {phase === 'idle' && 'Lisez à voix haute'}
+                  {phase === 'recording' && '🎤 Lisez maintenant…'}
+                  {phase === 'paused' && '⏸ Reprenez quand vous voulez'}
+                  {phase === 'recorded' && '✓ Réécoutez votre lecture'}
+                  {phase === 'submitting' && 'Merci pour votre contribution'}
                 </p>
                 <p className="text-2xl md:text-3xl font-black text-gray-900 leading-snug" style={{ fontFamily: 'Georgia, serif' }}>
                   « {current.text_bariba} »
@@ -198,90 +362,126 @@ export default function FitilaVoiceLab() {
                 )}
               </div>
 
-              {/* Controls */}
-              <div className="px-6 pb-6 space-y-4">
-                {/* Recording state */}
-                {isRecording && (
-                  <div className="text-center">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 rounded-full border border-red-200">
-                      <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                      <span className="text-red-600 font-bold text-sm">
-                        Enregistrement : {duration}s
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Hidden audio player */}
-                {audioUrl && (
-                  <audio ref={audioPlayerRef} src={audioUrl} preload="auto" />
-                )}
-
-                {/* Main action button */}
-                <div className="flex items-center justify-center gap-3 flex-wrap">
-                  {!hasRecording && !isRecording && (
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleStart}
-                      className="w-20 h-20 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 shadow-lg shadow-rose-500/30 flex items-center justify-center hover:shadow-rose-500/50 transition-all"
-                    >
-                      <Mic className="w-8 h-8 text-white" />
-                    </motion.button>
-                  )}
-
-                  {isRecording && (
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      animate={{ scale: [1, 1.05, 1] }}
-                      transition={{ repeat: Infinity, duration: 1.2 }}
-                      onClick={handleStop}
-                      className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/40 flex items-center justify-center"
-                    >
-                      <Square className="w-8 h-8 text-white" fill="white" />
-                    </motion.button>
-                  )}
-
-                  {hasRecording && (
-                    <>
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleListen}
-                        className="px-5 py-3 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium text-sm flex items-center gap-2 transition-all"
-                      >
-                        <Volume2 className="w-4 h-4" />
-                        Écouter
-                      </motion.button>
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleRetake}
-                        className="px-5 py-3 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-700 font-medium text-sm flex items-center gap-2 transition-all"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                        Refaire
-                      </motion.button>
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        disabled={submitting}
-                        onClick={handleValidate}
-                        className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/30 disabled:opacity-50"
-                      >
-                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        {submitting ? 'Envoi…' : 'Valider'}
-                      </motion.button>
-                    </>
-                  )}
+              {/* Wave visual when recording/paused */}
+              {(phase === 'recording' || phase === 'paused') && (
+                <div className="px-6 pb-2">
+                  <WaveBars active={phase === 'recording'} />
                 </div>
+              )}
 
-                {/* Skip */}
-                {!isRecording && (
-                  <div className="text-center">
+              {/* Audio player when recorded */}
+              {phase === 'recorded' && audioUrl && (
+                <div className="px-6 pb-2">
+                  <audio ref={audioPlayerRef} src={audioUrl} controls className="w-full" />
+                </div>
+              )}
+
+              {/* ─── Action buttons by phase ─── */}
+              <div className="px-6 pb-6 pt-3 space-y-3">
+                {/* IDLE */}
+                {phase === 'idle' && (
+                  <div className="flex flex-col items-center gap-3">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.05 }}
+                      onClick={handleStart}
+                      className="group relative w-24 h-24 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 shadow-xl shadow-rose-500/40 flex items-center justify-center transition-all"
+                      aria-label="Commencer l'enregistrement"
+                    >
+                      <Mic className="w-10 h-10 text-white" />
+                      <span className="absolute inset-0 rounded-full bg-rose-400/30 group-hover:animate-ping" />
+                    </motion.button>
+                    <p className="text-sm font-bold text-gray-700">Commencer l'enregistrement</p>
                     <button
                       onClick={handleSkip}
-                      className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
+                      className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 mt-1"
                     >
                       <SkipForward className="w-3 h-3" />
                       Passer cette phrase
                     </button>
+                  </div>
+                )}
+
+                {/* RECORDING */}
+                {phase === 'recording' && (
+                  <div className="flex items-center justify-center gap-3 flex-wrap">
+                    <button
+                      onClick={handlePause}
+                      className="px-4 py-2.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold text-sm flex items-center gap-2 transition-all"
+                    >
+                      <Pause className="w-4 h-4" /> Pause
+                    </button>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      animate={{ scale: [1, 1.06, 1] }}
+                      transition={{ repeat: Infinity, duration: 1.4 }}
+                      onClick={handleStop}
+                      className="px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-red-500/40"
+                    >
+                      <Square className="w-4 h-4" fill="white" /> Terminer
+                    </motion.button>
+                    <button
+                      onClick={handleCancel}
+                      className="px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm flex items-center gap-2 transition-all"
+                    >
+                      <X className="w-4 h-4" /> Annuler
+                    </button>
+                  </div>
+                )}
+
+                {/* PAUSED */}
+                {phase === 'paused' && (
+                  <div className="flex items-center justify-center gap-3 flex-wrap">
+                    <button
+                      onClick={handleResume}
+                      className="px-5 py-2.5 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold text-sm flex items-center gap-2 transition-all"
+                    >
+                      <Play className="w-4 h-4" fill="currentColor" /> Reprendre
+                    </button>
+                    <button
+                      onClick={handleStop}
+                      className="px-5 py-2.5 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold text-sm flex items-center gap-2 shadow-md"
+                    >
+                      <Square className="w-4 h-4" fill="white" /> Terminer
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      className="px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm flex items-center gap-2 transition-all"
+                    >
+                      <X className="w-4 h-4" /> Annuler
+                    </button>
+                  </div>
+                )}
+
+                {/* RECORDED */}
+                {phase === 'recorded' && (
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <button
+                      onClick={handleRetake}
+                      className="px-4 py-2.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold text-sm flex items-center gap-2 transition-all"
+                    >
+                      <RotateCcw className="w-4 h-4" /> Refaire
+                    </button>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleValidate}
+                      className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/30"
+                    >
+                      <Check className="w-4 h-4" /> Valider & suivante
+                    </motion.button>
+                    <button
+                      onClick={handleSkip}
+                      className="px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium text-sm flex items-center gap-2 transition-all"
+                    >
+                      <SkipForward className="w-4 h-4" /> Passer
+                    </button>
+                  </div>
+                )}
+
+                {/* SUBMITTING */}
+                {phase === 'submitting' && (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />
                   </div>
                 )}
               </div>
@@ -305,7 +505,7 @@ export default function FitilaVoiceLab() {
         </AnimatePresence>
 
         {/* Upcoming preview */}
-        {upcoming.length > 0 && (
+        {upcoming.length > 0 && phase === 'idle' && (
           <div className="bg-white/60 backdrop-blur-md rounded-2xl p-4 border border-white/80">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
               File d'attente ({queue.length} phrases)
