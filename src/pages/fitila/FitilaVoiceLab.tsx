@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Mic, Square, Check, SkipForward, Loader2, Sparkles,
-  RotateCcw, Pause, Play, X,
+  RotateCcw, Pause, Play, X, AlertTriangle,
 } from 'lucide-react';
 import { useVoiceCorpus } from '@/hooks/useVoiceCorpus';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { blobToWav16kMono, type WavConversionResult } from '@/lib/audioToWav';
+import { createVadAnalyser, type VadStats } from '@/lib/audioVad';
 
 // ─────────────────────── Category metadata ────────────────────────
 const CATEGORY_META: Record<string, { emoji: string; gradient: string; macro: string }> = {
