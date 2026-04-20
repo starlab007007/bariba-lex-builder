@@ -1,104 +1,86 @@
 
 
-## Diagnostic
+# Plan — Corriger les 5 problèmes audio
 
-**Pourquoi les boutons 🔊 ne sont pas visibles dans la capture (onglet Faagi)** :
-- Dans `ClasseLessonView.tsx` les sections `observe/ecoute/reagis/retiens` rendent les questions via `<UniversalAnswerCard>` (le composant unifié)
-- Or **`UniversalAnswerCard.tsx` n'inclut PAS de `<ListenButton>`** — il affiche juste le texte de la question
-- Résultat : aucun bouton audio sur les questions des onglets Mɛɛrio / Faagi / Geruo / Weenɛ
-- Idem pour `ClasseGestionN2`, `ClasseCalculView` exercices, `ClasseGrammaireN2`, `ClasseTextProdN2` qui passent tous par `UniversalAnswerCard` pour les Q&A
+## Diagnostic (résumé)
 
-**Le bouton n'apparaît actuellement que** sur le texte principal de leçon, le titre d'évaluation et certains titres de calcul — pas sur les questions individuelles à cause du composant unifié.
+| # | Problème | Cause racine |
+|---|----------|--------------|
+| 1 | Audios élèves invisibles côté enseignant | `PendingGrading.tsx` & `StudentDetail.tsx` ne sélectionnent PAS `answer_audio_path` / `answer_audio_duration` dans la requête SQL |
+| 2 | Pas de corrigé vocal possible côté enseignant | En réalité `AnswerReview.tsx` a déjà le recorder, MAIS il s'enregistre dans `classe_answer_keys.teacher_audio_path` — pas relié à la réponse spécifique de l'élève. Il faut deux options : corrigé vocal **personnalisé** (par réponse) OU **général** (par question) |
+| 3 | Pas de bouton 🔊 dans la section **Sɔ̃ɔsiru** (phonétique) des leçons | `ClasseLessonView.tsx` rend les lignes `phonetics.reading` et `phonetics.writing` en simples `<p>` / `<span>` sans `<ListenButton>`. Le générateur de clés les couvre déjà (`phonetics/reading/{i}`, `phonetics/writing/{i}`) — il manque juste l'UI |
+| 4 | **Échec d'upload audio Alphabet** côté enseignant | La contrainte CHECK `module IN ('lang','calcul','eval','gestion','grammaire','textprod')` **n'inclut pas `'alphabet'`**. Toute INSERT alphabet est rejetée par Postgres |
+| 5 | Apprenant ne voit pas ses corrections vocales/audio dans **Mes corrections** | `ClasseCorrections.tsx` ne sélectionne pas `answer_audio_path`, `answer_audio_duration` côté élève, ni `teacher_audio_path` côté `classe_answer_keys` |
 
-## Plan d'implémentation
+## Implémentation
 
-### 1. Ajouter `<ListenButton>` au cœur de `UniversalAnswerCard`
+### A. Migration SQL (1 seule)
 
-Modifier `UniversalAnswerCard.tsx` pour calculer automatiquement le `content_key` à partir des props `level/module/lessonId/sectionKey/questionIdx` (mapping identique à `classeContentKeys.ts`) et afficher 🔊 à côté du label de question.
+```sql
+-- 1. Autoriser le module 'alphabet' (corrige bug upload Alphabet)
+ALTER TABLE classe_content_audios DROP CONSTRAINT classe_content_audios_module_check;
+ALTER TABLE classe_content_audios ADD CONSTRAINT classe_content_audios_module_check
+  CHECK (module IN ('lang','calcul','eval','gestion','grammaire','textprod','alphabet'));
 
-→ Couvre instantanément **toutes les questions** de :
-- Leçons N1 (observe/ecoute/reagis/retiens)
-- Évaluations N1 et N2
-- Calcul N1 et N2
-- Gestion N2 (Q&A)
-- Grammaire N2
-- Production de textes N2
-
-### 2. Ajouter une fonction `buildContentKey()` partagée
-
-Nouveau helper dans `src/lib/classeContentKeys.ts` :
-```ts
-export function buildContentKey(level, module, lessonId, sectionKey?, idx?): string
+-- 2. Ajouter le corrigé vocal personnalisé par réponse (en complément du général dans answer_keys)
+ALTER TABLE classe_student_answers
+  ADD COLUMN IF NOT EXISTS teacher_audio_path text,
+  ADD COLUMN IF NOT EXISTS teacher_audio_duration numeric;
 ```
-Utilisé par `UniversalAnswerCard` et le studio enseignant pour garantir la même clé que celle enregistrée par l'enseignant.
 
-### 3. Réponse vocale élève (voice answer) + corrigé vocal enseignant
+### B. Côté enseignant — Voir & corriger les vocaux élèves
 
-**A. Migration DB** — ajouter à `classe_student_answers` :
-- `answer_audio_path text` (chemin Storage)
-- `answer_audio_duration numeric`
+**`src/pages/teacher/PendingGrading.tsx`**
+- Ajouter `answer_audio_path, answer_audio_duration` dans le SELECT
+- (le rendu via `<AnswerReview>` affiche déjà le `<VoiceAnswerPlayer>` quand le path est présent)
 
-Ajouter à `classe_answer_keys` (déjà a `audio_url`) :
-- `teacher_audio_path text` (chemin Storage privé pour audio enseignant)
-- `teacher_audio_duration numeric`
+**`src/pages/teacher/StudentDetail.tsx`**
+- Ajouter `answer_audio_path, answer_audio_duration` dans le SELECT
 
-**B. Bucket Storage** — nouveau bucket privé `classe-answers-audio` avec RLS :
-- Élève : INSERT/SELECT/DELETE sur `{user_id}/...`
-- Enseignant/admin : SELECT tout
+**`src/components/teacher/AnswerReview.tsx`**
+- Ajouter un **2ᵉ enregistreur "Corrigé personnalisé pour cet élève"** qui upload vers `classe-answers-audio/teacher/{answer.id}.webm` et met à jour `classe_student_answers.teacher_audio_path` (en plus du corrigé général déjà présent dans `classe_answer_keys`)
+- Dans la zone correction, présenter clairement les 2 options : **✍️ Texte** + **🎙️ Vocal** (l'enseignant peut envoyer l'un, l'autre, ou les deux)
 
-**C. Composant `<VoiceAnswerRecorder>`** (nouveau)
-- Réutilise `useAudioRecorder` + `blobToWav16kMono` (déjà en place)
-- VU-meter, durée, bouton Stop, prévisualisation, "Envoyer ce vocal"
-- Upload vers `classe-answers-audio` puis upsert dans `classe_student_answers` (champ `answer_audio_path`)
+### C. Côté apprenant — Voir le corrigé vocal personnalisé
 
-**D. Intégration dans `UniversalAnswerCard`**
-- Toggle 2 modes : ✍️ Texte / 🎙️ Vocal
-- L'élève peut envoyer **uniquement texte, uniquement vocal, ou les deux**
-- Affichage en mode "submitted" : badges "📝 Réponse écrite" + "🎙️ Réponse vocale" + lecteur audio inline
+**`src/components/classe/UniversalAnswerCard.tsx`** (déjà fait pour le corrigé général)
+- Ajouter `teacher_audio_path, teacher_audio_duration` au SELECT et afficher un `<VoiceAnswerPlayer variant="teacher" label="Corrigé vocal de l'enseignant">` dans la zone feedback
 
-**E. Côté enseignant `<AnswerReview>`**
-- Affiche le lecteur audio de l'élève (signed URL)
-- Permet à l'enseignant de saisir son corrigé en texte ET/OU d'enregistrer un corrigé vocal (même `<VoiceAnswerRecorder>`)
-- Upload vers `classe-answers-audio/teacher/{key}.wav` → `teacher_audio_path` dans `classe_answer_keys`
+**`src/components/classe/ClasseCorrections.tsx`** (Mes corrections)
+- Ajouter dans le SELECT : `answer_audio_path, answer_audio_duration, teacher_audio_path, teacher_audio_duration`
+- Afficher pour chaque item :
+  - Lecteur de **ma réponse vocale** (si présente)
+  - Lecteur du **corrigé vocal de l'enseignant** (si présent)
+  - Conserver l'affichage texte existant (réponse, corrigé, note, commentaire)
 
-**F. Affichage du corrigé enseignant** (dans `UniversalAnswerCard` zone feedback)
-- Si `teacher_audio_path` existe → bouton "🎧 Écouter le corrigé du prof"
-- Si `teacher_comment` existe → texte affiché (déjà OK)
-- Les deux peuvent coexister
+### D. Bouton 🔊 dans la section Sɔ̃ɔsiru (phonétique)
 
-### 4. Mise à jour `syncAnswer`
+**`src/components/classe/ClasseLessonView.tsx`** (onglet `phonetics`)
+- Pour chaque ligne `phonetics.reading[i]` : ajouter `<ListenButton contentKey={\`classe/N1/lang/${lessonId}/phonetics/reading/${i}\`} />` à côté
+- Pour chaque mot `phonetics.writing[i]` : idem avec `phonetics/writing/${i}`
+- N1 uniquement (les phonetics N2 passent par `ClasseGrammaireN2` déjà couvert)
 
-Ajouter optionnellement `answerAudioPath` aux paramètres et le persister dans le upsert.
+### E. Récapitulatif fichiers
 
-## Fichiers à créer / modifier
-
-**Migration SQL**
-- `supabase/migrations/...` : 
-  - `ALTER TABLE classe_student_answers ADD COLUMN answer_audio_path text, answer_audio_duration numeric`
-  - `ALTER TABLE classe_answer_keys ADD COLUMN teacher_audio_path text, teacher_audio_duration numeric`
-  - Création bucket `classe-answers-audio` + RLS policies
-
-**Nouveaux composants**
-- `src/components/classe/VoiceAnswerRecorder.tsx` — enregistreur compact réutilisable
-- `src/components/classe/VoiceAnswerPlayer.tsx` — lecteur audio compact (signed URL)
+**Migration**
+- `supabase/migrations/...add_alphabet_module_and_personal_teacher_audio.sql`
 
 **Modifications**
-- `src/lib/classeContentKeys.ts` — export `buildContentKey()`
-- `src/components/classe/UniversalAnswerCard.tsx` — `<ListenButton>` sur la question + toggle texte/vocal + affichage réponse vocale + corrigé vocal enseignant
-- `src/components/teacher/AnswerReview.tsx` — lecteur audio élève + recorder pour corrigé vocal enseignant
-- `src/lib/classeSync.ts` — support `answerAudioPath` dans `syncAnswer`
-- `src/lib/answerKeys.ts` — exposer `teacher_audio_path` dans `AnswerKey`
+- `src/pages/teacher/PendingGrading.tsx` — SELECT enrichi
+- `src/pages/teacher/StudentDetail.tsx` — SELECT enrichi
+- `src/components/teacher/AnswerReview.tsx` — 2ᵉ recorder "corrigé personnalisé pour cet élève" + upsert sur `classe_student_answers`
+- `src/components/classe/UniversalAnswerCard.tsx` — SELECT + lecture corrigé vocal personnalisé
+- `src/components/classe/ClasseCorrections.tsx` — SELECT + lecteurs audio (réponse élève + corrigé enseignant)
+- `src/components/classe/ClasseLessonView.tsx` — `<ListenButton>` sur chaque ligne phonétique
 
 ## Garanties
 
-- **🔊 visible partout** automatiquement via `UniversalAnswerCard` (pas besoin de toucher aux pages individuelles)
-- **Double modalité réponse** : texte + vocal indépendants ou combinés des deux côtés (élève ET enseignant)
-- **Réutilise** intégralement le pipeline audio WAV 16kHz pro existant (pas de nouveau code audio)
-- **RLS strictes** : élève ne voit que ses audios, enseignant voit tout, public ne voit rien
-- **Compatibilité** : tous les anciens enregistrements texte continuent à fonctionner
+- ✅ Audios élèves immédiatement visibles dans `PendingGrading` et `StudentDetail`
+- ✅ Enseignant : double option (texte + vocal) avec corrigé vocal **personnalisé** par élève (en plus du corrigé général)
+- ✅ Section Sɔ̃ɔsiru : bouton 🔊 sur chaque ligne (lecture + écriture)
+- ✅ Upload Alphabet fonctionnel (constraint corrigée)
+- ✅ Mes corrections : élève entend sa propre réponse + le corrigé vocal de l'enseignant
 
 ## Hors scope
-
-- Transcription auto vocal → texte (peut être ajouté ensuite via Lovable AI Whisper)
-- Notation auto des réponses vocales
+- Transcription IA des vocaux (à demander explicitement plus tard)
 
