@@ -5,21 +5,24 @@ import BaribaSmartTextarea from './BaribaSmartTextarea';
 import StudentAnswerFeedback from './StudentAnswerFeedback';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { CLASSE_EVALUATIONS, saveEvaluationScore, getClasseProgress } from '@/data/classeContent';
+import { CLASSE_N2_EVALUATIONS, saveN2EvaluationScore, getClasseN2Progress } from '@/data/classeContentN2';
 import { syncEvaluation, syncAnswer } from '@/lib/classeSync';
 import ListenButton from '@/components/classe/ListenButton';
 
 interface Props {
   evalId: number;
+  level?: 'N1' | 'N2';
   onBack: () => void;
 }
 
-export default function ClasseEvaluation({ evalId, onBack }: Props) {
+export default function ClasseEvaluation({ evalId, level = 'N1', onBack }: Props) {
   const { currentLang } = useFitilaLanguage();
-  const evaluation = CLASSE_EVALUATIONS.find(e => e.id === evalId);
+  const pool = level === 'N2' ? CLASSE_N2_EVALUATIONS : CLASSE_EVALUATIONS;
+  const evaluation = pool.find(e => e.id === evalId);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
-  const progress = getClasseProgress();
+  const progress = level === 'N2' ? getClasseN2Progress() : getClasseProgress();
   const bestScore = progress.evaluationBest?.[evalId];
 
   if (!evaluation) return <p className="text-gray-400">Évaluation introuvable</p>;
@@ -30,11 +33,15 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
     const answered = Object.values(answers).filter(a => a.trim().length > 3).length;
     const pct = totalQuestions > 0 ? Math.round((answered / totalQuestions) * 100) : 0;
     setScore(pct);
-    saveEvaluationScore(evalId, pct);
-    void syncEvaluation('N1', String(evalId), pct);
+    if (level === 'N2') {
+      saveN2EvaluationScore(evalId, pct);
+    } else {
+      saveEvaluationScore(evalId, pct);
+    }
+    void syncEvaluation(level, String(evalId), pct);
     Object.entries(answers).forEach(([key, value]) => {
       const [si, qi] = key.split('_');
-      syncAnswer({ level: 'N1', module: 'evaluation', lessonId: String(evalId), sectionKey: si, questionIdx: Number(qi), answerText: value });
+      syncAnswer({ level, module: 'evaluation', lessonId: String(evalId), sectionKey: si, questionIdx: Number(qi), answerText: value });
     });
     setSubmitted(true);
   };
