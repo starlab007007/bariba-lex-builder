@@ -354,10 +354,19 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={handleComplete}
+          onClick={() => {
+            markTabComplete(lessonId, activeTab);
+            // Try to advance to next tab; only finish lesson when on the last tab
+            if (!goToNextTab()) {
+              handleComplete();
+            }
+          }}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold shadow-lg shadow-amber-200"
         >
-          <Check className="w-4 h-4" /> {currentLang === 'ba' ? 'Kobu kpa a sãa' : 'Terminer & Suivant'}
+          <Check className="w-4 h-4" />
+          {visibleTabs.findIndex(t => t.id === activeTab) < visibleTabs.length - 1
+            ? (currentLang === 'ba' ? 'Sãa' : 'Suivant')
+            : (currentLang === 'ba' ? 'Kobu kpa a sãa' : 'Terminer la leçon')}
           <ChevronRight className="w-4 h-4" />
         </motion.button>
       </div>
