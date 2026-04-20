@@ -11,6 +11,8 @@ export interface AnswerKey {
   accepted_answers: string[];
   explanation: string | null;
   audio_url: string | null;
+  teacher_audio_path: string | null;
+  teacher_audio_duration: number | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;

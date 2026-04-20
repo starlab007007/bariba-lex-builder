@@ -43,6 +43,8 @@ export function syncAnswer(params: {
   fieldData?: unknown;
   score?: number | null;
   maxScore?: number | null;
+  answerAudioPath?: string | null;
+  answerAudioDuration?: number | null;
 }) {
   if (!currentUserId) return;
   const key = `${params.level}|${params.module}|${params.lessonId}|${params.sectionKey ?? ''}|${params.questionIdx ?? 0}`;
@@ -63,6 +65,8 @@ export function syncAnswer(params: {
           field_data: params.fieldData as never,
           score: params.score ?? null,
           max_score: params.maxScore ?? null,
+          ...(params.answerAudioPath !== undefined ? { answer_audio_path: params.answerAudioPath } : {}),
+          ...(params.answerAudioDuration !== undefined ? { answer_audio_duration: params.answerAudioDuration } : {}),
           submitted_at: new Date().toISOString(),
         },
         { onConflict: 'user_id,level,module,lesson_id,section_key,question_idx' },
