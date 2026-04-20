@@ -52,7 +52,13 @@ export async function fetchAnswerKeysForLesson(level: string, module: string, le
   return (data ?? []) as AnswerKey[];
 }
 
-export async function upsertAnswerKey(input: Omit<AnswerKey, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'> & { id?: string }) {
+export async function upsertAnswerKey(
+  input: Omit<AnswerKey, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by' | 'teacher_audio_path' | 'teacher_audio_duration'> & {
+    id?: string;
+    teacher_audio_path?: string | null;
+    teacher_audio_duration?: number | null;
+  },
+) {
   const { data: { user } } = await supabase.auth.getUser();
   const payload = {
     ...input,
