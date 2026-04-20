@@ -180,6 +180,29 @@ export default function ClasseCorrections() {
               </div>
             )}
 
+            {it.answer_audio_path && (
+              <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold text-emerald-700">🎙️ MA RÉPONSE VOCALE</span>
+                <VoiceAnswerPlayer
+                  path={it.answer_audio_path}
+                  duration={it.answer_audio_duration ?? undefined}
+                  variant="student"
+                />
+              </div>
+            )}
+
+            {it.teacher_audio_path && (
+              <div className="p-2 rounded-lg bg-purple-50 border border-purple-100 flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold text-purple-700">🎧 CORRIGÉ VOCAL DE L'ENSEIGNANT</span>
+                <VoiceAnswerPlayer
+                  path={it.teacher_audio_path}
+                  duration={it.teacher_audio_duration ?? undefined}
+                  variant="teacher"
+                  label="Écouter le corrigé"
+                />
+              </div>
+            )}
+
             {key?.explanation && (
               <div className="p-2 rounded-lg bg-blue-50 border border-blue-100 text-xs text-blue-900">
                 💡 {key.explanation}
