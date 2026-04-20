@@ -48,6 +48,37 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
   const [deleting, setDeleting] = useState(false);
   const [teacherAudioPath, setTeacherAudioPath] = useState<string | null>(null);
   const [teacherAudioDuration, setTeacherAudioDuration] = useState<number | null>(null);
+  const [personalAudioPath, setPersonalAudioPath] = useState<string | null>(null);
+  const [personalAudioDuration, setPersonalAudioDuration] = useState<number | null>(null);
+
+  // Charge le corrigé vocal personnalisé existant pour cette réponse
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('classe_student_answers')
+        .select('teacher_audio_path, teacher_audio_duration')
+        .eq('id', answer.id)
+        .maybeSingle();
+      if (data?.teacher_audio_path) {
+        setPersonalAudioPath(data.teacher_audio_path);
+        setPersonalAudioDuration(data.teacher_audio_duration ?? null);
+      }
+    })();
+  }, [answer.id]);
+
+  const handlePersonalAudioUploaded = async (path: string, duration: number) => {
+    setPersonalAudioPath(path);
+    setPersonalAudioDuration(duration);
+    const { error } = await supabase
+      .from('classe_student_answers')
+      .update({ teacher_audio_path: path, teacher_audio_duration: duration })
+      .eq('id', answer.id);
+    if (error) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '🎙️ Corrigé vocal personnalisé envoyé à l\'élève' });
+    }
+  };
 
   // Load existing weight for this question
   useEffect(() => {
