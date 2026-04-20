@@ -78,21 +78,31 @@ export default function VoiceReadingStudio() {
   async function stopRec() {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     vadRef.current?.destroy(); vadRef.current = null; setVadLevel(null);
-    await recorder.stopRecording();
-    setTimeout(async () => {
-      const blob = recorder.audioBlob;
-      if (!blob) return;
-      setProcessing(true);
-      try {
-        const wav = await blobToWav16kMono(blob);
-        const quality = computeQualityScore({ peakDb: wav.peakDb, rmsDb: wav.rmsDb, durationSec: wav.durationSec, contentType: active.content_type });
-        setProcessedWav({ blob: wav.blob, url: URL.createObjectURL(wav.blob), duration: wav.durationSec, peakDb: wav.peakDb, rmsDb: wav.rmsDb, quality });
-      } catch (e: any) {
-        toast.error('Conversion WAV échouée: ' + (e?.message ?? 'erreur'));
-      } finally {
+    setProcessing(true);
+    try {
+      // stopRecording() resolves with base64 of the captured blob — guaranteed available
+      const base64 = await recorder.stopRecording();
+      if (!base64) {
         setProcessing(false);
+        toast.error('Aucun audio capturé. Réessayez.');
+        return;
       }
-    }, 200);
+      // Decode base64 → Blob using the browser's recorded MIME type
+      const byteChars = atob(base64);
+      const byteNums = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+      const recordedBlob = new Blob([byteNums], { type: 'audio/webm' });
+      const wav = await blobToWav16kMono(recordedBlob);
+      const quality = computeQualityScore({ peakDb: wav.peakDb, rmsDb: wav.rmsDb, durationSec: wav.durationSec, contentType: active.content_type });
+      const url = URL.createObjectURL(wav.blob);
+      console.log('[VoiceReadingStudio] WAV ready:', wav.blob.size, 'bytes,', wav.durationSec.toFixed(2), 's, peak', wav.peakDb.toFixed(1), 'dB');
+      setProcessedWav({ blob: wav.blob, url, duration: wav.durationSec, peakDb: wav.peakDb, rmsDb: wav.rmsDb, quality });
+    } catch (e: any) {
+      console.error('[VoiceReadingStudio] stopRec error:', e);
+      toast.error('Conversion WAV échouée: ' + (e?.message ?? 'erreur'));
+    } finally {
+      setProcessing(false);
+    }
   }
 
   async function save(status: 'draft' | 'submitted') {
