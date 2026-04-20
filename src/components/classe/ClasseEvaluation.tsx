@@ -153,7 +153,7 @@ export default function ClasseEvaluation({ evalId, level = 'N1', onBack }: Props
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-gray-800 font-black text-xl">{evaluation.title}</h2>
-              <ListenButton contentKey={`classe/N1/eval/${evalId}/title`} size="sm" />
+              <ListenButton contentKey={`classe/${level}/eval/${evalId}/title`} size="sm" />
             </div>
             <p className="text-purple-600 text-sm mt-1">
               {totalQuestions} {currentLang === 'ba' ? 'gari bikiabu' : 'questions'}
@@ -191,7 +191,7 @@ export default function ClasseEvaluation({ evalId, level = 'N1', onBack }: Props
               <div key={key} className="p-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
                 <div className="flex items-start gap-2 mb-2">
                   <p className="text-gray-800 text-sm font-medium flex-1">{qi + 1}. {q}</p>
-                  <ListenButton contentKey={`classe/N1/eval/${evalId}/${sec}/${qi}`} size="sm" />
+                  <ListenButton contentKey={`classe/${level}/eval/${evalId}/${sec}/${qi}`} size="sm" />
                 </div>
                 <BaribaSmartTextarea
                   className="bg-gray-50 border-gray-200 focus:border-purple-400"
