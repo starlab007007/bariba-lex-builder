@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Bookmark, Play, Pause, SkipBack, SkipForward, Plus, Clock, Mic, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
-import { usePageVisibility } from '@/hooks/usePageVisibility';
+import { useFeedAudioAutoStop } from '@/hooks/useFeedAudioAutoStop';
 
 interface DiskTemplate {
   id: string;
@@ -178,8 +178,9 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
   const [liveTranscript, setLiveTranscript] = useState('');
   const audioRef = useRef<HTMLAudioElement>(null);
   const recognitionRef = useRef<any>(null);
-  const isPageVisible = usePageVisibility();
-  const wasPlayingBeforeHide = useRef(false);
+
+  // Arrêt universel de l'audio (route, scroll, blur, hidden, pagehide) — pas de reprise auto
+  useFeedAudioAutoStop(audioRef, (v) => { setIsPlaying(v); if (!v) { try { recognitionRef.current?.stop(); } catch {} recognitionRef.current = null; } }, { resetTime: false });
 
   const template = getTemplateById(post.template_id, category);
   const hasAudio = post.audio_url && post.audio_url.trim().length > 0;
@@ -232,22 +233,6 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
       stopSpeechRec();
     }
   }, [isActive, isPlaying, stopSpeechRec]);
-
-  // Pause/resume on tab visibility change
-  useEffect(() => {
-    if (!audioRef.current || !isActive) return;
-    if (!isPageVisible) {
-      wasPlayingBeforeHide.current = isPlaying;
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-        stopSpeechRec();
-      }
-    } else if (wasPlayingBeforeHide.current) {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
-      wasPlayingBeforeHide.current = false;
-    }
-  }, [isPageVisible, isActive]);
 
   // Reset on post change
   useEffect(() => {

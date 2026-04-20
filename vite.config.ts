@@ -31,6 +31,16 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
+            // Audios pédagogiques (classe-audio) → CacheFirst, 100 entrées, 30 jours
+            urlPattern: /\/storage\/v1\/object\/sign\/classe-audio\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'classe-audio-cache',
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             urlPattern: /^https:\/\/.*\.hf\.space\/.*/i,
             handler: 'NetworkOnly',
           },

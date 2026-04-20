@@ -15,8 +15,9 @@ import { VideoFeedCard } from '@/components/feed/VideoFeedCard';
 
 import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
-import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
-import BranchingPlayer from '@/features/conte-vivant/components/BranchingPlayer';
+import { lazy, Suspense } from 'react';
+const FullscreenCreator = lazy(() => import('@/components/tamtam/FullscreenCreator'));
+const BranchingPlayer = lazy(() => import('@/features/conte-vivant/components/BranchingPlayer'));
 import type { StoryGraph } from '@/features/conte-vivant/types/story.types';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';

@@ -23,6 +23,19 @@ interface AggregateStats {
 
 const PAGE_SIZE = 30;
 const EXPLORATION_RATIO = 0.2; // 20% exploration
+const RESHUFFLE_INTERVAL_MS = 90_000; // re-rank every 90s
+const FRESH_BOOST_HOURS = 1;
+const FRESH_BOOST_POINTS = 25;
+const NOISE_AMPLITUDE = 8; // ± points (Thompson-style soft randomization)
+
+// Box-Muller gaussian noise (mean 0, std ~1) → scaled
+function gaussianNoise(amplitude: number): number {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  const n = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  return Math.max(-amplitude, Math.min(amplitude, n * amplitude * 0.5));
+}
 
 export function useAdaptiveFeed() {
   const [videos, setVideos] = useState<FeedVideo[]>([]);
@@ -118,6 +131,9 @@ export function useAdaptiveFeed() {
     const ageHours = (Date.now() - new Date(video.createdAt).getTime()) / (1000 * 60 * 60);
     const recency = Math.max(0, 1 - ageHours / (7 * 24));
 
+    // Freshness boost: < 1h published → +25 points
+    const freshBoost = ageHours < FRESH_BOOST_HOURS ? FRESH_BOOST_POINTS : 0;
+
     // Quick swipe penalty
     let swipePenalty = 0;
     if (stats?.avg_swipe_speed != null && stats.avg_swipe_speed < 2000) {
@@ -136,7 +152,9 @@ export function useAdaptiveFeed() {
       + (engagementNorm * 10)
       + (recency * 10)
       - swipePenalty
-      + catBoost;
+      + catBoost
+      + freshBoost
+      + gaussianNoise(NOISE_AMPLITUDE);
 
     return score;
   }, [categoryPrefs]);
@@ -174,6 +192,20 @@ export function useAdaptiveFeed() {
         result.push(exploitation[expIdx++]);
       } else if (explIdx < exploration.length) {
         result.push(exploration[explIdx++]);
+      }
+    }
+
+    // Diversité forcée : éviter 2 templates identiques consécutifs
+    for (let i = 1; i < result.length - 1; i++) {
+      const prevTpl = result[i - 1].templateId;
+      if (result[i].templateId && result[i].templateId === prevTpl) {
+        // chercher swap plus loin
+        for (let j = i + 1; j < result.length; j++) {
+          if (result[j].templateId !== prevTpl) {
+            [result[i], result[j]] = [result[j], result[i]];
+            break;
+          }
+        }
       }
     }
 
@@ -265,6 +297,63 @@ export function useAdaptiveFeed() {
   useEffect(() => {
     fetchVideos();
   }, [fetchVideos]);
+
+  // Re-shuffle périodique (toutes les 90s) — réordonne sans recharger
+  useEffect(() => {
+    const id = setInterval(() => {
+      setVideos(prev => {
+        if (prev.length <= 2) return prev;
+        // Garder les 2 premières (l'utilisateur peut être dessus) + reshuffle le reste
+        const head = prev.slice(0, 2);
+        const tail = rankVideos(prev.slice(2));
+        return [...head, ...tail];
+      });
+    }, RESHUFFLE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [rankVideos]);
+
+  // Realtime INSERT : nouveaux posts publics → push en haut
+  useEffect(() => {
+    const channel = supabase
+      .channel('adaptive-feed-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'videos' }, async (payload) => {
+        const v = payload.new as any;
+        if (!v?.is_public || seenIdsRef.current.has(v.id)) return;
+        seenIdsRef.current.add(v.id);
+        // Récup profil auteur
+        let profile: any = null;
+        if (v.user_id) {
+          const { data } = await supabase.from('tamtam_profiles')
+            .select('user_id,username,display_name,avatar_url,is_verified')
+            .eq('user_id', v.user_id).maybeSingle();
+          profile = data;
+        }
+        const fresh: FeedVideo = {
+          id: v.id,
+          videoUrl: v.video_url,
+          thumbnailUrl: v.thumbnail_url,
+          title: v.title,
+          description: v.description,
+          templateId: v.template_id,
+          templateName: v.template_name,
+          duration: v.duration_seconds || 30,
+          viewsCount: v.views_count || 0,
+          likesCount: v.likes_count || 0,
+          sharesCount: v.shares_count || 0,
+          createdAt: v.created_at,
+          metadata: v.metadata || null,
+          author: {
+            id: v.user_id,
+            name: profile?.display_name || v.template_name || 'Créateur FITILA',
+            username: profile?.username ? `@${profile.username}` : '@fitila_user',
+            avatarUrl: profile?.avatar_url || undefined,
+          },
+        };
+        setVideos(prev => [fresh, ...prev]);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   return {
     videos,

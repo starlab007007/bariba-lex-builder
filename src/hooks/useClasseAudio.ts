@@ -6,6 +6,33 @@ import type { ContentItem } from '@/lib/classeContentKeys';
 
 export type AudioStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
 
+// ── LRU Cache mémoire pour signed URLs (≤50 min, signed URL = 1h) ──
+interface CachedUrl { url: string; expiresAt: number; }
+const SIGNED_URL_CACHE = new Map<string, CachedUrl>();
+const SIGNED_URL_TTL_MS = 50 * 60_000;
+const SIGNED_URL_MAX = 200;
+
+function getCachedSignedUrl(key: string): string | null {
+  const entry = SIGNED_URL_CACHE.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    SIGNED_URL_CACHE.delete(key);
+    return null;
+  }
+  // LRU: refresh
+  SIGNED_URL_CACHE.delete(key);
+  SIGNED_URL_CACHE.set(key, entry);
+  return entry.url;
+}
+
+function setCachedSignedUrl(key: string, url: string) {
+  if (SIGNED_URL_CACHE.size >= SIGNED_URL_MAX) {
+    const firstKey = SIGNED_URL_CACHE.keys().next().value;
+    if (firstKey) SIGNED_URL_CACHE.delete(firstKey);
+  }
+  SIGNED_URL_CACHE.set(key, { url, expiresAt: Date.now() + SIGNED_URL_TTL_MS });
+}
+
 export interface ClasseAudioRow {
   id: string;
   content_key: string;
@@ -99,12 +126,16 @@ export function useApprovedAudio(contentKey: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      // Build signed URL (24h)
+      // Cache LRU mémoire pour éviter re-fetch entre leçons
+      const cached = getCachedSignedUrl(data.storage_path);
+      if (cached) return { ...data, signed_url: cached };
       const { data: signed, error: sErr } = await supabase.storage
         .from('classe-audio')
-        .createSignedUrl(data.storage_path, 60 * 60 * 24);
+        .createSignedUrl(data.storage_path, 60 * 60);
       if (sErr) throw sErr;
-      return { ...data, signed_url: signed?.signedUrl ?? null };
+      const url = signed?.signedUrl ?? null;
+      if (url) setCachedSignedUrl(data.storage_path, url);
+      return { ...data, signed_url: url };
     },
   });
 }
