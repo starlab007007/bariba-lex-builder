@@ -13,7 +13,10 @@ export type ContentType =
   | 'text' | 'question' | 'phonetic' | 'word'
   | 'exercise' | 'instruction' | 'title' | 'answer';
 
-export type ModuleKey = 'lang' | 'calcul' | 'eval' | 'gestion' | 'grammaire' | 'textprod';
+export type ModuleKey =
+  | 'lang' | 'calcul' | 'eval'
+  | 'alphabet'
+  | 'gestion' | 'grammaire' | 'textprod';
 // Modules supplémentaires couverts (alphabet du N1, et les 3 modules N2 spécialisés)
 // On garde 'lang' / 'calcul' / 'eval' pour la compat existante,
 // et on ajoute 'alphabet' (N1), 'gestion' / 'grammaire' / 'textprod' (N2).
@@ -271,7 +274,7 @@ export function getLessonsForModule(level: 'N1' | 'N2', module: ModuleKey): { le
 
 /** Module catalog used by the home selector. */
 export const MODULE_CATALOG: Array<{ level: 'N1' | 'N2'; module: ModuleKey; label: string; emoji: string }> = [
-  { level: 'N1', module: 'alphabet' as any, label: 'Alphabet', emoji: '🔤' },
+  { level: 'N1', module: 'alphabet', label: 'Alphabet', emoji: '🔤' },
   { level: 'N1', module: 'lang',   label: 'Langue',       emoji: '📖' },
   { level: 'N1', module: 'calcul', label: 'Calcul',       emoji: '🔢' },
   { level: 'N1', module: 'eval',   label: 'Évaluations',  emoji: '📝' },
