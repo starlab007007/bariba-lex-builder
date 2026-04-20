@@ -15,8 +15,9 @@ import { VideoFeedCard } from '@/components/feed/VideoFeedCard';
 
 import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
-import FullscreenCreator from '@/components/tamtam/FullscreenCreator';
-import BranchingPlayer from '@/features/conte-vivant/components/BranchingPlayer';
+import { lazy, Suspense } from 'react';
+const FullscreenCreator = lazy(() => import('@/components/tamtam/FullscreenCreator'));
+const BranchingPlayer = lazy(() => import('@/features/conte-vivant/components/BranchingPlayer'));
 import type { StoryGraph } from '@/features/conte-vivant/types/story.types';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
@@ -420,9 +421,18 @@ export default function TamTamSocial() {
     const rawIdx = Math.round(e.currentTarget.scrollTop / viewportHeight);
     if (!Number.isFinite(rawIdx)) return;
 
+    // Stoppe immédiatement toute lecture audio/vidéo dès que l'utilisateur scrolle
+    window.dispatchEvent(new CustomEvent('feed-scroll-start'));
+
     const idx = Math.max(0, rawIdx);
-    if (idx !== currentPostIndex) setCurrentPostIndex(idx);
-  }, [currentPostIndex]);
+    if (idx !== currentPostIndex) {
+      setCurrentPostIndex(idx);
+      // Auto-loadMore : approche de la fin → préchargement
+      if (idx >= videoFeedItems.length - 3) {
+        loadMoreVideos?.();
+      }
+    }
+  }, [currentPostIndex, videoFeedItems.length, loadMoreVideos]);
 
   const handleOpenComments = useCallback(async (postId: string) => {
     setCommentsModal({ isOpen: true, postId, comments: [], isLoading: true });
@@ -795,7 +805,11 @@ export default function TamTamSocial() {
 
       <TamTamCreatePost isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onSubmit={handleCreatePost} initialCategory={createPostType === 'patrimoine' ? 'patrimoine' : createPostType === 'mavoix' ? 'village_voice' : undefined} />
 
-      <FullscreenCreator open={showCreator} onClose={() => setShowCreator(false)} onPublish={handleCreatorComplete} />
+      {showCreator && (
+        <Suspense fallback={null}>
+          <FullscreenCreator open={showCreator} onClose={() => setShowCreator(false)} onPublish={handleCreatorComplete} />
+        </Suspense>
+      )}
 
       <TamTamCommentsModal isOpen={commentsModal.isOpen} onClose={() => setCommentsModal(prev => ({ ...prev, isOpen: false }))} comments={commentsModal.comments} onAddComment={async (audioBase64: string, duration: number) => {
         if (!commentsModal.postId) return;
@@ -818,11 +832,13 @@ export default function TamTamSocial() {
       {/* Interactive Story Player Overlay */}
       {interactiveStory && (
         <div className="fixed inset-0 z-[100] bg-black">
-          <BranchingPlayer
-            graph={interactiveStory.graph}
-            storyId={interactiveStory.id}
-            onClose={() => setInteractiveStory(null)}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center h-full text-white">Chargement…</div>}>
+            <BranchingPlayer
+              graph={interactiveStory.graph}
+              storyId={interactiveStory.id}
+              onClose={() => setInteractiveStory(null)}
+            />
+          </Suspense>
         </div>
       )}
     </div>
