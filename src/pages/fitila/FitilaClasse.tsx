@@ -376,7 +376,7 @@ export default function FitilaClasse() {
             {section === 'calcul' && <ClasseCalculView level={activeLevel} />}
             {section === 'evaluations' && renderEvaluationList()}
             {section === 'eval-detail' && (
-              <ClasseEvaluation evalId={selectedEvalId} onBack={() => setSection('evaluations')} />
+              <ClasseEvaluation evalId={selectedEvalId} level={activeLevel} onBack={() => setSection("evaluations")} />
             )}
             {section === 'facilitateur' && <ClasseFacilitateur activeLevel={activeLevel} />}
             {section === 'grammaire' && <ClasseGrammaireN2 />}
