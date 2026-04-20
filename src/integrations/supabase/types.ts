@@ -812,6 +812,8 @@ export type Database = {
           score: number | null
           section_key: string
           submitted_at: string
+          teacher_audio_duration: number | null
+          teacher_audio_path: string | null
           teacher_comment: string | null
           teacher_grade: number | null
           updated_at: string
@@ -833,6 +835,8 @@ export type Database = {
           score?: number | null
           section_key?: string
           submitted_at?: string
+          teacher_audio_duration?: number | null
+          teacher_audio_path?: string | null
           teacher_comment?: string | null
           teacher_grade?: number | null
           updated_at?: string
@@ -854,6 +858,8 @@ export type Database = {
           score?: number | null
           section_key?: string
           submitted_at?: string
+          teacher_audio_duration?: number | null
+          teacher_audio_path?: string | null
           teacher_comment?: string | null
           teacher_grade?: number | null
           updated_at?: string
