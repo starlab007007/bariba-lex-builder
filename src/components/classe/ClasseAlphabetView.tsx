@@ -98,9 +98,10 @@ export default function ClasseAlphabetView() {
                   <p className="text-gray-500 text-xs uppercase">{currentLang === 'ba' ? 'Yori' : 'Lettre'}</p>
                   <p className="text-emerald-600 text-xl font-bold">{selectedLetter}</p>
                 </div>
-                <button className="w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center">
-                  <span className="text-2xl">🔊</span>
-                </button>
+                <ListenButton
+                  contentKey={getAlphabetContentKey(mode as 'vowels' | 'consonants' | 'nasals', getLetters().indexOf(selectedLetter))}
+                  size="lg"
+                />
               </div>
             </motion.div>
           )}
