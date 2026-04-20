@@ -14,6 +14,9 @@ export type ContentType =
   | 'exercise' | 'instruction' | 'title' | 'answer';
 
 export type ModuleKey = 'lang' | 'calcul' | 'eval' | 'gestion' | 'grammaire' | 'textprod';
+// Modules supplémentaires couverts (alphabet du N1, et les 3 modules N2 spécialisés)
+// On garde 'lang' / 'calcul' / 'eval' pour la compat existante,
+// et on ajoute 'alphabet' (N1), 'gestion' / 'grammaire' / 'textprod' (N2).
 
 export interface ContentItem {
   content_key: string;
@@ -268,12 +271,16 @@ export function getLessonsForModule(level: 'N1' | 'N2', module: ModuleKey): { le
 
 /** Module catalog used by the home selector. */
 export const MODULE_CATALOG: Array<{ level: 'N1' | 'N2'; module: ModuleKey; label: string; emoji: string }> = [
+  { level: 'N1', module: 'alphabet' as any, label: 'Alphabet', emoji: '🔤' },
   { level: 'N1', module: 'lang',   label: 'Langue',       emoji: '📖' },
   { level: 'N1', module: 'calcul', label: 'Calcul',       emoji: '🔢' },
   { level: 'N1', module: 'eval',   label: 'Évaluations',  emoji: '📝' },
   { level: 'N2', module: 'lang',   label: 'Langue',       emoji: '📖' },
   { level: 'N2', module: 'calcul', label: 'Calcul',       emoji: '🔢' },
   { level: 'N2', module: 'eval',   label: 'Évaluations',  emoji: '📝' },
+  { level: 'N2', module: 'grammaire', label: 'Grammaire',           emoji: '🧩' },
+  { level: 'N2', module: 'gestion',   label: 'Gestion',             emoji: '📊' },
+  { level: 'N2', module: 'textprod',  label: 'Production de textes', emoji: '✍️' },
 ];
 
 export function moduleLabel(module: ModuleKey): string {
