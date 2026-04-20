@@ -3,6 +3,11 @@
 
 import { CLASSE_LESSONS, CLASSE_EVALUATIONS, CALCUL_LESSONS } from '@/data/classeContent';
 import { CLASSE_N2_LESSONS, CLASSE_N2_EVALUATIONS, CALCUL_N2_LESSONS, CALCUL_N2_EXERCISES } from '@/data/classeContentN2';
+import { BARIBA_ALPHABET, CALCUL_EXERCISES, LESSON_ANSWERS } from '@/data/classeContent';
+import { LESSON_N2_ANSWERS } from '@/data/classeContentN2';
+import { GESTION_N2_DOCUMENTS } from '@/data/classeContentN2Gestion';
+import { GRAMMAR_N2_SECTIONS } from '@/data/classeContentN2Grammar';
+import { TEXT_PRODUCTION_TYPES } from '@/data/classeContentN2TextProd';
 
 export type ContentType =
   | 'text' | 'question' | 'phonetic' | 'word'
