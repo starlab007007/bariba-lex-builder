@@ -22,6 +22,7 @@ import {
 } from '@/data/classeContentN2';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
 import UniversalAnswerCard from './UniversalAnswerCard';
+import ListenButton from '@/components/classe/ListenButton';
 
 type CalculLevel = 'N1' | 'N2';
 
@@ -456,7 +457,10 @@ export default function ClasseCalculView({ level = 'N1' }: ClasseCalculViewProps
 
         <div className="p-4 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 border border-blue-200 shadow-md">
           <div className="flex items-center justify-between">
-            <h2 className="text-gray-800 font-black text-xl">{selected.title || `Dooru ${selected.id}`}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-gray-800 font-black text-xl">{selected.title || `Dooru ${selected.id}`}</h2>
+              <ListenButton contentKey={`classe/${level}/calcul/${selected.id}/title`} size="sm" />
+            </div>
             {progress.calculScores[selected.id] && (
               <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
                 {progress.calculScores[selected.id].score}/{progress.calculScores[selected.id].total}
