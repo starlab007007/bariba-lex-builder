@@ -153,8 +153,9 @@ function SyllableBuilder() {
         <p className="text-gray-400 text-xs uppercase font-bold mb-3">{currentLang === 'ba' ? 'Gɔmbi' : 'Syllabes'} — {consonant} + voyelle</p>
         <div className="grid grid-cols-4 gap-2">
           {vowels.map(v => (
-            <div key={v} className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 text-center">
+            <div key={v} className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 flex items-center justify-center gap-1.5">
               <span className="text-gray-800 text-xl font-bold">{consonant}{v}</span>
+              <ListenButton contentKey={`classe/N1/alphabet/0/syllables/${consonant}${v}`} size="sm" />
             </div>
           ))}
         </div>
