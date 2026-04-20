@@ -357,6 +357,16 @@ export default function UniversalAnswerCard({
                       <Volume2 className="w-3 h-3" /> Écouter la prononciation
                     </button>
                   )}
+                  {answerKey.teacher_audio_path && (
+                    <div>
+                      <VoiceAnswerPlayer
+                        path={answerKey.teacher_audio_path}
+                        duration={answerKey.teacher_audio_duration ?? undefined}
+                        variant="teacher"
+                        label="🎧 Corrigé vocal du prof"
+                      />
+                    </div>
+                  )}
                 </>
               ) : !teacherGrade && (
                 <p className="text-xs text-gray-500 italic">
