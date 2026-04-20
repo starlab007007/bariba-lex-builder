@@ -226,6 +226,317 @@ function pushCalculItems(
   }
 }
 
+// ─── ALPHABET (N1) ───────────────────────────────────────────────────────────
+function pushAlphabetItems(items: ContentItem[]) {
+  const base = `classe/N1/alphabet/0`;
+  const baseLabel = `N1 · Alphabet`;
+  // Title
+  items.push({
+    content_key: `${base}/title`,
+    content_type: 'title',
+    content_text: 'Alphabet du Baatonum',
+    level: 'N1', module: 'alphabet', lesson_id: 0,
+    section_key: 'title',
+    hierarchy_label: `${baseLabel} · Titre`,
+  });
+  const groups: Array<[keyof typeof BARIBA_ALPHABET, string, string]> = [
+    ['vowels', 'vowels', 'Voyelle'],
+    ['consonants', 'consonants', 'Consonne'],
+    ['nasalVowels', 'nasals', 'Voyelle nasale'],
+    ['toneMarkers', 'tones', 'Ton'],
+  ];
+  for (const [key, secKey, label] of groups) {
+    const arr = (BARIBA_ALPHABET as any)[key] as string[];
+    arr.forEach((letter, idx) => {
+      const txt = trim(letter);
+      if (!txt) return;
+      items.push({
+        content_key: `${base}/${secKey}/${idx}`,
+        content_type: 'word',
+        content_text: txt,
+        level: 'N1', module: 'alphabet', lesson_id: 0,
+        section_key: secKey,
+        item_index: idx,
+        hierarchy_label: `${baseLabel} · ${label} ${idx + 1} (${txt})`,
+      });
+    });
+  }
+}
+
+// ─── ANSWERS (N1 & N2) ───────────────────────────────────────────────────────
+function pushAnswersItems(
+  items: ContentItem[],
+  answers: Record<number, { observe?: string[]; ecoute?: string[]; reagis?: string[]; retiens?: string[] }>,
+  level: 'N1' | 'N2',
+) {
+  for (const [lessonIdStr, byKey] of Object.entries(answers)) {
+    const lessonId = Number(lessonIdStr);
+    const base = `classe/${level}/lang/${lessonId}`;
+    const baseLabel = `${level} · Langue · L${lessonId}`;
+    const labels: Record<string, string> = {
+      observe: 'Observe',
+      ecoute: 'Écoute',
+      reagis: 'Réagis',
+      retiens: 'Retiens',
+    };
+    for (const [secKey, arr] of Object.entries(byKey)) {
+      (arr || []).forEach((ans, idx) => {
+        const txt = trim(ans);
+        if (!txt) return;
+        items.push({
+          content_key: `${base}/${secKey}/answer/${idx}`,
+          content_type: 'answer',
+          content_text: txt,
+          level, module: 'lang', lesson_id: lessonId,
+          section_key: `${secKey}_answer`,
+          item_index: idx,
+          hierarchy_label: `${baseLabel} · ${labels[secKey] ?? secKey} Réponse ${idx + 1}`,
+        });
+      });
+    }
+  }
+}
+
+// ─── GESTION N2 ──────────────────────────────────────────────────────────────
+function pushGestionItems(items: ContentItem[]) {
+  GESTION_N2_DOCUMENTS.forEach((doc, dIdx) => {
+    const lessonId = dIdx + 1;
+    const base = `classe/N2/gestion/${lessonId}`;
+    const baseLabel = `N2 · Gestion · ${doc.titleFr}`;
+    items.push({
+      content_key: `${base}/title`,
+      content_type: 'title',
+      content_text: trim(doc.title) || trim(doc.titleFr),
+      level: 'N2', module: 'gestion', lesson_id: lessonId,
+      section_key: 'title',
+      hierarchy_label: `${baseLabel} · Titre`,
+    });
+    if (doc.definition) {
+      items.push({
+        content_key: `${base}/definition`,
+        content_type: 'text',
+        content_text: trim(doc.definition),
+        level: 'N2', module: 'gestion', lesson_id: lessonId,
+        section_key: 'definition',
+        hierarchy_label: `${baseLabel} · Définition`,
+      });
+    }
+    if (doc.formula) {
+      items.push({
+        content_key: `${base}/formula`,
+        content_type: 'instruction',
+        content_text: trim(doc.formula),
+        level: 'N2', module: 'gestion', lesson_id: lessonId,
+        section_key: 'formula',
+        hierarchy_label: `${baseLabel} · Formule`,
+      });
+    }
+    (doc.fields || []).forEach((f, idx) => {
+      const txt = trim(f.label);
+      if (!txt) return;
+      items.push({
+        content_key: `${base}/field/${idx}`,
+        content_type: 'instruction',
+        content_text: txt,
+        level: 'N2', module: 'gestion', lesson_id: lessonId,
+        section_key: 'field',
+        item_index: idx,
+        hierarchy_label: `${baseLabel} · Champ ${idx + 1} (${f.labelFr})`,
+      });
+    });
+    (doc.qaQuestions || []).forEach((q, idx) => {
+      const txt = trim(q.ba);
+      if (!txt) return;
+      items.push({
+        content_key: `${base}/qa/${idx}`,
+        content_type: 'question',
+        content_text: txt,
+        level: 'N2', module: 'gestion', lesson_id: lessonId,
+        section_key: 'qa',
+        item_index: idx,
+        hierarchy_label: `${baseLabel} · Question ${idx + 1}`,
+      });
+    });
+  });
+}
+
+// ─── GRAMMAIRE N2 (Alphabet, Tons, Classes, Noms, Verbes/Pronoms, Décompo, Temps) ──
+function pushGrammarItems(items: ContentItem[]) {
+  GRAMMAR_N2_SECTIONS.forEach((sec, sIdx) => {
+    const lessonId = sIdx + 1;
+    const base = `classe/N2/grammaire/${lessonId}`;
+    const baseLabel = `N2 · Grammaire · ${sec.titleFr}`;
+    items.push({
+      content_key: `${base}/title`,
+      content_type: 'title',
+      content_text: trim(sec.title) || trim(sec.titleFr),
+      level: 'N2', module: 'grammaire', lesson_id: lessonId,
+      section_key: 'title',
+      hierarchy_label: `${baseLabel} · Titre`,
+    });
+    (sec.content || []).forEach((block, bIdx) => {
+      // Title of the block
+      if (block.title) {
+        items.push({
+          content_key: `${base}/block/${bIdx}/title`,
+          content_type: 'title',
+          content_text: trim(block.title),
+          level: 'N2', module: 'grammaire', lesson_id: lessonId,
+          section_key: 'block_title',
+          item_index: bIdx,
+          hierarchy_label: `${baseLabel} · Bloc ${bIdx + 1} · Titre`,
+        });
+      }
+      if (block.content) {
+        items.push({
+          content_key: `${base}/block/${bIdx}/content`,
+          content_type: 'text',
+          content_text: trim(block.content),
+          level: 'N2', module: 'grammaire', lesson_id: lessonId,
+          section_key: 'block_content',
+          item_index: bIdx,
+          hierarchy_label: `${baseLabel} · Bloc ${bIdx + 1} · Contenu`,
+        });
+      }
+      (block.items || []).forEach((it, iIdx) => {
+        const txt = trim(it);
+        if (!txt) return;
+        items.push({
+          content_key: `${base}/block/${bIdx}/item/${iIdx}`,
+          content_type: 'instruction',
+          content_text: txt,
+          level: 'N2', module: 'grammaire', lesson_id: lessonId,
+          section_key: 'block_item',
+          item_index: iIdx,
+          hierarchy_label: `${baseLabel} · Bloc ${bIdx + 1} · Item ${iIdx + 1}`,
+        });
+      });
+      (block.rows || []).forEach((row, rIdx) => {
+        const txt = trim(row.join(' · '));
+        if (!txt) return;
+        items.push({
+          content_key: `${base}/block/${bIdx}/row/${rIdx}`,
+          content_type: 'instruction',
+          content_text: txt,
+          level: 'N2', module: 'grammaire', lesson_id: lessonId,
+          section_key: 'block_row',
+          item_index: rIdx,
+          hierarchy_label: `${baseLabel} · Bloc ${bIdx + 1} · Ligne ${rIdx + 1}`,
+        });
+      });
+    });
+    (sec.quiz || []).forEach((q, qIdx) => {
+      const txt = trim(q.question);
+      if (!txt) return;
+      items.push({
+        content_key: `${base}/quiz/${qIdx}/q`,
+        content_type: 'question',
+        content_text: txt,
+        level: 'N2', module: 'grammaire', lesson_id: lessonId,
+        section_key: 'quiz_question',
+        item_index: qIdx,
+        hierarchy_label: `${baseLabel} · Quiz ${qIdx + 1} · Question`,
+      });
+      const correct = trim(q.options?.[q.correct] || '');
+      if (correct) {
+        items.push({
+          content_key: `${base}/quiz/${qIdx}/answer`,
+          content_type: 'answer',
+          content_text: correct,
+          level: 'N2', module: 'grammaire', lesson_id: lessonId,
+          section_key: 'quiz_answer',
+          item_index: qIdx,
+          hierarchy_label: `${baseLabel} · Quiz ${qIdx + 1} · Réponse`,
+        });
+      }
+      if (q.explanation) {
+        items.push({
+          content_key: `${base}/quiz/${qIdx}/explanation`,
+          content_type: 'text',
+          content_text: trim(q.explanation),
+          level: 'N2', module: 'grammaire', lesson_id: lessonId,
+          section_key: 'quiz_explanation',
+          item_index: qIdx,
+          hierarchy_label: `${baseLabel} · Quiz ${qIdx + 1} · Explication`,
+        });
+      }
+    });
+  });
+}
+
+// ─── PRODUCTION DE TEXTES N2 ─────────────────────────────────────────────────
+function pushTextProdItems(items: ContentItem[]) {
+  TEXT_PRODUCTION_TYPES.forEach((t, tIdx) => {
+    const lessonId = tIdx + 1;
+    const base = `classe/N2/textprod/${lessonId}`;
+    const baseLabel = `N2 · Production · ${t.titleFr}`;
+    items.push({
+      content_key: `${base}/title`,
+      content_type: 'title',
+      content_text: trim(t.title) || trim(t.titleFr),
+      level: 'N2', module: 'textprod', lesson_id: lessonId,
+      section_key: 'title',
+      hierarchy_label: `${baseLabel} · Titre`,
+    });
+    if (t.definition) {
+      items.push({
+        content_key: `${base}/definition`,
+        content_type: 'text',
+        content_text: trim(t.definition),
+        level: 'N2', module: 'textprod', lesson_id: lessonId,
+        section_key: 'definition',
+        hierarchy_label: `${baseLabel} · Définition`,
+      });
+    }
+    (t.characteristics || []).forEach((c, idx) => {
+      const txt = trim(c);
+      if (!txt) return;
+      items.push({
+        content_key: `${base}/characteristic/${idx}`,
+        content_type: 'instruction',
+        content_text: txt,
+        level: 'N2', module: 'textprod', lesson_id: lessonId,
+        section_key: 'characteristic',
+        item_index: idx,
+        hierarchy_label: `${baseLabel} · Caractéristique ${idx + 1}`,
+      });
+    });
+    (t.structure || []).forEach((f, idx) => {
+      const txt = trim(f.label);
+      if (!txt) return;
+      items.push({
+        content_key: `${base}/structure/${idx}`,
+        content_type: 'instruction',
+        content_text: txt,
+        level: 'N2', module: 'textprod', lesson_id: lessonId,
+        section_key: 'structure',
+        item_index: idx,
+        hierarchy_label: `${baseLabel} · Structure ${idx + 1} (${f.labelFr})`,
+      });
+    });
+    if (t.example) {
+      items.push({
+        content_key: `${base}/example`,
+        content_type: 'text',
+        content_text: trim(t.example),
+        level: 'N2', module: 'textprod', lesson_id: lessonId,
+        section_key: 'example',
+        hierarchy_label: `${baseLabel} · Exemple`,
+      });
+    }
+    if (t.exercisePrompt) {
+      items.push({
+        content_key: `${base}/exercise`,
+        content_type: 'exercise',
+        content_text: trim(t.exercisePrompt),
+        level: 'N2', module: 'textprod', lesson_id: lessonId,
+        section_key: 'exercise',
+        hierarchy_label: `${baseLabel} · Consigne d'exercice`,
+      });
+    }
+  });
+}
+
 let _cache: ContentItem[] | null = null;
 
 export function getAllContentItems(): ContentItem[] {
@@ -236,8 +547,12 @@ export function getAllContentItems(): ContentItem[] {
   CLASSE_LESSONS.forEach(l => pushLessonItems(items, l as any, 'N1', 'lang', 'Langue'));
   // N1 évaluations
   CLASSE_EVALUATIONS.forEach(ev => pushEvaluationItems(items, ev, 'N1'));
-  // N1 calcul
-  CALCUL_LESSONS.forEach(l => pushCalculItems(items, l as any, 'N1'));
+  // N1 calcul + exercices
+  CALCUL_LESSONS.forEach(l => pushCalculItems(items, l as any, 'N1', (CALCUL_EXERCISES as any)?.[l.id]));
+  // N1 alphabet (voyelles, consonnes, nasales, tons)
+  pushAlphabetItems(items);
+  // N1 réponses
+  pushAnswersItems(items, LESSON_ANSWERS as any, 'N1');
 
   // N2 langue
   CLASSE_N2_LESSONS.forEach(l => pushLessonItems(items, l as any, 'N2', 'lang', 'Langue'));
@@ -245,6 +560,14 @@ export function getAllContentItems(): ContentItem[] {
   CLASSE_N2_EVALUATIONS.forEach(ev => pushEvaluationItems(items, ev, 'N2'));
   // N2 calcul + exercises
   CALCUL_N2_LESSONS.forEach(l => pushCalculItems(items, l as any, 'N2', (CALCUL_N2_EXERCISES as any)?.[l.id]));
+  // N2 réponses
+  pushAnswersItems(items, LESSON_N2_ANSWERS as any, 'N2');
+  // N2 grammaire (alphabet rappel, tons, classes, noms, verbes, décompo, temps)
+  pushGrammarItems(items);
+  // N2 gestion (7 documents)
+  pushGestionItems(items);
+  // N2 production de textes (6 types)
+  pushTextProdItems(items);
 
   _cache = items;
   return items;
