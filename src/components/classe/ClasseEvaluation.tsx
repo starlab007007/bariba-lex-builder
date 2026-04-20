@@ -113,7 +113,7 @@ export default function ClasseEvaluation({ evalId, level = 'N1', onBack }: Props
                     <p className="text-xs text-blue-700 italic">Ta réponse : {answers[key]}</p>
                   )}
                   <StudentAnswerFeedback
-                    level="N1"
+                    level={level}
                     module="evaluation"
                     lesson_id={String(evalId)}
                     section_key={String(si)}
