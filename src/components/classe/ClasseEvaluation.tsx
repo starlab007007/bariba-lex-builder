@@ -5,21 +5,24 @@ import BaribaSmartTextarea from './BaribaSmartTextarea';
 import StudentAnswerFeedback from './StudentAnswerFeedback';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { CLASSE_EVALUATIONS, saveEvaluationScore, getClasseProgress } from '@/data/classeContent';
+import { CLASSE_N2_EVALUATIONS, saveN2EvaluationScore, getClasseN2Progress } from '@/data/classeContentN2';
 import { syncEvaluation, syncAnswer } from '@/lib/classeSync';
 import ListenButton from '@/components/classe/ListenButton';
 
 interface Props {
   evalId: number;
+  level?: 'N1' | 'N2';
   onBack: () => void;
 }
 
-export default function ClasseEvaluation({ evalId, onBack }: Props) {
+export default function ClasseEvaluation({ evalId, level = 'N1', onBack }: Props) {
   const { currentLang } = useFitilaLanguage();
-  const evaluation = CLASSE_EVALUATIONS.find(e => e.id === evalId);
+  const pool = level === 'N2' ? CLASSE_N2_EVALUATIONS : CLASSE_EVALUATIONS;
+  const evaluation = pool.find(e => e.id === evalId);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
-  const progress = getClasseProgress();
+  const progress = level === 'N2' ? getClasseN2Progress() : getClasseProgress();
   const bestScore = progress.evaluationBest?.[evalId];
 
   if (!evaluation) return <p className="text-gray-400">Évaluation introuvable</p>;
@@ -30,11 +33,15 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
     const answered = Object.values(answers).filter(a => a.trim().length > 3).length;
     const pct = totalQuestions > 0 ? Math.round((answered / totalQuestions) * 100) : 0;
     setScore(pct);
-    saveEvaluationScore(evalId, pct);
-    void syncEvaluation('N1', String(evalId), pct);
+    if (level === 'N2') {
+      saveN2EvaluationScore(evalId, pct);
+    } else {
+      saveEvaluationScore(evalId, pct);
+    }
+    void syncEvaluation(level, String(evalId), pct);
     Object.entries(answers).forEach(([key, value]) => {
       const [si, qi] = key.split('_');
-      syncAnswer({ level: 'N1', module: 'evaluation', lessonId: String(evalId), sectionKey: si, questionIdx: Number(qi), answerText: value });
+      syncAnswer({ level, module: 'evaluation', lessonId: String(evalId), sectionKey: si, questionIdx: Number(qi), answerText: value });
     });
     setSubmitted(true);
   };
@@ -106,7 +113,7 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
                     <p className="text-xs text-blue-700 italic">Ta réponse : {answers[key]}</p>
                   )}
                   <StudentAnswerFeedback
-                    level="N1"
+                    level={level}
                     module="evaluation"
                     lesson_id={String(evalId)}
                     section_key={String(si)}
@@ -146,7 +153,7 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-gray-800 font-black text-xl">{evaluation.title}</h2>
-              <ListenButton contentKey={`classe/N1/eval/${evalId}/title`} size="sm" />
+              <ListenButton contentKey={`classe/${level}/eval/${evalId}/title`} size="sm" />
             </div>
             <p className="text-purple-600 text-sm mt-1">
               {totalQuestions} {currentLang === 'ba' ? 'gari bikiabu' : 'questions'}
@@ -184,7 +191,7 @@ export default function ClasseEvaluation({ evalId, onBack }: Props) {
               <div key={key} className="p-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
                 <div className="flex items-start gap-2 mb-2">
                   <p className="text-gray-800 text-sm font-medium flex-1">{qi + 1}. {q}</p>
-                  <ListenButton contentKey={`classe/N1/eval/${evalId}/${sec}/${qi}`} size="sm" />
+                  <ListenButton contentKey={`classe/${level}/eval/${evalId}/${sec}/${qi}`} size="sm" />
                 </div>
                 <BaribaSmartTextarea
                   className="bg-gray-50 border-gray-200 focus:border-purple-400"

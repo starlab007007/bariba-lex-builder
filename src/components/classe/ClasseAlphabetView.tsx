@@ -2,6 +2,17 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { BARIBA_ALPHABET } from '@/data/classeContent';
+import ListenButton from '@/components/classe/ListenButton';
+
+/** Construit la clé d'audio pour un item du grid en fonction du mode. */
+function getAlphabetContentKey(mode: 'vowels' | 'consonants' | 'nasals', idx: number): string {
+  if (mode === 'vowels') return `classe/N1/alphabet/0/vowels/${idx}`;
+  if (mode === 'consonants') return `classe/N1/alphabet/0/consonants/${idx}`;
+  // mode === 'nasals' : on combine nasalVowels puis toneMarkers
+  const nbNasal = BARIBA_ALPHABET.nasalVowels.length;
+  if (idx < nbNasal) return `classe/N1/alphabet/0/nasalVowels/${idx}`;
+  return `classe/N1/alphabet/0/toneMarkers/${idx - nbNasal}`;
+}
 
 export default function ClasseAlphabetView() {
   const { currentLang } = useFitilaLanguage();
@@ -46,22 +57,29 @@ export default function ClasseAlphabetView() {
           {/* Letter grid */}
           <div className="grid grid-cols-4 gap-3">
             {getLetters().map((letter, i) => (
-              <motion.button
+              <motion.div
                 key={letter}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.03 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setSelectedLetter(letter)}
-                className={`aspect-square rounded-2xl flex flex-col items-center justify-center transition-all shadow-sm ${
+                className={`relative aspect-square rounded-2xl transition-all shadow-sm ${
                   selectedLetter === letter
                     ? 'bg-gradient-to-br from-emerald-400 to-teal-400 shadow-lg shadow-emerald-200'
                     : 'bg-white border border-gray-100'
                 }`}
               >
-                <span className={`text-3xl font-black ${selectedLetter === letter ? 'text-white' : 'text-gray-800'}`}>{letter}</span>
-                <span className={`text-xs mt-1 ${selectedLetter === letter ? 'text-white/70' : 'text-gray-400'}`}>{letter.toUpperCase()}</span>
-              </motion.button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLetter(letter)}
+                  className="w-full h-full flex flex-col items-center justify-center"
+                >
+                  <span className={`text-3xl font-black ${selectedLetter === letter ? 'text-white' : 'text-gray-800'}`}>{letter}</span>
+                  <span className={`text-xs mt-1 ${selectedLetter === letter ? 'text-white/70' : 'text-gray-400'}`}>{letter.toUpperCase()}</span>
+                </button>
+                <div className="absolute top-1 right-1">
+                  <ListenButton contentKey={getAlphabetContentKey(mode as 'vowels' | 'consonants' | 'nasals', i)} size="sm" />
+                </div>
+              </motion.div>
             ))}
           </div>
 
@@ -80,9 +98,10 @@ export default function ClasseAlphabetView() {
                   <p className="text-gray-500 text-xs uppercase">{currentLang === 'ba' ? 'Yori' : 'Lettre'}</p>
                   <p className="text-emerald-600 text-xl font-bold">{selectedLetter}</p>
                 </div>
-                <button className="w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center">
-                  <span className="text-2xl">🔊</span>
-                </button>
+                <ListenButton
+                  contentKey={getAlphabetContentKey(mode as 'vowels' | 'consonants' | 'nasals', getLetters().indexOf(selectedLetter))}
+                  size="lg"
+                />
               </div>
             </motion.div>
           )}
@@ -134,8 +153,9 @@ function SyllableBuilder() {
         <p className="text-gray-400 text-xs uppercase font-bold mb-3">{currentLang === 'ba' ? 'Gɔmbi' : 'Syllabes'} — {consonant} + voyelle</p>
         <div className="grid grid-cols-4 gap-2">
           {vowels.map(v => (
-            <div key={v} className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 text-center">
+            <div key={v} className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 flex items-center justify-center gap-1.5">
               <span className="text-gray-800 text-xl font-bold">{consonant}{v}</span>
+              <ListenButton contentKey={`classe/N1/alphabet/0/syllables/${consonant}${v}`} size="sm" />
             </div>
           ))}
         </div>
