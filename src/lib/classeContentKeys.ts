@@ -17,6 +17,54 @@ export type ModuleKey =
   | 'lang' | 'calcul' | 'eval'
   | 'alphabet'
   | 'gestion' | 'grammaire' | 'textprod';
+
+/**
+ * Mappe les modules UI (UniversalAnswerCard) vers les clés de contenu.
+ * UI: 'lesson' | 'calcul' | 'evaluation' | 'gestion' | 'grammaire' | 'textprod'
+ * Stockage: 'lang' | 'calcul' | 'eval' | 'gestion' | 'grammaire' | 'textprod'
+ */
+export function moduleToContentKey(uiModule: string): string {
+  switch (uiModule) {
+    case 'lesson': return 'lang';
+    case 'evaluation': return 'eval';
+    case 'calcul': return 'calcul';
+    case 'gestion': return 'gestion';
+    case 'grammaire': return 'grammaire';
+    case 'textprod': return 'textprod';
+    default: return uiModule;
+  }
+}
+
+/**
+ * Reconstruit le content_key utilisé pour un audio
+ * (doit correspondre à ce qui est généré dans pushLessonItems / pushEvaluationItems / pushCalculItems / etc.).
+ * Exemples:
+ *   N1/lesson/3/observe/0  → "classe/N1/lang/3/observe/0"
+ *   N1/evaluation/2/q/1    → "classe/N1/eval/2/q/1"
+ *   N2/calcul/5/exercise/0 → "classe/N2/calcul/5/exercise/0"
+ */
+export function buildContentKey(
+  level: 'N1' | 'N2',
+  uiModule: string,
+  lessonId: string | number,
+  sectionKey?: string,
+  itemIdx?: number,
+): string {
+  const m = moduleToContentKey(uiModule);
+  const base = `classe/${level}/${m}/${lessonId}`;
+  if (!sectionKey) return base;
+
+  // Mapping spécial pour évaluation : section_key 'question' (UI) ↔ 'q' (storage key)
+  let sec = sectionKey;
+  if (m === 'eval' && (sectionKey === 'question' || sectionKey === '')) {
+    sec = 'q';
+  }
+
+  if (typeof itemIdx === 'number') {
+    return `${base}/${sec}/${itemIdx}`;
+  }
+  return `${base}/${sec}`;
+}
 // Modules supplémentaires couverts (alphabet du N1, et les 3 modules N2 spécialisés)
 // On garde 'lang' / 'calcul' / 'eval' pour la compat existante,
 // et on ajoute 'alphabet' (N1), 'gestion' / 'grammaire' / 'textprod' (N2).

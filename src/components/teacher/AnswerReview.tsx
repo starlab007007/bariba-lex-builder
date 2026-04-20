@@ -5,8 +5,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
-import { Loader2, CheckCircle2, Trash2, Scale } from 'lucide-react';
+import { Loader2, CheckCircle2, Trash2, Scale, Mic } from 'lucide-react';
 import { z } from 'zod';
+import VoiceAnswerPlayer from '@/components/classe/VoiceAnswerPlayer';
+import VoiceAnswerRecorder from '@/components/classe/VoiceAnswerRecorder';
+import { upsertAnswerKey, fetchAnswerKey } from '@/lib/answerKeys';
 
 const gradeSchema = z.object({
   grade: z.number().min(0).max(20),
@@ -28,6 +31,8 @@ export interface AnswerReviewProps {
     max_score: number | null;
     teacher_grade: number | null;
     teacher_comment: string | null;
+    answer_audio_path?: string | null;
+    answer_audio_duration?: number | null;
   };
   studentName?: string;
   onGraded?: () => void;
@@ -41,6 +46,8 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
   const [weight, setWeight] = useState<number>(1);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [teacherAudioPath, setTeacherAudioPath] = useState<string | null>(null);
+  const [teacherAudioDuration, setTeacherAudioDuration] = useState<number | null>(null);
 
   // Load existing weight for this question
   useEffect(() => {
@@ -55,6 +62,53 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
       if (data) setWeight(Number(data.weight));
     })();
   }, [answer.level, answer.module, answer.lesson_id, answer.section_key, answer.question_idx]);
+
+  // Charge le corrigé vocal existant éventuel
+  useEffect(() => {
+    (async () => {
+      const key = await fetchAnswerKey({
+        level: answer.level,
+        module: answer.module,
+        lesson_id: answer.lesson_id,
+        section_key: answer.section_key,
+        question_idx: answer.question_idx,
+      });
+      if (key?.teacher_audio_path) {
+        setTeacherAudioPath(key.teacher_audio_path);
+        setTeacherAudioDuration(key.teacher_audio_duration ?? null);
+      }
+    })();
+  }, [answer.level, answer.module, answer.lesson_id, answer.section_key, answer.question_idx]);
+
+  const handleTeacherAudioUploaded = async (path: string, duration: number) => {
+    setTeacherAudioPath(path);
+    setTeacherAudioDuration(duration);
+    try {
+      // Upsert answer key with the new audio path (preserve existing accepted_answers if present)
+      const existing = await fetchAnswerKey({
+        level: answer.level, module: answer.module,
+        lesson_id: answer.lesson_id, section_key: answer.section_key,
+        question_idx: answer.question_idx,
+      });
+      await upsertAnswerKey({
+        id: existing?.id,
+        level: answer.level as 'N1' | 'N2',
+        module: answer.module,
+        lesson_id: answer.lesson_id,
+        section_key: answer.section_key,
+        question_idx: answer.question_idx,
+        question_text: existing?.question_text ?? null,
+        accepted_answers: existing?.accepted_answers ?? [],
+        explanation: existing?.explanation ?? null,
+        audio_url: existing?.audio_url ?? null,
+        teacher_audio_path: path,
+        teacher_audio_duration: duration,
+      });
+      toast({ title: '🎙️ Corrigé vocal publié' });
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+    }
+  };
 
   const handleDelete = async () => {
     if (!confirm('Supprimer définitivement cette réponse ?')) return;
@@ -119,6 +173,18 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
         </div>
       )}
 
+      {answer.answer_audio_path && (
+        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center gap-2">
+          <Mic className="w-4 h-4 text-emerald-700" />
+          <span className="text-[10px] font-bold text-emerald-800">RÉPONSE VOCALE DE L'APPRENANT</span>
+          <VoiceAnswerPlayer
+            path={answer.answer_audio_path}
+            duration={answer.answer_audio_duration ?? undefined}
+            variant="student"
+          />
+        </div>
+      )}
+
       {fieldDataPreview && !answer.answer_text && (
         <pre className="p-3 rounded-lg bg-muted/50 text-xs overflow-x-auto max-h-40">{fieldDataPreview}</pre>
       )}
@@ -154,6 +220,29 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
           className="flex items-center gap-1 px-2 py-1 rounded text-red-500 hover:bg-red-50">
           {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Supprimer
         </button>
+      </div>
+
+      {/* Corrigé vocal enseignant */}
+      <div className="pt-3 border-t border-border space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-bold uppercase text-purple-700">Corrigé vocal du prof (optionnel)</span>
+          <VoiceAnswerRecorder
+            storageSubpath={`${answer.level}/${answer.module}/${answer.lesson_id}/${answer.section_key || 'q'}/${answer.question_idx}`}
+            fullPath={`teacher/${answer.level}/${answer.module}/${answer.lesson_id}/${answer.section_key || 'q'}/${answer.question_idx}/${Date.now()}.webm`}
+            onUploaded={handleTeacherAudioUploaded}
+            variant="teacher"
+            compact
+          />
+          {teacherAudioPath && (
+            <VoiceAnswerPlayer
+              path={teacherAudioPath}
+              duration={teacherAudioDuration ?? undefined}
+              variant="teacher"
+              label="Mon corrigé vocal"
+            />
+          )}
+        </div>
+        <p className="text-[10px] text-muted-foreground">L'élève pourra l'écouter dans la zone "Corrigé enseignant".</p>
       </div>
     </div>
   );

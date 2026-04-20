@@ -20,11 +20,15 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Edit3, Send, Eye, CheckCircle2, XCircle, BookOpen, Volume2, Loader2 } from 'lucide-react';
+import { Check, Edit3, Send, Eye, CheckCircle2, XCircle, BookOpen, Volume2, Loader2, Mic, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAnswerKey, matchAnswer, type AnswerKey } from '@/lib/answerKeys';
 import { syncAnswer } from '@/lib/classeSync';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
+import ListenButton from './ListenButton';
+import VoiceAnswerRecorder from './VoiceAnswerRecorder';
+import VoiceAnswerPlayer from './VoiceAnswerPlayer';
+import { buildContentKey, moduleToContentKey } from '@/lib/classeContentKeys';
 
 type Level = 'N1' | 'N2';
 type Module = 'lesson' | 'calcul' | 'evaluation' | 'gestion' | 'grammaire' | 'textprod';
@@ -53,6 +57,8 @@ interface TeacherGrade {
   graded_at: string | null;
 }
 
+type AnswerMode = 'text' | 'voice';
+
 export default function UniversalAnswerCard({
   level,
   module,
@@ -76,6 +82,12 @@ export default function UniversalAnswerCard({
   const [answerKey, setAnswerKey] = useState<AnswerKey | null>(null);
   const [teacherGrade, setTeacherGrade] = useState<TeacherGrade | null>(null);
   const [matchResult, setMatchResult] = useState<boolean | null>(null);
+  const [answerMode, setAnswerMode] = useState<AnswerMode>('text');
+  const [voicePath, setVoicePath] = useState<string | null>(null);
+  const [voiceDuration, setVoiceDuration] = useState<number | null>(null);
+
+  const contentKey = buildContentKey(level, module, lessonId, sectionKey || undefined, questionIdx);
+  const storageSubpath = `${level}/${moduleToContentKey(module)}/${lessonId}/${sectionKey || 'q'}/${questionIdx}`;
 
   // ─────────────────────────────────────────────
   // Charge l'éventuelle note enseignant existante
@@ -87,7 +99,7 @@ export default function UniversalAnswerCard({
       if (!user || cancelled) return;
       const { data } = await supabase
         .from('classe_student_answers')
-        .select('answer_text, teacher_grade, teacher_comment, graded_at')
+        .select('answer_text, teacher_grade, teacher_comment, graded_at, answer_audio_path, answer_audio_duration')
         .eq('user_id', user.id)
         .eq('level', level)
         .eq('module', module)
@@ -98,6 +110,12 @@ export default function UniversalAnswerCard({
       if (cancelled || !data) return;
       if (data.answer_text && !text) {
         setText(data.answer_text);
+        setSubmitted(true);
+        setEditing(false);
+      }
+      if (data.answer_audio_path) {
+        setVoicePath(data.answer_audio_path);
+        setVoiceDuration(data.answer_audio_duration ?? null);
         setSubmitted(true);
         setEditing(false);
       }
@@ -116,13 +134,13 @@ export default function UniversalAnswerCard({
   // Soumission de la réponse
   // ─────────────────────────────────────────────
   const handleSubmit = useCallback(async () => {
-    if (!text.trim()) return;
+    if (!text.trim() && !voicePath) return;
     setSubmitting(true);
     try {
       syncAnswer({
         level, module, lessonId,
         sectionKey, questionIdx,
-        answerText: text.trim(),
+        answerText: text.trim() || null,
       });
       onLocalChange?.(text.trim());
       onSubmitted?.(text.trim());
@@ -131,7 +149,21 @@ export default function UniversalAnswerCard({
     } finally {
       setSubmitting(false);
     }
-  }, [text, level, module, lessonId, sectionKey, questionIdx, onLocalChange, onSubmitted]);
+  }, [text, voicePath, level, module, lessonId, sectionKey, questionIdx, onLocalChange, onSubmitted]);
+
+  const handleVoiceUploaded = useCallback(async (path: string, duration: number) => {
+    setVoicePath(path);
+    setVoiceDuration(duration);
+    syncAnswer({
+      level, module, lessonId,
+      sectionKey, questionIdx,
+      answerText: text.trim() || null,
+      answerAudioPath: path,
+      answerAudioDuration: duration,
+    });
+    setSubmitted(true);
+    setEditing(false);
+  }, [text, level, module, lessonId, sectionKey, questionIdx]);
 
   // ─────────────────────────────────────────────
   // Vérification : on charge le corrigé enseignant
@@ -171,45 +203,91 @@ export default function UniversalAnswerCard({
             <span className="text-[10px] font-black text-gray-400 mt-0.5 px-1.5 py-0.5 rounded bg-gray-100">{questionLabel}</span>
           )}
           <p className="flex-1 text-gray-800 text-sm font-medium">{question}</p>
+          <ListenButton contentKey={contentKey} size="sm" />
         </div>
 
         {/* Editing mode */}
         {editing ? (
           <>
-            <BaribaSmartTextarea
-              value={text}
-              onChange={(v) => { setText(v); onLocalChange?.(v); }}
-              rows={rows}
-              className="bg-gray-50 border-gray-200 focus:border-amber-400"
-              placeholder="A wunɛn wisi yoruo... / Ta réponse..."
-            />
-            <div className="flex items-center gap-2 mt-2">
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={handleSubmit}
-                disabled={!text.trim() || submitting}
-                className={`flex-1 py-2 rounded-xl bg-gradient-to-r ${accent} text-white text-xs font-bold disabled:opacity-30 shadow-md flex items-center justify-center gap-1.5`}
+            {/* Toggle text/voice */}
+            <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-gray-100 mb-2 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setAnswerMode('text')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md font-bold transition ${answerMode === 'text' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
               >
-                {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                A geruo · Soumettre
-              </motion.button>
-              {submitted && (
-                <button
-                  onClick={() => setEditing(false)}
-                  className="px-3 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-bold"
-                >
-                  Annuler
-                </button>
-              )}
+                <Pencil className="w-3 h-3" /> Texte
+              </button>
+              <button
+                type="button"
+                onClick={() => setAnswerMode('voice')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md font-bold transition ${answerMode === 'voice' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
+              >
+                <Mic className="w-3 h-3" /> Vocal
+              </button>
             </div>
+
+            {answerMode === 'text' ? (
+              <>
+                <BaribaSmartTextarea
+                  value={text}
+                  onChange={(v) => { setText(v); onLocalChange?.(v); }}
+                  rows={rows}
+                  className="bg-gray-50 border-gray-200 focus:border-amber-400"
+                  placeholder="A wunɛn wisi yoruo... / Ta réponse..."
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleSubmit}
+                    disabled={(!text.trim() && !voicePath) || submitting}
+                    className={`flex-1 py-2 rounded-xl bg-gradient-to-r ${accent} text-white text-xs font-bold disabled:opacity-30 shadow-md flex items-center justify-center gap-1.5`}
+                  >
+                    {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    A geruo · Soumettre
+                  </motion.button>
+                  {submitted && (
+                    <button
+                      onClick={() => setEditing(false)}
+                      className="px-3 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-bold"
+                    >
+                      Annuler
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[11px] text-gray-600">Réponds à voix haute en Baatonum ou en français.</p>
+                <VoiceAnswerRecorder
+                  storageSubpath={storageSubpath}
+                  onUploaded={handleVoiceUploaded}
+                  variant="student"
+                />
+                {voicePath && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-emerald-700 font-bold">✓ Vocal enregistré</span>
+                    <VoiceAnswerPlayer path={voicePath} duration={voiceDuration ?? undefined} />
+                  </div>
+                )}
+              </div>
+            )}
           </>
         ) : (
           /* Submitted view */
           <div className="space-y-2">
-            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
-              <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <p className="flex-1 text-gray-700 text-sm whitespace-pre-wrap">{text}</p>
-            </div>
+            {text && (
+              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                <p className="flex-1 text-gray-700 text-sm whitespace-pre-wrap">{text}</p>
+              </div>
+            )}
+            {voicePath && (
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                <Mic className="w-4 h-4 text-emerald-600" />
+                <VoiceAnswerPlayer path={voicePath} duration={voiceDuration ?? undefined} />
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <motion.button
@@ -278,6 +356,16 @@ export default function UniversalAnswerCard({
                     >
                       <Volume2 className="w-3 h-3" /> Écouter la prononciation
                     </button>
+                  )}
+                  {answerKey.teacher_audio_path && (
+                    <div>
+                      <VoiceAnswerPlayer
+                        path={answerKey.teacher_audio_path}
+                        duration={answerKey.teacher_audio_duration ?? undefined}
+                        variant="teacher"
+                        label="🎧 Corrigé vocal du prof"
+                      />
+                    </div>
                   )}
                 </>
               ) : !teacherGrade && (

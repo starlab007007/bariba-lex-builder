@@ -506,6 +506,8 @@ export type Database = {
           question_idx: number
           question_text: string | null
           section_key: string
+          teacher_audio_duration: number | null
+          teacher_audio_path: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -522,6 +524,8 @@ export type Database = {
           question_idx?: number
           question_text?: string | null
           section_key?: string
+          teacher_audio_duration?: number | null
+          teacher_audio_path?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -538,6 +542,8 @@ export type Database = {
           question_idx?: number
           question_text?: string | null
           section_key?: string
+          teacher_audio_duration?: number | null
+          teacher_audio_path?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -791,6 +797,8 @@ export type Database = {
       }
       classe_student_answers: {
         Row: {
+          answer_audio_duration: number | null
+          answer_audio_path: string | null
           answer_text: string | null
           field_data: Json | null
           graded_at: string | null
@@ -810,6 +818,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          answer_audio_duration?: number | null
+          answer_audio_path?: string | null
           answer_text?: string | null
           field_data?: Json | null
           graded_at?: string | null
@@ -829,6 +839,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          answer_audio_duration?: number | null
+          answer_audio_path?: string | null
           answer_text?: string | null
           field_data?: Json | null
           graded_at?: string | null
