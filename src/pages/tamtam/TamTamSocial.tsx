@@ -805,7 +805,11 @@ export default function TamTamSocial() {
 
       <TamTamCreatePost isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onSubmit={handleCreatePost} initialCategory={createPostType === 'patrimoine' ? 'patrimoine' : createPostType === 'mavoix' ? 'village_voice' : undefined} />
 
-      <FullscreenCreator open={showCreator} onClose={() => setShowCreator(false)} onPublish={handleCreatorComplete} />
+      {showCreator && (
+        <Suspense fallback={null}>
+          <FullscreenCreator open={showCreator} onClose={() => setShowCreator(false)} onPublish={handleCreatorComplete} />
+        </Suspense>
+      )}
 
       <TamTamCommentsModal isOpen={commentsModal.isOpen} onClose={() => setCommentsModal(prev => ({ ...prev, isOpen: false }))} comments={commentsModal.comments} onAddComment={async (audioBase64: string, duration: number) => {
         if (!commentsModal.postId) return;
@@ -828,11 +832,13 @@ export default function TamTamSocial() {
       {/* Interactive Story Player Overlay */}
       {interactiveStory && (
         <div className="fixed inset-0 z-[100] bg-black">
-          <BranchingPlayer
-            graph={interactiveStory.graph}
-            storyId={interactiveStory.id}
-            onClose={() => setInteractiveStory(null)}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center h-full text-white">Chargement…</div>}>
+            <BranchingPlayer
+              graph={interactiveStory.graph}
+              storyId={interactiveStory.id}
+              onClose={() => setInteractiveStory(null)}
+            />
+          </Suspense>
         </div>
       )}
     </div>
