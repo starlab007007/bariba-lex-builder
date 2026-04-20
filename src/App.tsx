@@ -60,6 +60,10 @@ const ClassStats = lazy(() => import("./pages/teacher/ClassStats"));
 const AnswerKeysManager = lazy(() => import("./pages/teacher/AnswerKeysManager"));
 const WeightsManager = lazy(() => import("./pages/teacher/WeightsManager"));
 const GradeOverview = lazy(() => import("./pages/teacher/GradeOverview"));
+const VoiceReadingHome = lazy(() => import("./pages/teacher/VoiceReadingHome"));
+const VoiceReadingLessons = lazy(() => import("./pages/teacher/VoiceReadingLessons"));
+const VoiceReadingStudio = lazy(() => import("./pages/teacher/VoiceReadingStudio"));
+const ClasseAudioReview = lazy(() => import("./pages/admin/ClasseAudioReview"));
 const ClasseCorrections = lazy(() => import("./components/classe/ClasseCorrections"));
 const MyGradeReport = lazy(() => import("./components/classe/MyGradeReport"));
 
@@ -150,6 +154,9 @@ const App = () => (
                 <Route path="answer-keys" element={<AnswerKeysManager />} />
                 <Route path="weights" element={<WeightsManager />} />
                 <Route path="grades" element={<GradeOverview />} />
+                <Route path="voice-reading" element={<VoiceReadingHome />} />
+                <Route path="voice-reading/:level/:module" element={<VoiceReadingLessons />} />
+                <Route path="voice-reading/:level/:module/:lessonId" element={<VoiceReadingStudio />} />
               </Route>
               <Route path="/fitila/classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
               <Route path="/fitila/classe/notes" element={<ProtectedRoute><MyGradeReport /></ProtectedRoute>} />

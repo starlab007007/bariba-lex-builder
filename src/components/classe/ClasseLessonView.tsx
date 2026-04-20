@@ -5,6 +5,7 @@ import BaribaSmartTextarea from './BaribaSmartTextarea';
 import UniversalAnswerCard from './UniversalAnswerCard';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { CLASSE_LESSONS, LESSON_ANSWERS, markLessonComplete, markTabComplete, getLessonStars, getClasseProgress } from '@/data/classeContent';
+import ListenButton from './ListenButton';
 
 interface Props {
   lessonId: number;
@@ -229,6 +230,9 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
               </div>
             )}
             <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
+              <div className="flex justify-end mb-2">
+                <ListenButton contentKey={`classe/N1/lang/${lessonId}/text`} size="md" />
+              </div>
               <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{lesson.text}</p>
             </div>
             <motion.button

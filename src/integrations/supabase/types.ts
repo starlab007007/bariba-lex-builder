@@ -579,6 +579,90 @@ export type Database = {
         }
         Relationships: []
       }
+      classe_content_audios: {
+        Row: {
+          admin_id: string | null
+          admin_notes: string | null
+          content_key: string
+          content_text: string
+          content_type: string
+          created_at: string
+          duration_seconds: number | null
+          file_name: string
+          hierarchy_label: string | null
+          id: string
+          is_current: boolean
+          item_index: number | null
+          lesson_id: number | null
+          level: string
+          module: string
+          peak_db: number | null
+          quality_score: number | null
+          reviewed_at: string | null
+          rms_db: number | null
+          section_key: string | null
+          status: string
+          storage_path: string
+          teacher_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          admin_id?: string | null
+          admin_notes?: string | null
+          content_key: string
+          content_text: string
+          content_type: string
+          created_at?: string
+          duration_seconds?: number | null
+          file_name: string
+          hierarchy_label?: string | null
+          id?: string
+          is_current?: boolean
+          item_index?: number | null
+          lesson_id?: number | null
+          level: string
+          module: string
+          peak_db?: number | null
+          quality_score?: number | null
+          reviewed_at?: string | null
+          rms_db?: number | null
+          section_key?: string | null
+          status?: string
+          storage_path: string
+          teacher_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          admin_id?: string | null
+          admin_notes?: string | null
+          content_key?: string
+          content_text?: string
+          content_type?: string
+          created_at?: string
+          duration_seconds?: number | null
+          file_name?: string
+          hierarchy_label?: string | null
+          id?: string
+          is_current?: boolean
+          item_index?: number | null
+          lesson_id?: number | null
+          level?: string
+          module?: string
+          peak_db?: number | null
+          quality_score?: number | null
+          reviewed_at?: string | null
+          rms_db?: number | null
+          section_key?: string | null
+          status?: string
+          storage_path?: string
+          teacher_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       classe_evaluation_results: {
         Row: {
           attempts: number
