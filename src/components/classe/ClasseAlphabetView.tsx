@@ -57,22 +57,29 @@ export default function ClasseAlphabetView() {
           {/* Letter grid */}
           <div className="grid grid-cols-4 gap-3">
             {getLetters().map((letter, i) => (
-              <motion.button
+              <motion.div
                 key={letter}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.03 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setSelectedLetter(letter)}
-                className={`aspect-square rounded-2xl flex flex-col items-center justify-center transition-all shadow-sm ${
+                className={`relative aspect-square rounded-2xl transition-all shadow-sm ${
                   selectedLetter === letter
                     ? 'bg-gradient-to-br from-emerald-400 to-teal-400 shadow-lg shadow-emerald-200'
                     : 'bg-white border border-gray-100'
                 }`}
               >
-                <span className={`text-3xl font-black ${selectedLetter === letter ? 'text-white' : 'text-gray-800'}`}>{letter}</span>
-                <span className={`text-xs mt-1 ${selectedLetter === letter ? 'text-white/70' : 'text-gray-400'}`}>{letter.toUpperCase()}</span>
-              </motion.button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLetter(letter)}
+                  className="w-full h-full flex flex-col items-center justify-center"
+                >
+                  <span className={`text-3xl font-black ${selectedLetter === letter ? 'text-white' : 'text-gray-800'}`}>{letter}</span>
+                  <span className={`text-xs mt-1 ${selectedLetter === letter ? 'text-white/70' : 'text-gray-400'}`}>{letter.toUpperCase()}</span>
+                </button>
+                <div className="absolute top-1 right-1">
+                  <ListenButton contentKey={getAlphabetContentKey(mode as 'vowels' | 'consonants' | 'nasals', i)} size="sm" />
+                </div>
+              </motion.div>
             ))}
           </div>
 
