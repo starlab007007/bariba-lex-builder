@@ -2,6 +2,7 @@ import { useApprovedAudio } from '@/hooks/useClasseAudio';
 import { Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useAutoStopAudio } from '@/hooks/useAutoStopAudio';
 
 interface ListenButtonProps {
   contentKey: string;
@@ -19,6 +20,8 @@ export default function ListenButton({ contentKey, size = 'md', className, label
   const { data, isLoading } = useApprovedAudio(contentKey);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
+
+  useAutoStopAudio(audioRef, setPlaying);
 
   const sz = size === 'sm' ? 'w-7 h-7' : size === 'lg' ? 'w-11 h-11' : 'w-9 h-9';
   const iconSz = size === 'sm' ? 'w-3.5 h-3.5' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4';
