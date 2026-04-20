@@ -2,6 +2,17 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { BARIBA_ALPHABET } from '@/data/classeContent';
+import ListenButton from '@/components/classe/ListenButton';
+
+/** Construit la clé d'audio pour un item du grid en fonction du mode. */
+function getAlphabetContentKey(mode: 'vowels' | 'consonants' | 'nasals', idx: number): string {
+  if (mode === 'vowels') return `classe/N1/alphabet/0/vowels/${idx}`;
+  if (mode === 'consonants') return `classe/N1/alphabet/0/consonants/${idx}`;
+  // mode === 'nasals' : on combine nasalVowels puis toneMarkers
+  const nbNasal = BARIBA_ALPHABET.nasalVowels.length;
+  if (idx < nbNasal) return `classe/N1/alphabet/0/nasalVowels/${idx}`;
+  return `classe/N1/alphabet/0/toneMarkers/${idx - nbNasal}`;
+}
 
 export default function ClasseAlphabetView() {
   const { currentLang } = useFitilaLanguage();
