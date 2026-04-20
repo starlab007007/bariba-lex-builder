@@ -48,6 +48,37 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
   const [deleting, setDeleting] = useState(false);
   const [teacherAudioPath, setTeacherAudioPath] = useState<string | null>(null);
   const [teacherAudioDuration, setTeacherAudioDuration] = useState<number | null>(null);
+  const [personalAudioPath, setPersonalAudioPath] = useState<string | null>(null);
+  const [personalAudioDuration, setPersonalAudioDuration] = useState<number | null>(null);
+
+  // Charge le corrigé vocal personnalisé existant pour cette réponse
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('classe_student_answers')
+        .select('teacher_audio_path, teacher_audio_duration')
+        .eq('id', answer.id)
+        .maybeSingle();
+      if (data?.teacher_audio_path) {
+        setPersonalAudioPath(data.teacher_audio_path);
+        setPersonalAudioDuration(data.teacher_audio_duration ?? null);
+      }
+    })();
+  }, [answer.id]);
+
+  const handlePersonalAudioUploaded = async (path: string, duration: number) => {
+    setPersonalAudioPath(path);
+    setPersonalAudioDuration(duration);
+    const { error } = await supabase
+      .from('classe_student_answers')
+      .update({ teacher_audio_path: path, teacher_audio_duration: duration })
+      .eq('id', answer.id);
+    if (error) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: '🎙️ Corrigé vocal personnalisé envoyé à l\'élève' });
+    }
+  };
 
   // Load existing weight for this question
   useEffect(() => {
@@ -224,25 +255,66 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
 
       {/* Corrigé vocal enseignant */}
       <div className="pt-3 border-t border-border space-y-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-bold uppercase text-purple-700">Corrigé vocal du prof (optionnel)</span>
-          <VoiceAnswerRecorder
-            storageSubpath={`${answer.level}/${answer.module}/${answer.lesson_id}/${answer.section_key || 'q'}/${answer.question_idx}`}
-            fullPath={`teacher/${answer.level}/${answer.module}/${answer.lesson_id}/${answer.section_key || 'q'}/${answer.question_idx}/${Date.now()}.webm`}
-            onUploaded={handleTeacherAudioUploaded}
-            variant="teacher"
-            compact
-          />
-          {teacherAudioPath && (
-            <VoiceAnswerPlayer
-              path={teacherAudioPath}
-              duration={teacherAudioDuration ?? undefined}
+        {/* Personnalisé pour cet élève */}
+        <div className="p-3 rounded-xl bg-purple-50 border border-purple-200 space-y-2">
+          <div className="flex items-center gap-2">
+            <Mic className="w-3.5 h-3.5 text-purple-700" />
+            <span className="text-[11px] font-black uppercase text-purple-800">
+              Corrigé vocal personnalisé pour cet élève
+            </span>
+          </div>
+          <p className="text-[10px] text-purple-700/80">
+            Enregistre une réponse vocale spécifique à <strong>{studentName ?? 'cet apprenant'}</strong>. Elle apparaîtra
+            dans son module "Mes corrections" et dans la zone "Corrigé enseignant" de la question.
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <VoiceAnswerRecorder
+              storageSubpath={`teacher-personal/${answer.id}`}
+              fullPath={`teacher-personal/${answer.id}/${Date.now()}.webm`}
+              onUploaded={handlePersonalAudioUploaded}
               variant="teacher"
-              label="Mon corrigé vocal"
+              compact
             />
-          )}
+            {personalAudioPath && (
+              <VoiceAnswerPlayer
+                path={personalAudioPath}
+                duration={personalAudioDuration ?? undefined}
+                variant="teacher"
+                label="Mon corrigé personnalisé"
+              />
+            )}
+          </div>
         </div>
-        <p className="text-[10px] text-muted-foreground">L'élève pourra l'écouter dans la zone "Corrigé enseignant".</p>
+
+        {/* Général pour la question (réutilisable) */}
+        <div className="p-3 rounded-xl bg-muted/40 border border-border space-y-2">
+          <div className="flex items-center gap-2">
+            <Mic className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-[11px] font-black uppercase text-muted-foreground">
+              Corrigé vocal général (publié pour tous les élèves)
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <VoiceAnswerRecorder
+              storageSubpath={`${answer.level}/${answer.module}/${answer.lesson_id}/${answer.section_key || 'q'}/${answer.question_idx}`}
+              fullPath={`teacher/${answer.level}/${answer.module}/${answer.lesson_id}/${answer.section_key || 'q'}/${answer.question_idx}/${Date.now()}.webm`}
+              onUploaded={handleTeacherAudioUploaded}
+              variant="teacher"
+              compact
+            />
+            {teacherAudioPath && (
+              <VoiceAnswerPlayer
+                path={teacherAudioPath}
+                duration={teacherAudioDuration ?? undefined}
+                variant="teacher"
+                label="Corrigé général"
+              />
+            )}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Sera réutilisé comme corrigé officiel de cette question pour tous les apprenants.
+          </p>
+        </div>
       </div>
     </div>
   );

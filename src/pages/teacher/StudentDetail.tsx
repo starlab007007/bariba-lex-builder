@@ -38,7 +38,7 @@ export default function StudentDetail() {
         supabase.from('classe_student_progress').select('level, completed_lessons, lesson_stars, updated_at').eq('user_id', id),
         supabase.from('classe_evaluation_results').select('level, evaluation_id, best_score, attempts').eq('user_id', id),
         supabase.from('classe_student_answers')
-          .select('id, user_id, level, module, lesson_id, section_key, question_idx, answer_text, field_data, score, max_score, teacher_grade, teacher_comment, updated_at')
+          .select('id, user_id, level, module, lesson_id, section_key, question_idx, answer_text, answer_audio_path, answer_audio_duration, field_data, score, max_score, teacher_grade, teacher_comment, teacher_audio_path, teacher_audio_duration, updated_at')
           .eq('user_id', id)
           .order('updated_at', { ascending: false })
           .limit(500),

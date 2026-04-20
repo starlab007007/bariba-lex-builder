@@ -17,7 +17,7 @@ export default function PendingGrading() {
       setLoading(true);
       let q = supabase
         .from('classe_student_answers')
-        .select('id, user_id, level, module, lesson_id, section_key, question_idx, answer_text, field_data, score, max_score, teacher_grade, teacher_comment, updated_at')
+        .select('id, user_id, level, module, lesson_id, section_key, question_idx, answer_text, answer_audio_path, answer_audio_duration, field_data, score, max_score, teacher_grade, teacher_comment, updated_at')
         .is('graded_at', null)
         .order('updated_at', { ascending: false })
         .limit(100);

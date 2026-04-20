@@ -85,6 +85,8 @@ export default function UniversalAnswerCard({
   const [answerMode, setAnswerMode] = useState<AnswerMode>('text');
   const [voicePath, setVoicePath] = useState<string | null>(null);
   const [voiceDuration, setVoiceDuration] = useState<number | null>(null);
+  const [personalTeacherAudioPath, setPersonalTeacherAudioPath] = useState<string | null>(null);
+  const [personalTeacherAudioDuration, setPersonalTeacherAudioDuration] = useState<number | null>(null);
 
   const contentKey = buildContentKey(level, module, lessonId, sectionKey || undefined, questionIdx);
   const storageSubpath = `${level}/${moduleToContentKey(module)}/${lessonId}/${sectionKey || 'q'}/${questionIdx}`;
@@ -99,7 +101,7 @@ export default function UniversalAnswerCard({
       if (!user || cancelled) return;
       const { data } = await supabase
         .from('classe_student_answers')
-        .select('answer_text, teacher_grade, teacher_comment, graded_at, answer_audio_path, answer_audio_duration')
+        .select('answer_text, teacher_grade, teacher_comment, graded_at, answer_audio_path, answer_audio_duration, teacher_audio_path, teacher_audio_duration')
         .eq('user_id', user.id)
         .eq('level', level)
         .eq('module', module)
@@ -118,6 +120,10 @@ export default function UniversalAnswerCard({
         setVoiceDuration(data.answer_audio_duration ?? null);
         setSubmitted(true);
         setEditing(false);
+      }
+      if (data.teacher_audio_path) {
+        setPersonalTeacherAudioPath(data.teacher_audio_path);
+        setPersonalTeacherAudioDuration(data.teacher_audio_duration ?? null);
       }
       if (data.teacher_grade != null || data.teacher_comment) {
         setTeacherGrade({
@@ -393,6 +399,17 @@ export default function UniversalAnswerCard({
                   {teacherGrade.teacher_comment && (
                     <div className="p-2 rounded-lg bg-purple-50 border border-purple-200">
                       <p className="text-xs text-purple-900">💬 {teacherGrade.teacher_comment}</p>
+                    </div>
+                  )}
+                  {personalTeacherAudioPath && (
+                    <div className="p-2 rounded-lg bg-purple-50 border border-purple-200">
+                      <p className="text-[10px] font-bold text-purple-700 mb-1">🎙️ CORRIGÉ VOCAL PERSONNALISÉ</p>
+                      <VoiceAnswerPlayer
+                        path={personalTeacherAudioPath}
+                        duration={personalTeacherAudioDuration ?? undefined}
+                        variant="teacher"
+                        label="Écouter l'enseignant"
+                      />
                     </div>
                   )}
                 </div>

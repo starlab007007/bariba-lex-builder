@@ -271,7 +271,10 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
               <p className="text-gray-500 text-xs uppercase font-bold mb-3">📖 {lesson.phonetics.label}</p>
               <div className="space-y-1.5">
                 {lesson.phonetics.reading.map((line, i) => (
-                  <p key={i} className="text-gray-800 text-lg font-mono tracking-wider">{line}</p>
+                  <div key={i} className="flex items-center gap-2">
+                    <p className="flex-1 text-gray-800 text-lg font-mono tracking-wider">{line}</p>
+                    <ListenButton contentKey={`classe/N1/lang/${lessonId}/phonetics/reading/${i}`} size="sm" />
+                  </div>
                 ))}
               </div>
             </div>
@@ -283,6 +286,7 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
                   {lesson.phonetics.writing.map((w, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <span className="text-amber-600 text-lg font-bold min-w-[80px] font-mono">{w}</span>
+                      <ListenButton contentKey={`classe/N1/lang/${lessonId}/phonetics/writing/${i}`} size="sm" />
                       <div className="flex-1">
                         <BaribaSmartTextarea
                           className="bg-gray-50 border-gray-200 focus:border-amber-400"

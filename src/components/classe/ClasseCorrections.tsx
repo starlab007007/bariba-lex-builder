@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import AuthGuardBanner from './AuthGuardBanner';
 import AnswerDiff from './AnswerDiff';
 import { MODULE_LABELS } from '@/lib/grading';
+import VoiceAnswerPlayer from './VoiceAnswerPlayer';
 
 interface GradedAnswer {
   id: string;
@@ -15,8 +16,12 @@ interface GradedAnswer {
   section_key: string;
   question_idx: number;
   answer_text: string | null;
+  answer_audio_path: string | null;
+  answer_audio_duration: number | null;
   teacher_grade: number | null;
   teacher_comment: string | null;
+  teacher_audio_path: string | null;
+  teacher_audio_duration: number | null;
   graded_at: string | null;
   graded_by: string | null;
 }
@@ -51,7 +56,7 @@ export default function ClasseCorrections() {
     (async () => {
       const { data: ans } = await supabase
         .from('classe_student_answers')
-        .select('id, level, module, lesson_id, section_key, question_idx, answer_text, teacher_grade, teacher_comment, graded_at, graded_by')
+        .select('id, level, module, lesson_id, section_key, question_idx, answer_text, answer_audio_path, answer_audio_duration, teacher_grade, teacher_comment, teacher_audio_path, teacher_audio_duration, graded_at, graded_by')
         .eq('user_id', user.id)
         .not('graded_at', 'is', null)
         .order('graded_at', { ascending: false })
@@ -172,6 +177,29 @@ export default function ClasseCorrections() {
               <div className="p-2 rounded-lg bg-gray-50 text-sm text-gray-700">
                 <span className="text-[10px] font-bold text-gray-400 block mb-1">VOTRE RÉPONSE</span>
                 {it.answer_text}
+              </div>
+            )}
+
+            {it.answer_audio_path && (
+              <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold text-emerald-700">🎙️ MA RÉPONSE VOCALE</span>
+                <VoiceAnswerPlayer
+                  path={it.answer_audio_path}
+                  duration={it.answer_audio_duration ?? undefined}
+                  variant="student"
+                />
+              </div>
+            )}
+
+            {it.teacher_audio_path && (
+              <div className="p-2 rounded-lg bg-purple-50 border border-purple-100 flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold text-purple-700">🎧 CORRIGÉ VOCAL DE L'ENSEIGNANT</span>
+                <VoiceAnswerPlayer
+                  path={it.teacher_audio_path}
+                  duration={it.teacher_audio_duration ?? undefined}
+                  variant="teacher"
+                  label="Écouter le corrigé"
+                />
               </div>
             )}
 
