@@ -18,6 +18,7 @@ import { AudioServicesMonitor } from '@/components/admin/AudioServicesMonitor';
 import { TemplateGenerationAdmin } from '@/components/admin/TemplateGenerationAdmin';
 import { AnimeLibraryManager } from '@/components/admin/AnimeLibraryManager';
 import VoiceRecordingsBrowser from '@/components/admin/VoiceRecordingsBrowser';
+import ClasseAudioReview from '@/pages/admin/ClasseAudioReview';
 import { Link } from 'react-router-dom';
 import { 
   Settings, Users, BarChart3, 
@@ -154,6 +155,10 @@ export default function AdminDashboard() {
                 <Mic className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Voice Corpus
               </TabsTrigger>
+              <TabsTrigger value="classe-audio" className="flex items-center gap-2">
+                <Volume2 className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Audio Classe
+              </TabsTrigger>
 
               {/* 🧪 SECTION TESTS & QUALITÉ */}
               <div className="flex items-center gap-1 w-full mt-2">
@@ -266,6 +271,17 @@ export default function AdminDashboard() {
                   </Link>
                 </div>
                 <VoiceRecordingsBrowser />
+              </div>
+            </TabErrorBoundary>
+          </TabsContent>
+          <TabsContent value="classe-audio">
+            <TabErrorBoundary tabName="classe-audio">
+              <div className="space-y-3">
+                <div className="bg-card border rounded-lg p-4">
+                  <h2 className="text-lg font-bold flex items-center gap-2"><Volume2 className="w-5 h-5 text-primary" /> Lecture Vocale des Contenus</h2>
+                  <p className="text-sm text-muted-foreground">Validez les enregistrements audio des enseignants pour chaque texte et question des manuels N1/N2.</p>
+                </div>
+                <ClasseAudioReview />
               </div>
             </TabErrorBoundary>
           </TabsContent>
