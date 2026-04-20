@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2, Pause, Play, Volume2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useAutoStopAudio } from '@/hooks/useAutoStopAudio';
 
 interface Props {
   /** Storage path inside `classe-answers-audio` bucket. */
@@ -21,6 +22,8 @@ export default function VoiceAnswerPlayer({ path, duration, label, className, va
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useAutoStopAudio(audioRef, setPlaying);
 
   useEffect(() => {
     let cancelled = false;
