@@ -401,6 +401,17 @@ export default function UniversalAnswerCard({
                       <p className="text-xs text-purple-900">💬 {teacherGrade.teacher_comment}</p>
                     </div>
                   )}
+                  {personalTeacherAudioPath && (
+                    <div className="p-2 rounded-lg bg-purple-50 border border-purple-200">
+                      <p className="text-[10px] font-bold text-purple-700 mb-1">🎙️ CORRIGÉ VOCAL PERSONNALISÉ</p>
+                      <VoiceAnswerPlayer
+                        path={personalTeacherAudioPath}
+                        duration={personalTeacherAudioDuration ?? undefined}
+                        variant="teacher"
+                        label="Écouter l'enseignant"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
