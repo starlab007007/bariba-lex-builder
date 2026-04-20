@@ -421,9 +421,18 @@ export default function TamTamSocial() {
     const rawIdx = Math.round(e.currentTarget.scrollTop / viewportHeight);
     if (!Number.isFinite(rawIdx)) return;
 
+    // Stoppe immédiatement toute lecture audio/vidéo dès que l'utilisateur scrolle
+    window.dispatchEvent(new CustomEvent('feed-scroll-start'));
+
     const idx = Math.max(0, rawIdx);
-    if (idx !== currentPostIndex) setCurrentPostIndex(idx);
-  }, [currentPostIndex]);
+    if (idx !== currentPostIndex) {
+      setCurrentPostIndex(idx);
+      // Auto-loadMore : approche de la fin → préchargement
+      if (idx >= videoFeedItems.length - 3) {
+        loadMoreVideos?.();
+      }
+    }
+  }, [currentPostIndex, videoFeedItems.length, loadMoreVideos]);
 
   const handleOpenComments = useCallback(async (postId: string) => {
     setCommentsModal({ isOpen: true, postId, comments: [], isLoading: true });
