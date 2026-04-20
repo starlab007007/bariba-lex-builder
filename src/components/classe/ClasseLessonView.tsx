@@ -39,6 +39,19 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
     { id: 'phonetics', label: 'Sɔ̃ɔsiru', emoji: '✍️', show: !!lesson.phonetics },
   ];
 
+  const visibleTabs = tabs.filter(t => t.show);
+
+  const goToNextTab = () => {
+    const idx = visibleTabs.findIndex(t => t.id === activeTab);
+    if (idx >= 0 && idx < visibleTabs.length - 1) {
+      setActiveTab(visibleTabs[idx + 1].id);
+      // Scroll to top of tab content for clarity
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
+    }
+    return false;
+  };
+
   const handleComplete = () => {
     markLessonComplete(lessonId);
     markTabComplete(lessonId, activeTab);
@@ -237,7 +250,13 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
             </div>
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={() => markTabComplete(lessonId, 'text')}
+              onClick={() => {
+                markTabComplete(lessonId, 'text');
+                if (!goToNextTab()) {
+                  // No more tabs — finish lesson
+                  handleComplete();
+                }
+              }}
               className="w-full py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold shadow-md"
             >
               <Check className="w-4 h-4 inline mr-1" /> {currentLang === 'ba' ? 'Na faagi' : 'J\'ai lu'}
@@ -315,7 +334,7 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
                   }}
                   className="w-full mt-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold shadow-md"
                 >
-                  ✓ {currentLang === 'ba' ? 'Yaayasia' : 'Vérifier tout'}
+                  📤 {currentLang === 'ba' ? 'Sɔ̃ɔ' : 'Soumettre'}
                 </motion.button>
               </div>
             )}
@@ -335,10 +354,19 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={handleComplete}
+          onClick={() => {
+            markTabComplete(lessonId, activeTab);
+            // Try to advance to next tab; only finish lesson when on the last tab
+            if (!goToNextTab()) {
+              handleComplete();
+            }
+          }}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold shadow-lg shadow-amber-200"
         >
-          <Check className="w-4 h-4" /> {currentLang === 'ba' ? 'Kobu kpa a sãa' : 'Terminer & Suivant'}
+          <Check className="w-4 h-4" />
+          {visibleTabs.findIndex(t => t.id === activeTab) < visibleTabs.length - 1
+            ? (currentLang === 'ba' ? 'Sãa' : 'Suivant')
+            : (currentLang === 'ba' ? 'Kobu kpa a sãa' : 'Terminer la leçon')}
           <ChevronRight className="w-4 h-4" />
         </motion.button>
       </div>
