@@ -83,7 +83,7 @@ function AnswerReviewInner({ answer, studentName, onGraded }: AnswerReviewProps)
       .update({ teacher_audio_path: path, teacher_audio_duration: duration })
       .eq('id', answer.id);
     if (error) {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: String(error.message ?? 'Échec de la sauvegarde').slice(0, 200), variant: 'destructive' });
     } else {
       toast({ title: '🎙️ Corrigé vocal personnalisé envoyé à l\'élève' });
     }
@@ -146,7 +146,7 @@ function AnswerReviewInner({ answer, studentName, onGraded }: AnswerReviewProps)
       });
       toast({ title: '🎙️ Corrigé vocal publié' });
     } catch (e: any) {
-      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: String(e?.message ?? 'Échec de publication').slice(0, 200), variant: 'destructive' });
     }
   };
 
