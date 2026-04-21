@@ -1,86 +1,129 @@
 
 
-# Plan — Audios alphabet N1 visibles + Évaluations N2 accessibles
+# Plan — Corriger l'envoi des vocaux (écran blanc) côté élève et enseignant N1/N2
 
 ## Diagnostic
 
-### Bug 1 — Audios alphabet N1 invisibles côté apprenant
-`src/components/classe/ClasseAlphabetView.tsx` :
-- Aucun `<ListenButton>` n'est rendu
-- Le bouton 🔊 du panneau de détail est un simple `<button>` décoratif sans logique
-- Les `content_keys` sont pourtant déjà générés par `pushAlphabetItems` :
-  - `classe/N1/alphabet/0/vowels/{idx}`
-  - `classe/N1/alphabet/0/consonants/{idx}`
-  - `classe/N1/alphabet/0/nasalVowels/{idx}` ← clé exacte
-  - `classe/N1/alphabet/0/toneMarkers/{idx}`
+Quand un élève ou un enseignant clique sur **Envoyer** un vocal dans une classe N1/N2, l'app affiche un **écran blanc**. Trois causes racines identifiées :
 
-**Note** : la section UI `nasals` mélange `nasalVowels` + `toneMarkers` dans une seule liste — il faut donc distinguer la clé en fonction de l'index réel pour pointer la bonne section_key.
-
-### Bug 2 — Évaluations N2 introuvables ("Évaluation introuvable")
-`src/components/classe/ClasseEvaluation.tsx` ligne 18 :
-```ts
-const evaluation = CLASSE_EVALUATIONS.find(e => e.id === evalId);
+### 🔴 Cause 1 — RLS storage rejette le corrigé personnalisé enseignant (bug principal)
+Dans `AnswerReview.tsx` lignes 272–273, le corrigé vocal **personnalisé** s'upload vers :
 ```
-N'utilise QUE le tableau N1. Les évaluations N2 (id ≥ 101) ne sont jamais trouvées → message d'erreur permanent.
+teacher-personal/{answer.id}/{ts}.webm
+```
+La policy RLS (migration `20260420105920`) n'autorise INSERT que pour 2 préfixes :
+- `{auth.uid}/...` (élève)
+- `teacher/...` (enseignant)
 
-Conséquences additionnelles :
-- `<ListenButton contentKey={\`classe/N1/eval/...\`}>` → préfixe figé → mauvais audio chargé pour N2
-- `syncEvaluation('N1', ...)` et `syncAnswer({ level: 'N1', ... })` → mauvais niveau enregistré côté serveur
-- `getClasseProgress()` (N1) au lieu de `getClasseN2Progress()` quand on est en N2
+Le préfixe `teacher-personal/...` **n'est couvert par aucune policy** → Supabase renvoie 403 `new row violates row-level security policy`. L'erreur est attrapée par le `try/catch`, MAIS :
+
+### 🔴 Cause 2 — Toast crashe quand le message est non-string
+Dans `VoiceAnswerRecorder` ligne 62 : `description: e.message`. Quand `e.message` est `undefined` (cas RLS avec objet Supabase) ou un objet, certains lecteurs de toast plantent. Combiné à l'absence d'**ErrorBoundary** autour de `UniversalAnswerCard` et `AnswerReview` → tout le sous-arbre React démonte → **écran blanc**.
+
+### 🟡 Cause 3 — Compatibilité navigateur (Safari iOS / vieux Android)
+- `useAudioRecorder` passe `{ mimeType }` au constructeur `MediaRecorder` même si non supporté → `NotSupportedError` sur Safari iOS < 14.5
+- `getUserMedia` avec `sampleRate: 16000` strict échoue sur certains Android → `OverconstrainedError`
+- `recorder.audioBlob.type` peut être `''` sur Safari iOS → `contentType: ''` rejeté côté Storage
+- Le helper `getRecorderTimeslice()` retourne 1000ms sur iOS, mais le `requestData()` final n'est pas attendu → blob vide sur iOS si user clique stop puis envoyer trop vite
 
 ## Implémentation
 
-### A. `ClasseAlphabetView.tsx` — Ajouter `<ListenButton>` partout
+### A. Corriger les RLS storage pour `teacher-personal/...` (migration SQL)
 
-1. Importer `ListenButton`
-2. Définir un helper `getContentKey(letter, idx)` qui calcule la bonne clé selon le mode :
-   - `vowels` → `classe/N1/alphabet/0/vowels/{idx}`
-   - `consonants` → `classe/N1/alphabet/0/consonants/{idx}`
-   - `nasals` → si `idx < BARIBA_ALPHABET.nasalVowels.length` → `nasalVowels/{idx}` ; sinon → `toneMarkers/{idx - nasalVowels.length}`
-3. Sur chaque tuile lettre du grid : afficher un petit `<ListenButton size="sm">` en overlay coin haut-droit (positionnement absolu, ne perturbe pas le layout grid)
-4. Dans le panneau de détail (`selectedLetter`) : remplacer le `<button>` 🔊 décoratif par un vrai `<ListenButton size="lg">` avec la bonne clé
-5. Dans le `SyllableBuilder` : ajouter un `<ListenButton size="sm">` à côté de chaque syllabe générée si une clé existe (sinon fallback grisé natif du composant)
+Ajouter 3 nouvelles policies sur `storage.objects` du bucket `classe-answers-audio` :
+1. **INSERT** : enseignant/admin peut uploader sous `teacher-personal/{answer_id}/...`
+2. **DELETE** : idem
+3. (SELECT déjà couvert par "Teachers read all answer audio")
 
-### B. `ClasseEvaluation.tsx` — Support N1 + N2
+```sql
+CREATE POLICY "Teachers upload personal correction audio"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'classe-answers-audio'
+  AND (storage.foldername(name))[1] = 'teacher-personal'
+  AND public.is_teacher_or_admin(auth.uid())
+);
 
-1. Ajouter une prop `level: 'N1' | 'N2'` (défaut `'N1'` pour rétrocompat)
-2. Importer `CLASSE_N2_EVALUATIONS` et `getClasseN2Progress`
-3. Sélection dynamique :
-   ```ts
-   const pool = level === 'N2' ? CLASSE_N2_EVALUATIONS : CLASSE_EVALUATIONS;
-   const evaluation = pool.find(e => e.id === evalId);
-   const progress = level === 'N2' ? getClasseN2Progress() : getClasseProgress();
-   ```
-4. Remplacer tous les `classe/N1/eval/...` hardcodés des `<ListenButton>` par `classe/${level}/eval/...`
-5. Remplacer `saveEvaluationScore` / `syncEvaluation('N1', ...)` / `syncAnswer({ level: 'N1', ... })` par la version dynamique selon `level` :
-   - Pour `saveEvaluationScore` : si N2, utiliser le helper progress N2 équivalent (à vérifier — sinon ajouter un branchement)
-
-### C. `FitilaClasse.tsx` — Passer `activeLevel` au composant
-
-Ligne 379 :
-```tsx
-<ClasseEvaluation evalId={selectedEvalId} level={activeLevel} onBack={...} />
+CREATE POLICY "Teachers delete personal correction audio"
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'classe-answers-audio'
+  AND (storage.foldername(name))[1] = 'teacher-personal'
+  AND public.is_teacher_or_admin(auth.uid())
+);
 ```
 
-### D. Vérification rapide `classeContent.ts` / `classeContentN2.ts`
-- Confirmer la présence d'un helper équivalent à `saveEvaluationScore` pour N2 (sinon utiliser le même mais avec le préfixe correct géré par `syncEvaluation('N2', ...)`)
+### B. Renforcer `VoiceAnswerRecorder.tsx` — pas d'écran blanc
 
-## Fichiers modifiés
+1. Wrapper l'intégralité du rendu dans un **ErrorBoundary** local (composant interne) qui affiche un message d'erreur amical au lieu de démonter le parent
+2. Normaliser le toast d'erreur :
+   ```ts
+   const msg = e?.message || (typeof e === 'string' ? e : JSON.stringify(e)) || 'Erreur inconnue';
+   toast({ title: '❌ Erreur d\'envoi', description: String(msg).slice(0, 200), variant: 'destructive' });
+   ```
+3. Garde-fous avant upload :
+   - Vérifier `recorder.audioBlob.size > 0` (sinon toast "enregistrement vide" + reset)
+   - Forcer `contentType` à `'audio/webm'` ou `'audio/mp4'` si `.type` est vide
+4. Catch global autour de `recorder.startRecording()` avec toast spécifique si micro refusé (NotAllowedError, NotFoundError, OverconstrainedError)
+5. Bouton **Envoyer** désactivé tant que `audioBlob.size === 0`
 
-- `src/components/classe/ClasseAlphabetView.tsx` — `<ListenButton>` sur grille + détail + syllabes
-- `src/components/classe/ClasseEvaluation.tsx` — prop `level`, sélection dynamique du pool, clés audio dynamiques, sync correct
-- `src/pages/fitila/FitilaClasse.tsx` — passer `level={activeLevel}` à `<ClasseEvaluation>`
+### C. Renforcer `useAudioRecorder.ts` — compat tous navigateurs
+
+1. **MediaRecorder construction sécurisée** :
+   ```ts
+   const mimeType = getSupportedAudioMimeType();
+   let mediaRecorder: MediaRecorder;
+   try {
+     mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+   } catch {
+     mediaRecorder = new MediaRecorder(stream); // fallback navigateur défaut
+   }
+   ```
+2. **Contraintes audio assouplies** : passer `sampleRate` et `channelCount` en `ideal` au lieu de strict, fallback sur `{ audio: true }` si `OverconstrainedError`
+3. **stopRecording attente flush iOS** : ajouter `await new Promise(r => setTimeout(r, 200))` après `requestData()` avant `stop()` sur iOS
+4. **Garantir blob non vide** : si `chunks.length === 0` après stop, `resolve(null)` (déjà fait) — le composant doit alors afficher un toast "réessaye"
+5. **Permission micro proactive** : exposer `error` détaillé (`NotAllowedError` → "Micro refusé. Active-le dans les réglages")
+
+### D. Wrapper les zones critiques avec ErrorBoundary
+
+Créer un petit composant réutilisable `src/components/common/SafeBoundary.tsx` (class component) et l'utiliser autour de :
+- `<AnswerReview>` dans le dashboard enseignant (PendingGrading, StudentDetail)
+- `<UniversalAnswerCard>` dans les leçons N1/N2
+
+Ainsi même si une exception remonte, on voit un message rouge au lieu d'un écran blanc.
+
+### E. Compatibilité Capacitor (mobile natif)
+
+Vérifier dans `AndroidManifest.xml` que `RECORD_AUDIO` est déclaré (déjà mémorisé dans `mem://infrastructure/mobile/apk-permission-config`). Pas de changement code Capacitor requis — le hook `useAudioRecorder` utilise l'API Web standard que Capacitor WebView supporte sur Android 10+ et iOS 14.5+.
+
+## Fichiers
+
+**Migration SQL**
+- Nouvelle migration : 2 nouvelles RLS policies pour `teacher-personal/...`
+
+**Modifications**
+- `src/components/classe/VoiceAnswerRecorder.tsx` — ErrorBoundary local, toast safe, garde-fous blob, contentType fallback
+- `src/hooks/useAudioRecorder.ts` — construction MediaRecorder sécurisée, contraintes ideal, attente flush iOS, gestion erreurs micro
+
+**Nouveaux**
+- `src/components/common/SafeBoundary.tsx` — ErrorBoundary réutilisable
+
+**Intégration ErrorBoundary**
+- `src/components/teacher/AnswerReview.tsx` — wrap rendu
+- `src/components/classe/UniversalAnswerCard.tsx` — wrap rendu
+- `src/components/teacher/PendingGrading.tsx` & `StudentDetail.tsx` — wrap chaque carte (sécurité supplémentaire)
 
 ## Garanties
 
-- ✅ Alphabet N1 : chaque voyelle, consonne, nasale, ton et syllabe a un bouton 🔊 fonctionnel quand l'audio enseignant est approuvé
-- ✅ Évaluations N2 : toutes les 5 évaluations N2 (id 101–105) accessibles avec questions, écriture, images et corrigés
-- ✅ `<ListenButton>` des questions évaluation N2 pointe vers les bons audios (`classe/N2/eval/...`)
-- ✅ Réponses élève N2 syncées avec le bon `level: 'N2'` côté serveur
-- ✅ Compatibilité totale avec N1 (prop `level` optionnelle avec défaut)
+- ✅ Élève N1/N2 : envoi vocal réussi sans écran blanc, toast confirmation
+- ✅ Enseignant N1/N2 : corrigé vocal **général** (`teacher/...`) ET **personnalisé** (`teacher-personal/...`) fonctionnent
+- ✅ Si erreur réseau/permission : message rouge clair, l'app reste utilisable (pas de démontage)
+- ✅ Compatible Chrome, Firefox, Edge, Opera, Safari macOS, Safari iOS 14.5+, Android WebView, Capacitor natif
+- ✅ Fallback automatique du codec audio selon le navigateur (WebM/Opus, MP4/AAC)
+- ✅ ErrorBoundary capture toute exception React et affiche un fallback au lieu d'un écran blanc
 
 ## Hors scope
 
-- Réenregistrement des audios alphabet par les enseignants (déjà couvert par le module Alphabet enseignant existant)
-- Refonte du `SyllableBuilder` (juste ajout du bouton)
+- Transcription IA des vocaux (à demander explicitement)
+- Compression côté client des audios > 5 MB (taille raisonnable des réponses < 1 min)
 
