@@ -10,6 +10,7 @@ import { z } from 'zod';
 import VoiceAnswerPlayer from '@/components/classe/VoiceAnswerPlayer';
 import VoiceAnswerRecorder from '@/components/classe/VoiceAnswerRecorder';
 import { upsertAnswerKey, fetchAnswerKey } from '@/lib/answerKeys';
+import SafeBoundary from '@/components/common/SafeBoundary';
 
 const gradeSchema = z.object({
   grade: z.number().min(0).max(20),
@@ -38,7 +39,15 @@ export interface AnswerReviewProps {
   onGraded?: () => void;
 }
 
-export default function AnswerReview({ answer, studentName, onGraded }: AnswerReviewProps) {
+export default function AnswerReview(props: AnswerReviewProps) {
+  return (
+    <SafeBoundary label="Correction de la réponse">
+      <AnswerReviewInner {...props} />
+    </SafeBoundary>
+  );
+}
+
+function AnswerReviewInner({ answer, studentName, onGraded }: AnswerReviewProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [grade, setGrade] = useState<string>(answer.teacher_grade?.toString() ?? '');
