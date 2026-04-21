@@ -1,5 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { getSupportedAudioMimeType, getAudioBlobType, getRecorderTimeslice } from '@/lib/audioMimeUtils';
+import {
+  getSupportedAudioMimeType,
+  getAudioBlobType,
+  getRecorderTimeslice,
+  isIOSDevice,
+  isSafariBrowser,
+} from '@/lib/audioMimeUtils';
 
 export interface AudioRecorderState {
   isRecording: boolean;
@@ -202,7 +208,16 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
         if (recorder.state === 'paused') {
           try { recorder.resume(); } catch (_) {}
         }
-        recorder.stop();
+        // iOS Safari needs an extra tick after requestData() to flush the
+        // last chunk before stop(), otherwise the resulting blob is empty.
+        const needsFlushDelay = isIOSDevice() || isSafariBrowser();
+        if (needsFlushDelay) {
+          setTimeout(() => {
+            try { recorder.stop(); } catch (e) { console.warn('[useAudioRecorder] stop() failed', e); }
+          }, 250);
+        } else {
+          recorder.stop();
+        }
       } else {
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
