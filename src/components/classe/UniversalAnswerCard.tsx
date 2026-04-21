@@ -29,6 +29,7 @@ import ListenButton from './ListenButton';
 import VoiceAnswerRecorder from './VoiceAnswerRecorder';
 import VoiceAnswerPlayer from './VoiceAnswerPlayer';
 import { buildContentKey, moduleToContentKey } from '@/lib/classeContentKeys';
+import SafeBoundary from '@/components/common/SafeBoundary';
 
 type Level = 'N1' | 'N2';
 type Module = 'lesson' | 'calcul' | 'evaluation' | 'gestion' | 'grammaire' | 'textprod';
@@ -59,7 +60,15 @@ interface TeacherGrade {
 
 type AnswerMode = 'text' | 'voice';
 
-export default function UniversalAnswerCard({
+export default function UniversalAnswerCard(props: Props) {
+  return (
+    <SafeBoundary label="Réponse">
+      <UniversalAnswerCardInner {...props} />
+    </SafeBoundary>
+  );
+}
+
+function UniversalAnswerCardInner({
   level,
   module,
   lessonId,

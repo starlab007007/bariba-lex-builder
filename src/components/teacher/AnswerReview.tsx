@@ -10,6 +10,7 @@ import { z } from 'zod';
 import VoiceAnswerPlayer from '@/components/classe/VoiceAnswerPlayer';
 import VoiceAnswerRecorder from '@/components/classe/VoiceAnswerRecorder';
 import { upsertAnswerKey, fetchAnswerKey } from '@/lib/answerKeys';
+import SafeBoundary from '@/components/common/SafeBoundary';
 
 const gradeSchema = z.object({
   grade: z.number().min(0).max(20),
@@ -38,7 +39,15 @@ export interface AnswerReviewProps {
   onGraded?: () => void;
 }
 
-export default function AnswerReview({ answer, studentName, onGraded }: AnswerReviewProps) {
+export default function AnswerReview(props: AnswerReviewProps) {
+  return (
+    <SafeBoundary label="Correction de la réponse">
+      <AnswerReviewInner {...props} />
+    </SafeBoundary>
+  );
+}
+
+function AnswerReviewInner({ answer, studentName, onGraded }: AnswerReviewProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [grade, setGrade] = useState<string>(answer.teacher_grade?.toString() ?? '');
@@ -74,7 +83,7 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
       .update({ teacher_audio_path: path, teacher_audio_duration: duration })
       .eq('id', answer.id);
     if (error) {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: String(error.message ?? 'Échec de la sauvegarde').slice(0, 200), variant: 'destructive' });
     } else {
       toast({ title: '🎙️ Corrigé vocal personnalisé envoyé à l\'élève' });
     }
@@ -137,7 +146,7 @@ export default function AnswerReview({ answer, studentName, onGraded }: AnswerRe
       });
       toast({ title: '🎙️ Corrigé vocal publié' });
     } catch (e: any) {
-      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: String(e?.message ?? 'Échec de publication').slice(0, 200), variant: 'destructive' });
     }
   };
 

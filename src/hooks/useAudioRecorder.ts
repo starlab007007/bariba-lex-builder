@@ -1,5 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { getSupportedAudioMimeType, getAudioBlobType, getRecorderTimeslice } from '@/lib/audioMimeUtils';
+import {
+  getSupportedAudioMimeType,
+  getAudioBlobType,
+  getRecorderTimeslice,
+  isIOSDevice,
+  isSafariBrowser,
+} from '@/lib/audioMimeUtils';
 
 export interface AudioRecorderState {
   isRecording: boolean;
@@ -56,27 +62,44 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
     try {
       setState(prev => ({ ...prev, error: null }));
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          sampleRate: 16000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          // Chrome/Edge advanced hints (cast to any so unsupported keys don't break TS)
-          ...({
-            googHighpassFilter: true,
-            googTypingNoiseDetection: true,
-            googAudioMirroring: false,
-          } as any),
-        }
-      });
+      // Relaxed constraints with `ideal` + fallback to bare `{ audio: true }`
+      // for old Android / Safari iOS that throw OverconstrainedError otherwise.
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            sampleRate: { ideal: 16000 },
+            channelCount: { ideal: 1 },
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            ...({
+              googHighpassFilter: true,
+              googTypingNoiseDetection: true,
+              googAudioMirroring: false,
+            } as any),
+          }
+        });
+      } catch (constraintErr: any) {
+        console.warn('[useAudioRecorder] constraints rejected, retrying with { audio: true }', constraintErr?.name);
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
 
       streamRef.current = stream;
       chunksRef.current = [];
 
+      // Safe MediaRecorder construction — fall back to browser default
+      // if the chosen mimeType is rejected (Safari iOS < 14.5, etc.).
       const mimeType = getSupportedAudioMimeType();
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
+      } catch (mrErr) {
+        console.warn('[useAudioRecorder] MediaRecorder mimeType rejected, using default', mrErr);
+        mediaRecorder = new MediaRecorder(stream);
+      }
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -124,10 +147,18 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
 
     } catch (error: any) {
       console.error('Error starting recording:', error);
-      setState(prev => ({
-        ...prev,
-        error: error.message || 'Impossible d\'accéder au microphone'
-      }));
+      let friendly = error?.message || 'Impossible d\'accéder au microphone';
+      const name = error?.name;
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        friendly = 'Micro refusé. Active l\'autorisation micro dans les réglages du navigateur.';
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        friendly = 'Aucun micro détecté sur cet appareil.';
+      } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+        friendly = 'Le micro est utilisé par une autre application. Ferme-la et réessaye.';
+      } else if (name === 'OverconstrainedError') {
+        friendly = 'Micro non compatible avec les réglages demandés.';
+      }
+      setState(prev => ({ ...prev, error: friendly }));
       return null;
     }
   }, []);
@@ -177,7 +208,16 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
         if (recorder.state === 'paused') {
           try { recorder.resume(); } catch (_) {}
         }
-        recorder.stop();
+        // iOS Safari needs an extra tick after requestData() to flush the
+        // last chunk before stop(), otherwise the resulting blob is empty.
+        const needsFlushDelay = isIOSDevice() || isSafariBrowser();
+        if (needsFlushDelay) {
+          setTimeout(() => {
+            try { recorder.stop(); } catch (e) { console.warn('[useAudioRecorder] stop() failed', e); }
+          }, 250);
+        } else {
+          recorder.stop();
+        }
       } else {
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());

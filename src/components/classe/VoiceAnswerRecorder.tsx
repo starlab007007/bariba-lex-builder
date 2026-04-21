@@ -5,6 +5,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { SoundWaveAnimation } from '@/components/voice/SoundWaveAnimation';
+import SafeBoundary from '@/components/common/SafeBoundary';
+import { getAudioBlobType } from '@/lib/audioMimeUtils';
+
+/** Normalize any thrown value into a short, displayable string. */
+function toErrorMessage(e: unknown): string {
+  if (!e) return 'Erreur inconnue';
+  if (typeof e === 'string') return e;
+  if (e instanceof Error) return e.message || e.name || 'Erreur';
+  try {
+    const obj = e as { message?: unknown; error?: unknown; statusText?: unknown };
+    if (typeof obj.message === 'string') return obj.message;
+    if (typeof obj.error === 'string') return obj.error;
+    if (typeof obj.statusText === 'string') return obj.statusText;
+    return JSON.stringify(e).slice(0, 200);
+  } catch {
+    return 'Erreur inconnue';
+  }
+}
 
 interface Props {
   /** Storage subpath under `{userId}/` (e.g. `N1/lang/3/observe/0`). For teacher use `teacher/...` directly. */
@@ -23,43 +41,95 @@ interface Props {
  * - Envoie un blob WebM directement vers `classe-answers-audio`
  * - Appelle `onUploaded(path, duration)` une fois fait
  */
-export default function VoiceAnswerRecorder({ storageSubpath, fullPath, onUploaded, variant = 'student', compact = false }: Props) {
+export default function VoiceAnswerRecorder(props: Props) {
+  return (
+    <SafeBoundary label="Enregistreur vocal">
+      <VoiceAnswerRecorderInner {...props} />
+    </SafeBoundary>
+  );
+}
+
+function VoiceAnswerRecorderInner({ storageSubpath, fullPath, onUploaded, variant = 'student', compact = false }: Props) {
   const recorder = useAudioRecorder();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
 
   const start = async () => {
-    await recorder.startRecording();
+    try {
+      const stream = await recorder.startRecording();
+      if (!stream) {
+        // Hook stored a friendly message in `recorder.error`
+        toast({
+          title: '🎙️ Micro indisponible',
+          description: recorder.error ?? 'Vérifie l\'autorisation micro dans ton navigateur.',
+          variant: 'destructive',
+        });
+      }
+    } catch (e) {
+      console.error('[VoiceAnswerRecorder] start error', e);
+      toast({
+        title: '🎙️ Micro indisponible',
+        description: toErrorMessage(e),
+        variant: 'destructive',
+      });
+    }
   };
 
   const stopAndPreview = async () => {
-    await recorder.stopRecording();
+    try {
+      await recorder.stopRecording();
+    } catch (e) {
+      console.error('[VoiceAnswerRecorder] stop error', e);
+      toast({
+        title: 'Erreur d\'arrêt',
+        description: toErrorMessage(e),
+        variant: 'destructive',
+      });
+    }
   };
 
   const reset = () => recorder.cancelRecording();
 
   const send = async () => {
-    if (!recorder.audioBlob) return;
+    const blob = recorder.audioBlob;
+    if (!blob || blob.size === 0) {
+      toast({
+        title: 'Enregistrement vide',
+        description: 'Réessaye d\'enregistrer ton message.',
+        variant: 'destructive',
+      });
+      recorder.cancelRecording();
+      return;
+    }
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non authentifié');
+      if (!user) throw new Error('Tu dois être connecté pour envoyer un vocal.');
 
-      const path = fullPath ?? `${user.id}/${storageSubpath}/${Date.now()}.webm`;
+      // Pick a content type the browser actually produced, with safe fallback.
+      const fallbackType = getAudioBlobType() || 'audio/webm';
+      const contentType = blob.type && blob.type.length > 0 ? blob.type : fallbackType;
+      // Match storage extension to the codec to keep playback compat (Safari → .mp4)
+      const ext = contentType.includes('mp4') || contentType.includes('aac') ? 'm4a' : 'webm';
+      const path = fullPath
+        ? fullPath.replace(/\.(webm|m4a|mp4)$/i, `.${ext}`)
+        : `${user.id}/${storageSubpath}/${Date.now()}.${ext}`;
+
       const { error } = await supabase.storage
         .from('classe-answers-audio')
-        .upload(path, recorder.audioBlob, {
-          contentType: recorder.audioBlob.type || 'audio/webm',
-          upsert: true,
-        });
+        .upload(path, blob, { contentType, upsert: true });
       if (error) throw error;
 
       await onUploaded(path, recorder.duration);
       recorder.cancelRecording();
       toast({ title: '🎙️ Vocal envoyé' });
-    } catch (e: any) {
+    } catch (e) {
       console.error('[VoiceAnswerRecorder] upload error', e);
-      toast({ title: 'Erreur d\'envoi', description: e.message, variant: 'destructive' });
+      toast({
+        title: '❌ Erreur d\'envoi',
+        description: toErrorMessage(e).slice(0, 200),
+        variant: 'destructive',
+      });
     } finally {
       setUploading(false);
     }
@@ -117,7 +187,7 @@ export default function VoiceAnswerRecorder({ storageSubpath, fullPath, onUpload
       <button
         type="button"
         onClick={send}
-        disabled={uploading}
+        disabled={uploading || !recorder.audioBlob || recorder.audioBlob.size === 0}
         className={cn(
           'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold shadow-sm bg-gradient-to-r disabled:opacity-50',
           accent,
