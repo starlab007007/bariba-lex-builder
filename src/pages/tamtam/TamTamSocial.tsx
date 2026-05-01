@@ -356,6 +356,16 @@ export default function TamTamSocial() {
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; postId: string | null; comments: TamTamComment[]; isLoading: boolean }>({ isOpen: false, postId: null, comments: [], isLoading: false });
   const [focusVideoId, setFocusVideoId] = useState<string | null>(null);
   const [interactiveStory, setInteractiveStory] = useState<{ graph: StoryGraph; id: string } | null>(null);
+  const [shuffleTick, setShuffleTick] = useState(0);
+
+  // Auto-shuffle creation feed every 10 seconds
+  useEffect(() => {
+    if (feedMode !== 'creation') return;
+    const id = setInterval(() => {
+      startTransition(() => setShuffleTick(t => t + 1));
+    }, 10_000);
+    return () => clearInterval(id);
+  }, [feedMode]);
 
   const handlePlayInteractiveStory = useCallback(async (storyId: string) => {
     try {
