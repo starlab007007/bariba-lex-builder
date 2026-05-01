@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Menu, X, Home, BookOpen, BookText, Book, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw } from 'lucide-react';
+import { Menu, X, Home, BookOpen, BookText, Book, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw, School } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 // usePostInteractions now handled inside VideoFeedCard
@@ -267,10 +267,11 @@ const BottomTabBar: React.FC<{
   onNavigate: (path: string) => void;
 }> = ({ activeTab, onTabChange, onCreatePress, onNavigate }) => {
   const tabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
-    { id: 'fil', icon: Home, label: 'Fil' },
-    { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
-    { id: 'dictionary', icon: Book, label: 'Dico', path: '/fitila/dictionary' },
-    { id: 'translator', icon: BookText, label: 'Traducteur', path: '/fitila/translator' },
+     { id: 'fil', icon: Home, label: 'Fil' },
+     { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
+     { id: 'classe', icon: School, label: 'Classe', path: '/fitila/classe' },
+     { id: 'dictionary', icon: Book, label: 'Dico', path: '/fitila/dictionary' },
+     { id: 'translator', icon: BookText, label: 'Traducteur', path: '/fitila/translator' },
   ];
 
   return (
