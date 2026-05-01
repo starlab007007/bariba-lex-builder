@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, memo, startTransition } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Menu, X, Home, BookOpen, BookText, Book, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw, School } from 'lucide-react';
@@ -662,8 +662,7 @@ export default function TamTamSocial() {
           );
         });
         
-      case 'creation': {
-        const creationFromPosts = allPosts.filter(p => {
+      case 'creation': {        const creationFromPosts = allPosts.filter(p => {
           const post = p as any;
           const mediaUrl = (post.media_url || '').trim();
           const mediaType = String(post.media_type || '').toLowerCase();
@@ -676,15 +675,17 @@ export default function TamTamSocial() {
                  post.topic !== 'mavoix';
         });
 
-        // ✅ FIX: Merge both sources, dedupe, then sort by recency
-        // This guarantees freshly published album posts appear in the visible top feed.
         const merged = [...videosAsVideoCards, ...creationFromPosts];
         const deduped = merged.filter((post, index, arr) => arr.findIndex(p => p.id === post.id) === index);
-        deduped.sort((a: any, b: any) => getPostTimestamp(b) - getPostTimestamp(a));
+        // Fisher-Yates shuffle for truly random order
+        for (let i = deduped.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deduped[i], deduped[j]] = [deduped[j], deduped[i]];
+        }
         return deduped;
       }
     }
-  }, [feedMode, posts, videosAsVideoCards]);
+  }, [feedMode, posts, videosAsVideoCards, shuffleTick]);
 
   // ✅ Guard against invalid/overflow index causing all cards to render as placeholders
   useEffect(() => {
