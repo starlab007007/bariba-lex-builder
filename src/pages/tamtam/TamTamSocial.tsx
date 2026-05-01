@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, memo, startTransition } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Menu, X, Home, BookOpen, BookText, Book, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw, School } from 'lucide-react';
@@ -356,6 +356,16 @@ export default function TamTamSocial() {
   const [commentsModal, setCommentsModal] = useState<{ isOpen: boolean; postId: string | null; comments: TamTamComment[]; isLoading: boolean }>({ isOpen: false, postId: null, comments: [], isLoading: false });
   const [focusVideoId, setFocusVideoId] = useState<string | null>(null);
   const [interactiveStory, setInteractiveStory] = useState<{ graph: StoryGraph; id: string } | null>(null);
+  const [shuffleTick, setShuffleTick] = useState(0);
+
+  // Auto-shuffle creation feed every 10 seconds
+  useEffect(() => {
+    if (feedMode !== 'creation') return;
+    const id = setInterval(() => {
+      startTransition(() => setShuffleTick(t => t + 1));
+    }, 10_000);
+    return () => clearInterval(id);
+  }, [feedMode]);
 
   const handlePlayInteractiveStory = useCallback(async (storyId: string) => {
     try {
@@ -636,8 +646,8 @@ export default function TamTamSocial() {
     const allPosts = posts.length > 0 ? posts : [];
     
     switch (feedMode) {
-      case 'patrimoine':
-        return allPosts.filter(p => {
+      case 'patrimoine': {
+        const filtered = allPosts.filter(p => {
           const post = p as any;
           return (
             post.topic === 'patrimoine' || 
@@ -648,9 +658,14 @@ export default function TamTamSocial() {
             (post.culture_score && post.culture_score > 0)
           );
         });
-        
-      case 'mavoix':
-        return allPosts.filter(p => {
+        for (let i = filtered.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+        }
+        return filtered;
+      }
+      case 'mavoix': {
+        const filtered = allPosts.filter(p => {
           const post = p as any;
           return (
             post.topic === 'mavoix' || 
@@ -661,9 +676,14 @@ export default function TamTamSocial() {
             post.template_id?.includes('merci')
           );
         });
+        for (let i = filtered.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+        }
+        return filtered;
+      }
         
-      case 'creation': {
-        const creationFromPosts = allPosts.filter(p => {
+      case 'creation': {        const creationFromPosts = allPosts.filter(p => {
           const post = p as any;
           const mediaUrl = (post.media_url || '').trim();
           const mediaType = String(post.media_type || '').toLowerCase();
@@ -676,15 +696,17 @@ export default function TamTamSocial() {
                  post.topic !== 'mavoix';
         });
 
-        // ✅ FIX: Merge both sources, dedupe, then sort by recency
-        // This guarantees freshly published album posts appear in the visible top feed.
         const merged = [...videosAsVideoCards, ...creationFromPosts];
         const deduped = merged.filter((post, index, arr) => arr.findIndex(p => p.id === post.id) === index);
-        deduped.sort((a: any, b: any) => getPostTimestamp(b) - getPostTimestamp(a));
+        // Fisher-Yates shuffle for truly random order
+        for (let i = deduped.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deduped[i], deduped[j]] = [deduped[j], deduped[i]];
+        }
         return deduped;
       }
     }
-  }, [feedMode, posts, videosAsVideoCards]);
+  }, [feedMode, posts, videosAsVideoCards, shuffleTick]);
 
   // ✅ Guard against invalid/overflow index causing all cards to render as placeholders
   useEffect(() => {
