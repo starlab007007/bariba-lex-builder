@@ -23,10 +23,10 @@ interface AggregateStats {
 
 const PAGE_SIZE = 30;
 const EXPLORATION_RATIO = 0.2; // 20% exploration
-const RESHUFFLE_INTERVAL_MS = 90_000; // re-rank every 90s
+const RESHUFFLE_INTERVAL_MS = 10_000; // re-rank every 10s for dynamic random feed
 const FRESH_BOOST_HOURS = 1;
 const FRESH_BOOST_POINTS = 25;
-const NOISE_AMPLITUDE = 8; // ± points (Thompson-style soft randomization)
+const NOISE_AMPLITUDE = 30; // ± points — high randomization for dynamic shuffling
 
 // Box-Muller gaussian noise (mean 0, std ~1) → scaled
 function gaussianNoise(amplitude: number): number {
