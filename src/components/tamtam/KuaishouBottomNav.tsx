@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Plus, BookOpen, BookText, Book } from 'lucide-react';
+import { Home, Plus, BookOpen, BookText, Book, School } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { toast } from 'sonner';
@@ -20,6 +20,7 @@ const COMING_SOON_PATHS: string[] = [];
 const navItems: NavItem[] = [
   { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Soo', path: '/fitila/social' },
   { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Dɔnku', path: '/fitila/learn' },
+  { id: 'classe', icon: School, labelFr: 'Classe', labelBa: 'Klaasi', path: '/fitila/classe' },
   { id: 'create', icon: Plus, labelFr: 'Create', labelBa: 'Ko', path: '/fitila/creator', isCreate: true },
   { id: 'dictionary', icon: Book, labelFr: 'Dico', labelBa: 'Gãnsɛ', path: '/fitila/dictionary' },
   { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Tɛnyɛ̃ɛ̃ru', path: '/fitila/translator' },
@@ -62,7 +63,7 @@ export const KuaishouBottomNav: React.FC = () => {
         borderTop: '1px solid rgba(255,255,255,0.08)',
       }}
     >
-      <div className="flex items-end justify-around px-1 pt-1.5 pb-1">
+      <div className="flex items-end justify-around px-0.5 sm:px-1 pt-1.5 pb-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -100,7 +101,7 @@ export const KuaishouBottomNav: React.FC = () => {
               key={item.id}
               whileTap={{ scale: 0.9 }}
               onClick={() => handleNavPress(item)}
-              className="relative flex flex-col items-center gap-0.5 py-1.5 px-2 min-w-[52px] min-h-[44px] active:scale-95 transition-transform"
+              className="relative flex flex-col items-center gap-0.5 py-1.5 px-1 sm:px-2 min-w-[44px] sm:min-w-[52px] min-h-[44px] active:scale-95 transition-transform"
             >
               <Icon 
                 className={`w-5 h-5 transition-colors ${
@@ -110,7 +111,7 @@ export const KuaishouBottomNav: React.FC = () => {
                 }`}
                 strokeWidth={active ? 2.5 : 1.5}
               />
-              <span className={`text-[10px] transition-colors ${
+              <span className={`text-[9px] sm:text-[10px] transition-colors ${
                 active 
                   ? 'text-[hsl(var(--kuaishou-nav-icon))] font-medium' 
                   : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
