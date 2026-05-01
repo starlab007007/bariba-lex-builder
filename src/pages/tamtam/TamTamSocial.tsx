@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Menu, X, Home, BookOpen, BookText, Book, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw } from 'lucide-react';
+import { Menu, X, Home, BookOpen, BookText, Book, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw, School } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 // usePostInteractions now handled inside VideoFeedCard
@@ -30,7 +30,7 @@ import SecuritySetupReminder from '@/components/tamtam/SecuritySetupReminder';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
-type BottomTab = 'fil' | 'learn' | 'dictionary' | 'translator';
+type BottomTab = 'fil' | 'learn' | 'classe' | 'dictionary' | 'translator';
 
 // Plus de musique par défaut - uniquement les audios enregistrés/sélectionnés par l'utilisateur
 
@@ -267,10 +267,11 @@ const BottomTabBar: React.FC<{
   onNavigate: (path: string) => void;
 }> = ({ activeTab, onTabChange, onCreatePress, onNavigate }) => {
   const tabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
-    { id: 'fil', icon: Home, label: 'Fil' },
-    { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
-    { id: 'dictionary', icon: Book, label: 'Dico', path: '/fitila/dictionary' },
-    { id: 'translator', icon: BookText, label: 'Traducteur', path: '/fitila/translator' },
+     { id: 'fil', icon: Home, label: 'Fil' },
+     { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
+     { id: 'classe', icon: School, label: 'Classe', path: '/fitila/classe' },
+     { id: 'dictionary', icon: Book, label: 'Dico', path: '/fitila/dictionary' },
+     { id: 'translator', icon: BookText, label: 'Traducteur', path: '/fitila/translator' },
   ];
 
   return (
@@ -280,8 +281,8 @@ const BottomTabBar: React.FC<{
       className="fixed bottom-0 left-0 right-0 z-40 bg-black/90 backdrop-blur-lg border-t border-white/10"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex items-center justify-around px-2 py-2">
-        {tabs.slice(0, 2).map((tab) => {
+       <div className="flex items-center justify-around px-1 py-2">
+         {tabs.slice(0, 3).map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -291,7 +292,7 @@ const BottomTabBar: React.FC<{
               onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)} 
               className="relative flex flex-col items-center gap-1 py-1 px-4"
             >
-              <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} />
+              <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-white/50'}`} />
               <span className={`text-[10px] ${isActive ? 'text-white font-medium' : 'text-white/50'}`}>{tab.label}</span>
               {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-1 w-8 h-0.5 rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
             </motion.button>
@@ -305,7 +306,7 @@ const BottomTabBar: React.FC<{
           </div>
         </motion.button>
 
-        {tabs.slice(2).map((tab) => {
+         {tabs.slice(3).map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -315,7 +316,7 @@ const BottomTabBar: React.FC<{
               onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)} 
               className="relative flex flex-col items-center gap-1 py-1 px-4"
             >
-              <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-white/50'}`} />
+              <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-white/50'}`} />
               <span className={`text-[10px] ${isActive ? 'text-white font-medium' : 'text-white/50'}`}>{tab.label}</span>
               {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-1 w-8 h-0.5 rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
             </motion.button>
