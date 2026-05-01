@@ -30,7 +30,7 @@ import SecuritySetupReminder from '@/components/tamtam/SecuritySetupReminder';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
-type BottomTab = 'fil' | 'learn' | 'dictionary' | 'translator';
+type BottomTab = 'fil' | 'learn' | 'classe' | 'dictionary' | 'translator';
 
 // Plus de musique par défaut - uniquement les audios enregistrés/sélectionnés par l'utilisateur
 
