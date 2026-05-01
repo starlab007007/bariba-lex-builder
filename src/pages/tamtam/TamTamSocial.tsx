@@ -646,8 +646,8 @@ export default function TamTamSocial() {
     const allPosts = posts.length > 0 ? posts : [];
     
     switch (feedMode) {
-      case 'patrimoine':
-        return allPosts.filter(p => {
+      case 'patrimoine': {
+        const filtered = allPosts.filter(p => {
           const post = p as any;
           return (
             post.topic === 'patrimoine' || 
@@ -658,9 +658,14 @@ export default function TamTamSocial() {
             (post.culture_score && post.culture_score > 0)
           );
         });
-        
-      case 'mavoix':
-        return allPosts.filter(p => {
+        for (let i = filtered.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+        }
+        return filtered;
+      }
+      case 'mavoix': {
+        const filtered = allPosts.filter(p => {
           const post = p as any;
           return (
             post.topic === 'mavoix' || 
@@ -671,6 +676,12 @@ export default function TamTamSocial() {
             post.template_id?.includes('merci')
           );
         });
+        for (let i = filtered.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+        }
+        return filtered;
+      }
         
       case 'creation': {        const creationFromPosts = allPosts.filter(p => {
           const post = p as any;
