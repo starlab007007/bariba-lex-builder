@@ -13,9 +13,11 @@ import React, { Suspense, lazy } from "react";
 // Reduces initial bundle size by ~40-60%
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Critical routes - loaded immediately
+// Critical routes - loaded immediately (shell only)
 import FitilaApp from "./pages/fitila/FitilaApp";
-import TamTamSocial from "./pages/tamtam/TamTamSocial";
+
+// Lazy-loaded routes - deferred until needed
+const TamTamSocial = lazy(() => import("./pages/tamtam/TamTamSocial"));
 
 // Lazy-loaded routes - deferred until needed
 const Index = lazy(() => import("./pages/Index"));
