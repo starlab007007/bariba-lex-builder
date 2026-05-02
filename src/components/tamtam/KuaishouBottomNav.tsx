@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Plus, BookOpen, BookText, Book, School } from 'lucide-react';
+import { Home, Plus, BookOpen, BookText, Book, School, Bot } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { toast } from 'sonner';
@@ -17,14 +17,19 @@ interface NavItem {
 
 const COMING_SOON_PATHS: string[] = [];
 
-const navItems: NavItem[] = [
+const leftItems: NavItem[] = [
   { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Soo', path: '/fitila/social' },
   { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Dɔnku', path: '/fitila/learn' },
   { id: 'classe', icon: School, labelFr: 'Classe', labelBa: 'Klaasi', path: '/fitila/classe' },
-  { id: 'create', icon: Plus, labelFr: 'Create', labelBa: 'Ko', path: '/fitila/creator', isCreate: true },
+];
+
+const rightItems: NavItem[] = [
   { id: 'dictionary', icon: Book, labelFr: 'Dico', labelBa: 'Gãnsɛ', path: '/fitila/dictionary' },
   { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Tɛnyɛ̃ɛ̃ru', path: '/fitila/translator' },
+  { id: 'tem-ia', icon: Bot, labelFr: 'Fitila IA', labelBa: 'Fitila IA', path: '/fitila/tem-ia' },
 ];
+
+const createItem: NavItem = { id: 'create', icon: Plus, labelFr: 'Créer', labelBa: 'Ko', path: '/fitila/creator', isCreate: true };
 
 export const KuaishouBottomNav: React.FC = () => {
   const navigate = useNavigate();
@@ -63,75 +68,79 @@ export const KuaishouBottomNav: React.FC = () => {
         borderTop: '1px solid rgba(255,255,255,0.08)',
       }}
     >
-      <div className="flex items-end justify-around px-0.5 sm:px-1 pt-1.5 pb-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.path);
-          const label = currentLang === 'ba' ? item.labelBa : item.labelFr;
+      <div className="relative flex items-end px-0.5 sm:px-1 pt-1.5 pb-1">
+        {/* Left group */}
+        <div className="flex-1 flex items-end justify-around">
+          {leftItems.map((item) => renderNavItem(item))}
+        </div>
 
-          // Create button (center) - Kuaishou style with cyan/red split
-          if (item.isCreate) {
-            return (
-              <motion.button
-                key={item.id}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleNavPress(item)}
-                className="relative -mt-3"
-              >
-                <div className="relative w-12 h-8 rounded-lg overflow-hidden shadow-lg">
-                  {/* Cyan left side */}
-                  <div className="absolute inset-0 bg-[hsl(var(--kuaishou-accent-cyan))]" />
-                  {/* Red right side with diagonal cut */}
-                  <div 
-                    className="absolute inset-0 bg-[hsl(var(--kuaishou-accent-red))]"
-                    style={{ clipPath: 'polygon(35% 0, 100% 0, 100% 100%, 15% 100%)' }}
-                  />
-                  {/* Plus icon */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Plus className="w-6 h-6 text-white" strokeWidth={3} />
-                  </div>
-                </div>
-              </motion.button>
-            );
-          }
+        {/* Center spacer for the floating button */}
+        <div className="w-14 flex-shrink-0" />
 
-          // Regular nav item - Kuaishou white background style
-          return (
-            <motion.button
-              key={item.id}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => handleNavPress(item)}
-              className="relative flex flex-col items-center gap-0.5 py-1.5 px-1 sm:px-2 min-w-[44px] sm:min-w-[52px] min-h-[44px] active:scale-95 transition-transform"
-            >
-              <Icon 
-                className={`w-5 h-5 transition-colors ${
-                  active 
-                    ? 'text-[hsl(var(--kuaishou-nav-icon))]' 
-                    : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
-                }`}
-                strokeWidth={active ? 2.5 : 1.5}
-              />
-              <span className={`text-[9px] sm:text-[10px] transition-colors ${
-                active 
-                  ? 'text-[hsl(var(--kuaishou-nav-icon))] font-medium' 
-                  : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
-              }`}>
-                {label}
-              </span>
-              
-              {/* Active indicator dot */}
-              {active && (
-                <motion.div
-                  layoutId="kuaishouNavIndicator"
-                  className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-[hsl(var(--kuaishou-nav-icon))]"
-                />
-              )}
-            </motion.button>
-          );
-        })}
+        {/* Right group */}
+        <div className="flex-1 flex items-end justify-around">
+          {rightItems.map((item) => renderNavItem(item))}
+        </div>
+
+        {/* Floating center "+" button */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => handleNavPress(createItem)}
+          className="absolute left-1/2 -translate-x-1/2 -top-4"
+        >
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center shadow-xl"
+            style={{
+              background: 'linear-gradient(135deg, hsl(var(--kuaishou-accent-cyan)), hsl(var(--kuaishou-accent-red)))',
+              boxShadow: '0 4px 20px rgba(255, 80, 120, 0.4)',
+            }}
+          >
+            <Plus className="w-6 h-6 text-white" strokeWidth={3} />
+          </div>
+        </motion.button>
       </div>
     </motion.nav>
   );
+
+  function renderNavItem(item: NavItem) {
+    const Icon = item.icon;
+    const active = isActive(item.path);
+    const label = currentLang === 'ba' ? item.labelBa : item.labelFr;
+
+    return (
+      <motion.button
+        key={item.id}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => handleNavPress(item)}
+        className="relative flex flex-col items-center gap-0.5 py-1.5 px-0.5 sm:px-1 min-w-[40px] sm:min-w-[48px] min-h-[44px] active:scale-95 transition-transform"
+      >
+        <Icon
+          className={`w-5 h-5 transition-colors ${
+            active
+              ? 'text-[hsl(var(--kuaishou-nav-icon))]'
+              : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
+          }`}
+          strokeWidth={active ? 2.5 : 1.5}
+        />
+        <span
+          className={`text-[8px] sm:text-[9px] leading-tight transition-colors whitespace-nowrap ${
+            active
+              ? 'text-[hsl(var(--kuaishou-nav-icon))] font-medium'
+              : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
+          }`}
+        >
+          {label}
+        </span>
+
+        {active && (
+          <motion.div
+            layoutId="kuaishouNavIndicator"
+            className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-[hsl(var(--kuaishou-nav-icon))]"
+          />
+        )}
+      </motion.button>
+    );
+  }
 };
 
 export default KuaishouBottomNav;
