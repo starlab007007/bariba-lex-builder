@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo, startTransition } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { Menu, X, Home, BookOpen, BookText, Book, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw, School } from 'lucide-react';
+import { Menu, X, Home, BookOpen, BookText, Book, MessageCircle, Plus, Mic, Volume2, VolumeX, ChevronRight, RefreshCw, School, Bot } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useTamTamPosts, TamTamComment, uploadMediaToStorage } from '@/hooks/useTamTamPosts';
 // usePostInteractions now handled inside VideoFeedCard
