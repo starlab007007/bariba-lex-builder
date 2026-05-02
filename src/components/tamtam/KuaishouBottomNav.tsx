@@ -75,7 +75,7 @@ export const KuaishouBottomNav: React.FC = () => {
         </div>
 
         {/* Center spacer for the floating button */}
-        <div className="w-14 flex-shrink-0" />
+        <div className="w-12 flex-shrink-0" />
 
         {/* Right group */}
         <div className="flex-1 flex items-end justify-around">
@@ -113,6 +113,7 @@ export const KuaishouBottomNav: React.FC = () => {
         whileTap={{ scale: 0.9 }}
         onClick={() => handleNavPress(item)}
         className="relative flex flex-col items-center gap-0.5 py-1.5 px-0.5 sm:px-1 min-w-[40px] sm:min-w-[48px] min-h-[44px] active:scale-95 transition-transform"
+        style={{ flex: '1 1 0', maxWidth: '64px' }}
       >
         <Icon
           className={`w-5 h-5 transition-colors ${
@@ -124,6 +125,7 @@ export const KuaishouBottomNav: React.FC = () => {
         />
         <span
           className={`text-[8px] sm:text-[9px] leading-tight transition-colors whitespace-nowrap ${
+          className={`text-[8px] sm:text-[9px] leading-tight transition-colors text-center ${
             active
               ? 'text-[hsl(var(--kuaishou-nav-icon))] font-medium'
               : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
