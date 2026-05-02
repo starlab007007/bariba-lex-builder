@@ -124,7 +124,6 @@ export const KuaishouBottomNav: React.FC = () => {
           strokeWidth={active ? 2.5 : 1.5}
         />
         <span
-          className={`text-[8px] sm:text-[9px] leading-tight transition-colors whitespace-nowrap ${
           className={`text-[8px] sm:text-[9px] leading-tight transition-colors text-center truncate w-full ${
             active
               ? 'text-[hsl(var(--kuaishou-nav-icon))] font-medium'
