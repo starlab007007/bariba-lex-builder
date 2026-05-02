@@ -125,7 +125,7 @@ export const KuaishouBottomNav: React.FC = () => {
         />
         <span
           className={`text-[8px] sm:text-[9px] leading-tight transition-colors whitespace-nowrap ${
-          className={`text-[8px] sm:text-[9px] leading-tight transition-colors text-center ${
+          className={`text-[8px] sm:text-[9px] leading-tight transition-colors text-center truncate max-w-full ${
             active
               ? 'text-[hsl(var(--kuaishou-nav-icon))] font-medium'
               : 'text-[hsl(var(--kuaishou-nav-icon-muted))]'
