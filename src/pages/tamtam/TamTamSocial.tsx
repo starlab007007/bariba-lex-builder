@@ -30,7 +30,7 @@ import SecuritySetupReminder from '@/components/tamtam/SecuritySetupReminder';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type FeedMode = 'patrimoine' | 'mavoix' | 'creation';
-type BottomTab = 'fil' | 'learn' | 'classe' | 'dictionary' | 'translator';
+type BottomTab = 'fil' | 'learn' | 'classe' | 'dictionary' | 'translator' | 'tem-ia';
 
 // Plus de musique par défaut - uniquement les audios enregistrés/sélectionnés par l'utilisateur
 
@@ -266,13 +266,34 @@ const BottomTabBar: React.FC<{
   onCreatePress: () => void;
   onNavigate: (path: string) => void;
 }> = ({ activeTab, onTabChange, onCreatePress, onNavigate }) => {
-  const tabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
-     { id: 'fil', icon: Home, label: 'Fil' },
-     { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
-     { id: 'classe', icon: School, label: 'Classe', path: '/fitila/classe' },
-     { id: 'dictionary', icon: Book, label: 'Dico', path: '/fitila/dictionary' },
-     { id: 'translator', icon: BookText, label: 'Traducteur', path: '/fitila/translator' },
+  const leftTabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
+    { id: 'fil', icon: Home, label: 'Fil' },
+    { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
+    { id: 'classe', icon: School, label: 'Classe', path: '/fitila/classe' },
   ];
+  const rightTabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
+    { id: 'dictionary', icon: Book, label: 'Dico', path: '/fitila/dictionary' },
+    { id: 'translator', icon: BookText, label: 'Traduc.', path: '/fitila/translator' },
+    { id: 'tem-ia', icon: Bot, label: 'Fitila IA', path: '/fitila/tem-ia' },
+  ];
+
+  const renderTab = (tab: typeof leftTabs[0]) => {
+    const Icon = tab.icon;
+    const isActive = activeTab === tab.id;
+    return (
+      <motion.button
+        key={tab.id}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)}
+        className="relative flex flex-col items-center gap-0.5 py-1 overflow-hidden"
+        style={{ flex: '1 1 0', minWidth: 0 }}
+      >
+        <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-white/50'}`} />
+        <span className={`text-[8px] sm:text-[9px] truncate w-full text-center ${isActive ? 'text-white font-medium' : 'text-white/50'}`}>{tab.label}</span>
+        {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-1 w-6 h-0.5 rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
+      </motion.button>
+    );
+  };
 
   return (
     <motion.nav
@@ -281,47 +302,26 @@ const BottomTabBar: React.FC<{
       className="fixed bottom-0 left-0 right-0 z-40 bg-black/90 backdrop-blur-lg border-t border-white/10"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-       <div className="flex items-center justify-around px-1 py-2">
-         {tabs.slice(0, 3).map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <motion.button 
-              key={tab.id} 
-              whileTap={{ scale: 0.9 }} 
-              onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)} 
-              className="relative flex flex-col items-center gap-1 py-1 px-4"
-            >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-white/50'}`} />
-              <span className={`text-[10px] ${isActive ? 'text-white font-medium' : 'text-white/50'}`}>{tab.label}</span>
-              {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-1 w-8 h-0.5 rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
-            </motion.button>
-          );
-        })}
+       <div className="relative flex items-end px-0.5 py-2">
+        {/* Left group */}
+        <div className="flex-1 flex items-end justify-around">
+          {leftTabs.map(renderTab)}
+        </div>
 
-        {/* CREATE BUTTON */}
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onCreatePress} className="relative -mt-6">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-pink-500/30">
-            <Plus className="w-7 h-7 text-white" strokeWidth={2.5} />
+        {/* Center spacer */}
+        <div className="w-14 flex-shrink-0" />
+
+        {/* Right group */}
+        <div className="flex-1 flex items-end justify-around">
+          {rightTabs.map(renderTab)}
+        </div>
+
+        {/* Floating CREATE BUTTON */}
+        <motion.button whileTap={{ scale: 0.9 }} onClick={onCreatePress} className="absolute left-1/2 -translate-x-1/2 -top-5">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-pink-500/30">
+            <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
           </div>
         </motion.button>
-
-         {tabs.slice(3).map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <motion.button 
-              key={tab.id} 
-              whileTap={{ scale: 0.9 }} 
-              onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)} 
-              className="relative flex flex-col items-center gap-1 py-1 px-4"
-            >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-white/50'}`} />
-              <span className={`text-[10px] ${isActive ? 'text-white font-medium' : 'text-white/50'}`}>{tab.label}</span>
-              {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-1 w-8 h-0.5 rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
-            </motion.button>
-          );
-        })}
       </div>
     </motion.nav>
   );
