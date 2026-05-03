@@ -394,6 +394,7 @@ export default function TamTamSocial() {
     if (focusVideoId && !isVideosLoading && videoFeedItems.length > 0) {
       const idx = videoFeedItems.findIndex(v => v.id === focusVideoId);
       if (idx >= 0) {
+        userScrolledRef.current = true;
         setCurrentPostIndex(idx);
         // Scroll after a short delay for DOM to be ready
         setTimeout(() => {
