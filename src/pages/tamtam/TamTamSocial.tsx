@@ -357,11 +357,14 @@ export default function TamTamSocial() {
   const [focusVideoId, setFocusVideoId] = useState<string | null>(null);
   const [interactiveStory, setInteractiveStory] = useState<{ graph: StoryGraph; id: string } | null>(null);
   const [shuffleTick, setShuffleTick] = useState(0);
+  // Track whether post change was user-initiated (scroll/swipe) vs automatic (shuffle)
+  const userScrolledRef = useRef(true);
 
   // Auto-shuffle creation feed every 10 seconds
   useEffect(() => {
     if (feedMode !== 'creation') return;
     const id = setInterval(() => {
+      userScrolledRef.current = false; // Auto-shuffle: don't auto-play audio/video
       startTransition(() => setShuffleTick(t => t + 1));
     }, 10_000);
     return () => clearInterval(id);
@@ -391,6 +394,7 @@ export default function TamTamSocial() {
     if (focusVideoId && !isVideosLoading && videoFeedItems.length > 0) {
       const idx = videoFeedItems.findIndex(v => v.id === focusVideoId);
       if (idx >= 0) {
+        userScrolledRef.current = true;
         setCurrentPostIndex(idx);
         // Scroll after a short delay for DOM to be ready
         setTimeout(() => {
@@ -418,10 +422,12 @@ export default function TamTamSocial() {
     
     if (swipeLeft && currentIndex < feeds.length - 1) {
       setFeedMode(feeds[currentIndex + 1]);
+      userScrolledRef.current = true;
       setCurrentPostIndex(0);
       triggerFeedback('notification');
     } else if (swipeRight && currentIndex > 0) {
       setFeedMode(feeds[currentIndex - 1]);
+      userScrolledRef.current = true;
       setCurrentPostIndex(0);
       triggerFeedback('notification');
     }
@@ -437,6 +443,7 @@ export default function TamTamSocial() {
 
     const idx = Math.max(0, rawIdx);
     if (idx !== currentPostIndex) {
+      userScrolledRef.current = true;
       setCurrentPostIndex(idx);
       // Auto-loadMore : approche de la fin → préchargement
       if (idx >= videoFeedItems.length - 3) {
@@ -767,6 +774,7 @@ export default function TamTamSocial() {
                       key={post.id} 
                       post={post} 
                       isActive={i === currentPostIndex} 
+                      autoPlay={i === currentPostIndex && userScrolledRef.current}
                       onComment={() => handleOpenComments(post.id)} 
                       isMuted={isMuted}
                       onToggleMute={() => setIsMuted(prev => !prev)}

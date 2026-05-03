@@ -16,6 +16,7 @@ import { useFeedAudioAutoStop } from '@/hooks/useFeedAudioAutoStop';
 interface VideoFeedCardProps {
   post: any;
   isActive: boolean;
+  autoPlay?: boolean;
   onLike?: () => void;
   onComment: () => void;
   onShare?: () => void;
@@ -35,6 +36,7 @@ interface VideoFeedCardProps {
 const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({ 
   post, 
   isActive, 
+  autoPlay = false,
   onLike, 
   onComment, 
   onShare, 
@@ -129,27 +131,32 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
     if (!videoRef.current) return;
     
     if (isActive) {
-      videoRef.current.muted = isMuted;
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.then(() => setIsPlaying(true)).catch((e) => {
-          console.warn('[VideoFeedCard] play() failed:', e.name);
-          // Force muted autoplay as fallback (Safari/Chrome policy)
-          if (videoRef.current) {
-            videoRef.current.muted = true;
-            videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {
-              // Video truly cannot play — show as loaded anyway to avoid black screen
-              setIsLoaded(true);
-            });
-          }
-        });
+      if (autoPlay) {
+        videoRef.current.muted = isMuted;
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => setIsPlaying(true)).catch((e) => {
+            console.warn('[VideoFeedCard] play() failed:', e.name);
+            // Force muted autoplay as fallback (Safari/Chrome policy)
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {
+                // Video truly cannot play — show as loaded anyway to avoid black screen
+                setIsLoaded(true);
+              });
+            }
+          });
+        }
+      } else {
+        // Not auto-playing: just ensure loaded state for thumbnail display
+        setIsLoaded(true);
       }
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
       try { videoRef.current.currentTime = 0; } catch (_) {}
     }
-  }, [isActive, isMuted, isPhoto]);
+  }, [isActive, autoPlay, isMuted, isPhoto]);
 
   // Track watch time via timeupdate
   useEffect(() => {
@@ -493,7 +500,8 @@ export const VideoFeedCard = memo(VideoFeedCardComponent, (prevProps, nextProps)
   return (
     prevProps.post.id === nextProps.post.id &&
     prevProps.isActive === nextProps.isActive &&
-    prevProps.isMuted === nextProps.isMuted
+    prevProps.isMuted === nextProps.isMuted &&
+    prevProps.autoPlay === nextProps.autoPlay
   );
 });
 
