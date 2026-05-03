@@ -357,6 +357,8 @@ export default function TamTamSocial() {
   const [focusVideoId, setFocusVideoId] = useState<string | null>(null);
   const [interactiveStory, setInteractiveStory] = useState<{ graph: StoryGraph; id: string } | null>(null);
   const [shuffleTick, setShuffleTick] = useState(0);
+  // Track whether post change was user-initiated (scroll/swipe) vs automatic (shuffle)
+  const userScrolledRef = useRef(true);
 
   // Auto-shuffle creation feed every 10 seconds
   useEffect(() => {
@@ -437,6 +439,7 @@ export default function TamTamSocial() {
 
     const idx = Math.max(0, rawIdx);
     if (idx !== currentPostIndex) {
+      userScrolledRef.current = true;
       setCurrentPostIndex(idx);
       // Auto-loadMore : approche de la fin → préchargement
       if (idx >= videoFeedItems.length - 3) {
@@ -767,6 +770,7 @@ export default function TamTamSocial() {
                       key={post.id} 
                       post={post} 
                       isActive={i === currentPostIndex} 
+                      autoPlay={i === currentPostIndex && userScrolledRef.current}
                       onComment={() => handleOpenComments(post.id)} 
                       isMuted={isMuted}
                       onToggleMute={() => setIsMuted(prev => !prev)}
