@@ -98,8 +98,6 @@ export const KuaishouBottomNav: React.FC = memo(() => {
       </div>
     </nav>
   );
-});
-KuaishouBottomNav.displayName = 'KuaishouBottomNav';
 
   function renderNavItem(item: NavItem) {
     const Icon = item.icon;
@@ -141,6 +139,7 @@ KuaishouBottomNav.displayName = 'KuaishouBottomNav';
       </motion.button>
     );
   }
-};
+});
+KuaishouBottomNav.displayName = 'KuaishouBottomNav';
 
 export default KuaishouBottomNav;
