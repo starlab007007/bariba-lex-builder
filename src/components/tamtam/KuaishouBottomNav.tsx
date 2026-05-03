@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, Plus, BookOpen, BookText, Book, School, Bot } from 'lucide-react';
@@ -31,7 +31,7 @@ const rightItems: NavItem[] = [
 
 const createItem: NavItem = { id: 'create', icon: Plus, labelFr: 'Créer', labelBa: 'Ko', path: '/fitila/creator', isCreate: true };
 
-export const KuaishouBottomNav: React.FC = () => {
+export const KuaishouBottomNav: React.FC = memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentLang } = useTamTamLanguage();
@@ -57,10 +57,7 @@ export const KuaishouBottomNav: React.FC = () => {
   };
 
   return (
-    <motion.nav
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      transition={{ type: 'tween', duration: 0.2 }}
+    <nav
       className="fixed bottom-0 left-0 right-0 z-50"
       style={{ 
         paddingBottom: 'max(env(safe-area-inset-bottom), 4px)',
@@ -99,8 +96,10 @@ export const KuaishouBottomNav: React.FC = () => {
           </div>
         </motion.button>
       </div>
-    </motion.nav>
+    </nav>
   );
+});
+KuaishouBottomNav.displayName = 'KuaishouBottomNav';
 
   function renderNavItem(item: NavItem) {
     const Icon = item.icon;
