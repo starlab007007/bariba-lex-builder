@@ -421,10 +421,12 @@ export default function TamTamSocial() {
     
     if (swipeLeft && currentIndex < feeds.length - 1) {
       setFeedMode(feeds[currentIndex + 1]);
+      userScrolledRef.current = true;
       setCurrentPostIndex(0);
       triggerFeedback('notification');
     } else if (swipeRight && currentIndex > 0) {
       setFeedMode(feeds[currentIndex - 1]);
+      userScrolledRef.current = true;
       setCurrentPostIndex(0);
       triggerFeedback('notification');
     }
