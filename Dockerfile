@@ -1,5 +1,5 @@
 # Utilisation d'une image Node.js pour le build
-FROM node:22 as build
+FROM node:22 AS build
 
 # Build args for version tracking
 ARG VITE_BUILD_SHA=dev
