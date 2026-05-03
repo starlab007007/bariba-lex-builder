@@ -85,7 +85,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             exit={{ opacity: 0 }}
             onClick={onClose}
             className="fixed inset-0 z-[100] pointer-events-auto"
-            style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)' }}
+            style={{ background: 'rgba(0, 0, 0, 0.7)' }}
           />
 
           <motion.div
@@ -96,7 +96,6 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             className="fixed left-0 top-0 bottom-0 w-[88vw] max-w-[340px] md:max-w-[380px] lg:max-w-[400px] z-[101] overflow-y-auto pointer-events-auto"
             style={{
               background: 'linear-gradient(180deg, rgba(20, 20, 28, 0.98) 0%, rgba(10, 10, 15, 0.99) 100%)',
-              backdropFilter: 'blur(20px)',
               borderRight: '1px solid rgba(255, 255, 255, 0.1)',
             }}
           >
