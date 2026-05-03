@@ -364,6 +364,7 @@ export default function TamTamSocial() {
   useEffect(() => {
     if (feedMode !== 'creation') return;
     const id = setInterval(() => {
+      userScrolledRef.current = false; // Auto-shuffle: don't auto-play audio/video
       startTransition(() => setShuffleTick(t => t + 1));
     }, 10_000);
     return () => clearInterval(id);
