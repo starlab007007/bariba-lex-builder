@@ -1,31 +1,35 @@
 
-# Nouvelle barre de navigation avec bouton "+" central et Fitila Tem IA
+## Probleme
 
-## Layout propose
+1. Le shuffle automatique toutes les 10 secondes change l'ordre des posts, ce qui rend un nouveau post "actif" et declenche l'autoplay audio/video sans intervention humaine.
+2. VideoFeedCard joue automatiquement des que `isActive` passe a `true`, sans distinguer si c'est un scroll manuel ou un changement automatique.
+3. `useFeedAudioAutoStop` gere bien la visibilite de page et le blur, mais ne gere pas le cas du shuffle auto.
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  Fil    Apprendre   Classe    [+]    Dico   Traducteur  IA │
-│  (1)      (2)        (3)    floatt   (4)      (5)      (6) │
-└─────────────────────────────────────────────────────────────┘
-```
+## Solution
 
-- **Gauche** : Fil, Apprendre, Classe
-- **Centre** : Bouton "+" flottant (rond, gradient cyan/rouge, depasse au-dessus de la barre)
-- **Droite** : Dico, Traducteur, Fitila Tem IA
+### 1. Distinguer scroll manuel vs changement automatique (TamTamSocial.tsx)
 
-Le bouton "+" est positionne en `absolute` au centre exact de la barre, remonte de moitie au-dessus. Les 6 boutons reguliers sont repartis en 2 groupes de 3 avec un espace central reserve.
+- Ajouter un state `userInitiatedNav` (ref boolean) qui est `true` uniquement quand l'utilisateur scrolle manuellement ou swipe.
+- Le shuffle automatique (setShuffleTick) ne change plus `currentPostIndex` -- il re-melange le tableau mais garde le meme index. Si l'index pointe vers un post different apres shuffle, on ne declenche PAS l'autoplay.
+- Passer un prop `autoPlay={false}` au VideoFeedCard quand le changement n'est pas initie par l'utilisateur.
 
-## Modifications
+### 2. VideoFeedCard : ajouter un prop `autoPlay` (VideoFeedCard.tsx)
 
-### 1. `src/components/tamtam/KuaishouBottomNav.tsx`
+- Ajouter `autoPlay?: boolean` aux props (defaut `false`).
+- Dans le useEffect ligne 124-152 : ne lancer `play()` que si `isActive && autoPlay`.
+- Si `isActive` mais `autoPlay === false`, afficher le thumbnail avec un bouton play visible -- l'utilisateur doit cliquer pour lancer.
+- Garder le comportement actuel de pause quand `isActive` passe a `false`.
 
-- Retirer le bouton "create" du tableau `navItems`
-- Ajouter le nouvel item `{ id: 'tem-ia', icon: Bot, labelFr: 'Fitila IA', labelBa: 'Fitila IA', path: '/fitila/tem-ia' }`
-- Decouper les 6 items en `leftItems` (indices 0-2) et `rightItems` (indices 3-5)
-- Rendre le layout en grille : `flex` avec gauche (3 items) + spacer central (pour le "+") + droite (3 items)
-- Bouton "+" en `absolute left-1/2 -translate-x-1/2 -top-5` : cercle de 48px avec gradient, ombre portee
+### 3. Renforcer la gestion de visibilite (deja en place via useFeedAudioAutoStop)
 
-### 2. Aucun autre fichier a modifier
+- Verifier que `useFeedAudioAutoStop` couvre bien tous les cas (deja fait : visibilitychange, blur, pagehide). Pas de changement necessaire ici.
 
-La route `/fitila/tem-ia` existe deja. Le composant `KuaishouBottomNav` est utilise via `KuaishouLayout` partout.
+### 4. Scroll manuel = autoPlay true (TamTamSocial.tsx)
+
+- Dans `handleScroll`, quand l'utilisateur scrolle et que `currentPostIndex` change, passer `autoPlay={true}` pour ce post.
+- Dans le shuffle auto, garder `autoPlay={false}`.
+
+### Fichiers modifies
+
+- `src/components/feed/VideoFeedCard.tsx` -- ajouter prop `autoPlay`, conditionner le play() automatique
+- `src/pages/tamtam/TamTamSocial.tsx` -- tracker si le changement de post est manuel, passer `autoPlay` en consequence
