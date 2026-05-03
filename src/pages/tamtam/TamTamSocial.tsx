@@ -224,34 +224,6 @@ const FeedIndicator: React.FC<{
         </div>
       </div>
 
-      {/* Swipe Arrows en bas - transparents avec label "Glisser" */}
-      <div className="fixed bottom-24 left-0 right-0 z-30 pointer-events-none">
-        <div className="flex items-center justify-center gap-12">
-          {/* Left: < Glisser */}
-          <motion.div 
-            className="flex items-center gap-1"
-            animate={{ x: [-3, 0, -3] }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/40">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            <span className="text-white/40 text-sm">Glisser</span>
-          </motion.div>
-
-          {/* Right: Glisser > */}
-          <motion.div 
-            className="flex items-center gap-1"
-            animate={{ x: [3, 0, 3] }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
-          >
-            <span className="text-white/40 text-sm">Glisser</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/40">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </motion.div>
-        </div>
-      </div>
     </>
   );
 };
@@ -296,10 +268,8 @@ const BottomTabBar: React.FC<{
   };
 
   return (
-    <motion.nav
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      className="fixed bottom-0 left-0 right-0 z-40 bg-black/90 backdrop-blur-lg border-t border-white/10"
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 bg-black border-t border-white/10"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
        <div className="relative flex items-end px-0.5 py-2">
@@ -323,7 +293,7 @@ const BottomTabBar: React.FC<{
           </div>
         </motion.button>
       </div>
-    </motion.nav>
+    </nav>
   );
 };
 
@@ -366,7 +336,7 @@ export default function TamTamSocial() {
     const id = setInterval(() => {
       userScrolledRef.current = false; // Auto-shuffle: don't auto-play audio/video
       startTransition(() => setShuffleTick(t => t + 1));
-    }, 10_000);
+    }, 15_000);
     return () => clearInterval(id);
   }, [feedMode]);
 
@@ -743,13 +713,14 @@ export default function TamTamSocial() {
         <SecuritySetupReminder />
       </div>
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="popLayout">
         {activeTab === 'fil' && (
           <motion.div
             key={feedMode}
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
+            initial={{ opacity: 0.5 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.2}
