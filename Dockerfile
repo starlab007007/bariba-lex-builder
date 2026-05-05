@@ -10,7 +10,7 @@ ENV VITE_BUILD_TIME=$VITE_BUILD_TIME
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 COPY . .
 RUN npm run build
 
