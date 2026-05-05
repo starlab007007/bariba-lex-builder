@@ -315,6 +315,32 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col">
+      {/* Permission Gate — user must tap to activate camera (Android requirement) */}
+      {!cameraReady && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-black">
+          <Camera className="w-16 h-16 text-white/60" />
+          <p className="text-white/80 text-lg font-medium text-center px-8">
+            Autorise la caméra et le micro pour filmer
+          </p>
+          <Button
+            size="lg"
+            onClick={initCamera}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-8 py-4 text-lg"
+          >
+            <Camera className="w-5 h-5 mr-2" />
+            Activer la caméra
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="text-white/50 hover:text-white/80"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Retour
+          </Button>
+        </div>
+      )}
+
       {/* Camera Preview */}
       <div className="flex-1 relative">
         <video
