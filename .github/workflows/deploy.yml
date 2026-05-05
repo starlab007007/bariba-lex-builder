@@ -5,20 +5,28 @@ on:
     branches:
       - main
 
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
 
       - name: Build application
         run: npm run build
@@ -32,6 +40,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Only deploy if VPS secrets are configured
     if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     steps:
@@ -41,7 +50,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 30m
+          command_timeout: 20m
           script: |
             set -e  # Arrête le script en cas d'erreur
 
@@ -51,13 +60,13 @@ jobs:
             git fetch --prune origin main
             git checkout -B main FETCH_HEAD
             git reset --hard FETCH_HEAD
-
-            echo "🛑 Arrêt des anciens conteneurs..."
-            docker compose -f docker-composer.yml down
+            git clean -fd
 
             echo "🔨 Construction et redémarrage des services..."
-            VITE_BUILD_SHA=${{ github.sha }} VITE_BUILD_TIME=$(date -Iseconds) docker compose -f docker-composer.yml build --build-arg VITE_BUILD_SHA=${{ github.sha }} --build-arg VITE_BUILD_TIME=$(date -Iseconds)
-            docker compose -f docker-composer.yml up -d --force-recreate
+            export VITE_BUILD_SHA=${{ github.sha }}
+            export VITE_BUILD_TIME=$(date -Iseconds)
+            docker compose -f docker-composer.yml build
+            docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans
 
             echo "🧹 Nettoyage des anciennes images inutilisées...."
-            docker image prune -af
+            docker image prune -f
