@@ -1,6 +1,10 @@
 services:
   react-app-bariba:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_BUILD_SHA: ${VITE_BUILD_SHA:-dev}
+        VITE_BUILD_TIME: ${VITE_BUILD_TIME:-unknown}
     container_name: react-app-bariba-js
     restart: always
     labels:
