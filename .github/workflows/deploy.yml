@@ -40,7 +40,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     # Only deploy if VPS secrets are configured
     if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     steps:
@@ -60,12 +60,13 @@ jobs:
             git fetch --prune origin main
             git checkout -B main FETCH_HEAD
             git reset --hard FETCH_HEAD
+            git clean -fd
 
             echo "🔨 Construction et redémarrage des services..."
             export VITE_BUILD_SHA=${{ github.sha }}
             export VITE_BUILD_TIME=$(date -Iseconds)
-            docker compose -f docker-composer.yml build --pull
+            docker compose -f docker-composer.yml build
             docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans
 
             echo "🧹 Nettoyage des anciennes images inutilisées...."
-            docker image prune -af
+            docker image prune -f
