@@ -80,21 +80,21 @@ export const KuaishouBottomNav: React.FC = memo(() => {
         </div>
 
         {/* Floating center "+" button */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
+        <button
           onClick={() => handleNavPress(createItem)}
           className="absolute left-1/2 -translate-x-1/2 -top-4"
         >
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center shadow-xl"
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+            className="w-12 h-12 rounded-full flex items-center justify-center shadow-xl transition-transform"
             style={{
               background: 'linear-gradient(135deg, hsl(var(--kuaishou-accent-cyan)), hsl(var(--kuaishou-accent-red)))',
               boxShadow: '0 4px 20px rgba(255, 80, 120, 0.4)',
             }}
           >
             <Plus className="w-6 h-6 text-white" strokeWidth={3} />
-          </div>
-        </motion.button>
+          </motion.div>
+        </button>
       </div>
     </nav>
   );
