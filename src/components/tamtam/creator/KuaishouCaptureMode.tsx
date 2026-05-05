@@ -60,6 +60,8 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
   const [flashEnabled, setFlashEnabled] = useState(false);
 
   const captureEngineRef = useRef<CaptureEngine | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -68,45 +70,44 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
   const maxDuration = currentSegment.maxDuration || currentSegment.duration;
   const minDuration = currentSegment.minDuration || 3;
 
-  // Initialize camera with HD quality
-  useEffect(() => {
-    const initCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1920, min: 1280 },
-            height: { ideal: 1080, min: 720 },
-            frameRate: { ideal: 30, min: 24 },
-            facingMode: isFrontCamera ? 'user' : 'environment'
-          },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 48000
-          }
-        });
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+  // Initialize camera — called by user tap (required for Android Capacitor)
+  const initCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          frameRate: { ideal: 30, min: 24 },
+          facingMode: isFrontCamera ? 'user' : 'environment'
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000
         }
+      });
 
-        // Initialize capture engine for recording
-        captureEngineRef.current = new CaptureEngine();
-        await captureEngineRef.current.initializeCamera(isFrontCamera ? 'user' : 'environment');
-        
-        // Apply default effects
-        activeEffects.forEach(effect => {
-          captureEngineRef.current?.enableEffect(effect);
-        });
-      } catch (error) {
-        console.error('Camera init error:', error);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
       }
-    };
 
-    initCamera();
+      captureEngineRef.current = new CaptureEngine();
+      await captureEngineRef.current.initializeCamera(isFrontCamera ? 'user' : 'environment');
 
+      activeEffects.forEach(effect => {
+        captureEngineRef.current?.enableEffect(effect);
+      });
+
+      setCameraReady(true);
+    } catch (error) {
+      console.error('Camera init error:', error);
+    }
+  }, [isFrontCamera, activeEffects]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       if (videoRef.current?.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
@@ -114,6 +115,19 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
       }
       captureEngineRef.current?.destroy();
     };
+  }, []);
+
+  // Re-init when flipping camera (already user-triggered via handleFlipCamera)
+  useEffect(() => {
+    if (cameraReady) {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
+      captureEngineRef.current?.destroy();
+      initCamera();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFrontCamera]);
 
   // Handle camera flip with haptic feedback
@@ -301,6 +315,32 @@ export const KuaishouCaptureMode: React.FC<KuaishouCaptureModeProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col">
+      {/* Permission Gate — user must tap to activate camera (Android requirement) */}
+      {!cameraReady && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-black">
+          <Camera className="w-16 h-16 text-white/60" />
+          <p className="text-white/80 text-lg font-medium text-center px-8">
+            Autorise la caméra et le micro pour filmer
+          </p>
+          <Button
+            size="lg"
+            onClick={initCamera}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-8 py-4 text-lg"
+          >
+            <Camera className="w-5 h-5 mr-2" />
+            Activer la caméra
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="text-white/50 hover:text-white/80"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Retour
+          </Button>
+        </div>
+      )}
+
       {/* Camera Preview */}
       <div className="flex-1 relative">
         <video
