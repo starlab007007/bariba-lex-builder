@@ -1,46 +1,33 @@
 
-# Présentation PPTX - Plateforme Fitila
+# Correction des permissions caméra/micro sur Android
 
-## Objectif
-Générer un diaporama PowerPoint de haute qualité présentant la plateforme Fitila aux autorités de la culture et de la promotion de la langue bariba, en vue d'obtenir leur validation et autorisation de lancement.
+## Problème identifié
 
-## Structure du document (~18-20 slides)
+Le fichier `src/components/tamtam/creator/KuaishouCaptureMode.tsx` (ligne 72) démarre automatiquement la caméra et le micro dans un `useEffect` au montage du composant. Sur Android (WebView Capacitor), `getUserMedia` est bloqué si l'appel ne provient pas directement d'un geste utilisateur (clic/tap).
 
-### Bloc 1 - Introduction (3 slides)
-1. **Page de garde** - Logo Fitila, titre "Fitila : La Flamme Numérique de la Langue Bariba", sous-titre institutionnel
-2. **Le problème** - Disparition progressive de la langue bariba, absence d'outils numériques, analphabétisme, transmission orale menacée
-3. **La solution Fitila** - Plateforme tout-en-un : réseau social, apprentissage, dictionnaire, traduction, IA, classe numérique
+C'est le **seul endroit problématique** dans le code. Tous les autres appels `getUserMedia` (useAudioRecorder, useVoiceDetection, useTamTamAudioRecorder, StoryInput, etc.) sont déjà déclenchés par des actions utilisateur (boutons).
 
-### Bloc 2 - Les 6 Modules (6-7 slides)
-4. **Fil (Réseau social)** - Feed de contenus en bariba, partage audio/vidéo, communauté connectée
-5. **Apprendre (Duolingo bariba)** - 14 thèmes, 300+ exercices, gamification (XP, badges, séries), bidirectionnel FR-BA
-6. **Dico (Dictionnaire)** - Recherche intelligente avec tolérance phonétique, 400+ entrées, audio intégré
-7. **Traducteur** - Traduction FR-BA et BA-FR, reconnaissance vocale en bariba, synthèse vocale
-8. **Fitila Tem IA** - Assistant IA spécialisé en droit foncier bariba, RAG sur corpus juridique local
-9. **Module Classe** (slide d'introduction avec accent visuel fort)
+## Correction
 
-### Bloc 3 - Focus Classe (4-5 slides, coeur de la présentation)
-10. **Classe - Vue d'ensemble** - Numérisation complète du Manuel Bariba N1 (32 leçons, 10 évaluations, calcul) et N2 (18 leçons, 5 évaluations, 25 leçons calcul)
-11. **Classe - Pédagogie structurée** - Méthode Observer/Ecouter/Réagir/Retenir, phonétique (lecture/écriture), contenu authentique en bariba
-12. **Classe - Innovations N2** - Grammaire interactive (7 sections avec quiz), Production de textes (6 types), Documents de gestion (7 modèles : décharge, reçu, facture, cahier de caisse, fiche de stock, PV, bénéfice/perte)
-13. **Classe - Lecture vocale enseignant** - Studio d'enregistrement pour enseignants, validation audio par administrateurs, couverture complète du manuel
-14. **Classe - Suivi et évaluation** - Synchronisation cloud, notation automatique, tableau de bord enseignant
+### 1. Ajouter un état "permission gate" dans KuaishouCaptureMode
 
-### Bloc 4 - Innovation et Impact (3-4 slides)
-15. **Innovations technologiques** - IA sans API payante (Lovable AI), STT/TTS bariba via HuggingFace, mode hors-ligne, PWA + APK natif
-16. **Accessibilité** - Authentification par téléphone +229, code PIN 6 chiffres, récupération visuelle par emojis (public peu lettré)
-17. **Impact attendu** - Préservation linguistique, alphabétisation, inclusion numérique, autonomisation des communautés baatonu
+- Ajouter un état `cameraReady` (initialement `false`)
+- Quand `cameraReady` est `false`, afficher un écran d'attente avec un bouton "Activer la caméra"
+- Au clic sur ce bouton, appeler `getUserMedia` puis passer `cameraReady` a `true`
+- Le `useEffect` actuel (ligne 72-117) sera transformé pour ne s'exécuter que quand `cameraReady` est `true`
 
-### Bloc 5 - Conclusion (2 slides)
-18. **Feuille de route** - Phases de déploiement, partenariats recherchés
-19. **Appel à l'action** - Demande de validation et autorisation officielle de lancement
+### 2. Modifier CaptureEngine.initializeCamera
 
-## Design
-- Palette inspirée de l'Afrique : tons terre cuite, or, vert forêt sur fond sombre
-- Polices : Arial Black (titres), Arial (corps)
-- Captures d'écran de l'application intégrées quand possible
-- Icônes et emojis pour chaque module
-- Mise en page variée : colonnes, grilles, callouts statistiques
+- Aucun changement necessaire -- il est deja appele manuellement, le probleme est uniquement dans le useEffect du composant
 
-## Livrable
-Fichier PPTX généré via pptxgenjs, converti en images pour QA visuel, puis livré dans `/mnt/documents/`.
+### Fichiers modifies
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/components/tamtam/creator/KuaishouCaptureMode.tsx` | Remplacer le useEffect auto-start par un bouton utilisateur + etat `cameraReady` |
+
+### Resultat attendu
+
+- Sur Android: l'utilisateur voit un ecran avec un bouton "Demarrer la camera"
+- Au clic, les permissions sont demandees et la camera s'active
+- Le reste du flux (enregistrement, effets, etc.) fonctionne normalement
