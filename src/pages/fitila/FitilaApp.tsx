@@ -62,6 +62,8 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { emoji: '🤖', labelKey: 'sidebar_fitila_ia',  descKey: 'sidebar_fitila_ia_desc',  path: '/fitila/ia',         gradient: 'from-purple-500 to-indigo-400' },
   ];
 
+  const keyboardItem = { emoji: '⌨️', labelKey: 'sidebar_keyboard', descKey: 'sidebar_keyboard_desc', path: '/fitila/keyboard', gradient: 'from-amber-500 to-orange-400' };
+
   const handleNavigate = (path: string) => {
     triggerFeedback('click');
     onClose();

@@ -53,6 +53,7 @@ const FitilaVoiceLab = lazy(() => import("./pages/fitila/FitilaVoiceLab"));
 const VoiceCorpusAdmin = lazy(() => import("./pages/admin/VoiceCorpusAdmin"));
 const ComingSoonPage = lazy(() => import("./pages/fitila/ComingSoonPage"));
 const InstallPage = lazy(() => import("./pages/fitila/InstallPage"));
+const FloatingKeyboardPage = lazy(() => import("./pages/fitila/FloatingKeyboardPage"));
 const TeacherLayout = lazy(() => import("./pages/teacher/TeacherLayout"));
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard"));
 const StudentList = lazy(() => import("./pages/teacher/StudentList"));
@@ -134,6 +135,7 @@ const App = () => (
                 <Route path="messages" element={<ComingSoonPage />} />
                 <Route path="discover" element={<ComingSoonPage />} />
                 <Route path="install" element={<InstallPage />} />
+                <Route path="keyboard" element={<FloatingKeyboardPage />} />
                 <Route path="user/:userId" element={<TamTamPublicProfile />} />
                 <Route path="profile/:userId" element={<TamTamPublicProfile />} />
               </Route>
