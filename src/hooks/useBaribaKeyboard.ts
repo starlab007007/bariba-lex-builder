@@ -5,6 +5,8 @@ interface BaribaKeyboardPlugin {
   getSuggestions(): Promise<{ suggestions: string; lastWord: string }>;
   clearHistory(): Promise<void>;
   saveWord(options: { word: string }): Promise<void>;
+  getStats(): Promise<{ historyCount: number; lastWord: string; hasSuggestions: boolean }>;
+  bulkImport(options: { words: string }): Promise<{ imported: number }>;
 }
 
 let plugin: BaribaKeyboardPlugin | null = null;
@@ -87,9 +89,7 @@ export function useBaribaKeyboard() {
     try {
       const p = await getPlugin();
       if (!p) return;
-      for (const word of words.slice(0, 50)) {
-        await p.saveWord({ word });
-      }
+      await p.bulkImport({ words: JSON.stringify(words.slice(0, 50)) });
     } catch {
       // silent
     }
