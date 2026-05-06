@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Trash2, Globe, ChevronDown, ChevronUp, Clock, X } from 'lucide-react';
+import { Copy, Trash2, Globe, ChevronDown, ChevronUp, Clock, Star, Search, Zap } from 'lucide-react';
 import { useFloatingKeyboard } from '@/hooks/useFloatingKeyboard';
 
 const BARIBA_CHARS_ROW1 = ['ɔ', 'ɛ', 'ŋ', 'ã', 'ĩ', 'ũ'];
 const BARIBA_CHARS_ROW2 = ['ɔ̀', 'ɔ́', 'ɔ̃', 'ɛ̀', 'ɛ́', 'ɛ̃'];
 const BARIBA_CHARS_ROW3 = ['à', 'á', 'è', 'é', 'ì', 'í', 'ò', 'ó', 'ù', 'ú', 'ǹ'];
 
+type PanelTab = 'none' | 'history' | 'favorites' | 'words';
+
 export default function FloatingBaribaKeyboard() {
   const {
-    text, setText, suggestions, history,
+    text, setText, suggestions, history, favorites, recentWords, settings,
     textareaRef, insertChar, insertSuggestion,
     copyToClipboard, clearText, clearHistory,
+    toggleFavorite, isFavorite, historySearch, setHistorySearch,
   } = useFloatingKeyboard();
   const [showExtended, setShowExtended] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [activePanel, setActivePanel] = useState<PanelTab>('none');
   const [lang, setLang] = useState<'bariba' | 'francais'>('bariba');
+
+  const togglePanel = (tab: PanelTab) => setActivePanel(prev => prev === tab ? 'none' : tab);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -32,20 +37,23 @@ export default function FloatingBaribaKeyboard() {
             <Globe className="w-3 h-3" />
             {lang === 'bariba' ? 'Bariba' : 'Français'}
           </button>
+          {settings.phoneticMode && (
+            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold">
+              <Zap className="w-2.5 h-2.5" /> Phonétique
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="p-1.5 rounded-lg hover:bg-muted"
-            title="Historique"
-          >
-            <Clock className="w-4 h-4 text-muted-foreground" />
+        <div className="flex items-center gap-0.5">
+          <button onClick={() => togglePanel('favorites')} className={`p-1.5 rounded-lg ${activePanel === 'favorites' ? 'bg-amber-500/20' : 'hover:bg-muted'}`} title="Favoris">
+            <Star className={`w-4 h-4 ${activePanel === 'favorites' ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground'}`} />
           </button>
-          <button
-            onClick={clearText}
-            className="p-1.5 rounded-lg hover:bg-muted"
-            title="Effacer"
-          >
+          <button onClick={() => togglePanel('history')} className={`p-1.5 rounded-lg ${activePanel === 'history' ? 'bg-blue-500/20' : 'hover:bg-muted'}`} title="Historique">
+            <Clock className={`w-4 h-4 ${activePanel === 'history' ? 'text-blue-500' : 'text-muted-foreground'}`} />
+          </button>
+          <button onClick={() => togglePanel('words')} className={`p-1.5 rounded-lg ${activePanel === 'words' ? 'bg-purple-500/20' : 'hover:bg-muted'}`} title="Mots récents">
+            <Search className={`w-4 h-4 ${activePanel === 'words' ? 'text-purple-500' : 'text-muted-foreground'}`} />
+          </button>
+          <button onClick={clearText} className="p-1.5 rounded-lg hover:bg-muted" title="Effacer">
             <Trash2 className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
@@ -57,7 +65,7 @@ export default function FloatingBaribaKeyboard() {
           ref={textareaRef}
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder={lang === 'bariba' ? 'Sɛmɛ wãa nɔ̃ɔ...' : 'Écrivez votre texte ici...'}
+          placeholder={lang === 'bariba' ? 'Sɛmɛ wãa nɔ̃ɔ... (oo→ɔ, ee→ɛ, ng→ŋ)' : 'Écrivez votre texte ici...'}
           className="w-full h-full resize-none bg-muted/30 rounded-xl p-3 text-base focus:outline-none focus:ring-2 focus:ring-amber-500/50 placeholder:text-muted-foreground/50"
           style={{ minHeight: '80px' }}
         />
@@ -88,38 +96,116 @@ export default function FloatingBaribaKeyboard() {
         )}
       </AnimatePresence>
 
-      {/* History panel */}
+      {/* Panels (History / Favorites / Recent Words) */}
       <AnimatePresence>
-        {showHistory && (
+        {activePanel !== 'none' && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             className="border-t border-border/50 overflow-hidden"
           >
-            <div className="p-3 max-h-32 overflow-y-auto">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-muted-foreground">Historique</span>
-                {history.length > 0 && (
-                  <button onClick={clearHistory} className="text-[10px] text-destructive">
-                    Tout effacer
-                  </button>
-                )}
-              </div>
-              {history.length === 0 ? (
-                <p className="text-xs text-muted-foreground/60">Aucun texte copié</p>
-              ) : (
-                <div className="space-y-1">
-                  {history.map((h, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setText(h)}
-                      className="w-full text-left px-2 py-1 text-xs rounded hover:bg-muted truncate"
-                    >
-                      {h}
-                    </button>
-                  ))}
-                </div>
+            <div className="p-3 max-h-40 overflow-y-auto">
+              {/* ── History Panel ── */}
+              {activePanel === 'history' && (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                      <input
+                        type="text"
+                        value={historySearch}
+                        onChange={e => setHistorySearch(e.target.value)}
+                        placeholder="Rechercher..."
+                        className="w-full pl-6 pr-2 py-1 text-xs rounded-lg bg-muted/50 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                      />
+                    </div>
+                    {history.length > 0 && (
+                      <button onClick={clearHistory} className="text-[10px] text-destructive shrink-0">Effacer</button>
+                    )}
+                  </div>
+                  {history.length === 0 ? (
+                    <p className="text-xs text-muted-foreground/60 text-center py-2">Aucun texte copié</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {history.map((h, i) => (
+                        <div key={i} className="flex items-center gap-1 group">
+                          <button
+                            onClick={() => setText(h)}
+                            className="flex-1 text-left px-2 py-1.5 text-xs rounded-lg hover:bg-muted truncate"
+                          >
+                            {h}
+                          </button>
+                          <button
+                            onClick={() => toggleFavorite(h)}
+                            className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Star className={`w-3 h-3 ${isFavorite(h) ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground'}`} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── Favorites Panel ── */}
+              {activePanel === 'favorites' && (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-amber-500" /> Favoris ({favorites.length})
+                    </span>
+                  </div>
+                  {favorites.length === 0 ? (
+                    <p className="text-xs text-muted-foreground/60 text-center py-2">
+                      Ajoutez des phrases depuis l'historique ⭐
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {favorites.map((f, i) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <button
+                            onClick={() => setText(f)}
+                            className="flex-1 text-left px-2 py-1.5 text-xs rounded-lg hover:bg-amber-500/10 truncate"
+                          >
+                            ⭐ {f}
+                          </button>
+                          <button
+                            onClick={() => toggleFavorite(f)}
+                            className="shrink-0 p-1 rounded hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-3 h-3 text-destructive/60" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── Recent Words Panel ── */}
+              {activePanel === 'words' && (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">Mots récents</span>
+                  </div>
+                  {recentWords.length === 0 ? (
+                    <p className="text-xs text-muted-foreground/60 text-center py-2">Les mots sélectionnés apparaîtront ici</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {recentWords.slice(0, 20).map((w, i) => (
+                        <button
+                          key={i}
+                          onClick={() => insertChar(w + ' ')}
+                          className="px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 text-xs font-medium hover:bg-purple-500/20 transition-colors"
+                        >
+                          {w}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
@@ -185,7 +271,7 @@ export default function FloatingBaribaKeyboard() {
         </div>
       )}
 
-      {/* Copy button */}
+      {/* Copy button + auto-copy indicator */}
       <div className="p-3 border-t border-border/50">
         <button
           onClick={copyToClipboard}
@@ -193,8 +279,17 @@ export default function FloatingBaribaKeyboard() {
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] transition-all shadow-lg shadow-amber-500/25"
         >
           <Copy className="w-5 h-5" />
-          Copier dans le presse-papier
+          {settings.autoCopy ? 'Copier (auto-copie activée)' : 'Copier dans le presse-papier'}
         </button>
+        {text.trim() && (
+          <button
+            onClick={() => toggleFavorite(text.trim())}
+            className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-xl border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm font-medium hover:bg-amber-500/10 transition-colors"
+          >
+            <Star className={`w-4 h-4 ${isFavorite(text.trim()) ? 'fill-amber-500' : ''}`} />
+            {isFavorite(text.trim()) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+          </button>
+        )}
       </div>
     </div>
   );
