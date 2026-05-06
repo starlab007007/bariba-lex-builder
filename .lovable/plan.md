@@ -1,59 +1,45 @@
 
-# Correction de la page blanche sur fitila.bj
+# Diagnostic : Page blanche sur https://fitila.bj
 
-## Probleme
-
-Le fichier `.env` est exclu par `.dockerignore`. Les variables `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY` ne sont jamais disponibles pendant `npm run build` dans Docker. Sans elles, le client Supabase plante au demarrage et la page reste blanche.
-
-## Solution
-
-Passer ces variables comme **ARG** Docker (ce sont des cles publiques/anon, pas des secrets sensibles).
-
-### 1. Dockerfile - Ajouter les ARG Supabase
-
-```dockerfile
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
-
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+## Erreur exacte (console navigateur)
 ```
-
-### 2. docker-composer.yml - Passer les args au build
-
-```yaml
-build:
-  context: .
-  args:
-    VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-    VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+Error: supabaseUrl is required.
 ```
+Le client Supabase crash au démarrage car `VITE_SUPABASE_URL` est `undefined` dans le bundle JS déployé.
 
-### 3. deploy.yml - Exporter les variables sur le VPS avant le build
+## Cause racine
+Le fichier `.env` est listé dans `.dockerignore` (ligne 5). Docker ne le copie jamais dans le conteneur. Les variables d'environnement Vite (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) sont donc absentes pendant `npm run build` dans Docker, ce qui produit un bundle sans credentials.
 
-Dans le script de deploiement SSH, ajouter :
+Le Dockerfile, docker-composer.yml et deploy.yml sont déjà configurés pour recevoir ces variables via des build args et GitHub Secrets. **Mais ces secrets doivent exister côté GitHub et/ou VPS.**
+
+## Actions à réaliser
+
+### Action 1 (votre côté) : Ajouter les GitHub Secrets
+Dans votre repo GitHub : **Settings → Secrets and variables → Actions → New repository secret** :
+
+| Nom | Valeur |
+|-----|--------|
+| `VITE_SUPABASE_URL` | `https://pmrhezgnyffiskbaiudb.supabase.co` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcmhlemdueWZmaXNrYmFpdWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyODgzNzAsImV4cCI6MjA3ODg2NDM3MH0.BRqdPly5tClRwhuQes1dckaTNQkbjIqZ5I8q6km_lZ4` |
+
+### Action 2 (votre côté) : Créer un .env sur le VPS
+Comme sécurité supplémentaire (pour `docker compose build` sur le VPS), créez ce fichier :
+
 ```bash
-export VITE_SUPABASE_URL=https://pmrhezgnyffiskbaiudb.supabase.co
-export VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ssh votre-vps
+cat > /home/debian/bariba-lex-builder/.env << 'EOF'
+VITE_SUPABASE_URL=https://pmrhezgnyffiskbaiudb.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcmhlemdueWZmaXNrYmFpdWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyODgzNzAsImV4cCI6MjA3ODg2NDM3MH0.BRqdPly5tClRwhuQes1dckaTNQkbjIqZ5I8q6km_lZ4
+EOF
 ```
 
-Ou mieux : creer un fichier `.env` sur le VPS dans `/home/debian/bariba-lex-builder/` avec ces valeurs, et docker compose les lira automatiquement.
+Docker Compose lit automatiquement ce `.env` et passe les valeurs aux build args.
 
-### 4. deploy.yml - CI build job (optionnel)
+### Action 3 (optionnel, code) : Ajouter une protection contre le crash
+Pour éviter une page blanche si les variables manquent à l'avenir, on peut ajouter une vérification dans le code qui affiche un message d'erreur clair au lieu de crasher silencieusement.
 
-Ajouter les memes variables dans le job `build` du workflow GitHub Actions pour que le check de build passe aussi :
-```yaml
-env:
-  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-  VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-```
+### Après ces actions
+Relancez le déploiement (push un commit ou re-run le workflow GitHub Actions). La page ne sera plus blanche.
 
----
-
-## Action requise de votre part
-
-Vous devrez ajouter ces 2 secrets dans votre repo GitHub (Settings > Secrets) :
-- `VITE_SUPABASE_URL` = `https://pmrhezgnyffiskbaiudb.supabase.co`
-- `VITE_SUPABASE_PUBLISHABLE_KEY` = la cle anon du projet
-
-Et/ou creer un `.env` sur votre VPS dans le dossier du projet.
+## Résumé
+Aucun bug dans le code. Le Dockerfile et le workflow sont corrects. Il manque simplement les **2 secrets GitHub** et/ou le **fichier .env sur le VPS**.
