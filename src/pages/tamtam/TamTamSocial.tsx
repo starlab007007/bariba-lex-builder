@@ -12,6 +12,7 @@ import { TamTamCreatePost } from '@/components/tamtam/TamTamCreatePost';
 import { TamTamCommunities } from '@/components/tamtam/TamTamCommunities';
 import { AudioFeedCard } from '@/components/feed/AudioFeedCard';
 import { VideoFeedCard } from '@/components/feed/VideoFeedCard';
+import { FeedSkeletonList, FeedLoadingMore } from '@/components/feed/FeedSkeleton';
 
 import { TamTamLiveList } from '@/components/tamtam/TamTamLiveList';
 import { TamTamMessagesHub } from '@/components/tamtam/TamTamMessagesHub';
@@ -257,29 +258,29 @@ const BottomTabBar: React.FC<{
         key={tab.id}
         whileTap={{ scale: 0.9 }}
         onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)}
-        className="relative flex flex-col items-center gap-0.5 py-1 overflow-hidden"
-        style={{ flex: '1 1 0', minWidth: 0 }}
+        className="relative flex flex-col items-center gap-1 py-1.5 overflow-hidden"
+        style={{ flex: '1 1 0', minWidth: 0, minHeight: 44 }}
       >
-        <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-white/50'}`} />
-        <span className={`text-[8px] sm:text-[9px] truncate w-full text-center ${isActive ? 'text-white font-medium' : 'text-white/50'}`}>{tab.label}</span>
-        {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-1 w-6 h-0.5 rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
+        <Icon className={`w-[22px] h-[22px] ${isActive ? 'text-white' : 'text-white/50'}`} />
+        <span className={`text-[10px] sm:text-[11px] truncate w-full text-center leading-tight ${isActive ? 'text-white font-semibold' : 'text-white/50'}`}>{tab.label}</span>
+        {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-0.5 w-7 h-[3px] rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
       </motion.button>
     );
   };
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-black border-t border-white/10"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-sm border-t border-white/10"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-       <div className="relative flex items-end px-0.5 py-2">
+       <div className="relative flex items-end px-1 py-2.5">
         {/* Left group */}
         <div className="flex-1 flex items-end justify-around">
           {leftTabs.map(renderTab)}
         </div>
 
         {/* Center spacer */}
-        <div className="w-14 flex-shrink-0" />
+        <div className="w-16 flex-shrink-0" />
 
         {/* Right group */}
         <div className="flex-1 flex items-end justify-around">
@@ -287,8 +288,8 @@ const BottomTabBar: React.FC<{
         </div>
 
         {/* Floating CREATE BUTTON */}
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onCreatePress} className="absolute left-1/2 -translate-x-1/2 -top-5">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-pink-500/30">
+        <motion.button whileTap={{ scale: 0.9 }} onClick={onCreatePress} className="absolute left-1/2 -translate-x-1/2 -top-6">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-pink-500/30">
             <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
           </div>
         </motion.button>
@@ -729,7 +730,7 @@ export default function TamTamSocial() {
             onScroll={handleScroll}
           >
             {isFeedLoading ? (
-              <div className="h-screen" style={{ background: '#0B0B0B' }} />
+              <FeedSkeletonList count={3} variant={feedMode === 'creation' ? 'video' : 'audio'} />
             ) : getCurrentPosts.length > 0 ? (
               feedMode === 'creation' ? (
                 // VIRTUALIZED: Only render posts near the current index
