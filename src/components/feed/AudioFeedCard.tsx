@@ -378,7 +378,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
       </div>
 
       {/* ── CENTER: Disque + Karaoké (juste dessous) ── */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-5 pt-16 pb-28">
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-5 pt-16 pb-32">
 
         {/* Disque vinyle */}
         <div className="relative mb-3">
@@ -390,13 +390,13 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
             />
           )}
           <motion.div
-            className={`w-44 h-44 rounded-full bg-gradient-to-br ${template.gradient} shadow-2xl flex items-center justify-center border-4 border-white/30`}
+            className={`w-40 h-40 sm:w-44 sm:h-44 rounded-full bg-gradient-to-br ${template.gradient} shadow-2xl flex items-center justify-center border-4 border-white/30`}
             animate={isPlaying ? { rotate: 360 } : {}}
             transition={isPlaying ? { duration: 3, repeat: Infinity, ease: 'linear' } : {}}
           >
-            <div className="w-36 h-36 rounded-full border-2 border-white/10 flex items-center justify-center">
-              <div className="w-28 h-28 rounded-full border border-white/10 flex items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-black/40 flex items-center justify-center shadow-inner">
+            <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full border-2 border-white/10 flex items-center justify-center">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border border-white/10 flex items-center justify-center">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-black/40 flex items-center justify-center shadow-inner">
                   <span className="text-3xl">{template.emoji}</span>
                 </div>
               </div>
@@ -418,7 +418,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
 
         {/* Follow + Author */}
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-white/70 text-sm font-medium">{post.profile?.display_name || 'Utilisateur'}</span>
+          <span className="text-white/80 text-sm font-semibold">{post.profile?.display_name || 'Utilisateur'}</span>
           {(post as any).ai_generated && (
             <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-violet-500/30 text-violet-200 border border-violet-400/30">🤖 IA</span>
           )}
@@ -507,23 +507,23 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
       )}
 
       {/* Right sidebar */}
-      <div className="absolute right-4 bottom-36 flex flex-col items-center gap-4">
+      <div className="absolute right-3 bottom-40 flex flex-col items-center gap-4">
         <motion.button whileTap={{ scale: 0.85 }} onClick={handleLike} className="flex flex-col items-center">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/30'}`}>
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center ${isLiked ? 'bg-red-500' : 'bg-black/40'}`}>
             <Heart className={`w-6 h-6 ${isLiked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
           <span className="text-white text-[10px] mt-0.5">{totalLikes}</span>
         </motion.button>
 
         <motion.button whileTap={{ scale: 0.85 }} onClick={onComment} className="flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-full bg-black/40 flex items-center justify-center">
             <Mic className="w-6 h-6 text-white" />
           </div>
           <span className="text-white text-[10px] mt-0.5">{post.comments_count || 0}</span>
         </motion.button>
 
         <motion.button whileTap={{ scale: 0.85 }} onClick={() => { sharePost(); triggerFeedback('send'); }} className="flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-full bg-black/40 flex items-center justify-center">
             <Share2 className="w-6 h-6 text-white" />
           </div>
           <span className="text-white text-[10px] mt-0.5">Partager</span>
@@ -533,7 +533,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
           onClick={() => { toggleBookmark(); triggerFeedback('success'); }}
           className="flex flex-col items-center"
         >
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isBookmarked ? 'bg-amber-500' : 'bg-black/30'}`}>
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center ${isBookmarked ? 'bg-amber-500' : 'bg-black/40'}`}>
             <Bookmark className={`w-6 h-6 ${isBookmarked ? 'text-white fill-white' : 'text-white'}`} />
           </div>
           <span className="text-white text-[10px] mt-0.5">{isBookmarked ? 'Sauvé' : 'Sauver'}</span>
@@ -541,7 +541,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
       </div>
 
       {/* Author avatar bottom left */}
-      <div className="absolute left-4 bottom-36">
+      <div className="absolute left-3 bottom-40">
         <div className="relative cursor-pointer" onClick={() => authorId && navigate(`/fitila/profile/${authorId}`)}>
           <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center border-2 border-white shadow-lg overflow-hidden">
             {post.profile?.avatar_url
