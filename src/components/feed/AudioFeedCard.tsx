@@ -6,10 +6,11 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Bookmark, Play, Pause, SkipBack, SkipForward, Plus, Clock, Mic, RefreshCw, Volume2, VolumeX } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Play, Pause, SkipBack, SkipForward, Plus, Clock, Mic, RefreshCw, Volume2, VolumeX, Maximize2 } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { useFeedAudioAutoStop } from '@/hooks/useFeedAudioAutoStop';
+import { FullscreenAudioPlayer } from '@/components/feed/FullscreenAudioPlayer';
 
 interface DiskTemplate {
   id: string;
@@ -178,6 +179,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
   const [liveTranscript, setLiveTranscript] = useState('');
   const audioRef = useRef<HTMLAudioElement>(null);
   const recognitionRef = useRef<any>(null);
+  const [showFullscreen, setShowFullscreen] = useState(false);
 
   // Arrêt universel de l'audio (route, scroll, blur, hidden, pagehide) — pas de reprise auto
   useFeedAudioAutoStop(audioRef, (v) => { setIsPlaying(v); if (!v) { try { recognitionRef.current?.stop(); } catch {} recognitionRef.current = null; } }, { resetTime: false });
@@ -467,6 +469,13 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
 
         {/* Speed & Mute */}
         <div className="flex items-center gap-2">
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => { if (audioRef.current) audioRef.current.pause(); setIsPlaying(false); setShowFullscreen(true); }}
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.18)' }}
+            title="Plein écran"
+          >
+            <Maximize2 className="w-4 h-4 text-white" />
+          </motion.button>
           <motion.button whileTap={{ scale: 0.9 }} onClick={cycleSpeed}
             className="px-3 py-1.5 rounded-full text-xs font-bold transition-all"
             style={{
@@ -550,6 +559,16 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Fullscreen Audio Player */}
+      <FullscreenAudioPlayer
+        isOpen={showFullscreen}
+        onClose={() => setShowFullscreen(false)}
+        post={post}
+        accentColor={template.accentColor}
+        emoji={template.emoji}
+        gradient={template.gradient}
+      />
     </div>
   );
 };
