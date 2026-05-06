@@ -142,7 +142,7 @@ export function searchFoncier(query: string, k = 6): SearchHit[] {
 // ──────────────────────────────────────────────────────────────────────
 // Extracteur de réponse (purement extractif)
 // ──────────────────────────────────────────────────────────────────────
-const FALLBACK_BA = 'Gari yini bweseru ku wáa tem saria tire teni søø.';
+const FALLBACK_BA = 'Gari yini bweseru ku wáa tem saria tire teni sɔɔ.';
 const SCORE_THRESHOLD = 1.2;
 
 export interface AnswerResult {
