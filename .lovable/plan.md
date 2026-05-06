@@ -1,79 +1,71 @@
 
-# Clavier Flottant Bariba-Français — Solution Overlay
+# Plan : SEO avancé + Branding complet Fitila
 
-## Concept
+## Objectif
+Faire en sorte que la recherche "fitila" sur Google affiche des résultats riches similaires à TikTok (logo, description, sitelinks) et supprimer toute trace de Lovable.
 
-Un clavier flottant accessible depuis n'importe quelle application Android. L'utilisateur tape en Bariba dans une bulle superposée, le texte est copié dans le presse-papier, puis collé dans WhatsApp ou toute autre app.
+---
 
-## Architecture
+## 1. Générer le logo Fitila
+- Créer un logo Fitila professionnel (fond transparent) pour favicon, OG image, et affichage in-app
+- Générer une OG image (1200x630) pour les partages sociaux
+- Remplacer les icônes PWA existantes (192px, 512px)
 
-### 1. Bulle Flottante (Floating Overlay Service)
+## 2. SEO structuré (JSON-LD) pour résultats riches Google
+Ajouter dans `index.html` les schémas structurés :
+- **Organization** : nom, logo, URL, réseaux sociaux
+- **WebSite** avec **SearchAction** (pour la barre de recherche Google)
+- **SiteNavigationElement** : liens vers les sections clés (Dictionnaire, Apprendre, Traducteur, Fitila IA, Radio) — ce sont les "sitelinks" que Google affichera
 
-Un service Android natif qui affiche une bulle Fitila par-dessus les autres applications :
+## 3. Métadonnées SEO optimisées
+- Titre optimisé : "FITILA - Langue Bariba, Culture & IA | fitila.bj"
+- Description riche avec mots-clés : bariba, culture, apprendre, dictionnaire, IA
+- Canonical URL vers fitila.bj
+- `og:url`, `og:site_name` complets
+- Twitter metadata complète
 
-- **Bouton flottant** : Icône Fitila draggable, toujours visible sur l'écran
-- **Au tap** : Ouvre un mini-panneau avec le clavier Bariba complet
-- **Fonctionnalités** : Saisie avec suggestions prédictives, caractères spéciaux Bariba (ɔ, ɛ, ŋ, ã...), bascule Bariba/Français
-- **Bouton "Copier"** : Copie le texte dans le presse-papier, ferme le panneau, l'utilisateur colle dans l'app cible
+## 4. Fichiers SEO techniques
+- **sitemap.xml** : toutes les routes principales
+- **robots.txt** : ajouter référence au sitemap
+- **manifest.webmanifest** : recréer avec branding Fitila
 
-### 2. Implémentation Technique
+## 5. Supprimer toute référence Lovable
+- Retirer le commentaire "Lovable Cloud" dans `index.html`
+- Le badge est déjà masqué
+- Les fichiers internes (services, hooks) qui mentionnent "lovable" dans des commentaires techniques ne sont pas visibles par les utilisateurs, donc pas prioritaires
 
-Le service overlay nécessite un plugin Capacitor personnalisé :
+## Détails techniques
 
-| Composant | Technologie |
-|-----------|------------|
-| Service Overlay Android | Kotlin `WindowManager` + `TYPE_APPLICATION_OVERLAY` |
-| UI du clavier flottant | WebView locale chargeant une page React dédiée |
-| Dictionnaire | Fichier JSON embarqué dans les assets Android |
-| Presse-papier | API Clipboard native Android |
-| Plugin Capacitor | Bridge entre React et le service natif |
-
-### 3. Fichiers a creer dans Lovable
-
-| Fichier | Description |
-|---------|-------------|
-| `src/pages/fitila/FloatingKeyboardPage.tsx` | Page React du clavier flottant (UI minimale optimisee pour overlay) |
-| `src/components/keyboard/FloatingBaribaKeyboard.tsx` | Composant clavier complet avec suggestions, caracteres speciaux, copie |
-| `src/components/keyboard/KeyboardActivationGuide.tsx` | Guide d'activation avec instructions pas-a-pas |
-| `src/hooks/useFloatingKeyboard.ts` | Hook pour la logique du clavier flottant et clipboard |
-| Route dans App.tsx | `/fitila/keyboard` pour acceder au clavier et au guide |
-| Menu dans FitilaApp.tsx | Entree "Clavier Bariba" dans le side menu |
-
-### 4. Page d'activation dans l'app
-
-Une page `/fitila/keyboard` accessible depuis le menu lateral avec :
-- Bouton "Activer le clavier flottant" (lance le service overlay)
-- Tutoriel visuel en 3 etapes : 1) Autoriser l'overlay 2) Taper en Bariba 3) Coller dans WhatsApp
-- Option "Demarrer au lancement" pour activer la bulle automatiquement
-- Preview du clavier pour tester avant d'aller sur une autre app
-
-### 5. Fonctionnalites du clavier flottant
-
-- **Suggestions predictives** : Reutilise `usePhoneticSuggestions` avec l'index phonetique et Levenshtein
-- **Caracteres speciaux Bariba** : Rangee dediee (ɔ, ɛ, ŋ, ã, tons)
-- **Bascule langue** : Globe button pour alterner Bariba/Francais
-- **Copie rapide** : Un tap copie tout le texte et affiche un toast de confirmation
-- **Historique** : Les 10 derniers textes copies sont sauvegardes localement
-- **Mode compact** : Le panneau se reduit en bulle quand non utilise
-
-### 6. Permission Android requise
-
-```xml
-<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+### JSON-LD Organization
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "FITILA",
+  "url": "https://fitila.bj",
+  "logo": "https://fitila.bj/fitila-logo.png",
+  "description": "Plateforme de promotion de la langue Bariba..."
+}
 ```
 
-L'utilisateur doit accorder manuellement la permission "Afficher par-dessus d'autres applications" dans les parametres Android.
+### JSON-LD WebSite + SearchAction
+```json
+{
+  "@type": "WebSite",
+  "url": "https://fitila.bj",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://fitila.bj/fitila/dictionary?q={search_term_string}"
+  }
+}
+```
 
-### 7. Etapes d'implementation
+### JSON-LD SiteNavigationElement
+Liens : Dictionnaire Bariba, Apprendre le Bariba, Traducteur, Fitila IA, Radio Bariba, Clavier Bariba
 
-1. Creer le composant `FloatingBaribaKeyboard` avec le clavier complet, suggestions, et copie clipboard
-2. Creer la page `FloatingKeyboardPage` comme mini-app autonome
-3. Creer le guide d'activation `KeyboardActivationGuide`
-4. Ajouter la route et l'entree menu dans l'app
-5. Documenter les instructions pour le plugin Capacitor natif (le code Kotlin du service overlay devra etre ajoute manuellement dans Android Studio apres `cap sync`)
-
-## Limites et transparence
-
-- La partie **service overlay Android** (bulle flottante par-dessus les autres apps) necessite du code Kotlin natif qui ne peut pas etre execute dans Lovable — je fournirai la documentation et le code a copier dans Android Studio
-- La partie **UI du clavier, suggestions, clipboard** est entierement faisable dans Lovable
-- Sur iOS, les overlays systeme ne sont pas supportes — cette fonctionnalite sera Android uniquement
+### Fichiers modifiés
+- `index.html` — meta tags + JSON-LD + suppression mentions Lovable
+- `public/robots.txt` — ajout sitemap
+- `public/sitemap.xml` — nouveau
+- `public/manifest.webmanifest` — recréé
+- Images générées : logo, OG image, icônes PWA
