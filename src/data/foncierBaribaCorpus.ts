@@ -2,7 +2,7 @@
 // Importé statiquement depuis supabase/functions/_shared/foncier_bariba_corpus.json
 // 207 articles — utilisé par le moteur RAG 100% local (src/lib/foncierRAG.ts)
 
-import corpusJson from '../../supabase/functions/_shared/foncier_bariba_corpus.json';
+import corpusJson from './foncier_bariba_corpus.json';
 
 export interface FoncierArticle {
   id: number;
