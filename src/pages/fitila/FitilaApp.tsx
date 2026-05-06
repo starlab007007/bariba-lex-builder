@@ -56,6 +56,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   ];
 
   const toolsItems = [
+    { emoji: '⌨️', labelKey: 'sidebar_keyboard', descKey: 'sidebar_keyboard_desc', path: '/fitila/keyboard', gradient: 'from-amber-500 to-orange-400' },
     { emoji: '📖', labelKey: 'sidebar_dictionary', descKey: 'sidebar_dictionary_desc', path: '/fitila/dictionary', gradient: 'from-emerald-500 to-teal-400' },
     { emoji: '🌍', labelKey: 'sidebar_translator', descKey: 'sidebar_translator_desc', path: '/fitila/translator', gradient: 'from-blue-500 to-cyan-400' },
     { emoji: '📚', labelKey: 'sidebar_learn',      descKey: 'sidebar_learn_desc',      path: '/fitila/learn',      gradient: 'from-amber-500 to-orange-400' },

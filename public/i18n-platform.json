@@ -4017,5 +4017,13 @@
   "sidebar_voice_lab_desc": {
     "fr": "Prête ta voix au Bariba",
     "ba": "Bariba bweseru sɔ̃ɔsi"
+  },
+  "sidebar_keyboard": {
+    "fr": "Clavier Bariba",
+    "ba": "Baatɔnum tire kɔkɔ"
+  },
+  "sidebar_keyboard_desc": {
+    "fr": "Écrire partout en Bariba",
+    "ba": "Sɛmɛ wãa nɛn kpuro"
   }
 }
