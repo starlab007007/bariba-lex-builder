@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Copy, Sun, Moon, Monitor, Download, Upload, Info } from 'lucide-react';
+import { Zap, Copy, Sun, Moon, Monitor, Download, Upload, Info, SlidersHorizontal, Hash, Target } from 'lucide-react';
 import { KeyboardSettings } from '@/hooks/useFloatingKeyboard';
 
 interface Props {
@@ -48,6 +48,74 @@ export default function KeyboardSettingsPanel({ settings, onUpdate, onExport, on
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Auto-copy */}
+      {/* Phonetic Suggestions Settings */}
+      <div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
+            <SlidersHorizontal className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm">Suggestions phonétiques</h3>
+              <button
+                onClick={() => onUpdate({ suggestionsEnabled: !settings.suggestionsEnabled })}
+                className={`relative w-11 h-6 rounded-full transition-colors ${settings.suggestionsEnabled ? 'bg-purple-500' : 'bg-muted-foreground/30'}`}
+              >
+                <motion.div
+                  animate={{ x: settings.suggestionsEnabled ? 22 : 2 }}
+                  className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
+                />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Suggestions de mots en temps réel pendant la saisie
+            </p>
+          </div>
+        </div>
+        {settings.suggestionsEnabled && (
+          <div className="space-y-4 pl-[52px]">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-medium">
+                  <Hash className="w-3.5 h-3.5 text-purple-500" />
+                  Nombre de suggestions
+                </label>
+                <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+                  {settings.suggestionCount}
+                </span>
+              </div>
+              <input type="range" min={3} max={15} step={1} value={settings.suggestionCount}
+                onChange={e => onUpdate({ suggestionCount: Number(e.target.value) })}
+                className="w-full h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-purple-500" />
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                <span>3</span><span>15</span>
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-medium">
+                  <Target className="w-3.5 h-3.5 text-purple-500" />
+                  Seuil de précision
+                </label>
+                <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+                  {settings.suggestionThreshold.toFixed(1)}
+                </span>
+              </div>
+              <input type="range" min={0} max={2} step={0.5} value={settings.suggestionThreshold}
+                onChange={e => onUpdate({ suggestionThreshold: Number(e.target.value) })}
+                className="w-full h-1.5 rounded-full appearance-none bg-muted cursor-pointer accent-purple-500" />
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                <span>Souple (0)</span><span>Strict (2)</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Plus le seuil est élevé, plus les suggestions sont précises mais moins nombreuses
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Auto-copy */}
@@ -134,16 +202,16 @@ export default function KeyboardSettingsPanel({ settings, onUpdate, onExport, on
         </div>
       </div>
 
-      {/* Overlay info */}
+      {/* Native keyboard info */}
       <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20">
         <div className="flex items-start gap-2">
           <Info className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
           <div>
-            <h4 className="font-semibold text-sm text-amber-700 dark:text-amber-400">Clavier flottant (Android)</h4>
+            <h4 className="font-semibold text-sm text-amber-700 dark:text-amber-400">Clavier natif Android</h4>
             <p className="text-xs text-muted-foreground mt-1">
-              Pour utiliser le clavier par-dessus d'autres applications (WhatsApp, SMS...), la version native avec overlay 
-              sera disponible prochainement. En attendant, utilisez le mode copier-coller : écrivez ici, copiez, 
-              puis collez dans l'application de votre choix.
+              Le clavier Bariba natif est intégré dans l'APK. Activez-le dans l'onglet
+              <span className="inline-flex items-center mx-1 text-amber-600 dark:text-amber-400 font-medium">📱 Natif</span>
+              pour l'utiliser dans WhatsApp, SMS et toutes les applications.
             </p>
           </div>
         </div>
