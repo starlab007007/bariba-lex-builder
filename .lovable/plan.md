@@ -1,45 +1,68 @@
 
-# Diagnostic : Page blanche sur https://fitila.bj
+# Diagnostic et corrections pour l'APK Android
 
-## Erreur exacte (console navigateur)
+## Problème 1 : Permissions caméra et micro refusées
+
+**Cause racine** : Les permissions `CAMERA` et `RECORD_AUDIO` ne sont pas déclarées dans `AndroidManifest.xml`. Sans ces déclarations, Android refuse systématiquement les demandes de permission à l'exécution, peu importe le code Capacitor ou `getUserMedia`.
+
+**Solution** : Après `npx cap add android`, vous devez modifier manuellement le fichier `android/app/src/main/AndroidManifest.xml` sur votre machine locale :
+
+```xml
+<!-- Ajouter AVANT la balise <application> -->
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+<uses-permission android:name="android.permission.INTERNET" />
 ```
-Error: supabaseUrl is required.
-```
-Le client Supabase crash au démarrage car `VITE_SUPABASE_URL` est `undefined` dans le bundle JS déployé.
 
-## Cause racine
-Le fichier `.env` est listé dans `.dockerignore` (ligne 5). Docker ne le copie jamais dans le conteneur. Les variables d'environnement Vite (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) sont donc absentes pendant `npm run build` dans Docker, ce qui produit un bundle sans credentials.
+De plus, je vais :
+1. Installer `@capacitor/camera` comme dépendance du projet (si pas déjà présent)
+2. Mettre à jour `capacitor.config.ts` pour déclarer les plugins Camera et AudioRecorder
+3. Ajouter un script de post-sync qui rappelle les permissions à ajouter
 
-Le Dockerfile, docker-composer.yml et deploy.yml sont déjà configurés pour recevoir ces variables via des build args et GitHub Secrets. **Mais ces secrets doivent exister côté GitHub et/ou VPS.**
+**Note importante** : Les fichiers `src/utils/camera.ts` et `src/utils/audioRecorder.ts` que vous créez manuellement ne sont pas nécessaires. L'app utilise déjà `navigator.mediaDevices.getUserMedia` dans `src/utils/capacitorPermissions.ts` et `src/components/tamtam/PhotoTranslator.tsx`. Ces API web fonctionnent dans le WebView Capacitor **à condition que** les permissions soient déclarées dans le manifest.
 
-## Actions à réaliser
+---
 
-### Action 1 (votre côté) : Ajouter les GitHub Secrets
-Dans votre repo GitHub : **Settings → Secrets and variables → Actions → New repository secret** :
+## Problème 2 : Clavier flottant Bariba absent dans l'APK
 
-| Nom | Valeur |
-|-----|--------|
-| `VITE_SUPABASE_URL` | `https://pmrhezgnyffiskbaiudb.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcmhlemdueWZmaXNrYmFpdWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyODgzNzAsImV4cCI6MjA3ODg2NDM3MH0.BRqdPly5tClRwhuQes1dckaTNQkbjIqZ5I8q6km_lZ4` |
+**Cause** : Le clavier Bariba est un composant **web** (`FloatingBaribaKeyboard`) qui s'affiche dans l'app elle-même (page `/fitila/keyboard`). Ce n'est **pas** un clavier système Android (InputMethodService). Il fonctionne uniquement à l'intérieur de l'application.
 
-### Action 2 (votre côté) : Créer un .env sur le VPS
-Comme sécurité supplémentaire (pour `docker compose build` sur le VPS), créez ce fichier :
+**Ce qui sera fait** :
+- Vérifier que la page du clavier est accessible depuis le menu principal
+- S'assurer que le composant est bien chargé dans le build
 
+**Limitation** : Pour avoir un vrai clavier système Android utilisable dans toutes les apps, il faudrait développer un module Android natif séparé (InputMethodService). Ce n'est pas faisable via Capacitor/Lovable — c'est un projet Android Studio dédié.
+
+---
+
+## Étapes complètes pour générer un APK fonctionnel
+
+Côté Lovable, je vais :
+1. M'assurer que `@capacitor/camera` est dans les dépendances
+2. Mettre à jour `capacitor.config.ts` avec les plugins nécessaires
+
+Sur votre machine locale, après `git pull` :
 ```bash
-ssh votre-vps
-cat > /home/debian/bariba-lex-builder/.env << 'EOF'
-VITE_SUPABASE_URL=https://pmrhezgnyffiskbaiudb.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcmhlemdueWZmaXNrYmFpdWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyODgzNzAsImV4cCI6MjA3ODg2NDM3MH0.BRqdPly5tClRwhuQes1dckaTNQkbjIqZ5I8q6km_lZ4
-EOF
+cd bariba-lex-builder
+nvm use 22
+npm install
+npm run build
+npx cap sync android
 ```
 
-Docker Compose lit automatiquement ce `.env` et passe les valeurs aux build args.
+Puis éditez `android/app/src/main/AndroidManifest.xml` pour ajouter les permissions ci-dessus, et enfin :
+```bash
+npx cap open android
+# Build > Generate Signed APK dans Android Studio
+```
 
-### Action 3 (optionnel, code) : Ajouter une protection contre le crash
-Pour éviter une page blanche si les variables manquent à l'avenir, on peut ajouter une vérification dans le code qui affiche un message d'erreur clair au lieu de crasher silencieusement.
+---
 
-### Après ces actions
-Relancez le déploiement (push un commit ou re-run le workflow GitHub Actions). La page ne sera plus blanche.
+## Détails techniques
 
-## Résumé
-Aucun bug dans le code. Le Dockerfile et le workflow sont corrects. Il manque simplement les **2 secrets GitHub** et/ou le **fichier .env sur le VPS**.
+| Fichier | Changement |
+|---------|-----------|
+| `package.json` | Ajouter `@capacitor/camera` si absent |
+| `capacitor.config.ts` | Déclarer plugins Camera |
+| `android/app/src/main/AndroidManifest.xml` | Permissions (action manuelle locale) |

@@ -7,16 +7,24 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
     useLegacyBridge: false,
-    // Permissions are declared in AndroidManifest.xml after cap sync
-    // They will be requested at runtime via getUserMedia
+    // After `npx cap add android`, add these permissions manually
+    // in android/app/src/main/AndroidManifest.xml (before <application>):
+    //
+    // <uses-permission android:name="android.permission.CAMERA" />
+    // <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    // <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    // <uses-permission android:name="android.permission.INTERNET" />
   },
   ios: {
-    // Usage descriptions for iOS permission prompts
-    // These are added to Info.plist after cap sync
+    // After `npx cap add ios`, add usage descriptions in Info.plist:
+    // NSCameraUsageDescription, NSMicrophoneUsageDescription
   },
   plugins: {
     CapacitorHttp: {
       enabled: true,
+    },
+    Camera: {
+      // Uses @capacitor/camera plugin
     },
   },
 };
