@@ -1,68 +1,85 @@
 
-# Diagnostic et corrections pour l'APK Android
+# Clavier Bariba natif Android + Pont IPC React
 
-## Problème 1 : Permissions caméra et micro refusées
+## Vue d'ensemble
 
-**Cause racine** : Les permissions `CAMERA` et `RECORD_AUDIO` ne sont pas déclarées dans `AndroidManifest.xml`. Sans ces déclarations, Android refuse systématiquement les demandes de permission à l'exécution, peu importe le code Capacitor ou `getUserMedia`.
+Création d'un clavier système Android natif (InputMethodService) intégré dans le même APK que l'app Fitila. Le clavier permet de taper en Bariba dans **toutes les apps** (WhatsApp, SMS, etc.). Un pont IPC via SharedPreferences + plugin Capacitor synchronise l'historique et les suggestions entre le clavier natif et l'app React.
 
-**Solution** : Après `npx cap add android`, vous devez modifier manuellement le fichier `android/app/src/main/AndroidManifest.xml` sur votre machine locale :
+## Fichiers à créer
 
-```xml
-<!-- Ajouter AVANT la balise <application> -->
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.RECORD_AUDIO" />
-<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-<uses-permission android:name="android.permission.INTERNET" />
+### Fichiers Android natifs (13 fichiers)
+
+Ces fichiers seront créés dans un dossier `android-native/` à la racine du projet. Le script d'installation les copiera au bon endroit après `npx cap add android`.
+
+1. **`android-native/java/com/fitila/bariba/BaribaInputMethodService.kt`** — Service clavier complet : gestion des touches, historique (SharedPreferences "bariba_keyboard_data"), suggestions, shift/backspace/espace
+2. **`android-native/java/com/fitila/bariba/BaribaKeyboardPlugin.java`** — Plugin Capacitor @CapacitorPlugin(name="BaribaKeyboard") : getHistory, getSuggestions, clearHistory, saveWord
+3. **`android-native/res/layout/keyboard_bariba.xml`** — Layout AZERTY + rangée Bariba (ɔ ɛ ŋ ã ĩ ũ), barre de suggestions, fond sombre #1A1A2E
+4. **`android-native/res/values/styles_keyboard.xml`** — Style BaribaKey (marge, taille, couleur blanche)
+5. **`android-native/res/drawable/key_background.xml`** — Selector : pressed=#4A4E8C, default=#2D2D5E, corners 8dp
+6. **`android-native/res/xml/method.xml`** — Déclaration IME avec subtype locale "bba"
+
+### Fichiers React/TypeScript (4 fichiers)
+
+7. **`src/hooks/useBaribaKeyboard.ts`** — Hook Capacitor registerPlugin : getHistory, getSuggestions, clearHistory, saveWord
+8. **`src/hooks/useAdvancedPhonetics.ts`** — Suggestions phonétiques avancées avec normalisation Bariba→Latin et scoring
+9. **`src/components/BaribaKeyboardCompanion.tsx`** — Panneau compagnon : suggestions enrichies, historique synchronisé, copie presse-papier
+10. **`src/components/BaribaKeyboardActivationGuide.tsx`** — Guide d'activation 4 étapes avec deep link paramètres Android
+
+### Scripts et config (1 fichier)
+
+11. **`scripts/install-native-keyboard.sh`** — Script qui copie les fichiers android-native/ vers android/app/src/main/, patche AndroidManifest.xml (service IME + permissions), vérifie l'installation
+
+## Fichiers à modifier
+
+12. **`capacitor.config.ts`** — Vérifier appId cohérent, ajouter plugin BaribaKeyboard
+13. **`src/pages/fitila/FloatingKeyboardPage.tsx`** — Ajouter BaribaKeyboardCompanion et lien vers BaribaKeyboardActivationGuide
+14. **`scripts/patch-android-permissions.sh`** — Fusionner avec le nouveau script ou mettre à jour pour inclure la déclaration du service IME
+
+## Architecture IPC
+
+```text
++---------------------------+       SharedPreferences       +-------------------------+
+|  BaribaInputMethodService |  ←→  "bariba_keyboard_data"  ←→  | BaribaKeyboardPlugin  |
+|  (Clavier système Android)|       - history (JSONArray)       | (Plugin Capacitor)    |
+|  - typeCharacter()        |       - suggestions (JSONArray)   | - getHistory()        |
+|  - saveToHistory()        |       - lastWord (String)         | - getSuggestions()    |
+|  - updateSuggestions()    |                                   | - saveWord()          |
++---------------------------+                                   +-------------------------+
+                                                                          ↕
+                                                                   registerPlugin()
+                                                                          ↕
+                                                               +-------------------------+
+                                                               | useBaribaKeyboard.ts    |
+                                                               | useAdvancedPhonetics.ts |
+                                                               | BaribaKeyboardCompanion |
+                                                               +-------------------------+
 ```
 
-De plus, je vais :
-1. Installer `@capacitor/camera` comme dépendance du projet (si pas déjà présent)
-2. Mettre à jour `capacitor.config.ts` pour déclarer les plugins Camera et AudioRecorder
-3. Ajouter un script de post-sync qui rappelle les permissions à ajouter
+## Étapes d'installation pour l'utilisateur
 
-**Note importante** : Les fichiers `src/utils/camera.ts` et `src/utils/audioRecorder.ts` que vous créez manuellement ne sont pas nécessaires. L'app utilise déjà `navigator.mediaDevices.getUserMedia` dans `src/utils/capacitorPermissions.ts` et `src/components/tamtam/PhotoTranslator.tsx`. Ces API web fonctionnent dans le WebView Capacitor **à condition que** les permissions soient déclarées dans le manifest.
-
----
-
-## Problème 2 : Clavier flottant Bariba absent dans l'APK
-
-**Cause** : Le clavier Bariba est un composant **web** (`FloatingBaribaKeyboard`) qui s'affiche dans l'app elle-même (page `/fitila/keyboard`). Ce n'est **pas** un clavier système Android (InputMethodService). Il fonctionne uniquement à l'intérieur de l'application.
-
-**Ce qui sera fait** :
-- Vérifier que la page du clavier est accessible depuis le menu principal
-- S'assurer que le composant est bien chargé dans le build
-
-**Limitation** : Pour avoir un vrai clavier système Android utilisable dans toutes les apps, il faudrait développer un module Android natif séparé (InputMethodService). Ce n'est pas faisable via Capacitor/Lovable — c'est un projet Android Studio dédié.
-
----
-
-## Étapes complètes pour générer un APK fonctionnel
-
-Côté Lovable, je vais :
-1. M'assurer que `@capacitor/camera` est dans les dépendances
-2. Mettre à jour `capacitor.config.ts` avec les plugins nécessaires
-
-Sur votre machine locale, après `git pull` :
+Après implémentation, sur la machine locale :
 ```bash
-cd bariba-lex-builder
+git pull
 nvm use 22
 npm install
 npm run build
+npx cap add android        # si pas encore fait
+bash scripts/install-native-keyboard.sh
 npx cap sync android
-```
-
-Puis éditez `android/app/src/main/AndroidManifest.xml` pour ajouter les permissions ci-dessus, et enfin :
-```bash
 npx cap open android
-# Build > Generate Signed APK dans Android Studio
+# Build > Generate Signed APK
 ```
 
----
+Puis sur le téléphone : Paramètres → Langue et saisie → Clavier virtuel → Activer "Clavier Bariba Fitila"
 
 ## Détails techniques
 
-| Fichier | Changement |
-|---------|-----------|
-| `package.json` | Ajouter `@capacitor/camera` si absent |
-| `capacitor.config.ts` | Déclarer plugins Camera |
-| `android/app/src/main/AndroidManifest.xml` | Permissions (action manuelle locale) |
+- Package Android : `com.fitila.bariba` (cohérent avec l'appId Capacitor existant tout en utilisant un package plus lisible)
+- SharedPreferences name : `bariba_keyboard_data` (identique Kotlin ↔ Java)
+- Le composant FloatingBaribaKeyboard existant n'est PAS modifié — BaribaKeyboardCompanion le complète
+- Les fichiers natifs sont stockés dans `android-native/` car le dossier `android/` est généré par `npx cap add android` et n'existe pas dans le repo
+- Le script d'installation gère la copie + le patch du manifest automatiquement
+
+## Note importante
+
+Le `appId` actuel dans capacitor.config.ts est `app.lovable.a8b67aa7de064bed97db29852f4f01ed`. Le package Java sera `com.fitila.bariba` pour la lisibilité du code natif. Le script d'installation s'assurera que le chemin Java correspond au package déclaré dans le manifest. Si vous souhaitez publier sur le Play Store, il faudra que l'appId Capacitor et le package Java soient alignés — je peux ajuster si besoin.

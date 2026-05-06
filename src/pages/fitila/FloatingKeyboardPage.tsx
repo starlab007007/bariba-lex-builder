@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, HelpCircle, Keyboard, Settings } from 'lucide-react';
+import { ArrowLeft, HelpCircle, Keyboard, Settings, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import FloatingBaribaKeyboard from '@/components/keyboard/FloatingBaribaKeyboard';
 import KeyboardActivationGuide from '@/components/keyboard/KeyboardActivationGuide';
 import KeyboardSettingsPanel from '@/components/keyboard/KeyboardSettingsPanel';
+import BaribaKeyboardCompanion from '@/components/BaribaKeyboardCompanion';
+import BaribaKeyboardActivationGuide from '@/components/BaribaKeyboardActivationGuide';
 import { useFloatingKeyboard } from '@/hooks/useFloatingKeyboard';
 
-type PageTab = 'keyboard' | 'guide' | 'settings';
+type PageTab = 'keyboard' | 'guide' | 'settings' | 'native';
 
 export default function FloatingKeyboardPage() {
   const navigate = useNavigate();
@@ -28,6 +30,12 @@ export default function FloatingKeyboardPage() {
           </h1>
           <p className="text-xs text-muted-foreground">Écrivez en Bariba, collez partout</p>
         </div>
+        <button
+          onClick={() => setActiveTab(t => t === 'native' ? 'keyboard' : 'native')}
+          className={`p-2 rounded-lg ${activeTab === 'native' ? 'bg-amber-500/15' : 'hover:bg-muted'}`}
+        >
+          <Smartphone className={`w-5 h-5 ${activeTab === 'native' ? 'text-amber-500' : 'text-muted-foreground'}`} />
+        </button>
         <button
           onClick={() => setActiveTab(t => t === 'guide' ? 'keyboard' : 'guide')}
           className={`p-2 rounded-lg ${activeTab === 'guide' ? 'bg-blue-500/15' : 'hover:bg-muted'}`}
@@ -63,6 +71,13 @@ export default function FloatingKeyboardPage() {
             onExport={exportData}
             onImport={importData}
           />
+        </div>
+      )}
+
+      {activeTab === 'native' && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <BaribaKeyboardActivationGuide />
+          <BaribaKeyboardCompanion />
         </div>
       )}
     </div>
