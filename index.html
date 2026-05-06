@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -12,28 +12,107 @@
     <meta name="mobile-web-app-capable" content="yes" />
     
     <link rel="icon" href="/fitila-icon.png" type="image/png" />
+    <link rel="icon" href="/fitila-logo.png" type="image/png" sizes="512x512" />
     <link rel="apple-touch-icon" href="/fitila-icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>FITILA | Dictionnaire Bariba-Français - Bààtɔ̀nú</title>
-    <meta name="description" content="FITILA - Plateforme vocale africaine. Dictionnaire bariba-français, réseau social audio, création vidéo. Connectez, partagez, créez en Bàátɔ̀nú et Français." />
+    <link rel="canonical" href="https://fitila.bj/" />
+    <title>FITILA - Langue Bariba, Culture & IA | fitila.bj</title>
+    <meta name="description" content="FITILA - La plateforme africaine pour apprendre la langue Bariba, découvrir la culture Bàátɔ̀nú, traduire, écouter la radio et utiliser l'IA Bariba. Dictionnaire, traducteur, cours et astuces." />
     <meta name="author" content="FITILA" />
-    <meta name="keywords" content="fitila, bariba, batomu, dictionnaire, français, langue africaine, bénin, niger, burkina faso, réseau social audio, plateforme vocale" />
+    <meta name="keywords" content="fitila, bariba, baatonum, bàátɔ̀nú, dictionnaire bariba français, apprendre bariba, traducteur bariba, IA bariba, culture bariba, langue africaine, bénin, fitila.bj, clavier bariba, radio bariba" />
 
-    <meta property="og:title" content="FITILA | Plateforme Vocale Africaine" />
-    <meta property="og:description" content="FITILA - La plateforme qui donne une voix à l'Afrique. Dictionnaire bariba-français, réseau social audio, création vidéo." />
+    <meta property="og:title" content="FITILA - Langue Bariba, Culture & IA" />
+    <meta property="og:description" content="Apprenez le Bariba, explorez la culture Bàátɔ̀nú, traduisez, écoutez la radio et utilisez l'IA Bariba. La plateforme africaine de référence." />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://fitila.bj/" />
+    <meta property="og:site_name" content="FITILA" />
     <meta property="og:image" content="https://fitila.bj/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="fr_BJ" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@fitila_app" />
+    <meta name="twitter:title" content="FITILA - Langue Bariba, Culture & IA" />
+    <meta name="twitter:description" content="Apprenez le Bariba, explorez la culture Bàátɔ̀nú, traduisez et utilisez l'IA Bariba sur fitila.bj" />
     <meta name="twitter:image" content="https://fitila.bj/og-image.png" />
+
+    <!-- JSON-LD Structured Data for rich Google results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "FITILA",
+          "url": "https://fitila.bj",
+          "logo": "https://fitila.bj/fitila-logo.png",
+          "description": "Plateforme africaine pour la promotion de la langue Bariba (Bàátɔ̀nú), la culture et l'intelligence artificielle.",
+          "sameAs": [
+            "https://twitter.com/fitila_app"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "name": "FITILA",
+          "url": "https://fitila.bj",
+          "description": "Langue Bariba, Culture & IA - Dictionnaire, Traducteur, Cours, Radio et Intelligence Artificielle Bariba",
+          "inLanguage": ["fr", "bm"],
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://fitila.bj/fitila/dictionary?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Dictionnaire Bariba",
+          "url": "https://fitila.bj/fitila/dictionary",
+          "description": "Dictionnaire Bariba-Français avec prononciation audio"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Apprendre le Bariba",
+          "url": "https://fitila.bj/fitila/learning",
+          "description": "Cours et leçons pour apprendre la langue Bariba"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Traducteur Bariba",
+          "url": "https://fitila.bj/fitila/translator",
+          "description": "Traducteur Français-Bariba alimenté par l'IA"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Fitila IA",
+          "url": "https://fitila.bj/fitila/ia",
+          "description": "Assistant intelligent en langue Bariba"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Radio Bariba",
+          "url": "https://fitila.bj/fitila/radio",
+          "description": "Radio et contenus audio en langue Bariba"
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Clavier Bariba",
+          "url": "https://fitila.bj/fitila/keyboard",
+          "description": "Clavier avec caractères spéciaux Bariba"
+        }
+      ]
+    }
+    </script>
 
     <!-- Preconnect to HuggingFace for faster API responses -->
     <link rel="preconnect" href="https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space" crossorigin />
     <link rel="preconnect" href="https://zimesongbian-baatonum-tts-api-v001.hf.space" crossorigin />
     <link rel="preconnect" href="https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space" crossorigin />
 
-    <!-- Preconnect to Lovable Cloud (Supabase) for instant API + storage -->
+    <!-- Preconnect to backend for instant API + storage -->
     <link rel="preconnect" href="https://pmrhezgnyffiskbaiudb.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://pmrhezgnyffiskbaiudb.supabase.co" />
   </head>
