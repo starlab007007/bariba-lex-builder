@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Keyboard, MessageSquare, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Settings, Keyboard, MessageSquare, CheckCircle2, ExternalLink, Smartphone } from 'lucide-react';
 
 const steps = [
   {
@@ -32,10 +32,21 @@ const steps = [
 export default function BaribaKeyboardActivationGuide() {
   const openKeyboardSettings = () => {
     try {
-      // Android deep link to input method settings
-      window.open('intent://settings/input_method#Intent;scheme=android-app;end', '_system');
+      // Try Android intent to open input method settings
+      window.location.href = 'intent:#Intent;action=android.settings.INPUT_METHOD_SETTINGS;end';
     } catch {
-      // Fallback: just show a message
+      try {
+        window.location.href = 'intent://settings/input_method#Intent;scheme=android-app;end';
+      } catch {
+        // Fallback: Capacitor App plugin
+        import('@capacitor/core').then(({ Capacitor }) => {
+          if (Capacitor.isNativePlatform()) {
+            (window as any).Capacitor?.Plugins?.App?.openUrl?.({
+              url: 'android.settings.INPUT_METHOD_SETTINGS',
+            });
+          }
+        }).catch(() => {});
+      }
     }
   };
 
@@ -71,10 +82,18 @@ export default function BaribaKeyboardActivationGuide() {
 
       <button
         onClick={openKeyboardSettings}
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] transition-all shadow-lg shadow-amber-500/25 mt-4"
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] transition-all shadow-lg shadow-amber-500/25 mt-4"
       >
-        <ExternalLink className="w-4 h-4" />
-        Ouvrir les paramètres clavier
+        <Smartphone className="w-5 h-5" />
+        Ouvrir Paramètres → Langue et saisie
+      </button>
+
+      <button
+        onClick={openKeyboardSettings}
+        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-medium hover:bg-amber-500/10 transition-colors mt-2"
+      >
+        <ExternalLink className="w-3.5 h-3.5" />
+        Aller dans Clavier virtuel → Gérer les claviers
       </button>
 
       <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 mt-2">

@@ -5,6 +5,8 @@ interface BaribaKeyboardPlugin {
   getSuggestions(): Promise<{ suggestions: string; lastWord: string }>;
   clearHistory(): Promise<void>;
   saveWord(options: { word: string }): Promise<void>;
+  getStats(): Promise<{ historyCount: number; lastWord: string; hasSuggestions: boolean }>;
+  bulkImport(options: { words: string }): Promise<{ imported: number }>;
 }
 
 let plugin: BaribaKeyboardPlugin | null = null;
@@ -64,5 +66,34 @@ export function useBaribaKeyboard() {
     }
   }, []);
 
-  return { getHistory, getSuggestions, clearHistory, saveWord };
+  const exportHistory = useCallback(async (): Promise<string> => {
+    try {
+      const p = await getPlugin();
+      if (!p) return '{"history":[],"suggestions":[],"lastWord":""}';
+      const [h, s] = await Promise.all([p.getHistory(), p.getSuggestions()]);
+      const data = {
+        version: 1,
+        source: 'native_keyboard',
+        history: JSON.parse(h.history || '[]'),
+        suggestions: JSON.parse(s.suggestions || '[]'),
+        lastWord: s.lastWord || '',
+        exportedAt: new Date().toISOString(),
+      };
+      return JSON.stringify(data, null, 2);
+    } catch {
+      return '{"history":[],"suggestions":[],"lastWord":""}';
+    }
+  }, []);
+
+  const importHistory = useCallback(async (words: string[]): Promise<void> => {
+    try {
+      const p = await getPlugin();
+      if (!p) return;
+      await p.bulkImport({ words: JSON.stringify(words.slice(0, 50)) });
+    } catch {
+      // silent
+    }
+  }, []);
+
+  return { getHistory, getSuggestions, clearHistory, saveWord, exportHistory, importHistory };
 }

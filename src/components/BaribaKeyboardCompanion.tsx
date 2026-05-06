@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Keyboard, Trash2, Copy, ChevronUp, ChevronDown } from 'lucide-react';
+import { Keyboard, Trash2, Copy, ChevronUp, ChevronDown, Download, Upload } from 'lucide-react';
 import { useBaribaKeyboard } from '@/hooks/useBaribaKeyboard';
 import { useAdvancedPhonetics } from '@/hooks/useAdvancedPhonetics';
 import { useToast } from '@/hooks/use-toast';
+import { useRef } from 'react';
 
 export default function BaribaKeyboardCompanion() {
-  const { getHistory, getSuggestions, clearHistory, saveWord } = useBaribaKeyboard();
+  const { getHistory, getSuggestions, clearHistory, saveWord, exportHistory, importHistory } = useBaribaKeyboard();
   const { toast } = useToast();
   const [history, setHistory] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [lastWord, setLastWord] = useState('');
   const [isVisible, setIsVisible] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const enhancedSuggestions = useAdvancedPhonetics(lastWord, history);
 
@@ -46,6 +48,35 @@ export default function BaribaKeyboardCompanion() {
   };
 
   const displaySuggestions = enhancedSuggestions.length > 0 ? enhancedSuggestions : suggestions;
+
+  const handleExport = async () => {
+    const json = await exportHistory();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fitila-native-keyboard-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: '📦 Export natif réussi !' });
+  };
+
+  const handleImport = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        const words: string[] = data.history || [];
+        if (words.length === 0) throw new Error('empty');
+        await importHistory(words);
+        await sync();
+        toast({ title: '✅ Import réussi !', description: `${words.length} mots importés` });
+      } catch {
+        toast({ title: '❌ Fichier invalide', variant: 'destructive' });
+      }
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
@@ -102,13 +133,17 @@ export default function BaribaKeyboardCompanion() {
                   Historique Bariba
                 </p>
                 {history.length > 0 && (
-                  <button
-                    onClick={handleClearHistory}
-                    className="flex items-center gap-1 text-[10px] text-destructive hover:underline"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Effacer
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={handleExport} className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline">
+                      <Download className="w-3 h-3" /> Exporter
+                    </button>
+                    <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline">
+                      <Upload className="w-3 h-3" /> Importer
+                    </button>
+                    <button onClick={handleClearHistory} className="flex items-center gap-1 text-[10px] text-destructive hover:underline">
+                      <Trash2 className="w-3 h-3" /> Effacer
+                    </button>
+                  </div>
                 )}
               </div>
               {history.length === 0 ? (
@@ -132,6 +167,17 @@ export default function BaribaKeyboardCompanion() {
           </motion.div>
         )}
       </AnimatePresence>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file) handleImport(file);
+          e.target.value = '';
+        }}
+      />
     </div>
   );
 }

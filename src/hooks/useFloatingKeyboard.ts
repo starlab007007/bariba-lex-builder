@@ -37,12 +37,18 @@ export interface KeyboardSettings {
   autoCopy: boolean;
   phoneticMode: boolean;
   theme: 'system' | 'light' | 'dark';
+  suggestionCount: number;
+  suggestionThreshold: number;
+  suggestionsEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: KeyboardSettings = {
   autoCopy: false,
   phoneticMode: true,
   theme: 'system',
+  suggestionCount: 8,
+  suggestionThreshold: 0.5,
+  suggestionsEnabled: true,
 };
 
 function loadJSON<T>(key: string, fallback: T): T {
@@ -86,12 +92,12 @@ export function useFloatingKeyboard() {
     setText(processed);
     const cursor = textareaRef.current?.selectionStart ?? processed.length;
     const word = getCurrentWord(processed, cursor);
-    if (word.length >= 2) {
-      setSuggestions(getSuggestions(word, 8));
+    if (word.length >= 2 && settings.suggestionsEnabled) {
+      setSuggestions(getSuggestions(word, settings.suggestionCount));
     } else {
       setSuggestions([]);
     }
-  }, [getSuggestions, getCurrentWord, applyPhonetic]);
+  }, [getSuggestions, getCurrentWord, applyPhonetic, settings.suggestionsEnabled, settings.suggestionCount]);
 
   const insertChar = useCallback((char: string) => {
     const el = textareaRef.current;

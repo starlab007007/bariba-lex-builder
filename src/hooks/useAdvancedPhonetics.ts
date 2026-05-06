@@ -30,18 +30,30 @@ function score(word: string, partial: string): number {
   return 0;
 }
 
-export function useAdvancedPhonetics(partial: string, history: string[]): string[] {
+export interface PhoneticOptions {
+  maxResults?: number;
+  threshold?: number;
+  enabled?: boolean;
+}
+
+export function useAdvancedPhonetics(
+  partial: string,
+  history: string[],
+  options: PhoneticOptions = {}
+): string[] {
+  const { maxResults = 5, threshold = 0, enabled = true } = options;
+
   return useMemo(() => {
-    if (!partial || partial.length < 1 || history.length === 0) return [];
+    if (!enabled || !partial || partial.length < 1 || history.length === 0) return [];
 
     return history
       .map(word => ({ word, score: score(word, partial) }))
-      .filter(item => item.score > 0)
+      .filter(item => item.score > threshold)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return a.word.length - b.word.length;
       })
-      .slice(0, 5)
+      .slice(0, maxResults)
       .map(item => item.word);
-  }, [partial, history]);
+  }, [partial, history, maxResults, threshold, enabled]);
 }
