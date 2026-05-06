@@ -90,4 +90,61 @@ public class BaribaKeyboardPlugin extends Plugin {
             call.reject("Failed to save word", e);
         }
     }
+
+    @PluginMethod
+    public void getStats(PluginCall call) {
+        try {
+            SharedPreferences prefs = getPrefs();
+            String history = prefs.getString("history", "[]");
+            JSONArray arr = new JSONArray(history);
+            JSObject result = new JSObject();
+            result.put("historyCount", arr.length());
+            result.put("lastWord", prefs.getString("lastWord", ""));
+            result.put("hasSuggestions", prefs.getString("suggestions", "[]").length() > 2);
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Failed to get stats", e);
+        }
+    }
+
+    @PluginMethod
+    public void bulkImport(PluginCall call) {
+        try {
+            String wordsJson = call.getString("words");
+            if (wordsJson == null) {
+                call.reject("Words array is required");
+                return;
+            }
+            JSONArray importWords = new JSONArray(wordsJson);
+            SharedPreferences prefs = getPrefs();
+            String existing = prefs.getString("history", "[]");
+            JSONArray arr = new JSONArray(existing);
+
+            // Merge: imported words first, then existing, dedup, max 50
+            JSONArray merged = new JSONArray();
+            java.util.Set<String> seen = new java.util.HashSet<>();
+
+            for (int i = 0; i < importWords.length() && merged.length() < 50; i++) {
+                String w = importWords.getString(i);
+                if (!seen.contains(w)) {
+                    merged.put(w);
+                    seen.add(w);
+                }
+            }
+            for (int i = 0; i < arr.length() && merged.length() < 50; i++) {
+                String w = arr.getString(i);
+                if (!seen.contains(w)) {
+                    merged.put(w);
+                    seen.add(w);
+                }
+            }
+
+            prefs.edit().putString("history", merged.toString()).apply();
+            JSObject result = new JSObject();
+            result.put("imported", merged.length());
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Failed to bulk import", e);
+        }
+    }
 }
