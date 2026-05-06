@@ -101,7 +101,10 @@ export default defineConfig(({ mode }) => ({
           'icons': ['lucide-react'],
           'query': ['@tanstack/react-query'],
         },
+        // Reduce initial chunk sizes for faster first paint
+        chunkFileNames: 'assets/[name]-[hash].js',
       },
     },
+    minify: 'esbuild',
   },
 }));
