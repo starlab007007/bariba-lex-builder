@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, HelpCircle, Keyboard } from 'lucide-react';
+import { ArrowLeft, HelpCircle, Keyboard, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import FloatingBaribaKeyboard from '@/components/keyboard/FloatingBaribaKeyboard';
 import KeyboardActivationGuide from '@/components/keyboard/KeyboardActivationGuide';
+import KeyboardSettingsPanel from '@/components/keyboard/KeyboardSettingsPanel';
+import { useFloatingKeyboard } from '@/hooks/useFloatingKeyboard';
+
+type PageTab = 'keyboard' | 'guide' | 'settings';
 
 export default function FloatingKeyboardPage() {
   const navigate = useNavigate();
-  const [showGuide, setShowGuide] = useState(false);
+  const [activeTab, setActiveTab] = useState<PageTab>('keyboard');
+  const { settings, updateSettings, exportData, importData } = useFloatingKeyboard();
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -24,33 +29,42 @@ export default function FloatingKeyboardPage() {
           <p className="text-xs text-muted-foreground">Écrivez en Bariba, collez partout</p>
         </div>
         <button
-          onClick={() => setShowGuide(!showGuide)}
-          className="p-2 rounded-lg hover:bg-muted"
+          onClick={() => setActiveTab(t => t === 'guide' ? 'keyboard' : 'guide')}
+          className={`p-2 rounded-lg ${activeTab === 'guide' ? 'bg-blue-500/15' : 'hover:bg-muted'}`}
         >
-          <HelpCircle className="w-5 h-5 text-muted-foreground" />
+          <HelpCircle className={`w-5 h-5 ${activeTab === 'guide' ? 'text-blue-500' : 'text-muted-foreground'}`} />
+        </button>
+        <button
+          onClick={() => setActiveTab(t => t === 'settings' ? 'keyboard' : 'settings')}
+          className={`p-2 rounded-lg ${activeTab === 'settings' ? 'bg-amber-500/15' : 'hover:bg-muted'}`}
+        >
+          <Settings className={`w-5 h-5 ${activeTab === 'settings' ? 'text-amber-500' : 'text-muted-foreground'}`} />
         </button>
       </div>
 
-      {/* Guide toggle */}
-      <AnimatePresence>
-        {showGuide && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-b border-border/50"
-          >
-            <div className="p-4">
-              <KeyboardActivationGuide />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Tab content */}
+      {activeTab === 'keyboard' && (
+        <div className="flex-1 min-h-0">
+          <FloatingBaribaKeyboard />
+        </div>
+      )}
 
-      {/* Keyboard */}
-      <div className="flex-1 min-h-0">
-        <FloatingBaribaKeyboard />
-      </div>
+      {activeTab === 'guide' && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <KeyboardActivationGuide />
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <KeyboardSettingsPanel
+            settings={settings}
+            onUpdate={updateSettings}
+            onExport={exportData}
+            onImport={importData}
+          />
+        </div>
+      )}
     </div>
   );
 }
