@@ -33,7 +33,8 @@ export function useTamTamFriends() {
   useEffect(() => {
     if (user) {
       fetchFriends();
-      setupRealtime();
+      const cleanup = setupRealtime();
+      return cleanup;
     }
   }, [user]);
 
