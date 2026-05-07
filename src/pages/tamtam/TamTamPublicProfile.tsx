@@ -389,7 +389,7 @@ export default function TamTamPublicProfile() {
             ) : (
               <div className="grid grid-cols-3 gap-1">
                 {posts.map((post, index) => (
-                  <motion.div
+                    <motion.div
                     key={post.id}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setViewerIndex(index)}
@@ -434,15 +434,16 @@ export default function TamTamPublicProfile() {
                 ))}
               </div>
               {/* Sentinel for infinite scroll */}
-              <div ref={sentinelRef} className="h-4" />
-              {isLoadingMore && (
-                <div className="grid grid-cols-3 gap-1 mt-1">
-                  <PostGridSkeleton count={3} />
-                </div>
-              )}
-              {!hasMore && posts.length > 0 && (
-                <p className="text-center text-muted-foreground text-xs py-4">Toutes les publications chargées</p>
-              )}
+            </>
+            )}
+            <div ref={sentinelRef} className="h-4" />
+            {isLoadingMore && (
+              <div className="grid grid-cols-3 gap-1 mt-1">
+                <PostGridSkeleton count={3} />
+              </div>
+            )}
+            {!hasMore && posts.length > 0 && (
+              <p className="text-center text-muted-foreground text-xs py-4">Toutes les publications chargées</p>
             )}
           </>
         )}
