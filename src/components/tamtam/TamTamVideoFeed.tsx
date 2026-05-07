@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Heart, Mic, Share2, Bookmark, Play, Pause, Volume2, VolumeX,
   MoreHorizontal, Flag, Download, Users, ChevronDown,
-  MessageCircle, RefreshCw, Sparkles, TrendingUp, Loader2
+  MessageCircle, RefreshCw, Sparkles, TrendingUp, Loader2, Shuffle
 } from 'lucide-react';
 import { useVideoFeed } from '@/hooks/useVideoFeed';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
@@ -80,9 +80,10 @@ const ActionButton: React.FC<{
 const VideoCard: React.FC<{
   post: VideoPost;
   isActive: boolean;
+  onVideoEnded?: () => void;
   onComment: () => void;
   onRespond: () => void;
-}> = ({ post, isActive, onComment, onRespond }) => {
+}> = ({ post, isActive, onVideoEnded, onComment, onRespond }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -129,7 +130,11 @@ const VideoCard: React.FC<{
     if (!video) return;
 
     const handleTimeUpdate = () => setProgress((video.currentTime / video.duration) * 100);
-    const handleEnded = () => { video.currentTime = 0; video.play().catch(() => {}); };
+    const handleEnded = () => {
+      if (onVideoEnded) {
+        onVideoEnded();
+      }
+    };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('ended', handleEnded);
@@ -178,7 +183,7 @@ const VideoCard: React.FC<{
         src={post.videoUrl}
         poster={post.thumbnailUrl}
         className="absolute inset-0 w-full h-full object-cover"
-        playsInline loop muted={isMuted}
+        playsInline muted={isMuted}
         onClick={handleDoubleTap}
       />
 
@@ -377,6 +382,39 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<FeedTab>('pour_toi');
   const containerRef = useRef<HTMLDivElement>(null);
+  const [autoMode, setAutoMode] = useState(true);
+  const [shuffledData, setShuffledData] = useState<VideoPost[] | null>(null);
+  const autoModeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const displayData = shuffledData || videoData;
+
+  const handleManualInteraction = useCallback(() => {
+    setAutoMode(false);
+    if (autoModeTimeoutRef.current) {
+      clearTimeout(autoModeTimeoutRef.current);
+    }
+  }, []);
+
+  const handleVideoEnded = useCallback((index: number) => {
+    if (autoMode && index === currentIndex) {
+      if (currentIndex < displayData.length - 1) {
+        const nextIndex = currentIndex + 1;
+        setCurrentIndex(nextIndex);
+        containerRef.current?.scrollTo({
+          top: nextIndex * containerRef.current.clientHeight,
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [autoMode, currentIndex, displayData.length]);
+
+  const handleShuffle = useCallback(() => {
+    const shuffled = [...videoData].sort(() => Math.random() - 0.5);
+    setShuffledData(shuffled);
+    setCurrentIndex(0);
+    setAutoMode(true);
+    containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [videoData]);
 
   const tabs: { id: FeedTab; label: string; icon: React.ElementType }[] = [
     { id: 'pour_toi', label: 'Pour toi', icon: Sparkles },
@@ -392,14 +430,22 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
       const scrollTop = container.scrollTop;
       const cardHeight = container.clientHeight;
       const newIndex = Math.round(scrollTop / cardHeight);
-      if (newIndex !== currentIndex && newIndex >= 0 && newIndex < videoData.length) {
+      if (newIndex !== currentIndex && newIndex >= 0 && newIndex < displayData.length) {
         setCurrentIndex(newIndex);
       }
     };
 
+    const handleTouch = () => handleManualInteraction();
+
     container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [currentIndex, videoData.length]);
+    container.addEventListener('touchstart', handleTouch, { passive: true });
+    container.addEventListener('mousedown', handleTouch);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener('touchstart', handleTouch);
+      container.removeEventListener('mousedown', handleTouch);
+    };
+  }, [currentIndex, displayData.length, handleManualInteraction]);
 
   return (
     <div className="h-screen w-full bg-black flex flex-col">
@@ -420,11 +466,18 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
               <span className="text-sm font-semibold">{tab.label}</span>
             </button>
           ))}
+          <button
+            onClick={handleShuffle}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-all"
+            title="Actualiser aléatoirement"
+          >
+            <Shuffle className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
       {/* Feed - show empty state if no videos */}
-      {videoData.length === 0 ? (
+      {displayData.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-white/70 px-8">
           <div className="text-7xl mb-6">🎬</div>
           <h3 className="text-xl font-bold text-white mb-2">Aucune vidéo publiée</h3>
@@ -438,15 +491,38 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
           className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
           style={{ scrollSnapType: 'y mandatory' }}
         >
-          {videoData.map((video, index) => (
-            <VideoCard
-              key={video.id}
-              post={video}
-              isActive={index === currentIndex}
-              onComment={() => onComment(video.id)}
-              onRespond={() => onRespond(video.id)}
-            />
-          ))}
+          {displayData.map((video, index) => {
+            const isNearby = Math.abs(index - currentIndex) <= 1;
+            if (!isNearby) {
+              return <div key={video.id} className="h-screen w-full snap-start snap-always bg-black" />;
+            }
+            return (
+              <VideoCard
+                key={video.id}
+                post={video}
+                isActive={index === currentIndex}
+                onVideoEnded={() => handleVideoEnded(index)}
+                onComment={() => onComment(video.id)}
+                onRespond={() => onRespond(video.id)}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Auto/Manual mode indicator */}
+      {displayData.length > 0 && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20">
+          <button
+            onClick={() => setAutoMode(!autoMode)}
+            className={`px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-xl border transition-all ${
+              autoMode
+                ? 'bg-white/20 border-white/30 text-white'
+                : 'bg-black/50 border-white/10 text-white/50'
+            }`}
+          >
+            {autoMode ? '▶ Auto' : '✋ Manuel'}
+          </button>
         </div>
       )}
     </div>
