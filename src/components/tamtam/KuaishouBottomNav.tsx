@@ -75,10 +75,10 @@ export const KuaishouBottomNav: React.FC = memo(() => {
         <div className="w-14 flex-shrink-0 flex items-center justify-center relative">
           <button
             onClick={() => handleNavPress(createItem)}
-            className="absolute -top-5"
+            className="absolute -top-5 left-1/2 -translate-x-1/2"
           >
             <div
-              className="rounded-full flex items-center justify-center shadow-xl active:opacity-80 transition-opacity"
+              className="rounded-full flex items-center justify-center shadow-xl active:opacity-80 transition-opacity will-change-transform"
               style={{
                 width: 52,
                 height: 52,
