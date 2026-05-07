@@ -221,11 +221,11 @@ export default function TamTamPublicProfile() {
 
   return (
     <div 
-      className="min-h-screen pb-24"
+      className="h-[100dvh] flex flex-col overflow-hidden"
       style={{ background: 'linear-gradient(180deg, hsl(207 60% 97%) 0%, hsl(0 0% 100%) 50%)' }}
     >
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-[hsl(var(--kuaishou-border))] px-4 py-3">
+      <div className="flex-shrink-0 z-20 bg-white/80 backdrop-blur-xl border-b border-[hsl(var(--kuaishou-border))] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <motion.button
@@ -260,8 +260,10 @@ export default function TamTamPublicProfile() {
         </div>
       </div>
 
-      {/* Profile Header */}
-      <KuaishouProfileHeader
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Profile Header */}
+        <KuaishouProfileHeader
         displayName={profile.display_name || ''}
         username={profile.username}
         avatarUrl={profile.avatar_url}
@@ -270,37 +272,37 @@ export default function TamTamPublicProfile() {
         followersCount={profile.followers_count || 0}
         followingCount={profile.following_count || 0}
         likesCount={posts.reduce((acc, p) => acc + (p.likes_count || 0), 0)}
-      />
+        />
 
-      <KuaishouStatsGrid
+        <KuaishouStatsGrid
         postsCount={profile.posts_count || 0}
         followersCount={profile.followers_count || 0}
         followingCount={profile.following_count || 0}
         friendsCount={profile.friends_count || 0}
-      />
+        />
 
-      <KuaishouActionButtons
+        <KuaishouActionButtons
         isOwnProfile={false}
         isFollowing={isFollowing}
         friendStatus={friendStatus}
         onFollow={handleFollow}
         onFriendRequest={handleFriendRequest}
         onMessage={handleMessage}
-      />
+        />
 
-      <KuaishouBioPlayer
+        <KuaishouBioPlayer
         bioAudioUrl={profile.bio_audio_url}
         bioTranscript={profile.bio_transcript_fr}
         isOwnProfile={false}
-      />
+        />
 
-      <KuaishouProfileTabs
+        <KuaishouProfileTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
-      />
+        />
 
-      {/* Posts Grid */}
-      <div className="bg-white min-h-[200px] p-4">
+        {/* Posts Grid */}
+        <div className="bg-white p-4 pb-32">
         {activeTab === 'posts' && (
           <>
             {posts.length === 0 ? (
@@ -368,6 +370,7 @@ export default function TamTamPublicProfile() {
             <p className="text-muted-foreground">Statistiques de l'utilisateur</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Post Viewer Overlay */}
