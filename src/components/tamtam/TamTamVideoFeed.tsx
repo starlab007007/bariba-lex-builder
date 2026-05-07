@@ -80,10 +80,11 @@ const ActionButton: React.FC<{
 const VideoCard: React.FC<{
   post: VideoPost;
   isActive: boolean;
+  isVisible?: boolean;
   onVideoEnded?: () => void;
   onComment: () => void;
   onRespond: () => void;
-}> = ({ post, isActive, onVideoEnded, onComment, onRespond }) => {
+}> = ({ post, isActive, isVisible = true, onVideoEnded, onComment, onRespond }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -101,14 +102,14 @@ const VideoCard: React.FC<{
   const topicIcon = post.topicEmoji || TOPIC_ICONS[post.topic || 'default'] || TOPIC_ICONS.default;
 
   useEffect(() => {
-    if (isActive && videoRef.current) {
+    if (isActive && isVisible && videoRef.current) {
       videoRef.current.play().catch(() => {});
       setIsPlaying(true);
-    } else if (!isActive && videoRef.current) {
+    } else if ((!isActive || !isVisible) && videoRef.current) {
       videoRef.current.pause();
       setIsPlaying(false);
     }
-  }, [isActive]);
+  }, [isActive, isVisible]);
 
   // Pause/resume on tab visibility
   useEffect(() => {
@@ -142,7 +143,7 @@ const VideoCard: React.FC<{
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [onVideoEnded]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -385,8 +386,56 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
   const [autoMode, setAutoMode] = useState(true);
   const [shuffledData, setShuffledData] = useState<VideoPost[] | null>(null);
   const autoModeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [visibleIndices, setVisibleIndices] = useState<Set<number>>(new Set([0]));
+  const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const displayData = shuffledData || videoData;
+
+  // IntersectionObserver to track which cards are visible
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        setVisibleIndices(prev => {
+          const next = new Set(prev);
+          entries.forEach(entry => {
+            const idx = Number(entry.target.getAttribute('data-index'));
+            if (!isNaN(idx)) {
+              if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+                next.add(idx);
+              } else {
+                next.delete(idx);
+              }
+            }
+          });
+          return next;
+        });
+      },
+      { root: container, threshold: 0.5 }
+    );
+
+    return () => {
+      observerRef.current?.disconnect();
+    };
+  }, []);
+
+  // Register/unregister card refs with observer
+  const setCardRef = useCallback((index: number, el: HTMLDivElement | null) => {
+    const observer = observerRef.current;
+    if (!observer) return;
+    const prev = cardRefs.current.get(index);
+    if (prev) observer.unobserve(prev);
+    if (el) {
+      el.setAttribute('data-index', String(index));
+      observer.observe(el);
+      cardRefs.current.set(index, el);
+    } else {
+      cardRefs.current.delete(index);
+    }
+  }, []);
 
   const handleManualInteraction = useCallback(() => {
     setAutoMode(false);
@@ -396,7 +445,7 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
   }, []);
 
   const handleVideoEnded = useCallback((index: number) => {
-    if (autoMode && index === currentIndex) {
+    if (autoMode && index === currentIndex && visibleIndices.has(index)) {
       if (currentIndex < displayData.length - 1) {
         const nextIndex = currentIndex + 1;
         setCurrentIndex(nextIndex);
@@ -406,7 +455,7 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
         });
       }
     }
-  }, [autoMode, currentIndex, displayData.length]);
+  }, [autoMode, currentIndex, displayData.length, visibleIndices]);
 
   const handleShuffle = useCallback(() => {
     const shuffled = [...videoData].sort(() => Math.random() - 0.5);
@@ -494,17 +543,19 @@ export const TamTamVideoFeed: React.FC<TamTamVideoFeedProps> = ({
           {displayData.map((video, index) => {
             const isNearby = Math.abs(index - currentIndex) <= 1;
             if (!isNearby) {
-              return <div key={video.id} className="h-screen w-full snap-start snap-always bg-black" />;
+              return <div key={video.id} ref={(el) => setCardRef(index, el)} className="h-screen w-full snap-start snap-always bg-black" />;
             }
             return (
-              <VideoCard
-                key={video.id}
-                post={video}
-                isActive={index === currentIndex}
-                onVideoEnded={() => handleVideoEnded(index)}
-                onComment={() => onComment(video.id)}
-                onRespond={() => onRespond(video.id)}
-              />
+              <div key={video.id} ref={(el) => setCardRef(index, el)}>
+                <VideoCard
+                  post={video}
+                  isActive={index === currentIndex}
+                  isVisible={visibleIndices.has(index)}
+                  onVideoEnded={() => handleVideoEnded(index)}
+                  onComment={() => onComment(video.id)}
+                  onRespond={() => onRespond(video.id)}
+                />
+              </div>
             );
           })}
         </div>

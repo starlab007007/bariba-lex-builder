@@ -64,7 +64,7 @@ export function usePublicProfile(userId: string | undefined) {
         .eq('user_id', userId)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(100);
 
       if (!postsError) {
         setPosts(postsData || []);
