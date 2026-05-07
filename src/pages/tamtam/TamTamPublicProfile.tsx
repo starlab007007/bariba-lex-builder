@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -145,6 +145,7 @@ const PostViewerOverlay: React.FC<{
 export default function TamTamPublicProfile() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTamTamLanguage();
   const { profile, posts, isLoading, isOwnProfile, isFollowing, friendStatus, followUser, sendFriendRequest } = usePublicProfile(userId);
   
@@ -153,6 +154,28 @@ export default function TamTamPublicProfile() {
   const [activeTab, setActiveTab] = useState('posts');
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Restore scroll position
+  useEffect(() => {
+    if (!isLoading && scrollRef.current) {
+      const key = `profile-scroll-${userId}`;
+      const saved = sessionStorage.getItem(key);
+      if (saved) {
+        scrollRef.current.scrollTop = parseInt(saved, 10);
+      }
+    }
+  }, [isLoading, userId]);
+
+  // Save scroll position on unmount
+  useEffect(() => {
+    const el = scrollRef.current;
+    return () => {
+      if (el) {
+        sessionStorage.setItem(`profile-scroll-${userId}`, String(el.scrollTop));
+      }
+    };
+  }, [userId]);
 
   const handleBack = () => {
     triggerFeedback('notification');
@@ -261,7 +284,7 @@ export default function TamTamPublicProfile() {
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain">
         {/* Profile Header */}
         <KuaishouProfileHeader
         displayName={profile.display_name || ''}
@@ -299,10 +322,11 @@ export default function TamTamPublicProfile() {
         <KuaishouProfileTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        postsCount={posts.length}
         />
 
         {/* Posts Grid */}
-        <div className="bg-white p-4 pb-32">
+        <div className="bg-white p-4 pb-40 min-h-[50vh]">
         {activeTab === 'posts' && (
           <>
             {posts.length === 0 ? (
