@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -26,11 +26,52 @@ import { KuaishouProfileTabs } from '@/components/tamtam/KuaishouProfileTabs';
 import { usePublicProfile } from '@/hooks/usePublicProfile';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { Skeleton } from '@/components/ui/skeleton';
 import { TamTamPrivateMessages } from '@/components/tamtam/TamTamPrivateMessages';
 import BlockReportMenu from '@/components/tamtam/BlockReportMenu';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+// Skeleton placeholder for profile loading
+const ProfileSkeleton: React.FC = () => (
+  <div className="h-[100dvh] flex flex-col" style={{ background: 'linear-gradient(180deg, hsl(207 60% 97%) 0%, hsl(0 0% 100%) 50%)' }}>
+    <div className="flex-shrink-0 bg-white/80 backdrop-blur-xl border-b px-4 py-3">
+      <div className="flex items-center gap-3">
+        <Skeleton className="w-8 h-8 rounded-full" />
+        <Skeleton className="w-32 h-5 rounded" />
+      </div>
+    </div>
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex items-center gap-4">
+        <Skeleton className="w-20 h-20 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="w-40 h-5 rounded" />
+          <Skeleton className="w-24 h-4 rounded" />
+        </div>
+      </div>
+      <div className="flex gap-4 justify-center">
+        {[1,2,3,4].map(i => <Skeleton key={i} className="w-16 h-12 rounded-lg" />)}
+      </div>
+      <div className="flex gap-2">
+        <Skeleton className="flex-1 h-10 rounded-xl" />
+        <Skeleton className="flex-1 h-10 rounded-xl" />
+      </div>
+      <div className="grid grid-cols-3 gap-1">
+        {Array.from({length: 9}).map((_, i) => <Skeleton key={i} className="aspect-square rounded-lg" />)}
+      </div>
+    </div>
+  </div>
+);
+
+// Skeleton for loading more posts
+const PostGridSkeleton: React.FC<{count?: number}> = ({count = 6}) => (
+  <>
+    {Array.from({length: count}).map((_, i) => (
+      <Skeleton key={`skel-${i}`} className="aspect-square rounded-lg" />
+    ))}
+  </>
+);
 
 // Post Viewer Overlay - fullscreen video/photo viewer with interactions
 const PostViewerOverlay: React.FC<{
@@ -147,7 +188,7 @@ export default function TamTamPublicProfile() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTamTamLanguage();
-  const { profile, posts, isLoading, isOwnProfile, isFollowing, friendStatus, followUser, sendFriendRequest } = usePublicProfile(userId);
+  const { profile, posts, isLoading, isLoadingMore, hasMore, isOwnProfile, isFollowing, friendStatus, followUser, sendFriendRequest, fetchMore } = usePublicProfile(userId);
   
   const [showMessages, setShowMessages] = useState(false);
   const [isPlayingBio, setIsPlayingBio] = useState(false);
@@ -155,27 +196,46 @@ export default function TamTamPublicProfile() {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Restore scroll position
   useEffect(() => {
-    if (!isLoading && scrollRef.current) {
+    if (!isLoading && scrollRef.current && profile) {
       const key = `profile-scroll-${userId}`;
       const saved = sessionStorage.getItem(key);
       if (saved) {
-        scrollRef.current.scrollTop = parseInt(saved, 10);
+        requestAnimationFrame(() => {
+          if (scrollRef.current) scrollRef.current.scrollTop = parseInt(saved, 10);
+        });
       }
     }
-  }, [isLoading, userId]);
+  }, [isLoading, userId, profile]);
 
-  // Save scroll position on unmount
+  // Save scroll position on unmount and on beforeunload
   useEffect(() => {
     const el = scrollRef.current;
+    const saveScroll = () => {
+      if (el) sessionStorage.setItem(`profile-scroll-${userId}`, String(el.scrollTop));
+    };
+    window.addEventListener('beforeunload', saveScroll);
     return () => {
-      if (el) {
-        sessionStorage.setItem(`profile-scroll-${userId}`, String(el.scrollTop));
-      }
+      saveScroll();
+      window.removeEventListener('beforeunload', saveScroll);
     };
   }, [userId]);
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0]?.isIntersecting && hasMore && !isLoadingMore) {
+        fetchMore();
+      }
+    }, { rootMargin: '200px' });
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, [hasMore, isLoadingMore, fetchMore]);
 
   const handleBack = () => {
     triggerFeedback('notification');
@@ -214,14 +274,7 @@ export default function TamTamPublicProfile() {
   };
 
   if (isLoading) {
-    return (
-      <div 
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: 'linear-gradient(180deg, hsl(207 60% 97%) 0%, hsl(0 0% 100%) 50%)' }}
-      >
-        <Loader2 className="w-8 h-8 text-[hsl(var(--kuaishou-primary))] animate-spin" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (!profile) {
@@ -326,10 +379,10 @@ export default function TamTamPublicProfile() {
         />
 
         {/* Posts Grid */}
-        <div className="bg-white p-4 pb-40 min-h-[50vh]">
+        <div className="bg-white p-4 pb-32 min-h-[50vh]">
         {activeTab === 'posts' && (
           <>
-            {posts.length === 0 ? (
+            {posts.length === 0 && !isLoading ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">Aucune publication</p>
               </div>
@@ -343,18 +396,17 @@ export default function TamTamPublicProfile() {
                     className="aspect-square bg-muted rounded-lg overflow-hidden relative group cursor-pointer"
                   >
                     {post.media_url ? (
-                      <img 
-                        src={post.thumbnail_url || post.media_url} 
-                        alt="" 
+                      <img
+                        src={post.thumbnail_url || post.media_url}
+                        alt=""
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-[hsl(var(--kuaishou-primary)/0.2)] to-[hsl(var(--kuaishou-primary)/0.1)] flex items-center justify-center">
                         <Play className="w-8 h-8 text-[hsl(var(--kuaishou-primary))]" />
                       </div>
                     )}
-                    
-                    {/* Hover overlay */}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                       <div className="flex items-center gap-1 text-white text-xs">
                         <Heart className="w-4 h-4" />
@@ -365,20 +417,26 @@ export default function TamTamPublicProfile() {
                         <span>{post.comments_count || 0}</span>
                       </div>
                     </div>
-
-                    {/* Video indicator */}
                     {(post.media_type === 'video' || post.media_url?.includes('.mp4')) && (
                       <div className="absolute top-1 right-1">
                         <Play className="w-4 h-4 text-white drop-shadow-lg" fill="white" />
                       </div>
                     )}
-
                     <div className="absolute bottom-1 left-1 text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded">
                       {format(new Date(post.created_at), 'd MMM', { locale: fr })}
                     </div>
                   </motion.div>
                 ))}
               </div>
+            )}
+            <div ref={sentinelRef} className="h-4" />
+            {isLoadingMore && (
+              <div className="grid grid-cols-3 gap-1 mt-1">
+                <PostGridSkeleton count={3} />
+              </div>
+            )}
+            {!hasMore && posts.length > 0 && (
+              <p className="text-center text-muted-foreground text-xs py-4">Toutes les publications chargées</p>
             )}
           </>
         )}

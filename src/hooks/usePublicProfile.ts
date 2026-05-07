@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -32,13 +32,18 @@ interface UserPost {
   created_at: string;
 }
 
+const PAGE_SIZE = 20;
+
 export function usePublicProfile(userId: string | undefined) {
   const { user } = useAuth();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [posts, setPosts] = useState<UserPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [friendStatus, setFriendStatus] = useState<'none' | 'pending' | 'accepted'>('none');
+  const pageRef = useRef(0);
 
   const isOwnProfile = user?.id === userId;
 
@@ -64,10 +69,12 @@ export function usePublicProfile(userId: string | undefined) {
         .eq('user_id', userId)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
-        .limit(100);
+        .range(0, PAGE_SIZE - 1);
 
       if (!postsError) {
         setPosts(postsData || []);
+        setHasMore((postsData || []).length >= PAGE_SIZE);
+        pageRef.current = 1;
       }
 
       // Check follow status
@@ -101,6 +108,31 @@ export function usePublicProfile(userId: string | undefined) {
       setIsLoading(false);
     }
   }, [userId, user?.id]);
+
+  const fetchMore = useCallback(async () => {
+    if (!userId || isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const from = pageRef.current * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, error } = await supabase
+        .from('tamtam_posts')
+        .select('id, user_id, audio_url, media_type, media_url, thumbnail_url, transcript_fr, transcript_ba, likes_count, comments_count, created_at')
+        .eq('user_id', userId)
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (!error && data) {
+        setPosts(prev => [...prev, ...data]);
+        setHasMore(data.length >= PAGE_SIZE);
+        pageRef.current += 1;
+      }
+    } catch (err) {
+      console.error('Error fetching more posts:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [userId, isLoadingMore, hasMore]);
 
   useEffect(() => {
     fetchProfile();
@@ -145,11 +177,14 @@ export function usePublicProfile(userId: string | undefined) {
     profile,
     posts,
     isLoading,
+    isLoadingMore,
+    hasMore,
     isOwnProfile,
     isFollowing,
     friendStatus,
     followUser,
     sendFriendRequest,
-    refetch: fetchProfile
+    refetch: fetchProfile,
+    fetchMore
   };
 }
