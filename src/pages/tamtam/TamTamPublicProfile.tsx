@@ -395,13 +395,22 @@ export default function TamTamPublicProfile() {
                     onClick={() => setViewerIndex(index)}
                     className="aspect-square bg-muted rounded-lg overflow-hidden relative group cursor-pointer"
                   >
-                    {post.media_url ? (
-                      <img
-                        src={post.thumbnail_url || post.media_url}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        loading="lazy"
+                    {post.thumbnail_url ? (
+                      <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    ) : post.media_url && (post.media_type === 'video' || post.media_url.endsWith('.mp4') || post.media_url.endsWith('.webm')) ? (
+                      <video
+                        src={post.media_url}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-cover pointer-events-none"
+                        onLoadedData={(e) => {
+                          const v = e.currentTarget;
+                          if (v.readyState >= 2) v.currentTime = Math.min(1, v.duration / 4);
+                        }}
                       />
+                    ) : post.media_url ? (
+                      <img src={post.media_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-[hsl(var(--kuaishou-primary)/0.2)] to-[hsl(var(--kuaishou-primary)/0.1)] flex items-center justify-center">
                         <Play className="w-8 h-8 text-[hsl(var(--kuaishou-primary))]" />
