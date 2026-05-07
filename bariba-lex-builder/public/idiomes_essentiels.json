@@ -1,0 +1,2204 @@
+[
+  {
+    "french_expression": "Bonjour",
+    "bariba_expression": "Kↄↄrↄↄ",
+    "category": "Salutations",
+    "usage_context": "Salutation du matin"
+  },
+  {
+    "french_expression": "Bonsoir",
+    "bariba_expression": "Wúru wúru",
+    "category": "Salutations",
+    "usage_context": "Salutation du soir"
+  },
+  {
+    "french_expression": "Comment vas-tu ?",
+    "bariba_expression": "Fↄ̃ↄ̃ ro?",
+    "category": "Salutations",
+    "usage_context": "Demander des nouvelles"
+  },
+  {
+    "french_expression": "Je vais bien",
+    "bariba_expression": "N yooku sↄↄ",
+    "category": "Salutations",
+    "usage_context": "Répondre aux salutations"
+  },
+  {
+    "french_expression": "Merci beaucoup",
+    "bariba_expression": "Barika bure",
+    "category": "Politesse",
+    "usage_context": "Remercier"
+  },
+  {
+    "french_expression": "De rien",
+    "bariba_expression": "Kↄↄ tↄa",
+    "category": "Politesse",
+    "usage_context": "Répondre aux remerciements"
+  },
+  {
+    "french_expression": "S'il te plaît",
+    "bariba_expression": "Buru m bu",
+    "category": "Politesse",
+    "usage_context": "Formule de politesse"
+  },
+  {
+    "french_expression": "Excusez-moi",
+    "bariba_expression": "Ninkↄↄre m bu",
+    "category": "Politesse",
+    "usage_context": "S'excuser"
+  },
+  {
+    "french_expression": "Au revoir",
+    "bariba_expression": "Tinma",
+    "category": "Salutations",
+    "usage_context": "Prendre congé"
+  },
+  {
+    "french_expression": "À demain",
+    "bariba_expression": "Wↄsi gↄ",
+    "category": "Salutations",
+    "usage_context": "Se quitter jusqu'au lendemain"
+  },
+  {
+    "french_expression": "Bienvenue",
+    "bariba_expression": "Wurika",
+    "category": "Accueil",
+    "usage_context": "Accueillir quelqu'un"
+  },
+  {
+    "french_expression": "Quel est ton nom ?",
+    "bariba_expression": "N yↄↄnↄ nee?",
+    "category": "Présentation",
+    "usage_context": "Demander le nom"
+  },
+  {
+    "french_expression": "Je m'appelle...",
+    "bariba_expression": "M yↄↄnↄ ka...",
+    "category": "Présentation",
+    "usage_context": "Se présenter"
+  },
+  {
+    "french_expression": "D'où viens-tu ?",
+    "bariba_expression": "Bu wↄ kaare?",
+    "category": "Présentation",
+    "usage_context": "Demander l'origine"
+  },
+  {
+    "french_expression": "Je viens de...",
+    "bariba_expression": "N wↄ kaare...",
+    "category": "Présentation",
+    "usage_context": "Indiquer son origine"
+  },
+  {
+    "french_expression": "Combien ça coûte ?",
+    "bariba_expression": "A ka gↄo kaare?",
+    "category": "Commerce",
+    "usage_context": "Demander le prix"
+  },
+  {
+    "french_expression": "C'est trop cher",
+    "bariba_expression": "A kare bↄmↄ",
+    "category": "Commerce",
+    "usage_context": "Négocier le prix"
+  },
+  {
+    "french_expression": "Je n'ai pas d'argent",
+    "bariba_expression": "Kↄri ka n kare",
+    "category": "Commerce",
+    "usage_context": "Exprimer un manque de moyens"
+  },
+  {
+    "french_expression": "Donne-moi de l'eau",
+    "bariba_expression": "Yinu u m mↄ",
+    "category": "Besoins",
+    "usage_context": "Demander de l'eau"
+  },
+  {
+    "french_expression": "J'ai faim",
+    "bariba_expression": "Kↄmↄ ŋ ka m ma",
+    "category": "Besoins",
+    "usage_context": "Exprimer la faim"
+  },
+  {
+    "french_expression": "J'ai soif",
+    "bariba_expression": "Yinu ŋ ka m ma",
+    "category": "Besoins",
+    "usage_context": "Exprimer la soif"
+  },
+  {
+    "french_expression": "Je suis fatigué",
+    "bariba_expression": "Wurika ka n mi",
+    "category": "État",
+    "usage_context": "Exprimer la fatigue"
+  },
+  {
+    "french_expression": "Je suis malade",
+    "bariba_expression": "Yaru ka n mi",
+    "category": "Santé",
+    "usage_context": "Exprimer la maladie"
+  },
+  {
+    "french_expression": "Où est la maison ?",
+    "bariba_expression": "Yeru n ka kaare?",
+    "category": "Direction",
+    "usage_context": "Demander un lieu"
+  },
+  {
+    "french_expression": "Par ici",
+    "bariba_expression": "Wↄki nↄ",
+    "category": "Direction",
+    "usage_context": "Indiquer une direction"
+  },
+  {
+    "french_expression": "Par là",
+    "bariba_expression": "Wↄ nↄ",
+    "category": "Direction",
+    "usage_context": "Indiquer une direction éloignée"
+  },
+  {
+    "french_expression": "C'est loin",
+    "bariba_expression": "A gↄra",
+    "category": "Distance",
+    "usage_context": "Indiquer l'éloignement"
+  },
+  {
+    "french_expression": "C'est près",
+    "bariba_expression": "A kↄↄru",
+    "category": "Distance",
+    "usage_context": "Indiquer la proximité"
+  },
+  {
+    "french_expression": "Attends un peu",
+    "bariba_expression": "Sere bↄↄku",
+    "category": "Temps",
+    "usage_context": "Demander d'attendre"
+  },
+  {
+    "french_expression": "Dépêche-toi",
+    "bariba_expression": "Saŋu u",
+    "category": "Temps",
+    "usage_context": "Presser quelqu'un"
+  },
+  {
+    "french_expression": "Doucement",
+    "bariba_expression": "Nyeere nyeere",
+    "category": "Manière",
+    "usage_context": "Demander de ralentir"
+  },
+  {
+    "french_expression": "Oui",
+    "bariba_expression": "Eŋ",
+    "category": "Affirmation",
+    "usage_context": "Affirmer"
+  },
+  {
+    "french_expression": "Non",
+    "bariba_expression": "Ayi",
+    "category": "Négation",
+    "usage_context": "Nier"
+  },
+  {
+    "french_expression": "Je ne sais pas",
+    "bariba_expression": "M si ka kↄma",
+    "category": "Connaissance",
+    "usage_context": "Exprimer l'ignorance"
+  },
+  {
+    "french_expression": "Je comprends",
+    "bariba_expression": "M gↄm kↄma",
+    "category": "Compréhension",
+    "usage_context": "Confirmer la compréhension"
+  },
+  {
+    "french_expression": "Je ne comprends pas",
+    "bariba_expression": "M si gↄm kↄma",
+    "category": "Compréhension",
+    "usage_context": "Exprimer l'incompréhension"
+  },
+  {
+    "french_expression": "Parle doucement",
+    "bariba_expression": "Bↄre nyeere nyeere",
+    "category": "Communication",
+    "usage_context": "Demander de parler lentement"
+  },
+  {
+    "french_expression": "Répète",
+    "bariba_expression": "Bↄre gↄ kaaru",
+    "category": "Communication",
+    "usage_context": "Demander de répéter"
+  },
+  {
+    "french_expression": "Qu'est-ce que c'est ?",
+    "bariba_expression": "Ŋka nee?",
+    "category": "Question",
+    "usage_context": "Identifier quelque chose"
+  },
+  {
+    "french_expression": "C'est bon",
+    "bariba_expression": "A yↄru",
+    "category": "Appréciation",
+    "usage_context": "Exprimer la satisfaction"
+  },
+  {
+    "french_expression": "C'est mauvais",
+    "bariba_expression": "A mĩ̀",
+    "category": "Appréciation",
+    "usage_context": "Exprimer le mécontentement"
+  },
+  {
+    "french_expression": "Il pleut",
+    "bariba_expression": "Sããkpↄ yↄↄmu",
+    "category": "Météo",
+    "usage_context": "Décrire le temps"
+  },
+  {
+    "french_expression": "Il fait chaud",
+    "bariba_expression": "Wĩna ŋ ka ru",
+    "category": "Météo",
+    "usage_context": "Décrire la température"
+  },
+  {
+    "french_expression": "Il fait froid",
+    "bariba_expression": "Kĩina ŋ ka ru",
+    "category": "Météo",
+    "usage_context": "Décrire la température"
+  },
+  {
+    "french_expression": "Assieds-toi",
+    "bariba_expression": "Sↄↄ",
+    "category": "Action",
+    "usage_context": "Inviter à s'asseoir"
+  },
+  {
+    "french_expression": "Lève-toi",
+    "bariba_expression": "Wↄru",
+    "category": "Action",
+    "usage_context": "Demander de se lever"
+  },
+  {
+    "french_expression": "Viens ici",
+    "bariba_expression": "Wↄ wↄki",
+    "category": "Action",
+    "usage_context": "Appeler quelqu'un"
+  },
+  {
+    "french_expression": "Va-t'en",
+    "bariba_expression": "Yau u",
+    "category": "Action",
+    "usage_context": "Demander de partir"
+  },
+  {
+    "french_expression": "Aide-moi",
+    "bariba_expression": "Kɔmbaa m n",
+    "category": "Aide",
+    "usage_context": "Demander de l'aide"
+  },
+  {
+    "french_expression": "Laisse-moi tranquille",
+    "bariba_expression": "Ti m bu",
+    "category": "Demande",
+    "usage_context": "Demander d'être laissé seul"
+  },
+  {
+    "french_expression": "C'est vrai",
+    "bariba_expression": "Teerikↄↄ",
+    "category": "Vérité",
+    "usage_context": "Confirmer quelque chose"
+  },
+  {
+    "french_expression": "C'est faux",
+    "bariba_expression": "Kↄↄta",
+    "category": "Vérité",
+    "usage_context": "Nier quelque chose"
+  },
+  {
+    "french_expression": "Quel âge as-tu ?",
+    "bariba_expression": "Bu ŋkãre kaare?",
+    "category": "Âge",
+    "usage_context": "Demander l'âge"
+  },
+  {
+    "french_expression": "J'ai... ans",
+    "bariba_expression": "N ŋkãre ka...",
+    "category": "Âge",
+    "usage_context": "Indiquer son âge"
+  },
+  {
+    "french_expression": "Où vas-tu ?",
+    "bariba_expression": "Bu yau kaare?",
+    "category": "Direction",
+    "usage_context": "Demander la destination"
+  },
+  {
+    "french_expression": "Je vais au marché",
+    "bariba_expression": "N yau yaaru ku",
+    "category": "Destination",
+    "usage_context": "Indiquer sa destination"
+  },
+  {
+    "french_expression": "Quelle heure est-il ?",
+    "bariba_expression": "Wãkĩ n ka kaare?",
+    "category": "Temps",
+    "usage_context": "Demander l'heure"
+  },
+  {
+    "french_expression": "C'est le matin",
+    "bariba_expression": "Kↄↄrↄↄ nↄ",
+    "category": "Temps",
+    "usage_context": "Indiquer le moment de la journée"
+  },
+  {
+    "french_expression": "C'est la nuit",
+    "bariba_expression": "Wúru nↄ",
+    "category": "Temps",
+    "usage_context": "Indiquer le moment de la journée"
+  },
+  {
+    "french_expression": "Aujourd'hui",
+    "bariba_expression": "Wãnĩ",
+    "category": "Temps",
+    "usage_context": "Désigner le jour présent"
+  },
+  {
+    "french_expression": "Hier",
+    "bariba_expression": "Gbↄↄnĩ",
+    "category": "Temps",
+    "usage_context": "Désigner le jour précédent"
+  },
+  {
+    "french_expression": "Demain",
+    "bariba_expression": "Wↄsi",
+    "category": "Temps",
+    "usage_context": "Désigner le jour suivant"
+  },
+  {
+    "french_expression": "Mon père",
+    "bariba_expression": "N baabu",
+    "category": "Famille",
+    "usage_context": "Désigner son père"
+  },
+  {
+    "french_expression": "Ma mère",
+    "bariba_expression": "N yaanu",
+    "category": "Famille",
+    "usage_context": "Désigner sa mère"
+  },
+  {
+    "french_expression": "Mon frère",
+    "bariba_expression": "N sorↄↄ",
+    "category": "Famille",
+    "usage_context": "Désigner son frère"
+  },
+  {
+    "french_expression": "Ma sœur",
+    "bariba_expression": "N yãkↄↄ",
+    "category": "Famille",
+    "usage_context": "Désigner sa sœur"
+  },
+  {
+    "french_expression": "Mon enfant",
+    "bariba_expression": "N bↄnↄ",
+    "category": "Famille",
+    "usage_context": "Désigner son enfant"
+  },
+  {
+    "french_expression": "Mon ami",
+    "bariba_expression": "N gↄↄru",
+    "category": "Relations",
+    "usage_context": "Désigner son ami"
+  },
+  {
+    "french_expression": "Fais attention",
+    "bariba_expression": "Kunnya bu",
+    "category": "Avertissement",
+    "usage_context": "Mettre en garde"
+  },
+  {
+    "french_expression": "C'est dangereux",
+    "bariba_expression": "A kamaara",
+    "category": "Avertissement",
+    "usage_context": "Signaler un danger"
+  },
+  {
+    "french_expression": "Pas de problème",
+    "bariba_expression": "Daamu kↄↄ",
+    "category": "Rassurance",
+    "usage_context": "Rassurer"
+  },
+  {
+    "french_expression": "Qu'est-ce qui se passe ?",
+    "bariba_expression": "Ŋka yↄm?",
+    "category": "Question",
+    "usage_context": "S'enquérir d'une situation"
+  },
+  {
+    "french_expression": "Rien",
+    "bariba_expression": "Kↄↄ",
+    "category": "Réponse",
+    "usage_context": "Répondre négativement"
+  },
+  {
+    "french_expression": "Tout va bien",
+    "bariba_expression": "Sↄrↄ yooku",
+    "category": "État",
+    "usage_context": "Confirmer que tout est en ordre"
+  },
+  {
+    "french_expression": "Félicitations",
+    "bariba_expression": "Gãnↄ kuu",
+    "category": "Politesse",
+    "usage_context": "Féliciter"
+  },
+  {
+    "french_expression": "Bon courage",
+    "bariba_expression": "Wurika wurika",
+    "category": "Encouragement",
+    "usage_context": "Encourager"
+  },
+  {
+    "french_expression": "Bonne chance",
+    "bariba_expression": "Banↄ yↄru",
+    "category": "Souhait",
+    "usage_context": "Souhaiter bonne chance"
+  },
+  {
+    "french_expression": "Que Dieu te bénisse",
+    "bariba_expression": "Banↄ ŋ kↄ w bane",
+    "category": "Bénédiction",
+    "usage_context": "Bénir quelqu'un"
+  },
+  {
+    "french_expression": "Je t'aime",
+    "bariba_expression": "N maa bu",
+    "category": "Sentiment",
+    "usage_context": "Exprimer l'amour"
+  },
+  {
+    "french_expression": "Je suis content",
+    "bariba_expression": "N yↄma yↄru",
+    "category": "Sentiment",
+    "usage_context": "Exprimer la joie"
+  },
+  {
+    "french_expression": "Je suis triste",
+    "bariba_expression": "N yↄma mĩ̀",
+    "category": "Sentiment",
+    "usage_context": "Exprimer la tristesse"
+  },
+  {
+    "french_expression": "Je suis en colère",
+    "bariba_expression": "Ropↄ ŋ ka n mi",
+    "category": "Sentiment",
+    "usage_context": "Exprimer la colère"
+  },
+  {
+    "french_expression": "Calme-toi",
+    "bariba_expression": "Yↄma u dinɛ",
+    "category": "Conseil",
+    "usage_context": "Apaiser quelqu'un"
+  },
+  {
+    "french_expression": "Ne t'inquiète pas",
+    "bariba_expression": "Yↄma w ka tinɛre",
+    "category": "Rassurance",
+    "usage_context": "Rassurer quelqu'un"
+  },
+  {
+    "french_expression": "C'est difficile",
+    "bariba_expression": "A kayu",
+    "category": "Difficulté",
+    "usage_context": "Exprimer la difficulté"
+  },
+  {
+    "french_expression": "C'est facile",
+    "bariba_expression": "A yori",
+    "category": "Facilité",
+    "usage_context": "Exprimer la facilité"
+  },
+  {
+    "french_expression": "Je peux",
+    "bariba_expression": "N si wↄ",
+    "category": "Capacité",
+    "usage_context": "Exprimer la capacité"
+  },
+  {
+    "french_expression": "Je ne peux pas",
+    "bariba_expression": "N si ka wↄ",
+    "category": "Incapacité",
+    "usage_context": "Exprimer l'incapacité"
+  },
+  {
+    "french_expression": "Je veux",
+    "bariba_expression": "N ma u",
+    "category": "Volonté",
+    "usage_context": "Exprimer le désir"
+  },
+  {
+    "french_expression": "Je ne veux pas",
+    "bariba_expression": "N si ma u",
+    "category": "Refus",
+    "usage_context": "Refuser"
+  },
+  {
+    "french_expression": "Donne-moi",
+    "bariba_expression": "Mↄↄ m n",
+    "category": "Demande",
+    "usage_context": "Demander quelque chose"
+  },
+  {
+    "french_expression": "Prends",
+    "bariba_expression": "Gↄu u",
+    "category": "Offre",
+    "usage_context": "Offrir quelque chose"
+  },
+  {
+    "french_expression": "Regarde",
+    "bariba_expression": "Bↄru u",
+    "category": "Action",
+    "usage_context": "Attirer l'attention"
+  },
+  {
+    "french_expression": "Écoute",
+    "bariba_expression": "Gboru u",
+    "category": "Action",
+    "usage_context": "Demander d'écouter"
+  },
+  {
+    "french_expression": "Mange",
+    "bariba_expression": "Di u",
+    "category": "Action",
+    "usage_context": "Inviter à manger"
+  },
+  {
+    "french_expression": "Bois",
+    "bariba_expression": "Nu u",
+    "category": "Action",
+    "usage_context": "Inviter à boire"
+  },
+  {
+    "french_expression": "Dors",
+    "bariba_expression": "Sĩĩ u",
+    "category": "Action",
+    "usage_context": "Inviter à dormir"
+  },
+  {
+    "french_expression": "Travaille",
+    "bariba_expression": "Yɛru u",
+    "category": "Action",
+    "usage_context": "Inviter au travail"
+  },
+  {
+    "french_expression": "Joue",
+    "bariba_expression": "Wↄru u",
+    "category": "Action",
+    "usage_context": "Inviter à jouer"
+  },
+  {
+    "french_expression": "Cours",
+    "bariba_expression": "Tĩ u",
+    "category": "Action",
+    "usage_context": "Demander de courir"
+  },
+  {
+    "french_expression": "Marche",
+    "bariba_expression": "Yau u",
+    "category": "Action",
+    "usage_context": "Demander de marcher"
+  },
+  {
+    "french_expression": "Arrête",
+    "bariba_expression": "Tↄu u",
+    "category": "Action",
+    "usage_context": "Demander d'arrêter"
+  },
+  {
+    "french_expression": "Continue",
+    "bariba_expression": "Yɛru u gↄↄ",
+    "category": "Action",
+    "usage_context": "Encourager à continuer"
+  },
+  {
+    "french_expression": "Commence",
+    "bariba_expression": "Gↄwu u",
+    "category": "Action",
+    "usage_context": "Demander de commencer"
+  },
+  {
+    "french_expression": "Finis",
+    "bariba_expression": "Tɔↄbu u",
+    "category": "Action",
+    "usage_context": "Demander de finir"
+  },
+  {
+    "french_expression": "Ouvre",
+    "bariba_expression": "Sↄmu u",
+    "category": "Action",
+    "usage_context": "Demander d'ouvrir"
+  },
+  {
+    "french_expression": "Ferme",
+    "bariba_expression": "Kↄru u",
+    "category": "Action",
+    "usage_context": "Demander de fermer"
+  },
+  {
+    "french_expression": "Entre",
+    "bariba_expression": "Yiru u",
+    "category": "Action",
+    "usage_context": "Inviter à entrer"
+  },
+  {
+    "french_expression": "Sors",
+    "bariba_expression": "Wau u",
+    "category": "Action",
+    "usage_context": "Demander de sortir"
+  },
+  {
+    "french_expression": "Monte",
+    "bariba_expression": "Yeru u",
+    "category": "Action",
+    "usage_context": "Demander de monter"
+  },
+  {
+    "french_expression": "Descends",
+    "bariba_expression": "Yagu u",
+    "category": "Action",
+    "usage_context": "Demander de descendre"
+  },
+  {
+    "french_expression": "Pousse",
+    "bariba_expression": "Gↄu u",
+    "category": "Action",
+    "usage_context": "Demander de pousser"
+  },
+  {
+    "french_expression": "Tire",
+    "bariba_expression": "Gↄwu u",
+    "category": "Action",
+    "usage_context": "Demander de tirer"
+  },
+  {
+    "french_expression": "Porte",
+    "bariba_expression": "Sii u",
+    "category": "Action",
+    "usage_context": "Demander de porter"
+  },
+  {
+    "french_expression": "Pose",
+    "bariba_expression": "Yau u",
+    "category": "Action",
+    "usage_context": "Demander de poser"
+  },
+  {
+    "french_expression": "Coupe",
+    "bariba_expression": "Kunɛ u",
+    "category": "Action",
+    "usage_context": "Demander de couper"
+  },
+  {
+    "french_expression": "Attache",
+    "bariba_expression": "Gↄu u",
+    "category": "Action",
+    "usage_context": "Demander d'attacher"
+  },
+  {
+    "french_expression": "Détache",
+    "bariba_expression": "Tↄu u",
+    "category": "Action",
+    "usage_context": "Demander de détacher"
+  },
+  {
+    "french_expression": "Lave",
+    "bariba_expression": "Waru u",
+    "category": "Action",
+    "usage_context": "Demander de laver"
+  },
+  {
+    "french_expression": "Nettoie",
+    "bariba_expression": "Sↄru u",
+    "category": "Action",
+    "usage_context": "Demander de nettoyer"
+  },
+  {
+    "french_expression": "Balaie",
+    "bariba_expression": "Cĩ u",
+    "category": "Action",
+    "usage_context": "Demander de balayer"
+  },
+  {
+    "french_expression": "Cuisine",
+    "bariba_expression": "Yau u kↄmↄ",
+    "category": "Action",
+    "usage_context": "Demander de cuisiner"
+  },
+  {
+    "french_expression": "Chauffe",
+    "bariba_expression": "Wĩnu u",
+    "category": "Action",
+    "usage_context": "Demander de chauffer"
+  },
+  {
+    "french_expression": "Refroidis",
+    "bariba_expression": "Kĩinu u",
+    "category": "Action",
+    "usage_context": "Demander de refroidir"
+  },
+  {
+    "french_expression": "Allume",
+    "bariba_expression": "Yeru u wĩi",
+    "category": "Action",
+    "usage_context": "Demander d'allumer"
+  },
+  {
+    "french_expression": "Éteins",
+    "bariba_expression": "Kuru u wĩi",
+    "category": "Action",
+    "usage_context": "Demander d'éteindre"
+  },
+  {
+    "french_expression": "Écris",
+    "bariba_expression": "Sɛɛri u",
+    "category": "Action",
+    "usage_context": "Demander d'écrire"
+  },
+  {
+    "french_expression": "Lis",
+    "bariba_expression": "Kↄwu u",
+    "category": "Action",
+    "usage_context": "Demander de lire"
+  },
+  {
+    "french_expression": "Compte",
+    "bariba_expression": "Yeru u",
+    "category": "Action",
+    "usage_context": "Demander de compter"
+  },
+  {
+    "french_expression": "Calcule",
+    "bariba_expression": "Kↄu u",
+    "category": "Action",
+    "usage_context": "Demander de calculer"
+  },
+  {
+    "french_expression": "Pense",
+    "bariba_expression": "Gↄmu u",
+    "category": "Action",
+    "usage_context": "Inviter à réfléchir"
+  },
+  {
+    "french_expression": "Souviens-toi",
+    "bariba_expression": "Gↄu yↄma",
+    "category": "Mémoire",
+    "usage_context": "Rappeler un souvenir"
+  },
+  {
+    "french_expression": "Oublie",
+    "bariba_expression": "Gↄmu tↄ",
+    "category": "Mémoire",
+    "usage_context": "Demander d'oublier"
+  },
+  {
+    "french_expression": "Apprends",
+    "bariba_expression": "Kↄwu u",
+    "category": "Éducation",
+    "usage_context": "Encourager l'apprentissage"
+  },
+  {
+    "french_expression": "Enseigne",
+    "bariba_expression": "Gↄu kↄu",
+    "category": "Éducation",
+    "usage_context": "Demander d'enseigner"
+  },
+  {
+    "french_expression": "Montre",
+    "bariba_expression": "Gↄu u",
+    "category": "Démonstration",
+    "usage_context": "Demander de montrer"
+  },
+  {
+    "french_expression": "Cache",
+    "bariba_expression": "Sũu u",
+    "category": "Action",
+    "usage_context": "Demander de cacher"
+  },
+  {
+    "french_expression": "Cherche",
+    "bariba_expression": "Gↄu u",
+    "category": "Action",
+    "usage_context": "Demander de chercher"
+  },
+  {
+    "french_expression": "Trouve",
+    "bariba_expression": "Soru u",
+    "category": "Action",
+    "usage_context": "Encourager à trouver"
+  },
+  {
+    "french_expression": "Perds",
+    "bariba_expression": "Tↄu u",
+    "category": "Action",
+    "usage_context": "Constater une perte"
+  },
+  {
+    "french_expression": "Achète",
+    "bariba_expression": "Sarɛ u",
+    "category": "Commerce",
+    "usage_context": "Demander d'acheter"
+  },
+  {
+    "french_expression": "Vends",
+    "bariba_expression": "Sarɛ u",
+    "category": "Commerce",
+    "usage_context": "Demander de vendre"
+  },
+  {
+    "french_expression": "Paie",
+    "bariba_expression": "Mↄↄ kↄri",
+    "category": "Commerce",
+    "usage_context": "Demander de payer"
+  },
+  {
+    "french_expression": "Reçois",
+    "bariba_expression": "Gↄu u",
+    "category": "Action",
+    "usage_context": "Inviter à recevoir"
+  },
+  {
+    "french_expression": "Envoie",
+    "bariba_expression": "Tuu u",
+    "category": "Action",
+    "usage_context": "Demander d'envoyer"
+  },
+  {
+    "french_expression": "Apporte",
+    "bariba_expression": "Wↄ u wai",
+    "category": "Action",
+    "usage_context": "Demander d'apporter"
+  },
+  {
+    "french_expression": "Emporte",
+    "bariba_expression": "Gↄu yau",
+    "category": "Action",
+    "usage_context": "Demander d'emporter"
+  },
+  {
+    "french_expression": "Laisse",
+    "bariba_expression": "Ti u",
+    "category": "Action",
+    "usage_context": "Demander de laisser"
+  },
+  {
+    "french_expression": "Prête",
+    "bariba_expression": "Bↄↄru u",
+    "category": "Prêt",
+    "usage_context": "Demander de prêter"
+  },
+  {
+    "french_expression": "Emprunte",
+    "bariba_expression": "Gↄu bↄↄru",
+    "category": "Emprunt",
+    "usage_context": "Demander d'emprunter"
+  },
+  {
+    "french_expression": "Rends",
+    "bariba_expression": "Mↄↄ kaare",
+    "category": "Restitution",
+    "usage_context": "Demander de rendre"
+  },
+  {
+    "french_expression": "Garde",
+    "bariba_expression": "Kunɛ u",
+    "category": "Conservation",
+    "usage_context": "Demander de garder"
+  },
+  {
+    "french_expression": "Jette",
+    "bariba_expression": "Yau u",
+    "category": "Action",
+    "usage_context": "Demander de jeter"
+  },
+  {
+    "french_expression": "Ramasse",
+    "bariba_expression": "Gↄu u",
+    "category": "Action",
+    "usage_context": "Demander de ramasser"
+  },
+  {
+    "french_expression": "Construis",
+    "bariba_expression": "Gↄu u",
+    "category": "Construction",
+    "usage_context": "Demander de construire"
+  },
+  {
+    "french_expression": "Détruis",
+    "bariba_expression": "Tↄu u",
+    "category": "Destruction",
+    "usage_context": "Demander de détruire"
+  },
+  {
+    "french_expression": "Répare",
+    "bariba_expression": "Sↄu u",
+    "category": "Réparation",
+    "usage_context": "Demander de réparer"
+  },
+  {
+    "french_expression": "Casse",
+    "bariba_expression": "Gↄu u",
+    "category": "Action",
+    "usage_context": "Constater une cassure"
+  },
+  {
+    "french_expression": "Remplis",
+    "bariba_expression": "Soru u",
+    "category": "Action",
+    "usage_context": "Demander de remplir"
+  },
+  {
+    "french_expression": "Vide",
+    "bariba_expression": "Wau u",
+    "category": "Action",
+    "usage_context": "Demander de vider"
+  },
+  {
+    "french_expression": "Mélange",
+    "bariba_expression": "Gↄu u",
+    "category": "Action",
+    "usage_context": "Demander de mélanger"
+  },
+  {
+    "french_expression": "Sépare",
+    "bariba_expression": "Tↄu u",
+    "category": "Action",
+    "usage_context": "Demander de séparer"
+  },
+  {
+    "french_expression": "Rassemble",
+    "bariba_expression": "Gↄu u wↄro",
+    "category": "Action",
+    "usage_context": "Demander de rassembler"
+  },
+  {
+    "french_expression": "Disperse",
+    "bariba_expression": "Yau u",
+    "category": "Action",
+    "usage_context": "Demander de disperser"
+  },
+  {
+    "french_expression": "Appelle",
+    "bariba_expression": "Wĩi u",
+    "category": "Communication",
+    "usage_context": "Demander d'appeler"
+  },
+  {
+    "french_expression": "Réponds",
+    "bariba_expression": "Bↄre u",
+    "category": "Communication",
+    "usage_context": "Demander de répondre"
+  },
+  {
+    "french_expression": "Demande",
+    "bariba_expression": "Buru u",
+    "category": "Communication",
+    "usage_context": "Encourager à demander"
+  },
+  {
+    "french_expression": "Raconte",
+    "bariba_expression": "Bↄre u",
+    "category": "Narration",
+    "usage_context": "Demander de raconter"
+  },
+  {
+    "french_expression": "Explique",
+    "bariba_expression": "Gↄu u kↄma",
+    "category": "Explication",
+    "usage_context": "Demander d'expliquer"
+  },
+  {
+    "french_expression": "Prouve",
+    "bariba_expression": "Gↄu u teerikↄↄ",
+    "category": "Preuve",
+    "usage_context": "Demander de prouver"
+  },
+  {
+    "french_expression": "Crois",
+    "bariba_expression": "Gↄm u",
+    "category": "Foi",
+    "usage_context": "Encourager à croire"
+  },
+  {
+    "french_expression": "Doute",
+    "bariba_expression": "Gↄm tↄↄ",
+    "category": "Doute",
+    "usage_context": "Exprimer le doute"
+  },
+  {
+    "french_expression": "Espère",
+    "bariba_expression": "Sere u",
+    "category": "Espoir",
+    "usage_context": "Encourager l'espoir"
+  },
+  {
+    "french_expression": "Crains",
+    "bariba_expression": "Kamaara u",
+    "category": "Peur",
+    "usage_context": "Exprimer la crainte"
+  },
+  {
+    "french_expression": "Ose",
+    "bariba_expression": "Wurika u",
+    "category": "Courage",
+    "usage_context": "Encourager le courage"
+  },
+  {
+    "french_expression": "Hésite",
+    "bariba_expression": "Gↄm yↄma",
+    "category": "Hésitation",
+    "usage_context": "Constater l'hésitation"
+  },
+  {
+    "french_expression": "Décide",
+    "bariba_expression": "Gↄm yↄma gↄu",
+    "category": "Décision",
+    "usage_context": "Encourager la décision"
+  },
+  {
+    "french_expression": "Change",
+    "bariba_expression": "Gↄu kaaru",
+    "category": "Changement",
+    "usage_context": "Demander de changer"
+  },
+  {
+    "french_expression": "Reste",
+    "bariba_expression": "Kↄↄru u",
+    "category": "Permanence",
+    "usage_context": "Demander de rester"
+  },
+  {
+    "french_expression": "Pars",
+    "bariba_expression": "Yau u",
+    "category": "Départ",
+    "usage_context": "Demander de partir"
+  },
+  {
+    "french_expression": "Reviens",
+    "bariba_expression": "Wↄ kaare",
+    "category": "Retour",
+    "usage_context": "Demander de revenir"
+  },
+  {
+    "french_expression": "Voyage",
+    "bariba_expression": "Yau gↄ",
+    "category": "Voyage",
+    "usage_context": "Encourager le voyage"
+  },
+  {
+    "french_expression": "Visite",
+    "bariba_expression": "Wↄ bↄru",
+    "category": "Visite",
+    "usage_context": "Inviter à visiter"
+  },
+  {
+    "french_expression": "Accueille",
+    "bariba_expression": "Gↄu wurika",
+    "category": "Accueil",
+    "usage_context": "Encourager l'accueil"
+  },
+  {
+    "french_expression": "Remercie",
+    "bariba_expression": "Bↄre barika",
+    "category": "Gratitude",
+    "usage_context": "Encourager les remerciements"
+  },
+  {
+    "french_expression": "Pardonne",
+    "bariba_expression": "Gↄu ninkↄↄre",
+    "category": "Pardon",
+    "usage_context": "Encourager le pardon"
+  },
+  {
+    "french_expression": "Excuse",
+    "bariba_expression": "Ninkↄↄre gↄu",
+    "category": "Excuse",
+    "usage_context": "Demander d'excuser"
+  },
+  {
+    "french_expression": "Félicite",
+    "bariba_expression": "Gãnↄ kuu bↄre",
+    "category": "Félicitation",
+    "usage_context": "Encourager la félicitation"
+  },
+  {
+    "french_expression": "Console",
+    "bariba_expression": "Gↄu yↄma dinɛ",
+    "category": "Consolation",
+    "usage_context": "Encourager la consolation"
+  },
+  {
+    "french_expression": "Encourage",
+    "bariba_expression": "Wurika u",
+    "category": "Encouragement",
+    "usage_context": "Demander d'encourager"
+  },
+  {
+    "french_expression": "Critique",
+    "bariba_expression": "Bↄre gↄu mĩ̀",
+    "category": "Critique",
+    "usage_context": "Exprimer une critique"
+  },
+  {
+    "french_expression": "Loue",
+    "bariba_expression": "Gãnↄ kuu",
+    "category": "Louange",
+    "usage_context": "Encourager la louange"
+  },
+  {
+    "french_expression": "Blâme",
+    "bariba_expression": "Bↄre gↄu mĩ̀",
+    "category": "Blâme",
+    "usage_context": "Exprimer le blâme"
+  },
+  {
+    "french_expression": "Prie",
+    "bariba_expression": "Sɛri u",
+    "category": "Prière",
+    "usage_context": "Encourager la prière"
+  },
+  {
+    "french_expression": "Sacrifie",
+    "bariba_expression": "Gↄu sããre",
+    "category": "Sacrifice",
+    "usage_context": "Encourager le sacrifice"
+  },
+  {
+    "french_expression": "Bénisse",
+    "bariba_expression": "Gↄu banↄ",
+    "category": "Bénédiction",
+    "usage_context": "Encourager la bénédiction"
+  },
+  {
+    "french_expression": "Maudit",
+    "bariba_expression": "Gↄu daaru",
+    "category": "Malédiction",
+    "usage_context": "Exprimer une malédiction"
+  },
+  {
+    "french_expression": "Chante",
+    "bariba_expression": "Yeru u yeru",
+    "category": "Chant",
+    "usage_context": "Inviter à chanter"
+  },
+  {
+    "french_expression": "Danse",
+    "bariba_expression": "Gↄu u gↄu",
+    "category": "Danse",
+    "usage_context": "Inviter à danser"
+  },
+  {
+    "french_expression": "Joue de la musique",
+    "bariba_expression": "Gↄu wuru",
+    "category": "Musique",
+    "usage_context": "Inviter à jouer de la musique"
+  },
+  {
+    "french_expression": "Dessine",
+    "bariba_expression": "Sɛɛri u gↄu",
+    "category": "Art",
+    "usage_context": "Inviter à dessiner"
+  },
+  {
+    "french_expression": "Peins",
+    "bariba_expression": "Gↄu wĩi",
+    "category": "Art",
+    "usage_context": "Inviter à peindre"
+  },
+  {
+    "french_expression": "Sculpte",
+    "bariba_expression": "Kunɛ u gↄu",
+    "category": "Art",
+    "usage_context": "Inviter à sculpter"
+  },
+  {
+    "french_expression": "Tisse",
+    "bariba_expression": "Gↄu u gↄu",
+    "category": "Artisanat",
+    "usage_context": "Inviter à tisser"
+  },
+  {
+    "french_expression": "Couds",
+    "bariba_expression": "Sↄu u",
+    "category": "Couture",
+    "usage_context": "Demander de coudre"
+  },
+  {
+    "french_expression": "Cultive",
+    "bariba_expression": "Yɛru u yeru",
+    "category": "Agriculture",
+    "usage_context": "Encourager la culture"
+  },
+  {
+    "french_expression": "Plante",
+    "bariba_expression": "Sↄru u",
+    "category": "Agriculture",
+    "usage_context": "Demander de planter"
+  },
+  {
+    "french_expression": "Récolte",
+    "bariba_expression": "Gↄu u",
+    "category": "Agriculture",
+    "usage_context": "Demander de récolter"
+  },
+  {
+    "french_expression": "Arrose",
+    "bariba_expression": "Gↄu yinu",
+    "category": "Agriculture",
+    "usage_context": "Demander d'arroser"
+  },
+  {
+    "french_expression": "Sème",
+    "bariba_expression": "Sↄu u",
+    "category": "Agriculture",
+    "usage_context": "Demander de semer"
+  },
+  {
+    "french_expression": "Élève des animaux",
+    "bariba_expression": "Kunɛ u gɛru",
+    "category": "Élevage",
+    "usage_context": "Encourager l'élevage"
+  },
+  {
+    "french_expression": "Chasse",
+    "bariba_expression": "Gↄu gↄru",
+    "category": "Chasse",
+    "usage_context": "Inviter à chasser"
+  },
+  {
+    "french_expression": "Pêche",
+    "bariba_expression": "Gↄu suru",
+    "category": "Pêche",
+    "usage_context": "Inviter à pêcher"
+  },
+  {
+    "french_expression": "Nage",
+    "bariba_expression": "Gↄu yinu ku",
+    "category": "Natation",
+    "usage_context": "Inviter à nager"
+  },
+  {
+    "french_expression": "Plonge",
+    "bariba_expression": "Yiru yinu ku",
+    "category": "Plongée",
+    "usage_context": "Inviter à plonger"
+  },
+  {
+    "french_expression": "Grimpe",
+    "bariba_expression": "Yeru u",
+    "category": "Escalade",
+    "usage_context": "Inviter à grimper"
+  },
+  {
+    "french_expression": "Saute",
+    "bariba_expression": "Gↄu u",
+    "category": "Saut",
+    "usage_context": "Inviter à sauter"
+  },
+  {
+    "french_expression": "Rampe",
+    "bariba_expression": "Gↄu u",
+    "category": "Mouvement",
+    "usage_context": "Demander de ramper"
+  },
+  {
+    "french_expression": "Vole",
+    "bariba_expression": "Fuu u",
+    "category": "Vol",
+    "usage_context": "Décrire le vol"
+  },
+  {
+    "french_expression": "Tombe",
+    "bariba_expression": "Gↄu u",
+    "category": "Chute",
+    "usage_context": "Constater une chute"
+  },
+  {
+    "french_expression": "Se relève",
+    "bariba_expression": "Wↄru kaare",
+    "category": "Relèvement",
+    "usage_context": "Encourager à se relever"
+  },
+  {
+    "french_expression": "Se penche",
+    "bariba_expression": "Gↄu u",
+    "category": "Posture",
+    "usage_context": "Décrire une posture"
+  },
+  {
+    "french_expression": "S'étire",
+    "bariba_expression": "Gↄu u gↄra",
+    "category": "Étirement",
+    "usage_context": "Inviter à s'étirer"
+  },
+  {
+    "french_expression": "Se repose",
+    "bariba_expression": "Sere u",
+    "category": "Repos",
+    "usage_context": "Encourager le repos"
+  },
+  {
+    "french_expression": "Se fatigue",
+    "bariba_expression": "Wurika ka mi",
+    "category": "Fatigue",
+    "usage_context": "Constater la fatigue"
+  },
+  {
+    "french_expression": "Se lave",
+    "bariba_expression": "Waru u yↄↄbu",
+    "category": "Hygiène",
+    "usage_context": "Encourager l'hygiène"
+  },
+  {
+    "french_expression": "Se peigne",
+    "bariba_expression": "Gↄu u kunni",
+    "category": "Toilette",
+    "usage_context": "Inviter à se peigner"
+  },
+  {
+    "french_expression": "S'habille",
+    "bariba_expression": "Gↄu u kɛru",
+    "category": "Habillement",
+    "usage_context": "Inviter à s'habiller"
+  },
+  {
+    "french_expression": "Se déshabille",
+    "bariba_expression": "Tↄu u kɛru",
+    "category": "Déshabillage",
+    "usage_context": "Demander de se déshabiller"
+  },
+  {
+    "french_expression": "Se coiffe",
+    "bariba_expression": "Gↄu u kunni yↄru",
+    "category": "Coiffure",
+    "usage_context": "Inviter à se coiffer"
+  },
+  {
+    "french_expression": "Se maquille",
+    "bariba_expression": "Gↄu u yↄru yↄru",
+    "category": "Maquillage",
+    "usage_context": "Inviter au maquillage"
+  },
+  {
+    "french_expression": "Se parfume",
+    "bariba_expression": "Gↄu u yↄru kũũ",
+    "category": "Parfum",
+    "usage_context": "Inviter à se parfumer"
+  },
+  {
+    "french_expression": "Se brosse les dents",
+    "bariba_expression": "Waru u yunii",
+    "category": "Hygiène",
+    "usage_context": "Encourager l'hygiène dentaire"
+  },
+  {
+    "french_expression": "Se mouche",
+    "bariba_expression": "Gↄu u gbↄↄru",
+    "category": "Hygiène",
+    "usage_context": "Encourager l'hygiène nasale"
+  },
+  {
+    "french_expression": "Tousse",
+    "bariba_expression": "Gↄu u kↄu",
+    "category": "Santé",
+    "usage_context": "Constater la toux"
+  },
+  {
+    "french_expression": "Éternue",
+    "bariba_expression": "Gↄu u sↄↄru",
+    "category": "Santé",
+    "usage_context": "Constater l'éternuement"
+  },
+  {
+    "french_expression": "Respire",
+    "bariba_expression": "Gↄu u wĩi",
+    "category": "Respiration",
+    "usage_context": "Encourager la respiration"
+  },
+  {
+    "french_expression": "Soupire",
+    "bariba_expression": "Gↄu u wĩi gↄra",
+    "category": "Soupir",
+    "usage_context": "Constater le soupir"
+  },
+  {
+    "french_expression": "Bâille",
+    "bariba_expression": "Gↄu u yãa",
+    "category": "Bâillement",
+    "usage_context": "Constater le bâillement"
+  },
+  {
+    "french_expression": "Rit",
+    "bariba_expression": "Yĩĩru u",
+    "category": "Rire",
+    "usage_context": "Encourager le rire"
+  },
+  {
+    "french_expression": "Pleure",
+    "bariba_expression": "Kuru u",
+    "category": "Pleurs",
+    "usage_context": "Constater les pleurs"
+  },
+  {
+    "french_expression": "Souris",
+    "bariba_expression": "Yĩĩru u bↄↄku",
+    "category": "Sourire",
+    "usage_context": "Encourager le sourire"
+  },
+  {
+    "french_expression": "Fronce les sourcils",
+    "bariba_expression": "Gↄu u yãru mĩ̀",
+    "category": "Expression",
+    "usage_context": "Décrire une expression"
+  },
+  {
+    "french_expression": "Cligne des yeux",
+    "bariba_expression": "Gↄu u yãru yãru",
+    "category": "Geste",
+    "usage_context": "Décrire un geste"
+  },
+  {
+    "french_expression": "Hoche la tête",
+    "bariba_expression": "Gↄu u kunni kunni",
+    "category": "Geste",
+    "usage_context": "Décrire un geste d'approbation"
+  },
+  {
+    "french_expression": "Secoue la tête",
+    "bariba_expression": "Gↄu u kunni gↄu",
+    "category": "Geste",
+    "usage_context": "Décrire un geste de négation"
+  },
+  {
+    "french_expression": "Lève la main",
+    "bariba_expression": "Yeru u bↄↄru",
+    "category": "Geste",
+    "usage_context": "Inviter à lever la main"
+  },
+  {
+    "french_expression": "Frappe des mains",
+    "bariba_expression": "Gↄu u bↄↄru bↄↄru",
+    "category": "Geste",
+    "usage_context": "Inviter à applaudir"
+  },
+  {
+    "french_expression": "Tape du pied",
+    "bariba_expression": "Gↄu u sĩru sĩru",
+    "category": "Geste",
+    "usage_context": "Décrire un geste d'impatience"
+  },
+  {
+    "french_expression": "Croise les bras",
+    "bariba_expression": "Gↄu u bↄↄru gↄu",
+    "category": "Posture",
+    "usage_context": "Décrire une posture"
+  },
+  {
+    "french_expression": "Tends la main",
+    "bariba_expression": "Gↄu u bↄↄru gↄra",
+    "category": "Geste",
+    "usage_context": "Inviter à tendre la main"
+  },
+  {
+    "french_expression": "Serre la main",
+    "bariba_expression": "Gↄu u bↄↄru gↄu",
+    "category": "Salutation",
+    "usage_context": "Inviter à serrer la main"
+  },
+  {
+    "french_expression": "Embrasse",
+    "bariba_expression": "Gↄu u yãnu",
+    "category": "Affection",
+    "usage_context": "Inviter à embrasser"
+  },
+  {
+    "french_expression": "Caresse",
+    "bariba_expression": "Gↄu u nyeere",
+    "category": "Affection",
+    "usage_context": "Inviter à caresser"
+  },
+  {
+    "french_expression": "Enlace",
+    "bariba_expression": "Gↄu u gↄu",
+    "category": "Affection",
+    "usage_context": "Inviter à enlacer"
+  },
+  {
+    "french_expression": "Sépare-toi",
+    "bariba_expression": "Tↄu u yↄↄbu",
+    "category": "Séparation",
+    "usage_context": "Demander de se séparer"
+  },
+  {
+    "french_expression": "Réunis-toi",
+    "bariba_expression": "Gↄu u wↄro",
+    "category": "Réunion",
+    "usage_context": "Inviter à se réunir"
+  },
+  {
+    "french_expression": "Réconcilie-toi",
+    "bariba_expression": "Gↄu u yↄma dinɛ",
+    "category": "Réconciliation",
+    "usage_context": "Encourager la réconciliation"
+  },
+  {
+    "french_expression": "Dispute",
+    "bariba_expression": "Gↄu u bↄre mĩ̀",
+    "category": "Conflit",
+    "usage_context": "Constater une dispute"
+  },
+  {
+    "french_expression": "Bats-toi",
+    "bariba_expression": "Gↄu u gↄu",
+    "category": "Combat",
+    "usage_context": "Encourager le combat"
+  },
+  {
+    "french_expression": "Fuis",
+    "bariba_expression": "Tĩ u yau",
+    "category": "Fuite",
+    "usage_context": "Encourager la fuite"
+  },
+  {
+    "french_expression": "Poursuis",
+    "bariba_expression": "Tĩ u yɛru",
+    "category": "Poursuite",
+    "usage_context": "Encourager la poursuite"
+  },
+  {
+    "french_expression": "Attrape",
+    "bariba_expression": "Gↄu u gↄu",
+    "category": "Capture",
+    "usage_context": "Encourager la capture"
+  },
+  {
+    "french_expression": "Libère",
+    "bariba_expression": "Tↄu u ti",
+    "category": "Libération",
+    "usage_context": "Encourager la libération"
+  },
+  {
+    "french_expression": "Emprisonne",
+    "bariba_expression": "Gↄu u yeru ku",
+    "category": "Emprisonnement",
+    "usage_context": "Décrire l'emprisonnement"
+  },
+  {
+    "french_expression": "Juge",
+    "bariba_expression": "Gↄu u kↄu",
+    "category": "Jugement",
+    "usage_context": "Encourager le jugement"
+  },
+  {
+    "french_expression": "Condamne",
+    "bariba_expression": "Gↄu u mĩ̀",
+    "category": "Condamnation",
+    "usage_context": "Décrire la condamnation"
+  },
+  {
+    "french_expression": "Acquitte",
+    "bariba_expression": "Tↄu u ti",
+    "category": "Acquittement",
+    "usage_context": "Décrire l'acquittement"
+  },
+  {
+    "french_expression": "Témoigne",
+    "bariba_expression": "Bↄre u teerikↄↄ",
+    "category": "Témoignage",
+    "usage_context": "Encourager le témoignage"
+  },
+  {
+    "french_expression": "Ment",
+    "bariba_expression": "Bↄre u kↄↄta",
+    "category": "Mensonge",
+    "usage_context": "Constater le mensonge"
+  },
+  {
+    "french_expression": "Dis la vérité",
+    "bariba_expression": "Bↄre u teerikↄↄ",
+    "category": "Vérité",
+    "usage_context": "Encourager la vérité"
+  },
+  {
+    "french_expression": "Tais-toi",
+    "bariba_expression": "Dinɛ u",
+    "category": "Silence",
+    "usage_context": "Demander le silence"
+  },
+  {
+    "french_expression": "Parle fort",
+    "bariba_expression": "Bↄre u gↄra",
+    "category": "Volume",
+    "usage_context": "Demander de parler fort"
+  },
+  {
+    "french_expression": "Chuchote",
+    "bariba_expression": "Bↄre u nyeere",
+    "category": "Volume",
+    "usage_context": "Demander de chuchoter"
+  },
+  {
+    "french_expression": "Crie",
+    "bariba_expression": "Wĩi u gↄra",
+    "category": "Cri",
+    "usage_context": "Décrire un cri"
+  },
+  {
+    "french_expression": "Murmure",
+    "bariba_expression": "Bↄre u nyeere nyeere",
+    "category": "Murmure",
+    "usage_context": "Décrire un murmure"
+  },
+  {
+    "french_expression": "Discute",
+    "bariba_expression": "Bↄre u wↄro",
+    "category": "Discussion",
+    "usage_context": "Encourager la discussion"
+  },
+  {
+    "french_expression": "Débat",
+    "bariba_expression": "Bↄre u gↄu",
+    "category": "Débat",
+    "usage_context": "Encourager le débat"
+  },
+  {
+    "french_expression": "Argumente",
+    "bariba_expression": "Bↄre u teerikↄↄ gↄu",
+    "category": "Argumentation",
+    "usage_context": "Encourager l'argumentation"
+  },
+  {
+    "french_expression": "Convaincs",
+    "bariba_expression": "Gↄu u gↄm",
+    "category": "Conviction",
+    "usage_context": "Encourager la conviction"
+  },
+  {
+    "french_expression": "Persuade",
+    "bariba_expression": "Gↄu u gↄm yↄru",
+    "category": "Persuasion",
+    "usage_context": "Encourager la persuasion"
+  },
+  {
+    "french_expression": "Négocie",
+    "bariba_expression": "Bↄre u kↄu",
+    "category": "Négociation",
+    "usage_context": "Encourager la négociation"
+  },
+  {
+    "french_expression": "Accepte",
+    "bariba_expression": "Gↄm u eŋ",
+    "category": "Acceptation",
+    "usage_context": "Encourager l'acceptation"
+  },
+  {
+    "french_expression": "Refuse",
+    "bariba_expression": "Bↄre u ayi",
+    "category": "Refus",
+    "usage_context": "Exprimer le refus"
+  },
+  {
+    "french_expression": "Propose",
+    "bariba_expression": "Bↄre u buru",
+    "category": "Proposition",
+    "usage_context": "Encourager la proposition"
+  },
+  {
+    "french_expression": "Suggère",
+    "bariba_expression": "Bↄre u gↄu kↄma",
+    "category": "Suggestion",
+    "usage_context": "Encourager la suggestion"
+  },
+  {
+    "french_expression": "Recommande",
+    "bariba_expression": "Bↄre u yↄru",
+    "category": "Recommandation",
+    "usage_context": "Encourager la recommandation"
+  },
+  {
+    "french_expression": "Conseille",
+    "bariba_expression": "Bↄre u kↄma yↄru",
+    "category": "Conseil",
+    "usage_context": "Encourager le conseil"
+  },
+  {
+    "french_expression": "Avertis",
+    "bariba_expression": "Bↄre u kamaara",
+    "category": "Avertissement",
+    "usage_context": "Encourager l'avertissement"
+  },
+  {
+    "french_expression": "Préviens",
+    "bariba_expression": "Bↄre u kamaara yↄↄkↄ",
+    "category": "Prévention",
+    "usage_context": "Encourager la prévention"
+  },
+  {
+    "french_expression": "Avis",
+    "bariba_expression": "Kↄma gↄu",
+    "category": "Opinion",
+    "usage_context": "Donner un avis"
+  },
+  {
+    "french_expression": "Opinion",
+    "bariba_expression": "Gↄm yↄma",
+    "category": "Opinion",
+    "usage_context": "Exprimer une opinion"
+  },
+  {
+    "french_expression": "Idée",
+    "bariba_expression": "Kↄma",
+    "category": "Pensée",
+    "usage_context": "Exprimer une idée"
+  },
+  {
+    "french_expression": "Pensée",
+    "bariba_expression": "Gↄm yↄma",
+    "category": "Pensée",
+    "usage_context": "Exprimer une pensée"
+  },
+  {
+    "french_expression": "Réflexion",
+    "bariba_expression": "Gↄm yↄma gↄra",
+    "category": "Réflexion",
+    "usage_context": "Encourager la réflexion"
+  },
+  {
+    "french_expression": "Méditation",
+    "bariba_expression": "Gↄm yↄma dinɛ",
+    "category": "Méditation",
+    "usage_context": "Encourager la méditation"
+  },
+  {
+    "french_expression": "Concentration",
+    "bariba_expression": "Gↄm yↄma gↄu",
+    "category": "Concentration",
+    "usage_context": "Encourager la concentration"
+  },
+  {
+    "french_expression": "Attention",
+    "bariba_expression": "Kunnya",
+    "category": "Attention",
+    "usage_context": "Demander l'attention"
+  },
+  {
+    "french_expression": "Distraction",
+    "bariba_expression": "Gↄm yↄma tↄ",
+    "category": "Distraction",
+    "usage_context": "Constater la distraction"
+  },
+  {
+    "french_expression": "Concentration",
+    "bariba_expression": "Gↄm yↄma wↄro",
+    "category": "Focus",
+    "usage_context": "Encourager le focus"
+  },
+  {
+    "french_expression": "Observe",
+    "bariba_expression": "Bↄru u kunnya",
+    "category": "Observation",
+    "usage_context": "Encourager l'observation"
+  },
+  {
+    "french_expression": "Surveille",
+    "bariba_expression": "Bↄru u kunɛ",
+    "category": "Surveillance",
+    "usage_context": "Encourager la surveillance"
+  },
+  {
+    "french_expression": "Inspecte",
+    "bariba_expression": "Bↄru u gↄu",
+    "category": "Inspection",
+    "usage_context": "Encourager l'inspection"
+  },
+  {
+    "french_expression": "Examine",
+    "bariba_expression": "Bↄru u kↄu",
+    "category": "Examen",
+    "usage_context": "Encourager l'examen"
+  },
+  {
+    "french_expression": "Vérifie",
+    "bariba_expression": "Bↄru u teerikↄↄ",
+    "category": "Vérification",
+    "usage_context": "Encourager la vérification"
+  },
+  {
+    "french_expression": "Contrôle",
+    "bariba_expression": "Kunɛ u gↄu",
+    "category": "Contrôle",
+    "usage_context": "Encourager le contrôle"
+  },
+  {
+    "french_expression": "Compare",
+    "bariba_expression": "Bↄru u gↄu kaaru",
+    "category": "Comparaison",
+    "usage_context": "Encourager la comparaison"
+  },
+  {
+    "french_expression": "Différencie",
+    "bariba_expression": "Gↄu u tↄ kaaru",
+    "category": "Différenciation",
+    "usage_context": "Encourager la différenciation"
+  },
+  {
+    "french_expression": "Identifie",
+    "bariba_expression": "Gↄu u yↄↄnↄ",
+    "category": "Identification",
+    "usage_context": "Encourager l'identification"
+  },
+  {
+    "french_expression": "Reconnais",
+    "bariba_expression": "Gↄu u kↄma kaare",
+    "category": "Reconnaissance",
+    "usage_context": "Encourager la reconnaissance"
+  },
+  {
+    "french_expression": "Distingue",
+    "bariba_expression": "Gↄu u tↄ yↄru",
+    "category": "Distinction",
+    "usage_context": "Encourager la distinction"
+  },
+  {
+    "french_expression": "Classifie",
+    "bariba_expression": "Gↄu u yeru kaaru",
+    "category": "Classification",
+    "usage_context": "Encourager la classification"
+  },
+  {
+    "french_expression": "Catégorise",
+    "bariba_expression": "Gↄu u wↄro kaaru",
+    "category": "Catégorisation",
+    "usage_context": "Encourager la catégorisation"
+  },
+  {
+    "french_expression": "Organise",
+    "bariba_expression": "Gↄu u yeru yↄru",
+    "category": "Organisation",
+    "usage_context": "Encourager l'organisation"
+  },
+  {
+    "french_expression": "Range",
+    "bariba_expression": "Yau u yeru",
+    "category": "Rangement",
+    "usage_context": "Encourager le rangement"
+  },
+  {
+    "french_expression": "Trie",
+    "bariba_expression": "Gↄu u tↄ kaaru",
+    "category": "Tri",
+    "usage_context": "Encourager le tri"
+  },
+  {
+    "french_expression": "Filtre",
+    "bariba_expression": "Gↄu u tↄ yↄru",
+    "category": "Filtrage",
+    "usage_context": "Encourager le filtrage"
+  },
+  {
+    "french_expression": "Sélectionne",
+    "bariba_expression": "Gↄu u yↄru",
+    "category": "Sélection",
+    "usage_context": "Encourager la sélection"
+  },
+  {
+    "french_expression": "Choisis",
+    "bariba_expression": "Gↄu u yↄru kaaru",
+    "category": "Choix",
+    "usage_context": "Encourager le choix"
+  },
+  {
+    "french_expression": "Préfère",
+    "bariba_expression": "Ma u yↄru",
+    "category": "Préférence",
+    "usage_context": "Exprimer la préférence"
+  },
+  {
+    "french_expression": "Aime",
+    "bariba_expression": "Ma u",
+    "category": "Affection",
+    "usage_context": "Exprimer l'affection"
+  },
+  {
+    "french_expression": "Déteste",
+    "bariba_expression": "Ma u mĩ̀",
+    "category": "Aversion",
+    "usage_context": "Exprimer l'aversion"
+  },
+  {
+    "french_expression": "Adore",
+    "bariba_expression": "Ma u bure",
+    "category": "Adoration",
+    "usage_context": "Exprimer l'adoration"
+  },
+  {
+    "french_expression": "Apprécie",
+    "bariba_expression": "Gↄu u yↄru",
+    "category": "Appréciation",
+    "usage_context": "Exprimer l'appréciation"
+  },
+  {
+    "french_expression": "Respecte",
+    "bariba_expression": "Gↄu u gãnↄ",
+    "category": "Respect",
+    "usage_context": "Encourager le respect"
+  },
+  {
+    "french_expression": "Honore",
+    "bariba_expression": "Gↄu u gãnↄ bure",
+    "category": "Honneur",
+    "usage_context": "Encourager l'honneur"
+  },
+  {
+    "french_expression": "Vénère",
+    "bariba_expression": "Gↄu u gãnↄ kuu",
+    "category": "Vénération",
+    "usage_context": "Encourager la vénération"
+  },
+  {
+    "french_expression": "Révère",
+    "bariba_expression": "Gↄu u gãnↄ gↄra",
+    "category": "Révérence",
+    "usage_context": "Encourager la révérence"
+  },
+  {
+    "french_expression": "Admire",
+    "bariba_expression": "Bↄru u gãnↄ",
+    "category": "Admiration",
+    "usage_context": "Exprimer l'admiration"
+  },
+  {
+    "french_expression": "Envie",
+    "bariba_expression": "Ma u yↄru mĩ̀",
+    "category": "Envie",
+    "usage_context": "Exprimer l'envie"
+  },
+  {
+    "french_expression": "Jalouse",
+    "bariba_expression": "Yↄma u ropↄ",
+    "category": "Jalousie",
+    "usage_context": "Exprimer la jalousie"
+  },
+  {
+    "french_expression": "Rivalise",
+    "bariba_expression": "Gↄu u wↄro",
+    "category": "Rivalité",
+    "usage_context": "Encourager la rivalité"
+  },
+  {
+    "french_expression": "Compétit",
+    "bariba_expression": "Gↄu u gↄu kaaru",
+    "category": "Compétition",
+    "usage_context": "Encourager la compétition"
+  },
+  {
+    "french_expression": "Gagne",
+    "bariba_expression": "Gↄu u yↄru",
+    "category": "Victoire",
+    "usage_context": "Célébrer la victoire"
+  },
+  {
+    "french_expression": "Perds",
+    "bariba_expression": "Tↄu u mĩ̀",
+    "category": "Défaite",
+    "usage_context": "Constater la défaite"
+  },
+  {
+    "french_expression": "Triomphe",
+    "bariba_expression": "Gↄu u yↄru gↄra",
+    "category": "Triomphe",
+    "usage_context": "Célébrer le triomphe"
+  },
+  {
+    "french_expression": "Échoue",
+    "bariba_expression": "Tↄu u kayu",
+    "category": "Échec",
+    "usage_context": "Constater l'échec"
+  },
+  {
+    "french_expression": "Réussis",
+    "bariba_expression": "Gↄu u yↄru",
+    "category": "Réussite",
+    "usage_context": "Célébrer la réussite"
+  },
+  {
+    "french_expression": "Persévère",
+    "bariba_expression": "Yɛru u gↄↄ",
+    "category": "Persévérance",
+    "usage_context": "Encourager la persévérance"
+  },
+  {
+    "french_expression": "Abandonne",
+    "bariba_expression": "Ti u tↄ",
+    "category": "Abandon",
+    "usage_context": "Constater l'abandon"
+  },
+  {
+    "french_expression": "Insiste",
+    "bariba_expression": "Yɛru u wurika",
+    "category": "Insistance",
+    "usage_context": "Encourager l'insistance"
+  },
+  {
+    "french_expression": "Renonce",
+    "bariba_expression": "Ti u yↄↄkↄ",
+    "category": "Renoncement",
+    "usage_context": "Constater le renoncement"
+  },
+  {
+    "french_expression": "Cède",
+    "bariba_expression": "Ti u mↄↄ",
+    "category": "Cession",
+    "usage_context": "Constater la cession"
+  },
+  {
+    "french_expression": "Résiste",
+    "bariba_expression": "Gↄu u wurika",
+    "category": "Résistance",
+    "usage_context": "Encourager la résistance"
+  },
+  {
+    "french_expression": "Lutte",
+    "bariba_expression": "Gↄu u gↄu",
+    "category": "Lutte",
+    "usage_context": "Encourager la lutte"
+  },
+  {
+    "french_expression": "Combat",
+    "bariba_expression": "Gↄu u gↄu gↄra",
+    "category": "Combat",
+    "usage_context": "Encourager le combat"
+  },
+  {
+    "french_expression": "Défends",
+    "bariba_expression": "Kunɛ u yↄↄbu",
+    "category": "Défense",
+    "usage_context": "Encourager la défense"
+  },
+  {
+    "french_expression": "Attaque",
+    "bariba_expression": "Gↄu u gↄu",
+    "category": "Attaque",
+    "usage_context": "Décrire l'attaque"
+  },
+  {
+    "french_expression": "Protège",
+    "bariba_expression": "Kunɛ u",
+    "category": "Protection",
+    "usage_context": "Encourager la protection"
+  },
+  {
+    "french_expression": "Sauve",
+    "bariba_expression": "Gↄu u ti",
+    "category": "Sauvetage",
+    "usage_context": "Encourager le sauvetage"
+  },
+  {
+    "french_expression": "Sécurise",
+    "bariba_expression": "Kunɛ u yↄru",
+    "category": "Sécurité",
+    "usage_context": "Encourager la sécurité"
+  },
+  {
+    "french_expression": "Menace",
+    "bariba_expression": "Bↄre u kamaara",
+    "category": "Menace",
+    "usage_context": "Décrire la menace"
+  },
+  {
+    "french_expression": "Effraie",
+    "bariba_expression": "Gↄu u kamaara",
+    "category": "Peur",
+    "usage_context": "Provoquer la peur"
+  },
+  {
+    "french_expression": "Rassure",
+    "bariba_expression": "Gↄu u yↄma dinɛ",
+    "category": "Rassurance",
+    "usage_context": "Encourager la rassurance"
+  },
+  {
+    "french_expression": "Tranquillise",
+    "bariba_expression": "Gↄu u yↄma yↄru",
+    "category": "Tranquillité",
+    "usage_context": "Encourager la tranquillité"
+  },
+  {
+    "french_expression": "Calme",
+    "bariba_expression": "Dinɛ u yↄma",
+    "category": "Calme",
+    "usage_context": "Encourager le calme"
+  },
+  {
+    "french_expression": "Agite",
+    "bariba_expression": "Gↄu u yↄma mĩ̀",
+    "category": "Agitation",
+    "usage_context": "Constater l'agitation"
+  },
+  {
+    "french_expression": "Excite",
+    "bariba_expression": "Gↄu u yↄma yↄru",
+    "category": "Excitation",
+    "usage_context": "Provoquer l'excitation"
+  },
+  {
+    "french_expression": "Stimule",
+    "bariba_expression": "Gↄu u wurika",
+    "category": "Stimulation",
+    "usage_context": "Encourager la stimulation"
+  },
+  {
+    "french_expression": "Motive",
+    "bariba_expression": "Gↄu u wurika yↄru",
+    "category": "Motivation",
+    "usage_context": "Encourager la motivation"
+  },
+  {
+    "french_expression": "Inspire",
+    "bariba_expression": "Gↄu u kↄma yↄru",
+    "category": "Inspiration",
+    "usage_context": "Encourager l'inspiration"
+  },
+  {
+    "french_expression": "Influence",
+    "bariba_expression": "Gↄu u yↄma",
+    "category": "Influence",
+    "usage_context": "Exercer l'influence"
+  },
+  {
+    "french_expression": "Impressionne",
+    "bariba_expression": "Gↄu u gãnↄ",
+    "category": "Impression",
+    "usage_context": "Faire impression"
+  },
+  {
+    "french_expression": "Étonne",
+    "bariba_expression": "Gↄu u gãnↄ gↄra",
+    "category": "Étonnement",
+    "usage_context": "Provoquer l'étonnement"
+  },
+  {
+    "french_expression": "Surprends",
+    "bariba_expression": "Gↄu u yↄma tↄↄ",
+    "category": "Surprise",
+    "usage_context": "Provoquer la surprise"
+  },
+  {
+    "french_expression": "Choque",
+    "bariba_expression": "Gↄu u yↄma mĩ̀ gↄra",
+    "category": "Choc",
+    "usage_context": "Provoquer le choc"
+  },
+  {
+    "french_expression": "Scandalise",
+    "bariba_expression": "Gↄu u mĩ̀ gↄra",
+    "category": "Scandale",
+    "usage_context": "Provoquer le scandale"
+  }
+]

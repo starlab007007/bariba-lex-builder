@@ -1,0 +1,31 @@
+{
+  "id": "pack_stickers_cta_blink_v1",
+  "type": "sticker_pack",
+  "items": [
+    {
+      "id": "cta_like",
+      "src": "/templates/assets/stickers/cta_like.webp",
+      "defaultAnim": { "name": "blink", "speed": 1.2, "loop": true }
+    },
+    {
+      "id": "cta_share",
+      "src": "/templates/assets/stickers/cta_share.webp",
+      "defaultAnim": { "name": "blink", "speed": 1.2, "loop": true }
+    },
+    {
+      "id": "cta_follow",
+      "src": "/templates/assets/stickers/cta_follow.webp",
+      "defaultAnim": { "name": "pulse", "speed": 1.0, "loop": true }
+    },
+    {
+      "id": "cta_comment",
+      "src": "/templates/assets/stickers/cta_comment.webp",
+      "defaultAnim": { "name": "bounce", "speed": 0.8, "loop": true }
+    },
+    {
+      "id": "cta_duo",
+      "src": "/templates/assets/stickers/cta_duo.webp",
+      "defaultAnim": { "name": "wiggle", "speed": 1.0, "loop": true }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+services:
+  react-app-bariba:
+    build:
+      context: .
+      args:
+        VITE_BUILD_SHA: ${VITE_BUILD_SHA:-dev}
+        VITE_BUILD_TIME: ${VITE_BUILD_TIME:-unknown}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    container_name: react-app-bariba-js
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.react-app-bariba.rule=Host(`fitila.bj`)"
+      - "traefik.http.routers.react-app-bariba.entrypoints=websecure"
+      - "traefik.http.routers.react-app-bariba.tls.certresolver=myresolver"
+      - "traefik.http.services.react-app-bariba.loadbalancer.server.port=80"
+      - "traefik.port=80"
+
+
+    ports:
+      - 8085:80
+    networks:
+      - web
+
+
+networks:
+  web:
+    external: true

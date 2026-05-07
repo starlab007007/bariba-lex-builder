@@ -1,0 +1,56 @@
+{
+  "id": "year_hero",
+  "name": "Year Hero 2026",
+  "description": "Gros chiffres rouges avec contour blanc et ombre portée",
+  "version": "1.0.0",
+  
+  "font": {
+    "family": "Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif",
+    "size": 180,
+    "weight": 900,
+    "style": "normal"
+  },
+  
+  "colors": {
+    "fill": "#FF0000",
+    "stroke": "#FFFFFF",
+    "shadow": "rgba(0,0,0,0.5)"
+  },
+  
+  "stroke": {
+    "width": 8,
+    "join": "round"
+  },
+  
+  "shadow": {
+    "offsetX": 4,
+    "offsetY": 4,
+    "blur": 15,
+    "color": "rgba(0,0,0,0.6)"
+  },
+  
+  "glow": {
+    "enabled": true,
+    "color": "rgba(255,0,0,0.4)",
+    "blur": 30,
+    "pulse": {
+      "enabled": true,
+      "minOpacity": 0.3,
+      "maxOpacity": 0.6,
+      "duration": 0.5
+    }
+  },
+  
+  "animation": {
+    "entrance": "scale_fade_in",
+    "entranceDuration": 0.6,
+    "easing": "cubic-bezier(0.34,1.56,0.64,1)",
+    "beatSync": true
+  },
+  
+  "beatSync": {
+    "property": "scale",
+    "range": [1.0, 1.08],
+    "intensity": 0.6
+  }
+}

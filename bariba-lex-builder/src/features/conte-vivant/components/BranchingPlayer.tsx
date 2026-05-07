@@ -1,0 +1,367 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
+import KenBurnsPhoto from './KenBurnsPhoto';
+import AudioWaveBar from './AudioWaveBar';
+import ProgressDots from './ProgressDots';
+import ChoiceOverlay from './ChoiceOverlay';
+import EndingCard from './EndingCard';
+import SegmentTransition from './SegmentTransition';
+import type { StoryGraph, StorySegment, StoryChoice } from '../types/story.types';
+import { useBranchPreload } from '../hooks/useBranchPreload';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
+
+interface BranchingPlayerProps {
+  graph: StoryGraph;
+  storyId?: string;
+  onClose: () => void;
+  onComplete?: (pathTaken: string[], endingsUnlocked: string[]) => void;
+}
+
+export default function BranchingPlayer({ graph, onClose }: BranchingPlayerProps) {
+  const [currentId, setCurrentId] = useState(graph.entry_segment);
+  const [segKey, setSegKey] = useState(0);
+  const [phase, setPhase] = useState<'playing' | 'choosing' | 'transitioning' | 'ending'>('playing');
+  const [path, setPath] = useState<string[]>([]);
+  const [endingsFound, setEndingsFound] = useState<Array<{ icon: string; name: string }>>([]);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [slideshowIdx, setSlideshowIdx] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const slideshowRef = useRef<ReturnType<typeof setInterval>>();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const narrationRef = useRef<HTMLAudioElement>(null);
+  const bgMusicRef = useRef<HTMLAudioElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioUnlockedRef = useRef(false);
+  const isVisible = usePageVisibility();
+  const { preloadSegments, getCachedUrl, cancelAll } = useBranchPreload();
+
+  const seg = graph.segments[currentId];
+  const totalEndings = Object.values(graph.segments).filter(s => s.is_ending).length;
+  const maxDepth = Math.max(3, path.length + 2);
+
+  // Unlock AudioContext on first user gesture
+  const unlockAudio = useCallback(() => {
+    if (audioUnlockedRef.current) return;
+    audioUnlockedRef.current = true;
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContext();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+      // Retry playing audio after unlock
+      const narrationUrl = seg?.narrator_audio_url || seg?.audio_url;
+      if (narrationRef.current && narrationUrl) {
+        narrationRef.current.load();
+        narrationRef.current.play().catch(e => console.warn('[ConteVivant] Audio play after unlock failed:', e));
+      }
+      if (bgMusicRef.current && bgMusicRef.current.src) {
+        bgMusicRef.current.play().catch(e => console.warn('[ConteVivant] Music play after unlock failed:', e));
+      }
+    } catch (e) {
+      console.warn('[ConteVivant] AudioContext unlock error:', e);
+    }
+  }, [seg]);
+
+  // Audio playback for narration + background music
+  useEffect(() => {
+    if (phase !== 'playing' || !seg) return;
+
+    const narrationUrl = seg.narrator_audio_url || seg.audio_url;
+    if (narrationRef.current) {
+      if (narrationUrl) {
+        narrationRef.current.src = narrationUrl;
+        narrationRef.current.load();
+        narrationRef.current.play().catch(e => console.warn('[ConteVivant] Narration autoplay blocked:', e));
+      } else {
+        narrationRef.current.pause();
+        narrationRef.current.removeAttribute('src');
+      }
+    }
+
+    if (bgMusicRef.current) {
+      const musicUrl = seg.background_music_url;
+      if (musicUrl && bgMusicRef.current.src !== musicUrl) {
+        bgMusicRef.current.src = musicUrl;
+        bgMusicRef.current.loop = true;
+        bgMusicRef.current.volume = 0.25;
+        bgMusicRef.current.load();
+        bgMusicRef.current.play().catch(e => console.warn('[ConteVivant] Music autoplay blocked:', e));
+      } else if (!musicUrl) {
+        bgMusicRef.current.pause();
+        bgMusicRef.current.removeAttribute('src');
+      }
+    }
+
+    // Preload next segments' media for instant transitions
+    if (seg.is_choice_point && seg.choices?.length) {
+      const getVideoUrl = (segId: string) => {
+        const nextSeg = graph.segments[segId];
+        return nextSeg?.media_url || nextSeg?.video_url || nextSeg?.image_urls?.[0];
+      };
+      preloadSegments(seg.choices as StoryChoice[], getVideoUrl);
+    }
+
+    return () => {
+      // Cleanup audio sources on segment change to free memory
+      if (narrationRef.current) {
+        narrationRef.current.pause();
+        narrationRef.current.src = '';
+        narrationRef.current.load();
+      }
+    };
+  }, [currentId, phase, seg, preloadSegments, graph.segments]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      narrationRef.current?.pause();
+      if (narrationRef.current) { narrationRef.current.src = ''; narrationRef.current.load(); }
+      bgMusicRef.current?.pause();
+      if (bgMusicRef.current) { bgMusicRef.current.src = ''; bgMusicRef.current.load(); }
+      audioCtxRef.current?.close().catch(() => {});
+      cancelAll();
+    };
+  }, [cancelAll]);
+
+  // Advance segment when narration audio ends (before timer)
+  const advanceSegment = useCallback(() => {
+    if (phase !== 'playing' || !seg) return;
+    if (seg.is_ending) {
+      setPhase('ending');
+      trackEnding(seg);
+    } else if (seg.is_choice_point && seg.choices?.length) {
+      setPhase('choosing');
+      try { navigator.vibrate?.(100); } catch {}
+    } else {
+      // Dead-end: treat as implicit ending
+      setPhase('ending');
+      trackEnding(seg);
+    }
+  }, [phase, seg]);
+
+  // Unified timer for ALL segment types (photo + video)
+  useEffect(() => {
+    if (phase !== 'playing' || !seg) return;
+    clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(() => {
+      advanceSegment();
+    }, (seg.duration || 12) * 1000);
+
+    // Also listen for narration end to advance early
+    const narration = narrationRef.current;
+    const onNarrationEnd = () => {
+      clearTimeout(timerRef.current);
+      advanceSegment();
+    };
+    if (narration) {
+      narration.addEventListener('ended', onNarrationEnd);
+    }
+
+    return () => {
+      clearTimeout(timerRef.current);
+      narration?.removeEventListener('ended', onNarrationEnd);
+    };
+  }, [currentId, phase, seg, advanceSegment]);
+
+  const trackEnding = useCallback((s: StorySegment) => {
+    if (s.ending_badge || s.ending_title) {
+      setEndingsFound(prev => {
+        const name = s.ending_title || 'Fin';
+        if (prev.some(e => e.name === name)) return prev;
+        return [...prev, { icon: s.ending_badge || '🏁', name }];
+      });
+    }
+  }, []);
+
+  const goToSegment = useCallback((nextId: string) => {
+    setPhase('transitioning');
+    setTimeout(() => {
+      setPath(p => [...p, currentId]);
+      setCurrentId(nextId);
+      setSegKey(k => k + 1);
+      setPhase('playing');
+      setIsPlaying(true);
+    }, 300);
+  }, [currentId]);
+
+  const handleChoice = useCallback((choiceId: string) => {
+    const choice = seg?.choices?.find(c => c.id === choiceId);
+    if (choice) {
+      try { navigator.vibrate?.(50); } catch {}
+      goToSegment(choice.next_segment);
+    }
+  }, [seg, goToSegment]);
+
+  const handleTimeout = useCallback(() => {
+    const def = seg?.choices?.find(c => c.is_default) || seg?.choices?.[0];
+    if (def) goToSegment(def.next_segment);
+  }, [seg, goToSegment]);
+
+  const handleReplay = () => {
+    setCurrentId(graph.entry_segment);
+    setPath([]);
+    setSegKey(k => k + 1);
+    setPhase('playing');
+    setIsPlaying(true);
+  };
+
+  const handleTap = () => {
+    unlockAudio();
+    if (phase === 'playing') {
+      setIsPlaying(p => {
+        if (videoRef.current) {
+          if (p) videoRef.current.pause();
+          else videoRef.current.play();
+        }
+        if (narrationRef.current) {
+          if (p) narrationRef.current.pause();
+          else narrationRef.current.play().catch(() => {});
+        }
+        return !p;
+      });
+    }
+  };
+
+  // Slideshow for multiple image_urls
+  const imageUrls = seg?.image_urls || [];
+  const hasSlideshow = imageUrls.length > 1;
+
+  useEffect(() => {
+    if (!hasSlideshow || phase !== 'playing') return;
+    setSlideshowIdx(0);
+    const interval = Math.max(3000, ((seg?.duration || 12) * 1000) / imageUrls.length);
+    slideshowRef.current = setInterval(() => {
+      setSlideshowIdx(prev => (prev + 1) % imageUrls.length);
+    }, interval);
+    return () => { clearInterval(slideshowRef.current); };
+  }, [currentId, phase, hasSlideshow, imageUrls.length, seg?.duration]);
+
+  // Pause/resume on tab visibility
+  useEffect(() => {
+    if (!isVisible) {
+      videoRef.current?.pause();
+      narrationRef.current?.pause();
+      bgMusicRef.current?.pause();
+    } else if (isPlaying && phase === 'playing') {
+      videoRef.current?.play().catch(() => {});
+      narrationRef.current?.play().catch(() => {});
+      bgMusicRef.current?.play().catch(() => {});
+    }
+  }, [isVisible, isPlaying, phase]);
+
+  // Get media URL - check preload cache first, then all possible sources
+  const currentSlideUrl = hasSlideshow ? imageUrls[slideshowIdx] : undefined;
+  const rawMediaUrl = seg?.media_url || seg?.video_url || seg?.image_urls?.[0];
+  const mediaUrl = currentSlideUrl || getCachedUrl(currentId) || rawMediaUrl;
+  const isVideo = seg?.mediaType === 'video' || !!seg?.video_url || (typeof mediaUrl === 'string' && /\.(mp4|webm|mov)/i.test(mediaUrl));
+
+  if (!seg) return null;
+
+  return (
+    <div
+      className="relative w-full h-full overflow-hidden"
+      style={{ backgroundColor: '#08080c' }}
+      onClick={handleTap}
+    >
+      {/* Close button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-4 left-4 z-[60] w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center"
+      >
+        <X className="w-5 h-5 text-white" />
+      </button>
+
+      {/* Progress dots */}
+      <ProgressDots current={path.length} total={maxDepth} />
+
+      {/* Media layer */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={segKey}
+          initial={{ opacity: 0 }}
+          animate={{
+            opacity: 1,
+            scale: phase === 'choosing' ? 0.85 : 1,
+            filter: phase === 'choosing' ? 'blur(4px)' : 'blur(0px)',
+          }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="absolute inset-0"
+        >
+          {isVideo && mediaUrl ? (
+            <video
+              ref={videoRef}
+              src={mediaUrl}
+              className="w-full h-full object-cover"
+              autoPlay
+              playsInline
+              muted
+            />
+          ) : mediaUrl ? (
+            <KenBurnsPhoto src={mediaUrl} segKey={segKey} />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0f0f18, #161622)' }}>
+              <span className="text-6xl">{seg.ending_badge || '📖'}</span>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Dark overlay for choices */}
+      <AnimatePresence>
+        {phase === 'choosing' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[35] bg-black/40"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Audio wave bar */}
+      <AudioWaveBar isPlaying={isPlaying && phase === 'playing'} />
+
+      {/* Choice overlay */}
+      <AnimatePresence>
+        {phase === 'choosing' && seg.choices && seg.choices.length > 0 && (
+          <ChoiceOverlay
+            choices={seg.choices}
+            onChoice={handleChoice}
+            onTimeout={handleTimeout}
+            timerDuration={5}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Transition */}
+      <SegmentTransition show={phase === 'transitioning'} onMidpoint={() => {}} />
+
+      {/* Audio elements (hidden) */}
+      <audio ref={narrationRef} preload="auto" />
+      <audio ref={bgMusicRef} preload="auto" />
+
+      {/* Ending */}
+      <AnimatePresence>
+        {phase === 'ending' && (
+          <EndingCard
+            badge={{ icon: seg.ending_badge || '🏆', name: seg.ending_title || 'Fin' }}
+            totalEndings={totalEndings}
+            discoveredEndings={endingsFound}
+            onReplay={handleReplay}
+            onShare={() => {
+              if (navigator.share) {
+                navigator.share({ title: 'Conte Vivant', text: `J'ai obtenu le badge ${seg.ending_badge} !` }).catch(() => {});
+              }
+            }}
+            onNext={onClose}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

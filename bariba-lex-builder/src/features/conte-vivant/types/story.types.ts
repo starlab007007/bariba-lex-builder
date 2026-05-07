@@ -1,0 +1,130 @@
+/**
+ * Conte Vivant - Types pour le storytelling interactif à embranchements
+ */
+
+export interface StoryChoice {
+  id: string;
+  label: string;
+  icon: string;
+  next_segment: string;
+  is_default: boolean;
+  color?: string;
+  position?: 'left' | 'right' | 'center';
+}
+
+export interface StorySegment {
+  id: string;
+  title: string;
+  audio_url?: string;
+  video_url?: string;
+  image_urls?: string[];
+  duration: number; // seconds
+  is_choice_point: boolean;
+  choices: StoryChoice[];
+  is_ending: boolean;
+  ending_badge?: string;
+  ending_title?: string;
+  text_content?: string;
+  narrator_style?: string;
+  mediaType?: 'photo' | 'video';
+  media_url?: string;
+  narrator_audio_url?: string;
+  choice_audio_url?: string;
+  background_music_url?: string;
+}
+
+export interface StoryGraph {
+  entry_segment: string;
+  segments: Record<string, StorySegment>;
+}
+
+export interface ConteVivantStory {
+  id: string;
+  creator_id: string;
+  title: string;
+  description?: string;
+  languages: string[];
+  graph: StoryGraph;
+  status: 'draft' | 'published';
+  total_segments: number;
+  total_endings: number;
+  thumbnail_url?: string;
+  created_at: string;
+  published_at?: string;
+  updated_at: string;
+}
+
+export interface ConteVivantProgress {
+  id: string;
+  user_id: string;
+  story_id: string;
+  path_taken: string[];
+  choices: Record<string, string>;
+  endings_unlocked: string[];
+  completed_at?: string;
+  replay_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConteVivantVote {
+  id: string;
+  session_id: string;
+  story_id: string;
+  segment_id: string;
+  results: Record<string, number>;
+  winner?: string;
+  voter_count: number;
+  resolved_at?: string;
+  created_at: string;
+}
+
+// Builder step types
+export type BuilderStep = 
+  | 'intro' 
+  | 'choices' 
+  | 'branches' 
+  | 'endings' 
+  | 'preview' 
+  | 'publish';
+
+export type NarratorVoice = 'announcer' | 'narrator' | 'female' | 'alloy';
+
+export const NARRATOR_VOICES: { key: NarratorVoice; label: string; description: string }[] = [
+  { key: 'narrator', label: '🎙️ Timothy', description: 'Narrateur masculin' },
+  { key: 'announcer', label: '📢 Mark', description: 'Présentateur' },
+  { key: 'female', label: '👩 Sarah', description: 'Narratrice' },
+  { key: 'alloy', label: '🗣️ Alex', description: 'Voix neutre' },
+];
+
+export interface SegmentDraft {
+  id: string;
+  title: string;
+  text_content: string;
+  audio_blob?: Blob;
+  audio_url?: string;
+  image_urls: string[];
+  duration: number;
+  is_ending: boolean;
+  ending_badge?: string;
+  ending_title?: string;
+  mediaType?: 'photo' | 'video';
+  media_url?: string;
+  narrator_audio_blob?: Blob;
+  narrator_audio_url?: string;
+  voice?: NarratorVoice;
+}
+
+export interface ChoiceDraft {
+  id: string;
+  label: string;
+  icon: string;
+  is_default: boolean;
+}
+
+export interface BranchDraft {
+  choice: ChoiceDraft;
+  segment: SegmentDraft;
+  sub_choices?: ChoiceDraft[];
+  sub_branches?: { choice: ChoiceDraft; segment: SegmentDraft }[];
+}

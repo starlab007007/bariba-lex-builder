@@ -1,0 +1,882 @@
+{
+  "system_configuration": {
+    "gamification": {
+      "levels": [
+        {
+          "level": 1,
+          "name": "Débutant",
+          "name_bariba": "Tɛntɛmɑ",
+          "min_xp": 0,
+          "icon": "🌱",
+          "color": "green",
+          "unlocks": ["basic_themes", "audio_lessons"]
+        },
+        {
+          "level": 2,
+          "name": "Apprenti",
+          "name_bariba": "Kɑɑkumɑ",
+          "min_xp": 500,
+          "icon": "🌿",
+          "color": "green",
+          "unlocks": ["audio_quiz", "voice_recognition"]
+        },
+        {
+          "level": 3,
+          "name": "Pratiquant",
+          "name_bariba": "Sõmbumɑ",
+          "min_xp": 1500,
+          "icon": "🌳",
+          "color": "blue",
+          "unlocks": ["daily_challenges", "group_study"]
+        },
+        {
+          "level": 4,
+          "name": "Intermédiaire",
+          "name_bariba": "Dɔɔbumɑ",
+          "min_xp": 3000,
+          "icon": "🎋",
+          "color": "blue",
+          "unlocks": ["conversations", "cultural_lessons"]
+        },
+        {
+          "level": 5,
+          "name": "Avancé",
+          "name_bariba": "Tubumɑ",
+          "min_xp": 5000,
+          "icon": "🏆",
+          "color": "purple",
+          "unlocks": ["proverbs", "idioms_advanced"]
+        },
+        {
+          "level": 6,
+          "name": "Expert",
+          "name_bariba": "Kãatɔ",
+          "min_xp": 8000,
+          "icon": "👑",
+          "color": "gold",
+          "unlocks": ["competition_mode", "mentor_status"]
+        },
+        {
+          "level": 7,
+          "name": "Maître",
+          "name_bariba": "Sunɔ",
+          "min_xp": 12000,
+          "icon": "⭐",
+          "color": "orange",
+          "unlocks": ["certification", "advanced_ai_chat"]
+        },
+        {
+          "level": 8,
+          "name": "Sage",
+          "name_bariba": "Dɔɔnugberun",
+          "min_xp": 20000,
+          "icon": "✨",
+          "color": "pink",
+          "unlocks": ["all_features", "mentor_program"]
+        }
+      ],
+      
+      "badges": [
+        {
+          "id": "first_lesson",
+          "name": "Premier Pas",
+          "name_bariba": "Gbunɑɑri tɛntɛmɑ",
+          "icon": "🎯",
+          "description": "Complète ta première leçon",
+          "requirement": {
+            "type": "lessons_completed",
+            "value": 1
+          },
+          "xp_reward": 50,
+          "shareable": true
+        },
+        {
+          "id": "week_streak",
+          "name": "Régularité",
+          "name_bariba": "Baabɑɑ gbungbunduu",
+          "icon": "🔥",
+          "description": "7 jours d'affilée",
+          "requirement": {
+            "type": "streak_days",
+            "value": 7
+          },
+          "xp_reward": 100,
+          "shareable": true
+        },
+        {
+          "id": "fast_learner",
+          "name": "Rapide",
+          "name_bariba": "Tubuɑ yɑɑyɑɑ",
+          "icon": "⚡",
+          "description": "10 leçons en un jour",
+          "requirement": {
+            "type": "lessons_in_day",
+            "value": 10
+          },
+          "xp_reward": 150,
+          "shareable": true
+        },
+        {
+          "id": "master_100",
+          "name": "Centurion",
+          "name_bariba": "Kεmɑ kpɑɑ",
+          "icon": "💯",
+          "description": "100 mots appris",
+          "requirement": {
+            "type": "words_mastered",
+            "value": 100
+          },
+          "xp_reward": 200,
+          "shareable": true
+        },
+        {
+          "id": "perfect_score",
+          "name": "Parfait",
+          "name_bariba": "Sɑ̃ɑtɔ",
+          "icon": "✨",
+          "description": "10 exercices parfaits",
+          "requirement": {
+            "type": "perfect_exercises",
+            "value": 10
+          },
+          "xp_reward": 150,
+          "shareable": true
+        },
+        {
+          "id": "social_butterfly",
+          "name": "Social",
+          "name_bariba": "Bɛɛkɑɑbumɑ",
+          "icon": "🦋",
+          "description": "Partage 5 fois",
+          "requirement": {
+            "type": "shares",
+            "value": 5
+          },
+          "xp_reward": 100,
+          "shareable": true
+        },
+        {
+          "id": "cultural_expert",
+          "name": "Expert Culturel",
+          "name_bariba": "Kããtɔ yɔɔru",
+          "icon": "📚",
+          "description": "Maîtrise tous les proverbes",
+          "requirement": {
+            "type": "proverbs_mastered",
+            "value": 69
+          },
+          "xp_reward": 500,
+          "shareable": true
+        },
+        {
+          "id": "polyglot",
+          "name": "Polyglotte",
+          "name_bariba": "Wãatubumɑ soruru",
+          "icon": "🌍",
+          "description": "Complète tous les thèmes",
+          "requirement": {
+            "type": "themes_completed",
+            "value": 10
+          },
+          "xp_reward": 1000,
+          "shareable": true
+        }
+      ],
+      
+      "xp_rewards": {
+        "lesson_completed": {
+          "base": 50,
+          "difficulty_multiplier": {
+            "easy": 1.0,
+            "medium": 1.5,
+            "hard": 2.0,
+            "expert": 3.0
+          }
+        },
+        "quiz_completed": {
+          "base": 30,
+          "perfect_bonus": 20
+        },
+        "daily_challenge": 150,
+        "weekly_challenge": 500,
+        "monthly_challenge": 2000,
+        "share": 25,
+        "help_other_user": 75,
+        "streak_bonus_daily": 10,
+        "first_perfect_of_day": 50
+      }
+    },
+    
+    "themes": [
+      {
+        "id": "salutations",
+        "name": "Salutations & Politesse",
+        "name_bariba": "Sɑnɑɑru kɑ bɛnɛɛru",
+        "icon": "👋",
+        "color": "#3B82F6",
+        "difficulty": "easy",
+        "total_lessons": 40,
+        "total_words": 80,
+        "xp_per_lesson": 100,
+        "unlocked_at_level": 1,
+        "estimated_time_hours": 3,
+        "sub_modules": [
+          {
+            "id": "morning_greetings",
+            "name": "Salutations du matin",
+            "name_bariba": "Kpunɑɑ sɑnɑɑru",
+            "lessons": 10
+          },
+          {
+            "id": "general_greetings",
+            "name": "Salutations générales",
+            "name_bariba": "Sɑnɑɑru kpunku",
+            "lessons": 12
+          },
+          {
+            "id": "politeness",
+            "name": "Politesse",
+            "name_bariba": "Bɛnɛɛru",
+            "lessons": 10
+          },
+          {
+            "id": "farewells",
+            "name": "Prendre congé",
+            "name_bariba": "Yɑrɑɑru",
+            "lessons": 8
+          }
+        ]
+      },
+      {
+        "id": "famille",
+        "name": "Famille & Relations",
+        "name_bariba": "Dɛnu kɑ bɛɛkɑɑru",
+        "icon": "👨‍👩‍👧‍👦",
+        "color": "#EC4899",
+        "difficulty": "easy",
+        "total_lessons": 357,
+        "total_words": 250,
+        "xp_per_lesson": 150,
+        "unlocked_at_level": 1,
+        "estimated_time_hours": 25,
+        "sub_modules": [
+          {
+            "id": "family_members",
+            "name": "Membres de la famille",
+            "name_bariba": "Dɛnu wɑɑbɑ",
+            "lessons": 100
+          },
+          {
+            "id": "social_relations",
+            "name": "Relations sociales",
+            "name_bariba": "Bɛɛkɑɑru",
+            "lessons": 120
+          },
+          {
+            "id": "family_events",
+            "name": "Événements familiaux",
+            "name_bariba": "Dɛnu wurɑru",
+            "lessons": 80
+          },
+          {
+            "id": "affection",
+            "name": "Expressions affectives",
+            "name_bariba": "Wɔ̃ɔ̃bɑɑru yɔɔru",
+            "lessons": 57
+          }
+        ]
+      },
+      {
+        "id": "nourriture",
+        "name": "Nourriture & Boissons",
+        "name_bariba": "Diru kɑ nɔɔru",
+        "icon": "🍲",
+        "color": "#F97316",
+        "difficulty": "easy",
+        "total_lessons": 344,
+        "total_words": 300,
+        "xp_per_lesson": 120,
+        "unlocked_at_level": 1,
+        "estimated_time_hours": 22,
+        "sub_modules": [
+          {
+            "id": "basic_foods",
+            "name": "Aliments de base",
+            "name_bariba": "Diru kõokõo",
+            "lessons": 90
+          },
+          {
+            "id": "traditional_dishes",
+            "name": "Plats traditionnels",
+            "name_bariba": "Diru biibiibariba",
+            "lessons": 80
+          },
+          {
+            "id": "beverages",
+            "name": "Boissons",
+            "name_bariba": "Nɔɔru",
+            "lessons": 60
+          },
+          {
+            "id": "at_market",
+            "name": "Au marché",
+            "name_bariba": "Sũukuurite",
+            "lessons": 70
+          },
+          {
+            "id": "cooking",
+            "name": "Cuisine",
+            "name_bariba": "Diruu kɔru",
+            "lessons": 44
+          }
+        ]
+      },
+      {
+        "id": "sante",
+        "name": "Santé & Corps",
+        "name_bariba": "Dɔɔru kɑ kuɑru",
+        "icon": "🏥",
+        "color": "#10B981",
+        "difficulty": "medium",
+        "total_lessons": 144,
+        "total_words": 200,
+        "xp_per_lesson": 130,
+        "unlocked_at_level": 2,
+        "estimated_time_hours": 12,
+        "sub_modules": [
+          {
+            "id": "body_parts",
+            "name": "Parties du corps",
+            "name_bariba": "Kuɑru fɑtɑru",
+            "lessons": 50
+          },
+          {
+            "id": "symptoms",
+            "name": "Symptômes",
+            "name_bariba": "Wɛ̃ɛ̃ru bisibisi",
+            "lessons": 40
+          },
+          {
+            "id": "at_doctor",
+            "name": "Chez le médecin",
+            "name_bariba": "Dɔɔtɔrun yɛɛte",
+            "lessons": 30
+          },
+          {
+            "id": "wellness",
+            "name": "Bien-être",
+            "name_bariba": "Dɔɔru tɔntɔn",
+            "lessons": 24
+          }
+        ]
+      },
+      {
+        "id": "commerce",
+        "name": "Commerce & Argent",
+        "name_bariba": "Sũukuuru kɑ wuri",
+        "icon": "💰",
+        "color": "#EAB308",
+        "difficulty": "medium",
+        "total_lessons": 85,
+        "total_words": 150,
+        "xp_per_lesson": 110,
+        "unlocked_at_level": 2,
+        "estimated_time_hours": 8,
+        "sub_modules": [
+          {
+            "id": "numbers_prices",
+            "name": "Nombres et prix",
+            "name_bariba": "Kɔɔru kɑ wuribarɑɑ",
+            "lessons": 30
+          },
+          {
+            "id": "negotiation",
+            "name": "Négociation",
+            "name_bariba": "Wuribarɑɑ kɑɑru",
+            "lessons": 30
+          },
+          {
+            "id": "payment",
+            "name": "Paiement",
+            "name_bariba": "Wurinɑɑru",
+            "lessons": 25
+          }
+        ]
+      },
+      {
+        "id": "transport",
+        "name": "Transport & Direction",
+        "name_bariba": "Sũũru kɑ gberiru",
+        "icon": "🚗",
+        "color": "#8B5CF6",
+        "difficulty": "medium",
+        "total_lessons": 142,
+        "total_words": 180,
+        "xp_per_lesson": 100,
+        "unlocked_at_level": 2,
+        "estimated_time_hours": 10,
+        "sub_modules": [
+          {
+            "id": "transport_means",
+            "name": "Moyens de transport",
+            "name_bariba": "Sũũru",
+            "lessons": 40
+          },
+          {
+            "id": "directions",
+            "name": "Directions",
+            "name_bariba": "Gberiru",
+            "lessons": 50
+          },
+          {
+            "id": "city_places",
+            "name": "Lieux de la ville",
+            "name_bariba": "Tanɑɑteeru",
+            "lessons": 52
+          }
+        ]
+      },
+      {
+        "id": "temps",
+        "name": "Temps & Dates",
+        "name_bariba": "Wɑɑru kɑ siru",
+        "icon": "⏰",
+        "color": "#6366F1",
+        "difficulty": "medium",
+        "total_lessons": 130,
+        "total_words": 160,
+        "xp_per_lesson": 90,
+        "unlocked_at_level": 3,
+        "estimated_time_hours": 9,
+        "sub_modules": [
+          {
+            "id": "hours_minutes",
+            "name": "Heures et minutes",
+            "name_bariba": "Wɑɑru",
+            "lessons": 35
+          },
+          {
+            "id": "days_weeks",
+            "name": "Jours et semaines",
+            "name_bariba": "Kpunɛɛru kɑ kururu",
+            "lessons": 30
+          },
+          {
+            "id": "months_seasons",
+            "name": "Mois et saisons",
+            "name_bariba": "Suuru kɑ wɑɑru",
+            "lessons": 35
+          },
+          {
+            "id": "time_expressions",
+            "name": "Expressions temporelles",
+            "name_bariba": "Wɑɑru yɔɔru",
+            "lessons": 30
+          }
+        ]
+      },
+      {
+        "id": "travail",
+        "name": "Travail & Métiers",
+        "name_bariba": "Sõmburu kɑ kɔɔru",
+        "icon": "💼",
+        "color": "#06B6D4",
+        "difficulty": "medium",
+        "total_lessons": 118,
+        "total_words": 170,
+        "xp_per_lesson": 125,
+        "unlocked_at_level": 3,
+        "estimated_time_hours": 10,
+        "sub_modules": [
+          {
+            "id": "professions",
+            "name": "Professions",
+            "name_bariba": "Kɔɔru",
+            "lessons": 50
+          },
+          {
+            "id": "at_office",
+            "name": "Au bureau",
+            "name_bariba": "Sõmbuyɛɛte",
+            "lessons": 35
+          },
+          {
+            "id": "work_tasks",
+            "name": "Tâches professionnelles",
+            "name_bariba": "Sõmburu wurɑru",
+            "lessons": 33
+          }
+        ]
+      },
+      {
+        "id": "emotions",
+        "name": "Émotions & Sentiments",
+        "name_bariba": "Wɔ̃ɔ̃bɑɑru kɑ fɛɛkɑɑru",
+        "icon": "😊",
+        "color": "#EF4444",
+        "difficulty": "hard",
+        "total_lessons": 27,
+        "total_words": 100,
+        "xp_per_lesson": 80,
+        "unlocked_at_level": 4,
+        "estimated_time_hours": 3,
+        "sub_modules": [
+          {
+            "id": "basic_emotions",
+            "name": "Émotions de base",
+            "name_bariba": "Wɔ̃ɔ̃bɑɑru kõokõo",
+            "lessons": 12
+          },
+          {
+            "id": "complex_feelings",
+            "name": "Sentiments complexes",
+            "name_bariba": "Fɛɛkɑɑru bukɑɑbukɑɑ",
+            "lessons": 15
+          }
+        ]
+      },
+      {
+        "id": "proverbes",
+        "name": "Proverbes & Sagesse",
+        "name_bariba": "Yɔɔgbeni kɑ tuburu",
+        "icon": "📜",
+        "color": "#D97706",
+        "difficulty": "expert",
+        "total_lessons": 69,
+        "total_words": 400,
+        "xp_per_lesson": 200,
+        "unlocked_at_level": 5,
+        "estimated_time_hours": 15,
+        "sub_modules": [
+          {
+            "id": "traditional_proverbs",
+            "name": "Proverbes traditionnels",
+            "name_bariba": "Yɔɔgbeni biibiibariba",
+            "lessons": 35
+          },
+          {
+            "id": "wise_sayings",
+            "name": "Paroles de sagesse",
+            "name_bariba": "Tuburu yɔɔru",
+            "lessons": 34
+          }
+        ]
+      }
+    ],
+    
+    "exercise_types": [
+      {
+        "id": "multiple_choice",
+        "name": "QCM",
+        "name_bariba": "Sɔɔru dɑnɑɑru",
+        "icon": "✅",
+        "difficulty": "easy",
+        "xp_base": 10
+      },
+      {
+        "id": "matching",
+        "name": "Association",
+        "name_bariba": "Kpɑrɑɑru",
+        "icon": "🔄",
+        "difficulty": "easy",
+        "xp_base": 15
+      },
+      {
+        "id": "fill_blank",
+        "name": "Remplissage",
+        "name_bariba": "Buudɑɑru",
+        "icon": "⌨️",
+        "difficulty": "medium",
+        "xp_base": 20
+      },
+      {
+        "id": "true_false",
+        "name": "Vrai/Faux",
+        "name_bariba": "Tuutu/Kɑ̃ɑ̃",
+        "icon": "🎯",
+        "difficulty": "easy",
+        "xp_base": 10
+      },
+      {
+        "id": "listening",
+        "name": "Écoute",
+        "name_bariba": "Sɑ̃ɑru",
+        "icon": "🎧",
+        "difficulty": "medium",
+        "xp_base": 25
+      },
+      {
+        "id": "pronunciation",
+        "name": "Prononciation",
+        "name_bariba": "Wãayɔɔru",
+        "icon": "🗣️",
+        "difficulty": "hard",
+        "xp_base": 30
+      },
+      {
+        "id": "dialogue",
+        "name": "Dialogue",
+        "name_bariba": "Yɔɔbɑɑru",
+        "icon": "💬",
+        "difficulty": "hard",
+        "xp_base": 35
+      },
+      {
+        "id": "translation",
+        "name": "Traduction",
+        "name_bariba": "Yɔɔkukuru",
+        "icon": "🔀",
+        "difficulty": "medium",
+        "xp_base": 20
+      }
+    ],
+    
+    "challenges": {
+      "daily": [
+        {
+          "id": "monday_sprint",
+          "day": "monday",
+          "name": "Sprint linguistique",
+          "name_bariba": "Wãatuburu yɑɑyɑɑ",
+          "description": "Apprends 20 mots en 5 minutes",
+          "requirement": {
+            "type": "words_learned",
+            "value": 20,
+            "time_limit_minutes": 5
+          },
+          "xp_reward": 150
+        },
+        {
+          "id": "tuesday_dialogue",
+          "day": "tuesday",
+          "name": "Maître du dialogue",
+          "name_bariba": "Yɔɔbɑɑrun sunɔ",
+          "description": "Complete 3 conversations",
+          "requirement": {
+            "type": "dialogues_completed",
+            "value": 3
+          },
+          "xp_reward": 150
+        },
+        {
+          "id": "wednesday_culture",
+          "day": "wednesday",
+          "name": "Explorateur culturel",
+          "name_bariba": "Yɔɔru gɑsɑɑmɑ",
+          "description": "Apprends 5 proverbes",
+          "requirement": {
+            "type": "proverbs_learned",
+            "value": 5
+          },
+          "xp_reward": 150
+        },
+        {
+          "id": "thursday_pronunciation",
+          "day": "thursday",
+          "name": "Prononciation parfaite",
+          "name_bariba": "Wãayɔɔru sɑ̃ɑtɔ",
+          "description": "Score >90% sur 10 mots",
+          "requirement": {
+            "type": "pronunciation_score",
+            "value": 90,
+            "count": 10
+          },
+          "xp_reward": 150
+        },
+        {
+          "id": "friday_quiz",
+          "day": "friday",
+          "name": "Quiz éclair",
+          "name_bariba": "Sɔɔru yɑɑyɑɑ",
+          "description": "30 questions en 10 minutes",
+          "requirement": {
+            "type": "questions_answered",
+            "value": 30,
+            "time_limit_minutes": 10
+          },
+          "xp_reward": 150
+        },
+        {
+          "id": "saturday_immersion",
+          "day": "saturday",
+          "name": "Immersion",
+          "name_bariba": "Buubɑɑru kpunku",
+          "description": "1 heure d'apprentissage",
+          "requirement": {
+            "type": "time_spent_minutes",
+            "value": 60
+          },
+          "xp_reward": 150
+        },
+        {
+          "id": "sunday_review",
+          "day": "sunday",
+          "name": "Révision",
+          "name_bariba": "Kɑɑburɑɑru",
+          "description": "Teste tes acquis de la semaine",
+          "requirement": {
+            "type": "review_quiz",
+            "value": 1
+          },
+          "xp_reward": 150
+        }
+      ],
+      
+      "weekly": [
+        {
+          "id": "theme_master",
+          "name": "Thème de la semaine",
+          "name_bariba": "Kururu yɔɔru",
+          "description": "Maîtrise un thème complet",
+          "requirement": {
+            "type": "theme_completed",
+            "value": 1
+          },
+          "xp_reward": 500
+        },
+        {
+          "id": "endurance",
+          "name": "Endurance",
+          "name_bariba": "Kããbɑɑru",
+          "description": "Gagne 500 XP cette semaine",
+          "requirement": {
+            "type": "xp_earned",
+            "value": 500
+          },
+          "xp_reward": 300
+        },
+        {
+          "id": "social_podium",
+          "name": "Podium social",
+          "name_bariba": "Bɛɛkɑɑrun kpɑɑru",
+          "description": "Top 3 parmi tes amis",
+          "requirement": {
+            "type": "friends_ranking",
+            "value": 3
+          },
+          "xp_reward": 400
+        }
+      ],
+      
+      "monthly": [
+        {
+          "id": "perfect_month",
+          "name": "Mois parfait",
+          "name_bariba": "Suu sɑ̃ɑtɔ",
+          "description": "30 jours consécutifs",
+          "requirement": {
+            "type": "streak_days",
+            "value": 30
+          },
+          "xp_reward": 2000
+        },
+        {
+          "id": "bibliophile",
+          "name": "Bibliophile",
+          "name_bariba": "Dɔɔnuɡbẽẽmɑ",
+          "description": "Complete 10 thèmes",
+          "requirement": {
+            "type": "themes_completed",
+            "value": 10
+          },
+          "xp_reward": 1500
+        },
+        {
+          "id": "monthly_champion",
+          "name": "Champion mensuel",
+          "name_bariba": "Suu kpɑɑmɑ",
+          "description": "Premier du classement",
+          "requirement": {
+            "type": "leaderboard_position",
+            "value": 1
+          },
+          "xp_reward": 3000
+        }
+      ]
+    },
+    
+    "social_features": {
+      "leaderboards": [
+        {
+          "id": "global",
+          "name": "Global",
+          "name_bariba": "Duniyɑɑ kpunku",
+          "reset_period": "weekly"
+        },
+        {
+          "id": "friends",
+          "name": "Amis",
+          "name_bariba": "Bɛɛwɑɑbɑ",
+          "reset_period": "weekly"
+        },
+        {
+          "id": "groups",
+          "name": "Groupes",
+          "name_bariba": "Kubuwɑɑbɑ",
+          "reset_period": "weekly"
+        },
+        {
+          "id": "regional",
+          "name": "Régional",
+          "name_bariba": "Kubuuyɔɔru",
+          "reset_period": "weekly"
+        }
+      ],
+      
+      "share_templates": [
+        {
+          "id": "level_up",
+          "trigger": "level_increased",
+          "template": "🎉 Je viens d'atteindre le niveau {level} ({level_name}) en langue Bariba ! 🌟\n\n📊 Mes stats :\n• {xp} XP\n• {words_mastered} mots maîtrisés\n• {streak} jours de série 🔥\n\n#ApprendreLeBaribaAvecPassion #CultureAfricaine"
+        },
+        {
+          "id": "badge_earned",
+          "trigger": "badge_earned",
+          "template": "🏆 Nouveau badge débloqué : {badge_name} {badge_icon}\n\n{badge_description}\n\nRejoignez-moi dans l'apprentissage du Bariba !\n\n#BaribaLanguage #Achievement"
+        },
+        {
+          "id": "streak_milestone",
+          "trigger": "streak_milestone",
+          "template": "🔥 {streak} jours consécutifs d'apprentissage du Bariba !\n\nLa régularité est la clé du succès ! 💪\n\n#MotivationQuotidienne #ApprentissageContinu"
+        },
+        {
+          "id": "challenge_completed",
+          "trigger": "challenge_completed",
+          "template": "✅ Défi complété : {challenge_name}\n\n+{xp_earned} XP gagnés ! 🌟\n\nChaque défi me rapproche de la maîtrise du Bariba !\n\n#DéfiRelevé #Bariba"
+        }
+      ]
+    },
+    
+    "notifications": {
+      "daily_reminder": {
+        "title": "N'oublie pas ton Bariba aujourd'hui !",
+        "title_bariba": "A kɑ̃ gĩ a Bariba yɔɔru tɛ̃ !",
+        "body": "Une petite leçon quotidienne = de grands progrès ! 🌟",
+        "time": "09:00"
+      },
+      "streak_danger": {
+        "title": "Ta série est en danger ! 🔥",
+        "title_bariba": "A baabɑɑ ya bɛ wɛ̃ɛ̃ !",
+        "body": "Continue ta série de {streak} jours !",
+        "trigger": "no_activity_today"
+      },
+      "new_content": {
+        "title": "Nouveau contenu débloqué ! 🎉",
+        "title_bariba": "Yɔɔru kuwɑɑ ya kɛɛ !",
+        "body": "{content_name} est maintenant disponible !",
+        "trigger": "content_unlocked"
+      },
+      "friend_activity": {
+        "title": "{friend_name} t'a dépassé ! 👀",
+        "body": "Rattrape-le avec une leçon !",
+        "trigger": "friend_overtook"
+      },
+      "achievement_close": {
+        "title": "Tu es proche d'un nouveau badge ! 🏆",
+        "title_bariba": "A ya sorɑ kpɑɑru kuwɑɑte !",
+        "body": "Plus que {remaining} pour {badge_name} !",
+        "trigger": "close_to_badge"
+      }
+    }
+  }
+}

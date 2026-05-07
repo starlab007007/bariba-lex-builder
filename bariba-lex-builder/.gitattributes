@@ -1,0 +1,2 @@
+# Git LFS rules removed - video assets now hosted on Supabase Storage CDN
+# Previous rules for *.mov, *.mp4, *.webm have been removed to unblock Lovable publication
