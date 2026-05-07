@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Home, Plus, BookOpen, BookText, Book, School, Bot } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
@@ -105,11 +104,10 @@ export const KuaishouBottomNav: React.FC = memo(() => {
     const label = currentLang === 'ba' ? item.labelBa : item.labelFr;
 
     return (
-      <motion.button
+      <button
         key={item.id}
-        whileTap={{ scale: 0.9 }}
         onClick={() => handleNavPress(item)}
-        className="relative flex flex-col items-center gap-0.5 py-1.5 min-h-[44px] active:scale-95 transition-transform overflow-hidden"
+        className="relative flex flex-col items-center gap-0.5 py-1.5 min-h-[44px] active:opacity-70 transition-opacity overflow-hidden"
         style={{ flex: '1 1 0', minWidth: 0 }}
       >
         <Icon
@@ -131,12 +129,11 @@ export const KuaishouBottomNav: React.FC = memo(() => {
         </span>
 
         {active && (
-          <motion.div
-            layoutId="kuaishouNavIndicator"
+          <div
             className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-[hsl(var(--kuaishou-nav-icon))]"
           />
         )}
-      </motion.button>
+      </button>
     );
   }
 });
