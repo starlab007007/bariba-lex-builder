@@ -77,9 +77,8 @@ export const KuaishouBottomNav: React.FC = memo(() => {
             onClick={() => handleNavPress(createItem)}
             className="absolute -top-5"
           >
-            <motion.div
-              whileTap={{ scale: 0.9 }}
-              className="w-13 h-13 rounded-full flex items-center justify-center shadow-xl"
+            <div
+              className="rounded-full flex items-center justify-center shadow-xl active:opacity-80 transition-opacity"
               style={{
                 width: 52,
                 height: 52,
@@ -88,7 +87,7 @@ export const KuaishouBottomNav: React.FC = memo(() => {
               }}
             >
               <Plus className="w-6 h-6 text-white" strokeWidth={3} />
-            </motion.div>
+            </div>
           </button>
         </div>
 
