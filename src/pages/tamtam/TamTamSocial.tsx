@@ -254,17 +254,16 @@ const BottomTabBar: React.FC<{
     const Icon = tab.icon;
     const isActive = activeTab === tab.id;
     return (
-      <motion.button
+      <button
         key={tab.id}
-        whileTap={{ scale: 0.9 }}
         onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)}
-        className="relative flex flex-col items-center gap-1 py-1.5 overflow-hidden"
+        className="relative flex flex-col items-center gap-1 py-1.5 overflow-hidden active:opacity-70 transition-opacity"
         style={{ flex: '1 1 0', minWidth: 0, minHeight: 44 }}
       >
         <Icon className={`w-[22px] h-[22px] ${isActive ? 'text-white' : 'text-white/50'}`} />
         <span className={`text-[10px] sm:text-[11px] truncate w-full text-center leading-tight ${isActive ? 'text-white font-semibold' : 'text-white/50'}`}>{tab.label}</span>
-        {isActive && <motion.div layoutId="tabIndicator" className="absolute -bottom-0.5 w-7 h-[3px] rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
-      </motion.button>
+        {isActive && <div className="absolute -bottom-0.5 w-7 h-[3px] rounded-full bg-gradient-to-r from-orange-400 to-pink-500" />}
+      </button>
     );
   };
 
@@ -288,11 +287,11 @@ const BottomTabBar: React.FC<{
         </div>
 
         {/* Floating CREATE BUTTON */}
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onCreatePress} className="absolute left-1/2 -translate-x-1/2 -top-6">
+        <button onClick={onCreatePress} className="absolute left-1/2 -translate-x-1/2 -top-6 active:opacity-80 transition-opacity">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-pink-500/30">
             <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
           </div>
-        </motion.button>
+        </button>
       </div>
     </nav>
   );
