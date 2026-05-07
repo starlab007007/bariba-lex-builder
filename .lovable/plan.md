@@ -1,25 +1,74 @@
 
-## Problème 1 : Le clavier Bariba natif fait planter l'application
+# Plan: Production Readiness - Video Feed, Profile, Performance & Security
 
-### Diagnostic
-Le `BaribaInputMethodService.kt` utilise `resources.getIdentifier()` pour trouver les boutons par ID. Si un ID référencé dans le code n'existe pas dans le layout XML (ex: `key_question`, `key_exclaim`), `findViewById` retourne `null` mais le code continue sans crash. Cependant le problème principal est que le layout XML (`keyboard_bariba.xml`) utilise un style `@style/BaribaKey` qui référence `@drawable/key_background` — si ce drawable n'est pas correctement copié ou est incompatible, l'inflation du layout échoue et l'app plante.
+## 1. Fix Video Feed Auto-Play Logic
 
-Corrections :
-1. Ajouter des gardes `try-catch` autour de `onCreateInputView()` pour éviter les crashs fatals lors de l'inflation du layout
-2. Ajouter un fallback si le layout ne peut pas être chargé (retourner une vue simple au lieu de crasher)
-3. Wraper `setupKeys()` dans un try-catch pour éviter les NPE sur les boutons manquants
+**Problem**: Videos switch every 10 seconds regardless of duration. Videos loop infinitely (`loop` attribute). No distinction between manual and automatic mode.
 
-### Message d'alerte Android
-Le message "Ce mode de saisie est susceptible d'enregistrer le texte..." est un **avertissement système Android** obligatoire. Il est impossible de le supprimer — c'est Android qui l'affiche, pas l'application. C'est normal et attendu pour tout clavier tiers.
+**Changes in `src/components/tamtam/TamTamVideoFeed.tsx`**:
 
-## Problème 2 : Le bouton (+) flottant instable
+- **Remove `loop` attribute** from `<video>` element in VideoCard
+- **On `ended` event**: instead of restarting, notify parent to advance to next video
+- **Add auto-mode state** in main component: starts as `true`. When user touches/scrolls, switch to `false` (manual mode)
+- **Auto-advance**: when a video ends and auto-mode is active, scroll to next video
+- **Manual mode**: user scrolls freely, watches/re-watches any video
+- **Add "Actualiser" (refresh/shuffle) button**: randomizes the video order (random sort on current feed data)
+- Remove the current `handleEnded` that restarts the video at `currentTime = 0`
 
-### Diagnostic
-Le bouton utilise `absolute left-1/2 -translate-x-1/2 -top-4` ce qui le fait flotter au-dessus de la barre de navigation avec un positionnement qui peut être instable selon les tailles d'écran. Il manque un ancrage solide.
+## 2. Fix Public Profile Scroll Bug
 
-### Correction
-Remplacer le positionnement absolu par une approche intégrée dans le flux du layout : le bouton sera placé dans le centre spacer avec un positionnement relatif stable, en utilisant `flex items-center justify-center` et un léger décalage vers le haut avec `mb-2` au lieu d'un positionnement absolu.
+**Problem**: `TamTamPublicProfile.tsx` uses `min-h-screen pb-24` but the content may be clipped. The page structure doesn't allow full scrolling.
 
-## Fichiers modifiés
-- `android-native/java/com/fitila/bariba/BaribaInputMethodService.kt` — try-catch robuste
-- `src/components/tamtam/KuaishouBottomNav.tsx` — bouton (+) stable
+**Changes in `src/pages/tamtam/TamTamPublicProfile.tsx`**:
+
+- Wrap the page in a proper scrollable container: `h-[100dvh] overflow-y-auto` (per project memory on responsive viewport)
+- Ensure `pb-24` or more padding at the bottom so all posts and info are reachable
+- The posts grid section needs sufficient min-height removed or adjusted so natural content flows
+
+## 3. Performance Optimization
+
+- **Video Feed**: reduce DOM by only rendering current + adjacent videos (virtualization window of 3)
+- **Lazy load images** in profile grids (already using `loading="lazy"` in some places, verify consistency)
+- **Memoize** heavy components with `React.memo`
+- **useVideoFeed**: already paginated at 15, which is good
+
+## 4. Security Audit
+
+- Run the built-in security scan tool
+- Review RLS policies on all tables
+- Check for exposed sensitive data
+- Fix any findings
+
+## 5. APK Production Readiness Check
+
+- Verify `capacitor.config.ts` has production settings (no dev server URL)
+- Verify Android permissions are correct
+- Confirm edge functions are deployed and working
+
+---
+
+### Technical Details
+
+**Video Feed auto-play mechanism**:
+```
+- Add `onVideoEnded` callback from VideoCard to parent
+- Parent tracks `autoMode` state (default: true)
+- On scroll/touch events on container: set autoMode = false
+- On video ended + autoMode: programmatically scroll to next snap point
+- Shuffle button: randomize videoData array, reset to index 0
+```
+
+**Profile scroll fix**:
+```
+- Root div: h-[100dvh] flex flex-col
+- Content area: flex-1 overflow-y-auto
+- Sticky header stays at top
+- Bottom padding ensures last content is reachable
+```
+
+**Virtualized video rendering**:
+```
+- Only render VideoCard for indices: [currentIndex-1, currentIndex, currentIndex+1]
+- Other slots render empty placeholder divs with same height
+- Reduces DOM nodes and video elements significantly
+```
