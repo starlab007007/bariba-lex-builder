@@ -17,15 +17,28 @@ class BaribaInputMethodService : InputMethodService() {
     private val prefsName = "bariba_keyboard_data"
 
     override fun onCreateInputView(): View {
-        val view = layoutInflater.inflate(
-            resources.getIdentifier("keyboard_bariba", "layout", packageName),
-            null
-        )
-        suggestionsBar = view.findViewById(
-            resources.getIdentifier("suggestions_bar", "id", packageName)
-        )
-        setupKeys(view)
-        return view
+        return try {
+            val layoutId = resources.getIdentifier("keyboard_bariba", "layout", packageName)
+            if (layoutId == 0) return createFallbackView()
+            val view = layoutInflater.inflate(layoutId, null)
+            suggestionsBar = view.findViewById(
+                resources.getIdentifier("suggestions_bar", "id", packageName)
+            )
+            try { setupKeys(view) } catch (e: Exception) { e.printStackTrace() }
+            view
+        } catch (e: Exception) {
+            e.printStackTrace()
+            createFallbackView()
+        }
+    }
+
+    private fun createFallbackView(): View {
+        val tv = TextView(this)
+        tv.text = "Clavier Bariba — erreur de chargement"
+        tv.setTextColor(0xFFFFFFFF.toInt())
+        tv.setBackgroundColor(0xFF1A1A2E.toInt())
+        tv.setPadding(32, 32, 32, 32)
+        return tv
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -51,10 +64,12 @@ class BaribaInputMethodService : InputMethodService() {
         for (char in row1 + row2 + row3) {
             val resId = resources.getIdentifier("key_$char", "id", packageName)
             if (resId != 0) {
-                view.findViewById<Button>(resId)?.setOnClickListener {
-                    val c = if (isShifted) char.uppercase() else char
-                    typeCharacter(c)
-                }
+                try {
+                    view.findViewById<Button>(resId)?.setOnClickListener {
+                        val c = if (isShifted) char.uppercase() else char
+                        typeCharacter(c)
+                    }
+                } catch (_: Exception) {}
             }
         }
 
@@ -71,10 +86,12 @@ class BaribaInputMethodService : InputMethodService() {
         for ((keyId, chars) in specialKeys) {
             val resId = resources.getIdentifier(keyId, "id", packageName)
             if (resId != 0) {
-                view.findViewById<Button>(resId)?.setOnClickListener {
-                    val c = if (isShifted) chars.second else chars.first
-                    typeCharacter(c)
-                }
+                try {
+                    view.findViewById<Button>(resId)?.setOnClickListener {
+                        val c = if (isShifted) chars.second else chars.first
+                        typeCharacter(c)
+                    }
+                } catch (_: Exception) {}
             }
         }
 

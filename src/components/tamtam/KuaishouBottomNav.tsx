@@ -72,29 +72,30 @@ export const KuaishouBottomNav: React.FC = memo(() => {
         </div>
 
         {/* Center spacer for the floating button */}
-        <div className="w-12 flex-shrink-0" />
+        <div className="w-14 flex-shrink-0 flex items-center justify-center relative">
+          <button
+            onClick={() => handleNavPress(createItem)}
+            className="absolute -top-5"
+          >
+            <motion.div
+              whileTap={{ scale: 0.9 }}
+              className="w-13 h-13 rounded-full flex items-center justify-center shadow-xl"
+              style={{
+                width: 52,
+                height: 52,
+                background: 'linear-gradient(135deg, hsl(var(--kuaishou-accent-cyan)), hsl(var(--kuaishou-accent-red)))',
+                boxShadow: '0 4px 20px rgba(255, 80, 120, 0.4)',
+              }}
+            >
+              <Plus className="w-6 h-6 text-white" strokeWidth={3} />
+            </motion.div>
+          </button>
+        </div>
 
         {/* Right group */}
         <div className="flex-1 flex items-end justify-around">
           {rightItems.map((item) => renderNavItem(item))}
         </div>
-
-        {/* Floating center "+" button */}
-        <button
-          onClick={() => handleNavPress(createItem)}
-          className="absolute left-1/2 -translate-x-1/2 -top-4"
-        >
-          <motion.div
-            whileTap={{ scale: 0.9 }}
-            className="w-12 h-12 rounded-full flex items-center justify-center shadow-xl transition-transform"
-            style={{
-              background: 'linear-gradient(135deg, hsl(var(--kuaishou-accent-cyan)), hsl(var(--kuaishou-accent-red)))',
-              boxShadow: '0 4px 20px rgba(255, 80, 120, 0.4)',
-            }}
-          >
-            <Plus className="w-6 h-6 text-white" strokeWidth={3} />
-          </motion.div>
-        </button>
       </div>
     </nav>
   );
