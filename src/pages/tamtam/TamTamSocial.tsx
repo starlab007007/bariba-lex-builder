@@ -197,11 +197,11 @@ const FeedIndicator: React.FC<{
         onClick={onMenuOpen}
         className="fixed top-4 left-4 z-40 w-10 h-10 rounded-full bg-transparent flex items-center justify-center safe-area-top"
       >
-        <Menu className="w-5 h-5 text-white" />
+        <Menu className="w-5 h-5 text-white" data-tour="tour-menu" />
       </motion.button>
 
       {/* Feed Indicator - Centré en haut (indicateur seulement, pas de clic) */}
-      <div className="fixed top-0 left-0 right-0 z-30 safe-area-top pointer-events-none">
+      <div className="fixed top-0 left-0 right-0 z-30 safe-area-top pointer-events-none" data-tour="tour-feed-indicator">
         <div className="flex justify-center pt-4">
           <div className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10 bg-black/5">
             {/* Dots de navigation */}
@@ -286,8 +286,8 @@ const BottomTabBar: React.FC<{
           {rightTabs.map(renderTab)}
         </div>
 
-        {/* Floating CREATE BUTTON */}
-        <button onClick={onCreatePress} className="absolute left-1/2 -translate-x-1/2 -top-6 active:opacity-80 transition-opacity">
+        {/* Floating CREATE BUTTON – data-tour for onboarding */}
+        <button onClick={onCreatePress} className="absolute left-1/2 -translate-x-1/2 -top-6 active:opacity-80 transition-opacity" data-tour="tour-create-btn">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-pink-500/30">
             <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
           </div>
