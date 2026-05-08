@@ -48,10 +48,13 @@ export default function AppTourProvider({ children }: { children: React.ReactNod
   const pickLang = useCallback((l: 'fr' | 'ba') => {
     setLang(l);
     setShowLangPicker(false);
-    if (!location.pathname.includes('/fitila/social')) {
-      navigate('/fitila/social', { replace: true });
-    }
-  }, [location.pathname, navigate]);
+    // Delay navigation to let state settle before route change
+    setTimeout(() => {
+      if (!window.location.pathname.includes('/fitila/social')) {
+        navigate('/fitila/social', { replace: true });
+      }
+    }, 100);
+  }, [navigate]);
 
   // Navigate to the correct page for steps that need specific routes
   useEffect(() => {
