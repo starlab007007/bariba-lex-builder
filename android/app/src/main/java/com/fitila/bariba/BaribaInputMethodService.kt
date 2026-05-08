@@ -1,6 +1,7 @@
 package com.fitila.bariba
 
 import android.inputmethodservice.InputMethodService
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
@@ -10,6 +11,10 @@ import org.json.JSONArray
 
 class BaribaInputMethodService : InputMethodService() {
 
+    companion object {
+        private const val TAG = "BaribaKeyboard"
+    }
+
     private var isShifted = false
     private var currentWord = StringBuilder()
     private var suggestionsBar: LinearLayout? = null
@@ -18,16 +23,25 @@ class BaribaInputMethodService : InputMethodService() {
 
     override fun onCreateInputView(): View {
         return try {
+            Log.i(TAG, "onCreateInputView: inflating keyboard layout")
             val layoutId = resources.getIdentifier("keyboard_bariba", "layout", packageName)
-            if (layoutId == 0) return createFallbackView()
+            if (layoutId == 0) {
+                Log.e(TAG, "keyboard_bariba layout not found for package: $packageName")
+                return createFallbackView()
+            }
             val view = layoutInflater.inflate(layoutId, null)
             suggestionsBar = view.findViewById(
                 resources.getIdentifier("suggestions_bar", "id", packageName)
             )
-            try { setupKeys(view) } catch (e: Exception) { e.printStackTrace() }
+            try {
+                setupKeys(view)
+                Log.i(TAG, "Keyboard keys setup complete")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting up keys", e)
+            }
             view
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Fatal error in onCreateInputView", e)
             createFallbackView()
         }
     }
@@ -112,8 +126,7 @@ class BaribaInputMethodService : InputMethodService() {
         val deleteId = resources.getIdentifier("key_delete", "id", packageName)
         if (deleteId != 0) {
             view.findViewById<Button>(deleteId)?.setOnClickListener {
-                val ic = currentInputConnection ?: return@setOnClickListener
-                ic.deleteSurroundingText(1, 0)
+                currentInputConnection?.deleteSurroundingText(1, 0)
                 if (currentWord.isNotEmpty()) {
                     currentWord.deleteCharAt(currentWord.length - 1)
                     updateSuggestions(currentWord.toString())
@@ -128,6 +141,24 @@ class BaribaInputMethodService : InputMethodService() {
                 isShifted = !isShifted
                 it as Button
                 it.text = if (isShifted) "⬆" else "⇧"
+            }
+        }
+
+        // Enter key
+        val enterId = resources.getIdentifier("key_enter", "id", packageName)
+        if (enterId != 0) {
+            view.findViewById<Button>(enterId)?.setOnClickListener {
+                if (currentWord.isNotEmpty()) {
+                    saveToHistory(currentWord.toString())
+                    currentWord.clear()
+                }
+                val ic = currentInputConnection ?: return@setOnClickListener
+                val editorInfo = currentInputEditorInfo
+                if (editorInfo != null) {
+                    ic.performEditorAction(editorInfo.imeOptions and EditorInfo.IME_MASK_ACTION)
+                } else {
+                    ic.commitText("\n", 1)
+                }
             }
         }
 
