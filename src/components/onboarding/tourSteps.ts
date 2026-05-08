@@ -9,6 +9,8 @@ export interface TourStep {
   textBa: string;
   /** Which image to show for fullscreen-only steps */
   image?: string;
+  /** Route to navigate to for this step */
+  route?: string;
 }
 
 export const TOUR_STEPS: TourStep[] = [
@@ -20,6 +22,7 @@ export const TOUR_STEPS: TourStep[] = [
     titleBa: 'Menu',
     textFr: 'Appuyez ici pour ouvrir le menu et voir toutes les fonctions.',
     textBa: 'A tɛ ne daa menu wɛ.',
+    route: '/fitila/social',
   },
   {
     id: 'feed',
@@ -29,6 +32,7 @@ export const TOUR_STEPS: TourStep[] = [
     titleBa: 'Yɛnu kɛra',
     textFr: 'Glissez à gauche ou droite pour changer de fil : Patrimoine, Ma Voix, Création.',
     textBa: 'A kpa wiru gaa gɔɔ wee.',
+    route: '/fitila/social',
   },
   {
     id: 'create',
@@ -38,6 +42,7 @@ export const TOUR_STEPS: TourStep[] = [
     titleBa: 'Ko yɔyɔ',
     textFr: 'Appuyez ici pour créer un contenu : audio, vidéo ou photo.',
     textBa: 'A tɛ ne daa ko yɔyɔ wɛ.',
+    route: '/fitila/social',
   },
   {
     id: 'learn',
@@ -47,6 +52,7 @@ export const TOUR_STEPS: TourStep[] = [
     titleBa: 'Dɔnni',
     textFr: 'Apprenez le Bariba avec des leçons interactives.',
     textBa: 'A dɔn Baatɔnum ne.',
+    route: '/fitila/social',
   },
   {
     id: 'dico',
@@ -56,6 +62,7 @@ export const TOUR_STEPS: TourStep[] = [
     titleBa: 'Gɛrɛ sɛbu',
     textFr: 'Cherchez un mot en Bariba ou en Français.',
     textBa: 'A wuri gɛrɛ dɔɔ ne.',
+    route: '/fitila/social',
   },
   {
     id: 'translate',
@@ -65,6 +72,7 @@ export const TOUR_STEPS: TourStep[] = [
     titleBa: 'Gɛrɛ wɔɔbu',
     textFr: 'Traduisez entre Bariba et Français.',
     textBa: 'A wɔɔbu gɛrɛ ne.',
+    route: '/fitila/social',
   },
   {
     id: 'ia',
@@ -74,6 +82,7 @@ export const TOUR_STEPS: TourStep[] = [
     titleBa: 'Fitila IA',
     textFr: 'Posez vos questions à l\'intelligence artificielle en Bariba.',
     textBa: 'A sɔ Fitila IA ne.',
+    route: '/fitila/social',
   },
   {
     id: 'keyboard-intro',
