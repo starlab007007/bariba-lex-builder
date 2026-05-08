@@ -1,65 +1,82 @@
 
-# Guide interactif d'onboarding Fitila
+# Guide interactif IA — Bulles sur l'app réelle
 
-## Objectif
-Créer un guide d'onboarding en plein écran, interactif et illustré qui s'affiche automatiquement au premier lancement. Deux sections : découverte de l'app + activation du clavier Bariba. Possibilité de sauter à tout moment.
-
-## Ce qui existe déjà
-- `BaribaKeyboardActivationGuide.tsx` — guide statique pour le clavier (sera enrichi/remplacé)
-- Aucun système d'onboarding existant
+## Concept
+Un système de **bulles/tooltips animées** qui se superposent directement sur les vrais éléments de l'app (bouton menu ☰, onglets du fil, bouton +, barre du bas, etc.). Chaque étape met en surbrillance le vrai bouton avec une bulle explicative et une animation "pulsante" pour guider l'utilisateur visuellement. Conçu pour les utilisateurs qui ne savent pas lire : texte très court + emoji + audio TTS.
 
 ## Architecture
 
-### 1. Composant `OnboardingGuide` (nouveau)
-Fichier : `src/components/onboarding/OnboardingGuide.tsx`
+### 1. Système de "tour" — `AppTourProvider`
+Fichier : `src/components/onboarding/AppTourProvider.tsx`
 
-- Fullscreen overlay avec slides swipables (framer-motion)
-- Indicateur de progression (dots)
-- Boutons "Suivant" / "Passer" toujours visibles
-- Sauvegarde dans `localStorage` (`fitila_onboarding_done`)
-- 6-8 slides au total, répartis en 2 sections
+- Context React global qui gère : étape courante, visible/caché, langue
+- Se déclenche au premier lancement (`localStorage: fitila_tour_done`)
+- Expose `startTour()` / `skipTour()` / `nextStep()` / `prevStep()`
 
-### 2. Slides Section A — Découverte de l'app (4 slides)
-Chaque slide : illustration générée + titre + courte description
+### 2. Composant `TourSpotlight`
+Fichier : `src/components/onboarding/TourSpotlight.tsx`
 
-| Slide | Titre | Contenu |
-|-------|-------|---------|
-| 1 | Bienvenue sur Fitila 🔥 | Logo, message de bienvenue, "La première app 100% Bariba" |
-| 2 | Votre fil social | Publiez, partagez, discutez en Bariba avec TamTam |
-| 3 | Outils de langue | Dictionnaire, traducteur, cours d'apprentissage |
-| 4 | Créez du contenu | Studio Griot, radio, IA pour le Bariba |
+- Overlay sombre semi-transparent sur toute l'app
+- "Trou" lumineux découpé autour de l'élément ciblé (via `data-tour="step-id"` sur les éléments)
+- Bulle flottante animée avec :
+  - Emoji grand (pour la compréhension visuelle)
+  - Texte court (1-2 lignes max, français simple)
+  - Bouton ▶️ pour écouter l'explication (TTS français via `useFrenchTTS`)
+  - Bouton "Suivant" / "Passer" avec icônes
+- Animation pulse sur l'élément mis en surbrillance
+- Le trou + bulle suivent la position réelle du DOM via `getBoundingClientRect()`
 
-### 3. Slides Section B — Clavier Bariba (3-4 slides)
-| Slide | Titre | Contenu |
-|-------|-------|---------|
-| 5 | Le clavier Bariba ⌨️ | Présentation : touches ɔ ɛ ŋ ã ĩ ũ exclusives |
-| 6 | Activation étape 1 | Illustration : Paramètres → Langue et saisie → Activer |
-| 7 | Activation étape 2 | Illustration : Changer de clavier (barre d'espace longue / 🌐) |
-| 8 | Prêt ! | Confirmation + bouton "Commencer" |
+### 3. Étapes du tour (sur les vrais éléments de l'app)
 
-### 4. Illustrations
-- 8 images générées via l'outil `generate_image` avec style africain moderne
-- Stockées dans `src/assets/onboarding/`
-- Style cohérent : couleurs chaudes (orange #FF5722, fond sombre), personnages stylisés africains
+| # | Cible (`data-tour`) | Emoji | Texte FR | Audio |
+|---|---------------------|-------|----------|-------|
+| 1 | `tour-menu` | ☰ 📋 | "Appuyez ici pour ouvrir le menu" | TTS |
+| 2 | `tour-feed-indicator` | 🎬🏛️📢 | "Glissez à gauche ou droite pour changer de fil" | TTS |
+| 3 | `tour-create-btn` | ➕🎙️ | "Appuyez ici pour créer un contenu" | TTS |
+| 4 | `tour-tab-learn` | 📚 | "Apprenez le Bariba ici" | TTS |
+| 5 | `tour-tab-dico` | 📖 | "Le dictionnaire Bariba-Français" | TTS |
+| 6 | `tour-tab-translate` | 🌍 | "Traduisez entre Bariba et Français" | TTS |
+| 7 | `tour-tab-ia` | 🤖 | "Fitila IA vous aide en Bariba" | TTS |
 
-### 5. Intégration dans l'app
-- Dans `FitilaApp.tsx` → `AppContent` : afficher `OnboardingGuide` si `localStorage` n'a pas le flag
-- Un bouton "Revoir le guide" dans le menu latéral (Settings)
+### 4. Section clavier Bariba (étapes supplémentaires)
 
-### 6. Composant `OnboardingSlide` (réutilisable)
-Fichier : `src/components/onboarding/OnboardingSlide.tsx`
-- Props : `image`, `title`, `description`, `highlight`
-- Layout : image en haut (60%), texte en bas (40%)
+| # | Type | Emoji | Texte |
+|---|------|-------|-------|
+| 8 | Plein écran | ⌨️ | "Activez le clavier Bariba pour taper ɔ ɛ ŋ" |
+| 9 | Plein écran | ⚙️➡️ | "Paramètres → Langue → Activer Clavier Bariba" |
+| 10 | Plein écran | 🌐 | "Appuyez longuement sur espace pour changer" |
 
-## Fichiers modifiés
-- `src/pages/fitila/FitilaApp.tsx` — import et affichage conditionnel du guide
-- Nouveau : `src/components/onboarding/OnboardingGuide.tsx`
-- Nouveau : `src/components/onboarding/OnboardingSlide.tsx`
-- 8 images dans `src/assets/onboarding/`
+### 5. Modifications des composants existants
+
+**`TamTamSocial.tsx`** — Ajouter des attributs `data-tour` :
+- `data-tour="tour-create-btn"` sur le bouton +
+- `data-tour="tour-tab-learn"` / `tour-tab-dico` / etc. sur les onglets
+- `data-tour="tour-feed-indicator"` sur l'indicateur de fil
+- `data-tour="tour-menu"` sur le bouton hamburger
+
+**`FitilaApp.tsx`** :
+- Remplacer l'ancien `OnboardingGuide` par `AppTourProvider`
+- Ajouter "Revoir le guide" dans le menu latéral
+
+### 6. TTS intégré
+- Utiliser `useFrenchTTS` existant pour la voix française
+- Chaque bulle a un bouton 🔊 qui lit le texte de l'étape
+- Option : basculer vers Bariba TTS si la langue est Bariba
+
+## Fichiers
+
+| Action | Fichier |
+|--------|---------|
+| Nouveau | `src/components/onboarding/AppTourProvider.tsx` |
+| Nouveau | `src/components/onboarding/TourSpotlight.tsx` |
+| Nouveau | `src/components/onboarding/tourSteps.ts` (définition des étapes) |
+| Modifier | `src/pages/tamtam/TamTamSocial.tsx` (ajouter `data-tour` attrs) |
+| Modifier | `src/pages/fitila/FitilaApp.tsx` (remplacer ancien guide par AppTour) |
+| Supprimer | `src/components/onboarding/OnboardingGuide.tsx` (remplacé) |
 
 ## Détails techniques
-- Geste swipe via framer-motion `drag="x"` + `onDragEnd`
-- Transition entre slides : fade + slide horizontal
-- Bouton "Passer" en haut à droite, toujours accessible
-- Responsive : max-w-md centré, fonctionne sur mobile et tablette
-- Aucune dépendance supplémentaire requise
+- Positionnement des bulles : `getBoundingClientRect()` + `ResizeObserver` pour suivre les éléments
+- Overlay avec `clip-path` ou SVG pour créer le "trou" lumineux
+- `framer-motion` pour les animations de transition et le pulse
+- `localStorage` pour persister l'état du tour
+- Aucune dépendance externe supplémentaire
