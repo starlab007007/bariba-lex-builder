@@ -6,11 +6,13 @@ import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTamTamProfile } from '@/hooks/useTamTamProfile';
 import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package, Sparkles } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
 import { BuildInfo } from '@/components/BuildInfo';
 import { useHFPreWarm } from '@/hooks/useHFPreWarm';
 import { useExtendedNotifications } from '@/hooks/useExtendedNotifications';
+import OnboardingGuide, { ONBOARDING_STORAGE_KEY } from '@/components/onboarding/OnboardingGuide';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 FITILA APP V7 - MENU SIMPLIFIÉ
@@ -294,6 +296,17 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                 <Settings className="w-5 h-5 text-white/50" />
                 <span className="text-white/50 text-sm">{t('sidebar_settings')}</span>
               </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+                  window.location.reload();
+                }}
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5"
+              >
+                <HelpCircle className="w-5 h-5 text-white/50" />
+                <span className="text-white/50 text-sm">Revoir le guide</span>
+              </motion.button>
               <div className="pt-2 border-t border-white/5">
                 <BuildInfo className="text-white/30" />
               </div>
@@ -311,6 +324,9 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 
 function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return !localStorage.getItem(ONBOARDING_STORAGE_KEY);
+  });
   const location = useLocation();
 
   useHFPreWarm();
@@ -333,6 +349,18 @@ function AppContent() {
         <SideMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
         <main className="w-full h-full overflow-hidden"><Outlet /></main>
         <AdminFloatingButton />
+        <AnimatePresence>
+          {showOnboarding && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <OnboardingGuide onComplete={() => setShowOnboarding(false)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </SideMenuContext.Provider>
   );

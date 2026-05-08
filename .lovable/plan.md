@@ -1,42 +1,65 @@
 
-# Diagnostic du crash "Fitila Bariba s'arrête systématiquement"
+# Guide interactif d'onboarding Fitila
 
-## Problèmes identifiés
+## Objectif
+Créer un guide d'onboarding en plein écran, interactif et illustré qui s'affiche automatiquement au premier lancement. Deux sections : découverte de l'app + activation du clavier Bariba. Possibilité de sauter à tout moment.
 
-### 1. Duplicate `release` buildType dans `build.gradle` (CRITIQUE)
-Le fichier `android/app/build.gradle` contient **deux blocs `release`** (lignes 38-47). Le second écrase le premier, supprimant la config de signature. Cela peut causer des erreurs de build ou de runtime imprévisibles.
+## Ce qui existe déjà
+- `BaribaKeyboardActivationGuide.tsx` — guide statique pour le clavier (sera enrichi/remplacé)
+- Aucun système d'onboarding existant
 
-### 2. Boutons manquants dans le layout (CRASH POTENTIEL)
-Le code Kotlin (`BaribaInputMethodService.kt`, lignes 136-152) référence `key_question` et `key_exclaim` pour les touches `?` et `!`, mais ces boutons **n'existent pas** dans `keyboard_bariba.xml`. Bien que le code gère le cas `resId == 0`, l'absence de ces touches réduit la fonctionnalité.
+## Architecture
 
-### 3. WeightSum incohérent dans Row 4
-Row 4 a `weightSum="12"` mais la somme réelle des poids est : 6×1 (spéciaux) + 4 (espace) + 1 (point) + 1 (virgule) = 12. C'est correct, mais il manque `?` et `!` qui étaient probablement prévus.
+### 1. Composant `OnboardingGuide` (nouveau)
+Fichier : `src/components/onboarding/OnboardingGuide.tsx`
 
-### 4. Touche Enter/Return manquante
-Il n'y a pas de touche Entrée/Retour dans le clavier, ce qui est essentiel pour la saisie dans les champs de texte.
+- Fullscreen overlay avec slides swipables (framer-motion)
+- Indicateur de progression (dots)
+- Boutons "Suivant" / "Passer" toujours visibles
+- Sauvegarde dans `localStorage` (`fitila_onboarding_done`)
+- 6-8 slides au total, répartis en 2 sections
 
-## Corrections à appliquer
+### 2. Slides Section A — Découverte de l'app (4 slides)
+Chaque slide : illustration générée + titre + courte description
 
-### A. Corriger `build.gradle` — supprimer le bloc `release` dupliqué
-Fusionner les deux blocs `release` en un seul.
+| Slide | Titre | Contenu |
+|-------|-------|---------|
+| 1 | Bienvenue sur Fitila 🔥 | Logo, message de bienvenue, "La première app 100% Bariba" |
+| 2 | Votre fil social | Publiez, partagez, discutez en Bariba avec TamTam |
+| 3 | Outils de langue | Dictionnaire, traducteur, cours d'apprentissage |
+| 4 | Créez du contenu | Studio Griot, radio, IA pour le Bariba |
 
-### B. Ajouter les touches manquantes dans `keyboard_bariba.xml`
-- Ajouter `key_question` (?) et `key_exclaim` (!) dans Row 4
-- Ajouter une touche `key_enter` (Entrée/↵)
-- Ajuster le `weightSum` en conséquence
-- Réorganiser Row 4 en deux sous-rangées pour mieux distribuer les touches
+### 3. Slides Section B — Clavier Bariba (3-4 slides)
+| Slide | Titre | Contenu |
+|-------|-------|---------|
+| 5 | Le clavier Bariba ⌨️ | Présentation : touches ɔ ɛ ŋ ã ĩ ũ exclusives |
+| 6 | Activation étape 1 | Illustration : Paramètres → Langue et saisie → Activer |
+| 7 | Activation étape 2 | Illustration : Changer de clavier (barre d'espace longue / 🌐) |
+| 8 | Prêt ! | Confirmation + bouton "Commencer" |
 
-### C. Renforcer la gestion d'erreurs dans `BaribaInputMethodService.kt`
-- Ajouter un try-catch global autour de `onCreateInputView`
-- S'assurer que `currentInputConnection` n'est jamais null avant utilisation
-- Ajouter des logs pour faciliter le debug futur
+### 4. Illustrations
+- 8 images générées via l'outil `generate_image` avec style africain moderne
+- Stockées dans `src/assets/onboarding/`
+- Style cohérent : couleurs chaudes (orange #FF5722, fond sombre), personnages stylisés africains
 
-### D. Ajouter les touches de ponctuation manquantes dans le code Kotlin
-- S'assurer que `key_question`, `key_exclaim`, et `key_enter` sont bien câblés
+### 5. Intégration dans l'app
+- Dans `FitilaApp.tsx` → `AppContent` : afficher `OnboardingGuide` si `localStorage` n'a pas le flag
+- Un bouton "Revoir le guide" dans le menu latéral (Settings)
+
+### 6. Composant `OnboardingSlide` (réutilisable)
+Fichier : `src/components/onboarding/OnboardingSlide.tsx`
+- Props : `image`, `title`, `description`, `highlight`
+- Layout : image en haut (60%), texte en bas (40%)
 
 ## Fichiers modifiés
-- `android/app/build.gradle`
-- `android/app/src/main/res/layout/keyboard_bariba.xml`
-- `android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.kt`
-- `android-native/res/layout/keyboard_bariba.xml` (miroir)
-- `android-native/java/com/fitila/bariba/BaribaInputMethodService.kt` (miroir)
+- `src/pages/fitila/FitilaApp.tsx` — import et affichage conditionnel du guide
+- Nouveau : `src/components/onboarding/OnboardingGuide.tsx`
+- Nouveau : `src/components/onboarding/OnboardingSlide.tsx`
+- 8 images dans `src/assets/onboarding/`
+
+## Détails techniques
+- Geste swipe via framer-motion `drag="x"` + `onDragEnd`
+- Transition entre slides : fade + slide horizontal
+- Bouton "Passer" en haut à droite, toujours accessible
+- Responsive : max-w-md centré, fonctionne sur mobile et tablette
+- Aucune dépendance supplémentaire requise
