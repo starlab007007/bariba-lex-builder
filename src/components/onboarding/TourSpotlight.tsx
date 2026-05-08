@@ -65,13 +65,15 @@ export default function TourSpotlight({
 
     // Initial + small delay for layout
     update();
-    const t = setTimeout(update, 300) as ReturnType<typeof setTimeout>;
+    const t1 = setTimeout(update, 300) as ReturnType<typeof setTimeout>;
+    const t2 = setTimeout(update, 800) as ReturnType<typeof setTimeout>;
 
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, true);
 
     return () => {
-      clearTimeout(t);
+      clearTimeout(t1);
+      clearTimeout(t2);
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
