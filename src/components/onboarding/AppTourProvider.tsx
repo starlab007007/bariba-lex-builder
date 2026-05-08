@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { TOUR_STEPS, TOUR_STORAGE_KEY } from './tourSteps';
 import TourSpotlight from './TourSpotlight';
 
@@ -20,6 +21,8 @@ export default function AppTourProvider({ children }: { children: React.ReactNod
   const [currentStep, setCurrentStep] = useState(0);
   const [lang, setLang] = useState<'fr' | 'ba'>('fr');
   const [showLangPicker, setShowLangPicker] = useState(() => !localStorage.getItem(TOUR_STORAGE_KEY));
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const finish = useCallback(() => {
     localStorage.setItem(TOUR_STORAGE_KEY, 'true');
@@ -45,7 +48,22 @@ export default function AppTourProvider({ children }: { children: React.ReactNod
   const pickLang = useCallback((l: 'fr' | 'ba') => {
     setLang(l);
     setShowLangPicker(false);
-  }, []);
+    // Delay navigation to let state settle before route change
+    setTimeout(() => {
+      if (!window.location.pathname.includes('/fitila/social')) {
+        navigate('/fitila/social', { replace: true });
+      }
+    }, 100);
+  }, [navigate]);
+
+  // Navigate to the correct page for steps that need specific routes
+  useEffect(() => {
+    if (!isActive || showLangPicker) return;
+    const step = TOUR_STEPS[currentStep];
+    if (step?.route && !location.pathname.includes(step.route)) {
+      navigate(step.route, { replace: true });
+    }
+  }, [currentStep, isActive, showLangPicker, location.pathname, navigate]);
 
   return (
     <AppTourContext.Provider value={{ isActive, startTour }}>

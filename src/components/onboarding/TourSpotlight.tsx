@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, X, Volume2, VolumeX, Rocket } from 'lucide-react';
-import { TOUR_STEPS, type TourStep } from './tourSteps';
+import { type TourStep } from './tourSteps';
 import slideKeyboardIntro from '@/assets/onboarding/slide-keyboard-intro.jpg';
 import slideKeyboardStep1 from '@/assets/onboarding/slide-keyboard-step1.jpg';
 import slideKeyboardStep2 from '@/assets/onboarding/slide-keyboard-step2.jpg';
@@ -44,7 +44,7 @@ export default function TourSpotlight({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const isLast = currentStep === totalSteps - 1;
-  const isFullscreen = step.target === null;
+  const isFullscreen = step.target === null || (!targetRect && step.target !== null);
 
   // Locate target element
   useEffect(() => {
@@ -65,13 +65,15 @@ export default function TourSpotlight({
 
     // Initial + small delay for layout
     update();
-    const t = setTimeout(update, 300) as ReturnType<typeof setTimeout>;
+    const t1 = setTimeout(update, 300) as ReturnType<typeof setTimeout>;
+    const t2 = setTimeout(update, 800) as ReturnType<typeof setTimeout>;
 
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, true);
 
     return () => {
-      clearTimeout(t);
+      clearTimeout(t1);
+      clearTimeout(t2);
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
@@ -133,35 +135,36 @@ export default function TourSpotlight({
     tooltipStyle.left = '50%';
     tooltipStyle.transform = 'translateX(-50%)';
   }
+  // When no target found but step expects one, center the tooltip
+  if (!spotRect && step.target !== null) {
+    tooltipStyle.top = '50%';
+    tooltipStyle.left = '50%';
+    tooltipStyle.transform = 'translate(-50%, -50%)';
+  }
 
   return (
     <div className="fixed inset-0 z-[300] pointer-events-auto">
-      {/* SVG overlay with hole */}
-      <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
-        <defs>
-          <mask id="tour-mask">
-            <rect x="0" y="0" width="100%" height="100%" fill="white" />
-            {spotRect && (
-              <rect
-                x={spotRect.x}
-                y={spotRect.y}
-                width={spotRect.w}
-                height={spotRect.h}
-                rx={spotRect.rx}
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-          fill="rgba(0,0,0,0.75)"
-          mask="url(#tour-mask)"
+      {/* Dark overlay with cutout hole using box-shadow */}
+      {spotRect ? (
+        <div
+          className="absolute rounded-2xl"
+          style={{
+            top: spotRect.y,
+            left: spotRect.x,
+            width: spotRect.w,
+            height: spotRect.h,
+            borderRadius: spotRect.rx,
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.78)',
+            zIndex: 1,
+            pointerEvents: 'none',
+          }}
         />
-      </svg>
+      ) : (
+        <div
+          className="absolute inset-0"
+          style={{ background: 'rgba(0,0,0,0.78)', pointerEvents: 'none' }}
+        />
+      )}
 
       {/* Pulse ring around target */}
       {spotRect && (
