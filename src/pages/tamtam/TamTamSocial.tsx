@@ -250,6 +250,14 @@ const BottomTabBar: React.FC<{
     { id: 'tem-ia', icon: Bot, label: 'Fitila IA', path: '/fitila/tem-ia' },
   ];
 
+  const tourMap: Record<string, string> = {
+    learn: 'tour-tab-learn',
+    classe: 'tour-tab-classe',
+    dictionary: 'tour-tab-dico',
+    translator: 'tour-tab-translate',
+    'tem-ia': 'tour-tab-ia',
+  };
+
   const renderTab = (tab: typeof leftTabs[0]) => {
     const Icon = tab.icon;
     const isActive = activeTab === tab.id;
@@ -259,6 +267,7 @@ const BottomTabBar: React.FC<{
         onClick={() => tab.path ? onNavigate(tab.path) : onTabChange(tab.id)}
         className="relative flex flex-col items-center gap-1 py-1.5 overflow-hidden active:opacity-70 transition-opacity"
         style={{ flex: '1 1 0', minWidth: 0, minHeight: 44 }}
+        data-tour={tourMap[tab.id]}
       >
         <Icon className={`w-[22px] h-[22px] ${isActive ? 'text-white' : 'text-white/50'}`} />
         <span className={`text-[10px] sm:text-[11px] truncate w-full text-center leading-tight ${isActive ? 'text-white font-semibold' : 'text-white/50'}`}>{tab.label}</span>
