@@ -13,7 +13,6 @@ import { BuildInfo } from '@/components/BuildInfo';
 import { useHFPreWarm } from '@/hooks/useHFPreWarm';
 import { useExtendedNotifications } from '@/hooks/useExtendedNotifications';
 import AppTourProvider, { TOUR_STORAGE_KEY } from '@/components/onboarding/AppTourProvider';
-import { useAppTour } from '@/components/onboarding/AppTourProvider';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 FITILA APP V7 - MENU SIMPLIFIÉ
