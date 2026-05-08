@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, X, Volume2, VolumeX, Rocket } from 'lucide-react';
-import { TOUR_STEPS, type TourStep } from './tourSteps';
+import { type TourStep } from './tourSteps';
 import slideKeyboardIntro from '@/assets/onboarding/slide-keyboard-intro.jpg';
 import slideKeyboardStep1 from '@/assets/onboarding/slide-keyboard-step1.jpg';
 import slideKeyboardStep2 from '@/assets/onboarding/slide-keyboard-step2.jpg';
@@ -144,32 +144,27 @@ export default function TourSpotlight({
 
   return (
     <div className="fixed inset-0 z-[300] pointer-events-auto">
-      {/* SVG overlay with hole */}
-      <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
-        <defs>
-          <mask id="tour-mask">
-            <rect x="0" y="0" width="100%" height="100%" fill="white" />
-            {spotRect && (
-              <rect
-                x={spotRect.x}
-                y={spotRect.y}
-                width={spotRect.w}
-                height={spotRect.h}
-                rx={spotRect.rx}
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-          fill="rgba(0,0,0,0.75)"
-          mask="url(#tour-mask)"
+      {/* Dark overlay with cutout hole using box-shadow */}
+      {spotRect ? (
+        <div
+          className="absolute rounded-2xl"
+          style={{
+            top: spotRect.y,
+            left: spotRect.x,
+            width: spotRect.w,
+            height: spotRect.h,
+            borderRadius: spotRect.rx,
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.78)',
+            zIndex: 1,
+            pointerEvents: 'none',
+          }}
         />
-      </svg>
+      ) : (
+        <div
+          className="absolute inset-0"
+          style={{ background: 'rgba(0,0,0,0.78)', pointerEvents: 'none' }}
+        />
+      )}
 
       {/* Pulse ring around target */}
       {spotRect && (
