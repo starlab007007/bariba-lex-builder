@@ -44,7 +44,7 @@ export default function TourSpotlight({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const isLast = currentStep === totalSteps - 1;
-  const isFullscreen = step.target === null;
+  const isFullscreen = step.target === null || (!targetRect && step.target !== null);
 
   // Locate target element
   useEffect(() => {
@@ -132,6 +132,12 @@ export default function TourSpotlight({
     }
     tooltipStyle.left = '50%';
     tooltipStyle.transform = 'translateX(-50%)';
+  }
+  // When no target found but step expects one, center the tooltip
+  if (!spotRect && step.target !== null) {
+    tooltipStyle.top = '50%';
+    tooltipStyle.left = '50%';
+    tooltipStyle.transform = 'translate(-50%, -50%)';
   }
 
   return (
