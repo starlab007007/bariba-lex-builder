@@ -123,7 +123,7 @@ export default function TourSpotlight({
     : null;
 
   // Position tooltip: prefer below target, fallback above
-  const tooltipStyle: React.CSSProperties = {};
+  const wrapperStyle: React.CSSProperties = {};
   if (spotRect) {
     const vh = window.innerHeight;
     const cardH = 240;
@@ -131,21 +131,30 @@ export default function TourSpotlight({
     const safeBottom = 24;
     const below = spotRect.y + spotRect.h + 12;
     if (below + cardH + safeBottom < vh) {
-      tooltipStyle.top = Math.max(safeTop, below);
+      wrapperStyle.top = Math.max(safeTop, below);
     } else if (spotRect.y - cardH - 12 > safeTop) {
-      tooltipStyle.top = Math.max(safeTop, spotRect.y - cardH - 12);
+      wrapperStyle.top = Math.max(safeTop, spotRect.y - cardH - 12);
     } else {
       // Not enough space above or below: clamp to viewport
-      tooltipStyle.top = Math.max(safeTop, Math.min(below, vh - cardH - safeBottom));
+      wrapperStyle.top = Math.max(safeTop, Math.min(below, vh - cardH - safeBottom));
     }
-    tooltipStyle.left = '50%';
-    tooltipStyle.transform = 'translateX(-50%)';
+    wrapperStyle.left = 0;
+    wrapperStyle.right = 0;
+    wrapperStyle.display = 'flex';
+    wrapperStyle.justifyContent = 'center';
+    wrapperStyle.padding = '0 12px';
+    wrapperStyle.pointerEvents = 'none';
   }
   // When no target found but step expects one, center the tooltip
   if (!spotRect && step.target !== null) {
-    tooltipStyle.top = '50%';
-    tooltipStyle.left = '50%';
-    tooltipStyle.transform = 'translate(-50%, -50%)';
+    wrapperStyle.top = '50%';
+    wrapperStyle.left = 0;
+    wrapperStyle.right = 0;
+    wrapperStyle.transform = 'translateY(-50%)';
+    wrapperStyle.display = 'flex';
+    wrapperStyle.justifyContent = 'center';
+    wrapperStyle.padding = '0 12px';
+    wrapperStyle.pointerEvents = 'none';
   }
 
   return (
@@ -199,19 +208,38 @@ export default function TourSpotlight({
 
       {/* Tooltip / Card */}
       <AnimatePresence mode="wait">
-        <motion.div
-          key={step.id}
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -10, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className={`absolute z-10 ${
-            isFullscreen
-              ? 'inset-x-3 top-[max(1rem,env(safe-area-inset-top))] bottom-[max(1rem,env(safe-area-inset-bottom))] flex flex-col items-center justify-center'
-              : 'w-[min(92vw,420px)]'
-          }`}
-          style={isFullscreen ? {} : tooltipStyle}
-        >
+        {isFullscreen ? (
+          <motion.div
+            key={step.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="absolute z-10 inset-x-3 top-[max(1rem,env(safe-area-inset-top))] bottom-[max(1rem,env(safe-area-inset-bottom))] flex flex-col items-center justify-center"
+          >
+            {renderCard()}
+          </motion.div>
+        ) : (
+          <div className="absolute z-10" style={wrapperStyle}>
+            <motion.div
+              key={step.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="w-[min(92vw,420px)]"
+              style={{ pointerEvents: 'auto' }}
+            >
+              {renderCard()}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
+  function renderCard() {
+    return (
           <div
             className="rounded-3xl p-5 shadow-2xl border border-white/15 w-full"
             style={{ background: 'linear-gradient(135deg, rgba(30,25,40,0.97), rgba(20,18,30,0.98))' }}
@@ -303,8 +331,6 @@ export default function TourSpotlight({
               </motion.button>
             </div>
           </div>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
+    );
+  }
 }
