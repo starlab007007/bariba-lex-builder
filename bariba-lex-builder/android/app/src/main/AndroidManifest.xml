@@ -42,6 +42,7 @@
             android:name="com.fitila.bariba.BaribaInputMethodService"
             android:label="Clavier Bariba Fitila"
             android:permission="android.permission.BIND_INPUT_METHOD"
+            android:theme="@android:style/Theme.DeviceDefault.InputMethod"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.view.InputMethod" />

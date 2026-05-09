@@ -24,16 +24,16 @@
         android:orientation="horizontal"
         android:weightSum="10">
 
-        <Button android:id="@+id/key_a" style="@style/BaribaKey" android:text="a" />
-        <Button android:id="@+id/key_z" style="@style/BaribaKey" android:text="z" />
-        <Button android:id="@+id/key_e" style="@style/BaribaKey" android:text="e" />
-        <Button android:id="@+id/key_r" style="@style/BaribaKey" android:text="r" />
-        <Button android:id="@+id/key_t" style="@style/BaribaKey" android:text="t" />
-        <Button android:id="@+id/key_y" style="@style/BaribaKey" android:text="y" />
-        <Button android:id="@+id/key_u" style="@style/BaribaKey" android:text="u" />
-        <Button android:id="@+id/key_i" style="@style/BaribaKey" android:text="i" />
-        <Button android:id="@+id/key_o" style="@style/BaribaKey" android:text="o" />
-        <Button android:id="@+id/key_p" style="@style/BaribaKey" android:text="p" />
+        <android.widget.Button android:id="@+id/key_a" style="@style/BaribaKey" android:text="a" />
+        <android.widget.Button android:id="@+id/key_z" style="@style/BaribaKey" android:text="z" />
+        <android.widget.Button android:id="@+id/key_e" style="@style/BaribaKey" android:text="e" />
+        <android.widget.Button android:id="@+id/key_r" style="@style/BaribaKey" android:text="r" />
+        <android.widget.Button android:id="@+id/key_t" style="@style/BaribaKey" android:text="t" />
+        <android.widget.Button android:id="@+id/key_y" style="@style/BaribaKey" android:text="y" />
+        <android.widget.Button android:id="@+id/key_u" style="@style/BaribaKey" android:text="u" />
+        <android.widget.Button android:id="@+id/key_i" style="@style/BaribaKey" android:text="i" />
+        <android.widget.Button android:id="@+id/key_o" style="@style/BaribaKey" android:text="o" />
+        <android.widget.Button android:id="@+id/key_p" style="@style/BaribaKey" android:text="p" />
     </LinearLayout>
 
     <!-- Row 2: AZERTY middle row -->
@@ -45,16 +45,16 @@
         android:layout_marginEnd="12dp"
         android:weightSum="10">
 
-        <Button android:id="@+id/key_q" style="@style/BaribaKey" android:text="q" />
-        <Button android:id="@+id/key_s" style="@style/BaribaKey" android:text="s" />
-        <Button android:id="@+id/key_d" style="@style/BaribaKey" android:text="d" />
-        <Button android:id="@+id/key_f" style="@style/BaribaKey" android:text="f" />
-        <Button android:id="@+id/key_g" style="@style/BaribaKey" android:text="g" />
-        <Button android:id="@+id/key_h" style="@style/BaribaKey" android:text="h" />
-        <Button android:id="@+id/key_j" style="@style/BaribaKey" android:text="j" />
-        <Button android:id="@+id/key_k" style="@style/BaribaKey" android:text="k" />
-        <Button android:id="@+id/key_l" style="@style/BaribaKey" android:text="l" />
-        <Button android:id="@+id/key_m" style="@style/BaribaKey" android:text="m" />
+        <android.widget.Button android:id="@+id/key_q" style="@style/BaribaKey" android:text="q" />
+        <android.widget.Button android:id="@+id/key_s" style="@style/BaribaKey" android:text="s" />
+        <android.widget.Button android:id="@+id/key_d" style="@style/BaribaKey" android:text="d" />
+        <android.widget.Button android:id="@+id/key_f" style="@style/BaribaKey" android:text="f" />
+        <android.widget.Button android:id="@+id/key_g" style="@style/BaribaKey" android:text="g" />
+        <android.widget.Button android:id="@+id/key_h" style="@style/BaribaKey" android:text="h" />
+        <android.widget.Button android:id="@+id/key_j" style="@style/BaribaKey" android:text="j" />
+        <android.widget.Button android:id="@+id/key_k" style="@style/BaribaKey" android:text="k" />
+        <android.widget.Button android:id="@+id/key_l" style="@style/BaribaKey" android:text="l" />
+        <android.widget.Button android:id="@+id/key_m" style="@style/BaribaKey" android:text="m" />
     </LinearLayout>
 
     <!-- Row 3: SHIFT + bottom letters + DELETE -->
@@ -64,14 +64,14 @@
         android:orientation="horizontal"
         android:weightSum="8">
 
-        <Button android:id="@+id/key_shift" style="@style/BaribaKey" android:text="⇧" android:textSize="18sp" />
-        <Button android:id="@+id/key_w" style="@style/BaribaKey" android:text="w" />
-        <Button android:id="@+id/key_x" style="@style/BaribaKey" android:text="x" />
-        <Button android:id="@+id/key_c" style="@style/BaribaKey" android:text="c" />
-        <Button android:id="@+id/key_v" style="@style/BaribaKey" android:text="v" />
-        <Button android:id="@+id/key_b" style="@style/BaribaKey" android:text="b" />
-        <Button android:id="@+id/key_n" style="@style/BaribaKey" android:text="n" />
-        <Button android:id="@+id/key_delete" style="@style/BaribaKey" android:text="⌫" android:textSize="18sp" />
+        <android.widget.Button android:id="@+id/key_shift" style="@style/BaribaKey" android:text="⇧" android:textSize="18sp" />
+        <android.widget.Button android:id="@+id/key_w" style="@style/BaribaKey" android:text="w" />
+        <android.widget.Button android:id="@+id/key_x" style="@style/BaribaKey" android:text="x" />
+        <android.widget.Button android:id="@+id/key_c" style="@style/BaribaKey" android:text="c" />
+        <android.widget.Button android:id="@+id/key_v" style="@style/BaribaKey" android:text="v" />
+        <android.widget.Button android:id="@+id/key_b" style="@style/BaribaKey" android:text="b" />
+        <android.widget.Button android:id="@+id/key_n" style="@style/BaribaKey" android:text="n" />
+        <android.widget.Button android:id="@+id/key_delete" style="@style/BaribaKey" android:text="⌫" android:textSize="18sp" />
     </LinearLayout>
 
     <!-- Row 4: Bariba special characters -->
@@ -82,12 +82,12 @@
         android:background="#0F3460"
         android:weightSum="6">
 
-        <Button android:id="@+id/key_o_open" style="@style/BaribaKey" android:text="ɔ" android:textSize="18sp" />
-        <Button android:id="@+id/key_e_open" style="@style/BaribaKey" android:text="ɛ" android:textSize="18sp" />
-        <Button android:id="@+id/key_ng" style="@style/BaribaKey" android:text="ŋ" android:textSize="18sp" />
-        <Button android:id="@+id/key_a_tilde" style="@style/BaribaKey" android:text="ã" android:textSize="18sp" />
-        <Button android:id="@+id/key_i_tilde" style="@style/BaribaKey" android:text="ĩ" android:textSize="18sp" />
-        <Button android:id="@+id/key_u_tilde" style="@style/BaribaKey" android:text="ũ" android:textSize="18sp" />
+        <android.widget.Button android:id="@+id/key_o_open" style="@style/BaribaKey" android:text="ɔ" android:textSize="18sp" />
+        <android.widget.Button android:id="@+id/key_e_open" style="@style/BaribaKey" android:text="ɛ" android:textSize="18sp" />
+        <android.widget.Button android:id="@+id/key_ng" style="@style/BaribaKey" android:text="ŋ" android:textSize="18sp" />
+        <android.widget.Button android:id="@+id/key_a_tilde" style="@style/BaribaKey" android:text="ã" android:textSize="18sp" />
+        <android.widget.Button android:id="@+id/key_i_tilde" style="@style/BaribaKey" android:text="ĩ" android:textSize="18sp" />
+        <android.widget.Button android:id="@+id/key_u_tilde" style="@style/BaribaKey" android:text="ũ" android:textSize="18sp" />
     </LinearLayout>
 
     <!-- Row 5: Punctuation + SPACE + ENTER -->
@@ -97,12 +97,12 @@
         android:orientation="horizontal"
         android:weightSum="10">
 
-        <Button android:id="@+id/key_comma" style="@style/BaribaKey" android:text="," />
-        <Button android:id="@+id/key_period" style="@style/BaribaKey" android:text="." />
-        <Button android:id="@+id/key_question" style="@style/BaribaKey" android:text="?" />
-        <Button android:id="@+id/key_exclaim" style="@style/BaribaKey" android:text="!" />
-        <Button android:id="@+id/key_space" style="@style/BaribaKey" android:text="⎵" android:layout_weight="4" />
-        <Button android:id="@+id/key_enter" style="@style/BaribaKey" android:text="↵" android:layout_weight="2" android:textSize="18sp" />
+        <android.widget.Button android:id="@+id/key_comma" style="@style/BaribaKey" android:text="," />
+        <android.widget.Button android:id="@+id/key_period" style="@style/BaribaKey" android:text="." />
+        <android.widget.Button android:id="@+id/key_question" style="@style/BaribaKey" android:text="?" />
+        <android.widget.Button android:id="@+id/key_exclaim" style="@style/BaribaKey" android:text="!" />
+        <android.widget.Button android:id="@+id/key_space" style="@style/BaribaKey" android:text="⎵" android:layout_weight="4" />
+        <android.widget.Button android:id="@+id/key_enter" style="@style/BaribaKey" android:text="↵" android:layout_weight="2" android:textSize="18sp" />
     </LinearLayout>
 
 </LinearLayout>
