@@ -17,10 +17,28 @@ const AppTourContext = createContext<AppTourContextType>({
 export const useAppTour = () => useContext(AppTourContext);
 
 export default function AppTourProvider({ children }: { children: React.ReactNode }) {
-  const [isActive, setIsActive] = useState(() => !localStorage.getItem(TOUR_STORAGE_KEY));
+  const INSTALL_KEY = 'fitila_install_id';
+  // Detect fresh install (native APK first launch) and reset tour flag.
+  const isFreshInstall = (() => {
+    try {
+      if (!localStorage.getItem(INSTALL_KEY)) {
+        localStorage.removeItem(TOUR_STORAGE_KEY);
+        const id =
+          (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : Date.now().toString(36) + Math.random().toString(36).slice(2));
+        localStorage.setItem(INSTALL_KEY, id);
+        return true;
+      }
+    } catch {}
+    return false;
+  })();
+
+  const shouldShow = isFreshInstall || !localStorage.getItem(TOUR_STORAGE_KEY);
+  const [isActive, setIsActive] = useState(shouldShow);
   const [currentStep, setCurrentStep] = useState(0);
   const [lang, setLang] = useState<'fr' | 'ba'>('fr');
-  const [showLangPicker, setShowLangPicker] = useState(() => !localStorage.getItem(TOUR_STORAGE_KEY));
+  const [showLangPicker, setShowLangPicker] = useState(shouldShow);
   const navigate = useNavigate();
   const location = useLocation();
 

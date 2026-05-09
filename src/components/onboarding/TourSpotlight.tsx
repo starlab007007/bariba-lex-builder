@@ -125,12 +125,18 @@ export default function TourSpotlight({
   // Position tooltip: prefer below target, fallback above
   const tooltipStyle: React.CSSProperties = {};
   if (spotRect) {
+    const vh = window.innerHeight;
+    const cardH = 240;
+    const safeTop = 16;
+    const safeBottom = 24;
     const below = spotRect.y + spotRect.h + 12;
-    const above = spotRect.y - 12;
-    if (below + 200 < window.innerHeight) {
-      tooltipStyle.top = below;
+    if (below + cardH + safeBottom < vh) {
+      tooltipStyle.top = Math.max(safeTop, below);
+    } else if (spotRect.y - cardH - 12 > safeTop) {
+      tooltipStyle.top = Math.max(safeTop, spotRect.y - cardH - 12);
     } else {
-      tooltipStyle.bottom = window.innerHeight - above;
+      // Not enough space above or below: clamp to viewport
+      tooltipStyle.top = Math.max(safeTop, Math.min(below, vh - cardH - safeBottom));
     }
     tooltipStyle.left = '50%';
     tooltipStyle.transform = 'translateX(-50%)';
@@ -143,7 +149,13 @@ export default function TourSpotlight({
   }
 
   return (
-    <div className="fixed inset-0 z-[300] pointer-events-auto">
+    <div
+      className="fixed inset-0 z-[300] pointer-events-auto"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
       {/* Dark overlay with cutout hole using box-shadow */}
       {spotRect ? (
         <div
@@ -193,7 +205,11 @@ export default function TourSpotlight({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className={`absolute z-10 ${isFullscreen ? 'inset-4 flex flex-col items-center justify-center' : 'w-[90vw] max-w-sm'}`}
+          className={`absolute z-10 ${
+            isFullscreen
+              ? 'inset-x-3 top-[max(1rem,env(safe-area-inset-top))] bottom-[max(1rem,env(safe-area-inset-bottom))] flex flex-col items-center justify-center'
+              : 'w-[min(92vw,420px)]'
+          }`}
           style={isFullscreen ? {} : tooltipStyle}
         >
           <div
@@ -205,7 +221,7 @@ export default function TourSpotlight({
               <img
                 src={KEYBOARD_IMAGES[step.id]}
                 alt={title}
-                className="w-full max-h-[35vh] object-contain rounded-2xl mb-4"
+                className="w-full max-h-[30vh] sm:max-h-[40vh] object-contain rounded-2xl mb-4"
                 draggable={false}
               />
             )}
