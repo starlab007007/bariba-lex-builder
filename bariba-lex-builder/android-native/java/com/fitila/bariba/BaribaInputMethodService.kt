@@ -16,6 +16,7 @@ class BaribaInputMethodService : InputMethodService() {
 
     companion object {
         private const val TAG = "BaribaKeyboard"
+        private const val BUILD_TAG = "fitila-ime-2026-05-10-safeInflater-v3"
     }
 
     private var isShifted = false
@@ -36,7 +37,7 @@ class BaribaInputMethodService : InputMethodService() {
 
     override fun onCreateInputView(): View {
         return try {
-            Log.i(TAG, "onCreateInputView: inflating keyboard layout (safe inflater)")
+            Log.i(TAG, "onCreateInputView BUILD_TAG=$BUILD_TAG package=$packageName")
             val layoutId = resources.getIdentifier("keyboard_bariba", "layout", packageName)
             if (layoutId == 0) {
                 Log.e(TAG, "keyboard_bariba layout not found for package: $packageName")
