@@ -1,102 +1,119 @@
-# Plan pour éliminer le crash persistant du clavier Bariba Fitila
+# Plan d’intervention
 
-## Ce que j’ai constaté
-- Le correctif de thème IME est bien présent dans le code source actuel :
-  - `android/app/src/main/AndroidManifest.xml`
-  - `android-native/.../BaribaInputMethodService.kt`
-  - `scripts/install-native-keyboard.sh`
-- Le service utilise déjà un `safeInflater()` avec un thème système non-AppCompat.
-- Le vrai risque restant est **le décalage entre le code corrigé et l’APK réellement installé**.
-- Le projet contient **plusieurs copies Android** (`android/`, `android-native/`, `bariba-lex-builder/android/`, `bariba-lex-builder/android-native/`). Si Android Studio, le VPS, ou le script de build pointe vers le mauvais dossier, le téléphone reçoit un ancien build.
+Je vais traiter les 5 prompts dans l’ordre, avec un audit natif Android focalisé sur le vrai point de crash: l’activation/sélection du service IME avant saisie.
 
-## Pourquoi le crash peut encore arriver
-1. **APK obsolète installé sur le téléphone** : le dernier correctif n’est pas dans l’APK que tu testes.
-2. **Mauvais dossier construit** : tu peux lancer Android Studio sur un dossier différent de celui poussé sur Git.
-3. **Build cache Gradle/Android Studio** : il réutilise des artefacts anciens.
-4. **`npx cap sync` non rejoué après mise à jour web/native** : le code natif final n’est pas resynchronisé.
-5. **Le téléphone garde une ancienne version de l’app/clavier** : l’IME déjà installé n’est pas remplacé proprement.
-6. **Le crash réel n’est plus AppCompat mais une autre exception runtime** : sans `adb logcat`, on ne peut pas confirmer la nouvelle cause exacte.
+## Point de départ déjà confirmé
+- Le service IME est bien déclaré dans `android/app/src/main/AndroidManifest.xml` avec `android:theme="@android:style/Theme.DeviceDefault.InputMethod"`.
+- Le build tag est présent dans `BaribaInputMethodService.kt`.
+- Le crash survient au moment de l’activation/sélection du clavier, donc avant la logique de frappe normale.
+- Les zones les plus suspectes à ce stade sont la création de vue IME, le thème réel du contexte d’inflation, les widgets `Button` dans un contexte IME OEM, et les plantages système hors du `try/catch` de `onCreateInputView()`.
 
-## Ce que je propose d’implémenter
-### 1) Verrouiller la source de vérité Android
-- Déterminer et documenter **un seul dossier build officiel**.
-- Empêcher les builds depuis un doublon non voulu.
-- Vérifier que `scripts/build-release-apk.sh` et Android Studio utilisent le même projet.
+## Étape 1 — Audit IME Android complet
+Je vais produire un diagnostic senior-level centré sur :
+- lifecycle `InputMethodService`
+- séquence exacte avant affichage (`bind`, création fenêtre IME, thème, inflation, attachement vue)
+- causes possibles avant même `setupKeys()`
+- compatibilité Android 12/13/14/15 et comportements OEM (Samsung/Xiaomi/Pixel)
+- causes système spécifiques IME: rejet du thème, erreur d’inflation, crash pendant `InputMethodManagerService`, process kill, ressources non résolues, incompatibilités framework
 
-### 2) Ajouter une preuve visible de version dans le natif
-- Injecter un marqueur simple de build/version dans le service clavier et/ou dans l’app.
-- Permettre de confirmer visuellement et via logs que l’APK installé contient bien le dernier correctif.
+### Résultat attendu
+- causes probables classées par probabilité
+- lignes exactes suspectes
+- correctifs exacts à appliquer
+- distinction claire entre crash applicatif, crash service IME, et kill système
 
-### 3) Durcir encore le service IME
-- Ajouter davantage de logs natifs autour de :
-  - `onCreateInputView()`
-  - inflation du layout
-  - clic sur touches
-  - `currentInputConnection`
-- Ajouter des garde-fous pour éviter qu’une exception silencieuse masque le vrai problème.
+## Étape 2 — Audit expert du fichier Kotlin
+Je vais analyser ligne par ligne `android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.kt` avec focus sur :
+- `safeInflater()`
+- `ContextThemeWrapper`
+- `inflate(layoutId, null)`
+- `resources.getIdentifier()`
+- `setupKeys()`
+- listeners `Button`
+- usage de `currentInputConnection`
+- `currentInputEditorInfo`
+- `suggestionsBar`
+- fallback view
+- `try/catch Throwable`
 
-### 4) Fiabiliser le pipeline de mise à jour
-- Renforcer les scripts pour que le flux soit toujours :
-  `git pull` -> nettoyage -> `install-native-keyboard` -> `npx cap sync` -> build
-- Éviter que le script réinjecte une version partielle ou qu’Android Studio compile des sources non synchronisées.
+### Ce que je vais produire
+- ce qui est sûr
+- ce qui est risqué
+- ce qui peut casser seulement sur certains téléphones
+- ce qui peut provoquer un `AndroidRuntime` fatal
+- ce qui peut tuer le process IME avant affichage
+- une version Kotlin “production-grade stable” sans patterns fragiles
 
-### 5) Préparer une procédure de validation locale reproductible
-- Définir la séquence exacte pour tester sur téléphone :
-  - désinstaller l’ancienne app
-  - installer le nouvel APK
-  - activer le clavier
-  - le sélectionner
-  - saisir du texte
-  - capturer `adb logcat`
-- Ajouter une checklist “prêt à tester / prêt à déployer”.
+## Étape 3 — Audit XML/layout/style IME
+Je vais auditer :
+- `android/app/src/main/res/layout/keyboard_bariba.xml`
+- `android/app/src/main/res/values/styles_keyboard.xml`
+- `android/app/src/main/res/drawable/key_background.xml`
 
-## Étapes VPS que je vais formaliser
-1. Se placer dans le bon repo.
-2. Vérifier la branche et le dernier commit.
-3. `git pull`
-4. Nettoyer les artefacts Android / web.
-5. Réinstaller les dépendances si nécessaire.
-6. Relancer la synchronisation Capacitor.
-7. Rebuild APK depuis le script officiel.
-8. Vérifier que l’APK généré contient bien le service IME attendu.
-9. Archiver l’APK avec un nom versionné pour éviter toute confusion.
+### Vérifications prévues
+- erreurs XML silencieuses
+- problèmes de mesure/layout dans un conteneur IME
+- usage de `Button` framework dans un clavier système
+- `layout_weight` + `0dp` + `match_parent`
+- backgrounds/custom drawables potentiellement sensibles sur OEM
+- tailles fixes pouvant casser sur certains densités/hauteurs IME
+- attributs compatibles ou fragiles sur Android 13/14/15
 
-## Étapes Android Studio local que je vais formaliser
-1. Ouvrir **le bon dossier projet**.
-2. `Git Pull` dans Android Studio ou terminal.
-3. Vérifier le hash du dernier commit.
-4. Lancer `npx cap sync android` depuis le root correct.
-5. Faire `Clean Project` / `Rebuild Project`.
-6. Si besoin : `Invalidate Caches / Restart`.
-7. Désinstaller l’ancienne app du téléphone.
-8. Installer la nouvelle build.
-9. Tester : Paramètres -> Langue et saisie -> activer -> sélectionner -> saisir.
-10. En cas de crash : capturer `adb logcat` filtré sur `BaribaKeyboard` et `FATAL EXCEPTION`.
+### Résultat attendu
+- toutes les lignes suspectes
+- corrections exactes
+- version XML robuste et stable en production
 
-## Livrables
-- Diagnostic consolidé sur la cause la plus probable du crash persistant.
-- Pipeline de build/mise à jour rendu non ambigu.
-- Checklist VPS.
-- Checklist Android Studio/local.
-- Procédure de validation finale du clavier avant déploiement.
+## Étape 4 — Procédure adb/logcat ultra approfondie
+Je vais préparer une procédure de debug Android Studio professionnelle pour capturer le vrai crash IME, avec :
+- commandes `adb logcat` exactes
+- filtres pour `AndroidRuntime`, `InputMethodManager`, `InputMethodManagerService`, `WindowManager`, `ActivityManager`, `system_server`, `BaribaKeyboard`
+- commandes `adb shell ime`, `adb shell dumpsys input_method`, `adb shell dumpsys activity services`, `adb shell am crash`, `adb bugreport` si nécessaire
+- méthode Android Studio Logcat pour suivre uniquement le process IME
+- stratégie pour détecter crash avant affichage, ANR, binder failure, inflation failure, resource failure, process kill bas niveau
+
+### Livrable
+- une checklist de capture reproductible
+- les logs précis à me renvoyer si le crash persiste
+
+## Étape 5 — Refactor complet production-grade
+Après l’audit, je proposerai un refactor complet et stable du clavier IME, en touchant uniquement la couche native Android concernée.
+
+### Changements prévus
+- durcir `BaribaInputMethodService` contre les crashes de création de vue
+- supprimer les points fragiles d’inflation dynamique et de lookup via `getIdentifier()` au profit de références directes sûres
+- utiliser un contexte/thème IME cohérent de bout en bout
+- rendre la vue fallback réellement sûre même si l’inflation XML échoue
+- réduire les dépendances implicites au thème AppCompat
+- neutraliser les patterns fragiles liés aux `Button` et aux listeners au démarrage
+- améliorer les logs natifs au niveau lifecycle IME
+- standardiser la source Android native officielle pour éviter qu’un vieux dossier soit packagé par erreur
+
+### Fichiers visés
+- `android-native/java/com/fitila/bariba/BaribaInputMethodService.kt`
+- `android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.kt`
+- `android-native/res/layout/keyboard_bariba.xml`
+- `android/app/src/main/res/layout/keyboard_bariba.xml`
+- `android-native/res/values/styles_keyboard.xml`
+- `android/app/src/main/res/values/styles_keyboard.xml`
+- `android-native/res/drawable/key_background.xml`
+- `android/app/src/main/res/drawable/key_background.xml`
+- documentation de debug/déploiement si nécessaire
 
 ## Détails techniques
-```text
-Source actuelle observée:
-- Manifest IME: OK (Theme.DeviceDefault.InputMethod)
-- Service IME: OK (safeInflater avec thème système)
-- Script d’installation: OK côté copie + patch manifest
+1. Remplacer les résolutions dynamiques `resources.getIdentifier()` par `R.layout`, `R.id`, `R.drawable`.
+2. Revoir `safeInflater()` pour utiliser un thème IME système cohérent, sans AppCompat implicite.
+3. Revoir `inflate(layoutId, null)` pour une inflation plus sûre dans un contexte IME.
+4. Isoler la phase d’initialisation visuelle de la phase d’attachement des listeners.
+5. Limiter l’usage d’API pouvant échouer silencieusement au moment critique d’attachement de la vue.
+6. Réduire les risques OEM liés aux `Button` framework et aux styles trop agressifs.
+7. Ajouter des logs structurés sur `onCreate`, `onBindInput`, `onStartInput`, `onStartInputView`, `onCreateInputView`, `onFinishInputView`, `onDestroy`.
+8. Préparer une version compatible Android 10 à 15, sans dépendre d’AppCompat dans l’IME.
 
-Risque principal restant:
-- mauvaise cible de build
-- cache local
-- ancien APK encore installé
-- crash runtime différent de l’AppCompat crash initial
-```
-
-## Résultat attendu
-Après cette passe, tu auras :
-- une seule procédure fiable pour mettre à jour sur VPS
-- une seule procédure fiable pour prendre en compte les changements dans Android Studio
-- un moyen sûr de prouver que la dernière version est bien celle installée
-- la capacité d’identifier précisément le crash s’il persiste encore
+## Définition de terminé
+Le travail sera considéré prêt quand j’aurai fourni :
+- l’audit expert des causes probables classées
+- l’analyse Kotlin détaillée
+- l’analyse XML détaillée
+- la procédure adb/logcat avancée
+- le refactor complet Kotlin/XML proposé pour stabiliser l’IME en production
