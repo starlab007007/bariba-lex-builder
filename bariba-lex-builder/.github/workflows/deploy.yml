@@ -63,6 +63,10 @@ jobs:
 
             echo "📥 Mise à jour du code..."
             git fetch --prune origin main
+            # Nettoyer les modifications locales avant checkout pour éviter
+            # "local changes would be overwritten by checkout"
+            git reset --hard HEAD || true
+            git clean -fd
             git checkout -B main FETCH_HEAD
             git reset --hard FETCH_HEAD
             git clean -fd
