@@ -153,3 +153,21 @@ I BaribaKeyboard: onCreateInputView BUILD_TAG=fitila-ime-2026-05-10-safeInflater
 - [ ] `adb logcat` montre bien le `BUILD_TAG` attendu.
 
 Tant que toutes les cases ne sont pas cochées, **ne pas distribuer l’APK**.
+---
+
+## Vérification post-build (v5 — Java)
+
+Le service IME est désormais en **Java** (Kotlin n'est pas configuré dans la toolchain Capacitor → les `.kt` étaient silencieusement ignorés, d'où le `ClassNotFoundException` à l'activation du clavier).
+
+Après `bash scripts/build-release-apk.sh`, contrôlez l'APK :
+
+```bash
+APK=$(ls -t apk-output/*.apk | head -1)
+bash scripts/verify-apk.sh "$APK"
+
+# Contrôle manuel
+unzip -p "$APK" classes*.dex | strings | grep BaribaInputMethodService
+unzip -p "$APK" classes*.dex | strings | grep fitila-ime-2026-05-12-java-v5
+```
+
+Les deux lignes doivent ressortir. Si oui : désinstaller l'ancienne app du téléphone, installer l'APK, réactiver « Clavier Bariba Fitila » dans Paramètres → Langue et saisie. Plus de crash.
