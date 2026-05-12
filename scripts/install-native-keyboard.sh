@@ -20,7 +20,7 @@ fi
 # 1. Copy Java/Kotlin
 JAVA_DEST="$ANDROID_DIR/java/com/fitila/bariba"
 mkdir -p "$JAVA_DEST"
-cp "$NATIVE_SRC/java/com/fitila/bariba/BaribaInputMethodService.kt" "$JAVA_DEST/"
+cp "$NATIVE_SRC/java/com/fitila/bariba/BaribaInputMethodService.java" "$JAVA_DEST/"
 cp "$NATIVE_SRC/java/com/fitila/bariba/BaribaKeyboardPlugin.java" "$JAVA_DEST/"
 
 # 2. Copy resources
