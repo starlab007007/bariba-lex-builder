@@ -1,79 +1,70 @@
-## Cause racine confirmée
+## Objectif
 
-Le diagnostic est exact : `BaribaInputMethodService` est **absent du DEX**, d'où le `ClassNotFoundException` qui crash le clavier à l'activation.
+Faire évoluer le clavier Bariba (à la fois IME natif Android et clavier flottant `/fitila/keyboard`) pour qu'il soit aussi complet qu'un Gboard, intègre tous les caractères Bariba, propose une prédiction intuitive, une mini-traduction, et un **nouveau ton nasal bas** (accent grave) combinable par-dessus n'importe quelle voyelle (même déjà nasalisée ou aiguë), comme `ɔ̃̀`, `ɛ̃̀`, `ã̀`, `b̀`, etc. Tous les caractères doivent rester intacts au copier-coller dans n'importe quel lecteur de document.
 
-**Pourquoi la classe est absente** : le fichier service est en **Kotlin** (`BaribaInputMethodService.kt`), mais le projet Android Capacitor **n'a aucun plugin Kotlin configuré** :
+## Faisabilité
 
-- `android/build.gradle` (racine) : pas de `classpath kotlin-gradle-plugin`
-- `android/app/build.gradle` : pas de `apply plugin: 'kotlin-android'`, pas de `kotlin-stdlib`
+- **Ton nasal bas combinable** : faisable nativement via le caractère Unicode **U+0300 (combining grave accent)**. Il s'empile correctement par-dessus `ɔ̃`, `ɛ̃`, `ĩ`, `ã`, `ũ`, `e`, `o`… Aucune création de glyphe nécessaire — c'est du Unicode standard, donc préservé au copier-coller dans WhatsApp, Word, Gmail, navigateurs, PDF readers. Rendu correct sur Android 10+ avec Roboto/Noto. Pour les rares apps avec mauvais rendu (ex. anciens lecteurs), on garde l'option NFC normalisé en sortie.
+- **Layout Gboard complet** : chiffres (rangée 0-9), symboles (page `?123`), majuscules verrouillables, suppression long-press, espace long-press = changer de clavier système. Tout faisable avec les `TextView` programmatiques déjà en place (zéro dépendance AppCompat, pas de risque de crash).
+- **Prédictions intuitives** : on combine l'historique `SharedPreferences` (déjà là) + un **dictionnaire Bariba embarqué** (~3-5k mots fréquents extraits de `useDictionarySearch` / corpus existant) chargé depuis `assets/bariba_lexicon.txt`. Préfixe + score (fréquence + récence).
+- **Mini-traduction FR↔Bariba** : long-press sur la barre de suggestions → appel à l'edge function `bariba-translate` déjà déployée, résultat collé. Hors-ligne : fallback dictionnaire local.
+- **Compatibilité documents** : on émet uniquement de l'Unicode NFC standard (latin + IPA `ɔ ɛ ŋ` + combining `̃` `̀` `́`). Aucun caractère privé. Test prévu : copier `kɔ̃̀` → coller dans WhatsApp / Docs / Gmail.
 
-Résultat : Gradle compile uniquement les `.java` (donc `BaribaKeyboardPlugin.java` ✅), et ignore silencieusement le `.kt`. Le service déclaré au Manifest n'existe donc pas dans l'APK → crash à 100% reproductible.
+## Étapes
 
-Le `safeInflater`, le thème, le XML, etc. ne sont pas en cause — la classe n'est même pas chargée.
+### 1. IME natif Android (`BaribaInputMethodService.java`, 4 copies)
+- Ajouter une **rangée de chiffres** (0-9) en haut, comme Gboard.
+- Ajouter une **page symboles** `?123` (`@ # $ % & * ( ) - _ + = / : ;`) avec bouton bascule `ABC` ↔ `?123`.
+- Ajouter un **bouton ton nasal bas** `◌̀` dans la rangée des spéciaux Bariba. Au tap → insère **U+0300** après le dernier caractère (s'empile sur `ɔ̃` → `ɔ̃̀`, sur `e` → `è`, etc.). Si le dernier char est déjà suivi d'un U+0300, on le retire (toggle).
+- Long-press sur les voyelles → popup avec variantes `é è ê ë ɛ ɛ̃ ɛ̀ ɛ̃̀` (style Gboard).
+- Bouton `🌐` long-press → `InputMethodManager.showInputMethodPicker()` pour changer de clavier.
+- Long-press `⌫` → suppression continue (Handler 50ms).
+- Charger le **lexique Bariba** depuis `assets/bariba_lexicon.txt` au `onCreate` (~50 KB, en mémoire).
+- Prédictions : top-5 = matches préfixe (lexique + historique), triés par fréquence + récence. Tap suggestion = remplace le mot courant.
+- BUILD_TAG → `fitila-ime-2026-05-12-smart-v6`.
 
-## Solution recommandée : convertir le service en Java
+### 2. Lexique Bariba embarqué
+- Créer `android/app/src/main/assets/bariba_lexicon.txt` (un mot par ligne, fréquence séparée par `\t`).
+- Source : extraire de `src/data/foncierBaribaCorpus.ts` + dictionnaire React déjà en place. Script Node `scripts/build-bariba-lexicon.ts` qui génère le fichier.
 
-Plutôt qu'ajouter toute la toolchain Kotlin (plugin Gradle + stdlib + ~1.5 Mo dans l'APK + risque de conflit de versions avec AGP 8.13), on convertit `BaribaInputMethodService.kt` → `BaribaInputMethodService.java`. C'est :
+### 3. Clavier flottant React `/fitila/keyboard` (`FloatingBaribaKeyboard.tsx`)
+- Aligner le layout sur l'IME natif : rangée chiffres, page `?123`, touche **ton nasal bas** combinable.
+- Hook `useBaribaPrediction` qui partage la logique préfixe + lexique (côté JS, importé depuis `src/data/baribaLexicon.ts`).
+- Long-press voyelles (Pointer events `onPointerDown` + 400ms timer) → popup variantes accentuées.
+- Bouton "Traduire" sur le mot courant → `supabase.functions.invoke('bariba-translate')`.
+- Sortie texte : `String.normalize('NFC')` avant `navigator.clipboard.writeText` pour garantir compatibilité copier-coller universelle.
 
-- minimal (zéro nouvelle dépendance),
-- compatible immédiatement avec la config Capacitor existante,
-- aligné avec `BaribaKeyboardPlugin.java` (même langage),
-- élimine définitivement la classe d'erreurs « .kt non compilé ».
+### 4. Pont JS ↔ Native (`BaribaKeyboardPlugin.java` + `useBaribaKeyboard.ts`)
+- Ajouter méthode `getLexicon()` côté plugin (renvoie le contenu de `assets/bariba_lexicon.txt`) pour que le clavier flottant et l'IME partagent la même source.
+- Méthode `addToneLow(word)` utilitaire (normalise + ajoute U+0300).
 
-(Alternative possible si tu préfères garder Kotlin : ajouter le plugin Kotlin partout — je peux le faire à la place, dis-le moi.)
+### 5. Documentation & vérification
+- `DEPLOY_KEYBOARD.md` : ajouter section "Tester le ton nasal bas" + "Vérifier compatibilité copier-coller".
+- `scripts/verify-apk.sh` : grep nouveau BUILD_TAG `smart-v6` + vérifier présence de `bariba_lexicon.txt` dans l'APK (`unzip -l ... | grep lexicon`).
 
-## Plan
+## Détails techniques
 
-### 1. Convertir le service IME en Java
+- **Insertion U+0300** : `inputConnection.commitText("\u0300", 1)` — Android compose automatiquement avec le glyphe précédent.
+- **Toggle accent** : lire `getTextBeforeCursor(2, 0)` ; si dernier code unit == 0x0300, `deleteSurroundingText(1, 0)` ; sinon `commitText("\u0300", 1)`.
+- **Long-press popup** : `PopupWindow` ancré sur la touche, ferme au `ACTION_UP`.
+- **Lexique** : `BufferedReader` sur `getAssets().open("bariba_lexicon.txt")`, stocké dans `TreeMap<String,Integer>` pour préfixe O(log n).
+- **Page symboles** : flag `boolean isSymbols` ; `buildKeyboardView()` choisit ROW_NUM/ROW_SYM ou ROW1/ROW2/ROW3 selon le flag.
+- **Compatibilité Android 10→15, Samsung/Xiaomi/Pixel** : conservée — toujours `ContextThemeWrapper(Theme_DeviceDefault)`, aucun `Button` framework, fallback view inchangé.
 
-Pour chacun des 4 emplacements suivants :
-- `android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.kt`
-- `android-native/java/com/fitila/bariba/BaribaInputMethodService.kt`
-- `bariba-lex-builder/android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.kt`
-- `bariba-lex-builder/android-native/java/com/fitila/bariba/BaribaInputMethodService.kt`
+## Fichiers touchés (estimation)
 
-→ Supprimer le `.kt` et créer `BaribaInputMethodService.java` équivalent, en gardant :
-- construction **programmatique** (LinearLayout + TextView, pas d'inflation XML, pas de `Button` framework),
-- `ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault)`,
-- `try/catch` autour de `onCreateInputView` + vue fallback,
-- logs `BaribaIME` sur `onCreate / onBindInput / onCreateInputView / onStartInput`,
-- nouveau `BUILD_TAG = "fitila-ime-2026-05-12-java-v5"`,
-- aucune dépendance à AppCompat / Kotlin / androidx.
+- 4× `BaribaInputMethodService.java` (rewrite avec layout étendu, ton bas, popup long-press, lexique)
+- 4× `BaribaKeyboardPlugin.java` (nouvelle méthode `getLexicon`)
+- 2× `android/app/src/main/assets/bariba_lexicon.txt` (nouveau)
+- 1× `scripts/build-bariba-lexicon.ts` (nouveau)
+- `src/components/keyboard/FloatingBaribaKeyboard.tsx` (refonte layout + ton bas + traduction)
+- `src/hooks/useBaribaPrediction.ts` (nouveau)
+- `src/data/baribaLexicon.ts` (nouveau, partagé)
+- `src/hooks/useBaribaKeyboard.ts` (méthode `getLexicon`)
+- `DEPLOY_KEYBOARD.md`, `scripts/verify-apk.sh`
 
-### 2. Mettre à jour `scripts/install-native-keyboard.sh`
+## Hors scope
 
-Remplacer la copie du `.kt` par la copie du `.java` (dans les 2 copies du script : racine + `bariba-lex-builder/`).
-
-### 3. Mettre à jour `scripts/verify-apk.sh`
-
-Mettre à jour `EXPECTED_TAG` vers `fitila-ime-2026-05-12-java-v5` (dans les 2 copies).
-
-### 4. Vérification post-build
-
-Documenter dans `DEPLOY_KEYBOARD.md` la commande de contrôle :
-
-```
-unzip -p apk-output/*.apk classes*.dex | strings | grep BaribaInputMethodService
-unzip -p apk-output/*.apk classes*.dex | strings | grep fitila-ime-2026-05-12-java-v5
-```
-
-Si les deux apparaissent → la correction est embarquée, le crash disparaît.
-
-### Étapes côté utilisateur après le push
-
-1. Le workflow GitHub Actions (déjà patché précédemment avec `git reset --hard` + `git clean -fd`) doit passer sans le blocage `local changes would be overwritten`.
-2. Sur VPS rien à faire de spécial — le workflow déploie le web. L'APK se rebuild via `bash scripts/build-release-apk.sh` (local Android Studio ou CI APK).
-3. **Désinstaller** l'ancienne app du téléphone, installer le nouveau `.apk`, réactiver « Clavier Bariba Fitila » dans Paramètres → Langue et saisie. Le crash doit disparaître.
-
-## Détails techniques (référence)
-
-| Élément | Avant (KO) | Après (OK) |
-|---|---|---|
-| Langage service | Kotlin `.kt` | Java `.java` |
-| Plugin Gradle Kotlin | Absent | Toujours absent (inutile) |
-| Présence dans DEX | ❌ ClassNotFoundException | ✅ Classe chargée |
-| BUILD_TAG | `…safeInflater-v4` | `…java-v5` |
-| UI | Programmatique | Programmatique (inchangé) |
-| Thème | DeviceDefault.InputMethod | DeviceDefault.InputMethod (inchangé) |
-| Manifest | Inchangé | Inchangé |
-| Layouts XML | Présents mais non utilisés par le service | Idem (construction programmatique) |
+- Reconnaissance vocale Bariba (déjà couverte par `useBaribaSTT`).
+- Apprentissage ML on-device (la prédiction reste statistique simple : fréquence + récence).
+- Glide-typing (swipe) — gros chantier, à proposer en V2 si demandé.
