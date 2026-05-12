@@ -6,6 +6,8 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.inputmethodservice.InputMethodService;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
@@ -14,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -25,52 +28,61 @@ import java.util.List;
 /**
  * Production-grade Bariba Fitila IME — Java implementation.
  *
- * BUILD_TAG: fitila-ime-2026-05-12-java-v5
+ * BUILD_TAG: fitila-ime-2026-05-12-smart-v6
  *
- * Why Java and not Kotlin?
- *   The Capacitor Android project ships with no Kotlin Gradle plugin and no
- *   kotlin-stdlib dependency, so any .kt source is silently skipped at compile
- *   time. The previous Kotlin service therefore never made it into the DEX,
- *   which caused ClassNotFoundException on IME activation. Keeping the service
- *   in Java aligns it with BaribaKeyboardPlugin.java and removes the entire
- *   Kotlin toolchain risk.
- *
- * Design goals:
- *  - Zero hard dependency on AppCompat / Material at runtime.
- *  - All UI built programmatically with TextView (framework Button pulls in
- *    theme attributes some OEM IME themes do not fully provide).
- *  - Defensive view creation : every path returns a valid view.
- *  - Systematic lifecycle logs to diagnose activation crashes via
- *    `adb logcat -s BaribaKeyboard:V`.
- *  - Compatible Android 10 → 15, Samsung / Xiaomi / Pixel.
+ * v6 additions:
+ *  - Digits row (0-9) toggleable
+ *  - Symbols page (?123) like Gboard
+ *  - Tone-low combining grave key (U+0300) — combinable on any vowel,
+ *    even already-nasalized (ɔ̃ → ɔ̃̀, ɛ̃ → ɛ̃̀)
+ *  - Long-press backspace = continuous delete
+ *  - Long-press globe key = system IME picker
+ *  - All output is plain Unicode NFC, copy-paste safe in any document
  */
 public class BaribaInputMethodService extends InputMethodService {
 
     private static final String TAG = "BaribaKeyboard";
-    private static final String BUILD_TAG = "fitila-ime-2026-05-12-java-v5";
+    private static final String BUILD_TAG = "fitila-ime-2026-05-12-smart-v6";
     private static final String PREFS = "bariba_keyboard_data";
     private static final int MAX_HISTORY = 50;
     private static final int MAX_SUGGESTIONS = 5;
+    private static final String COMBINING_GRAVE = "\u0300";
 
-    private static final List<String> ROW1 = Arrays.asList("a","z","e","r","t","y","u","i","o","p");
-    private static final List<String> ROW2 = Arrays.asList("q","s","d","f","g","h","j","k","l","m");
-    private static final List<String> ROW3 = Arrays.asList("w","x","c","v","b","n");
-    // Pairs: lower / upper Bariba specials (ɔ Ɔ, ɛ Ɛ, ŋ Ŋ, ã Ã, ĩ Ĩ, ũ Ũ)
+    private static final List<String> ROW_DIGITS =
+            Arrays.asList("1","2","3","4","5","6","7","8","9","0");
+    private static final List<String> ROW1 =
+            Arrays.asList("a","z","e","r","t","y","u","i","o","p");
+    private static final List<String> ROW2 =
+            Arrays.asList("q","s","d","f","g","h","j","k","l","m");
+    private static final List<String> ROW3 =
+            Arrays.asList("w","x","c","v","b","n");
     private static final String[][] SPECIALS = new String[][] {
-        {"\u0254", "\u0186"},
-        {"\u025B", "\u0190"},
-        {"\u014B", "\u014A"},
-        {"\u00E3", "\u00C3"},
-        {"\u0129", "\u0128"},
-        {"\u0169", "\u0168"}
+        {"\u0254", "\u0186"},   // ɔ Ɔ
+        {"\u025B", "\u0190"},   // ɛ Ɛ
+        {"\u014B", "\u014A"},   // ŋ Ŋ
+        {"\u00E3", "\u00C3"},   // ã Ã
+        {"\u0129", "\u0128"},   // ĩ Ĩ
+        {"\u0169", "\u0168"}    // ũ Ũ
     };
 
+    private static final List<String> SYM_ROW1 =
+            Arrays.asList("1","2","3","4","5","6","7","8","9","0");
+    private static final List<String> SYM_ROW2 =
+            Arrays.asList("@","#","$","_","&","-","+","(",")","/");
+    private static final List<String> SYM_ROW3 =
+            Arrays.asList("*","\"","'",":",";","!","?","%","=");
+
     private boolean isShifted = false;
+    private boolean isSymbols = false;
     private final StringBuilder currentWord = new StringBuilder();
     private LinearLayout suggestionsBar;
+    private LinearLayout keyboardContainer;
     private TextView shiftKey;
 
-    // ─── Lifecycle logs ─────────────────────────────────────────────────────
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable backspaceRepeater;
+
+    // ─── Lifecycle ──────────────────────────────────────────────────────────
 
     @Override
     public void onCreate() {
@@ -82,49 +94,28 @@ public class BaribaInputMethodService extends InputMethodService {
     }
 
     @Override
-    public void onBindInput() {
-        super.onBindInput();
-        Log.i(TAG, "onBindInput");
-    }
-
-    @Override
     public void onStartInput(EditorInfo attribute, boolean restarting) {
         super.onStartInput(attribute, restarting);
-        Log.i(TAG, "onStartInput restarting=" + restarting
-                + " inputType=" + (attribute != null ? attribute.inputType : -1));
         currentWord.setLength(0);
     }
 
     @Override
-    public void onStartInputView(EditorInfo info, boolean restarting) {
-        super.onStartInputView(info, restarting);
-        Log.i(TAG, "onStartInputView restarting=" + restarting);
-    }
-
-    @Override
     public void onFinishInput() {
-        Log.i(TAG, "onFinishInput");
         if (currentWord.length() > 0) saveToHistory(currentWord.toString());
         currentWord.setLength(0);
         super.onFinishInput();
     }
 
-    @Override
-    public void onDestroy() {
-        Log.i(TAG, "onDestroy");
-        super.onDestroy();
-    }
-
-    // ─── View creation ──────────────────────────────────────────────────────
+    // ─── View ───────────────────────────────────────────────────────────────
 
     @Override
     public View onCreateInputView() {
-        Log.i(TAG, "onCreateInputView() called");
+        Log.i(TAG, "onCreateInputView()");
         try {
-            return buildKeyboardView();
+            return buildRoot();
         } catch (Throwable t) {
-            Log.e(TAG, "onCreateInputView crashed, returning fallback", t);
-            return createFallbackView(t.getMessage() != null ? t.getMessage() : "erreur inconnue");
+            Log.e(TAG, "onCreateInputView crashed, fallback", t);
+            return createFallbackView(t.getMessage() != null ? t.getMessage() : "erreur");
         }
     }
 
@@ -132,7 +123,7 @@ public class BaribaInputMethodService extends InputMethodService {
         return new ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault);
     }
 
-    private View buildKeyboardView() {
+    private View buildRoot() {
         Context ctx = themedContext();
         LinearLayout root = new LinearLayout(ctx);
         root.setLayoutParams(new ViewGroup.LayoutParams(
@@ -154,53 +145,66 @@ public class BaribaInputMethodService extends InputMethodService {
         suggestionsBar.setPadding(h, 0, h, 0);
         root.addView(suggestionsBar);
 
-        // Row 1
-        root.addView(buildLetterRow(ctx, ROW1));
+        // Dynamic keyboard container
+        keyboardContainer = new LinearLayout(ctx);
+        keyboardContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        keyboardContainer.setOrientation(LinearLayout.VERTICAL);
+        root.addView(keyboardContainer);
 
-        // Row 2 (indent like AZERTY)
-        LinearLayout row2 = buildLetterRow(ctx, ROW2);
-        LinearLayout.LayoutParams row2lp = (LinearLayout.LayoutParams) row2.getLayoutParams();
-        if (row2lp != null) {
-            row2lp.leftMargin = dp(ctx, 12);
-            row2lp.rightMargin = dp(ctx, 12);
-        }
-        root.addView(row2);
-
-        // Row 3: shift + letters + delete
-        root.addView(buildRow3(ctx));
-
-        // Row 4: Bariba specials
-        root.addView(buildSpecialsRow(ctx));
-
-        // Row 5: punctuation + space + enter
-        root.addView(buildBottomRow(ctx));
-
-        Log.i(TAG, "Keyboard view built successfully");
+        rebuildKeyboard();
+        Log.i(TAG, "Keyboard view built");
         return root;
+    }
+
+    private void rebuildKeyboard() {
+        if (keyboardContainer == null) return;
+        Context ctx = keyboardContainer.getContext();
+        keyboardContainer.removeAllViews();
+
+        if (isSymbols) {
+            keyboardContainer.addView(buildLetterRow(ctx, SYM_ROW1, false));
+            keyboardContainer.addView(buildLetterRow(ctx, SYM_ROW2, false));
+            keyboardContainer.addView(buildSymRow3(ctx));
+            keyboardContainer.addView(buildBottomRow(ctx, /*symbols*/ true));
+        } else {
+            keyboardContainer.addView(buildLetterRow(ctx, ROW_DIGITS, false));
+            keyboardContainer.addView(buildLetterRow(ctx, ROW1, true));
+            LinearLayout row2 = buildLetterRow(ctx, ROW2, true);
+            LinearLayout.LayoutParams row2lp = (LinearLayout.LayoutParams) row2.getLayoutParams();
+            if (row2lp != null) {
+                row2lp.leftMargin = dp(ctx, 12);
+                row2lp.rightMargin = dp(ctx, 12);
+            }
+            keyboardContainer.addView(row2);
+            keyboardContainer.addView(buildRow3(ctx));
+            keyboardContainer.addView(buildSpecialsRow(ctx));
+            keyboardContainer.addView(buildBottomRow(ctx, /*symbols*/ false));
+        }
     }
 
     private LinearLayout.LayoutParams rowParams(Context ctx, int heightDp) {
         return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, heightDp));
     }
 
-    private LinearLayout buildLetterRow(Context ctx, final List<String> letters) {
+    private LinearLayout buildLetterRow(Context ctx, final List<String> letters, final boolean useShift) {
         LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 48));
+        row.setLayoutParams(rowParams(ctx, 46));
         row.setOrientation(LinearLayout.HORIZONTAL);
         for (final String c : letters) {
-            TextView key = makeKey(ctx, c, new Runnable() {
+            row.addView(makeKey(ctx, c, new Runnable() {
                 @Override public void run() {
-                    typeCharacter(isShifted ? c.toUpperCase() : c);
+                    typeCharacter(useShift && isShifted ? c.toUpperCase() : c);
                 }
-            });
-            row.addView(key, weightedParams(1f));
+            }), weightedParams(1f));
         }
         return row;
     }
 
     private LinearLayout buildRow3(Context ctx) {
         LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 48));
+        row.setLayoutParams(rowParams(ctx, 46));
         row.setOrientation(LinearLayout.HORIZONTAL);
 
         shiftKey = makeKey(ctx, "⇧", new Runnable() {
@@ -219,24 +223,49 @@ public class BaribaInputMethodService extends InputMethodService {
             }), weightedParams(1f));
         }
 
-        row.addView(makeKey(ctx, "⌫", new Runnable() {
-            @Override public void run() {
-                try {
-                    InputConnection ic = getCurrentInputConnection();
-                    if (ic != null) ic.deleteSurroundingText(1, 0);
-                    if (currentWord.length() > 0) {
-                        currentWord.deleteCharAt(currentWord.length() - 1);
-                        updateSuggestions(currentWord.toString());
-                    }
-                } catch (Throwable t) { Log.w(TAG, "delete failed", t); }
+        TextView del = makeKey(ctx, "⌫", new Runnable() {
+            @Override public void run() { doBackspace(); }
+        });
+        del.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) {
+                startBackspaceRepeat();
+                return true;
             }
+        });
+        del.setOnTouchListener(new View.OnTouchListener() {
+            @Override public boolean onTouch(View v, android.view.MotionEvent e) {
+                if (e.getAction() == android.view.MotionEvent.ACTION_UP
+                        || e.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
+                    stopBackspaceRepeat();
+                }
+                return false;
+            }
+        });
+        row.addView(del, weightedParams(1.5f));
+        return row;
+    }
+
+    private LinearLayout buildSymRow3(Context ctx) {
+        LinearLayout row = new LinearLayout(ctx);
+        row.setLayoutParams(rowParams(ctx, 46));
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.addView(makeKey(ctx, "≈", new Runnable() {
+            @Override public void run() { typeCharacter("≈"); }
+        }), weightedParams(1.5f));
+        for (final String s : SYM_ROW3) {
+            row.addView(makeKey(ctx, s, new Runnable() {
+                @Override public void run() { typeCharacter(s); }
+            }), weightedParams(1f));
+        }
+        row.addView(makeKey(ctx, "⌫", new Runnable() {
+            @Override public void run() { doBackspace(); }
         }), weightedParams(1.5f));
         return row;
     }
 
     private LinearLayout buildSpecialsRow(Context ctx) {
         LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 48));
+        row.setLayoutParams(rowParams(ctx, 46));
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBackgroundColor(0xFF0F3460);
         for (final String[] pair : SPECIALS) {
@@ -248,18 +277,47 @@ public class BaribaInputMethodService extends InputMethodService {
                 }
             }), weightedParams(1f));
         }
+        // Tone-low combining grave (◌̀) — combinable on any vowel
+        TextView tone = makeKey(ctx, "◌̀", new Runnable() {
+            @Override public void run() { toggleToneLow(); }
+        });
+        tone.setTextColor(0xFFFFD166);
+        row.addView(tone, weightedParams(1f));
         return row;
     }
 
-    private LinearLayout buildBottomRow(Context ctx) {
+    private LinearLayout buildBottomRow(Context ctx, boolean symbols) {
         LinearLayout row = new LinearLayout(ctx);
         row.setLayoutParams(rowParams(ctx, 48));
         row.setOrientation(LinearLayout.HORIZONTAL);
-        for (final String p : new String[]{",", ".", "?", "!"}) {
-            row.addView(makeKey(ctx, p, new Runnable() {
-                @Override public void run() { commitPunctuation(p); }
-            }), weightedParams(1f));
-        }
+
+        // Mode switch
+        TextView modeKey = makeKey(ctx, symbols ? "ABC" : "?123", new Runnable() {
+            @Override public void run() {
+                isSymbols = !isSymbols;
+                rebuildKeyboard();
+            }
+        });
+        row.addView(modeKey, weightedParams(1.5f));
+
+        // Comma
+        row.addView(makeKey(ctx, ",", new Runnable() {
+            @Override public void run() { commitPunctuation(","); }
+        }), weightedParams(1f));
+
+        // Globe / IME picker (long-press)
+        TextView globe = makeKey(ctx, "🌐", new Runnable() {
+            @Override public void run() { showImePicker(); }
+        });
+        globe.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) {
+                showImePicker();
+                return true;
+            }
+        });
+        row.addView(globe, weightedParams(1f));
+
+        // Space
         row.addView(makeKey(ctx, "espace", new Runnable() {
             @Override public void run() {
                 if (currentWord.length() > 0) {
@@ -273,9 +331,17 @@ public class BaribaInputMethodService extends InputMethodService {
                 updateSuggestions("");
             }
         }), weightedParams(4f));
+
+        // Period
+        row.addView(makeKey(ctx, ".", new Runnable() {
+            @Override public void run() { commitPunctuation("."); }
+        }), weightedParams(1f));
+
+        // Enter
         row.addView(makeKey(ctx, "↵", new Runnable() {
             @Override public void run() { performEnter(); }
-        }), weightedParams(2f));
+        }), weightedParams(1.5f));
+
         return row;
     }
 
@@ -287,11 +353,6 @@ public class BaribaInputMethodService extends InputMethodService {
         return lp;
     }
 
-    /**
-     * TextView-based key. Avoids framework Button to remove dependency on
-     * theme attributes (?attr/buttonStyle, colorAccent) that some OEM IME
-     * themes don't fully provide on Android 13+.
-     */
     private TextView makeKey(Context ctx, final String label, final Runnable onClick) {
         TextView tv = new TextView(ctx);
         tv.setText(label);
@@ -329,6 +390,82 @@ public class BaribaInputMethodService extends InputMethodService {
         return sld;
     }
 
+    // ─── Input actions ──────────────────────────────────────────────────────
+
+    private void typeCharacter(String c) {
+        try {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic != null) ic.commitText(c, 1);
+            // Track word only if it's a "letter-like" char (skip combining marks
+            // and punctuation in the word buffer for cleaner suggestions).
+            if (!c.equals(COMBINING_GRAVE)) currentWord.append(c);
+            updateSuggestions(currentWord.toString());
+            if (isShifted) {
+                isShifted = false;
+                if (shiftKey != null) shiftKey.setText("⇧");
+            }
+        } catch (Throwable t) { Log.w(TAG, "typeCharacter failed", t); }
+    }
+
+    /**
+     * Insert / remove the combining grave accent (U+0300) — "ton nasal bas".
+     * It stacks visually on the previous character (even an already-accented
+     * vowel like ɔ̃) producing ɔ̃̀.  Toggle behaviour: tap once to add, tap
+     * again to remove the most recent grave.
+     */
+    private void toggleToneLow() {
+        try {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic == null) return;
+            CharSequence prev = ic.getTextBeforeCursor(1, 0);
+            if (prev != null && prev.length() == 1 && prev.charAt(0) == '\u0300') {
+                ic.deleteSurroundingText(1, 0);
+                if (currentWord.length() > 0
+                        && currentWord.charAt(currentWord.length() - 1) == '\u0300') {
+                    currentWord.deleteCharAt(currentWord.length() - 1);
+                }
+            } else {
+                ic.commitText(COMBINING_GRAVE, 1);
+            }
+        } catch (Throwable t) { Log.w(TAG, "toggleToneLow failed", t); }
+    }
+
+    private void doBackspace() {
+        try {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic != null) ic.deleteSurroundingText(1, 0);
+            if (currentWord.length() > 0) {
+                currentWord.deleteCharAt(currentWord.length() - 1);
+                updateSuggestions(currentWord.toString());
+            }
+        } catch (Throwable t) { Log.w(TAG, "backspace failed", t); }
+    }
+
+    private void startBackspaceRepeat() {
+        stopBackspaceRepeat();
+        backspaceRepeater = new Runnable() {
+            @Override public void run() {
+                doBackspace();
+                handler.postDelayed(this, 55);
+            }
+        };
+        handler.post(backspaceRepeater);
+    }
+
+    private void stopBackspaceRepeat() {
+        if (backspaceRepeater != null) {
+            handler.removeCallbacks(backspaceRepeater);
+            backspaceRepeater = null;
+        }
+    }
+
+    private void showImePicker() {
+        try {
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showInputMethodPicker();
+        } catch (Throwable t) { Log.w(TAG, "showImePicker failed", t); }
+    }
+
     private void commitPunctuation(String p) {
         if (currentWord.length() > 0) {
             saveToHistory(currentWord.toString());
@@ -355,19 +492,6 @@ public class BaribaInputMethodService extends InputMethodService {
                 ic.commitText("\n", 1);
             }
         } catch (Throwable t) { Log.w(TAG, "enter failed", t); }
-    }
-
-    private void typeCharacter(String c) {
-        try {
-            InputConnection ic = getCurrentInputConnection();
-            if (ic != null) ic.commitText(c, 1);
-            currentWord.append(c);
-            updateSuggestions(currentWord.toString());
-            if (isShifted) {
-                isShifted = false;
-                if (shiftKey != null) shiftKey.setText("⇧");
-            }
-        } catch (Throwable t) { Log.w(TAG, "typeCharacter failed", t); }
     }
 
     private View createFallbackView(String reason) {
@@ -447,26 +571,29 @@ public class BaribaInputMethodService extends InputMethodService {
                     @Override public void onClick(View v) {
                         try {
                             InputConnection ic = getCurrentInputConnection();
-                            if (ic == null) return;
-                            String partial = currentWord.toString();
-                            if (!partial.isEmpty()) ic.deleteSurroundingText(partial.length(), 0);
-                            ic.commitText(word + " ", 1);
-                            saveToHistory(word);
-                            currentWord.setLength(0);
-                            updateSuggestions("");
-                        } catch (Throwable ignored) {}
+                            if (ic != null) {
+                                if (currentWord.length() > 0) {
+                                    ic.deleteSurroundingText(currentWord.length(), 0);
+                                }
+                                ic.commitText(word + " ", 1);
+                                currentWord.setLength(0);
+                                saveToHistory(word);
+                                updateSuggestions("");
+                            }
+                        } catch (Throwable t) { Log.w(TAG, "suggestion click failed", t); }
                     }
                 });
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.MATCH_PARENT);
-                lp.setMargins(4, 4, 4, 4);
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                lp.rightMargin = 12;
                 bar.addView(tv, lp);
             }
         } catch (Throwable t) { Log.w(TAG, "renderSuggestionBar failed", t); }
     }
 
     private int dp(Context ctx, int v) {
-        return (int) (v * ctx.getResources().getDisplayMetrics().density);
+        return (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, v, ctx.getResources().getDisplayMetrics());
     }
 }
