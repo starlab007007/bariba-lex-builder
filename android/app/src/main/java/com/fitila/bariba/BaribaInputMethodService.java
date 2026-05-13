@@ -18,12 +18,16 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import org.json.JSONArray;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.text.Normalizer;
 
 /**
  * Production-grade Bariba Fitila IME — Java implementation.
@@ -42,11 +46,13 @@ import java.util.List;
 public class BaribaInputMethodService extends InputMethodService {
 
     private static final String TAG = "BaribaKeyboard";
-    private static final String BUILD_TAG = "fitila-ime-2026-05-12-smart-v6";
+    private static final String BUILD_TAG = "fitila-ime-2026-05-12-smart-v7-alphabet";
     private static final String PREFS = "bariba_keyboard_data";
     private static final int MAX_HISTORY = 50;
     private static final int MAX_SUGGESTIONS = 5;
     private static final String COMBINING_GRAVE = "\u0300";
+    private static final String COMBINING_ACUTE = "\u0301";
+    private static final String COMBINING_TILDE = "\u0303";
 
     private static final List<String> ROW_DIGITS =
             Arrays.asList("1","2","3","4","5","6","7","8","9","0");
@@ -59,10 +65,33 @@ public class BaribaInputMethodService extends InputMethodService {
     private static final String[][] SPECIALS = new String[][] {
         {"\u0254", "\u0186"},   // ɔ Ɔ
         {"\u025B", "\u0190"},   // ɛ Ɛ
-        {"\u014B", "\u014A"},   // ŋ Ŋ
-        {"\u00E3", "\u00C3"},   // ã Ã
+        {"\u014B", "\u014A"}    // ŋ Ŋ
+    };
+
+    // Voyelles nasalisées Bariba (lower / upper)
+    private static final String[][] NASALS = new String[][] {
+        {"\u00E3", "\u00C3"},          // ã Ã
         {"\u0129", "\u0128"},   // ĩ Ĩ
-        {"\u0169", "\u0168"}    // ũ Ũ
+        {"\u0169", "\u0168"},   // ũ Ũ
+        {"\u00F5", "\u00D5"},   // õ Õ
+        {"\u1EBD", "\u1EBC"},   // ẽ Ẽ
+        {"\u025B\u0303", "\u0190\u0303"}, // ɛ̃ Ɛ̃
+        {"\u0254\u0303", "\u0186\u0303"}  // ɔ̃ Ɔ̃
+    };
+
+    // Variantes long-press (clé = voyelle ASCII/Unicode → variantes)
+    private static final Map<String, String[]> VARIANTS = new HashMap<String, String[]>() {{
+        put("a", new String[]{"\u00E0","\u00E1","\u00E2","\u00E4","\u00E3"});
+        put("e", new String[]{"\u00E8","\u00E9","\u00EA","\u00EB","\u1EBD","\u025B","\u025B\u0300","\u025B\u0301","\u025B\u0303","\u025B\u0303\u0300"});
+        put("i", new String[]{"\u00EC","\u00ED","\u00EE","\u00EF","\u0129"});
+        put("o", new String[]{"\u00F2","\u00F3","\u00F4","\u00F6","\u00F5","\u0254","\u0254\u0300","\u0254\u0301","\u0254\u0303","\u0254\u0303\u0300"});
+        put("u", new String[]{"\u00F9","\u00FA","\u00FB","\u00FC","\u0169"});
+        put("n", new String[]{"\u014B","\u01F9","\u00F1"});
+        put("\u0254", new String[]{"\u0254\u0300","\u0254\u0301","\u0254\u0303","\u0254\u0303\u0300"});
+        put("\u025B", new String[]{"\u025B\u0300","\u025B\u0301","\u025B\u0303","\u025B\u0303\u0300"});
+    }};
+
+    private PopupWindow currentPopup;
     };
 
     private static final List<String> SYM_ROW1 =
@@ -179,7 +208,9 @@ public class BaribaInputMethodService extends InputMethodService {
             }
             keyboardContainer.addView(row2);
             keyboardContainer.addView(buildRow3(ctx));
+            keyboardContainer.addView(buildNasalsRow(ctx));
             keyboardContainer.addView(buildSpecialsRow(ctx));
+            keyboardContainer.addView(buildCombiningRow(ctx));
             keyboardContainer.addView(buildBottomRow(ctx, /*symbols*/ false));
         }
     }
@@ -193,11 +224,13 @@ public class BaribaInputMethodService extends InputMethodService {
         row.setLayoutParams(rowParams(ctx, 46));
         row.setOrientation(LinearLayout.HORIZONTAL);
         for (final String c : letters) {
-            row.addView(makeKey(ctx, c, new Runnable() {
+            TextView k = makeKey(ctx, c, new Runnable() {
                 @Override public void run() {
                     typeCharacter(useShift && isShifted ? c.toUpperCase() : c);
                 }
-            }), weightedParams(1f));
+            });
+            attachLongPressVariants(k, c);
+            row.addView(k, weightedParams(1f));
         }
         return row;
     }
@@ -271,20 +304,133 @@ public class BaribaInputMethodService extends InputMethodService {
         for (final String[] pair : SPECIALS) {
             final String lower = pair[0];
             final String upper = pair[1];
-            row.addView(makeKey(ctx, lower, new Runnable() {
+            TextView k = makeKey(ctx, lower, new Runnable() {
                 @Override public void run() {
                     typeCharacter(isShifted ? upper : lower);
                 }
-            }), weightedParams(1f));
+            });
+            attachLongPressVariants(k, lower);
+            row.addView(k, weightedParams(1f));
         }
-        // Tone-low combining grave (◌̀) — combinable on any vowel
-        TextView tone = makeKey(ctx, "◌̀", new Runnable() {
-            @Override public void run() { toggleToneLow(); }
-        });
-        tone.setTextColor(0xFFFFD166);
-        row.addView(tone, weightedParams(1f));
         return row;
     }
+
+    private LinearLayout buildNasalsRow(Context ctx) {
+        LinearLayout row = new LinearLayout(ctx);
+        row.setLayoutParams(rowParams(ctx, 46));
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setBackgroundColor(0xFF0F3460);
+        for (final String[] pair : NASALS) {
+            final String lower = pair[0];
+            final String upper = pair[1];
+            TextView k = makeKey(ctx, lower, new Runnable() {
+                @Override public void run() { typeCharacter(isShifted ? upper : lower); }
+            });
+            k.setTextColor(0xFFFFE082);
+            row.addView(k, weightedParams(1f));
+        }
+        return row;
+    }
+
+    private LinearLayout buildCombiningRow(Context ctx) {
+        LinearLayout row = new LinearLayout(ctx);
+        row.setLayoutParams(rowParams(ctx, 42));
+        row.setOrientation(LinearLayout.HORIZONTAL);
+
+        // ◌̀ ton bas
+        TextView low = makeKey(ctx, "\u25CC\u0300", new Runnable() {
+            @Override public void run() { toggleCombining(COMBINING_GRAVE); }
+        });
+        low.setTextColor(0xFFFFD166);
+        row.addView(low, weightedParams(1f));
+
+        // ◌́ ton haut
+        TextView high = makeKey(ctx, "\u25CC\u0301", new Runnable() {
+            @Override public void run() { toggleCombining(COMBINING_ACUTE); }
+        });
+        high.setTextColor(0xFFFFD166);
+        row.addView(high, weightedParams(1f));
+
+        // ◌̃ nasalisation
+        TextView til = makeKey(ctx, "\u25CC\u0303", new Runnable() {
+            @Override public void run() { toggleCombining(COMBINING_TILDE); }
+        });
+        til.setTextColor(0xFFFFD166);
+        row.addView(til, weightedParams(1f));
+
+        return row;
+    }
+
+    private void attachLongPressVariants(final TextView key, final String baseChar) {
+        final String[] variants = VARIANTS.get(baseChar.toLowerCase());
+        if (variants == null || variants.length == 0) return;
+        key.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) {
+                showVariantsPopup(v, variants);
+                return true;
+            }
+        });
+    }
+
+    private void showVariantsPopup(View anchor, final String[] variants) {
+        try {
+            dismissPopup();
+            Context ctx = anchor.getContext();
+            LinearLayout panel = new LinearLayout(ctx);
+            panel.setOrientation(LinearLayout.HORIZONTAL);
+            panel.setBackgroundColor(0xFF1A1A2E);
+            int pad = dp(ctx, 6);
+            panel.setPadding(pad, pad, pad, pad);
+            for (final String v : variants) {
+                TextView b = makeKey(ctx, v, new Runnable() {
+                    @Override public void run() { typeCharacter(v); dismissPopup(); }
+                });
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        dp(ctx, 44), dp(ctx, 44));
+                lp.setMargins(4, 0, 4, 0);
+                panel.addView(b, lp);
+            }
+            currentPopup = new PopupWindow(panel,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, true);
+            currentPopup.setOutsideTouchable(true);
+            currentPopup.showAsDropDown(anchor, 0, -dp(ctx, 110));
+        } catch (Throwable t) { Log.w(TAG, "popup failed", t); }
+    }
+
+    private void dismissPopup() {
+        try {
+            if (currentPopup != null && currentPopup.isShowing()) currentPopup.dismiss();
+        } catch (Throwable ignored) {}
+        currentPopup = null;
+    }
+
+    /**
+     * Generic combining-mark toggle (works for ◌̀ ◌́ ◌̃).
+     */
+    private void toggleCombining(String mark) {
+        try {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic == null) return;
+            CharSequence prev = ic.getTextBeforeCursor(1, 0);
+            if (prev != null && prev.length() == 1 && prev.charAt(0) == mark.charAt(0)) {
+                ic.deleteSurroundingText(1, 0);
+                if (currentWord.length() > 0
+                        && currentWord.charAt(currentWord.length() - 1) == mark.charAt(0)) {
+                    currentWord.deleteCharAt(currentWord.length() - 1);
+                }
+            } else {
+                ic.commitText(mark, 1);
+            }
+        } catch (Throwable t) { Log.w(TAG, "toggleCombining failed", t); }
+    }
+
+    private LinearLayout buildSpecialsRowOldUnused(Context ctx) {
+        LinearLayout row = new LinearLayout(ctx);
+        row.setLayoutParams(rowParams(ctx, 46));
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        }
+    // (legacy block removed)
 
     private LinearLayout buildBottomRow(Context ctx, boolean symbols) {
         LinearLayout row = new LinearLayout(ctx);
@@ -394,11 +540,14 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private void typeCharacter(String c) {
         try {
+            String s = Normalizer.normalize(c, Normalizer.Form.NFC);
             InputConnection ic = getCurrentInputConnection();
-            if (ic != null) ic.commitText(c, 1);
+            if (ic != null) ic.commitText(s, 1);
             // Track word only if it's a "letter-like" char (skip combining marks
             // and punctuation in the word buffer for cleaner suggestions).
-            if (!c.equals(COMBINING_GRAVE)) currentWord.append(c);
+            if (!s.equals(COMBINING_GRAVE) && !s.equals(COMBINING_ACUTE) && !s.equals(COMBINING_TILDE)) {
+                currentWord.append(s);
+            }
             updateSuggestions(currentWord.toString());
             if (isShifted) {
                 isShifted = false;
@@ -414,20 +563,7 @@ public class BaribaInputMethodService extends InputMethodService {
      * again to remove the most recent grave.
      */
     private void toggleToneLow() {
-        try {
-            InputConnection ic = getCurrentInputConnection();
-            if (ic == null) return;
-            CharSequence prev = ic.getTextBeforeCursor(1, 0);
-            if (prev != null && prev.length() == 1 && prev.charAt(0) == '\u0300') {
-                ic.deleteSurroundingText(1, 0);
-                if (currentWord.length() > 0
-                        && currentWord.charAt(currentWord.length() - 1) == '\u0300') {
-                    currentWord.deleteCharAt(currentWord.length() - 1);
-                }
-            } else {
-                ic.commitText(COMBINING_GRAVE, 1);
-            }
-        } catch (Throwable t) { Log.w(TAG, "toggleToneLow failed", t); }
+        toggleCombining(COMBINING_GRAVE);
     }
 
     private void doBackspace() {
